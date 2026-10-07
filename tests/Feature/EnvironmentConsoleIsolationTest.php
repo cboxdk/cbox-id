@@ -26,6 +26,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
@@ -92,7 +93,7 @@ function seedTenantData(string $environmentId, string $marker): array
 {
     return app(EnvironmentContext::class)->runAs(
         GenericEnvironment::of($environmentId),
-        function () use ($marker): array {
+        function () use ($marker, $environmentId): array {
             $org = app(Organizations::class)->create(new NewOrganization("{$marker} Org", strtolower($marker).'-org'));
 
             $user = app(Subjects::class)->create(
@@ -164,6 +165,10 @@ function seedTenantData(string $environmentId, string $marker): array
                 organizationId: $org->id,
                 scopes: [new ApiScopeDefinition(strtolower($marker).':read')],
             ));
+
+            // A management key, which AI agents › Agents lists by name. Environment-owned
+            // rather than an organization's, and exactly as able to leak across planes.
+            app(EnvironmentApiKeys::class)->issue($environmentId, "{$marker} agent", ['users:read']);
 
             return [$org->id, $user->id, $client->id, $webhook->id, $connection->id, $directory->id, $api->id];
         },
@@ -255,9 +260,9 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         // Publishable keys are environment-owned and carry no organization at all, so
         // there is no tenant record here to leak — and the fixture seeds none.
         'environment.keys.frontend' => 'publishable keys, which have no organization and none seeded',
-        // This environment's management keys: environment-owned, no organization column,
-        // so there is no tenant record to leak — and the fixture seeds none.
-        'environment.keys' => 'management keys, which have no organization and none seeded',
+        // How to point an MCP client here: this environment's own addresses and static
+        // snippets, never a record of anybody's.
+        'environment.agent-connect' => 'the environment\'s own MCP and API addresses',
         // Provider names from a static catalogue — Google, GitHub — never an organization's.
         'environment.social-providers' => 'the social-login catalogue, which names providers rather than tenants',
         'environment.connectors.catalog' => 'the connector catalogue, which is the same on every install',

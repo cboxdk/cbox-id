@@ -121,9 +121,29 @@ an agent that only needs to read APIs should get `apis:read` and nothing else. S
 expiry if the agent is for one piece of work, and set an approval policy if a person should
 confirm its dangerous calls.
 
+### Creating a key in the console
+
+Create a management key on **AI agents › Agents** in the environment console (**New
+agent**), or on **Keys** in the workspace console ([Keys](keys.md#management-keys)).
+**AI agents › Connect** shows this environment's MCP address and a ready-to-paste setup
+for Claude Code, Claude Desktop, Cursor and VS Code, with a shortcut to create a key.
+
+Give it only the scopes the agent needs. The scopes decide which tools the agent sees, so
+an agent that only needs to read APIs should get `apis:read` and nothing else. The create
+page starts from a preset (**Read-only**, **Support agent**, **Full admin**) and marks
+each scope with the most harmful thing it allows. Set an expiry if the agent is for one
+piece of work; the create page defaults to 90 days.
+
+You can also choose which of the agent's actions wait for your approval: every critical
+action, everything destructive and above, every change, and any actions you name. The
+agent then gets a `202` with a short code, you approve on your phone or on **AI agents ›
+Approvals**, and it repeats the request once.
+
+
 A key in an agent's config file is a long-lived secret on a laptop. Keep it out of
-repositories (see the environment variable example below), and revoke it on the Keys page
-when the agent no longer needs it.
+repositories (see the environment variable example below), and revoke or rotate it on
+**AI agents › Agents** when the agent no longer needs it. Revoking a key also revokes
+every key it minted.
 
 ```bash
 claude mcp add --transport http cbox-id https://<environment-host>/mcp \
@@ -214,7 +234,7 @@ description, and in the MCP annotations clients use to decide when to ask you fi
 | read | read-only | `apis_list` |
 | write | not read-only, not destructive | `apis_create` |
 | destructive | destructive | `apis_delete` |
-| critical | destructive | `webhooks_secret_rotate`, `keys_create` |
+| critical | destructive | `keys_create`, `keys_rotate`, `apps_secrets_rotate` |
 
 A tool is also marked idempotent when calling it twice has the same effect as once
 (the API verb is `GET`, `PUT` or `DELETE`).

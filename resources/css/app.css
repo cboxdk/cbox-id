@@ -15,7 +15,9 @@
     font-weight: 400 800;
     font-display: swap;
     src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+        U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
     font-family: 'Plus Jakarta Sans';
@@ -23,7 +25,10 @@
     font-weight: 400 800;
     font-display: swap;
     src: url('/fonts/plus-jakarta-sans-latin-ext.woff2') format('woff2');
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+        U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+        U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
     font-family: 'JetBrains Mono';
@@ -31,7 +36,9 @@
     font-weight: 400 700;
     font-display: swap;
     src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+        U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
     font-family: 'JetBrains Mono';
@@ -39,7 +46,10 @@
     font-weight: 400 700;
     font-display: swap;
     src: url('/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+        U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+        U+2C60-2C7F, U+A720-A7FF;
 }
 
 /*
@@ -50,7 +60,9 @@
  * Mono for code, IDs, timestamps and amounts. Tokens ported 1:1 from cbox-ui.
  */
 @theme {
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, Arial, sans-serif;
+    --font-sans:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui,
+        Arial, sans-serif;
     --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 }
@@ -65,10 +77,10 @@
     --popover: oklch(0.997 0.003 90);
     --primary: oklch(0.45 0.16 258);
     --primary-foreground: oklch(0.99 0.003 247);
-    --secondary: oklch(0.955 0.010 85);
+    --secondary: oklch(0.955 0.01 85);
     --secondary-foreground: oklch(0.26 0.015 75);
-    --muted-color: oklch(0.955 0.010 85);
-    --muted-foreground: oklch(0.46 0.020 75);
+    --muted-color: oklch(0.955 0.01 85);
+    --muted-foreground: oklch(0.46 0.02 75);
     --accent: oklch(0.5 0.17 258);
     --accent-strong: oklch(0.5 0.17 258);
     --accent-foreground: oklch(0.99 0.003 247);
@@ -78,7 +90,7 @@
     /* Text-weight siblings for the *-soft chips. The base hues are tuned as FILLS;
        used as text on their own 12%-alpha wash they measure ~3.1:1, under the 4.5:1
        a pill's label needs. --warning-strong already proved the pattern. */
-    --success-strong: oklch(0.40 0.14 145);
+    --success-strong: oklch(0.4 0.14 145);
     /* Dark ink, not near-white: near-white on the mid-green --success fill measures
        3.32:1, under the 4.5:1 a solid-fill label needs. This is 5.65:1, and matches
        what --warning-foreground and the dark theme's --success-foreground already do.
@@ -92,7 +104,7 @@
     /* Darker, high-contrast amber for warning TEXT on the soft fill (AA on light). */
     --warning-strong: oklch(0.47 0.12 62);
     --info: oklch(0.62 0.16 230);
-    --info-strong: oklch(0.40 0.14 230);
+    --info-strong: oklch(0.4 0.14 230);
     --info-soft: oklch(0.62 0.16 230 / 0.12);
     --destructive: oklch(0.58 0.21 25);
     /* Text weight on --destructive-soft: the fill hue measures 3.94:1 there, under the
@@ -111,7 +123,7 @@
        1.4.11 governs boundaries that identify a CONTROL or its state; a purely
        decorative divider is out of its scope. Anything interactive must therefore use
        --control-border, never this. */
-    --border: oklch(0.82 0.020 85);
+    --border: oklch(0.82 0.02 85);
     /* The ≥3:1 boundary every interactive control uses (WCAG 2.2 SC 1.4.11): inputs,
        selects, ghost buttons, the command-palette trigger, the skip link, and the
        option tiles in the theme editor. 3.61:1 on --card, 3.49:1 on --background.
@@ -125,12 +137,12 @@
     --border-strong: oklch(0.55 0.024 85);
     --input: oklch(0.905 0.014 85);
     --ring: oklch(0.5 0.17 258);
-    --sidebar: oklch(0.973 0.010 85);
+    --sidebar: oklch(0.973 0.01 85);
     --sidebar-foreground: oklch(0.26 0.015 75);
-    --sidebar-muted: oklch(0.55 0.020 75);
+    --sidebar-muted: oklch(0.55 0.02 75);
     --sidebar-accent: oklch(0.935 0.014 85);
     --sidebar-accent-foreground: oklch(0.22 0.015 75);
-    --sidebar-border: oklch(0.82 0.020 85);
+    --sidebar-border: oklch(0.82 0.02 85);
     /* "You are here" text in the rail, the subnav and the mobile nav. It is a
        separate token because the two themes need different blues to clear AA on the
        --accent-soft fill those items carry: --primary is 6.28:1 on it in light, but
@@ -147,17 +159,17 @@
     --overlay: color-mix(in oklch, black 55%, transparent);
 
     /* ── Radius / shadow / motion / chrome metrics (cbox-ui BRAND.md) */
-    --radius: 0.75rem;   /* cards + dialogs (12px) */
-    --radius-md: 8px;    /* buttons + inputs */
-    --radius-sm: 6px;    /* badges + chips */
+    --radius: 0.75rem; /* cards + dialogs (12px) */
+    --radius-md: 8px; /* buttons + inputs */
+    --radius-sm: 6px; /* badges + chips */
     --shadow-card: 0 1px 2px rgba(31, 26, 18, 0.05), 0 1px 1px rgba(31, 26, 18, 0.03);
     --shadow-popover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
     /* Elevation ramp — surfaces layer instead of sitting flat. Used by cards, hover
        lifts, popovers, modals. Dark mode gets its own (heavier) ramp below. */
     --shadow-xs: 0 1px 2px rgba(31, 26, 18, 0.05);
     --shadow-sm: 0 1px 3px rgba(31, 26, 18, 0.08), 0 1px 2px rgba(31, 26, 18, 0.05);
-    --shadow-md: 0 4px 12px -2px rgba(31, 26, 18, 0.10), 0 2px 6px -2px rgba(31, 26, 18, 0.07);
-    --shadow-lg: 0 12px 32px -8px rgba(31, 26, 18, 0.16), 0 4px 12px -4px rgba(31, 26, 18, 0.10);
+    --shadow-md: 0 4px 12px -2px rgba(31, 26, 18, 0.1), 0 2px 6px -2px rgba(31, 26, 18, 0.07);
+    --shadow-lg: 0 12px 32px -8px rgba(31, 26, 18, 0.16), 0 4px 12px -4px rgba(31, 26, 18, 0.1);
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --dur-hover: 150ms;
     --dur-menu: 200ms;
@@ -192,7 +204,7 @@
         --background: oklch(0.185 0.008 80);
         --canvas: oklch(0.21 0.009 80);
         --foreground: oklch(0.965 0.006 90);
-        --card: oklch(0.235 0.010 80);
+        --card: oklch(0.235 0.01 80);
         --card-foreground: oklch(0.965 0.006 90);
         --popover: oklch(0.245 0.011 80);
         --primary: oklch(0.65 0.18 258);
@@ -202,7 +214,7 @@
         --secondary: oklch(0.285 0.012 80);
         --secondary-foreground: oklch(0.955 0.006 90);
         --muted-color: oklch(0.275 0.012 80);
-        --muted-foreground: oklch(0.70 0.016 85);
+        --muted-foreground: oklch(0.7 0.016 85);
         --accent: oklch(0.65 0.18 258);
         --accent-strong: oklch(0.82 0.12 258);
         /* Dark ink on the light-blue fill, for the same reason --primary-foreground
@@ -256,7 +268,7 @@
     --background: oklch(0.185 0.008 80);
     --canvas: oklch(0.21 0.009 80);
     --foreground: oklch(0.965 0.006 90);
-    --card: oklch(0.235 0.010 80);
+    --card: oklch(0.235 0.01 80);
     --card-foreground: oklch(0.965 0.006 90);
     --popover: oklch(0.245 0.011 80);
     --primary: oklch(0.65 0.18 258);
@@ -264,7 +276,7 @@
     --secondary: oklch(0.285 0.012 80);
     --secondary-foreground: oklch(0.955 0.006 90);
     --muted-color: oklch(0.275 0.012 80);
-    --muted-foreground: oklch(0.70 0.016 85);
+    --muted-foreground: oklch(0.7 0.016 85);
     --accent: oklch(0.65 0.18 258);
     --accent-strong: oklch(0.82 0.12 258);
     --accent-foreground: oklch(0.16 0.02 250);
@@ -321,7 +333,9 @@
     }
 
     /* Display face only on true headings; dense body chrome stays system-ui. */
-    h1, h2, h3 {
+    h1,
+    h2,
+    h3 {
         font-family: var(--font-display);
         letter-spacing: -0.01em;
         text-wrap: balance;
@@ -347,7 +361,9 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after {
+        *,
+        *::before,
+        *::after {
             animation-duration: 0.01ms !important;
             animation-iteration-count: 1 !important;
             transition-duration: 0.01ms !important;
@@ -358,22 +374,46 @@
 /* Subtle blue-tinted radial wash on the main scroll column — every Cbox app. */
 .canvas-gradient {
     background:
-        radial-gradient(ellipse 1200px 600px at 100% 0%, oklch(0.5 0.17 258 / 0.04) 0%, transparent 60%),
-        radial-gradient(ellipse 800px 400px at 0% 100%, oklch(0.75 0.08 75 / 0.05) 0%, transparent 60%),
+        radial-gradient(
+            ellipse 1200px 600px at 100% 0%,
+            oklch(0.5 0.17 258 / 0.04) 0%,
+            transparent 60%
+        ),
+        radial-gradient(
+            ellipse 800px 400px at 0% 100%,
+            oklch(0.75 0.08 75 / 0.05) 0%,
+            transparent 60%
+        ),
         var(--canvas);
 }
 :root[data-theme='dark'] .canvas-gradient,
 .canvas-gradient:where([data-theme='dark'] *) {
     background:
-        radial-gradient(ellipse 1200px 600px at 100% 0%, oklch(0.65 0.18 258 / 0.06) 0%, transparent 60%),
-        radial-gradient(ellipse 800px 400px at 0% 100%, oklch(0.75 0.08 75 / 0.06) 0%, transparent 60%),
+        radial-gradient(
+            ellipse 1200px 600px at 100% 0%,
+            oklch(0.65 0.18 258 / 0.06) 0%,
+            transparent 60%
+        ),
+        radial-gradient(
+            ellipse 800px 400px at 0% 100%,
+            oklch(0.75 0.08 75 / 0.06) 0%,
+            transparent 60%
+        ),
         var(--canvas);
 }
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) .canvas-gradient {
         background:
-            radial-gradient(ellipse 1200px 600px at 100% 0%, oklch(0.65 0.18 258 / 0.06) 0%, transparent 60%),
-            radial-gradient(ellipse 800px 400px at 0% 100%, oklch(0.75 0.08 75 / 0.06) 0%, transparent 60%),
+            radial-gradient(
+                ellipse 1200px 600px at 100% 0%,
+                oklch(0.65 0.18 258 / 0.06) 0%,
+                transparent 60%
+            ),
+            radial-gradient(
+                ellipse 800px 400px at 0% 100%,
+                oklch(0.75 0.08 75 / 0.06) 0%,
+                transparent 60%
+            ),
             var(--canvas);
     }
 }
@@ -394,7 +434,12 @@
         cursor: pointer;
         white-space: nowrap;
         border: 1px solid transparent;
-        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease), transform var(--dur-hover) var(--ease);
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            border-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease),
+            box-shadow var(--dur-hover) var(--ease),
+            transform var(--dur-hover) var(--ease);
     }
     .btn:disabled {
         opacity: 0.5;
@@ -496,7 +541,9 @@
         background: var(--card);
         color: var(--foreground);
         font-size: 13px;
-        transition: border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease);
+        transition:
+            border-color var(--dur-hover) var(--ease),
+            box-shadow var(--dur-hover) var(--ease);
     }
     .input::placeholder {
         color: var(--muted-foreground);
@@ -518,7 +565,8 @@
     /* Native <select> styled to match inputs (custom chevron, no OS look). The
      * design system prefers a Combobox for rich cases; this keeps simple value
      * selects on-brand. */
-    select.input, .select {
+    select.input,
+    .select {
         appearance: none;
         -webkit-appearance: none;
         padding-right: 30px;
@@ -537,13 +585,21 @@
         color: var(--foreground);
         font-size: 13px;
         padding: 0 30px 0 10px;
-        transition: border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease);
+        transition:
+            border-color var(--dur-hover) var(--ease),
+            box-shadow var(--dur-hover) var(--ease);
     }
-    .select:hover:not(:focus) { border-color: var(--border-strong); }
+    .select:hover:not(:focus) {
+        border-color: var(--border-strong);
+    }
     /* Matches .input:focus. A select had `outline: none` plus the soft wash only, so the
        whole console's dropdowns carried a weaker focus indicator than its text fields —
        the same control, a different answer to "where am I". */
-    .select:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 2px var(--ring); }
+    .select:focus {
+        outline: none;
+        border-color: var(--ring);
+        box-shadow: 0 0 0 2px var(--ring);
+    }
 
     .label {
         display: block;
@@ -606,9 +662,13 @@
         font-size: 13px;
         font-weight: 500;
         color: color-mix(in oklch, var(--sidebar-foreground) 82%, transparent);
-        transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
     }
-    .nav-link svg { color: var(--sidebar-muted); }
+    .nav-link svg {
+        color: var(--sidebar-muted);
+    }
     .nav-link:hover {
         background: var(--sidebar-accent);
         color: var(--foreground);
@@ -618,7 +678,9 @@
         color: var(--nav-active-fg);
         font-weight: 600;
     }
-    .nav-link[aria-current='page'] svg { color: var(--nav-active-fg); }
+    .nav-link[aria-current='page'] svg {
+        color: var(--nav-active-fg);
+    }
 
     .field-error {
         color: var(--destructive);
@@ -635,7 +697,8 @@
         font-weight: 600;
         letter-spacing: 0.06em;
     }
-    .divider::before, .divider::after {
+    .divider::before,
+    .divider::after {
         content: '';
         flex: 1;
         height: 1px;
@@ -650,14 +713,22 @@
         border-top-color: currentColor;
         animation: cbox-spin 0.6s linear infinite;
     }
-    @keyframes cbox-spin { to { transform: rotate(360deg); } }
+    @keyframes cbox-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
     /* !important is not decoration here. The blanket reduce rule in @layer base sets
        `animation-duration: .01ms !important`, and for !important declarations the EARLIER
        layer wins — so without a matching !important this line was dead and every loading
        indicator in the console was a frozen ring for anyone who asked for less motion.
        A spinner is not decoration either: it is the only thing that says the click landed,
        so it slows down rather than stopping. */
-    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1.6s !important; } }
+    @media (prefers-reduced-motion: reduce) {
+        .spinner {
+            animation-duration: 1.6s !important;
+        }
+    }
 
     /* ── Table (Stripe-style: mono-caps headers, tabular nums, hairline rows) */
     .table {
@@ -692,7 +763,9 @@
         border-bottom: 1px solid var(--border);
         vertical-align: middle;
     }
-    .table tr:last-child td { border-bottom: none; }
+    .table tr:last-child td {
+        border-bottom: none;
+    }
 
     .mono {
         font-family: var(--font-mono);
@@ -701,17 +774,35 @@
 
     /* ── Screen-reader / skip link */
     .sr-only {
-        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-        overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
     .skip-link {
-        position: fixed; top: 12px; left: 12px; z-index: 100;
-        transform: translateY(-150%); transition: transform 0.15s ease;
-        background: var(--card); color: var(--foreground);
-        border: 1px solid var(--control-border); border-radius: var(--radius-md);
-        padding: 9px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-card);
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 100;
+        transform: translateY(-150%);
+        transition: transform 0.15s ease;
+        background: var(--card);
+        color: var(--foreground);
+        border: 1px solid var(--control-border);
+        border-radius: var(--radius-md);
+        padding: 9px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: var(--shadow-card);
     }
-    .skip-link:focus { transform: translateY(0); }
+    .skip-link:focus {
+        transform: translateY(0);
+    }
 
     /* ── Auth surface — calm accent glow, refined split hero. */
     .auth-shell {
@@ -725,29 +816,54 @@
         position: relative;
         isolation: isolate;
         background:
-            radial-gradient(90% 60% at 15% 0%, color-mix(in oklch, #fff 18%, oklch(0.45 0.16 258)) 0%, transparent 55%),
-            linear-gradient(160deg, oklch(0.45 0.16 258) 0%, color-mix(in oklch, oklch(0.45 0.16 258) 62%, #05060a) 100%);
+            radial-gradient(
+                90% 60% at 15% 0%,
+                color-mix(in oklch, #fff 18%, oklch(0.45 0.16 258)) 0%,
+                transparent 55%
+            ),
+            linear-gradient(
+                160deg,
+                oklch(0.45 0.16 258) 0%,
+                color-mix(in oklch, oklch(0.45 0.16 258) 62%, #05060a) 100%
+            );
         color: oklch(0.985 0.005 250);
     }
     .auth-hero::before {
-        content: ''; position: absolute; inset: 0; z-index: -1;
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
         background-image: radial-gradient(currentColor 1px, transparent 1.4px);
-        background-size: 22px 22px; opacity: 0.09;
+        background-size: 22px 22px;
+        opacity: 0.09;
         -webkit-mask-image: radial-gradient(80% 80% at 70% 30%, #000 0%, transparent 75%);
         mask-image: radial-gradient(80% 80% at 70% 30%, #000 0%, transparent 75%);
     }
-    .hero-feature { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .hero-feature {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+    }
     .hero-feature span.tick {
-        display: grid; place-items: center; width: 22px; height: 22px;
-        border-radius: 9999px; flex: none;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 9999px;
+        flex: none;
         background: rgb(255 255 255 / 0.14);
         box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
     }
 
     /* A top sheen + a hairline inner edge give the hero panel depth and crispness. */
     .auth-hero::after {
-        content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-        background: radial-gradient(70% 45% at 50% 0%, rgb(255 255 255 / 0.10) 0%, transparent 70%);
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background: radial-gradient(70% 45% at 50% 0%, rgb(255 255 255 / 0.1) 0%, transparent 70%);
         box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
     }
 
@@ -761,7 +877,9 @@
      * --ring edge inside it restores a visible boundary at 6.08:1 / 5.08:1. */
     .auth-shell .input:focus,
     .auth-shell .input-lg:focus {
-        box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--ring);
+        box-shadow:
+            0 0 0 3px var(--accent-soft),
+            0 0 0 1px var(--ring);
     }
     /* The primary CTA on the auth surface sits a touch more lifted. */
     .auth-shell .btn-primary {
@@ -777,138 +895,585 @@
  * ───────────────────────────────────────────────────────────────────────── */
 @layer components {
     /* Panel */
-    .cbx-panel { border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); color: var(--card-foreground); box-shadow: var(--shadow-card); }
-    .cbx-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-    .cbx-panel-title { font-family: var(--font-display); font-size: 15px; line-height: 1; font-weight: 600; color: var(--foreground); margin: 0; }
-    .cbx-panel-desc { font-size: 14px; color: var(--muted-foreground); margin: 4px 0 0; }
+    .cbx-panel {
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--card-foreground);
+        box-shadow: var(--shadow-card);
+    }
+    .cbx-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    .cbx-panel-title {
+        font-family: var(--font-display);
+        font-size: 15px;
+        line-height: 1;
+        font-weight: 600;
+        color: var(--foreground);
+        margin: 0;
+    }
+    .cbx-panel-desc {
+        font-size: 14px;
+        color: var(--muted-foreground);
+        margin: 4px 0 0;
+    }
     /* Section heading inside a detail page. These were weighted <p>, so 24 pages
        skipped h1→h3 and the 720-line users/show had a one-node outline. Promoting
        them to real <h2> keeps the SAME dense system-ui face on purpose: at 14px in a
        packed settings panel the display face reads as a page title, which it is not.
        (The base h1,h2,h3 rule would otherwise switch it, hence the explicit family.) */
-    .cbx-section-title { font-family: var(--font-sans); font-size: 14px; line-height: 1.25rem; font-weight: 500; letter-spacing: normal; color: var(--foreground); margin: 0; }
-    .cbx-panel-body { padding: 16px 20px; }
+    .cbx-section-title {
+        font-family: var(--font-sans);
+        font-size: 14px;
+        line-height: 1.25rem;
+        font-weight: 500;
+        letter-spacing: normal;
+        color: var(--foreground);
+        margin: 0;
+    }
+    .cbx-panel-body {
+        padding: 16px 20px;
+    }
 
     /* Status pill */
-    .cbx-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid var(--border); padding: 2px 8px; font-size: 11px; line-height: 1; font-weight: 500; background: var(--secondary); color: var(--secondary-foreground); }
-    .cbx-pill .dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--muted-foreground); }
-    .cbx-pill--info { border-color: color-mix(in oklch, var(--info) 20%, transparent); background: var(--info-soft); color: var(--info-strong); }
-    .cbx-pill--info .dot { background: var(--info); }
-    .cbx-pill--success { border-color: color-mix(in oklch, var(--success) 20%, transparent); background: var(--success-soft); color: var(--success-strong); }
-    .cbx-pill--success .dot { background: var(--success); }
-    .cbx-pill--warning { border-color: color-mix(in oklch, var(--warning) 20%, transparent); background: var(--warning-soft); color: var(--warning-strong); }
-    .cbx-pill--warning .dot { background: var(--warning); }
-    .cbx-pill--destructive { border-color: color-mix(in oklch, var(--destructive) 20%, transparent); background: var(--destructive-soft); color: var(--destructive-strong); }
-    .cbx-pill--destructive .dot { background: var(--destructive); }
+    .cbx-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 9999px;
+        border: 1px solid var(--border);
+        padding: 2px 8px;
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 500;
+        background: var(--secondary);
+        color: var(--secondary-foreground);
+    }
+    .cbx-pill .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 9999px;
+        background: var(--muted-foreground);
+    }
+    .cbx-pill--info {
+        border-color: color-mix(in oklch, var(--info) 20%, transparent);
+        background: var(--info-soft);
+        color: var(--info-strong);
+    }
+    .cbx-pill--info .dot {
+        background: var(--info);
+    }
+    .cbx-pill--success {
+        border-color: color-mix(in oklch, var(--success) 20%, transparent);
+        background: var(--success-soft);
+        color: var(--success-strong);
+    }
+    .cbx-pill--success .dot {
+        background: var(--success);
+    }
+    .cbx-pill--warning {
+        border-color: color-mix(in oklch, var(--warning) 20%, transparent);
+        background: var(--warning-soft);
+        color: var(--warning-strong);
+    }
+    .cbx-pill--warning .dot {
+        background: var(--warning);
+    }
+    .cbx-pill--destructive {
+        border-color: color-mix(in oklch, var(--destructive) 20%, transparent);
+        background: var(--destructive-soft);
+        color: var(--destructive-strong);
+    }
+    .cbx-pill--destructive .dot {
+        background: var(--destructive);
+    }
 
     /* Stat tile */
-    .cbx-stat { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-sm); transition: transform var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease); }
-    .cbx-stat:hover { border-color: var(--border-strong); }
+    .cbx-stat {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
+        transition:
+            transform var(--dur-hover) var(--ease),
+            border-color var(--dur-hover) var(--ease),
+            box-shadow var(--dur-hover) var(--ease);
+    }
+    .cbx-stat:hover {
+        border-color: var(--border-strong);
+    }
     /* Navigational stat cards (rendered as <a>) get a tactile hover lift. */
-    a.cbx-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    a.cbx-stat:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
     /* The glyph is a 20px 1.5px-stroke icon on the tile's own *-soft wash, so it is
        held to the 3:1 of SC 1.4.11 (not the 4.5:1 of text). The base fill hues are
        tuned for FILLS and measured 2.92 / 2.97 / 2.24 there — amber failed even the
        non-text floor. The *-strong siblings land 7.24 / 7.48 / 6.18. */
-    .cbx-stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--info-soft); color: var(--info-strong); }
-    .cbx-stat-icon--success { background: var(--success-soft); color: var(--success-strong); }
-    .cbx-stat-icon--warning { background: var(--warning-soft); color: var(--warning-strong); }
-    .cbx-stat-icon--neutral { background: var(--secondary); color: var(--foreground); }
-    .cbx-stat-value { font-size: 24px; line-height: 1; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin: 0; }
-    .cbx-stat-label { font-size: 12px; color: var(--muted-foreground); margin: 2px 0 0; }
+    .cbx-stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        background: var(--info-soft);
+        color: var(--info-strong);
+    }
+    .cbx-stat-icon--success {
+        background: var(--success-soft);
+        color: var(--success-strong);
+    }
+    .cbx-stat-icon--warning {
+        background: var(--warning-soft);
+        color: var(--warning-strong);
+    }
+    .cbx-stat-icon--neutral {
+        background: var(--secondary);
+        color: var(--foreground);
+    }
+    .cbx-stat-value {
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+        margin: 0;
+    }
+    .cbx-stat-label {
+        font-size: 12px;
+        color: var(--muted-foreground);
+        margin: 2px 0 0;
+    }
 
     /* Key/value */
-    .cbx-kv { display: grid; grid-template-columns: 140px 1fr; align-items: baseline; column-gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-    .cbx-kv:last-child { border-bottom: 0; }
-    .cbx-kv dt { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.6875rem; font-weight: 600; color: var(--muted-foreground); }
-    .cbx-kv dd { margin: 0; font-family: var(--font-mono); font-size: 13px; word-break: break-all; color: var(--foreground); }
-    .cbx-kv dd.prose { font-family: var(--font-sans); font-size: 14px; }
+    .cbx-kv {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        align-items: baseline;
+        column-gap: 24px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .cbx-kv:last-child {
+        border-bottom: 0;
+    }
+    .cbx-kv dt {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: var(--muted-foreground);
+    }
+    .cbx-kv dd {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        word-break: break-all;
+        color: var(--foreground);
+    }
+    .cbx-kv dd.prose {
+        font-family: var(--font-sans);
+        font-size: 14px;
+    }
 
     /* Clickable row */
-    .cbx-row { display: flex; align-items: center; gap: 16px; width: 100%; box-sizing: border-box; padding: 14px 20px; color: inherit; text-decoration: none; transition: background-color var(--dur-hover) var(--ease); }
-    .cbx-row:hover { background: color-mix(in oklch, var(--secondary) 60%, transparent); color: inherit; }
-    .cbx-row + .cbx-row { border-top: 1px solid var(--border); }
+    .cbx-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 14px 20px;
+        color: inherit;
+        text-decoration: none;
+        transition: background-color var(--dur-hover) var(--ease);
+    }
+    .cbx-row:hover {
+        background: color-mix(in oklch, var(--secondary) 60%, transparent);
+        color: inherit;
+    }
+    .cbx-row + .cbx-row {
+        border-top: 1px solid var(--border);
+    }
 
     /* Page header */
-    .cbx-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .cbx-page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
     /* Below sm the title and its action cluster cannot share a row: at 375px the
        actions crushed the title to a two-or-three-word-per-line column on ~86 pages.
        Stack instead, actions left-aligned under the title. */
     @media (max-width: 639px) {
-        .cbx-page-header { flex-direction: column; align-items: stretch; }
-        .cbx-page-header > * + * { justify-content: flex-start; }
+        .cbx-page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .cbx-page-header > * + * {
+            justify-content: flex-start;
+        }
     }
-    .cbx-page-eyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 6px; }
-    .cbx-page-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); margin: 0; }
+    .cbx-page-eyebrow {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+        margin: 0 0 6px;
+    }
+    .cbx-page-title {
+        font-family: var(--font-display);
+        font-size: 24px;
+        line-height: 1.2;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--foreground);
+        margin: 0;
+    }
     /* The heading and its help control on one line. They used to be nested, which put
        the entire popover inside the h1's accessible name. */
-    .cbx-page-title-row { display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
-    .cbx-page-desc { font-size: 14px; color: var(--muted-foreground); margin: 6px 0 0; }
+    .cbx-page-title-row {
+        display: flex;
+        align-items: baseline;
+        gap: 0.4rem;
+        min-width: 0;
+    }
+    .cbx-page-desc {
+        font-size: 14px;
+        color: var(--muted-foreground);
+        margin: 6px 0 0;
+    }
 
     /* Setup progress — a plain track and fill. The fill animates so a step ticked on
        the previous page reads as progress made, not as a different picture. */
-    .cbx-progress { position: relative; flex: 1; height: 6px; border-radius: 9999px; background: var(--secondary); overflow: hidden; }
-    .cbx-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width var(--dur-hover) var(--ease); }
+    .cbx-progress {
+        position: relative;
+        flex: 1;
+        height: 6px;
+        border-radius: 9999px;
+        background: var(--secondary);
+        overflow: hidden;
+    }
+    .cbx-progress > span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--primary);
+        transition: width var(--dur-hover) var(--ease);
+    }
 
     /* Help — the "?" next to a title, and the panel it opens. The trigger stays
        quiet until hovered: it is available on every page, so at full contrast it
        would be the loudest thing in a header it is not the subject of. */
-    .cbx-help { position: relative; display: inline-flex; vertical-align: middle; }
-    .cbx-help-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 9999px; color: var(--muted-foreground); background: transparent; border: 0; cursor: pointer; transition: color var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease); }
-    .cbx-help-btn:hover, .cbx-help-btn[aria-expanded="true"] { color: var(--foreground); background: var(--secondary); }
+    .cbx-help {
+        position: relative;
+        display: inline-flex;
+        vertical-align: middle;
+    }
+    .cbx-help-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 9999px;
+        color: var(--muted-foreground);
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        transition:
+            color var(--dur-hover) var(--ease),
+            background var(--dur-hover) var(--ease);
+    }
+    .cbx-help-btn:hover,
+    .cbx-help-btn[aria-expanded='true'] {
+        color: var(--foreground);
+        background: var(--secondary);
+    }
     /* 24px minimum target (WCAG 2.2 SC 2.5.8). It is a button, so the inline-text
        exception does not apply, and at 27x18 it was under the floor on every page that
        carries a page header. */
-    .cbx-help-link { border: 0; background: transparent; padding: 3px 0; min-height: 24px; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-    .cbx-help-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--foreground); }
-    .cbx-help-body { font-size: 13px; line-height: 1.55; color: var(--muted-foreground); }
+    .cbx-help-link {
+        border: 0;
+        background: transparent;
+        padding: 3px 0;
+        min-height: 24px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--accent);
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    .cbx-help-title {
+        font-family: var(--font-display);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--foreground);
+    }
+    .cbx-help-body {
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--muted-foreground);
+    }
 
     /* Empty state — not a shrug, a first task. The icon/title/body sit centred as
        before; `.cbx-empty-steps` adds the numbered "what to do" list, and
        `.cbx-empty-actions` the button row under it. */
-    .cbx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; text-align: center; }
-    .cbx-empty-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--secondary); color: var(--muted-foreground); }
-    .cbx-empty h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--foreground); font-family: var(--font-display); }
-    .cbx-empty p { margin: 4px 0 0; max-width: 384px; font-size: 14px; color: var(--muted-foreground); }
-    .cbx-empty-steps { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 0; padding: 0; max-width: 420px; text-align: left; list-style: none; counter-reset: cbx-step; }
-    .cbx-empty-steps li { position: relative; padding-left: 30px; font-size: 13px; line-height: 1.5; color: var(--muted-foreground); counter-increment: cbx-step; }
-    .cbx-empty-steps li::before { content: counter(cbx-step); position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 9999px; background: var(--secondary); color: var(--foreground); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
-    .cbx-empty-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+    .cbx-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 48px 24px;
+        text-align: center;
+    }
+    .cbx-empty-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        background: var(--secondary);
+        color: var(--muted-foreground);
+    }
+    .cbx-empty h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--foreground);
+        font-family: var(--font-display);
+    }
+    .cbx-empty p {
+        margin: 4px 0 0;
+        max-width: 384px;
+        font-size: 14px;
+        color: var(--muted-foreground);
+    }
+    .cbx-empty-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 4px 0 0;
+        padding: 0;
+        max-width: 420px;
+        text-align: left;
+        list-style: none;
+        counter-reset: cbx-step;
+    }
+    .cbx-empty-steps li {
+        position: relative;
+        padding-left: 30px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--muted-foreground);
+        counter-increment: cbx-step;
+    }
+    .cbx-empty-steps li::before {
+        content: counter(cbx-step);
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 9999px;
+        background: var(--secondary);
+        color: var(--foreground);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .cbx-empty-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 4px;
+    }
 
     /* Avatar */
-    .cbx-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--accent-soft); color: var(--foreground); font-size: 11px; font-weight: 600; }
+    .cbx-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 9999px;
+        background: var(--accent-soft);
+        color: var(--foreground);
+        font-size: 11px;
+        font-weight: 600;
+    }
 
     /* App launcher tile — the first-party "portal". A colour-branded logo per app,
      * a tactile hover lift, and an arrow that slides in to say "this opens". */
-    .cbx-app-tile { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-card); text-decoration: none; transition: transform var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease); }
-    .cbx-app-tile:hover { transform: translateY(-2px); border-color: var(--accent-edge); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.10); }
-    .cbx-app-tile:active { transform: translateY(0); }
-    .cbx-app-logo { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; color: #fff; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.02em; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.18); }
-    .cbx-app-go { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted-foreground); opacity: 0; transform: translateX(-5px); transition: opacity var(--dur-hover) var(--ease), transform var(--dur-hover) var(--ease); }
-    .cbx-app-tile:hover .cbx-app-go { opacity: 1; transform: translateX(0); }
+    .cbx-app-tile {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--card);
+        box-shadow: var(--shadow-card);
+        text-decoration: none;
+        transition:
+            transform var(--dur-hover) var(--ease),
+            border-color var(--dur-hover) var(--ease),
+            box-shadow var(--dur-hover) var(--ease);
+    }
+    .cbx-app-tile:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent-edge);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
+    }
+    .cbx-app-tile:active {
+        transform: translateY(0);
+    }
+    .cbx-app-logo {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        flex-shrink: 0;
+        color: #fff;
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.28),
+            0 2px 6px rgba(0, 0, 0, 0.18);
+    }
+    .cbx-app-go {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        color: var(--muted-foreground);
+        opacity: 0;
+        transform: translateX(-5px);
+        transition:
+            opacity var(--dur-hover) var(--ease),
+            transform var(--dur-hover) var(--ease);
+    }
+    .cbx-app-tile:hover .cbx-app-go {
+        opacity: 1;
+        transform: translateX(0);
+    }
 
     /* Handshake / flow explainer — a row of numbered steps with arrows between,
      * used to show OAuth redirects visually. Wraps + arrows turn downward on narrow. */
 
     /* Search trigger (⌘K) */
-    .cbx-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: var(--radius-md); border: 1px solid var(--control-border); background: var(--card); font-size: 12px; color: var(--muted-foreground); cursor: pointer; transition: border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
-    .cbx-search:hover { border-color: var(--border-strong); color: var(--foreground); }
-    .cbx-search .label { flex: 1; text-align: left; }
-    .cbx-search kbd { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: -0.01em; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--secondary); padding: 2px 4px; color: var(--muted-foreground); }
+    .cbx-search {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 0 6px 0 10px;
+        box-sizing: border-box;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--control-border);
+        background: var(--card);
+        font-size: 12px;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        transition:
+            border-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .cbx-search:hover {
+        border-color: var(--border-strong);
+        color: var(--foreground);
+    }
+    .cbx-search .label {
+        flex: 1;
+        text-align: left;
+    }
+    .cbx-search kbd {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--secondary);
+        padding: 2px 4px;
+        color: var(--muted-foreground);
+    }
 
     /* Topbar */
-    .cbx-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: var(--topbar-h); padding: 0 16px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--background) 80%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; }
+    .cbx-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        height: var(--topbar-h);
+        padding: 0 16px;
+        box-sizing: border-box;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in oklch, var(--background) 80%, transparent);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
     /* Context-switcher trigger (org/environment/target). Hover background lives here as a
      * CSS rule rather than inline onmouseover/onmouseout handlers, which the app's own CSP
      * (script-src without 'unsafe-inline') blocks — the handlers never fired. */
-    .cbx-switcher-item:hover { background: var(--secondary); }
+    .cbx-switcher-item:hover {
+        background: var(--secondary);
+    }
 
     /* Sidebar (two-tier tier-2 subnav column) */
-    .cbx-nav { flex: 1; overflow-y: auto; padding: 16px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
-    .cbx-nav-group { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 10px 4px; margin: 0; }
+    .cbx-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 12px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .cbx-nav-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+        padding: 14px 10px 4px;
+        margin: 0;
+    }
     /* Pages of an area, in the mobile sheet: indented under the group heading that
        carries the icon, rather than each repeating the same glyph. */
-    .nav-link.is-nested { padding-left: 34px; }
+    .nav-link.is-nested {
+        padding-left: 34px;
+    }
 
     /* ── TIER 1: icon rail (Intercom 3-state model). Active = filled bg; NO left-edge rail. */
     /* The rail is ALWAYS a floating inset card with identical geometry whether
@@ -916,7 +1481,27 @@
      * Pinning changes only its WIDTH (and the flow space its spacer reserves), never
      * its position, shape or the placement of a single icon — so there is no layout
      * shift toggling pin, only a clean width grow. */
-    .cbx-rail { position: fixed; left: 6px; top: 6px; bottom: 6px; z-index: 70; width: 52px; display: flex; flex-direction: column; background: var(--sidebar); border: 1px solid transparent; border-radius: 12px; padding: 8px; box-sizing: border-box; transition: width 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease); overflow-x: clip; overflow-y: auto; }
+    .cbx-rail {
+        position: fixed;
+        left: 6px;
+        top: 6px;
+        bottom: 6px;
+        z-index: 70;
+        width: 52px;
+        display: flex;
+        flex-direction: column;
+        background: var(--sidebar);
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 8px;
+        box-sizing: border-box;
+        transition:
+            width 180ms var(--ease),
+            border-color 180ms var(--ease),
+            box-shadow 180ms var(--ease);
+        overflow-x: clip;
+        overflow-y: auto;
+    }
     /* overflow-x: clip rather than `hidden`, and clipping only the axis that needs it.
        `overflow: hidden` established a clipping context in BOTH directions, so the
        account menu — 230px wide, anchored inside a rail whose maximum is 210px — lost
@@ -924,71 +1509,329 @@
        label truncation the rail needs without creating a scroll container. */
     /* Header monogram is centred only in the collapsed strip; left-aligned once the
      * rail is expanded (pinned or hover-open) — CSS-driven so it never shifts on load. */
-    .cbx-rail-hd { position: relative; display: flex; align-items: center; justify-content: center; height: 34px; margin-bottom: 8px; flex-shrink: 0; }
-    :root.cbx-nav-pinned .cbx-rail-hd, .cbx-rail.open .cbx-rail-hd { justify-content: flex-start; }
+    .cbx-rail-hd {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 34px;
+        margin-bottom: 8px;
+        flex-shrink: 0;
+    }
+    :root.cbx-nav-pinned .cbx-rail-hd,
+    .cbx-rail.open .cbx-rail-hd {
+        justify-content: flex-start;
+    }
     /* Pin lives top-right of the header — absolute so it never shifts the brand's
      * centring in the collapsed strip; revealed only once the rail is expanded. */
-    .cbx-pin-btn { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; background: transparent; border-radius: 7px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 120ms var(--ease), background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
-    .cbx-pin-btn:hover { background: var(--sidebar-accent); color: var(--foreground); }
-    .cbx-rail.open .cbx-pin-btn, :root.cbx-nav-pinned .cbx-pin-btn { opacity: 1; pointer-events: auto; }
-    .cbx-rail-brand { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
-    .cbx-rail-brand svg, .cbx-rail-brand img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .cbx-rail a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 9px; border-radius: 8px; text-decoration: none; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); margin-bottom: 2px; white-space: nowrap; width: 100%; box-sizing: border-box; background: transparent; border: 0; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
-    .cbx-rail a svg { flex-shrink: 0; color: var(--sidebar-muted); }
-    .cbx-rail a .lbl { font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 120ms var(--ease); }
-    .cbx-rail a:hover { background: var(--sidebar-accent); color: var(--foreground); }
-    .cbx-rail a.cbx-on { background: var(--accent-soft); color: var(--nav-active-fg); font-weight: 600; }
-    .cbx-rail a.cbx-on svg { color: var(--nav-active-fg); }
-    .cbx-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; transition: opacity 120ms var(--ease); }
-    .cbx-pin:hover { background: var(--sidebar-accent); color: var(--foreground); }
-    .cbx-pin.set { color: var(--primary); opacity: 1; }
+    .cbx-pin-btn {
+        position: absolute;
+        right: 3px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: 0;
+        background: transparent;
+        border-radius: 7px;
+        color: var(--sidebar-muted);
+        cursor: pointer;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+            opacity 120ms var(--ease),
+            background-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .cbx-pin-btn:hover {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+    }
+    .cbx-rail.open .cbx-pin-btn,
+    :root.cbx-nav-pinned .cbx-pin-btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .cbx-rail-brand {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .cbx-rail-brand svg,
+    .cbx-rail-brand img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .cbx-rail a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 34px;
+        padding: 0 9px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent);
+        margin-bottom: 2px;
+        white-space: nowrap;
+        width: 100%;
+        box-sizing: border-box;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        font-size: 13px;
+        font-family: var(--font-sans);
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .cbx-rail a svg {
+        flex-shrink: 0;
+        color: var(--sidebar-muted);
+    }
+    .cbx-rail a .lbl {
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 120ms var(--ease);
+    }
+    .cbx-rail a:hover {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+    }
+    .cbx-rail a.cbx-on {
+        background: var(--accent-soft);
+        color: var(--nav-active-fg);
+        font-weight: 600;
+    }
+    .cbx-rail a.cbx-on svg {
+        color: var(--nav-active-fg);
+    }
+    .cbx-pin {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        color: var(--sidebar-muted);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 120ms var(--ease);
+    }
+    .cbx-pin:hover {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+    }
+    .cbx-pin.set {
+        color: var(--primary);
+        opacity: 1;
+    }
     /* OPEN (hover when unpinned) = floating overlay with a lifted shadow. PINNED =
      * docked open with a calm card shadow. Both reach 210px; the pinned rule has
      * higher specificity so its subtler shadow wins when both apply. The SSR
      * <html class="cbx-nav-pinned"> (from the cookie) makes a pinned rail render at
      * 210px on the very first frame, so it never animates 52→210 on a navigation. */
-    .cbx-rail.open { width: 210px; border-color: var(--border); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
-    :root.cbx-nav-pinned .cbx-rail { width: 210px; border-color: var(--border); box-shadow: var(--shadow-card); }
+    .cbx-rail.open {
+        width: 210px;
+        border-color: var(--border);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    }
+    :root.cbx-nav-pinned .cbx-rail {
+        width: 210px;
+        border-color: var(--border);
+        box-shadow: var(--shadow-card);
+    }
     .cbx-rail.open a .lbl,
-    :root.cbx-nav-pinned .cbx-rail a .lbl { opacity: 1; }
+    :root.cbx-nav-pinned .cbx-rail a .lbl {
+        opacity: 1;
+    }
     /* The spacer reserves flow. Unpinned reserves just the collapsed strip (64px) so
      * the hover-expand overlays without pushing the page; pinned reserves the full
      * rail width + its two 6px insets (222px) so content docks cleanly beside it. */
-    .cbx-rail-spacer { display: none; }
+    .cbx-rail-spacer {
+        display: none;
+    }
     @media (min-width: 1024px) {
-        .cbx-rail-spacer { display: block; width: 64px; flex-shrink: 0; }
-        :root.cbx-nav-pinned .cbx-rail-spacer { width: 222px; }
+        .cbx-rail-spacer {
+            display: block;
+            width: 64px;
+            flex-shrink: 0;
+        }
+        :root.cbx-nav-pinned .cbx-rail-spacer {
+            width: 222px;
+        }
     }
     /* Pin toggle — a tilted (loose) pin when unpinned, upright + accent when pinned.
      * CSS-driven off the SSR pinned class AND the Alpine .is-pinned class so it is
      * correct on the first frame and updates instantly on toggle. */
-    .cbx-pintoggle svg { transform: rotate(35deg); transition: transform 150ms var(--ease), color var(--dur-hover) var(--ease); }
-    .cbx-pintoggle.is-pinned svg, :root.cbx-nav-pinned .cbx-pintoggle svg { transform: rotate(0deg); color: var(--primary); }
+    .cbx-pintoggle svg {
+        transform: rotate(35deg);
+        transition:
+            transform 150ms var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .cbx-pintoggle.is-pinned svg,
+    :root.cbx-nav-pinned .cbx-pintoggle svg {
+        transform: rotate(0deg);
+        color: var(--primary);
+    }
 
     /* ── TIER 2: contextual subnav */
     /* 176px per the design system's app-shell guideline. The longest labels in the
      * product ("Environment keys", "Single sign-on", "Access reviews") measure well
      * inside the 140px of text room that leaves, so nothing wraps; nowrap + ellipsis
      * on the label is a guard for a future longer one, not an active truncation. */
-    .cbx-subnav { width: 176px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); overflow: hidden; }
-    .cbx-subnav-hd { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; font-family: var(--font-display); font-size: 14px; font-weight: 650; letter-spacing: -0.005em; color: var(--foreground); }
-    .cbx-subnav nav { flex: 1; overflow-y: auto; padding: 0 10px 12px; }
-    .cbx-subnav nav a { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); text-decoration: none; margin-bottom: 1px; white-space: nowrap; transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
-    .cbx-subnav nav a > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-    .cbx-subnav nav a:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    .cbx-subnav {
+        width: 176px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--sidebar);
+        border-right: 1px solid var(--sidebar-border);
+        overflow: hidden;
+    }
+    .cbx-subnav-hd {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 14px 8px;
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 650;
+        letter-spacing: -0.005em;
+        color: var(--foreground);
+    }
+    .cbx-subnav nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 10px 12px;
+    }
+    .cbx-subnav nav a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        height: 30px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 450;
+        color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent);
+        text-decoration: none;
+        margin-bottom: 1px;
+        white-space: nowrap;
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .cbx-subnav nav a > span:first-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cbx-subnav nav a:hover {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+    }
     /* Active = filled --accent-soft, the same fill the rail uses. It must NOT reuse the
      * neutral hover background: that made "where I am" and "where the pointer is"
      * identical, and the guideline names accent-soft as the one active marker (with
      * left-edge borders forbidden). */
-    .cbx-subnav nav a.cbx-on { background: var(--accent-soft); font-weight: 600; color: var(--nav-active-fg); }
-    .cbx-subnav nav a .cnt { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
-    .cbx-subnav-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
-    .cbx-subnav-toggle:hover { background: var(--sidebar-accent); color: var(--foreground); }
-    .cbx-subnav.collapsed { width: 26px; cursor: pointer; }
-    .cbx-subnav.collapsed > *:not(.cbx-strip) { display: none; }
-    .cbx-strip { display: none; }
-    .cbx-subnav.collapsed .cbx-strip { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; padding: 10px 0; width: 100%; }
-    .cbx-strip .vlabel { writing-mode: vertical-rl; font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+    .cbx-subnav nav a.cbx-on {
+        background: var(--accent-soft);
+        font-weight: 600;
+        color: var(--nav-active-fg);
+    }
+    /* Waiting for the reader: the agent actions held for their approval. */
+    .cbx-nav-count {
+        margin-left: auto;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        flex-shrink: 0;
+    }
+    .cbx-rail-ico {
+        position: relative;
+        display: inline-flex;
+        flex-shrink: 0;
+    }
+    .cbx-rail-dot {
+        position: absolute;
+        top: -2px;
+        right: -3px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 0 2px var(--sidebar);
+    }
+    .cbx-subnav nav a .cnt {
+        font-size: 11px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: var(--muted-foreground);
+    }
+    .cbx-subnav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        color: var(--muted-foreground);
+        cursor: pointer;
+    }
+    .cbx-subnav-toggle:hover {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+    }
+    .cbx-subnav.collapsed {
+        width: 26px;
+        cursor: pointer;
+    }
+    .cbx-subnav.collapsed > *:not(.cbx-strip) {
+        display: none;
+    }
+    .cbx-strip {
+        display: none;
+    }
+    .cbx-subnav.collapsed .cbx-strip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
+        padding: 10px 0;
+        width: 100%;
+    }
+    .cbx-strip .vlabel {
+        writing-mode: vertical-rl;
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+    }
 }
 
 /* The dark-mode active-nav colour used to live here, as a literal oklch(0.82 0.12 258)
@@ -1043,9 +1886,15 @@
         box-shadow: var(--shadow-lg);
         animation: cbx-dialog-in var(--dur-menu) var(--ease);
     }
-    .cbx-dialog--sm { max-width: 24rem; }
-    .cbx-dialog--md { max-width: 32rem; }
-    .cbx-dialog--lg { max-width: 48rem; }
+    .cbx-dialog--sm {
+        max-width: 24rem;
+    }
+    .cbx-dialog--md {
+        max-width: 32rem;
+    }
+    .cbx-dialog--lg {
+        max-width: 48rem;
+    }
 
     .cbx-dialog-hd {
         display: flex;
@@ -1100,9 +1949,14 @@
         background: transparent;
         color: var(--muted-foreground);
         cursor: pointer;
-        transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
     }
-    .cbx-iconbtn:hover { background: var(--secondary); color: var(--foreground); }
+    .cbx-iconbtn:hover {
+        background: var(--secondary);
+        color: var(--foreground);
+    }
 
     /* ── Menus and select popups (one surface, three consumers) */
     .cbx-menu {
@@ -1142,9 +1996,16 @@
     /* Not `[data-disabled]` alone: cmdk writes `data-disabled="false"` on every ENABLED
        item, so the bare selector drew every combobox option at half opacity with a
        not-allowed cursor. Radix writes the attribute only when an item is disabled. */
-    .cbx-menuitem[data-disabled]:not([data-disabled='false']) { opacity: 0.5; cursor: not-allowed; }
-    .cbx-menuitem.is-destructive { color: var(--destructive-strong); }
-    .cbx-menuitem.is-destructive[data-highlighted] { background: var(--destructive-soft); }
+    .cbx-menuitem[data-disabled]:not([data-disabled='false']) {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .cbx-menuitem.is-destructive {
+        color: var(--destructive-strong);
+    }
+    .cbx-menuitem.is-destructive[data-highlighted] {
+        background: var(--destructive-soft);
+    }
     .cbx-menuitem-hint {
         display: block;
         font-size: 11.5px;
@@ -1159,7 +2020,11 @@
         text-transform: uppercase;
         color: var(--muted-foreground);
     }
-    .cbx-menusep { height: 1px; margin: 4px -4px; background: var(--border); }
+    .cbx-menusep {
+        height: 1px;
+        margin: 4px -4px;
+        background: var(--border);
+    }
 
     .cbx-popover {
         z-index: 92;
@@ -1182,7 +2047,9 @@
         box-shadow: var(--shadow-md);
         animation: cbx-menu-in 120ms var(--ease);
     }
-    .cbx-tooltip-arrow { fill: var(--foreground); }
+    .cbx-tooltip-arrow {
+        fill: var(--foreground);
+    }
 
     /* ── Switch */
     .cbx-switch {
@@ -1195,10 +2062,18 @@
         border-radius: 9999px;
         background: var(--input);
         cursor: pointer;
-        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease);
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            border-color var(--dur-hover) var(--ease);
     }
-    .cbx-switch[data-state='checked'] { background: var(--primary); border-color: var(--primary); }
-    .cbx-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+    .cbx-switch[data-state='checked'] {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+    .cbx-switch:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
     .cbx-switch-thumb {
         display: block;
         width: 16px;
@@ -1210,10 +2085,16 @@
         transition: transform var(--dur-hover) var(--ease);
         will-change: transform;
     }
-    .cbx-switch[data-state='checked'] .cbx-switch-thumb { transform: translateX(17px); }
+    .cbx-switch[data-state='checked'] .cbx-switch-thumb {
+        transform: translateX(17px);
+    }
 
     /* ── Checkbox */
-    .cbx-check { display: flex; align-items: flex-start; gap: 9px; }
+    .cbx-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+    }
     .cbx-check-box {
         display: grid;
         place-items: center;
@@ -1228,12 +2109,24 @@
         background: var(--card);
         color: var(--primary-foreground);
         cursor: pointer;
-        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease);
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            border-color var(--dur-hover) var(--ease);
     }
     .cbx-check-box[data-state='checked'],
-    .cbx-check-box[data-state='indeterminate'] { background: var(--primary); border-color: var(--primary); }
-    .cbx-check-box:disabled { opacity: 0.5; cursor: not-allowed; }
-    .cbx-check-mark { display: grid; place-items: center; line-height: 0; }
+    .cbx-check-box[data-state='indeterminate'] {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+    .cbx-check-box:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .cbx-check-mark {
+        display: grid;
+        place-items: center;
+        line-height: 0;
+    }
 
     /* THE TARGET IS BIGGER THAN THE BOX. A 16px checkbox is the size this design system
        draws, and it is under WCAG 2.2 SC 2.5.8's 24px minimum — so the hit area is grown
@@ -1247,13 +2140,35 @@
         height: 24px;
     }
     .cbx-check-box,
-    .cbx-radio-box { position: relative; }
-    .cbx-check-label { display: block; font-size: 13px; line-height: 1.4; color: var(--foreground); cursor: pointer; }
-    .cbx-check-hint { margin: 2px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted-foreground); }
+    .cbx-radio-box {
+        position: relative;
+    }
+    .cbx-check-label {
+        display: block;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--foreground);
+        cursor: pointer;
+    }
+    .cbx-check-hint {
+        margin: 2px 0 0;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--muted-foreground);
+    }
 
     /* ── Radio group */
-    .cbx-radios { display: flex; flex-direction: column; gap: 10px; }
-    .cbx-radio { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+    .cbx-radios {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .cbx-radio {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        cursor: pointer;
+    }
     .cbx-radio-box {
         display: grid;
         place-items: center;
@@ -1268,11 +2183,33 @@
         cursor: pointer;
         transition: border-color var(--dur-hover) var(--ease);
     }
-    .cbx-radio-box[data-state='checked'] { border-color: var(--primary); }
-    .cbx-radio-box:disabled { opacity: 0.5; cursor: not-allowed; }
-    .cbx-radio-dot { display: block; width: 8px; height: 8px; border-radius: 9999px; background: var(--primary); }
-    .cbx-radio-label { display: block; font-size: 13px; line-height: 1.4; color: var(--foreground); }
-    .cbx-radio-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--muted-foreground); }
+    .cbx-radio-box[data-state='checked'] {
+        border-color: var(--primary);
+    }
+    .cbx-radio-box:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .cbx-radio-dot {
+        display: block;
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        background: var(--primary);
+    }
+    .cbx-radio-label {
+        display: block;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--foreground);
+    }
+    .cbx-radio-hint {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--muted-foreground);
+    }
 
     /* ── Select / combobox trigger. `.select` already supplies the box and the chevron;
        this makes the trigger a flex row so a long value truncates instead of pushing the
@@ -1285,12 +2222,27 @@
         width: 100%;
         text-align: left;
     }
-    .cbx-select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cbx-select-value {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     .cbx-select-value.is-placeholder,
-    .cbx-select [data-placeholder] { color: var(--muted-foreground); }
+    .cbx-select [data-placeholder] {
+        color: var(--muted-foreground);
+    }
 
-    .cbx-combobox { width: var(--radix-popover-trigger-width); padding: 0; min-width: 14rem; }
-    .cbx-combobox [cmdk-list] { max-height: 16rem; overflow-y: auto; padding: 4px; }
+    .cbx-combobox {
+        width: var(--radix-popover-trigger-width);
+        padding: 0;
+        min-width: 14rem;
+    }
+    .cbx-combobox [cmdk-list] {
+        max-height: 16rem;
+        overflow-y: auto;
+        padding: 4px;
+    }
     .cbx-combobox-search {
         display: flex;
         align-items: center;
@@ -1309,8 +2261,15 @@
         font-size: 13px;
         font-family: inherit;
     }
-    .cbx-combobox-search input::placeholder { color: var(--muted-foreground); }
-    .cbx-combobox-empty { padding: 16px 12px; text-align: center; font-size: 13px; color: var(--muted-foreground); }
+    .cbx-combobox-search input::placeholder {
+        color: var(--muted-foreground);
+    }
+    .cbx-combobox-empty {
+        padding: 16px 12px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted-foreground);
+    }
 
     /* One focus answer for every control here, matching .input:focus above. Radix moves
        focus with the keyboard only (`:focus-visible`), so clicking a switch does not
@@ -1357,8 +2316,16 @@
         font-size: 13px;
         line-height: 1.4;
     }
-    .cbx-platform-badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; letter-spacing: 0.01em; }
-    .cbx-platform-copy { color: var(--foreground); }
+    .cbx-platform-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+    }
+    .cbx-platform-copy {
+        color: var(--foreground);
+    }
     .cbx-platform-exit {
         margin-left: auto;
         font-weight: 600;
@@ -1367,14 +2334,32 @@
         text-underline-offset: 2px;
         border-radius: var(--radius-sm);
     }
-    .cbx-platform-exit:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .cbx-platform-exit:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
 
     /* THE CONTEXT SWITCHER — Workspace / Project / Environment, the topbar's left half.
        Each crumb is a quiet button; the menu it opens is a cmdk list in a popover, the
        same pairing as the Combobox. Active state is a filled background, never a bar. */
-    .cbx-topbar-context { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
-    .cbx-ctx { display: flex; align-items: center; gap: 2px; min-width: 0; }
-    .cbx-ctx-sep { color: var(--faint); padding: 0 2px; flex-shrink: 0; }
+    .cbx-topbar-context {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+    .cbx-ctx {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        min-width: 0;
+    }
+    .cbx-ctx-sep {
+        color: var(--faint);
+        padding: 0 2px;
+        flex-shrink: 0;
+    }
     .cbx-ctx-trigger,
     .cbx-ctx-static {
         display: inline-flex;
@@ -1394,14 +2379,37 @@
     /* Clipped rather than overflowing: squeezed by a long workspace name, a crumb's label
        truncates inside its own box instead of drawing over the next crumb. */
     .cbx-ctx-trigger,
-    .cbx-ctx-static { overflow: hidden; }
-    .cbx-ctx-trigger { cursor: pointer; transition: background-color var(--dur-hover) var(--ease); }
+    .cbx-ctx-static {
+        overflow: hidden;
+    }
+    .cbx-ctx-trigger {
+        cursor: pointer;
+        transition: background-color var(--dur-hover) var(--ease);
+    }
     .cbx-ctx-trigger:hover,
-    .cbx-ctx-trigger[data-state='open'] { background: var(--secondary); }
-    .cbx-ctx-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-    .cbx-ctx-label { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cbx-ctx-placeholder { color: var(--muted-foreground); }
-    .cbx-ctx-chevron { width: 14px; height: 14px; flex-shrink: 0; color: var(--muted-foreground); }
+    .cbx-ctx-trigger[data-state='open'] {
+        background: var(--secondary);
+    }
+    .cbx-ctx-trigger:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+    .cbx-ctx-label {
+        min-width: 0;
+        max-width: 12rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .cbx-ctx-placeholder {
+        color: var(--muted-foreground);
+    }
+    .cbx-ctx-chevron {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        color: var(--muted-foreground);
+    }
     .cbx-ctx-tile {
         display: grid;
         place-items: center;
@@ -1414,9 +2422,19 @@
         font-size: 11px;
         font-weight: 700;
     }
-    .cbx-ctx-menu { width: 18rem; max-width: calc(100vw - 32px); padding: 0; }
-    .cbx-ctx-menu [cmdk-list] { max-height: min(20rem, 60vh); overflow-y: auto; padding: 4px; }
-    .cbx-ctx-menu > [cmdk-root] > .cbx-menulabel { padding: 10px 12px 2px; }
+    .cbx-ctx-menu {
+        width: 18rem;
+        max-width: calc(100vw - 32px);
+        padding: 0;
+    }
+    .cbx-ctx-menu [cmdk-list] {
+        max-height: min(20rem, 60vh);
+        overflow-y: auto;
+        padding: 4px;
+    }
+    .cbx-ctx-menu > [cmdk-root] > .cbx-menulabel {
+        padding: 10px 12px 2px;
+    }
     .cbx-ctx-group [cmdk-group-heading] {
         padding: 8px 8px 4px;
         font-size: 11px;
@@ -1425,27 +2443,58 @@
         text-transform: uppercase;
         color: var(--muted-foreground);
     }
-    .cbx-ctx-footnote { margin: 0; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted-foreground); }
-    .cbx-menuitem.is-current { font-weight: 600; }
+    .cbx-ctx-footnote {
+        margin: 0;
+        padding: 8px 12px;
+        border-top: 1px solid var(--border);
+        font-size: 11.5px;
+        color: var(--muted-foreground);
+    }
+    .cbx-menuitem.is-current {
+        font-weight: 600;
+    }
     /* ON A PHONE the switcher lives in the navigation sheet, where it has the width to be
        read, and the bottom bar names the environment and its type at all times. The
        topbar keeps only the tenant filter, which is per-page state somebody needs in reach.
        Hidden here because it is drawn there — never hidden without a replacement. */
     /* In the sheet each crumb is a full-width row — a phone has the height, not the width.
        The right padding keeps the first row clear of the sheet's close button. */
-    .cbx-ctx-sheet { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 0 44px 4px 0; }
-    .cbx-ctx-sheet .cbx-ctx { flex-direction: column; align-items: stretch; gap: 2px; }
-    .cbx-ctx-sheet .cbx-ctx-sep { display: none; }
+    .cbx-ctx-sheet {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+        padding: 0 44px 4px 0;
+    }
+    .cbx-ctx-sheet .cbx-ctx {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+    }
+    .cbx-ctx-sheet .cbx-ctx-sep {
+        display: none;
+    }
     .cbx-ctx-sheet .cbx-ctx-trigger,
     .cbx-ctx-sheet .cbx-ctx-static,
-    .cbx-ctx-sheet .cbx-switcher-item { width: 100%; justify-content: flex-start; }
-    .cbx-ctx-sheet .cbx-ctx-label { max-width: none; flex: 1; text-align: left; }
+    .cbx-ctx-sheet .cbx-switcher-item {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .cbx-ctx-sheet .cbx-ctx-label {
+        max-width: none;
+        flex: 1;
+        text-align: left;
+    }
     @media (max-width: 639px) {
         .cbx-topbar-context > .cbx-ctx,
-        .cbx-topbar-context > .cbx-ctx + .cbx-ctx-sep { display: none; }
+        .cbx-topbar-context > .cbx-ctx + .cbx-ctx-sep {
+            display: none;
+        }
     }
     @media (min-width: 640px) and (max-width: 1023px) {
-        .cbx-topbar-context .cbx-ctx-label { max-width: 7rem; }
+        .cbx-topbar-context .cbx-ctx-label {
+            max-width: 7rem;
+        }
     }
 
     /* Who you are, top right. */
@@ -1461,12 +2510,33 @@
         transition: background-color var(--dur-hover) var(--ease);
     }
     .cbx-avatar-btn:hover,
-    .cbx-avatar-btn[data-state='open'] { background: var(--secondary); }
-    .cbx-avatar-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-    .cbx-account-hd { padding: 8px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
-    .cbx-account-name { margin: 0; font-size: 13px; font-weight: 600; }
-    .cbx-account-email { margin: 2px 0 0; font-size: 12px; color: var(--muted-foreground); }
-    .cbx-account-hint { margin-left: auto; font-size: 11.5px; color: var(--muted-foreground); }
+    .cbx-avatar-btn[data-state='open'] {
+        background: var(--secondary);
+    }
+    .cbx-avatar-btn:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+    .cbx-account-hd {
+        padding: 8px 10px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--border);
+    }
+    .cbx-account-name {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .cbx-account-email {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--muted-foreground);
+    }
+    .cbx-account-hint {
+        margin-left: auto;
+        font-size: 11.5px;
+        color: var(--muted-foreground);
+    }
 
     /* A page the rail does not offer, reached by URL: one sentence saying what it is and
        where the reader probably meant to go. Info tone, never a warning — nothing is
@@ -1485,9 +2555,18 @@
         font-size: 13px;
         line-height: 1.5;
     }
-    .cbx-shell-notice > svg { margin-top: 2px; color: var(--primary); }
-    .cbx-shell-notice-link { font-weight: 600; color: var(--accent-strong); white-space: nowrap; }
-    .cbx-shell-notice-link:hover { text-decoration: underline; }
+    .cbx-shell-notice > svg {
+        margin-top: 2px;
+        color: var(--primary);
+    }
+    .cbx-shell-notice-link {
+        font-weight: 600;
+        color: var(--accent-strong);
+        white-space: nowrap;
+    }
+    .cbx-shell-notice-link:hover {
+        text-decoration: underline;
+    }
 
     /* The command palette. Positioned high rather than centred: the list grows
        downward as you type, and a centred box jumps under the cursor on the first
@@ -1507,10 +2586,20 @@
         box-shadow: var(--shadow-lg);
         animation: cbx-palette-in var(--dur-menu) var(--ease);
     }
-    .cbx-palette [cmdk-list] { max-height: min(24rem, 60vh); overflow-y: auto; padding: 4px; }
+    .cbx-palette [cmdk-list] {
+        max-height: min(24rem, 60vh);
+        overflow-y: auto;
+        padding: 4px;
+    }
     @keyframes cbx-palette-in {
-        from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.985); }
-        to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-6px) scale(0.985);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
     }
 
     /* ── Mobile navigation (thumb zone) ────────────────────────────────────
@@ -1578,8 +2667,21 @@
         box-shadow: var(--shadow-lg);
         animation: cbx-sheet-in var(--dur-layout) var(--ease);
     }
-    .cbx-sheet-hd { position: relative; display: flex; align-items: center; padding: 12px 16px 4px; flex-shrink: 0; }
-    .cbx-sheet-grab { display: block; margin: 0 auto; width: 36px; height: 4px; border-radius: 9999px; background: var(--sidebar-border); }
+    .cbx-sheet-hd {
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 12px 16px 4px;
+        flex-shrink: 0;
+    }
+    .cbx-sheet-grab {
+        display: block;
+        margin: 0 auto;
+        width: 36px;
+        height: 4px;
+        border-radius: 9999px;
+        background: var(--sidebar-border);
+    }
     .cbx-sheet-close {
         position: absolute;
         right: 12px;
@@ -1596,8 +2698,19 @@
         color: var(--muted-foreground);
         cursor: pointer;
     }
-    .cbx-sheet-slot { padding: 4px 12px 8px; flex-shrink: 0; border-bottom: 1px solid var(--sidebar-border); }
-    .cbx-sheet-nav { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 12px; }
+    .cbx-sheet-slot {
+        padding: 4px 12px 8px;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--sidebar-border);
+    }
+    .cbx-sheet-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
     .cbx-sheet-ft {
         flex-shrink: 0;
         padding: 12px;
@@ -1607,7 +2720,14 @@
         flex-direction: column;
         gap: 2px;
     }
-    @keyframes cbx-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+    @keyframes cbx-sheet-in {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: none;
+        }
+    }
 
     /* ── Underline tabs. Filtering one view, never navigation — a tab that changes what
        the page is ABOUT is a page with its own URL. The bottom border is on the LIST so
@@ -1621,7 +2741,9 @@
         overflow-x: auto;
         scrollbar-width: none;
     }
-    .cbx-tabs::-webkit-scrollbar { display: none; }
+    .cbx-tabs::-webkit-scrollbar {
+        display: none;
+    }
     .cbx-tab {
         position: relative;
         flex-shrink: 0;
@@ -1637,8 +2759,12 @@
         white-space: nowrap;
         transition: color var(--dur-hover) var(--ease);
     }
-    .cbx-tab:hover { color: var(--foreground); }
-    .cbx-tab[data-state='active'] { color: var(--nav-active-fg); }
+    .cbx-tab:hover {
+        color: var(--foreground);
+    }
+    .cbx-tab[data-state='active'] {
+        color: var(--nav-active-fg);
+    }
     .cbx-tab[data-state='active']::after {
         content: '';
         position: absolute;
@@ -1656,14 +2782,33 @@
         box-shadow: 0 0 0 2px var(--ring);
     }
 
-    @keyframes cbx-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes cbx-fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
     @keyframes cbx-menu-in {
-        from { opacity: 0; transform: translateY(-2px) scale(0.98); }
-        to { opacity: 1; transform: none; }
+        from {
+            opacity: 0;
+            transform: translateY(-2px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
     }
     @keyframes cbx-dialog-in {
-        from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
-        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        from {
+            opacity: 0;
+            transform: translate(-50%, -48%) scale(0.97);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
     }
 }
 
@@ -1689,11 +2834,15 @@
     --border-radius: var(--radius-md);
     font-family: var(--font-sans);
 }
-[data-sonner-toast] { box-shadow: var(--shadow-lg); }
+[data-sonner-toast] {
+    box-shadow: var(--shadow-lg);
+}
 /* An error is worth a longer read than a confirmation. Sonner takes the duration
    per toast, but the class is also the hook for anything that has to differ
    visually — so the two live in one place rather than at every call site. */
-[data-sonner-toast].is-error { font-weight: 500; }
+[data-sonner-toast].is-error {
+    font-weight: 500;
+}
 
 /* ── Environment badge ─────────────────────────────────────────────────────
    Which realm am I acting in? Production is the one that must be unmistakable,
@@ -1773,10 +2922,18 @@
     /* The same reasoning applied to the controls that arrived with the React layer.
        SC 2.5.8's 24px is a MINIMUM, not a target: under a thumb, 40px is the size that
        stops a person hitting the row behind the one they meant. */
-    .cbx-iconbtn { width: 40px; height: 40px; }
-    .cbx-menuitem { padding: 10px 10px; }
+    .cbx-iconbtn {
+        width: 40px;
+        height: 40px;
+    }
+    .cbx-menuitem {
+        padding: 10px 10px;
+    }
     .cbx-check-box::before,
-    .cbx-radio-box::before { width: 40px; height: 40px; }
+    .cbx-radio-box::before {
+        width: 40px;
+        height: 40px;
+    }
 }
 
 /* ── Narrow screens: stop laying two things side by side that do not fit ────

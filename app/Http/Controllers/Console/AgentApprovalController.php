@@ -5,21 +5,45 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Actions\Approvals\DenyAgentRequest;
+use App\Http\Props\Console\ActionApprovalRowProps;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
+use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\Approvals\ActionApprovalGate;
+use App\Platform\Actions\Danger;
+use App\Platform\Agents\ActionApprovalEntry;
+use App\Platform\Agents\ActionApprovalInbox;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentSudo;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Keys\ManagementKeys;
+use App\Platform\OrganizationActivity;
 use Cbox\Id\Identity\Models\User;
+use Cbox\Id\OAuthServer\Enums\ActionApprovalStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Platform\Models\EnvironmentApiKey;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
+use InvalidArgumentException;
 
 /**
- * ENVIRONMENT PLANE › AGENT APPROVALS — the human-in-the-loop surface for CIBA requests,
- * where an agent asks to act on somebody's behalf.
+ * AI AGENTS › APPROVALS — the inbox of everything software is waiting for a person to
+ * allow in this environment. Two kinds, one page:
  *
- * THERE IS DELIBERATELY NO APPROVE HERE. A CIBA approval is the USER's consent for an agent
+ * AN AGENT'S HELD ACTION. A management key whose approval policy holds an action stops
+ * and asks the person who created the key ({@see ActionApprovalGate}). That person can
+ * answer on their phone, or HERE: approving answers the very same CIBA request, bound to
+ * the same person, so the agent's poll and its repeat with `Cbox-Approval` are unchanged.
+ * Only that person may approve — the framework refuses anybody else — and a Critical
+ * action asks them to confirm their password first, because a session left open is not
+ * the person. Any administrator may DENY one, which withholds rather than grants.
+ *
+ * A REQUEST TO ACT AS A USER (OIDC CIBA), where an app asks to act on somebody's behalf.
+ * THERE IS DELIBERATELY NO APPROVE FOR THESE. A CIBA approval is the USER's consent for an agent
  * to act as them, and the token that follows is minted for that user — so an operator
  * approving on their behalf would be granting consent nobody asked them for. That is the
  * same bypass the service layer refuses (approval requires the acting subject to BE the
@@ -51,7 +75,7 @@ final readonly class AgentApprovalController extends ConsoleController
         'offline_access' => 'Stay signed in',
     ];
 
-    public function index(): Response
+    public function index(ActionApprovalInbox $inbox, ActionRegistry $registry): Response
     {
         $this->assertEnvironmentAdmin();
 
@@ -108,8 +132,13 @@ final readonly class AgentApprovalController extends ConsoleController
             $subjects[(string) $user->id] = (string) $user->email;
         }
 
+        $actions = $this->actionRows($inbox, $registry);
+
         return $this->page('environment/approvals', 'Approvals', [
             'help' => HelpProps::for(HelpTopic::ReviewAgentRequests),
+            'waiting' => array_values(array_filter($actions, static fn (array $row): bool => $row['status'] === ActionApprovalStatus::Pending->value)),
+            'decided' => array_slice(array_values(array_filter($actions, static fn (array $row): bool => $row['status'] !== ActionApprovalStatus::Pending->value)), 0, 20),
+            'agentsHref' => route('environment.agents'),
             'requests' => array_map(function (BackchannelAuthRequest $request) use ($names, $subjects): array {
                 $clientId = (string) $request->client_id;
 
@@ -153,6 +182,195 @@ final readonly class AgentApprovalController extends ConsoleController
          * requests", so an operator working a backlog concludes they are done.
          */
         return to_route('environment.approvals')->with('status', 'Request denied.');
+    }
+
+    /**
+     * Approve an agent's held action, as the person it was raised for.
+     */
+    public function approveAction(string $approval, ActionApprovalInbox $inbox, ActionRegistry $registry): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        $auth = app(EnvironmentAdminAuth::class);
+        $entry = $inbox->find($approval, (string) $auth->environmentId());
+
+        abort_if($entry === null, 404);
+
+        if (! $entry->pending()) {
+            return to_route('environment.approvals')->with('error', 'That request is no longer waiting — it was answered, used or expired.');
+        }
+
+        // The framework refuses anybody else as well; asked here first so the answer is a
+        // plain refusal rather than a button that silently did nothing.
+        $me = $auth->subjectId();
+        abort_unless($me !== null && hash_equals($entry->approverId, $me), 403);
+
+        // A Critical action waits for a password typed in the last few minutes: approving
+        // one hands an agent a credential or the way people sign in, and a console left
+        // open is not the person it belongs to.
+        if (self::definition($registry, $entry->request->action)?->danger === Danger::Critical) {
+            $sudo = app(ConsoleStepUp::class)->challenge(
+                'approvals',
+                'environment.approvals',
+                [],
+                'Approving lets an agent run a critical action: '.$entry->request->action.'.',
+            );
+
+            if ($sudo !== null) {
+                return to_route($sudo);
+            }
+        }
+
+        if (! $inbox->approve($entry, $me)) {
+            return to_route('environment.approvals')->with('error', 'That request could not be approved — it may have just expired.');
+        }
+
+        $this->record('organization.action_approval_approved', $entry->request->id, $entry->request->action, $me);
+
+        return to_route('environment.approvals')->with('status', 'Approved. The agent can now repeat its request — once.');
+    }
+
+    /**
+     * Deny an agent's held action. Any administrator of the environment may: it withholds.
+     */
+    public function denyAction(string $approval, ActionApprovalInbox $inbox): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        $auth = app(EnvironmentAdminAuth::class);
+        $entry = $inbox->find($approval, (string) $auth->environmentId());
+
+        abort_if($entry === null, 404);
+
+        if (! $entry->pending()) {
+            return to_route('environment.approvals')->with('error', 'That request is no longer waiting — it was answered, used or expired.');
+        }
+
+        $inbox->deny($entry);
+        $this->record('organization.action_approval_denied', $entry->request->id, $entry->request->action, (string) $auth->subjectId());
+
+        return to_route('environment.approvals')->with('status', 'Denied. The agent is told so when it asks again.');
+    }
+
+    /**
+     * The action approvals of this environment, newest first, as the inbox draws them.
+     *
+     * Four reads for the lot — the requests, their framework halves, the keys that raised
+     * them and the people they wait for — never one per row.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function actionRows(ActionApprovalInbox $inbox, ActionRegistry $registry): array
+    {
+        $auth = app(EnvironmentAdminAuth::class);
+        $entries = $inbox->latest((string) $auth->environmentId());
+
+        if ($entries === []) {
+            return [];
+        }
+
+        $me = $auth->subjectId();
+        $sudoOpen = app(EnvironmentSudo::class)->confirmed();
+
+        $keyIds = array_values(array_filter(array_map(
+            static fn (ActionApprovalEntry $entry): ?string => $entry->request->environmentKeyId(),
+            $entries,
+        )));
+
+        /** @var array<string, string> $keys */
+        $keys = EnvironmentApiKey::query()->whereIn('id', $keyIds)->pluck('name', 'id')->all();
+
+        $approverIds = array_values(array_unique(array_map(static fn (ActionApprovalEntry $entry): string => $entry->approverId, $entries)));
+
+        /** @var array<string, string> $approvers */
+        $approvers = app(PlatformRoot::class)->run(fn (): array => User::query()
+            ->whereIn('id', $approverIds)
+            ->get(['id', 'name', 'email'])
+            ->mapWithKeys(static fn (User $user): array => [$user->id => (string) ($user->name ?? $user->email)])
+            ->all()) ?? [];
+
+        return array_map(function (ActionApprovalEntry $entry) use ($registry, $keys, $approvers, $me, $sudoOpen): array {
+            $definition = self::definition($registry, $entry->request->action);
+            $keyId = $entry->request->environmentKeyId();
+            $input = $entry->request->input ?? [];
+            $pathFields = $definition?->input()->pathFields() ?? [];
+            $mine = $me !== null && hash_equals($entry->approverId, $me);
+            $pending = $entry->pending();
+
+            return (new ActionApprovalRowProps(
+                entry: $entry,
+                agent: $keyId === null ? 'A workspace key' : ($keys[$keyId] ?? 'A revoked key'),
+                agentId: $keyId,
+                action: $definition,
+                target: self::target($entry->request->action, $input, $pathFields, $keys),
+                arguments: ActionApprovalRowProps::arguments($input, $pathFields),
+                approver: $mine ? 'You' : ($approvers[$entry->approverId] ?? 'A former member'),
+                mine: $mine,
+                needsSudo: $pending && $mine && $definition?->danger === Danger::Critical && ! $sudoOpen,
+                approveHref: $pending && $mine ? route('environment.approvals.actions.approve', $entry->request->id) : null,
+                denyHref: $pending ? route('environment.approvals.actions.deny', $entry->request->id) : null,
+            ))->toArray();
+        }, $entries);
+    }
+
+    /**
+     * What the action is aimed at, from the fields its URL names — a key by its name when
+     * it is one of this environment's, otherwise the id as given.
+     *
+     * @param  array<string, mixed>  $input
+     * @param  list<string>  $pathFields
+     * @param  array<string, string>  $keys
+     */
+    private static function target(string $action, array $input, array $pathFields, array $keys): ?string
+    {
+        $parts = [];
+
+        foreach ($pathFields as $field) {
+            $value = $input[$field] ?? null;
+
+            if (! is_scalar($value)) {
+                continue;
+            }
+
+            $value = (string) $value;
+            $parts[] = str_starts_with($action, 'keys.') && $field === 'id' && isset($keys[$value])
+                ? 'Key "'.$keys[$value].'"'
+                : $field.' '.$value;
+        }
+
+        return $parts === [] ? null : implode(' · ', $parts);
+    }
+
+    private static function definition(ActionRegistry $registry, string $name): ?ActionDefinition
+    {
+        try {
+            return $registry->named($name);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    /**
+     * On the workspace's own trail, where the console records every act on this
+     * environment's keys ({@see ManagementKeys}).
+     */
+    private function record(string $action, string $approvalId, string $actionName, string $actorId): void
+    {
+        $auth = app(EnvironmentAdminAuth::class);
+        $workspaceId = $auth->membership()?->organization_id;
+
+        if (! is_string($workspaceId) || $workspaceId === '') {
+            return;
+        }
+
+        app(OrganizationActivity::class)->record(
+            $workspaceId,
+            $action,
+            $actorId,
+            targetType: 'environment',
+            targetId: $auth->environmentId(),
+            context: ['approval_id' => $approvalId, 'action' => $actionName],
+        );
     }
 
     private function assertEnvironmentAdmin(): void

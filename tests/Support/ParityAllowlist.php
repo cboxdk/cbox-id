@@ -55,6 +55,12 @@ final class ParityAllowlist
             'device.deny',
             'device.lookup',
             // A fresh password before a sensitive change, on either console.
+            'environment.acting-organization.choose',
+            'environment.acting-organization.clear',
+            // A person answering an agent's held action — the same consent their phone
+            // gives. As an action, a credential could approve its own held requests.
+            'environment.approvals.actions.approve',
+            'environment.approvals.actions.deny',
             'environment.sudo.confirm',
             // An environment administrator stepping into a person's own BROWSER session — the
             // session is swapped under this browser, and a REST call has no browser to swap.
@@ -157,8 +163,6 @@ final class ParityAllowlist
             'dashboard.checklist.dismiss',
             'get-started.dismiss',
             // Which organization the environment console is looking at.
-            'environment.acting-organization.choose',
-            'environment.acting-organization.clear',
             // The hosted pages' language picker: a cookie for the next render, nothing more.
             'locale.update',
             // Which organization the console is looking at.

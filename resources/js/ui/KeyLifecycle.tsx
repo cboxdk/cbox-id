@@ -1,4 +1,6 @@
+import { type ReactNode, useEffect, useRef } from 'react';
 import { absoluteTime, relativeTime } from '@/lib/time';
+import { CopyButton } from './CopyButton';
 import { Field } from './Field';
 import { Input } from './Input';
 import { Pill, type PillTone } from './Pill';
@@ -154,6 +156,60 @@ export function ExpiryField({
                     />
                 </Field>
             )}
+        </div>
+    );
+}
+
+/**
+ * A key, shown exactly once.
+ *
+ * It brings itself into view and takes focus with it: the form that mints a key is often at
+ * the bottom of the page and the key appears above the list, so the only feedback in the
+ * viewport was otherwise a toast in the opposite corner.
+ *
+ * `children` is what to do with it next — the agent page puts the connect command there,
+ * with the key already in it, because this is the one moment the key and the command can
+ * be copied together.
+ */
+export function RevealedKey({
+    value,
+    title = "Copy your key now — you won't be able to see it again.",
+    children,
+}: {
+    value: string;
+    title?: string;
+    children?: ReactNode;
+}) {
+    const card = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        card.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        card.current?.focus({ preventScroll: true });
+    }, []);
+
+    return (
+        <div
+            ref={card}
+            tabIndex={-1}
+            className="rounded-xl border p-5"
+            style={{
+                borderColor: 'color-mix(in oklch, var(--warning) 40%, transparent)',
+                background: 'var(--warning-soft)',
+            }}
+        >
+            <p className="text-sm font-semibold" style={{ color: 'var(--warning-strong)' }}>
+                {title}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                Only a hash is stored. If it is lost, revoke it and create another.
+            </p>
+
+            <div className="mt-4 flex items-start gap-2">
+                <code className="mono text-sm break-all select-all flex-1">{value}</code>
+                <CopyButton value={value} variant="primary" label="Copy key" />
+            </div>
+
+            {children}
         </div>
     );
 }

@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { toggleTheme } from '@/lib/theme';
 import type { NavArea, User } from '@/types';
+import { NavCount } from './NavCount';
 import { Icon } from '@/ui';
 import { EnvBadge } from './EnvBadge';
 
@@ -126,6 +127,7 @@ export function MobileNav({
                                         aria-current={page.active ? 'page' : undefined}
                                     >
                                         {page.label}
+                                        <NavCount count={page.count} />
                                         {/*
                                             The sheet has the room the 176px sub-nav did
                                             not, so the entitlement lock is spelled out

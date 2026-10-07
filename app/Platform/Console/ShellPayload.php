@@ -9,6 +9,7 @@ use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellNoticeProps;
 use App\Http\Props\Shell\ShellProps;
+use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
@@ -91,6 +92,7 @@ final readonly class ShellPayload
         private ConsoleNavigation $navigation,
         private Request $request,
         private ShellContext $context,
+        private ActionApprovalInbox $approvals,
     ) {}
 
     /**
@@ -280,7 +282,7 @@ final readonly class ShellPayload
         }
 
         $nav = $this->navigation->environment();
-        $areas = $this->markActive($this->fromConsoleNav($nav));
+        $areas = $this->withWaitingApprovals($this->markActive($this->fromConsoleNav($nav)));
         $active = $this->activeArea($areas);
 
         return new ShellProps(
@@ -322,6 +324,45 @@ final readonly class ShellPayload
                 ? $this->context->onWorkspaceHost('organization-settings')
                 : null,
         );
+    }
+
+    /**
+     * Put the number of agent actions waiting for THIS person beside Approvals.
+     *
+     * Only theirs: an approval is answered by the person the agent's key belongs to, so a
+     * count of everybody's would be a number most readers can do nothing about. One indexed
+     * read on most pages (nothing young enough to wait answers it), two when something is.
+     *
+     * @param  list<NavAreaProps>  $areas
+     * @return list<NavAreaProps>
+     */
+    private function withWaitingApprovals(array $areas): array
+    {
+        $auth = app(EnvironmentAdminAuth::class);
+        $subjectId = $auth->subjectId();
+        $environmentId = $auth->environmentId();
+
+        if ($subjectId === null || $environmentId === null) {
+            return $areas;
+        }
+
+        $waiting = $this->approvals->waitingFor($subjectId, $environmentId);
+
+        if ($waiting === 0) {
+            return $areas;
+        }
+
+        return array_map(static fn (NavAreaProps $area): NavAreaProps => new NavAreaProps(
+            key: $area->key,
+            label: $area->label,
+            icon: $area->icon,
+            href: $area->href,
+            active: $area->active,
+            current: $area->current,
+            pages: array_map(static fn (NavPageProps $page): NavPageProps => $page->route === 'environment.approvals'
+                ? new NavPageProps($page->route, $page->href, $page->label, $page->active, $page->badge, $waiting)
+                : $page, $area->pages),
+        ), $areas);
     }
 
     /**

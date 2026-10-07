@@ -49,8 +49,21 @@ were doing needs an explanation before it gets an approval.
 
 ## Reviewing requests across an environment
 
-An environment administrator sees every pending request in the environment on **Review
-agent requests**, a page at a time, with each scope explained in plain words beside its
+**AI agents › Approvals** in the environment console is the inbox for both kinds of
+request.
+
+**An agent's held action.** When a management key's approval policy holds an action, the
+request waits for the person who created the key. The inbox shows which agent asked, the
+action and its danger, what it is aimed at, its arguments (secrets are never stored, so
+they show as hidden), the code the agent was given and when it expires. That person can
+approve it here instead of on their phone; it is the same request, so the agent's retry
+works the same way. Approving a critical action asks for your password first. Any
+administrator of the environment can deny one. A count beside **Approvals** in the
+navigation shows how many are waiting for you.
+
+**A request to act as a user.** Below them, an environment administrator sees every
+pending request from an app asking to act as one of the environment's users, a page at a
+time, with each scope explained in plain words beside its
 raw name. There is **Deny** and no Approve: an approval is the person's own consent for an
 agent to act as them, and nobody can give it on their behalf. Denying withholds access,
 so an administrator can shut down a request that looks wrong.

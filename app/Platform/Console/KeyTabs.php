@@ -40,8 +40,9 @@ final readonly class KeyTabs
 
         if ($this->scope->plane() === ConsolePlane::Environment) {
             // The environment console's gate IS the authority for both: reaching it at all
-            // means administering this environment.
-            $tabs[] = new LinkTabProps(self::MANAGEMENT, 'Management keys', route('environment.keys'), $current === self::MANAGEMENT);
+            // means administering this environment. Its management keys are listed as the
+            // agents that hold them, so the tab leads to AI agents › Agents.
+            $tabs[] = new LinkTabProps(self::MANAGEMENT, 'Management keys', route('environment.agents'), $current === self::MANAGEMENT);
             $tabs[] = new LinkTabProps(self::FRONTEND, 'Frontend keys', route('environment.keys.frontend'), $current === self::FRONTEND);
 
             return $tabs;

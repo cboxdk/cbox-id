@@ -48,6 +48,7 @@ export {
     type KeyLifetimeOption,
     KeyStatusPill,
     KeyTimeline,
+    RevealedKey,
 } from './KeyLifecycle';
 export { Kv, KvList } from './Kv';
 export { LinkConfirmation, type LinkConfirmationContent } from './LinkConfirmation';

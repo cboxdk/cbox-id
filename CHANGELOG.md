@@ -177,6 +177,38 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - The parity allowlist names a reason for every UI-only console write, grouped as
   ceremonies, file downloads, UI preferences and vendor UI. Impersonation (operator and
   environment admin) is a ceremony: a browser session by definition.
+- **AI agents in the environment console.** Three pages under **AI agents**:
+  - **Agents** (`/admin/agents`): the environment's management keys as the agents holding
+    them — scopes summarised, a risk badge for the most harmful thing they unlock (the
+    highest danger among the registry's actions needing each scope), the approval policy,
+    who created each, and keys minted by a key indented under their parent. Rotate (new
+    `environment.keys.rotate` route, claimed by `keys.rotate`) and revoke, with a warning
+    when revoking also revokes the keys it minted. The create flow (`/admin/agents/new`,
+    behind the environment step-up) offers **Read-only**, **Support agent** and **Full
+    admin** presets, a scope picker grouped by resource, approval by danger level and by
+    named action (`require_approval` on `keys.create`), and an expiry; the key is shown
+    once with the Claude Code command already carrying it. Every write is an existing key
+    action.
+  - **Approvals** (`/admin/approvals`): an agent's held actions now appear here with the
+    agent, action, danger, target, redacted arguments, binding code and expiry. The person
+    an action waits for can approve it here instead of on their phone — the same CIBA
+    request, so the agent's poll and repeat are unchanged — after confirming their
+    password for a critical action; any administrator can deny one. Both are recorded on
+    the workspace's activity log (`organization.action_approval_approved` / `_denied`). A
+    count beside **Approvals** in the rail shows what waits for the signed-in person.
+  - **Connect** (`/admin/agents/connect`): the environment's MCP URL and setup for Claude
+    Code, Claude Desktop, Cursor, VS Code and any other client (RFC 9728 metadata, REST
+    and OpenAPI URLs). Signing in with your account is shown as coming soon while the
+    `/mcp` resource accepts management keys only.
+- An action approval now stores the environment it belongs to, its binding code and a
+  redacted copy of the validated input (the action's `redact` fields and any field named
+  like a secret are removed), so it can be read before it is answered.
+
+### Changed
+
+- On the environment console, the management keys tab of **Developers › API keys** is
+  now **AI agents › Agents**; `/admin/keys` redirects there and **API keys** opens on the
+  frontend keys. One page per credential, so the two lists cannot disagree.
 
 - Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
 

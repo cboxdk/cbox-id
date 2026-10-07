@@ -1,5 +1,5 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
@@ -7,7 +7,6 @@ import {
     Button,
     Checkbox,
     ConfirmDelete,
-    CopyButton,
     EmptyState,
     ExpiryField,
     Field,
@@ -20,6 +19,7 @@ import {
     LinkTabs,
     PageHeader,
     Panel,
+    RevealedKey,
     Select,
 } from '@/ui';
 
@@ -336,46 +336,6 @@ export default function ManagementKeys({
                 }}
             />
         </>
-    );
-}
-
-/**
- * The key, shown exactly once.
- *
- * It brings itself into view and takes focus with it: the form that mints it is at the
- * bottom of the page and the key appears above the list, so the only feedback in the
- * viewport was otherwise a toast in the opposite corner.
- */
-function RevealedKey({ value }: { value: string }) {
-    const card = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        card.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        card.current?.focus({ preventScroll: true });
-    }, []);
-
-    return (
-        <div
-            ref={card}
-            tabIndex={-1}
-            className="rounded-xl border p-5"
-            style={{
-                borderColor: 'color-mix(in oklch, var(--warning) 40%, transparent)',
-                background: 'var(--warning-soft)',
-            }}
-        >
-            <p className="text-sm font-semibold" style={{ color: 'var(--warning-strong)' }}>
-                Copy your key now — you won't be able to see it again.
-            </p>
-            <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Only a hash is stored. If it is lost, revoke it and create another.
-            </p>
-
-            <div className="mt-4 flex items-start gap-2">
-                <code className="mono text-sm break-all select-all flex-1">{value}</code>
-                <CopyButton value={value} variant="primary" label="Copy key" />
-            </div>
-        </div>
     );
 }
 
