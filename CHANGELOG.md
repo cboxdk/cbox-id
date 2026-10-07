@@ -163,6 +163,15 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   issuer; OAuth sign-in for MCP clients is not accepted yet. Rate limited per key at 240 a
   minute (`CBOX_ID_API_RATE_LIMIT_MCP`); laravel/mcp's tool search is available behind
   `CBOX_ID_MCP_TOOL_SEARCH`, off by default. See `docs/guides/agents-and-mcp.md`.
+- **A key can be told to wait for its owner's approval.** `POST /api/v1/keys` takes
+  `require_approval` (`min_danger` and/or named `actions`). An action the policy names is
+  answered `202 approval_required`; the owner — whoever minted the key in the console, or
+  the first person in its minting chain — gets the request on their phone (Cbox
+  Authenticator) and in the console's approvals, the caller polls
+  `GET /api/v1/action-approvals/{id}`, and repeats the request with `Cbox-Approval: <id>`.
+  The approval is bound to exactly that request and spent once. A key-minted key is never
+  less supervised than its parent; a policy with nobody to approve fails closed.
+
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,

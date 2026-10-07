@@ -1111,6 +1111,33 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /action-approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Where an approval this key asked for stands
+      description: |
+        Any key may poll the approvals it raised, and only those: another key's id is a 404.
+        `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [pending, approved, denied, expired, consumed] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /support-sessions:
     post:
       tags: [Support sessions]
@@ -1681,6 +1708,12 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    CboxApproval:
+      name: Cbox-Approval
+      in: header
+      required: false
+      description: The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Spent by this request, once.
+      schema: { type: string }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -2055,6 +2088,28 @@ components:
         error: { type: string, enum: [invalid_request, invalid_token, insufficient_scope] }
         error_description: { type: string }
   responses:
+    ApprovalRequired:
+      description: |
+        Held for a person's approval: this key's policy requires its owner to approve this
+        action on their device first. Poll `approval.poll_url`, then repeat the same request
+        (same body, same `Idempotency-Key`) with `Cbox-Approval: <approval.id>`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, message, approval]
+            properties:
+              error: { type: string, enum: [approval_required] }
+              message: { type: string }
+              approval:
+                type: object
+                required: [id, status, binding_code, expires_at, poll_url]
+                properties:
+                  id: { type: string }
+                  status: { type: string }
+                  binding_code: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  poll_url: { type: string, format: uri }
     Unauthorized:
       description: Missing or invalid environment API key.
       content:

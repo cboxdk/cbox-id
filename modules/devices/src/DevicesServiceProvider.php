@@ -11,6 +11,7 @@ use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Devices\Console\CreateAuthenticatorClientCommand;
 use Cbox\Id\Devices\Contracts\PushDispatcher;
 use Cbox\Id\Devices\Contracts\PushTransport;
+use Cbox\Id\Devices\Decorators\PushNotifyingActionApprovals;
 use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
 use Cbox\Id\Devices\Listeners\SendSecurityAlert;
 use Cbox\Id\Devices\Models\PushNotification;
@@ -22,6 +23,7 @@ use Cbox\Id\Devices\Transports\NullPushTransport;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\ActionApprovals;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -130,6 +132,17 @@ class DevicesServiceProvider extends ServiceProvider
                 // request actually needs notifying. Construction happens inside the
                 // decorator's own try/catch, which is where a fail-open guarantee needs
                 // it; wiring it here would put it outside.
+                $app,
+                $app->make(LoggerInterface::class),
+            ),
+        );
+
+        // And the request to approve ONE action (a management key's held change), on the
+        // same handset, the same way.
+        $this->app->extend(
+            ActionApprovals::class,
+            static fn (ActionApprovals $inner, Application $app): PushNotifyingActionApprovals => new PushNotifyingActionApprovals(
+                $inner,
                 $app,
                 $app->make(LoggerInterface::class),
             ),

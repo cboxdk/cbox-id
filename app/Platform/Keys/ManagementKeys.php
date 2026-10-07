@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Keys;
 
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
@@ -73,6 +74,13 @@ final readonly class ManagementKeys
             }
 
             $expiresAt = $this->boundedExpiry($expiresAt, $parent);
+
+            // Never weaker supervision than the key doing the minting: an agent cannot shed
+            // the approvals its owner required by minting itself a fresh key.
+            $stepUpPolicy = StepUpPolicy::strictest(
+                StepUpPolicy::fromArray($parent->step_up_policy),
+                StepUpPolicy::fromArray($stepUpPolicy),
+            )?->toArray();
         }
 
         try {

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
+use App\Http\Controllers\Api\Environment\ActionApprovalController;
 use App\Http\Controllers\Api\Environment\ApiKeyController;
 use App\Http\Controllers\Api\Environment\AppController;
 use App\Http\Controllers\Api\Environment\EnvironmentRoleController;
@@ -150,6 +151,9 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
         // ActionController, the same way the console and MCP run it. Areas move here as
         // they become actions; the routes above are the ones still waiting.
         ActionRoutes::environment();
+
+        // Where an action approval this key asked for stands (see ActionApprovalGate).
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'show'])->middleware('env.api');
 
         Route::post('support-sessions', [SupportSessionController::class, 'store'])->middleware('env.api:support:write');
     });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions\Principal;
 
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -44,6 +45,22 @@ final readonly class ConsoleSessionPrincipal implements Principal
     public function supportsIdempotency(): bool
     {
         return false;
+    }
+
+    public function label(): string
+    {
+        return 'You';
+    }
+
+    /** The console has its own step-up — re-entering the password (sudo) — before a sensitive change. */
+    public function stepUpPolicy(): ?StepUpPolicy
+    {
+        return null;
+    }
+
+    public function approverSubjectId(): ?string
+    {
+        return null;
     }
 
     public function scope(): ConsoleScope
