@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Organization;
+namespace App\Http\Controllers\Api\Workspace;
 
 use App\Http\Controllers\Controller;
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -24,7 +24,7 @@ use Illuminate\Http\Request;
  */
 final class ProjectController extends Controller
 {
-    public function index(OrganizationApiContext $context, OrganizationProjects $projects): JsonResponse
+    public function index(WorkspaceApiContext $context, OrganizationProjects $projects): JsonResponse
     {
         $organizationId = $context->organizationId();
 
@@ -39,7 +39,7 @@ final class ProjectController extends Controller
 
     public function store(
         Request $request,
-        OrganizationApiContext $context,
+        WorkspaceApiContext $context,
         TenantProvisioner $provisioner,
         Organizations $organizations,
         PlatformRoot $platformRoot,

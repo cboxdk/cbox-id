@@ -338,7 +338,7 @@ it('keeps the account-plane API on the platform-root host', function (): void {
 
     // routes/api.php is the account/buyer plane and is MEANT to be served on the root
     // host — the IdP bulkhead must not catch it.
-    $this->get('http://cboxid.com/api/v1/openapi.yaml')->assertOk();
+    $this->get('http://cboxid.com/api/v1/workspace/openapi.yaml')->assertOk();
 });
 
 it('serves the JSON liveness probe on every host', function (): void {

@@ -459,6 +459,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - **`docker-compose.yml` reads `APP_KEY` and `CBOX_ID_CRYPTO_KEY` from the environment.**
   The public throwaway values remain the defaults, so `docker compose up` still works with
   no setup, under a DEV ONLY banner.
+- **The workspace API is `/api/v1/workspace` with `cbid_ws_` keys** (was `/api/v1/organization`
+  with `cbid_org_`): one name for the plane in the console, the API and the credential.
+  Existing `cbid_org_` keys are revoked by a migration; no aliases. See UPGRADING.
 
 - **Requires `cboxdk/laravel-queue-autoscale` ^4.3** (was ^3.0, never started) and
   `cboxdk/laravel-queue-metrics` ^3.4. `cbox.yaml` and `docker-compose.yml` run

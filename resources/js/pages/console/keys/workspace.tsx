@@ -63,7 +63,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                 description="The workspace's own keys, for the workspace API — list projects and environments, create environments, list and invite your team. Each key carries a built-in role."
                 actions={
                     <Button asChild size="sm">
-                        <a href="/api/v1/openapi.yaml" target="_blank" rel="noreferrer">
+                        <a href="/api/v1/workspace/openapi.yaml" target="_blank" rel="noreferrer">
                             API reference
                             <Icon name="external" className="w-3.5 h-3.5" />
                         </a>

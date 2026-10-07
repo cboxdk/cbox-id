@@ -84,7 +84,7 @@ it('mints an account API key once the step-up is confirmed', function (): void {
 
     expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)
         ->toBeString()
-        ->toStartWith('cbid_org_');
+        ->toStartWith('cbid_ws_');
 });
 
 it('redirects environment key minting to sudo when not recently confirmed', function (): void {
