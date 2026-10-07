@@ -699,7 +699,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
     Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
 
-    // Open an environment → signed handoff → its own admin console (no second login).
+    // Open an environment → signed handoff, POSTed by a self-submitting form → its own
+    // admin console (no second login).
     Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
 
     Route::get('/team', [MemberController::class, 'index'])->name('members');
@@ -1047,7 +1048,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 | can mint because the root environment belongs to no account.
 */
 Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
+    // POST, and only POST: the token arrives in the body of the account host's
+    // self-submitting form, never in a URL. A GET answers 405 — an old bookmark or a
+    // pasted link with `?token=` in it is refused rather than redeemed. CSRF-exempt in
+    // bootstrap/app.php, where the reasoning lives.
+    Route::post('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 
     // The ENVIRONMENT control plane — the account-member admin's env-scoped console

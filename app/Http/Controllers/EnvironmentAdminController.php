@@ -30,6 +30,13 @@ final class EnvironmentAdminController extends Controller
      * Deny-by-default at every step: a bad signature, an expired token, a token
      * minted for a DIFFERENT environment than this host, or a member without access
      * to this environment all fall through to the admin sign-in.
+     *
+     * POST ONLY, and the token is read from the BODY only. It arrives from the account
+     * host's self-submitting form ({@see EnvironmentHandoffController}); a token in a
+     * query string is ignored even on a POST, because accepting it there would keep the
+     * leak this route was moved off GET to close — a URL with a credential in it is in
+     * every access log it passes through. Every response is `no-store` and
+     * `no-referrer` ({@see self::sealed()}).
      */
     public function handoff(
         Request $request,
@@ -41,15 +48,15 @@ final class EnvironmentAdminController extends Controller
         EnvironmentAdminAuth $auth,
         SubjectCredentialGate $gate,
     ): RedirectResponse {
-        $token = $request->query('token');
-        $grant = is_string($token) ? $handoff->verify($token) : null;
+        $token = $request->request->get('token');
+        $grant = is_string($token) && $token !== '' ? $handoff->verify($token) : null;
 
         $hostEnv = $environments->current()?->environmentKey();
 
         // The token must have been minted for THIS environment's host — a handoff for
         // env A is worthless on env B, closing any cross-environment replay.
         if ($grant === null || $hostEnv === null || $grant->environmentId !== $hostEnv) {
-            return redirect()->route('admin.login');
+            return $this->sealed(redirect()->route('admin.login'));
         }
 
         // The token carries the platform-root SUBJECT. Resolving it back to an account
@@ -77,7 +84,7 @@ final class EnvironmentAdminController extends Controller
             || ! in_array($hostEnv, $platformRoot->run(
                 fn (): array => $members->accessibleEnvironmentIds($membership->organization_id, $grant->subjectId),
             ) ?? [], true)) {
-            return redirect()->route('admin.login');
+            return $this->sealed(redirect()->route('admin.login'));
         }
 
         // A standing requirement to replace an administratively-issued password outlives
@@ -116,7 +123,7 @@ final class EnvironmentAdminController extends Controller
         // the same requirement row holds the member on the account plane's change page,
         // which is where the bounce lands and stops.
         if ($gate->owesPasswordChange($grant->subjectId)) {
-            return redirect()->route('admin.login');
+            return $this->sealed(redirect()->route('admin.login'));
         }
 
         $auth->establish($grant->subjectId, $hostEnv);
@@ -128,7 +135,7 @@ final class EnvironmentAdminController extends Controller
         // tenant sign-in form with the intent rewritten. The console became unreachable
         // from a browser that had merely visited `/device` once. An intent is honoured
         // only by the plane that can serve it.
-        return redirect()->to(IntendedUrl::pullForAdminConsole() ?? route('environment.home'));
+        return $this->sealed(redirect()->to(IntendedUrl::pullForAdminConsole() ?? route('environment.home')));
     }
 
     public function logout(Request $request, EnvironmentAdminAuth $auth): RedirectResponse
@@ -136,5 +143,22 @@ final class EnvironmentAdminController extends Controller
         $auth->logout($request);
 
         return redirect()->route('admin.login');
+    }
+
+    /**
+     * The headers every handoff answer carries, refusal or success.
+     *
+     * The request that produced it carried a live credential, so nothing about the
+     * exchange may be cached, and the page it lands on must not be told where the person
+     * came from: `no-referrer` here is what stops the next hop's `Referer` naming this
+     * endpoint at all.
+     */
+    private function sealed(RedirectResponse $response): RedirectResponse
+    {
+        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Referrer-Policy', 'no-referrer');
+
+        return $response;
     }
 }

@@ -149,6 +149,15 @@ final class SecurityHeaders
                 continue;
             }
 
+            // A response may TIGHTEN the referrer policy, never loosen it. The one value
+            // stricter than `same-origin` is `no-referrer`, which the environment handoff
+            // sets on the responses that carry or consume a bearer token — and stamping
+            // `same-origin` over it would quietly undo the one thing it asked for. Any
+            // other value a response sets is overwritten as before.
+            if ($name === 'Referrer-Policy' && $response->headers->get($name) === 'no-referrer') {
+                continue;
+            }
+
             $response->headers->set($name, $value);
         }
 
