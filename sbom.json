@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:47238c62-3d16-4c50-953a-6552e43d88d0",
+    "serialNumber": "urn:uuid:1fc3ec76-ec66-4fb9-b094-afce75a7ac83",
     "version": 1,
     "metadata": {
         "tools": [
@@ -37,11 +37,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/brick/math@0.18.0",
+            "bom-ref": "pkg:composer/brick/math@1.0.0",
             "group": "brick",
             "name": "math",
-            "version": "0.18.0",
-            "purl": "pkg:composer/brick/math@0.18.0",
+            "version": "1.0.0",
+            "purl": "pkg:composer/brick/math@1.0.0",
             "description": "Arbitrary-precision arithmetic library",
             "licenses": [
                 {
@@ -149,11 +149,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.21.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.22.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v1.21.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v1.21.0",
+            "version": "v1.22.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v1.22.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
