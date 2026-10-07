@@ -16,6 +16,27 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### MCP clients can register themselves, and the `cbox` CLI needs its scopes
+
+People can now sign an MCP client or the `cbox` CLI in and act on the management plane as
+themselves ([Agents and MCP](docs/guides/agents-and-mcp.md)). Three defaults change to make
+that work without configuration; each has a variable to keep the old behaviour:
+
+- **`/oauth/register` is open in the `mcp` profile** (`CBOX_ID_DCR_MODE`, was `disabled`):
+  anyone may register a PUBLIC client with a loopback or https callback for the `/mcp`
+  scopes. Such a client always gets the consent screen and can do nothing the person
+  cannot. Set `CBOX_ID_DCR_MODE=disabled` to keep registration closed. A deployment that
+  set `open` keeps `open`.
+- **Client ID metadata documents are accepted** (`CBOX_ID_CIMD_ENABLED`, was off): the
+  server fetches an https `client_id` URL through the SSRF guard.
+- **Self-registered clients unused for 30 days are pruned** by the daily sweep
+  (`CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS`; empty keeps them).
+
+Run `php artisan cbox-id:cli:client --environment=<id>` once per environment that has a
+CLI client: it adds the management scopes to the existing client (nothing else changes,
+and machines already signed in keep working). Until you do, `cbox login` gets a token for
+sign-in only.
+
 ### laravel-id 1.21: run the migrations
 
 `cboxdk/laravel-id` is now `^1.21`. Run `php artisan migrate`: the framework's 1.21

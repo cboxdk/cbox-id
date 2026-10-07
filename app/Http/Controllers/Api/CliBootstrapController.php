@@ -43,7 +43,7 @@ final class CliBootstrapController
 
         $issuer = $issuers->issuer();
 
-        $signIn = CliClient::signIn();
+        $signIn = CliClient::signIn($client);
 
         return new JsonResponse([
             'issuer' => $issuer,

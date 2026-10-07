@@ -122,7 +122,7 @@ final class AppFields
         if ($reserved !== []) {
             throw ActionRefused::because(
                 'scope_not_grantable',
-                'A management key cannot give an app '.implode(', ', $reserved).'. Grant it in the console, on the app\'s Scopes page.',
+                'Only the console can give an app '.implode(', ', $reserved).': not a management key, and not an agent acting for you. Grant it in the console, on the app\'s Scopes page.',
                 $field,
             );
         }

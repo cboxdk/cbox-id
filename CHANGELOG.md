@@ -8,8 +8,54 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Sign a person in to the management plane with OAuth.** `/mcp` and the REST environment
+  plane (`/api/v1/*` actions on an environment's host) now take an access token this
+  environment issued, audienced to its `/mcp` resource, as well as a management key. The
+  token becomes a `DelegatedTokenPrincipal`: the person, acting through the client they
+  signed in. It may run an action only when the token carries the action's scope AND the
+  person could do it on their own console here: an organization administrator, confined to
+  the organization the token is bound to, and on a customer's environment only what a
+  customer's console offers. The environment console's actions (APIs, keys, domains…) are
+  refused. Every **critical** action is held for the person's own approval on their device,
+  filed in their environment (`approval_pending` over MCP, `202 approval_required` over
+  REST, pollable at `/api/v1/action-approvals/{id}`). The trail names the person as a user
+  and records `context.oauth_client_id`. Live, `aud` present and naming `/mcp`, `iss` this
+  issuer, a subject and no `act`, and a valid DPoP proof when the token is bound; anything
+  else is `401 invalid_token`. A missing scope is a missing tool, never a 403, at `/mcp`.
+  See [Agents and MCP](docs/guides/agents-and-mcp.md).
+- **MCP clients sign in knowing only the URL.** `/oauth/register` defaults to the
+  framework's `mcp` profile (public clients, code + refresh grants, https or loopback
+  callbacks, the `/mcp` scopes) — `CBOX_ID_DCR_MODE`; client ID metadata documents are on —
+  `CBOX_ID_CIMD_ENABLED`; `/mcp` is open to self-registered clients —
+  `CBOX_ID_MCP_DYNAMIC_CLIENTS`; and self-registered clients unused for 30 days are pruned —
+  `CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS`.
+- **The consent screen says who is asking and what they may do.** `/oauth/authorize`
+  resolves the client through the framework's `AuthorizationClients` (so a metadata
+  document client works, held to the exact redirect URIs it published), reads `resource`
+  with `ResourceParameter` (one value, a repeated one is `invalid_target`) and asks the
+  token endpoint's `AudienceResolver` before showing anything, so it never agrees to what
+  redemption would refuse. A self-registered client is marked as one and never skips
+  consent; a metadata document client leads with the host that published it, its
+  `client_uri` and `logo_uri`. Management scopes are listed with their labels, and the
+  ones a critical action needs are flagged **Critical**. The device page flags them too.
+  New strings in all six hosted languages.
+- **`cbox login` reaches the management plane.** `/.well-known/cbox-cli` lists the
+  management scopes and the `resource` to name on the device grant (and `mcp_url`), so the
+  CLI's one token works at `/mcp` and on the REST environment API.
+  `php artisan cbox-id:cli:client` (and the installer) now provisions the CLI client with
+  those scopes, and brings an existing one up to them without replacing it.
+
 ### Changed
 
+- `Principal` gains `confinedToOrganization()` and `approverEnvironmentId()`. The organization
+  confinement the action layer applied to organization-console sessions
+  (`OrganizationTarget`, `IntegrationReach`, the app actions' lookup) is now asked of the
+  principal, so a delegated token is confined the same way.
+- Environment action routes are `env.api:{scope},delegated`. The routes that are not
+  actions yet still take an environment key only, and answer a valid access token with a
+  `403` that says so.
 - Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
 
 ### Security

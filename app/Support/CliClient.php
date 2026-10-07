@@ -136,12 +136,18 @@ final class CliClient
     /**
      * What `/.well-known/cbox-cli` says about signing in ({@see CliBootstrapController}).
      *
+     * The scopes are the ones $client is REGISTERED for, not the ones it could be: a device
+     * request naming a scope the client does not hold is refused outright, so advertising
+     * the management plane to a client provisioned before it existed would break `cbox
+     * login` there until somebody re-ran the provisioning command. It signs in for less
+     * instead, and gains the plane when the client does.
+     *
      * @return array{scopes: list<string>, grant_types: list<string>, resource: string|null}
      */
-    public static function signIn(): array
+    public static function signIn(Client $client): array
     {
         return [
-            'scopes' => self::scopes(),
+            'scopes' => array_values(array_intersect(self::scopes(), $client->scopes)),
             'grant_types' => self::GRANTS,
             'resource' => self::resource()?->identifier,
         ];

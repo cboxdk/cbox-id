@@ -15,9 +15,11 @@ use Illuminate\Support\Facades\Cache;
  * The platform's own first-party client that action approvals are filed under — the name
  * the approving person sees on their device ("Cbox ID step-up").
  *
- * It lives in the platform ROOT, where the people who own management keys are subjects and
- * where their Authenticator is enrolled. It holds no usable secret and is never redeemable
- * for tokens: an action approval is spent by the server, not exchanged at the token endpoint.
+ * It lives where the approving person is a subject and their Authenticator is enrolled: the
+ * platform ROOT for the people who own management keys, and an environment of its own for a
+ * person who signed an agent in there ({@see ActionApprovalGate}) — one per place, registered
+ * on first use. It holds no usable secret and is never redeemable for tokens: an action
+ * approval is spent by the server, not exchanged at the token endpoint.
  */
 final readonly class StepUpClient
 {
@@ -28,7 +30,7 @@ final readonly class StepUpClient
         private ClientRegistry $clients,
     ) {}
 
-    /** The client, registered on first use. Call inside the platform root. */
+    /** The client, registered on first use. Call inside the environment the approver belongs to. */
     public function ensure(): Client
     {
         $existing = Client::query()->where('name', self::NAME)->whereNull('organization_id')->first();
