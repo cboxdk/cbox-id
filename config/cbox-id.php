@@ -318,6 +318,13 @@ return [
          */
         'key' => env('CBOX_ID_CRYPTO_KEY'),
 
+        /*
+         * Previous master keys, kept ONLY to open secrets sealed before a rotation —
+         * comma-separated, same form as the key above. See "Rotating the crypto master
+         * key" in docs/operations/operations.md.
+         */
+        'previous_keys' => env('CBOX_ID_CRYPTO_PREVIOUS_KEYS'),
+
     ],
 
 ];

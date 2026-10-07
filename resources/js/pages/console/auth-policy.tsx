@@ -57,6 +57,8 @@ type Props = PageProps<{
     inheriting: boolean;
     overridden: string[];
     scopeName: string;
+    /** What an empty threshold means: the deployment default, null when it is switched off. */
+    lockoutDefault: { threshold: number | null; windowMinutes: number; durationMinutes: number };
     passwordsCurrentlyWork: boolean;
     mfaOptions: { value: string; label: string }[];
     ssoOptions: { value: string; label: string }[];
@@ -75,6 +77,7 @@ export default function AuthPolicyPage({
     inheriting,
     overridden,
     scopeName,
+    lockoutDefault,
     passwordsCurrentlyWork,
     mfaOptions,
     ssoOptions,
@@ -250,9 +253,18 @@ export default function AuthPolicyPage({
                         error={form.errors.lockoutThreshold}
                         hint={
                             <>
-                                Failed attempts. Leave empty to disable lockout.
+                                {/*
+                                    EMPTY IS NOT "OFF". It is the deployment's default, which
+                                    is on unless the operator switched it off — the page used
+                                    to say the opposite.
+                                */}
+                                Failed attempts within {lockoutDefault.windowMinutes} minutes; the
+                                account then locks for {lockoutDefault.durationMinutes} minutes.{' '}
+                                {lockoutDefault.threshold === null
+                                    ? 'Leave empty for no lockout — this deployment has switched its default off.'
+                                    : `Leave empty for this deployment's default of ${lockoutDefault.threshold}.`}
                                 {!onEnvironmentPlane &&
-                                    ` Environment default: ${baseline.lockoutThreshold === '' ? 'off' : baseline.lockoutThreshold}.`}
+                                    ` Environment default: ${baseline.lockoutThreshold === '' ? (lockoutDefault.threshold ?? 'off') : baseline.lockoutThreshold}.`}
                             </>
                         }
                     >
@@ -262,7 +274,11 @@ export default function AuthPolicyPage({
                             type="number"
                             min={3}
                             max={100}
-                            placeholder="Off"
+                            placeholder={
+                                lockoutDefault.threshold === null
+                                    ? 'Off'
+                                    : `${lockoutDefault.threshold} (default)`
+                            }
                             value={form.data.lockoutThreshold}
                             onChange={(event) =>
                                 form.setData('lockoutThreshold', event.target.value)
