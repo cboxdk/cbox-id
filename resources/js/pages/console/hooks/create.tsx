@@ -41,7 +41,7 @@ export default function CreateHook({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Inline hooks
+                Hooks
             </Link>
 
             <div className="mt-2">

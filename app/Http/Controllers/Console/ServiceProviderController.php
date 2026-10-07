@@ -51,7 +51,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/sso-providers/index', 'SAML applications', [
+        return $this->page('environment/sso-providers/index', 'SAML apps', [
             'help' => HelpProps::for(HelpTopic::SamlApplications),
             'providers' => array_map(static fn (ServiceProvider $provider): array => [
                 'id' => $provider->id,
@@ -80,7 +80,7 @@ final readonly class ServiceProviderController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/sso-providers/create', 'New SAML application', [
+        return $this->page('environment/sso-providers/create', 'New SAML app', [
             'formats' => $this->formatProps(),
             'defaults' => [
                 'nameIdFormat' => NameIdFormat::EmailAddress->value,

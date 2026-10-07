@@ -97,7 +97,7 @@ export default function ConnectionDetail({
                         className="w-3.5 h-3.5"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    Single sign-on
+                    Enterprise SSO
                 </Link>
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{connection.name}</h1>
@@ -186,7 +186,7 @@ export default function ConnectionDetail({
                                     <strong>including yours</strong>.
                                 </li>
                                 <li>
-                                    You can turn it off again on Sign-in rules; sessions that ended
+                                    You can turn it off again on Authentication policy; sessions that ended
                                     stay ended.
                                 </li>
                             </ul>

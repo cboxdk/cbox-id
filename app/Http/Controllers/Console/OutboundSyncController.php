@@ -70,7 +70,7 @@ final readonly class OutboundSyncController extends ConsoleController
 
         $owners = $this->organizationNames($page->getCollection()->pluck('organization_id')->all());
 
-        return $this->page('console/outbound-sync/index', 'Sync users out', [
+        return $this->page('console/outbound-sync/index', 'Outbound provisioning', [
             'help' => HelpProps::for(HelpTopic::SyncUsersOut),
             'connections' => array_map(fn (ProvisioningConnection $connection): array => [
                 'id' => $connection->id,

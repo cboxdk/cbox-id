@@ -33,7 +33,7 @@ final readonly class StaffController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/staff/index', 'Staff', [
+        return $this->page('environment/staff/index', 'Admins & support', [
             'help' => HelpProps::for(HelpTopic::Staff),
             'grants' => array_map(static fn (StaffGrant $grant): array => [
                 'userId' => $grant->userId,

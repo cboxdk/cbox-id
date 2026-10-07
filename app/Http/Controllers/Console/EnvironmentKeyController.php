@@ -85,7 +85,12 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         $now = CarbonImmutable::now();
 
-        return $this->page('console/keys/management', 'Keys', [
+        // TWO NAMES FOR ONE PAGE, because it sits under two different rails. On the
+        // environment console it is Developers › API keys, beside Applications and APIs —
+        // the word every developer looks for there. On a workspace it is Workspace › Keys,
+        // one line from My account › API keys, which is a person's OWN keys and a
+        // different page; the same word twice in one rail would send people to the wrong one.
+        return $this->page('console/keys/management', $this->onEnvironmentPlane() ? 'API keys' : 'Keys', [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
             // The environment console mints for the environment it stands on; a picker with

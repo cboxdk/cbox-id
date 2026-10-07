@@ -77,7 +77,7 @@ export default function CreateDirectory({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Sync users in
+                Directory Sync
             </Link>
 
             <h1 className="cbx-page-title mt-2">New directory</h1>
@@ -96,7 +96,7 @@ export default function CreateDirectory({
                         description="A directory provisions one organization's users, so there is nothing to connect it to yet. Pick the organization in the bar above."
                         actions={
                             <Button asChild>
-                                <Link href={indexHref}>Back to Sync users in</Link>
+                                <Link href={indexHref}>Back to Directory Sync</Link>
                             </Button>
                         }
                     />
@@ -109,7 +109,7 @@ export default function CreateDirectory({
                         description="Contact your account team to enable it for this organization."
                         actions={
                             <Button asChild>
-                                <Link href={indexHref}>Back to Sync users in</Link>
+                                <Link href={indexHref}>Back to Directory Sync</Link>
                             </Button>
                         }
                     />

@@ -129,20 +129,23 @@ final class ConsoleServiceProvider extends ServiceProvider
             // it would be an empty page about a feature nobody turned on.
             ->page('directory.api-keys', 'Member API keys', feature: 'organization.api-keys', order: 40);
 
-        // "Sync users in" / "Sync users out" — the two SCIM directions are a pair, and
-        // are only comprehensible as one. "User sync" beside "Outbound sync" gave no
-        // clue which way either moved people.
+        // THE MARKET'S WORDS for the pages both consoles share — "Enterprise SSO",
+        // "Directory Sync", "Outbound provisioning" — because one component serves both
+        // planes with one title, and the environment console files them under the names a
+        // person arriving from another identity platform searches for. The two SCIM
+        // directions are named so neither can be mistaken for the other: Directory Sync
+        // brings people in, Outbound provisioning sends them out.
         //
         // SIGN-IN RULES LIVE HERE NOW, not under Settings. They are the password, MFA and
         // session policy — a sign-in question — and on a workspace's own console they are
         // half of the only sign-in administration it has (the other half is single
         // sign-on for its team), so the two have to be one area to be found together.
         $nav->area('authentication', 'Sign-in', 'fingerprint', 30)
-            ->page('connections', 'Single sign-on', order: 10)
-            ->page('social-providers', 'Social sign-in', order: 20)
-            ->page('auth-policy', 'Sign-in rules', order: 25)
-            ->page('directories', 'Sync users in', order: 30)
-            ->page('provisioning', 'Sync users out', order: 40);
+            ->page('connections', 'Enterprise SSO', order: 10)
+            ->page('social-providers', 'Social login', order: 20)
+            ->page('auth-policy', 'Authentication policy', order: 25)
+            ->page('directories', 'Directory Sync', order: 30)
+            ->page('provisioning', 'Outbound provisioning', order: 40);
 
         $nav->area('governance', 'Access control', 'scale', 40)
             ->page('governance', 'Access reviews', order: 10)
@@ -151,23 +154,23 @@ final class ConsoleServiceProvider extends ServiceProvider
         $nav->area('developers', 'Developers', 'code', 50)
             // "Apps", not "Apps & API keys": the page registers apps, and keys have a page
             // of their own. The ampersand promised a second thing the page did not hold.
-            ->page('clients', 'Apps', order: 10)
+            ->page('clients', 'Applications', order: 10)
             // Frontend keys and Legacy login are on the environment plane only: both are
             // owned by the environment with no organization column, so listing them here
             // would put every organization's administrator in charge of every other
             // organization's. See ConsoleScope::assertMayAdministerEnvironment().
             ->page('webhooks', 'Webhooks', order: 20)
-            ->page('hooks', 'Inline hooks', order: 30)
+            ->page('hooks', 'Hooks', order: 30)
             ->page('vault', 'Token vault', order: 40);
 
         // 60 is left to the connectors module; the compliance and risk modules append
         // their pages to this area rather than minting their own (see below).
         $nav->area('audit', 'Logs', 'audit', 70)
-            ->page('audit', 'Activity log', order: 10)
+            ->page('audit', 'Audit log', order: 10)
             // Where this console is the environment's own administration — a single-tenant
             // install, the platform root. Not on a customer's console: there shipping the
             // trail to a SIEM is the vendor's job, done from the environment console.
-            ->page('audit-streams', 'Log streaming', order: 20);
+            ->page('audit-streams', 'Log streams', order: 20);
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)

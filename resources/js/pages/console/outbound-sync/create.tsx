@@ -64,7 +64,7 @@ export default function CreateOutboundSync({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Sync users out
+                Outbound provisioning
             </Link>
 
             <div className="mt-2">

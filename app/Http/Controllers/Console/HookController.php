@@ -83,7 +83,7 @@ final readonly class HookController extends ConsoleController
         // enumerate the environment's other tenants.
         $owners = $this->scope->organizationNames($page->getCollection()->pluck('organization_id'));
 
-        return $this->page('console/hooks/index', 'Inline hooks', [
+        return $this->page('console/hooks/index', 'Hooks', [
             'help' => HelpProps::for(HelpTopic::InlineHooks),
             'hooks' => array_map(fn (ExternalActionEndpoint $endpoint): array => [
                 'id' => $endpoint->id,
@@ -115,7 +115,7 @@ final readonly class HookController extends ConsoleController
             return to_route($sudo);
         }
 
-        return $this->page('console/hooks/create', 'New inline hook', [
+        return $this->page('console/hooks/create', 'New hook', [
             'points' => array_map(static fn (HookPoint $point): array => [
                 'value' => $point->value,
                 'label' => $point->label(),
@@ -202,7 +202,7 @@ final readonly class HookController extends ConsoleController
             ? (Organization::query()->whereKey($endpoint->organization_id)->value('name') ?? $endpoint->organization_id)
             : null;
 
-        return $this->page('console/hooks/show', 'Inline hook', [
+        return $this->page('console/hooks/show', 'Hook', [
             'hook' => [
                 'id' => $endpoint->id,
                 'url' => $endpoint->url,

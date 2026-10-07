@@ -174,7 +174,7 @@ it('refuses to open a review before an organization is chosen', function (): voi
 
 /*
 |--------------------------------------------------------------------------
-| Sync users out (outbound SCIM provisioning)
+| Outbound provisioning (outbound SCIM)
 |--------------------------------------------------------------------------
 | The organization plane had one page: an inline register form and pause. The
 | environment plane had list → create → detail with pause, resume and delete, plus an
@@ -188,7 +188,7 @@ it('serves outbound sync from one controller on the environment plane', function
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/outbound-sync/index')
-            ->where('title', 'Sync users out'));
+            ->where('title', 'Outbound provisioning'));
 
     $this->get(route('environment.provisioning.create'))
         ->assertOk()
@@ -205,7 +205,7 @@ it('serves outbound sync from the same controller on the organization plane', fu
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/outbound-sync/index')
-            ->where('title', 'Sync users out'));
+            ->where('title', 'Outbound provisioning'));
 
     $this->get(route('provisioning.create'))
         ->assertOk()
@@ -278,7 +278,7 @@ it('runs the whole outbound lifecycle on the environment plane', function (): vo
 
 /*
 |--------------------------------------------------------------------------
-| Inline hooks (external actions)
+| Hooks (inline, external actions)
 |--------------------------------------------------------------------------
 | The organization plane had one page: an inline register form, row-level pause,
 | activate and remove, and a Dismiss for the reveal-once signing secret — but exactly
@@ -295,7 +295,7 @@ it('serves inline hooks from one controller on the environment plane', function 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/hooks/index')
-            ->where('title', 'Inline hooks'));
+            ->where('title', 'Hooks'));
 
     confirmConsoleStepUp();
     $this->get(route('environment.hooks.create'))
@@ -313,7 +313,7 @@ it('serves inline hooks from the same controller on the organization plane', fun
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/hooks/index')
-            ->where('title', 'Inline hooks'));
+            ->where('title', 'Hooks'));
 
     confirmConsoleStepUp();
     $this->get(route('hooks.create'))
@@ -641,7 +641,7 @@ it('refuses an organization admin another organization\'s rule', function (): vo
 
 /*
 |--------------------------------------------------------------------------
-| Activity log
+| Audit log
 |--------------------------------------------------------------------------
 | The organization plane filtered rows to the reader's own organization and offered an
 | action filter. The environment plane filtered rows to nothing at all — the whole
@@ -1523,7 +1523,7 @@ it('refuses an organization admin with no organization at all a roles page', fun
 it('serves apps from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-apps');
 
-    $this->get(route('environment.clients'))->assertOk()->assertSee('Apps');
+    $this->get(route('environment.clients'))->assertOk()->assertSee('Applications');
     confirmConsoleStepUp();
     $this->get(route('environment.clients.create'))->assertOk();
 })->group('security');
@@ -1541,7 +1541,7 @@ it('serves apps from the same component on the organization plane', function ():
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/clients/index')
-            ->where('title', 'Apps'));
+            ->where('title', 'Applications'));
     confirmConsoleStepUp();
     $this->get(route('clients.create'))
         ->assertOk()
@@ -1885,7 +1885,7 @@ it('never writes a rotated client secret into the page props', function (): void
 
 /*
 |--------------------------------------------------------------------------
-| Sync users in (inbound directories)
+| Directory Sync (inbound directories)
 |--------------------------------------------------------------------------
 | The worst-drifted pair in the console. The organization plane had one page that could
 | register a SCIM directory, connect Google Workspace or Microsoft Entra as PULL
@@ -1903,7 +1903,7 @@ it('serves sync users in from one component on the environment plane', function 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/directories/index')
-            ->where('title', 'Sync users in')
+            ->where('title', 'Directory Sync')
             // The view half. Rewiring only the PHP leaves an environment administrator a
             // read-only shell: the controls were gated on `CurrentUser::isAdmin()`, a
             // question only the organization plane can answer, so on this plane they
@@ -1929,7 +1929,7 @@ it('serves sync users in from the same component on the organization plane', fun
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/directories/index')
-            ->where('title', 'Sync users in'));
+            ->where('title', 'Directory Sync'));
     confirmConsoleStepUp();
     $this->get(route('directories.create'))
         ->assertOk()
@@ -2216,7 +2216,7 @@ it('refuses an organization admin with no organization at all a directories page
 
 /*
 |--------------------------------------------------------------------------
-| Single sign-on (federated connections)
+| Enterprise SSO (federated connections)
 |--------------------------------------------------------------------------
 | The organization plane had one page: an inline create form, row-level activate,
 | domain verification with the capture gate, SAML metadata import, and the Admin Portal
@@ -2241,7 +2241,7 @@ function aSamlConnection(string $organizationId, string $name = 'Corporate SAML'
 it('serves single sign-on from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-sso');
 
-    $this->get(route('environment.connections'))->assertOk()->assertSee('Single sign-on');
+    $this->get(route('environment.connections'))->assertOk()->assertSee('Enterprise SSO');
     $this->get(route('environment.connections.create'))->assertOk();
 })->group('security');
 
@@ -2255,7 +2255,7 @@ it('serves single sign-on from the same component on the organization plane', fu
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/connections/index')
-            ->where('title', 'Single sign-on'));
+            ->where('title', 'Enterprise SSO'));
     $this->get(route('connections.create'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->component('console/connections/create'));
@@ -2762,7 +2762,7 @@ it('refuses to enable a provider before an organization is chosen', function ():
 
 /*
 |--------------------------------------------------------------------------
-| Sign-in rules
+| Authentication policy
 |--------------------------------------------------------------------------
 | Not a merge of two pages: the environment plane had one and the organization plane
 | had none, while both sign-in doors enforced the per-organization policy on every
@@ -2778,7 +2778,7 @@ it('serves sign-in rules from one component on the environment plane', function 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/auth-policy')
-            ->where('title', 'Sign-in rules')
+            ->where('title', 'Authentication policy')
             // The environment's half: the baseline, and what each organization ends up
             // with. The table is a PROP, so its presence is the fact rather than a word
             // in a document.
@@ -2793,7 +2793,7 @@ it('serves sign-in rules from the same component on the organization plane', fun
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/auth-policy')
-            ->where('title', 'Sign-in rules')
+            ->where('title', 'Authentication policy')
             // …and the organization's half is the override, not the environment's
             // baseline table: a tenant administrator has no business reading every other
             // tenant's policy, so the rows are not withheld from the markup — they are

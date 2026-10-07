@@ -87,7 +87,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $owners = $this->scope->organizationNames($connections->pluck('organization_id'));
 
-        return $this->page('console/connections/index', 'Single sign-on', [
+        return $this->page('console/connections/index', 'Enterprise SSO', [
             'help' => HelpProps::for(HelpTopic::SingleSignOn),
             'connections' => $connections->getCollection()->map(fn (Connection $connection): array => [
                 'id' => $connection->id,

@@ -51,7 +51,7 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
                         className="w-3.5 h-3.5"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    Inline hooks
+                    Hooks
                 </Link>
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono truncate" style={{ fontSize: '1.25rem' }}>

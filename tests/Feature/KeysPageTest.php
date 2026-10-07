@@ -81,7 +81,8 @@ it('gives the environment console its own management keys and its frontend keys'
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/keys/management')
-            ->where('title', 'Keys')
+            // Developers › API keys on this console; Workspace › Keys on the other.
+            ->where('title', 'API keys')
             // The environment it stands on, and nothing else — no picker.
             ->where('pickEnvironment', false)
             ->where('environments', [['id' => $environment->id, 'name' => $environment->name]]));

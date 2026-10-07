@@ -156,7 +156,7 @@ final readonly class ClientController extends ConsoleController
 
         $showsEveryOrganization = $organizationId === null;
 
-        return $this->page('console/clients/index', 'Apps', [
+        return $this->page('console/clients/index', 'Applications', [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
                 ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))
@@ -197,7 +197,7 @@ final readonly class ClientController extends ConsoleController
             return to_route($sudo);
         }
 
-        return $this->page('console/clients/create', 'New app', [
+        return $this->page('console/clients/create', 'New application', [
             'scopeGroups' => $catalog->grouped(),
             'appKinds' => array_map(
                 fn (AppKind $kind): array => [
