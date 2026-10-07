@@ -96,11 +96,21 @@ function mcpCall(string $token, string $tool, array $arguments = []): array
 }
 
 /**
+ * Every listed tool, following `nextCursor` the way a client does: the list is paged, and an
+ * environment key holding every scope sees more tools than one page carries.
+ *
  * @return array<string, array<string, mixed>> Listed tools, keyed by name.
  */
 function mcpTools(string $token): array
 {
-    $tools = mcpRpc($token, 'tools/list')->assertOk()->json('result.tools');
+    $tools = [];
+    $cursor = null;
+
+    do {
+        $page = mcpRpc($token, 'tools/list', $cursor === null ? [] : ['cursor' => $cursor])->assertOk();
+        $tools = [...$tools, ...(array) $page->json('result.tools')];
+        $cursor = $page->json('result.nextCursor');
+    } while (is_string($cursor) && $cursor !== '');
 
     return collect($tools)->keyBy('name')->all();
 }
@@ -166,7 +176,11 @@ it('lists only the tools the key\'s scopes allow, plus whoami, list_actions and 
 
     expect($reader)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'apis_list', 'apis_get']);
 
-    $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
+    $people = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
+
+    expect($people)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'users_list', 'users_get', 'users_sessions_list']);
+
+    $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::DirectoriesRead])->plaintext));
 
     expect($nothing)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status']);
 

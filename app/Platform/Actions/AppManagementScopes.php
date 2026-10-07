@@ -104,6 +104,10 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage custom domains',
             'description' => 'Add, verify and remove the custom domain this environment is served on.',
         ],
+        'role_definitions:write' => [
+            'label' => 'Define roles and permissions',
+            'description' => 'Create, rename, re-permission and delete roles, and author the manual permissions they are composed of. Granting roles to people is `roles:write`.',
+        ],
     ];
 
     public function knows(string $scope): bool

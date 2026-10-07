@@ -350,11 +350,14 @@ it('transfers ownership with the framework lifecycle, and gives an ownerless org
     expect(app(Memberships::class)->owners($org->id))->toBe([$bob])
         ->and(app(Memberships::class)->activeRole($org->id, $ada))->toBe(MembershipRole::Admin);
 
-    // The framework records a hand-over as the outgoing owner's act; the key that asked for
-    // it is on the entry beside them.
-    $handover = AuditEntry::query()->where('organization_id', $org->id)->where('context->environment_api_key', $row->id)
-        ->where('actor_id', $ada)->first();
-    expect($handover)->not->toBeNull();
+    // From outside the organization there is no outgoing owner acting: the trail names the
+    // key as the one who handed it over, and Ada as who it was handed over from — the same
+    // entry the environment console writes as the administrator.
+    $handover = auditFor('organization.ownership_transferred', $org->id);
+    expect($handover?->actor_type)->toBe(ActorType::Service)
+        ->and($handover?->actor_id)->toBe($row->id)
+        ->and($handover?->context['from'] ?? null)->toBe([$ada])
+        ->and($handover?->context['to_user_id'] ?? null)->toBe($bob);
 
     // Handing it to the owner, or to a stranger, is refused with the reason.
     $this->withToken($key)->postJson("/api/v1/organizations/{$org->id}/transfer-ownership", ['user_id' => $bob])

@@ -4,6 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Members\AddMember;
+use App\Actions\Members\ChangeMemberRole;
+use App\Actions\Members\GrantMemberRole;
+use App\Actions\Members\RemoveMember;
+use App\Actions\Members\RevokeMemberRole;
+use App\Actions\Users\CreateUser;
+use App\Actions\Users\DeactivateUser;
+use App\Actions\Users\GrantStaffRole;
+use App\Actions\Users\MarkEmailVerified;
+use App\Actions\Users\ReactivateUser;
+use App\Actions\Users\ResetMfa;
+use App\Actions\Users\RevokeAllUserSessions;
+use App\Actions\Users\RevokeStaffRole;
+use App\Actions\Users\RevokeUserSession;
+use App\Actions\Users\SendPasswordReset;
+use App\Actions\Users\SendVerification;
+use App\Actions\Users\SetUserPassword;
+use App\Actions\Users\UpdateUser;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Props\Shared\SimplePaginationProps;
@@ -13,41 +31,24 @@ use App\Http\Requests\Console\AssignUserOrganizationRequest;
 use App\Http\Requests\Console\CreateEnvironmentUserRequest;
 use App\Http\Requests\Console\SaveEnvironmentUserRequest;
 use App\Http\Requests\Console\SetUserPasswordRequest;
-use App\Mail\AdminAssignedPasswordMail;
-use App\Mail\EmailVerificationMail;
-use App\Mail\MagicLinkMail;
-use App\Mail\PasswordResetMail;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\LikeTerm;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\GrantAccessRole;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\MailLocale;
-use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
-use App\Platform\OrganizationAccess;
 use App\Platform\OrgRoles;
 use App\Platform\Staff\Contracts\StaffRoles;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\VerifiedEmailGate;
-use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
-use Cbox\Id\Identity\Contracts\EmailVerification;
-use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Mfa;
-use Cbox\Id\Identity\Contracts\PasswordReset;
-use Cbox\Id\Identity\Contracts\SessionManager;
-use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
-use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
-use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
-use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
@@ -79,6 +80,11 @@ use Inertia\Response;
  * so an id from another environment 404s rather than being acted on. Under Livewire the
  * target was a component property and had to be `#[Locked]` to stop the browser retargeting
  * the page at somebody else after mount; a route parameter cannot be retargeted at all.
+ *
+ * EVERY WRITE IS AN ACTION (app/Actions/Users, app/Actions/Members): the same change, rules
+ * and audit entry the management API and MCP make, run as the person signed in. What stays
+ * here is the console's own — the fresh-password step-up before a takeover-class change, the
+ * unverified-address hold on the person creating somebody, and the page's own wording.
  */
 final readonly class EnvironmentUserController extends ConsoleController
 {
@@ -140,7 +146,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         ]);
     }
 
-    public function store(CreateEnvironmentUserRequest $request, Subjects $subjects): RedirectResponse
+    public function store(CreateEnvironmentUserRequest $request): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
@@ -152,42 +158,28 @@ final readonly class EnvironmentUserController extends ConsoleController
          * any of them: it puts a live, one-click sign-in link into an arbitrary inbox, over
          * the platform's own domain and signature, at the request of somebody whose own
          * address nobody has confirmed. An unverified account is one somebody else may
-         * actually own, which is exactly the account not to hand a mailer to.
+         * actually own, which is exactly the account not to hand a mailer to. The hold is
+         * on the PERSON, so it is asked here and not in the action a key runs too.
          */
         app(VerifiedEmailGate::class)->require('create a user');
 
-        if ($subjects->findByEmail($request->email()) !== null) {
-            return back()
-                ->withInput()
-                ->withErrors(['email' => 'A user with that email already exists in this environment.']);
+        // AND ACTUALLY SEND SOMETHING when asked: a magic link rather than an invitation,
+        // because an invitation exists to make a membership, and an environment where
+        // organizations are not used has none to join.
+        $result = $this->act(CreateUser::class, [
+            'email' => $request->email(),
+            'name' => $request->name(),
+            'send_sign_in_link' => $request->sendLink(),
+        ], ['email' => 'email', 'name' => 'name', 'send_sign_in_link' => 'sendLink'], 'email');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $subject = $subjects->create($request->email(), $request->name());
+        $created = $result->value;
+        $id = is_object($created) && isset($created->id) && is_string($created->id) ? $created->id : '';
 
-        /*
-         * AND ACTUALLY SEND SOMETHING. The page promised "they complete sign-in via a
-         * link" and nothing was sent at all: a row appeared here and the person heard
-         * nothing, so every environment onboarding needed an email the administrator wrote
-         * by hand.
-         *
-         * A magic link rather than an organization invitation, because an invitation is
-         * "join this organization" — it exists to create a membership — and an environment
-         * where organizations are not used has none to join.
-         */
-        if ($request->sendLink()) {
-            // In THIS environment's context, not the platform root: the subject was just
-            // created here, and a link minted in the root would redeem against a user pool
-            // that does not contain them.
-            $token = app(MagicLink::class)->request($request->email());
-
-            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(new MagicLinkMail(
-                app(MailLinks::class)->route('magic.redeem', $token),
-            ));
-        }
-
-        $user = User::query()->where('email', $request->email())->first();
-
-        return to_route('environment.users.show', $user->id ?? $subject->id)
+        return to_route('environment.users.show', $id)
             ->with('status', $request->sendLink()
                 ? 'User created — a sign-in link is on its way to '.$request->email().'.'
                 : 'User created. They have no way to sign in until you send them a link.');
@@ -325,31 +317,25 @@ final readonly class EnvironmentUserController extends ConsoleController
         ]);
     }
 
-    public function update(SaveEnvironmentUserRequest $request, string $user, Subjects $subjects): RedirectResponse
+    /**
+     * Through the action, so the change is audited as `user.updated` and emitted — which is
+     * what makes it reach a webhook subscriber and the outbound SCIM push. The contract
+     * clears the verification on a changed address.
+     */
+    public function update(SaveEnvironmentUserRequest $request, string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($user);
+        $result = $this->act(UpdateUser::class, [
+            'id' => $user,
+            'name' => $request->name(),
+            'email' => $request->email(),
+        ], ['name' => 'name', 'email' => 'email'], 'email');
 
-        $changed = mb_strtolower($request->email()) !== mb_strtolower($model->email);
-
-        if ($changed && User::query()->where('email', $request->email())->whereKeyNot($model->id)->exists()) {
-            return back()->withErrors(['email' => 'Another user already uses that email in this environment.']);
-        }
-
-        /*
-         * Through the contract, so the change is audited as `user.updated` and emitted —
-         * which is what makes it reach a webhook subscriber and the outbound SCIM push.
-         * This was the last direct model write on this page: it left no record of who
-         * changed the account's primary identifier, which is also its recovery channel.
-         * The contract clears the verification on a changed email for us.
-         */
-        $subjects->update($model->id, $request->name(), $changed ? $request->email() : null);
-
-        return back()->with('status', 'Profile updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Profile updated.');
     }
 
-    public function setPassword(SetUserPasswordRequest $request, string $user, AdminPasswords $passwords): RedirectResponse
+    public function setPassword(SetUserPasswordRequest $request, string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
@@ -373,24 +359,22 @@ final readonly class EnvironmentUserController extends ConsoleController
             return $challenge;
         }
 
-        $passwords->assign(new AdminPasswordAssignment(
-            userId: $model->id,
-            password: $request->password(),
-            temporary: $request->temporary(),
-            expiresAt: $request->expiresAt(),
-            revoke: $request->revoke(),
-            actorType: 'account_member',
-            actorId: app(EnvironmentAdminAuth::class)->membership()?->id,
-            reason: $request->reason(),
-        ));
+        $result = $this->act(SetUserPassword::class, [
+            'id' => $model->id,
+            'password' => $request->password(),
+            'reason' => $request->reason(),
+            'temporary' => $request->temporary(),
+            'expires_in_hours' => $request->integer('expiryHours'),
+            'revoke' => $request->revoke()->value,
+            // "Reveal" hands it over on this screen instead of by mail.
+            'send_email' => ! $request->reveal(),
+        ], ['password' => 'password', 'reason' => 'reason', 'revoke' => 'revoke', 'expires_in_hours' => 'expiryHours'], 'password');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         if (! $request->reveal()) {
-            Mail::to($model->email)->locale(app(MailLocale::class)->forRecipient())->send(new AdminAssignedPasswordMail(
-                password: $request->password(),
-                temporary: $request->temporary(),
-                expiresAt: $request->expiresAt(),
-            ));
-
             return back()->with('status', 'Password set and emailed to '.$model->email.'.');
         }
 
@@ -404,22 +388,20 @@ final readonly class EnvironmentUserController extends ConsoleController
         return back()->with('status', 'Password set. Copy it now — it is shown once.');
     }
 
-    public function sendPasswordReset(string $user, PasswordReset $resets, MailLinks $links): RedirectResponse
+    public function sendPasswordReset(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
         $model = $this->resolve($user);
 
-        $token = $resets->request($model->email);
+        $result = $this->act(SendPasswordReset::class, ['id' => $model->id]);
 
-        if (is_string($token)) {
-            Mail::to($model->email)->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($links->route('password.reset', $token)));
-        }
-
-        return back()->with('status', 'Password reset email sent to '.$model->email.'.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Password reset email sent to '.$model->email.'.');
     }
 
-    public function resendVerification(string $user, EmailVerification $verification, MailLinks $links): RedirectResponse
+    public function resendVerification(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
@@ -429,14 +411,14 @@ final readonly class EnvironmentUserController extends ConsoleController
             return back();
         }
 
-        $token = $verification->issue($model->id, $model->email);
+        $result = $this->act(SendVerification::class, ['id' => $model->id]);
 
-        Mail::to($model->email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($links->route('verification.verify', $token)));
-
-        return back()->with('status', 'Verification email sent to '.$model->email.'.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Verification email sent to '.$model->email.'.');
     }
 
-    public function markVerified(string $user, Subjects $subjects): RedirectResponse
+    public function markVerified(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
@@ -453,12 +435,12 @@ final readonly class EnvironmentUserController extends ConsoleController
             return $challenge;
         }
 
-        $subjects->markEmailVerified($model->id, $model->email);
+        $result = $this->act(MarkEmailVerified::class, ['id' => $model->id]);
 
-        return back()->with('status', 'Email marked as verified.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Email marked as verified.');
     }
 
-    public function resetMfa(string $user, Mfa $mfa): RedirectResponse
+    public function resetMfa(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
@@ -475,129 +457,92 @@ final readonly class EnvironmentUserController extends ConsoleController
             return $challenge;
         }
 
-        // Through the contract, so the reset is audited as `user.mfa_disabled`. This used
-        // to delete the rows directly — an admin taking away someone's second factor was
-        // the one MFA action in the console that left no trace.
-        $mfa->disable($model->id);
+        // Audited as `user.mfa_disabled` with the administrator as the actor: an access
+        // review must be able to tell somebody turning off their own factor from this.
+        $result = $this->act(ResetMfa::class, ['id' => $model->id]);
 
-        return back()->with('status', 'Two-factor authentication reset — the user must re-enroll.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Two-factor authentication reset — the user must re-enroll.');
     }
 
-    public function deactivate(string $user, Subjects $subjects): RedirectResponse
+    public function deactivate(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $subjects->deactivate($this->resolve($user)->id);
+        $result = $this->act(DeactivateUser::class, ['id' => $user]);
 
-        return back()->with('status', 'User deactivated — they can no longer sign in.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'User deactivated — they can no longer sign in.');
     }
 
-    public function reactivate(string $user, Subjects $subjects): RedirectResponse
+    public function reactivate(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $subjects->reactivate($this->resolve($user)->id);
+        $result = $this->act(ReactivateUser::class, ['id' => $user]);
 
-        return back()->with('status', 'User reactivated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'User reactivated.');
     }
 
-    public function revokeSession(string $user, string $session, SessionManager $sessions): RedirectResponse
+    public function revokeSession(string $user, string $session): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($user);
+        // Only a session belonging to THIS env-scoped user resolves (deny-by-default).
+        $result = $this->act(RevokeUserSession::class, ['id' => $user, 'session_id' => $session]);
 
-        // Only a session belonging to THIS env-scoped user (deny-by-default).
-        if (Session::query()->whereKey($session)->where('user_id', $model->id)->exists()) {
-            $sessions->revoke($session);
-        }
-
-        return back()->with('status', 'Session revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Session revoked.');
     }
 
     /**
-     * Sign this person out everywhere — the administrator's "this account's access is over
-     * until they sign in again".
-     *
-     * THE GRANTS TOO, not only the sessions. Ending the sessions told every application
-     * the person had signed in to (Back-Channel Logout), but a refresh token each one held
-     * went on minting access tokens, so an application that ignored the logout — or never
-     * registered for it — carried on acting as the person. {@see RefreshTokens::withdrawAccess()}
-     * revokes those and tells the applications holding them; it runs first, so the
-     * session revocation after it finds nobody left to notify twice.
+     * Sign this person out everywhere — the sessions AND the grants: a refresh token an app
+     * held went on minting access tokens after the logout otherwise.
      */
-    public function revokeAllSessions(string $user, SessionManager $sessions, RefreshTokens $grants): RedirectResponse
+    public function revokeAllSessions(string $user): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $userId = $this->resolve($user)->id;
+        $result = $this->act(RevokeAllUserSessions::class, ['id' => $user]);
 
-        $grants->withdrawAccess($userId);
-        $sessions->revokeAllForUser($userId);
-
-        return back()->with('status', 'All sessions revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'All sessions revoked.');
     }
 
-    public function assignOrganization(
-        AssignUserOrganizationRequest $request,
-        string $user,
-        Memberships $memberships,
-        OrgAccessRoles $catalog,
-    ): RedirectResponse {
+    /**
+     * Add this person to an organization, with the access roles ticked — one action, so a
+     * segregation-of-duties conflict refuses the lot rather than leaving half of it behind.
+     *
+     * A suspended or archived organization takes no new members: the picker does not offer
+     * one, and the action refuses a posted id that names one anyway.
+     */
+    public function assignOrganization(AssignUserOrganizationRequest $request, string $user): RedirectResponse
+    {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($user);
+        $result = $this->act(AddMember::class, [
+            'organization_id' => $request->organizationId(),
+            'user_id' => $user,
+            'role' => $request->role()->value,
+            'roles' => $request->accessRoleIds(),
+        ], ['organization_id' => 'organization', 'user_id' => 'organization', 'role' => 'role', 'roles' => 'organization'], 'organization', [
+            'already_member' => 'The user is already a member of that organization.',
+        ]);
 
-        $target = Organization::query()->whereKey($request->organizationId())->first();
-
-        if (! $target instanceof Organization) {
-            return back()->withErrors(['organization' => 'That organization is not in this environment.']);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        /*
-         * EXISTENCE IS NOT LIFE. This asked only whether the row was there, so a member
-         * could be added to a SUSPENDED or DELETED organization — and the membership was
-         * really written, granting access through an organization that refuses every
-         * authenticated action. The picker no longer offers them, which is not the guard:
-         * the id is a form field and a client can set it to anything.
-         */
-        $refusal = OrganizationAccess::refusalPhrase($target->status);
-
-        if ($refusal !== null) {
-            return back()->withErrors([
-                'organization' => 'That organization has been '.$refusal.' and cannot take new members.',
-            ]);
-        }
-
-        if ($memberships->of($target->id, $model->id) !== null) {
+        // The same tier again is not an error to a machine (it is idempotent); to a person
+        // who meant to add somebody, "already a member" is the answer.
+        if ($result->status === 200) {
             return back()->withErrors(['organization' => 'The user is already a member of that organization.']);
-        }
-
-        // Belonging record (tier governs org administration + impersonation safety), then
-        // the RBAC access roles that decide what the user can do in the apps.
-        $memberships->add($target->id, $model->id, $request->role());
-
-        // Segregation of duties refuses a toxic pair here exactly as it does on the Members
-        // page. A grant withheld is not fatal — the rest of the assignment stands and the
-        // governance screen reports what was not given.
-        foreach ($request->accessRoleIds() as $roleId) {
-            if ($catalog->isAssignable($target->id, $roleId)) {
-                app(GrantAccessRole::class)->grant($target->id, $model->id, $roleId, GrantSource::Manual);
-            }
         }
 
         return back()->with('status', 'User added to the organization.');
     }
 
-    public function changeMembershipRole(
-        Request $request,
-        string $user,
-        string $organization,
-        Memberships $memberships,
-    ): RedirectResponse {
+    public function changeMembershipRole(Request $request, string $user, string $organization): RedirectResponse
+    {
         $this->assertEnvironmentAdmin();
-
-        $model = $this->resolve($user);
 
         // Untrusted: an unassignable or unknown role is refused outright rather than
         // coerced to a default, and the refusal names the choices.
@@ -607,111 +552,80 @@ final readonly class EnvironmentUserController extends ConsoleController
             return back()->withErrors(['role' => OrgRoles::message()]);
         }
 
-        if ($memberships->of($organization, $model->id) === null) {
-            return back();
-        }
+        $result = $this->act(ChangeMemberRole::class, [
+            'organization_id' => $organization,
+            'user_id' => $user,
+            'role' => $next->value,
+        ], ['role' => 'role'], 'role', ['last_owner' => 'An organization must keep at least one owner.']);
 
-        try {
-            $memberships->changeRole($organization, $model->id, $next);
-        } catch (LastOwner) {
-            return back()->withErrors(['role' => 'An organization must keep at least one owner.']);
-        }
-
-        return back()->with('status', 'Built-in role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Built-in role updated.');
     }
 
     /**
      * Grant or revoke one RBAC access-role for this user in one organization.
      *
      * AN EXPLICIT SET rather than a toggle: a retried request and the checkbox must not
-     * disagree about which state was asked for.
+     * disagree about which state was asked for. One action per state.
      */
-    public function setAccessRole(
-        Request $request,
-        string $user,
-        string $organization,
-        Memberships $memberships,
-        OrgAccessRoles $catalog,
-    ): RedirectResponse {
+    public function setAccessRole(Request $request, string $user, string $organization): RedirectResponse
+    {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($user);
-
-        $roleId = $request->string('role')->toString();
-
-        if ($memberships->of($organization, $model->id) === null || ! $catalog->isAssignable($organization, $roleId)) {
-            return back();
-        }
+        $input = ['organization_id' => $organization, 'user_id' => $user, 'role_id' => $request->string('role')->toString()];
 
         if (! $request->boolean('granted')) {
-            app(GrantAccessRole::class)->revoke($organization, $model->id, $roleId);
+            $result = $this->act(RevokeMemberRole::class, $input, ['role_id' => 'role'], 'role');
 
-            return back()->with('status', 'Role revoked.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role revoked.');
         }
 
-        $refusal = app(GrantAccessRole::class)->grant($organization, $model->id, $roleId, GrantSource::Manual);
+        $result = $this->act(GrantMemberRole::class, $input, ['role_id' => 'role'], 'role');
 
-        if ($refusal !== null) {
-            return back()->withErrors(['role' => $refusal->message()]);
-        }
-
-        return back()->with('status', 'Role granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role granted.');
     }
 
     /**
      * Grant or take back a STAFF role — a role held everywhere in this environment.
      *
-     * Through {@see StaffRoles}, the Staff page's own door, so segregation of duties is
-     * asked the same way from both pages: in every organization the person belongs to, and
-     * against the staff roles they already hold — and a refusal names the organization
-     * where the conflicting half already sits.
+     * The same action the Staff page and the management API run, so segregation of duties
+     * is asked one way: in every organization the person belongs to, and against the staff
+     * roles they already hold — and a refusal names where the conflicting half sits.
      */
     public function setEnvironmentRole(Request $request, string $user, StaffRoles $staff): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($user);
-
         $roleId = $request->string('role')->toString();
 
-        // Only a role no organization owns. The framework refuses anything else outright;
-        // asking here as well means a posted id that matches nothing is refused by name.
+        // Only a role no organization owns. The action refuses anything else too; asking
+        // here first means a posted id that matches nothing is refused by name.
         if (! $staff->isGrantable($roleId)) {
             return back()->withErrors(['staffRole' => 'That role cannot be granted across the environment.']);
         }
 
+        $input = ['id' => $user, 'role_id' => $roleId];
+
         if (! $request->boolean('granted')) {
-            $staff->revoke($model->id, $roleId);
+            $result = $this->act(RevokeStaffRole::class, $input, ['role_id' => 'staffRole'], 'staffRole');
 
-            return back()->with('status', 'Staff role taken back.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Staff role taken back.');
         }
 
-        $refusal = $staff->grant($model->id, $roleId);
+        $result = $this->act(GrantStaffRole::class, $input, ['role_id' => 'staffRole'], 'staffRole');
 
-        if ($refusal !== null) {
-            return back()->withErrors(['staffRole' => $refusal->message()]);
-        }
-
-        return back()->with('status', 'Staff role granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Staff role granted.');
     }
 
-    public function removeMembership(string $user, string $organization, Memberships $memberships): RedirectResponse
+    public function removeMembership(string $user, string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($user);
+        $result = $this->act(RemoveMember::class, [
+            'organization_id' => $organization,
+            'user_id' => $user,
+        ], ['user_id' => 'organization'], 'organization', ['last_owner' => 'An organization must keep at least one owner.']);
 
-        if ($memberships->of($organization, $model->id) === null) {
-            return back();
-        }
-
-        try {
-            $memberships->remove($organization, $model->id);
-        } catch (LastOwner) {
-            return back()->withErrors(['organization' => 'An organization must keep at least one owner.']);
-        }
-
-        return back()->with('status', 'Removed from the organization.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Removed from the organization.');
     }
 
     private function assertEnvironmentAdmin(): void

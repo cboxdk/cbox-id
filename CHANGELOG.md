@@ -8,7 +8,56 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Users, organizations, members, invitations, roles, permissions, staff roles and support
+  sessions are actions** — one class each in `app/Actions/{Users,Organizations,Members,Invitations,Roles,Permissions,CustomerApiKeys,SupportSessions}`,
+  run by the console, the management API and MCP alike (a tool per action). The console's
+  environment-plane writes for them, and their organization-console twins for roles,
+  permissions and rename, now run those actions; 53 console writes leave the parity
+  allowlist (`BASELINE` 160 → 104).
+- New management API endpoints, with the actions behind them: `PATCH /users/{id}`,
+  `POST /users/{id}/reactivate`, `POST /users/{id}/password`, `POST /users/{id}/password-reset`,
+  `POST /users/{id}/verification`, `POST /users/{id}/verify`, `DELETE /users/{id}/mfa`,
+  `GET|DELETE /users/{id}/sessions`, `DELETE /users/{id}/sessions/{session_id}`,
+  `POST /organizations/{id}/suspend|reactivate`, `GET|POST /organizations/{organization_id}/domains`
+  with `…/{domain_id}/verify`, `PUT …/{domain_id}/capture` and `DELETE …/{domain_id}`,
+  `GET /roles/{id}`, `POST|PATCH|DELETE /roles…`, `PUT|DELETE /roles/{id}/permissions/{permission_id}`,
+  `GET|POST|PATCH|DELETE /permissions…` and `DELETE /support-sessions/{id}`.
+- `GET /users` takes `email` (exact, case-insensitive), `q` (a fragment of the address or
+  name) and `status`; `GET /organizations` takes `q` and `status`. Organizations carry
+  free-form `metadata` (create, update, and in every answer). `POST …/members` takes the
+  person by `email` as well as `user_id`, and `roles` to grant with the membership.
+  `POST /users` takes `send_sign_in_link`.
+- A management key scope, `role_definitions:write`, for defining roles and authoring
+  permissions — separate from `roles:write`, which grants and takes away roles.
+
 ### Changed
+
+- The existing environment API endpoints for users, organizations, members, invitations,
+  roles, customer API keys and support sessions are the actions now; their hand-written
+  controllers are gone. URLs and answers are unchanged, except: the nested path
+  parameters are documented as `{organization_id}`, `{user_id}`, `{role_id}` and
+  `{invitation_id}`; every write takes `Idempotency-Key` and can answer `202
+  approval_required` under a key's step-up policy; and adding a member to a suspended or
+  archived organization is refused (`409 organization_inactive`).
+- **Ownership handed over by the environment's authority is recorded as its act.**
+  `POST /organizations/{id}/transfer-ownership` used to run the framework's owner-to-owner
+  hand-over when the organization had one owner, which records the OUTGOING owner as the
+  actor. A key (or the environment console) is nobody inside the organization, so every
+  current owner now steps down to admin and `organization.ownership_transferred` names the
+  key — with the previous owners in its context.
+- Console behaviour that moved with the actions: a typed URL handle that is taken is
+  refused rather than suffixed; an access role that cannot be held in the organization, or
+  a segregation-of-duties conflict, refuses an add-member/assign-organization outright
+  rather than skipping the role; a session, role or member that is not there is a 404
+  rather than a silent return; resetting a user's two-factor and setting their password
+  are recorded with the administrator's subject id as the actor (the reset used to name
+  the user themselves).
+- Danger levels: changing a user's address, setting a password, marking an address
+  verified, resetting two-factor, handing over ownership, granting a staff role, turning
+  domain capture on or off and starting a support session are **critical** — a key whose
+  step-up policy holds critical actions waits for its owner's approval on each.
 
 - Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
 
