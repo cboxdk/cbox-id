@@ -5,9 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Controllers\PageController;
+use App\Platform\Actions\Action;
+use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\ActionResult;
+use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ShellPayload;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Response;
 use Inertia\ResponseFactory;
 
@@ -79,5 +86,40 @@ abstract readonly class ConsoleController extends PageController
         return $this->scope->plane() === ConsolePlane::Environment
             ? $this->scope->organizationId()
             : $this->scope->requireOrganizationId();
+    }
+
+    /**
+     * Run an action as the person signed in — the same action, rules and audit entry the
+     * management API and MCP run — and turn a refusal into what a form expects: back, with
+     * the message on the field it is about.
+     *
+     * `$fields` maps the action's input names to this page's form field names
+     * (`client_id` → `clientId`); a refusal about a field the page does not have lands on
+     * `$fallback`. A 404 is a 404.
+     *
+     * @param  class-string<Action>  $action
+     * @param  array<string, mixed>  $input
+     * @param  array<string, string>  $fields
+     */
+    protected function act(string $action, array $input, array $fields = [], string $fallback = 'form'): ActionResult|RedirectResponse
+    {
+        try {
+            return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal($this->scope), $input);
+        } catch (ActionRefused $refused) {
+            abort_if($refused->status === 404, 404);
+
+            $field = $refused->field === null ? $fallback : ($fields[$refused->field] ?? $fallback);
+
+            return back()->withInput()->withErrors([$field => $refused->getMessage()]);
+        } catch (ValidationException $invalid) {
+            $errors = [];
+
+            foreach ($invalid->errors() as $field => $messages) {
+                $first = is_array($messages) ? ($messages[0] ?? null) : null;
+                $errors[$fields[$field] ?? $fallback] = is_string($first) ? $first : $invalid->getMessage();
+            }
+
+            return back()->withInput()->withErrors($errors);
+        }
     }
 }

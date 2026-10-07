@@ -150,6 +150,15 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **The shared action layer, starting with APIs.** A change is now an action
+  (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
+  and run by one runner for every door, so the console and the management API check,
+  refuse and record it identically. APIs are the first area: the console's Developers ›
+  APIs and `/api/v1/apis` run the same seven actions. New on the API:
+  `PUT /apis/{id}/scopes/{key}` and `DELETE /apis/{id}/scopes/{key}`, and an
+  `Idempotency-Key` header on writes (the first answer is replayed for 24 hours). A parity
+  test counts the console writes that are not yet actions (251) and fails if that number
+  grows.
 - **`scheduler` and `event_relay` checks on `/health/status`, and doctor checks for both.**
   The deployment manifest declared no scheduler process, so the event relay behind every
   webhook, outbound SCIM, the audit-stream pump and pruning never ran, and every health

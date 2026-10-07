@@ -52,8 +52,14 @@ starts with no owner; give it one later with `POST /organizations/{id}/transfer-
 
 `slug` is optional — left out, it is derived from the name and made unique. **Send your
 own if you retry**: a retried create then answers `422 slug_taken` instead of making a
-second organization. There is no `Idempotency-Key` header; grants and deletes are
-idempotent by design, and adding a member who already holds the same role answers `200`.
+second organization. Grants and deletes are idempotent by design, and adding a member who
+already holds the same role answers `200`.
+
+Endpoints whose reference lists the `Idempotency-Key` header take one on a write. Send any
+unique string (a UUID); a retry with the same key and the same body gets the first answer
+back, marked `Idempotent-Replayed: true`, for 24 hours. The same key on a different body is
+`422 idempotency_key_reused`. More endpoints take it as their areas move onto the shared
+action layer.
 
 ## The team
 
@@ -123,7 +129,9 @@ staging, then `POST /api/v1/apps` with it as `blueprint` — plus production's
 
 `/api/v1/apis` registers an API (resource server): its `identifier` becomes the token's
 `aud`, and its scopes are unique across the environment. `PATCH` takes the complete scope
-set. Only the environment registers APIs; no customer surface can.
+set; `PUT /apis/{id}/scopes/{key}` adds or changes one scope and
+`DELETE /apis/{id}/scopes/{key}` removes one, without resending the rest. Only the
+environment registers APIs; no customer surface can.
 
 ## Member API keys
 

@@ -38,11 +38,17 @@ info:
     organization's own administrators may do is unchanged by anything here. Everything a
     key does is on the audit trail with the key as the actor (`actor_type: service`).
 
-    **Retries.** There is no `Idempotency-Key` header. Grants (`PUT`), revocations and
-    removals (`DELETE`) are idempotent by design, and adding a member who already holds the
-    same role answers `200`. To make organization creation retry-safe, send your own
-    `slug`: a retry then fails with `422 slug_taken` instead of creating a second
-    organization.
+    **Retries.** Grants (`PUT`), revocations and removals (`DELETE`) are idempotent by
+    design, and adding a member who already holds the same role answers `200`. To make
+    organization creation retry-safe, send your own `slug`: a retry then fails with
+    `422 slug_taken` instead of creating a second organization.
+
+    Endpoints that list the `Idempotency-Key` header take any unique string (a UUID) on a
+    write: the first successful answer is kept for 24 hours and a retry with the same key
+    and the same request gets it back unchanged, marked `Idempotent-Replayed: true`. The same
+    key on a different request is `422 idempotency_key_reused`; a retry that arrives while
+    the first is still running is `409 idempotency_in_progress`. Refusals are not kept, so a
+    retry after one runs the request again.
 
     **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
@@ -994,6 +1000,8 @@ paths:
     post:
       tags: [APIs]
       summary: Register an API and its scopes
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       description: |
         Requires scope `apis:write`. Registering an API is the environment's act; no tenant
         surface can. `identifier` is an absolute URI (RFC 8707) and becomes the token's
@@ -1028,6 +1036,7 @@ paths:
                   data: { $ref: "#/components/schemas/Api" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apis/{id}:
@@ -1098,6 +1107,59 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "204": { description: "Deleted." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apis/{id}/scopes/{key}:
+    put:
+      tags: [APIs]
+      summary: Add or change one scope
+      description: |
+        Requires scope `apis:write`. Adds the scope to this API, or changes the description
+        and `tenant_requestable` of one it already owns. A key belongs to one API in the
+        environment, and sign-in scopes (`openid`, `email`…) belong to Cbox ID: both are
+        `422 invalid_api`. On an organization's own API `tenant_requestable` is always true.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ScopeKey"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description: { type: ["string", "null"], maxLength: 255 }
+                tenant_requestable: { type: boolean, default: true }
+      responses:
+        "200":
+          description: The API after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Api" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [APIs]
+      summary: Remove one scope
+      description: |
+        Requires scope `apis:write`. Apps that held it keep it as a plain scope, which no
+        longer reaches this API. `404` when this API does not own the key.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ScopeKey"
+      responses:
+        "204": { description: "Removed." }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -1672,6 +1734,18 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Any unique string (a UUID). A retry with the same key and request gets the first answer back.
+      schema: { type: string, maxLength: 255 }
+    ScopeKey:
+      name: key
+      in: path
+      required: true
+      description: The scope key, for example `tax:assess`.
+      schema: { type: string, maxLength: 128 }
     Id:
       name: id
       in: path

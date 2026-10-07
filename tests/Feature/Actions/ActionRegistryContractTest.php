@@ -1,0 +1,65 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionRegistry;
+use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| What every action must be, so every door can rely on it.
+|--------------------------------------------------------------------------
+*/
+
+// Discovered from the directory directly: a dataset is resolved before the application
+// boots, so it cannot ask the container for the registry.
+dataset('actions', fn (): array => array_map(
+    static fn (ActionDefinition $action): array => [$action],
+    (new ActionRegistry(dirname(__DIR__, 3).'/app/Actions'))->all(),
+));
+
+it('discovers the actions', function (): void {
+    expect(app(ActionRegistry::class)->all())->not->toBeEmpty();
+});
+
+it('is routed on REST exactly as it declares, behind its scope', function (ActionDefinition $action): void {
+    $route = Route::getRoutes()->getByName('api.actions.'.$action->name);
+
+    expect($route)->not->toBeNull()
+        ->and($route->methods())->toContain($action->method)
+        ->and('/'.$route->uri())->toBe('/api/v1'.$action->path)
+        ->and($route->gatherMiddleware())->toContain('env.api:'.$action->scope);
+})->with('actions');
+
+it('requires a scope a key can actually carry', function (ActionDefinition $action): void {
+    $scope = EnvironmentApiScope::tryFrom($action->scope);
+
+    expect($scope)->not->toBeNull("{$action->name} requires {$action->scope}, which is no environment key scope")
+        ->and(in_array($scope, EnvironmentApiScope::offerable(), true))->toBeTrue("{$action->scope} is not offered on the key form");
+})->with('actions');
+
+it('matches its danger to its method and scope', function (ActionDefinition $action): void {
+    $readMethod = $action->method === 'GET';
+
+    expect($action->danger->writes())->toBe(! $readMethod)
+        ->and(str_ends_with($action->scope, ':read'))->toBe($readMethod);
+})->with('actions');
+
+it('declares an input schema an MCP client can read, with the path parameters it routes on', function (ActionDefinition $action): void {
+    $schema = $action->input()->jsonSchema();
+
+    preg_match_all('/\{(\w+)\}/', $action->path, $placeholders);
+
+    expect($schema['type'])->toBe('object')
+        ->and(json_encode($schema, JSON_THROW_ON_ERROR))->toBeString()
+        ->and($action->input()->pathFields())->toEqualCanonicalizing($placeholders[1])
+        ->and($action->toolName())->toMatch('/^[a-z][a-z0-9_]*$/');
+})->with('actions');
+
+it('claims only console routes that exist', function (ActionDefinition $action): void {
+    $missing = array_values(array_filter($action->consoleRoutes, static fn (string $name): bool => ! Route::has($name)));
+
+    expect($missing)->toBe([], "{$action->name} claims routes that do not exist");
+})->with('actions');
