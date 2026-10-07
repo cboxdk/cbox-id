@@ -26,7 +26,7 @@ final class CreateOrganizationRequest extends FormRequest
     /** @return array<string, string> */
     public function messages(): array
     {
-        return ['name.required' => 'Give your organization a name.'];
+        return ['name.required' => __('oauth.create_organization.name_required')];
     }
 
     public function organizationName(): string

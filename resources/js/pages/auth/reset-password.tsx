@@ -1,4 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, PasswordField, PasswordManagerIdentity } from '@/ui';
@@ -15,6 +16,7 @@ type Props = PageProps<{ token: string }>;
  * oracle for anybody holding a guessed token.
  */
 export default function ResetPassword({ token }: Props) {
+    const { t } = useTranslator();
     const form = useForm({
         token,
         password: '',
@@ -24,10 +26,10 @@ export default function ResetPassword({ token }: Props) {
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Choose a new password
+                {t('auth.reset_password.title')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Pick a strong password of at least 12 characters.
+                {t('auth.reset_password.lead', { count: 12 })}
             </p>
 
             <form
@@ -40,21 +42,26 @@ export default function ResetPassword({ token }: Props) {
                 <PasswordManagerIdentity />
 
                 <PasswordField
-                    label="New password"
+                    label={t('auth.common.new_password')}
                     name="password"
                     autoComplete="new-password"
-                    placeholder="At least 12 characters"
+                    placeholder={t('auth.password_field.policy', { count: 12 })}
                     policy
+                    policyLabel={t('auth.password_field.policy', { count: 12 })}
+                    showLabel={t('auth.password_field.show')}
+                    hideLabel={t('auth.password_field.hide')}
                     error={form.errors.password}
                     value={form.data.password}
                     onChange={(event) => form.setData('password', event.target.value)}
                 />
 
                 <PasswordField
-                    label="Confirm new password"
+                    label={t('auth.common.confirm_new_password')}
                     name="password_confirmation"
                     autoComplete="new-password"
-                    placeholder="Re-enter your new password"
+                    placeholder={t('auth.reset_password.confirm_placeholder')}
+                    showLabel={t('auth.password_field.show')}
+                    hideLabel={t('auth.password_field.hide')}
                     error={form.errors.password_confirmation}
                     value={form.data.password_confirmation}
                     onChange={(event) =>
@@ -69,7 +76,7 @@ export default function ResetPassword({ token }: Props) {
                     className="w-full"
                     loading={form.processing}
                 >
-                    Reset password
+                    {t('auth.reset_password.submit')}
                 </Button>
             </form>
 
@@ -79,7 +86,7 @@ export default function ResetPassword({ token }: Props) {
                     className="font-medium underline underline-offset-2"
                     style={{ color: 'var(--accent-strong)' }}
                 >
-                    Back to sign in
+                    {t('auth.common.back_to_sign_in')}
                 </Link>
             </p>
         </>

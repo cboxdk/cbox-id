@@ -1,5 +1,6 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { type MessageKey, useTranslator } from '@/i18n';
 import PortalLayout from '@/layouts/PortalLayout';
 import type { PageProps } from '@/types';
 import {
@@ -38,6 +39,12 @@ interface DirectoryRow {
     active: boolean;
 }
 
+/** The statuses a connection that is not active can show, in the visitor's language. */
+const CONNECTION_STATUSES: Partial<Record<string, MessageKey>> = {
+    draft: 'portal.setup.connection.statuses.draft',
+    inactive: 'portal.setup.connection.statuses.inactive',
+};
+
 type Props = PageProps<{
     organizationName: string | null;
     showSso: boolean;
@@ -65,13 +72,18 @@ export default function PortalSetup({
     urls,
 }: Props) {
     const finish = useForm({});
+    const { t } = useTranslator();
 
     return (
         <div>
             <PageHeader
                 eyebrow={null}
-                title={`Set up enterprise sign-in${organizationName === null ? '' : ` · ${organizationName}`}`}
-                description="You were invited to configure single sign-on for this organization. Nothing else in the organization is accessible from here."
+                title={
+                    organizationName === null
+                        ? t('portal.setup.heading')
+                        : t('portal.setup.heading_for', { organization: organizationName })
+                }
+                description={t('portal.setup.description')}
             />
 
             {showSso && (
@@ -86,7 +98,11 @@ export default function PortalSetup({
                     directories={directories}
                     href={urls.registerDirectory}
                     scimBaseUrl={scimBaseUrl}
-                    step={showSso ? 'Step 3' : 'Directory sync'}
+                    step={
+                        showSso
+                            ? t('portal.setup.step', { number: 3 })
+                            : t('portal.setup.directory.step')
+                    }
                 />
             )}
 
@@ -99,7 +115,7 @@ export default function PortalSetup({
                     loading={finish.processing}
                     onClick={() => finish.post(urls.finish)}
                 >
-                    <Icon name="check" className="w-4 h-4" /> Finish setup
+                    <Icon name="check" className="w-4 h-4" /> {t('portal.setup.finish')}
                 </Button>
             </div>
         </div>
@@ -113,17 +129,18 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
     const [removing, setRemoving] = useState<DomainRow | null>(null);
     const { errors } = usePage().props;
     const verifyError = typeof errors.domain === 'string' ? errors.domain : null;
+    const { t, rich } = useTranslator();
+    const removeVerb = t('portal.setup.domain.remove');
 
     return (
         <section className="mb-8">
             <div className="mb-3">
-                <p className="cbx-page-eyebrow">Step 1</p>
+                <p className="cbx-page-eyebrow">{t('portal.setup.step', { number: 1 })}</p>
                 <h2 className="text-sm font-semibold flex items-center gap-2 mt-1">
-                    <Icon name="shield" className="w-4 h-4" /> Verify your domain
+                    <Icon name="shield" className="w-4 h-4" /> {t('portal.setup.domain.heading')}
                 </h2>
                 <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                    Add a DNS record to prove you own the domain your team signs in with. This is
-                    what sends those users to SSO.
+                    {t('portal.setup.domain.lead')}
                 </p>
             </div>
 
@@ -137,13 +154,13 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
                 <Input
                     name="domain"
                     placeholder="acme.com"
-                    aria-label="Domain"
+                    aria-label={t('portal.setup.domain.label')}
                     aria-invalid={form.errors.domain !== undefined || undefined}
                     value={form.data.domain}
                     onChange={(event) => form.setData('domain', event.target.value)}
                 />
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    Add domain
+                    {t('portal.setup.domain.add')}
                 </Button>
             </form>
 
@@ -164,23 +181,24 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
                     style={{ borderColor: 'color-mix(in oklch, var(--warning) 40%, transparent)' }}
                 >
                     <p className="text-sm font-semibold">
-                        Add this TXT record for <span className="mono">{dns.domain}</span>, then
-                        click Check.
+                        {rich('portal.setup.domain.record', {
+                            domain: <span className="mono">{dns.domain}</span>,
+                        })}
                     </p>
                     <div
                         className="mt-3 grid gap-2 text-sm"
                         style={{ gridTemplateColumns: 'auto 1fr' }}
                     >
                         <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                            Type
+                            {t('portal.setup.domain.record_type')}
                         </span>
                         <span className="mono">TXT</span>
                         <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                            Host
+                            {t('portal.setup.domain.record_host')}
                         </span>
                         <span className="mono break-all select-all">{dns.host}</span>
                         <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                            Value
+                            {t('portal.setup.domain.record_value')}
                         </span>
                         <span className="mono break-all select-all">{dns.token}</span>
                     </div>
@@ -189,7 +207,7 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
 
             {domains.length === 0 ? (
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    No domains added yet.
+                    {t('portal.setup.domain.empty')}
                 </p>
             ) : (
                 domains.map((domain) => (
@@ -200,13 +218,15 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
                         <span className="mono text-sm">{domain.domain}</span>
                         <div className="flex items-center gap-2">
                             {domain.verified ? (
-                                <Pill tone="success">Verified</Pill>
+                                <Pill tone="success">{t('portal.setup.domain.verified')}</Pill>
                             ) : (
                                 <>
-                                    <Pill tone="warning">Pending DNS</Pill>
+                                    <Pill tone="warning">{t('portal.setup.domain.pending')}</Pill>
                                     <Button
                                         size="sm"
-                                        aria-label={`Check DNS for ${domain.domain}`}
+                                        aria-label={t('portal.setup.domain.check_label', {
+                                            domain: domain.domain,
+                                        })}
                                         onClick={() =>
                                             router.post(
                                                 domain.verifyHref,
@@ -215,17 +235,19 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
                                             )
                                         }
                                     >
-                                        Check
+                                        {t('portal.setup.domain.check')}
                                     </Button>
                                 </>
                             )}
                             <Button
                                 size="sm"
                                 variant="danger"
-                                aria-label={`Remove ${domain.domain}`}
+                                aria-label={t('portal.setup.domain.remove_label', {
+                                    domain: domain.domain,
+                                })}
                                 onClick={() => setRemoving(domain)}
                             >
-                                Remove
+                                {removeVerb}
                             </Button>
                         </div>
                     </div>
@@ -241,9 +263,15 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={removing?.domain ?? ''}
-                verb="Remove"
-                consequence="Anyone signing in with an address at this domain stops being routed here."
+                verb={removeVerb}
+                title={t('portal.setup.domain.remove_title', { domain: removing?.domain ?? '' })}
+                consequence={t('portal.setup.domain.remove_consequence')}
                 environment={null}
+                cancelLabel={t('portal.confirm.cancel')}
+                typeToConfirmLabel={rich('portal.confirm.type_to_confirm', {
+                    name: <span className="mono">{removing?.domain ?? ''}</span>,
+                })}
+                hint={t('portal.confirm.hint', { action: removeVerb })}
                 onConfirm={() => {
                     const domain = removing;
                     setRemoving(null);
@@ -260,14 +288,23 @@ function DomainStep({ domains, href }: { domains: DomainRow[]; href: string }) {
 /** Step 2 — the connection itself, created as a draft. */
 function ConnectionStep({ connections, href }: { connections: ConnectionRow[]; href: string }) {
     const [creating, setCreating] = useState(false);
+    const { t } = useTranslator();
+
+    /** A status this page has words for, else the status itself. */
+    const connectionStatus = (status: string): string => {
+        const key = CONNECTION_STATUSES[status];
+
+        return key === undefined ? status : t(key);
+    };
 
     return (
         <section className="mb-8">
             <div className="flex items-center justify-between gap-3 mb-3">
                 <div>
-                    <p className="cbx-page-eyebrow">Step 2</p>
+                    <p className="cbx-page-eyebrow">{t('portal.setup.step', { number: 2 })}</p>
                     <h2 className="text-sm font-semibold flex items-center gap-2 mt-1">
-                        <Icon name="connections" className="w-4 h-4" /> SSO connection
+                        <Icon name="connections" className="w-4 h-4" />{' '}
+                        {t('portal.setup.connection.heading')}
                     </h2>
                 </div>
                 <Button
@@ -276,7 +313,7 @@ function ConnectionStep({ connections, href }: { connections: ConnectionRow[]; h
                     aria-expanded={creating}
                     onClick={() => setCreating((open) => !open)}
                 >
-                    <Icon name="plus" className="w-4 h-4" /> New connection
+                    <Icon name="plus" className="w-4 h-4" /> {t('portal.setup.connection.new')}
                 </Button>
             </div>
 
@@ -285,7 +322,7 @@ function ConnectionStep({ connections, href }: { connections: ConnectionRow[]; h
             <div className="space-y-3">
                 {connections.length === 0 ? (
                     <p className="text-sm px-1" style={{ color: 'var(--muted-foreground)' }}>
-                        No SSO connections yet.
+                        {t('portal.setup.connection.empty')}
                     </p>
                 ) : (
                     connections.map((connection) => (
@@ -296,11 +333,13 @@ function ConnectionStep({ connections, href }: { connections: ConnectionRow[]; h
                                         <p className="font-semibold truncate">{connection.name}</p>
                                         <Pill dot={false}>{connection.protocol}</Pill>
                                         {connection.active ? (
-                                            <Pill tone="success">Active</Pill>
+                                            <Pill tone="success">
+                                                {t('portal.setup.connection.active')}
+                                            </Pill>
                                         ) : (
                                             <Pill tone="warning">
                                                 <span className="capitalize">
-                                                    {connection.status}
+                                                    {connectionStatus(connection.status)}
                                                 </span>
                                             </Pill>
                                         )}
@@ -316,7 +355,9 @@ function ConnectionStep({ connections, href }: { connections: ConnectionRow[]; h
                                     <Button
                                         variant="primary"
                                         size="sm"
-                                        aria-label={`Activate ${connection.name}`}
+                                        aria-label={t('portal.setup.connection.activate_label', {
+                                            name: connection.name,
+                                        })}
                                         onClick={() =>
                                             router.post(
                                                 connection.activateHref,
@@ -325,7 +366,8 @@ function ConnectionStep({ connections, href }: { connections: ConnectionRow[]; h
                                             )
                                         }
                                     >
-                                        <Icon name="check" className="w-4 h-4" /> Activate
+                                        <Icon name="check" className="w-4 h-4" />{' '}
+                                        {t('portal.setup.connection.activate')}
                                     </Button>
                                 )}
                             </div>
@@ -353,6 +395,7 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
     });
 
     const saml = form.data.type === 'saml';
+    const { t } = useTranslator();
 
     return (
         <form
@@ -363,7 +406,7 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
             }}
         >
             <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Connection name" error={form.errors.connName}>
+                <Field label={t('portal.setup.connection.name_label')} error={form.errors.connName}>
                     <Input
                         name="connName"
                         placeholder="Acme Okta"
@@ -372,7 +415,7 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                     />
                 </Field>
 
-                <Field label="Protocol" error={form.errors.type}>
+                <Field label={t('portal.setup.connection.protocol_label')} error={form.errors.type}>
                     <Select
                         value={form.data.type}
                         onValueChange={(type) => form.setData('type', type)}
@@ -387,7 +430,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
             {saml ? (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="IdP entity ID" error={form.errors.idp_entity_id}>
+                        <Field
+                            label={t('portal.setup.connection.idp_entity_id')}
+                            error={form.errors.idp_entity_id}
+                        >
                             <Input
                                 name="idp_entity_id"
                                 className="mono"
@@ -398,17 +444,25 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                                 }
                             />
                         </Field>
-                        <Field label="IdP SSO URL" error={form.errors.idp_sso_url}>
+                        <Field
+                            label={t('portal.setup.connection.idp_sso_url')}
+                            error={form.errors.idp_sso_url}
+                        >
                             <Input
                                 name="idp_sso_url"
                                 type="url"
                                 className="mono"
                                 placeholder="https://idp.example.com/sso"
                                 value={form.data.idp_sso_url}
-                                onChange={(event) => form.setData('idp_sso_url', event.target.value)}
+                                onChange={(event) =>
+                                    form.setData('idp_sso_url', event.target.value)
+                                }
                             />
                         </Field>
-                        <Field label="SP entity ID" error={form.errors.sp_entity_id}>
+                        <Field
+                            label={t('portal.setup.connection.sp_entity_id')}
+                            error={form.errors.sp_entity_id}
+                        >
                             <Input
                                 name="sp_entity_id"
                                 className="mono"
@@ -419,7 +473,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                                 }
                             />
                         </Field>
-                        <Field label="SP ACS URL" error={form.errors.sp_acs_url}>
+                        <Field
+                            label={t('portal.setup.connection.sp_acs_url')}
+                            error={form.errors.sp_acs_url}
+                        >
                             <Input
                                 name="sp_acs_url"
                                 type="url"
@@ -431,7 +488,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                         </Field>
                     </div>
 
-                    <Field label="IdP X.509 certificate" error={form.errors.idp_x509cert}>
+                    <Field
+                        label={t('portal.setup.connection.idp_certificate')}
+                        error={form.errors.idp_x509cert}
+                    >
                         <Textarea
                             name="idp_x509cert"
                             rows={4}
@@ -452,7 +512,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                             by hand is asking for a mistake that surfaces days later as a
                             sign-in that fails for everybody.
                         */}
-                        <Field label="Issuer" error={form.errors.issuer}>
+                        <Field
+                            label={t('portal.setup.connection.issuer')}
+                            error={form.errors.issuer}
+                        >
                             <Input
                                 name="issuer"
                                 type="url"
@@ -462,7 +525,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                                 onChange={(event) => form.setData('issuer', event.target.value)}
                             />
                         </Field>
-                        <Field label="Client ID" error={form.errors.client_id}>
+                        <Field
+                            label={t('portal.setup.connection.client_id')}
+                            error={form.errors.client_id}
+                        >
                             <Input
                                 name="client_id"
                                 className="mono"
@@ -471,7 +537,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                                 onChange={(event) => form.setData('client_id', event.target.value)}
                             />
                         </Field>
-                        <Field label="Client secret" error={form.errors.client_secret}>
+                        <Field
+                            label={t('portal.setup.connection.client_secret')}
+                            error={form.errors.client_secret}
+                        >
                             <Input
                                 name="client_secret"
                                 type="password"
@@ -486,7 +555,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
                         </Field>
                     </div>
 
-                    <Field label="Signing key" error={form.errors.signing_key}>
+                    <Field
+                        label={t('portal.setup.connection.signing_key')}
+                        error={form.errors.signing_key}
+                    >
                         <Textarea
                             name="signing_key"
                             rows={4}
@@ -502,10 +574,10 @@ function ConnectionForm({ href, onDone }: { href: string; onDone: () => void }) 
 
             <div className="flex items-center gap-2">
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    Create connection
+                    {t('portal.setup.connection.create')}
                 </Button>
                 <Button type="button" onClick={onDone}>
-                    Cancel
+                    {t('portal.setup.connection.cancel')}
                 </Button>
             </div>
         </form>
@@ -527,6 +599,7 @@ function DirectoryStep({
     const form = useForm({ dirName: '' });
     const [creating, setCreating] = useState(false);
     const { newToken, newTokenName } = usePage().flash;
+    const { t } = useTranslator();
 
     return (
         <section className="mb-8">
@@ -534,7 +607,8 @@ function DirectoryStep({
                 <div>
                     <p className="cbx-page-eyebrow">{step}</p>
                     <h2 className="text-sm font-semibold flex items-center gap-2 mt-1">
-                        <Icon name="directory" className="w-4 h-4" /> Directory sync (SCIM)
+                        <Icon name="directory" className="w-4 h-4" />{' '}
+                        {t('portal.setup.directory.heading')}
                     </h2>
                 </div>
                 <Button
@@ -543,23 +617,31 @@ function DirectoryStep({
                     aria-expanded={creating}
                     onClick={() => setCreating((open) => !open)}
                 >
-                    <Icon name="plus" className="w-4 h-4" /> New directory
+                    <Icon name="plus" className="w-4 h-4" /> {t('portal.setup.directory.new')}
                 </Button>
             </div>
 
             <div className="card p-4 mb-4">
                 <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    Point your identity provider (Okta, Microsoft Entra) at this base URL and
-                    authenticate with a directory&rsquo;s bearer token.
+                    {t('portal.setup.directory.base_url_help')}
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                     <p
                         className="mono text-xs rounded-lg px-3 py-2 select-all break-all flex-1 min-w-0"
-                        style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+                        style={{
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--border)',
+                        }}
                     >
                         {scimBaseUrl}
                     </p>
-                    <CopyButton value={scimBaseUrl} aria-label="Copy the SCIM base URL" />
+                    <CopyButton
+                        value={scimBaseUrl}
+                        aria-label={t('portal.setup.directory.copy_base_url')}
+                        label={t('portal.copy.copy')}
+                        copiedLabel={t('portal.copy.copied')}
+                        failedLabel={t('portal.copy.failed')}
+                    />
                 </div>
             </div>
 
@@ -576,19 +658,28 @@ function DirectoryStep({
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <p className="flex items-center gap-2 font-semibold">
-                                <Icon name="key" className="w-4 h-4" /> Bearer token for &ldquo;
-                                {newTokenName}&rdquo;
+                                <Icon name="key" className="w-4 h-4" />{' '}
+                                {t('portal.setup.directory.token_heading', {
+                                    name: newTokenName ?? '',
+                                })}
                             </p>
                             <p className="mt-1 text-sm" style={{ color: 'var(--warning-strong)' }}>
-                                Copy this now — it is shown only once and cannot be retrieved
-                                again.
+                                {t('portal.setup.directory.token_once')}
                             </p>
                         </div>
-                        <CopyButton value={newToken} label="Copy token" />
+                        <CopyButton
+                            value={newToken}
+                            label={t('portal.setup.directory.copy_token')}
+                            copiedLabel={t('portal.copy.copied')}
+                            failedLabel={t('portal.copy.failed')}
+                        />
                     </div>
                     <p
                         className="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all"
-                        style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+                        style={{
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--border)',
+                        }}
                     >
                         {newToken}
                     </p>
@@ -610,7 +701,10 @@ function DirectoryStep({
                     }}
                 >
                     <div className="flex-1" style={{ minWidth: '14rem' }}>
-                        <Field label="Directory name" error={form.errors.dirName}>
+                        <Field
+                            label={t('portal.setup.directory.name_label')}
+                            error={form.errors.dirName}
+                        >
                             <Input
                                 name="dirName"
                                 placeholder="Acme Okta SCIM"
@@ -620,10 +714,10 @@ function DirectoryStep({
                         </Field>
                     </div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Register directory
+                        {t('portal.setup.directory.register')}
                     </Button>
                     <Button type="button" onClick={() => setCreating(false)}>
-                        Cancel
+                        {t('portal.setup.directory.cancel')}
                     </Button>
                 </form>
             )}
@@ -631,7 +725,7 @@ function DirectoryStep({
             <div className="space-y-3">
                 {directories.length === 0 ? (
                     <p className="text-sm px-1" style={{ color: 'var(--muted-foreground)' }}>
-                        No directories connected yet.
+                        {t('portal.setup.directory.empty')}
                     </p>
                 ) : (
                     directories.map((directory) => (
@@ -649,9 +743,9 @@ function DirectoryStep({
                                 </p>
                             </div>
                             {directory.active ? (
-                                <Pill tone="success">Active</Pill>
+                                <Pill tone="success">{t('portal.setup.directory.active')}</Pill>
                             ) : (
-                                <Pill tone="warning">Paused</Pill>
+                                <Pill tone="warning">{t('portal.setup.directory.paused')}</Pill>
                             )}
                         </div>
                     ))

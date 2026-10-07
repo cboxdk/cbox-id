@@ -25,11 +25,11 @@ final readonly class EmailVerificationController extends PageController
 {
     public function show(string $token): Response
     {
-        return $this->page('auth/confirm-email', 'Confirm your email', [
+        return $this->page('auth/confirm-email', __('auth.confirm_email.title'), [
             'confirmation' => new LinkConfirmationProps(
-                heading: 'Confirm your email address',
-                lead: 'You opened the confirmation link we sent. Confirm to finish verifying this address.',
-                actionLabel: 'Confirm email address',
+                heading: __('auth.confirm_email.heading'),
+                lead: __('auth.confirm_email.lead'),
+                actionLabel: __('auth.confirm_email.action'),
                 actionUrl: route('verification.verify.store', $token),
             ),
         ]);
@@ -44,7 +44,7 @@ final readonly class EmailVerificationController extends PageController
         try {
             $subjectId = $verification->verify($token);
         } catch (InvalidEmailVerification) {
-            return redirect()->route('login')->with('error', 'That verification link is invalid or has expired.');
+            return redirect()->route('login')->with('error', __('auth.confirm_email.invalid'));
         }
 
         // An owner verifying their address is the moment their first environment is
@@ -63,9 +63,9 @@ final readonly class EmailVerificationController extends PageController
             // redundant sign-in page, never access.
             return session()->has(PlatformAuth::SESSION_KEY)
                 ? redirect()->route('projects')->with('status', 'Email verified — your environment is ready.')
-                : redirect()->route('login')->with('status', 'Email verified — sign in to open your environment.');
+                : redirect()->route('login')->with('status', __('auth.confirm_email.verified_sign_in'));
         }
 
-        return redirect()->route('login')->with('status', 'Your email is verified — you can sign in.');
+        return redirect()->route('login')->with('status', __('auth.confirm_email.verified'));
     }
 }

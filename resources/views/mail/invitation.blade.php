@@ -1,21 +1,24 @@
-<x-mail.layout>
-    <h1 style="margin:0 0 12px;font-size:20px;color:#14161c">Join {{ $organization }}</h1>
+<x-mail.layout :brand="$brand">
+    <h1 style="margin:0 0 12px;font-size:20px;color:#14161c">{{ __('mail.invitation.heading', ['organization' => $organization]) }}</h1>
     <p style="margin:0 0 20px;color:#5b616e;font-size:15px;line-height:1.6">
-        <b>{{ $inviter }}</b> invited you to join <b>{{ $organization }}</b>@if ($role) as <b>{{ $role }}</b>@endif.
-        @if ($app)
-            Accept to sign in to <b>{{ $app }}</b> with your {{ $organization }} account.
+        @if ($roleName)
+            {{ \App\Mail\MailText::html('mail.invitation.invited_as', ['inviter' => $inviter, 'organization' => $organization, 'role' => $roleName]) }}
         @else
-            Accept to set up your account and sign in.
+            {{ \App\Mail\MailText::html('mail.invitation.invited', ['inviter' => $inviter, 'organization' => $organization]) }}
+        @endif
+        @if ($app)
+            {{ \App\Mail\MailText::html('mail.invitation.accept_app', ['app' => $app], ['organization' => $organization]) }}
+        @else
+            {{ __('mail.invitation.accept') }}
         @endif
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
-        <a href="{{ $url }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px">Review invitation</a>
+        <a href="{{ $url }}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px">{{ __('mail.invitation.button') }}</a>
     </td></tr></table>
     <p style="margin:22px 0 0;color:#8a909c;font-size:12px;line-height:1.6">
-        The link opens a page where you confirm — nothing happens until you do. It expires in 7 days.
-        If you weren't expecting this, you can ignore it.
+        {{ __('mail.invitation.note') }}
     </p>
     <p style="margin:12px 0 0;color:#8a909c;font-size:12px;line-height:1.6;word-break:break-all">
-        Or paste this link into your browser:<br>{{ $url }}
+        {{ __('mail.common.paste_link') }}<br>{{ $url }}
     </p>
 </x-mail.layout>

@@ -45,13 +45,8 @@ enum RefusedFactor: string
      */
     public function sentence(): string
     {
-        return match ($this) {
-            self::Password => 'Your password is correct — it is just not a way in here any more. Sign in through your organization\'s identity provider instead.',
-            self::MagicLink => 'That sign-in link worked, and it has now been used up. Emailed links are not a way in here any more — sign in through your organization\'s identity provider instead.',
-            self::Passkey => 'Your passkey worked. It is just not a way in here any more — sign in through your organization\'s identity provider instead.',
-            self::Social => 'That sign-in worked, but it is not the identity provider your organization has chosen. Sign in through theirs instead.',
-            self::Invitation => 'Your invitation is accepted and you are a member now. Sign in through your organization\'s identity provider to get started.',
-            self::PasswordReset => 'Your new password is saved, but a password is not a way in here any more. Sign in through your organization\'s identity provider instead.',
-        };
+        // In the visitor's language: the sentence is only ever read on the sign-in page.
+        // The case values are the catalogue's keys, `auth.login.mandate.reasons.*`.
+        return __('auth.login.mandate.reasons.'.$this->value);
     }
 }

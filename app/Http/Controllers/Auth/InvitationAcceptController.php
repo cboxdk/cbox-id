@@ -46,13 +46,13 @@ final readonly class InvitationAcceptController extends PageController
 
         if ($preview === null) {
             return to_route('login')
-                ->with('status', 'This invitation is no longer valid. Try signing in.');
+                ->with('status', __('auth.accept_invite.no_longer_valid'));
         }
 
         // WHO is asking, and for WHAT — the same three facts the organization invitation's
         // page states, so a link from somebody unexpected reads as unexpected. The name is
         // the one the mail was signed with, a workspace API key's included.
-        return $this->page('auth/accept-invite', 'Accept invitation', [
+        return $this->page('auth/accept-invite', __('auth.accept_invite.title'), [
             'email' => $preview->email,
             'organizationName' => $preview->organizationName,
             'inviterName' => $preview->inviterName,
@@ -75,7 +75,7 @@ final readonly class InvitationAcceptController extends PageController
         $invitation = $platformRoot->run(fn () => $invitations->byToken($token));
 
         if ($invitation === null || ! $invitation->isPending()) {
-            return to_route('login')->with('error', 'That invitation is invalid or has expired.');
+            return to_route('login')->with('error', __('auth.accept_invite.invalid'));
         }
 
         $email = (string) $invitation->email;
@@ -86,14 +86,14 @@ final readonly class InvitationAcceptController extends PageController
         );
 
         if ($subject === null) {
-            return to_route('login')->with('error', 'That invitation could not be completed.');
+            return to_route('login')->with('error', __('auth.accept_invite.not_completed'));
         }
 
         // Single-use by the token itself, so a replayed or racing accept redeems nothing.
         $membership = $platformRoot->run(fn () => $invitations->accept($token, $subject->id));
 
         if ($membership === null) {
-            return to_route('login')->with('error', 'That invitation is invalid or has expired.');
+            return to_route('login')->with('error', __('auth.accept_invite.invalid'));
         }
 
         /*

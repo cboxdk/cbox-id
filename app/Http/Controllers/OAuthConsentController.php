@@ -32,6 +32,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Lang;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -88,12 +89,12 @@ final readonly class OAuthConsentController extends PageController
             $pushed = app(PushedAuthorizationRequests::class)->consume($requestClientId, $requestUri);
 
             if ($pushed === null) {
-                return $this->failure('This authorization request has expired or was already used. Please start again.');
+                return $this->failure(__('oauth.failure.expired'));
             }
         } elseif (config('cbox-id.oauth.require_par') === true) {
             // FAPI baseline: every authorization request must be pushed (RFC 9126), so raw
             // query-string requests are refused.
-            return $this->failure('This server requires pushed authorization requests. Send the request to /oauth/par first.');
+            return $this->failure(__('oauth.failure.par_required'));
         }
 
         $from = static fn (string $key): mixed => $pushed[$key] ?? $request->input($key);
@@ -130,7 +131,7 @@ final readonly class OAuthConsentController extends PageController
         $client = is_string($clientId) && $clientId !== '' ? $clients->byClientId($clientId) : null;
 
         if (! $client instanceof Client) {
-            return $this->failure('Unknown client. This application is not registered with Cbox ID.');
+            return $this->failure(__('oauth.failure.unknown_client'));
         }
 
         /*
@@ -142,7 +143,7 @@ final readonly class OAuthConsentController extends PageController
          * asks for a list, and the re-key is what makes that true — not decoration.
          */
         if (! is_string($redirectUri) || ! $this->redirectUriRegistered($redirectUri, array_values($client->redirect_uris))) {
-            return $this->failure('The redirect URI does not match any registered for this application.');
+            return $this->failure(__('oauth.failure.redirect_mismatch'));
         }
 
         // From here the redirect_uri is verified, so every remaining error goes BACK to the
@@ -446,7 +447,7 @@ final readonly class OAuthConsentController extends PageController
         $found = $pending->find($request, $authorization);
 
         if ($found === null || ! app(CurrentUser::class)->check()) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         return $this->consentScreen($authorization, $found);
@@ -471,7 +472,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         $choices = $organizations->choicesFor($me->id());
@@ -489,13 +490,13 @@ final readonly class OAuthConsentController extends PageController
             default => $ids[0] ?? null,
         };
 
-        return $this->page('oauth/organization', 'Choose an organization', [
+        return $this->page('oauth/organization', __('oauth.organization.title'), [
             'client' => ['name' => $found->clientName, 'owner' => $found->clientOwner],
             'me' => $this->meProps($me),
             'organizations' => array_map(static fn (OrganizationChoice $choice): array => [
                 'id' => $choice->id,
                 'name' => $choice->name,
-                'role' => $choice->role->label(),
+                'role' => __('oauth.organization.roles.'.$choice->role->value),
             ], $choices),
             'selected' => $selected,
             'chooseHref' => route('oauth.authorize.organization.choose', $authorization),
@@ -518,7 +519,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         // The posted id is a CLAIM. Only an organization this person may use right now is
@@ -526,7 +527,7 @@ final readonly class OAuthConsentController extends PageController
         $choice = $organizations->usableBy($me->id(), $request->organizationId());
 
         if ($choice === null) {
-            return back()->withErrors(['organization' => 'You are not an active member of that organization.']);
+            return back()->withErrors(['organization' => __('oauth.organization.not_member')]);
         }
 
         return $this->continueBound($request, $authorization, $found->boundTo($choice->id), $clients, $codes, $pending);
@@ -546,14 +547,14 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         if (! $organizations->creationOffered()) {
             return $this->failure(OrganizationCreationRefused::notOffered()->getMessage());
         }
 
-        return $this->page('oauth/create-organization', 'Create an organization', [
+        return $this->page('oauth/create-organization', __('oauth.create_organization.title'), [
             'client' => ['name' => $found->clientName, 'owner' => $found->clientOwner],
             'me' => $this->meProps($me),
             'storeHref' => route('oauth.authorize.organization.store', $authorization),
@@ -578,7 +579,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         try {
@@ -608,7 +609,7 @@ final readonly class OAuthConsentController extends PageController
         $client = $clients->byClientId($bound->clientId);
 
         if (! $client instanceof Client) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         return $this->proceed($request, $bound, $client, $clients, $codes, $pending, silent: false, redirectToScreen: true);
@@ -669,7 +670,7 @@ final readonly class OAuthConsentController extends PageController
     {
         $me = app(CurrentUser::class);
 
-        return $this->page('oauth/consent', 'Authorize', [
+        return $this->page('oauth/consent', __('oauth.consent.title'), [
             'client' => [
                 'name' => $authorization->clientName,
                 'owner' => $authorization->clientOwner,
@@ -780,7 +781,7 @@ final readonly class OAuthConsentController extends PageController
         $found = $pending->find($request, $authorization);
 
         if ($found === null) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         // Spent either way: a second click on a stale tab must not mint a second code from
@@ -795,7 +796,7 @@ final readonly class OAuthConsentController extends PageController
         $found = $pending->find($request, $authorization);
 
         if ($found === null) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         $pending->forget($request, $authorization);
@@ -846,7 +847,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if (! $me->check()) {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         /*
@@ -855,7 +856,7 @@ final readonly class OAuthConsentController extends PageController
          * a code afterwards: somebody keeps a tab open, the policy changes, they click Allow.
          */
         if ($this->unsatisfiedAuthPolicy($me->subject()?->id) !== null) {
-            return $this->failure('Your account needs attention before you can continue. Please sign in again.');
+            return $this->failure(__('oauth.failure.account_attention'));
         }
 
         // Defence in depth: the redirect_uri must still be registered to the client, and
@@ -866,7 +867,7 @@ final readonly class OAuthConsentController extends PageController
             || ! $this->redirectUriRegistered($authorization->redirectUri, array_values($client->redirect_uris))
             || $authorization->codeChallenge === ''
             || $authorization->codeChallengeMethod !== 'S256') {
-            return $this->failure('This authorization request can no longer be completed. Please start again.');
+            return $this->failure(__('oauth.failure.stale'));
         }
 
         /*
@@ -886,7 +887,7 @@ final readonly class OAuthConsentController extends PageController
         $session = $me->session();
 
         if ($this->unmetAuthenticationRequirement($authorization, $session) !== null) {
-            return $this->failure('This application requires a more recent or stronger sign-in. Please start again.');
+            return $this->failure(__('oauth.failure.step_up'));
         }
 
         /*
@@ -1256,7 +1257,7 @@ final readonly class OAuthConsentController extends PageController
     /** The page shown when the request cannot be answered by redirecting anywhere. */
     private function failure(string $message): Response
     {
-        return $this->page('oauth/consent', 'Authorization failed', ['error' => $message]);
+        return $this->page('oauth/consent', __('oauth.failure.title'), ['error' => $message]);
     }
 
     /**
@@ -1326,6 +1327,12 @@ final readonly class OAuthConsentController extends PageController
     }
 
     /**
+     * A built-in scope in the visitor's language; a custom one as its own key.
+     *
+     * The catalog decides WHICH scopes have a phrase, and its English is the fallback for
+     * one added there before this file's catalogue caught up — so a new built-in scope is
+     * never shown to a person as its bare key just because nobody translated it yet.
+     *
      * @param  list<string>  $scopes
      * @return list<array{scope: string, label: string}>
      */
@@ -1334,7 +1341,12 @@ final readonly class OAuthConsentController extends PageController
         $labels = app(ScopeCatalog::class)->consentLabels();
 
         return array_map(
-            static fn (string $scope): array => ['scope' => $scope, 'label' => $labels[$scope] ?? $scope],
+            static function (string $scope) use ($labels): array {
+                $key = 'oauth.consent.scopes.'.$scope;
+                $label = ! isset($labels[$scope]) ? $scope : (Lang::has($key) ? __($key) : $labels[$scope]);
+
+                return ['scope' => $scope, 'label' => $label];
+            },
             $scopes,
         );
     }
@@ -1343,7 +1355,7 @@ final readonly class OAuthConsentController extends PageController
     {
         if ($client->organization_id !== null) {
             return app(Organizations::class)->find($client->organization_id)->name
-                ?? 'an organization that no longer exists';
+                ?? __('oauth.consent.unknown_owner');
         }
 
         $platformName = config('app.name');

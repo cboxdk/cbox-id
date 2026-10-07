@@ -27,13 +27,13 @@ final readonly class AdminPortalController extends PageController
 {
     public function show(string $token): Response
     {
-        return $this->page('auth/open-portal-setup', 'Set up single sign-on', [
+        return $this->page('auth/open-portal-setup', __('auth.open_portal_setup.title'), [
             'confirmation' => new LinkConfirmationProps(
-                heading: 'Set up sign-in for your organization',
-                lead: 'You were sent a setup link to connect your identity provider or directory. Continue to open the setup screen.',
-                actionLabel: 'Open setup',
+                heading: __('auth.open_portal_setup.heading'),
+                lead: __('auth.open_portal_setup.lead'),
+                actionLabel: __('auth.open_portal_setup.action'),
                 actionUrl: route('portal.enter.store', $token),
-                note: 'The link works once, and the setup session it opens expires. Open it when you are ready to finish.',
+                note: __('auth.open_portal_setup.note'),
             ),
         ]);
     }

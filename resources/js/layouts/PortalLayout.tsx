@@ -1,8 +1,10 @@
 import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { Brand } from '@/chrome/Brand';
+import { LanguagePicker } from '@/chrome/LanguagePicker';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Toaster } from '@/chrome/Toaster';
+import { useDocumentLanguage, useTranslator } from '@/i18n';
 import { toggleTheme } from '@/lib/theme';
 import type { SharedProps } from '@/types';
 import { Icon, TooltipProvider } from '@/ui';
@@ -18,6 +20,9 @@ import { Icon, TooltipProvider } from '@/ui';
  */
 export default function PortalLayout({ children }: { children: ReactNode }) {
     const { app, title } = usePage<SharedProps>().props;
+    const { locale, t } = useTranslator();
+
+    useDocumentLanguage(locale);
 
     return (
         <TooltipProvider>
@@ -37,15 +42,18 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
                             className="hidden sm:inline-flex items-center gap-1.5 text-xs"
                             style={{ color: 'var(--faint)' }}
                         >
-                            <Icon name="shield" className="w-3.5 h-3.5" /> Admin setup portal
+                            <Icon name="shield" className="w-3.5 h-3.5" />{' '}
+                            {t('portal.layout.badge')}
                         </span>
+
+                        <LanguagePicker />
 
                         <button
                             type="button"
                             className="btn btn-ghost"
                             style={{ padding: '0.4rem' }}
                             onClick={() => toggleTheme()}
-                            aria-label="Toggle theme"
+                            aria-label={t('portal.layout.toggle_theme')}
                         >
                             <Icon name="sun" className="w-[1.1rem] h-[1.1rem]" />
                         </button>
@@ -65,7 +73,8 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
                     style={{ borderColor: 'var(--border)', color: 'var(--faint)' }}
                 >
                     <span className="inline-flex items-center gap-1.5">
-                        <Icon name="shield" className="w-3.5 h-3.5" /> Secured by {app.name}
+                        <Icon name="shield" className="w-3.5 h-3.5" />{' '}
+                        {t('hosted.layout.secured_by', { name: app.name })}
                     </span>
                     <span>© {app.year}</span>
                 </footer>

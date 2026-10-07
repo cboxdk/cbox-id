@@ -269,6 +269,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   it. Writes take `Idempotency-Key`; a replay never carries a key's value. Creating an
   environment over the API is now on the workspace's activity log, as it was from the
   console. 18 console writes left the parity allowlist (251 → 233).
+- **The hosted pages and their emails speak six languages.** Sign-in, sign-up, MFA and
+  step-up, password reset, invitations, the OAuth consent screen and organization
+  picker, the Admin Portal, the error pages and the six hosted emails are now available
+  in English, Danish, German, Swedish, Norwegian Bokmål and French. The admin console
+  stays English. A visitor's language comes from, in order: OIDC `ui_locales` (kept for
+  the rest of that authorization), the new language menu in the sign-in footer (a
+  cookie), `Accept-Language`, and the environment's default. Languages that are not
+  supported or not switched on are skipped. `CBOX_ID_DEFAULT_LOCALE` and
+  `CBOX_ID_LOCALES` set the deployment's defaults; an environment can override them
+  with `default_locale` and `enabled_locales` in its settings. Self-service emails go
+  out in the language of the page they were requested from, and administrator-sent
+  emails in the environment's default. `<html lang>` and `Content-Language` match the
+  page. React pages get only their own group's text, through a typed `t()`; the key type
+  is generated from the English catalogue by `php artisan i18n:types`. See
+  docs/guides/languages.md.
+- **Hosted emails and error pages carry the configured product name.** The bodies,
+  the logo mark and the footer used to say "Cbox ID" even when `CBOX_ID_BRAND_NAME`
+  changed the subject line.
+
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,

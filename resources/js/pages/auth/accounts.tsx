@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Avatar, Icon } from '@/ui';
@@ -22,11 +23,13 @@ type Props = PageProps<{ accounts: Account[] }>;
  * make.
  */
 export default function Accounts({ accounts }: Props) {
+    const { t } = useTranslator();
+
     return (
         <div className="w-full max-w-sm mx-auto">
-            <h1 className="font-semibold tracking-tight text-2xl">Switch user</h1>
+            <h1 className="font-semibold tracking-tight text-2xl">{t('auth.accounts.title')}</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Everyone signed in on this device. Pick one, or sign in as someone else.
+                {t('auth.accounts.lead')}
             </p>
 
             <ul className="mt-6 flex flex-col gap-2">
@@ -62,7 +65,7 @@ export default function Accounts({ accounts }: Props) {
                                     className="text-xs font-medium"
                                     style={{ color: 'var(--accent-strong)' }}
                                 >
-                                    Active
+                                    {t('auth.accounts.active')}
                                 </span>
                             )}
                         </button>
@@ -75,7 +78,7 @@ export default function Accounts({ accounts }: Props) {
                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-dashed px-3.5 py-3 text-sm font-medium transition"
                 style={{ borderColor: 'var(--border)' }}
             >
-                <Icon name="plus" className="w-4 h-4" /> Sign in as someone else
+                <Icon name="plus" className="w-4 h-4" /> {t('auth.accounts.add')}
             </Link>
         </div>
     );

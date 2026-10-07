@@ -108,26 +108,26 @@ final class PasskeyController extends Controller
         // Hard-block a Reject before establishing the session. (A passkey is
         // phishing-resistant, so an elevated-but-not-reject outcome needs no step-up.)
         if ($risk->shouldBlock($risk->assess($request, 'login'))) {
-            return $this->error('We could not process this request. Please try again later.');
+            return $this->error(__('auth.common.could_not_process'));
         }
 
         $challenge = $this->pullChallenge($request, self::AUTH_CHALLENGE);
         $credentialId = $request->string('id')->toString();
 
         if ($challenge === null || $credentialId === '') {
-            return $this->error('Sign-in challenge expired. Try again.');
+            return $this->error(__('auth.login.passkey_errors.challenge_expired'));
         }
 
         try {
             $subjectId = $passkeys->authenticate($credentialId, $challenge, $request->getContent());
         } catch (UnknownCredential) {
-            return $this->error('That passkey is not registered.');
+            return $this->error(__('auth.login.passkey_errors.not_registered'));
         } catch (ClonedAuthenticator) {
-            return $this->error('This passkey may have been cloned and was rejected.', 409);
+            return $this->error(__('auth.login.passkey_errors.cloned'), 409);
         } catch (InvalidAssertionResponse) {
-            return $this->error('That passkey could not be verified.');
+            return $this->error(__('auth.login.passkey_errors.unverified'));
         } catch (Throwable) {
-            return $this->error('Something went wrong signing in.');
+            return $this->error(__('auth.login.passkey_errors.failed'));
         }
 
         // A passkey is the strongest factor here and it is still refused under a mandate.

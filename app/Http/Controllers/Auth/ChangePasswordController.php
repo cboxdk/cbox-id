@@ -39,7 +39,7 @@ final readonly class ChangePasswordController extends PageController
 {
     public function edit(CurrentUser $me): Response
     {
-        return $this->page('auth/change-password', 'Choose a new password', [
+        return $this->page('auth/change-password', __('auth.change_password.title'), [
             // For the password manager, so it updates the credential it already holds
             // rather than saving a second one nobody asked for.
             'email' => $me->email(),

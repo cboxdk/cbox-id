@@ -15,6 +15,11 @@
 
     Both were true under Volt and both are still true; what changed is that they are now
     resolved once, here, instead of by whichever layout a page happened to declare.
+
+    THE LANGUAGE goes on `<html lang>` from the locale the hosted surfaces resolved
+    ({@see \App\Http\Middleware\ResolveLocale}) — English on the console, which never
+    resolves one. On the first byte for the same reason as the theme: a screen reader
+    picks its voice from it before it reads anything else.
 --}}
 @php
     $brand = app(\App\Platform\Appearance\BrandContext::class);
@@ -28,7 +33,7 @@
     after the first paint — so the console animated 52 → 210px on every hard refresh for
     anybody who had pinned it.
 --}}
-<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -86,7 +91,7 @@
     {{-- Before the app root, so it is the first thing a keyboard reaches on every page
          — including the sign-in surfaces, which under the old layouts had no landmark
          and no skip target at all. --}}
-    <a href="#main-content" class="skip-link">Skip to content</a>
+    <a href="#main-content" class="skip-link">{{ __('hosted.skip_to_content') }}</a>
 
     @inertia
 </body>

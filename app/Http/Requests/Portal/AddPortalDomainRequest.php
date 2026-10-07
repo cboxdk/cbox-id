@@ -44,7 +44,7 @@ final class AddPortalDomainRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['domain.regex' => 'Enter a valid domain, e.g. acme.com.'];
+        return ['domain.regex' => __('portal.setup.domain.invalid')];
     }
 
     public function domain(): string

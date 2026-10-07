@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import PortalLayout from '@/layouts/PortalLayout';
 import { Icon } from '@/ui';
 
@@ -7,6 +8,8 @@ import { Icon } from '@/ui';
  * guessing at tokens.
  */
 export default function PortalExpired() {
+    const { t } = useTranslator();
+
     return (
         <div className="card p-10 text-center">
             <div
@@ -21,14 +24,13 @@ export default function PortalExpired() {
                 <Icon name="shield" className="w-5 h-5" />
             </div>
             <h1 className="mt-4 text-lg font-semibold tracking-tight">
-                This setup link is no longer valid
+                {t('portal.expired.heading')}
             </h1>
             <p
                 className="mt-2 text-sm leading-relaxed mx-auto"
                 style={{ color: 'var(--muted)', maxWidth: '28rem' }}
             >
-                The link may have expired or already been used. Setup links are single-use and
-                time-limited for security. Ask the person who invited you to send a new one.
+                {t('portal.expired.body')}
             </p>
         </div>
     );

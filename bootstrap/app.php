@@ -18,9 +18,11 @@ use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
+use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\TrustHostsExceptHealth;
+use App\Platform\Locale\LocaleResolver;
 use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
@@ -301,6 +303,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // What a customer's own organization console offers, on a customer's
             // environment host — the rest is the environment console's (see the class).
             'console.customer' => EnforceCustomerConsole::class,
+            // The hosted surfaces' language. Named so the route file can say which groups
+            // are hosted — and the console groups, by not saying it, stay English.
+            'locale' => ResolveLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -311,6 +316,23 @@ return Application::configure(basePath: dirname(__DIR__))
         // throttled request rendered a bare `{"message":"Too Many Attempts."}`. Those
         // are the two most common failures a generated client meets.
         $exceptions->render(ApiErrorRenderer::render(...));
+
+        // THE ERROR PAGE IN THE LANGUAGE THE PERSON CHOSE. A hosted request has already
+        // set its locale by the time it fails; one that failed before reaching the route —
+        // a stale CSRF token on the sign-in form is the common case — has not, so a choice
+        // the person made (the picker's cookie, the relying party's `ui_locales`) is
+        // applied here. Returns null: it decides the language, not the response.
+        $exceptions->render(function (Throwable $e, Request $request): ?Response {
+            if (! $request->attributes->has(ResolveLocale::ATTRIBUTE)) {
+                $chosen = app(LocaleResolver::class)->chosen($request);
+
+                if ($chosen !== null) {
+                    app()->setLocale($chosen->value);
+                }
+            }
+
+            return null;
+        });
 
         // A DEPLOYMENT THAT WAS NEVER CONFIGURED SHOULD SAY SO, not 500.
         //

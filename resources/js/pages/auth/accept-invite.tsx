@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, PasswordField, PasswordManagerIdentity } from '@/ui';
@@ -26,35 +27,30 @@ export default function AcceptInvite({
     roleLabel,
     acceptUrl,
 }: Props) {
+    const { t, rich } = useTranslator();
     const form = useForm({ password: '' });
+
+    const emphasis = (text: string) => (
+        <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+            {text}
+        </span>
+    );
+
+    const facts = {
+        organization: emphasis(organizationName ?? t('auth.accept_invite.organization_fallback')),
+        role: emphasis(roleLabel),
+        email: emphasis(email),
+    };
 
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Accept your invitation
+                {t('auth.accept_invite.heading')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {inviterName !== null && (
-                    <>
-                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                            {inviterName}
-                        </span>{' '}
-                        invited you to help run{' '}
-                    </>
-                )}
-                {inviterName === null && 'Set a password to help run '}
-                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                    {organizationName ?? 'the organization'}
-                </span>{' '}
-                as{' '}
-                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                    {roleLabel}
-                </span>
-                . You will sign in as{' '}
-                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                    {email}
-                </span>
-                .
+                {inviterName !== null
+                    ? rich('auth.accept_invite.lead_from', { ...facts, inviter: emphasis(inviterName) })
+                    : rich('auth.accept_invite.lead', facts)}
             </p>
 
             <form
@@ -67,18 +63,21 @@ export default function AcceptInvite({
                 <PasswordManagerIdentity username={email} />
 
                 <PasswordField
-                    label="Choose a password"
+                    label={t('auth.accept_invite.password_label')}
                     name="password"
                     autoComplete="new-password"
-                    placeholder="At least 12 characters"
+                    placeholder={t('auth.password_field.policy', { count: 12 })}
                     policy
+                    showLabel={t('auth.password_field.show')}
+                    hideLabel={t('auth.password_field.hide')}
+                    policyLabel={t('auth.password_field.policy', { count: 12 })}
                     error={form.errors.password}
                     value={form.data.password}
                     onChange={(event) => form.setData('password', event.target.value)}
                 />
 
                 <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                    Checked against known breaches.
+                    {t('auth.accept_invite.breach_note')}
                 </p>
 
                 <Button
@@ -88,7 +87,7 @@ export default function AcceptInvite({
                     className="w-full"
                     loading={form.processing}
                 >
-                    Accept &amp; sign in
+                    {t('auth.accept_invite.submit')}
                 </Button>
             </form>
         </>

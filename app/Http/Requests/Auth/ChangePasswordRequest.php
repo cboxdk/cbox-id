@@ -52,7 +52,7 @@ final class ChangePasswordRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'password.confirmed' => 'The passwords do not match.',
+            'password.confirmed' => __('auth.change_password.mismatch'),
         ];
     }
 

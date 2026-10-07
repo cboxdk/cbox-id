@@ -10,6 +10,7 @@ use App\Http\Requests\Console\CreateCustomerRequest;
 use App\Mail\PasswordResetMail;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\OperatorEnvironment;
 use Carbon\CarbonInterface;
@@ -217,7 +218,7 @@ final readonly class PlatformCustomerController extends ConsoleController
         if ($token === null) {
             $status = 'Workspace created, but the owner could not be sent a link. Ask them to use "Forgot password".';
         } else {
-            Mail::to($ownerEmail)->send(new PasswordResetMail($links->route('password.reset', $token)));
+            Mail::to($ownerEmail)->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($links->route('password.reset', $token)));
             $status = 'Workspace created. '.$ownerEmail.' has been emailed a link to set their password.';
         }
 

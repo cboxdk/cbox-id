@@ -19,13 +19,13 @@ final class PasswordResetMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $brand = config('cbox-id.branding.name', 'Cbox ID');
-
-        return new Envelope(subject: 'Reset your '.(is_string($brand) ? $brand : 'Cbox ID').' password');
+        // Built inside the send's `withLocale()`, so `__()` here is already in the
+        // recipient's language; the send site states it (see App\Platform\Locale\MailLocale).
+        return new Envelope(subject: __('mail.password_reset.subject', ['brand' => MailText::brand()]));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.password-reset');
+        return new Content(view: 'mail.password-reset', with: ['brand' => MailText::brand()]);
     }
 }

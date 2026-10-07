@@ -137,6 +137,23 @@ return [
     ],
 
     /*
+     * The languages the HOSTED surfaces speak — sign-in, sign-up, consent, the Admin
+     * Portal, and the mail those flows send. The admin console is English regardless.
+     *
+     * These are the deployment's defaults. An environment may narrow or reorder them in
+     * its own settings (`default_locale`, `enabled_locales`), which is where a vendor
+     * whose end users are all in one country says so; see docs/guides/languages.md.
+     *
+     * `enabled` is a comma-separated list of the supported codes — en, da, de, sv, nb,
+     * fr. A code outside that list is ignored rather than trusted: there is no catalogue
+     * to show for it, and a page in a half-supported language is worse than English.
+     */
+    'locales' => [
+        'default' => env('CBOX_ID_DEFAULT_LOCALE', 'en'),
+        'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fr'),
+    ],
+
+    /*
      * Self-service signup mode — who may create an account + organization at
      * /signup:
      *   - 'open'        anyone may sign up (the default).

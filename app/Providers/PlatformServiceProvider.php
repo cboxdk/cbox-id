@@ -22,6 +22,8 @@ use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\OrganizationInvitationService;
 use App\Platform\Invitations\TeamInvitationService;
+use App\Platform\Locale\HostedLocales;
+use App\Platform\Locale\HostedTranslations;
 use App\Platform\OAuth\AuthorizationOrganizationService;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OpenEntitlements;
@@ -110,6 +112,15 @@ final class PlatformServiceProvider extends ServiceProvider
          * colours on a page whose whole purpose is to wear the customer's.
          */
         $this->app->scoped(BrandContext::class);
+
+        /*
+         * The same shape for the hosted pages' LANGUAGE: the controller marks which page
+         * group is rendering and the Inertia middleware reads the mark to ship that group's
+         * catalogue, so the two have to see one instance. The environment's language
+         * settings are read once behind it.
+         */
+        $this->app->scoped(HostedLocales::class);
+        $this->app->scoped(HostedTranslations::class);
 
         // One instance per request: the environment-admin session resolver. Consulted
         // by the persistent middleware, the layout, and each component boot() — scoping

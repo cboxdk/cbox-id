@@ -1,4 +1,4 @@
 @extends('errors.layout')
 @section('code', '503')
-@section('title', 'Down for maintenance')
-@section('message', 'Cbox ID is briefly unavailable while we carry out maintenance. Please try again in a moment.')
+@section('title', __('errors.503.title'))
+@section('message', __('errors.503.message', ['brand' => config('cbox-id.branding.name', 'Cbox ID')]))

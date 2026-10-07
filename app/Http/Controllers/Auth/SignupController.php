@@ -8,6 +8,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Mail\EmailVerificationMail;
 use App\Platform\IntendedUrl;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
@@ -57,7 +58,7 @@ final readonly class SignupController extends PageController
             return to_route('login')->with('status', $signup->closedMessage());
         }
 
-        return $this->page('auth/signup', 'Get started', [
+        return $this->page('auth/signup', __('auth.signup.title'), [
             // On the platform root this signup mints the signer's OWN IdP, so the page
             // says so; elsewhere it is an ordinary join.
             'createsIdp' => $this->provisionsOwnIdp(app(EnvironmentContext::class)),
@@ -111,7 +112,7 @@ final readonly class SignupController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, 10)) {
             return $this->refuse($request, 'email',
-                'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+                trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)));
         }
 
         RateLimiter::hit($key, 300);
@@ -124,8 +125,7 @@ final readonly class SignupController extends PageController
         ]);
 
         if ($risk->shouldBlock($assessment)) {
-            return $this->refuse($request, 'email',
-                'We could not process this request. Please try again later.');
+            return $this->refuse($request, 'email', __('auth.common.could_not_process'));
         }
 
         /*
@@ -141,8 +141,7 @@ final readonly class SignupController extends PageController
             // carry a fresh one.
             $this->inertia->flash('challenged', true);
 
-            return $this->refuse($request, 'email',
-                'Please complete the verification below, then submit again.');
+            return $this->refuse($request, 'email', __('auth.signup.complete_verification'));
         }
 
         if ($this->provisionsOwnIdp(app(EnvironmentContext::class))) {
@@ -158,11 +157,11 @@ final readonly class SignupController extends PageController
         if ($domains->forEmail($request->email())?->capture === true
             && ($connection = $domains->connectionForEmail($request->email())) !== null) {
             return redirect()->away(SsoStart::url($connection))
-                ->with('status', 'Your organization requires signing in through SSO.');
+                ->with('status', __('auth.signup.sso_required'));
         }
 
         if ($subjects->findByEmail($request->email()) !== null) {
-            return $this->refuse($request, 'email', 'An account with this email already exists.');
+            return $this->refuse($request, 'email', __('auth.signup.account_exists'));
         }
 
         $subject = $subjects->create($request->email(), $request->name(), $request->password());
@@ -175,7 +174,7 @@ final readonly class SignupController extends PageController
         // The account is usable immediately; verification confirms the address out of
         // band rather than gating the way in.
         $token = app(EmailVerification::class)->issue($subject->id, $request->email());
-        Mail::to($request->email())->send(
+        Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(
             new EmailVerificationMail($links->route('verification.verify', $token)),
         );
 
@@ -206,7 +205,7 @@ final readonly class SignupController extends PageController
     ): RedirectResponse {
         // Subject emails are globally unique in the root — one email, one login.
         if (app(PlatformRoot::class)->run(fn () => $subjects->findByEmail($request->email())) !== null) {
-            return $this->refuse($request, 'email', 'An account with this email already exists.');
+            return $this->refuse($request, 'email', __('auth.signup.account_exists'));
         }
 
         try {
@@ -226,7 +225,7 @@ final readonly class SignupController extends PageController
                 throw $e;
             }
 
-            return $this->refuse($request, 'email', 'An account with this email already exists.');
+            return $this->refuse($request, 'email', __('auth.signup.account_exists'));
         }
 
         $token = app(PlatformRoot::class)->run(
@@ -234,7 +233,7 @@ final readonly class SignupController extends PageController
         );
 
         if (is_string($token)) {
-            Mail::to($request->email())->send(
+            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(
                 new EmailVerificationMail($links->route('verification.verify', $token)),
             );
         }

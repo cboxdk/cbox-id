@@ -80,6 +80,7 @@ use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
@@ -185,8 +186,18 @@ if (app()->environment('local')) {
  * have no door at all. The gate here is possession of the setup token, which does not
  * depend on any of the state being bootstrapped.
  */
-Route::get('/first-run', [FirstRunController::class, 'show'])->name('first-run');
-Route::post('/first-run', [FirstRunController::class, 'claim'])->name('first-run.claim');
+Route::get('/first-run', [FirstRunController::class, 'show'])->middleware('locale')->name('first-run');
+Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware('locale')->name('first-run.claim');
+
+/*
+ * THE LANGUAGE PICKER on the hosted pages' footer. Remembers the choice in a cookie and
+ * sends the person back to the page they were on, now in that language.
+ *
+ * No plane gate: the hosted pages it sits under live on every plane — sign-in on the
+ * console host, consent on the issuer, sign-up on its own — and choosing a language
+ * discloses nothing and changes nothing but the next render.
+ */
+Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->name('locale.update');
 
 /*
  * The apex — one destination, because there is one console.
@@ -295,7 +306,7 @@ Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
  * `plane:signup` rather than `plane:account`, which is what made every tenant's sign-in
  * page link to a 404.
  */
-Route::middleware(['plane:signup', 'platform.guest'])->group(function (): void {
+Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
     Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');
 });
@@ -311,7 +322,7 @@ Route::middleware(['plane:signup', 'platform.guest'])->group(function (): void {
  * alongside this console, not the absence of one. The IdP protocol surface it must NOT
  * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
-Route::middleware(['plane:console', 'platform.guest'])->group(function (): void {
+Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     // Identifier-first: the address alone, so its home realm can be discovered before a
     // password form is drawn. A server step, because the domain map is the server's.
@@ -355,16 +366,16 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
 // The MFA challenge sits between password and a full session, so it is neither
 // fully guest nor fully authenticated. The pending sign-in in the session is the
 // authorization; there is no guard here that could ask a better question.
-Route::get('/mfa', [MfaController::class, 'show'])->name('mfa');
-Route::post('/mfa', [MfaController::class, 'verify'])->name('mfa.verify');
-Route::post('/mfa/recovery', [MfaController::class, 'recover'])->name('mfa.recover');
+Route::get('/mfa', [MfaController::class, 'show'])->middleware('locale')->name('mfa');
+Route::post('/mfa', [MfaController::class, 'verify'])->middleware('locale')->name('mfa.verify');
+Route::post('/mfa/recovery', [MfaController::class, 'recover'])->middleware('locale')->name('mfa.recover');
 
 // The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
 // state: primary auth passed, but an elevated risk assessment demands a second
 // factor before the session is established.
-Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->name('login.step-up');
-Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->name('login.step-up.verify');
-Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->name('login.step-up.resend');
+Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->middleware('locale')->name('login.step-up');
+Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->middleware('locale')->name('login.step-up.verify');
+Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->middleware('locale')->name('login.step-up.resend');
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
@@ -373,7 +384,7 @@ Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->na
 // THE GET SPENDS NOTHING. It shows who is inviting whom to what, and the POST accepts:
 // Outlook Safe Links and every other mail scanner fetch the link before the invitee does,
 // and on a GET that fetch accepted the invitation and signed the SCANNER in.
-Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+Route::middleware([BlockDuringImpersonation::class, 'locale'])->group(function (): void {
     Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->name('invitation.accept');
     Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept.store');
 
@@ -428,7 +439,7 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
      * the impersonation window and the operator's session, attributed to the person being
      * impersonated.
      */
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize');
 
 /*
@@ -442,11 +453,11 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
  * cannot influence any of them.
  */
 Route::post('/oauth/authorize/{authorization}/approve', [OAuthConsentController::class, 'approve'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.approve');
 
 Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::class, 'deny'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.deny');
 
 /*
@@ -462,7 +473,7 @@ Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::cl
  * the page would leave the browser on the step's URL, where a reload re-submits a choice
  * that was already spent.
  */
-Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->group(function (): void {
         Route::get('/oauth/authorize/{authorization}', [OAuthConsentController::class, 'review'])
             ->name('oauth.authorize.review');
@@ -491,7 +502,7 @@ Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, Block
  * organization is the real boundary and is unchanged: a tenant's link resolves to nothing
  * on another host, root included.
  */
-Route::middleware('plane:console')->group(function (): void {
+Route::middleware(['plane:console', 'locale'])->group(function (): void {
     Route::get('/setup/expired', [PortalSetupController::class, 'expired'])->name('portal.expired');
 
     /*
@@ -557,10 +568,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
-    Route::get('/accounts', [AccountsController::class, 'index'])->name('accounts');
+    Route::get('/accounts', [AccountsController::class, 'index'])->middleware('locale')->name('accounts');
     // A POST, because it moves the session. A GET that changes who you are is a GET any
     // image tag on any page can make.
-    Route::post('/accounts', [AccountsController::class, 'switchTo'])->name('accounts.switch');
+    Route::post('/accounts', [AccountsController::class, 'switchTo'])->middleware('locale')->name('accounts.switch');
     /*
      * The SAME sign-in page, for somebody already signed in.
      *
@@ -568,20 +579,20 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * IS a sign-in — the only difference is what the session does with the result, which
      * is a decision the sign-in POST makes rather than one the form has to know.
      */
-    Route::get('/accounts/add', [LoginController::class, 'show'])->name('accounts.add');
+    Route::get('/accounts/add', [LoginController::class, 'show'])->middleware('locale')->name('accounts.add');
 
     // The forced password change. Inside the authenticated group on purpose: the hold
     // that sends people here (see {@see \App\Http\Middleware\Authenticate}) exempts this
     // one route, so it is reachable only by someone who is signed in and owes a change.
-    Route::get('/password/change', [ChangePasswordController::class, 'edit'])->name('password.change');
-    Route::post('/password/change', [ChangePasswordController::class, 'update'])->name('password.change.update');
+    Route::get('/password/change', [ChangePasswordController::class, 'edit'])->middleware('locale')->name('password.change');
+    Route::post('/password/change', [ChangePasswordController::class, 'update'])->middleware('locale')->name('password.change.update');
 
     // The social link confirmation. Same shape as the password hold above and for the
     // same reason: reachable only by someone signed in who has an identity waiting on
     // their answer, and exempt from the hold so the redirect cannot loop.
-    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->name('link.confirm');
-    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->name('link.connect');
-    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->name('link.decline');
+    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->middleware('locale')->name('link.confirm');
+    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->middleware('locale')->name('link.connect');
+    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->middleware('locale')->name('link.decline');
 
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
@@ -1552,7 +1563,7 @@ Route::prefix('platform')->group(function (): void {
 | `plane:console`, like every other door: the host decides which surfaces exist, and
 | this one exists wherever the console does.
 */
-Route::middleware('plane:console')->group(function (): void {
+Route::middleware(['plane:console', 'locale'])->group(function (): void {
     // Guest-accessible but gated by a signed URL (the token IS the signature; no token
     // table needed). The invitee sets their password and is signed in. The component
     // locks the token so it cannot be swapped after the signed load.

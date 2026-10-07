@@ -1,5 +1,6 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import { isCancellation, passkeysSupported, signInWithPasskey } from '@/lib/passkeys';
 import type { PageProps } from '@/types';
@@ -37,6 +38,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
      */
     const { identified, ssoOffer, ssoOfferLeads, magicSentTo, magicUrl, mandate } =
         usePage().flash;
+    const { t, rich } = useTranslator();
 
     const form = useForm({ email, password: '' });
 
@@ -76,7 +78,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
             // appears when something really did go wrong.
             if (!isCancellation(error)) {
                 setPasskeyMessage({
-                    text: error instanceof Error ? error.message : 'Passkey sign-in failed.',
+                    text: error instanceof Error ? error.message : t('auth.login.passkey_failed'),
                     ok: false,
                 });
             }
@@ -88,7 +90,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Sign in
+                {t('auth.login.title')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {purpose}
@@ -103,9 +105,8 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                         border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                     }}
                 >
-                    <b>Someone signed in with {pendingLink} using this email.</b> That email
-                    already has an account here. Sign in below and we'll ask whether you want to
-                    connect {pendingLink} to it.
+                    <b>{t('auth.login.pending_link.lead', { provider: pendingLink })}</b>{' '}
+                    {t('auth.login.pending_link.body', { provider: pendingLink })}
                 </div>
             )}
 
@@ -114,9 +115,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                     className="mt-5 rounded-lg text-sm card block"
                     style={{ padding: '0.85rem 1rem' }}
                 >
-                    <p className="font-medium">Check your inbox</p>
+                    <p className="font-medium">{t('auth.common.check_your_inbox')}</p>
                     <p className="mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                        We sent a one-time sign-in link to <b>{magicSentTo}</b>.
+                        {rich('auth.login.magic.sent_to', { email: <b>{magicSentTo}</b> })}
                     </p>
                     {magicUrl != null && (
                         <>
@@ -128,7 +129,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 {magicUrl}
                             </a>
                             <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
-                                Shown because email isn't configured in this environment.
+                                {t('auth.login.magic.dev_note')}
                             </p>
                         </>
                     )}
@@ -146,7 +147,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                 */
                 <div role="alert" className="mt-7 card p-5">
                     <h2 className="text-base font-semibold">
-                        {mandate.organization} requires single sign-on
+                        {t('auth.login.mandate.heading', { organization: mandate.organization })}
                     </h2>
                     <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                         {mandate.reason}
@@ -160,7 +161,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                             href={mandate.startUrl}
                             className="btn btn-primary btn-lg w-full mt-4"
                         >
-                            Continue to {mandate.organization}
+                            {t('auth.login.mandate.continue', { organization: mandate.organization })}
                         </a>
                     ) : (
                         <p
@@ -170,9 +171,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 color: 'var(--destructive-strong)',
                             }}
                         >
-                            No identity provider is connected for {mandate.organization} yet, so
-                            there is nowhere to send you. Ask an administrator to finish setting
-                            up single sign-on.
+                            {t('auth.login.mandate.no_provider', {
+                                organization: mandate.organization,
+                            })}
                         </p>
                     )}
 
@@ -186,7 +187,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                         className="w-full mt-2.5"
                         onClick={() => router.get(loginRoute.url())}
                     >
-                        Use a different email
+                        {t('auth.login.use_different_email')}
                     </Button>
                 </div>
             ) : (
@@ -199,7 +200,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 form.post(identify.url());
                             }}
                         >
-                            <Field id="email" label="Email" error={form.errors.email}>
+                            <Field id="email" label={t('auth.common.email')} error={form.errors.email}>
                                 <Input
                                     name="email"
                                     scale="lg"
@@ -221,7 +222,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 className="w-full"
                                 loading={form.processing}
                             >
-                                Continue
+                                {t('auth.login.continue')}
                             </Button>
                         </form>
                     ) : (
@@ -238,9 +239,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                             {ssoOffer != null && ssoOfferLeads === true && (
                                 <div className="mt-7">
                                     <a href={ssoOffer} className="btn btn-primary btn-lg w-full">
-                                        Continue with single sign-on
+                                        {t('auth.login.sso.continue')}
                                     </a>
-                                    <Divider className="my-5">or use your password</Divider>
+                                    <Divider className="my-5">{t('auth.login.sso.or_password')}</Divider>
                                 </div>
                             )}
 
@@ -253,7 +254,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                             >
                                 <Field
                                     id="email"
-                                    label="Email"
+                                    label={t('auth.common.email')}
                                     error={form.errors.email}
                                     labelAction={
                                         <Link
@@ -261,7 +262,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                             className="text-xs font-medium underline underline-offset-2"
                                             style={{ color: 'var(--accent-strong)' }}
                                         >
-                                            Use a different email
+                                            {t('auth.login.use_different_email')}
                                         </Link>
                                     }
                                 >
@@ -282,15 +283,17 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 <PasswordField
                                     ref={passwordRef}
                                     id="password"
-                                    label="Password"
+                                    label={t('auth.common.password')}
                                     name="password"
+                                    showLabel={t('auth.password_field.show')}
+                                    hideLabel={t('auth.password_field.hide')}
                                     labelAction={
                                         <Link
                                             href={forgotPassword.url()}
                                             className="text-xs font-medium underline underline-offset-2"
                                             style={{ color: 'var(--accent-strong)' }}
                                         >
-                                            Forgot password?
+                                            {t('auth.login.forgot_password')}
                                         </Link>
                                     }
                                     autoComplete="current-password"
@@ -307,19 +310,19 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                     className="w-full"
                                     loading={form.processing}
                                 >
-                                    Sign in
+                                    {t('auth.common.sign_in')}
                                 </Button>
                             </form>
 
                             {ssoOffer != null && ssoOfferLeads !== true && (
                                 <a href={ssoOffer} className="btn btn-ghost btn-lg w-full mt-3">
-                                    Continue with single sign-on instead
+                                    {t('auth.login.sso.instead')}
                                 </a>
                             )}
                         </>
                     )}
 
-                    <Divider>OR</Divider>
+                    <Divider>{t('auth.login.or')}</Divider>
 
                     {providers.length > 0 && (
                         <div className="space-y-2.5 mb-2.5">
@@ -330,7 +333,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                     className="btn btn-ghost btn-lg w-full"
                                 >
                                     <ProviderMark provider={provider.provider} />
-                                    <span>Continue with {provider.label}</span>
+                                    <span>
+                                        {t('auth.login.continue_with', { provider: provider.label })}
+                                    </span>
                                 </a>
                             ))}
                         </div>
@@ -343,7 +348,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                             className="w-full"
                             onClick={() => form.post(magicLink.url())}
                         >
-                            Email me a magic link
+                            {t('auth.login.magic_link')}
                         </Button>
 
                         {/*
@@ -358,7 +363,7 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 loading={passkeyBusy}
                                 onClick={() => void signIn()}
                             >
-                                Sign in with a passkey
+                                {t('auth.login.passkey')}
                             </Button>
                         )}
 
@@ -381,13 +386,13 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                             className="mt-8 text-sm text-center"
                             style={{ color: 'var(--muted-foreground)' }}
                         >
-                            New organization?{' '}
+                            {t('auth.login.new_organization')}{' '}
                             <Link
                                 href={signup.url()}
                                 className="font-medium underline underline-offset-2"
                                 style={{ color: 'var(--accent-strong)' }}
                             >
-                                Create one
+                                {t('auth.login.create_one')}
                             </Link>
                         </p>
                     )}

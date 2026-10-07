@@ -6,6 +6,7 @@ namespace App\Platform;
 
 use App\Mail\EmailVerificationMail;
 use App\Platform\Enums\VerificationResendOutcome;
+use App\Platform\Locale\MailLocale;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\EmailVerificationToken;
@@ -123,7 +124,7 @@ final class MemberEmailVerification
         });
 
         if (is_string($url)) {
-            Mail::to($email)->send(new EmailVerificationMail($url));
+            Mail::to($email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($url));
         }
 
         return VerificationResendOutcome::Sent;

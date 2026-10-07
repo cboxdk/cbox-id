@@ -53,6 +53,8 @@ final class ParityAllowlist
             'invitation.accept.store',
             'link.connect',
             'link.decline',
+            // The hosted pages' language picker: a cookie for the next render, nothing more.
+            'locale.update',
             'login.attempt',
             'login.identify',
             'login.magic-link',

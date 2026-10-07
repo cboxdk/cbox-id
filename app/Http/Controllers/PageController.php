@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Platform\Appearance\BrandContext;
+use App\Platform\Locale\HostedTranslations;
 use Inertia\Response;
 use Inertia\ResponseFactory;
 use LogicException;
@@ -37,6 +38,9 @@ abstract readonly class PageController
         if (self::isDoor($component)) {
             app(BrandContext::class)->atTheDoor();
         }
+
+        // Which catalogue the page is handed — its group's, or none on a console page.
+        app(HostedTranslations::class)->forPage($component);
 
         return $this->inertia
             ->render($component, [...$props, 'title' => $title])
