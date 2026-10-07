@@ -18,6 +18,15 @@ return [
         'cancel' => 'Annuller',
         'authorize' => 'Giv adgang',
         'redirect_notice' => 'Når du har givet adgang, bliver du sendt videre til :host.',
+        // A client that registered itself (RFC 7591, or a client ID metadata document).
+        'self_registered_owner' => 'appen selv',
+        'self_registered' => 'Denne app har registreret sig selv. Ingen hos :account har gennemgået den — fortsæt kun, hvis du selv har startet dette login.',
+        'published_by' => 'Beskrevet af :host — det eneste ved denne app, der er blevet kontrolleret.',
+        'about_app' => 'Om denne app',
+        // Management-plane scopes an agent acts with as the person.
+        'critical' => 'Kritisk',
+        'acts_as_you' => 'Alt, hvad den gør som dig, er begrænset til det, du selv må, og bliver skrevet i audit-loggen.',
+        'critical_notice' => 'Kritiske handlinger venter stadig på din godkendelse på din enhed, hver gang.',
 
         'scopes' => [
             'openid' => 'Bekræfte din identitet',
@@ -37,6 +46,7 @@ return [
         'expired' => 'Anmodningen om godkendelse er udløbet eller allerede brugt. Start forfra.',
         'par_required' => 'Denne server kræver pushed authorization requests. Send først anmodningen til /oauth/par.',
         'unknown_client' => 'Ukendt klient. Applikationen er ikke registreret i Cbox ID.',
+        'client_document' => 'Applikationens beskrivelse kunne ikke læses. Den ligger på den adresse, applikationen gav som sit ID, og dokumentet mangler, kan ikke nås eller er ugyldigt.',
         'redirect_mismatch' => 'Redirect-URI’en passer ikke med nogen af dem der er registreret for denne applikation.',
         'stale' => 'Anmodningen om godkendelse kan ikke længere gennemføres. Start forfra.',
         'account_attention' => 'Din konto kræver opmærksomhed før du kan fortsætte. Log ind igen.',

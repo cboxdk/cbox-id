@@ -18,6 +18,15 @@ return [
         'cancel' => 'Avbryt',
         'authorize' => 'Godkänn',
         'redirect_notice' => 'Du omdirigeras till :host när du har godkänt.',
+        // A client that registered itself (RFC 7591, or a client ID metadata document).
+        'self_registered_owner' => 'appen själv',
+        'self_registered' => 'Den här appen har registrerat sig själv. Ingen på :account har granskat den — fortsätt bara om du själv startade den här inloggningen.',
+        'published_by' => 'Beskriven av :host — det enda med den här appen som har kontrollerats.',
+        'about_app' => 'Om den här appen',
+        // Management-plane scopes an agent acts with as the person.
+        'critical' => 'Kritisk',
+        'acts_as_you' => 'Allt den gör som du begränsas till det du själv får göra, och registreras i granskningsloggen.',
+        'critical_notice' => 'Kritiska åtgärder väntar fortfarande på ditt godkännande på din enhet, varje gång.',
 
         'scopes' => [
             'openid' => 'Verifiera din identitet',
@@ -37,6 +46,7 @@ return [
         'expired' => 'Den här auktoriseringsbegäran har gått ut eller har redan använts. Börja om.',
         'par_required' => 'Den här servern kräver pushed authorization requests (PAR). Skicka först begäran till /oauth/par.',
         'unknown_client' => 'Okänd klient. Den här applikationen är inte registrerad i Cbox ID.',
+        'client_document' => 'Appens beskrivning kunde inte läsas. Den finns på adressen som appen angav som sitt ID, och dokumentet saknas, kan inte nås eller är ogiltigt.',
         'redirect_mismatch' => 'Angiven omdirigerings-URI matchar inte någon av dem som har registrerats för den här applikationen.',
         'stale' => 'Den här auktoriseringsbegäran kan inte längre slutföras. Börja om.',
         'account_attention' => 'Ditt konto behöver åtgärdas innan du kan fortsätta. Logga in igen.',

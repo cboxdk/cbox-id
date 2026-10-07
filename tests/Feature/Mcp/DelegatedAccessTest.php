@@ -8,6 +8,7 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OAuth\DelegatedAccess;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -23,7 +24,10 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Http\Request as HttpRequest;
@@ -224,6 +228,37 @@ it('keeps the person inside their own organization', function (): void {
 
     expect($listed)->toContain($own->id)->not->toContain($theirs->id)
         ->and(mcpCall($token, 'webhooks_get', ['id' => $theirs->id])['structuredContent']['error'])->toBe('not_found');
+
+    // The environment's own endpoint carries their traffic, so they see it — and it is the
+    // vendor's to change, not theirs, exactly as on their console.
+    $environments = app(WebhookRegistry::class)->registerForEnvironment('https://env.acme.example/in', ['user.created'])->endpoint;
+
+    expect(mcpCall($token, 'webhooks_pause', ['id' => $environments->id])['structuredContent']['error'])->toBe('forbidden');
+})->group('security');
+
+it('offers on a customer\'s environment only what a customer\'s own console does', function (): void {
+    // A multi-tenant deployment, and this environment is not the platform root: a
+    // customer's, whose own console is an admin portal and whose product administration
+    // (apps, webhooks, hooks…) is the vendor's environment console.
+    multiTenantDeployment();
+    platformRootEnvironment();
+    serveOnTestHost(Environment::query()->find('env_test') ?? tap(new Environment, function (Environment $environment): void {
+        $environment->forceFill([
+            'id' => 'env_test', 'name' => 'Test', 'slug' => 'env-test',
+            'type' => EnvironmentType::Production,
+            'status' => EnvironmentStatus::Active,
+            'is_default' => false, 'settings' => [],
+        ])->save();
+    }));
+
+    expect(app(PlaneResolver::class)->onCustomerEnvironment())->toBeTrue();
+
+    [$subject, $organization] = delegatedPerson();
+    $token = delegatedToken($subject, $organization);
+
+    expect(array_keys(mcpTools($token)))->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status']);
+
+    $this->withToken($token)->getJson('/api/v1/webhooks')->assertForbidden();
 })->group('security');
 
 it('acts in the organization the token is bound to only while the person is still in it', function (): void {

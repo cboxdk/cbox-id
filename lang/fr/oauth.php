@@ -18,6 +18,15 @@ return [
         'cancel' => 'Annuler',
         'authorize' => 'Autoriser',
         'redirect_notice' => 'Après l’autorisation, vous serez redirigé vers :host.',
+        // A client that registered itself (RFC 7591, or a client ID metadata document).
+        'self_registered_owner' => 'l’application elle-même',
+        'self_registered' => 'Cette application s’est enregistrée elle-même. Personne chez :account ne l’a vérifiée — ne continuez que si vous avez lancé cette connexion vous-même.',
+        'published_by' => 'Décrite par :host — la seule chose vérifiée au sujet de cette application.',
+        'about_app' => 'À propos de cette application',
+        // Management-plane scopes an agent acts with as the person.
+        'critical' => 'Critique',
+        'acts_as_you' => 'Tout ce qu’elle fait en votre nom est limité à ce que vous pouvez faire vous-même, et consigné dans le journal d’audit.',
+        'critical_notice' => 'Les actions critiques attendent toujours votre approbation sur votre appareil, à chaque fois.',
 
         'scopes' => [
             'openid' => 'Vérifier votre identité',
@@ -37,6 +46,7 @@ return [
         'expired' => 'Cette demande d’autorisation a expiré ou a déjà été utilisée. Veuillez recommencer.',
         'par_required' => 'Ce serveur exige des requêtes d’autorisation poussées (PAR). Envoyez d’abord la requête à /oauth/par.',
         'unknown_client' => 'Client inconnu. Cette application n’est pas enregistrée auprès de Cbox ID.',
+        'client_document' => 'La description de cette application n’a pas pu être lue. Elle est publiée à l’adresse que l’application a donnée comme identifiant, et ce document est absent, inaccessible ou invalide.',
         'redirect_mismatch' => 'L’URI de redirection ne correspond à aucune de celles enregistrées pour cette application.',
         'stale' => 'Cette demande d’autorisation ne peut plus aboutir. Veuillez recommencer.',
         'account_attention' => 'Votre compte nécessite votre attention avant de pouvoir continuer. Veuillez vous reconnecter.',

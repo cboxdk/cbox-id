@@ -9,13 +9,13 @@ use App\Http\Requests\OAuth\CreateOrganizationRequest;
 use App\Platform\CurrentUser;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\SignInWithTicket;
+use App\Platform\OAuth\ConsentScopes;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OAuth\Enums\AuthorizationPrompt;
 use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
 use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
-use App\Platform\ScopeCatalog;
 use App\Platform\SignupPolicy;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
@@ -24,15 +24,20 @@ use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
+use Cbox\Id\OAuthServer\Contracts\AuthorizationClients;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
+use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
+use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadataDocument;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Support\ResourceParameter;
+use Cbox\Id\OAuthServer\ValueObjects\AuthorizationClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Lang;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -128,21 +133,29 @@ final readonly class OAuthConsentController extends PageController
          * timeout with no error code. That is also an outright fail in the OpenID
          * basic-certification profile.
          */
-        $client = is_string($clientId) && $clientId !== '' ? $clients->byClientId($clientId) : null;
+        /*
+         * WHICH CLIENT — registered (by an administrator, or by itself under RFC 7591), or
+         * described by a client ID metadata document at the https URL it gave as its id
+         * ({@see AuthorizationClients}). A document that cannot be used is rendered, never
+         * redirected: there is no verified redirect URI to send the error to yet.
+         */
+        try {
+            $authorizing = is_string($clientId) && $clientId !== '' ? app(AuthorizationClients::class)->resolve($clientId) : null;
+        } catch (InvalidClientMetadataDocument) {
+            return $this->failure(__('oauth.failure.client_document'));
+        }
 
-        if (! $client instanceof Client) {
+        if ($authorizing === null) {
             return $this->failure(__('oauth.failure.unknown_client'));
         }
+
+        $client = $authorizing->client;
 
         /*
          * The redirect_uri must exactly match one the client registered. Never redirect to
          * a URI we have not verified.
-         *
-         * `array_values()`: `redirect_uris` is a JSON cast, so a row written as a JSON
-         * object rather than an array rehydrates with string keys. `redirectUriRegistered()`
-         * asks for a list, and the re-key is what makes that true — not decoration.
          */
-        if (! is_string($redirectUri) || ! $this->redirectUriRegistered($redirectUri, array_values($client->redirect_uris))) {
+        if (! is_string($redirectUri) || ! $this->redirectAllowed($authorizing, $redirectUri)) {
             return $this->failure(__('oauth.failure.redirect_mismatch'));
         }
 
@@ -197,7 +210,29 @@ final readonly class OAuthConsentController extends PageController
                 'This application is not registered for the requested scope(s): '.implode(' ', $unregistered).'.');
         }
 
-        $resourceParam = $from('resource');
+        /*
+         * RFC 8707: the resource server this authorization is FOR, read the way the token
+         * and PAR endpoints read it ({@see ResourceParameter}: one value, well-formed, a
+         * repeated one refused) — and then put to the SAME audience resolver the token
+         * endpoint will ask, so this page can never agree to what redemption would refuse.
+         * A self-registered client asking for a resource that does not take such clients,
+         * or scopes that span two APIs with nothing to choose between them, hears so here,
+         * as `invalid_target`, before the person is shown anything.
+         */
+        try {
+            $resource = $pushed !== null
+                ? ResourceParameter::fromValue($pushed['resource'] ?? null)
+                : ResourceParameter::fromRequest($request);
+
+            app(AudienceResolver::class)->resolve(
+                $client,
+                array_values(array_filter($requestedScopes, $client->allows(...))),
+                $resource,
+            );
+        } catch (InvalidAudience $refused) {
+            return $this->redirectError($redirectUri, $refused->error, $state, $refused->getMessage());
+        }
+
         $acrParam = $from('acr_values');
         $nonceParam = $from('nonce');
 
@@ -253,7 +288,7 @@ final readonly class OAuthConsentController extends PageController
              * a different one at redemption, and receive a token asserting the second.
              * Captured here and bound to the code, the two can no longer disagree.
              */
-            resource: is_string($resourceParam) && trim($resourceParam) !== '' ? trim($resourceParam) : null,
+            resource: $resource,
             maxAge: $this->parseMaxAge($from('max_age')),
             acrValues: is_string($acrParam) && trim($acrParam) !== '' ? trim($acrParam) : null,
             /*
@@ -606,13 +641,13 @@ final readonly class OAuthConsentController extends PageController
         // Spent either way: a second submit from a stale tab must not bind a second grant.
         $pending->forget($request, $spent);
 
-        $client = $clients->byClientId($bound->clientId);
+        $authorizing = $this->authorizationClient($bound->clientId);
 
-        if (! $client instanceof Client) {
+        if ($authorizing === null) {
             return $this->failure(__('oauth.failure.stale'));
         }
 
-        return $this->proceed($request, $bound, $client, $clients, $codes, $pending, silent: false, redirectToScreen: true);
+        return $this->proceed($request, $bound, $authorizing->client, $clients, $codes, $pending, silent: false, redirectToScreen: true);
     }
 
     /**
@@ -641,7 +676,10 @@ final readonly class OAuthConsentController extends PageController
     ): Response|SymfonyResponse {
         $organizationId = $authorization->organizationId ?? app(CurrentUser::class)->organizationId();
 
+        // Never for a client that registered ITSELF — RFC 7591 or a metadata document. It is
+        // a stranger by definition, whatever a flag on its row says.
         $skipConsent = $client->first_party === true
+            && ! $client->isDynamicallyRegistered()
             && ($client->organization_id === null || $client->organization_id === $organizationId)
             && ! $authorization->asks(AuthorizationPrompt::Consent);
 
@@ -669,11 +707,27 @@ final readonly class OAuthConsentController extends PageController
     private function consentScreen(string $id, PendingAuthorization $authorization): Response
     {
         $me = app(CurrentUser::class);
+        $authorizing = $this->authorizationClient($authorization->clientId);
 
         return $this->page('oauth/consent', __('oauth.consent.title'), [
             'client' => [
                 'name' => $authorization->clientName,
                 'owner' => $authorization->clientOwner,
+                /*
+                 * A CLIENT THAT REGISTERED ITSELF says so. Its name, its logo and its link
+                 * are whatever whoever registered it typed, and nobody here reviewed it — so
+                 * the screen says that plainly instead of "registered by" an owner it does
+                 * not have.
+                 */
+                'selfRegistered' => $authorizing?->consentRequired() ?? false,
+                /*
+                 * …and one described by a metadata document leads with the one thing about
+                 * it that is VERIFIED: the host that published the document. Its
+                 * `client_uri` and `logo_uri` are https-only, and shown as the publisher's.
+                 */
+                'documentHost' => $authorizing?->documentHost,
+                'clientUri' => $authorizing?->clientUri,
+                'logoUri' => $authorizing?->logoUri,
             ],
             'me' => $this->meProps($me),
             /*
@@ -688,7 +742,12 @@ final readonly class OAuthConsentController extends PageController
              * whether to allow an app was shown the literal word "groups", with nothing to
              * say what it meant, on the most end-user-facing page in the product.
              */
-            'scopes' => $this->scopeRows($authorization->scopes),
+            /*
+             * FROM THE CATALOG, not a second copy of it — and the management plane's scopes
+             * from the action registry, with the ones a critical action needs flagged
+             * ({@see ConsentScopes}). What is listed is what the token will carry.
+             */
+            'scopes' => app(ConsentScopes::class)->rows($this->grantedScopes($authorizing, $authorization)),
             'redirectHost' => parse_url($authorization->redirectUri, PHP_URL_HOST),
             'approveHref' => route('oauth.authorize.approve', $id),
             'denyHref' => route('oauth.authorize.deny', $id),
@@ -861,10 +920,10 @@ final readonly class OAuthConsentController extends PageController
 
         // Defence in depth: the redirect_uri must still be registered to the client, and
         // PKCE must still be S256.
-        $client = $clients->byClientId($authorization->clientId);
+        $authorizing = $this->authorizationClient($authorization->clientId);
 
-        if (! $client instanceof Client
-            || ! $this->redirectUriRegistered($authorization->redirectUri, array_values($client->redirect_uris))
+        if ($authorizing === null
+            || ! $this->redirectAllowed($authorizing, $authorization->redirectUri)
             || $authorization->codeChallenge === ''
             || $authorization->codeChallengeMethod !== 'S256') {
             return $this->failure(__('oauth.failure.stale'));
@@ -979,7 +1038,7 @@ final readonly class OAuthConsentController extends PageController
          * adding it to a URL.
          */
         if ($authorization->pushedPayload !== null) {
-            $client = app(ClientRegistry::class)->byClientId($authorization->clientId);
+            $client = $this->authorizationClient($authorization->clientId)?->client;
 
             if ($client !== null) {
                 $repushed = app(PushedAuthorizationRequests::class)->push($client, $authorization->pushedPayload);
@@ -1327,32 +1386,77 @@ final readonly class OAuthConsentController extends PageController
     }
 
     /**
-     * A built-in scope in the visitor's language; a custom one as its own key.
+     * The scopes the token will carry, which is what the person is agreeing to: the
+     * requested ones the client may hold, narrowed by the audience resolver the token
+     * endpoint asks — so the screen never lists a scope redemption would drop.
      *
-     * The catalog decides WHICH scopes have a phrase, and its English is the fallback for
-     * one added there before this file's catalogue caught up — so a new built-in scope is
-     * never shown to a person as its bare key just because nobody translated it yet.
-     *
-     * @param  list<string>  $scopes
-     * @return list<array{scope: string, label: string}>
+     * @return list<string>
      */
-    private function scopeRows(array $scopes): array
+    private function grantedScopes(?AuthorizationClient $authorizing, PendingAuthorization $authorization): array
     {
-        $labels = app(ScopeCatalog::class)->consentLabels();
+        // A client that registered no scopes is not constrained at /authorize (see show()),
+        // and is shown what it asked for, as it always was.
+        if ($authorizing === null || $authorizing->client->scopes === []) {
+            return $authorization->scopes;
+        }
 
-        return array_map(
-            static function (string $scope) use ($labels): array {
-                $key = 'oauth.consent.scopes.'.$scope;
-                $label = ! isset($labels[$scope]) ? $scope : (Lang::has($key) ? __($key) : $labels[$scope]);
+        $client = $authorizing->client;
 
-                return ['scope' => $scope, 'label' => $label];
-            },
-            $scopes,
-        );
+        try {
+            return app(AudienceResolver::class)->resolve(
+                $client,
+                array_values(array_filter($authorization->scopes, $client->allows(...))),
+                $authorization->resource,
+            )->scopes;
+        } catch (InvalidAudience) {
+            // Refused at /authorize before a pending authorization exists; reaching here
+            // means the client's registration changed while the page was open, and the
+            // approval re-asserts everything anyway. Show what was asked.
+            return $authorization->scopes;
+        }
+    }
+
+    /**
+     * The client an authorization names, registered or described by a metadata document —
+     * or null when it no longer resolves, which every caller treats as a stale request.
+     */
+    private function authorizationClient(string $clientId): ?AuthorizationClient
+    {
+        try {
+            return app(AuthorizationClients::class)->resolve($clientId);
+        } catch (InvalidClientMetadataDocument) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether $redirectUri is one this client may be sent back to.
+     *
+     * A metadata document client by the framework's rule — an EXACT match against the
+     * document's `redirect_uris`, since the document is the publisher's whole claim. A
+     * registered client by {@see redirectUriRegistered()}, this endpoint's own rule, which
+     * lets only a 127.0.0.1 / [::1] port float.
+     *
+     * `array_values()`: `redirect_uris` is a JSON cast, so a row written as a JSON object
+     * rather than an array rehydrates with string keys. `redirectUriRegistered()` asks for
+     * a list, and the re-key is what makes that true — not decoration.
+     */
+    private function redirectAllowed(AuthorizationClient $authorizing, string $redirectUri): bool
+    {
+        if ($authorizing->isMetadataDocumentClient()) {
+            return $authorizing->allowsRedirectUri($redirectUri);
+        }
+
+        return $this->redirectUriRegistered($redirectUri, array_values($authorizing->client->redirect_uris));
     }
 
     private function owner(Client $client): string
     {
+        // Nobody registered it but itself; the screen says so in its own words.
+        if ($client->isDynamicallyRegistered()) {
+            return __('oauth.consent.self_registered_owner');
+        }
+
         if ($client->organization_id !== null) {
             return app(Organizations::class)->find($client->organization_id)->name
                 ?? __('oauth.consent.unknown_owner');
