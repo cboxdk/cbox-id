@@ -38,6 +38,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -62,6 +63,14 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        // The MCP server and its RFC 9728 document. A file of its own and NOT inside `web`:
+        // `/mcp` is a machine endpoint authenticated by a bearer credential, so it must not
+        // start a session, set a cookie or ask for a CSRF token — and routes/web.php puts
+        // everything in it into the `web` group. Nor under routes/api.php, whose `/api`
+        // prefix would put `/mcp` somewhere no MCP client looks.
+        then: static function (): void {
+            Route::group([], __DIR__.'/../routes/mcp.php');
+        },
         // No `health:` entry on purpose. Laravel's built-in health route renders an
         // HTML status page at /up, which SHADOWED the framework package's documented
         // JSON liveness probe (`{"status":"ok"}`) that deployments and the DAST

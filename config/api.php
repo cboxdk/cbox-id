@@ -18,6 +18,10 @@ return [
         'environment' => (int) env('CBOX_ID_API_RATE_LIMIT_ENVIRONMENT', 240),
         'vault' => (int) env('CBOX_ID_API_RATE_LIMIT_VAULT', 120),
         'apps' => (int) env('CBOX_ID_API_RATE_LIMIT_APPS', 60),
+        // The MCP server at `/mcp`. Its own bucket rather than the environment plane's:
+        // an agent's session (list, read, act, read again) is chattier than a sync job, and
+        // one should not spend the other's allowance on the same key.
+        'mcp' => (int) env('CBOX_ID_API_RATE_LIMIT_MCP', 240),
     ],
 
     /*
@@ -33,5 +37,18 @@ return [
      * behind one address; set it to 0 to disable the backstop entirely.
      */
     'ip_ceiling_multiplier' => (int) env('CBOX_ID_API_RATE_LIMIT_IP_MULTIPLIER', 10),
+
+    /*
+     * The MCP server (`/mcp` on each environment host).
+     *
+     * `tool_search` groups the action tools behind laravel/mcp's `search_tools` /
+     * `execute_tools` instead of listing each one. Off by default: behind `execute_tools`
+     * a client can no longer see which call is destructive and ask a person first, which
+     * is worth more than the context it saves while the catalogue is small and clients
+     * defer MCP tools themselves. See App\Mcp\IdServer.
+     */
+    'mcp' => [
+        'tool_search' => (bool) env('CBOX_ID_MCP_TOOL_SEARCH', false),
+    ],
 
 ];

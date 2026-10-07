@@ -112,6 +112,8 @@ function undocumentedByDesign(): array
         'GET /.well-known/jwks.json',
         'GET /.well-known/oauth-authorization-server',
         'GET /.well-known/oauth-protected-resource',
+        // RFC 9728 metadata for the MCP server at `/mcp`, which is JSON-RPC, not REST.
+        'GET /.well-known/oauth-protected-resource/mcp',
         'GET /.well-known/openid-configuration',
 
         // The specs themselves.

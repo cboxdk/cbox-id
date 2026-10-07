@@ -82,10 +82,14 @@ final class ApiErrorRenderer
      *
      * Returns null for anything that is not on the API surface, so the web console and
      * the hosted UI keep Laravel's HTML error pages.
+     *
+     * `/mcp` is on the surface too. A tool's own refusals travel inside JSON-RPC and never
+     * get here, but the HTTP layer in front of it does — a throttled agent should read
+     * `rate_limited` and a Retry-After, not Laravel's bare "Too Many Attempts.".
      */
     public static function render(Throwable $e, Request $request): ?JsonResponse
     {
-        if (! $request->is('api/*')) {
+        if (! $request->is('api/*', 'mcp')) {
             return null;
         }
 
