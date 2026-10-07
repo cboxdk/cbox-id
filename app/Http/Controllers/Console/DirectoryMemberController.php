@@ -75,10 +75,21 @@ final readonly class DirectoryMemberController extends ConsoleController
         // roster query bounded regardless of how large the organization gets.
         $subjectsById = $subjects->findMany($userIds);
 
-        $accessRoles = $this->assignableRoles($organizationId);
-        $appNames = $this->appNames($accessRoles);
-        $permissions = $this->permissionsByRole($accessRoles);
-        $assignments = $this->assignmentsByUser($organizationId, $userIds);
+        /*
+         * THE ACCESS-ROLE HALF IS AN ADMINISTRATOR'S. Every member may see who else is
+         * here and at which tier — that is what a roster is for — but which app roles
+         * each colleague holds, and the permission catalogue behind every role, is the
+         * organization's authorization model: what to ask for, whom to target, which
+         * account opens what. A plain member has no control on this page that uses it
+         * (every editor is gated on `isAdmin` in the client), so it was being shipped in
+         * the page props only to be hidden by the UI, which is not hiding it at all.
+         *
+         * Not queried either, rather than queried and dropped: what is never loaded can
+         * never leak through a prop somebody adds later.
+         */
+        $isAdmin = $me->isAdmin();
+        $accessRoles = $isAdmin ? $this->assignableRoles($organizationId) : null;
+        $assignments = $accessRoles !== null ? $this->assignmentsByUser($organizationId, $userIds) : [];
 
         $rows = [];
 
@@ -109,7 +120,7 @@ final readonly class DirectoryMemberController extends ConsoleController
         }
 
         return $this->page('console/directory-members', 'Members', [
-            'isAdmin' => $me->isAdmin(),
+            'isAdmin' => $isAdmin,
             'members' => $rows,
             'pagination' => PaginationProps::from($page),
             // Only an admin sees the pending list at all: an invitation names an address
@@ -122,7 +133,9 @@ final readonly class DirectoryMemberController extends ConsoleController
                 ),
                 $invitations->pending($organizationId),
             ) : [],
-            'accessRoles' => $this->accessRoleProps($accessRoles, $appNames, $permissions),
+            'accessRoles' => $accessRoles !== null
+                ? $this->accessRoleProps($accessRoles, $this->appNames($accessRoles), $this->permissionsByRole($accessRoles))
+                : [],
             // ONE list, the same one the environment console offers for this organization.
             // The roster's copy names Owner so an owner's row can say what it holds; it is
             // never offered — ownership moves by transfer.

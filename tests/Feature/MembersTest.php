@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -89,4 +90,58 @@ it('paginates the member roster instead of hydrating it whole', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('pagination.total', 31)
             ->where('members', fn (Collection $rows): bool => $rows->count() === 25));
+});
+
+/**
+ * A ROSTER, NOT THE AUTHORIZATION MODEL.
+ *
+ * A plain member may see who else is here and at which tier. Which app roles each
+ * colleague holds, and every role's permission catalogue, are an administrator's: the page
+ * used to ship both to every member and rely on the client to hide them, which a browser's
+ * dev tools undo in one click.
+ */
+it('shows a plain member the roster without access roles or permissions', function () {
+    [$memberId, $org] = actingAsRole(MembershipRole::Member);
+
+    $role = app(Roles::class)->define($org->id, 'Billing approver');
+    app(Roles::class)->grantPermission($org->id, $role->id, 'invoices.approve');
+
+    $colleague = app(Subjects::class)->create('colleague@acme.test', 'Colleague');
+    app(Memberships::class)->add($org->id, $colleague->id, MembershipRole::Admin);
+    app(Roles::class)->assign($org->id, $colleague->id, $role->id);
+
+    $props = test()->get(route('directory.members'))->assertOk()->inertiaProps();
+
+    // Names, addresses and tiers, exactly as before.
+    $rows = collect($props['members'])->keyBy('id');
+    expect($props['isAdmin'])->toBeFalse()
+        ->and($rows[$colleague->id]['email'])->toBe('colleague@acme.test')
+        ->and($rows[$colleague->id]['name'])->toBe('Colleague')
+        ->and($rows[$colleague->id]['role'])->toBe('admin')
+        ->and($rows[$memberId]['role'])->toBe('member');
+
+    // …and nothing of the authorization model: no role catalogue, no permissions, and no
+    // colleague's assignments.
+    expect($props['accessRoles'])->toBe([])
+        ->and($rows->pluck('accessRoleIds')->flatten()->all())->toBe([])
+        ->and(json_encode($props))->not->toContain('invoices.approve')
+        ->and(json_encode($props))->not->toContain('Billing approver');
+});
+
+it('still shows an admin every access role, its permissions and who holds it', function () {
+    [, $org] = actingAsRole(MembershipRole::Admin);
+
+    $role = app(Roles::class)->define($org->id, 'Billing approver');
+    app(Roles::class)->grantPermission($org->id, $role->id, 'invoices.approve');
+
+    $colleague = app(Subjects::class)->create('colleague@acme.test', 'Colleague');
+    app(Memberships::class)->add($org->id, $colleague->id, MembershipRole::Member);
+    app(Roles::class)->assign($org->id, $colleague->id, $role->id);
+
+    $props = test()->get(route('directory.members'))->assertOk()->inertiaProps();
+
+    $offered = collect($props['accessRoles'])->keyBy('id');
+    expect($offered->has($role->id))->toBeTrue()
+        ->and($offered[$role->id]['permissions'])->toContain('invoices.approve')
+        ->and(collect($props['members'])->keyBy('id')[$colleague->id]['accessRoleIds'])->toBe([$role->id]);
 });
