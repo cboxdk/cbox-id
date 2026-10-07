@@ -67,6 +67,9 @@ final class Field
     }
 
     /**
+     * An object with these fields and no others — or, with none, a free-form document
+     * (a blueprint, a JWK Set) whose shape is the action's to check.
+     *
      * @param  list<Field>  $properties
      */
     public static function object(string $name, array $properties): self
@@ -177,7 +180,7 @@ final class Field
             'integer' => ['integer'],
             'boolean' => ['boolean'],
             'array' => ['array'],
-            'object' => ['array:'.implode(',', array_map(static fn (Field $field): string => $field->name, $this->properties))],
+            'object' => [$this->properties === [] ? 'array' : 'array:'.implode(',', array_map(static fn (Field $field): string => $field->name, $this->properties))],
         }];
 
         if ($this->min !== null) {

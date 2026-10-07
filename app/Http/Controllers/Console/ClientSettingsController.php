@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Apps\SetAppApiKeyPrefix;
+use App\Actions\Apps\SetAppBackchannelLogout;
+use App\Actions\Apps\SetAppTokenExchange;
+use App\Actions\Apps\SetAppTokenLifetime;
 use App\Http\Requests\Console\SaveApiKeyPrefixRequest;
 use App\Http\Requests\Console\SaveBackchannelLogoutRequest;
 use App\Http\Requests\Console\SaveTokenExchangeRequest;
 use App\Http\Requests\Console\SaveTokenLifetimeRequest;
+use App\Platform\Actions\Action;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\AppHeader;
 use App\Platform\Console\AppTabs;
 use App\Platform\Console\ConsoleClients;
@@ -15,10 +21,7 @@ use App\Platform\Console\ConsoleScope;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Enums\GrantType;
-use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
-use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Support\AccessTokenLifetime;
-use Cbox\Id\OAuthServer\ValueObjects\ClientBlueprint;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
 use Inertia\ResponseFactory;
@@ -27,10 +30,11 @@ use Inertia\ResponseFactory;
  * AN APP › SETTINGS — how long its tokens live, whether it may exchange them, where it is
  * told somebody signed out, and whether the people using it may create API keys for it.
  *
- * FOUR FORMS, FOUR WRITES. Each saves one setting through the registry, built from the
- * app's own blueprint with that one setting replaced ({@see ClientRegistry::update()}), so
- * a form never writes back a value another form changed since this page loaded — and each
- * change is one `app.updated` entry naming exactly what it changed.
+ * FOUR FORMS, FOUR WRITES, FOUR ACTIONS (`apps.settings.*`, the same the management API
+ * runs). Each saves one setting through the registry, built from the app's own blueprint
+ * with that one setting replaced ({@see ClientRegistry::update()}), so a form never writes
+ * back a value another form changed since this page loaded — and each change is one
+ * `app.updated` entry naming exactly what it changed.
  *
  * A page of changes, so it is the managers' page only: the tab is not drawn for anybody
  * else and every action here resolves the app through {@see ConsoleClients::manageable()}.
@@ -79,14 +83,13 @@ final readonly class ClientSettingsController extends ConsoleController
         ]);
     }
 
-    public function lifetime(SaveTokenLifetimeRequest $request, string $client, ClientRegistry $registry): RedirectResponse
+    public function lifetime(SaveTokenLifetimeRequest $request, string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
 
         return $this->save(
-            $model,
-            $registry,
-            $registry->blueprint($model)->withAccessTokenTtl($request->seconds()),
+            SetAppTokenLifetime::class,
+            ['id' => $model->id, 'access_token_ttl' => $request->seconds()],
             'minutes',
             $request->seconds() === null
                 ? 'Access tokens for this app now live for the default time.'
@@ -94,40 +97,31 @@ final readonly class ClientSettingsController extends ConsoleController
         );
     }
 
-    public function exchange(SaveTokenExchangeRequest $request, string $client, ClientRegistry $registry): RedirectResponse
+    public function exchange(SaveTokenExchangeRequest $request, string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
 
+        // Said before the action is asked, on the switch and without the form's input —
+        // the action refuses the same app in the same words, which is the guard.
         if ($model->type !== ClientType::Confidential) {
             return back()->withErrors(['enabled' => 'Only an app that holds a secret or its own keys can exchange tokens. A public app cannot prove who is asking.']);
         }
 
-        $grants = array_values(array_filter(
-            $model->grant_types,
-            static fn (string $grant): bool => $grant !== GrantType::TokenExchange->value,
-        ));
-
-        if ($request->enabled()) {
-            $grants[] = GrantType::TokenExchange->value;
-        }
-
         return $this->save(
-            $model,
-            $registry,
-            $registry->blueprint($model)->withGrantTypes($grants),
+            SetAppTokenExchange::class,
+            ['id' => $model->id, 'enabled' => $request->enabled()],
             'enabled',
             $request->enabled() ? 'Token exchange turned on.' : 'Token exchange turned off.',
         );
     }
 
-    public function logout(SaveBackchannelLogoutRequest $request, string $client, ClientRegistry $registry): RedirectResponse
+    public function logout(SaveBackchannelLogoutRequest $request, string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
 
         return $this->save(
-            $model,
-            $registry,
-            $registry->blueprint($model)->withBackchannelLogout($request->logoutUri(), $request->sessionRequired()),
+            SetAppBackchannelLogout::class,
+            ['id' => $model->id, 'uri' => $request->logoutUri(), 'session_required' => $request->sessionRequired()],
             'uri',
             $request->logoutUri() === null
                 ? 'This app is no longer told when somebody signs out.'
@@ -135,21 +129,16 @@ final readonly class ClientSettingsController extends ConsoleController
         );
     }
 
-    public function apiKeys(SaveApiKeyPrefixRequest $request, string $client, ClientRegistry $registry): RedirectResponse
+    public function apiKeys(SaveApiKeyPrefixRequest $request, string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
         $prefix = $request->prefix();
 
-        // Asked here so the refusal reads as a sentence. The registry asks again under its
-        // unique index, which is the guard; this is the explanation.
-        if ($prefix !== null && Client::query()->where('api_key_prefix', $prefix)->whereKeyNot($model->id)->exists()) {
-            return back()->withInput()->withErrors(['prefix' => 'Another app in this environment already uses this prefix. Choose another.']);
-        }
-
+        // A prefix another app here already uses is refused by the action, in a sentence
+        // (`api_key_prefix_taken`), before the registry would refuse it under its index.
         return $this->save(
-            $model,
-            $registry,
-            $registry->blueprint($model)->withApiKeyPrefix($prefix),
+            SetAppApiKeyPrefix::class,
+            ['id' => $model->id, 'prefix' => $prefix],
             'prefix',
             $prefix === null
                 ? 'API keys turned off for this app. Keys already created keep working until they are revoked.'
@@ -158,14 +147,17 @@ final readonly class ClientSettingsController extends ConsoleController
     }
 
     /**
-     * One setting, saved through the registry; a refusal lands on the field that asked.
+     * One setting, saved through its action; a refusal lands on the field that asked.
+     *
+     * @param  class-string<Action>  $action
+     * @param  array<string, mixed>  $input
      */
-    private function save(Client $model, ClientRegistry $registry, ClientBlueprint $settings, string $field, string $status): RedirectResponse
+    private function save(string $action, array $input, string $field, string $status): RedirectResponse
     {
-        try {
-            $registry->update($model, $settings, $this->scope->auditActor());
-        } catch (InvalidClientMetadata $refused) {
-            return back()->withInput()->withErrors([$field => self::plain($refused->getMessage())]);
+        $result = $this->attempt($action, $input, fallback: $field);
+
+        if ($result instanceof ActionRefused) {
+            return back()->withInput()->withErrors([$field => self::plain($result->getMessage())]);
         }
 
         return back()->with('status', $status);

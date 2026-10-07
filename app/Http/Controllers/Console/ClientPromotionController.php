@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Apps\CopyApp;
 use App\Http\Requests\Console\CopyClientRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Apps\CopyTargets;
 use App\Platform\Console\AppHeader;
 use App\Platform\Console\ConsoleClients;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
-use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
 use Cbox\Id\OAuthServer\ValueObjects\ClientBlueprint;
 use Cbox\Id\OAuthServer\ValueObjects\RegisteredClient;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +35,8 @@ use Inertia\ResponseFactory;
  *  - COPY TO ANOTHER ENVIRONMENT, on the environment console only: import the blueprint as
  *    a new app in staging's production twin (or the reverse), with its own client id and
  *    secret, shown here once. An organization has no other environment to copy into.
+ *    The copy itself is the `apps.copy` action; this page asks its questions first so a
+ *    refusal arrives before the password prompt, not after it.
  */
 final readonly class ClientPromotionController extends ConsoleController
 {
@@ -75,9 +76,7 @@ final readonly class ClientPromotionController extends ConsoleController
     public function copy(
         CopyClientRequest $request,
         string $client,
-        ClientRegistry $registry,
         CopyTargets $targets,
-        EnvironmentContext $context,
         IssuerResolver $issuers,
     ): RedirectResponse {
         // The environment console's alone: an organization administrator has no other
@@ -98,7 +97,7 @@ final readonly class ClientPromotionController extends ConsoleController
         $target = $targets->find($request->environment());
 
         if ($target === null) {
-            return back()->withInput()->withErrors(['environment' => 'Choose one of the environments offered. It has to be in this project, and one you administer.']);
+            return back()->withInput()->withErrors(['environment' => CopyApp::UNREACHABLE]);
         }
 
         /*
@@ -117,26 +116,27 @@ final readonly class ClientPromotionController extends ConsoleController
             return to_route($sudo);
         }
 
-        $blueprint = $registry->blueprint($model)
-            ->withName($request->name())
-            ->withRedirectUris($request->redirectUris());
+        // The action asks every question above again — the copy refusal, the target, the
+        // plane — and reads who is acting before the environment moves, so the copy is
+        // recorded as this person's and not the system's.
+        $result = $this->attempt(CopyApp::class, [
+            'id' => $model->id,
+            'environment_id' => $target->id,
+            'name' => $request->name(),
+            'redirect_uris' => $request->redirectUris(),
+        ], ['environment_id' => 'environment', 'name' => 'name', 'redirect_uris' => 'redirectUris'], 'environment');
 
-        // WHO IS ACTING is read HERE, before the environment moves. Inside `runAs()` the
-        // host no longer matches the environment this admin session is anchored to, so the
-        // session resolves to nobody there — by design — and the copy would be recorded
-        // as the system's.
-        $actor = $this->scope->auditActor();
-
-        try {
-            $copied = $context->runAs($target, fn (): RegisteredClient => $registry->import($blueprint, null, null, $actor));
-        } catch (InvalidClientMetadata|ScopeNotGrantable $refused) {
-            return back()->withInput()->with('error', 'Not copied: '.lcfirst(strtr($refused->getMessage(), [
+        if ($result instanceof ActionRefused) {
+            return back()->withInput()->with('error', 'Not copied: '.lcfirst(strtr($result->getMessage(), [
                 'Invalid client blueprint: ' => '',
                 'api_key_prefix' => 'the key prefix',
                 'backchannel_logout_uri' => 'the logout URI',
                 '; import with another prefix (or none)' => ' — clear it on the Settings tab of either app, then copy again',
             ])));
         }
+
+        /** @var RegisteredClient $copied */
+        $copied = $result->value;
 
         // The plaintext exists only in this response, on the flash channel — see the
         // reveal on the app page for why never in props.

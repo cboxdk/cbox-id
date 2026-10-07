@@ -14,6 +14,10 @@ use Cbox\Id\OAuthServer\Models\Client;
  * or `advanced` when its grants match no preset), read back from its grants rather than
  * stored; `client_type` is the OAuth type that decides whether it holds a secret.
  *
+ * The settings each have an endpoint of their own (`/apps/{id}/settings/…`, the manifest),
+ * so they are here too: an agent that changed one reads back what it changed rather than
+ * fetching the blueprint to find out.
+ *
  * `client_secret` is present ONLY on the response that created the app — the server keeps
  * a hash, so this is the one chance to read it.
  */
@@ -36,6 +40,11 @@ final class AppResource
             'redirect_uris' => array_values($client->redirect_uris),
             'post_logout_redirect_uris' => array_values($client->post_logout_redirect_uris ?? []),
             'scopes' => array_values($client->scopes),
+            'manifest_url' => $client->manifest_url,
+            'access_token_ttl' => $client->access_token_ttl,
+            'backchannel_logout_uri' => $client->backchannel_logout_uri,
+            'backchannel_logout_session_required' => $client->backchannel_logout_session_required,
+            'api_key_prefix' => $client->api_key_prefix,
             'created_at' => Timestamp::of($client->getAttribute('created_at')),
         ];
 

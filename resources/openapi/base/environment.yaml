@@ -880,6 +880,8 @@ paths:
       tags: [Apps]
       summary: List apps
       description: "Requires scope `apps:read`. Never a secret."
+      operationId: apps_list
+      x-action: apps.list
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
@@ -915,7 +917,15 @@ paths:
           "Create app" does. `advanced` takes `client_type` and `grant_types`.
 
         The response carries `client_secret` for an app that authenticates with one —
-        **once**. Only its hash is kept.
+        **once**. Only its hash is kept, and an idempotent replay returns `client_secret: null`.
+
+        A platform scope reserved for the console (`vault.manage`, `decisions:read`) is
+        refused (`scope_not_grantable`), as is a registered API's scope this app's owner may
+        not hold. Danger: critical — it mints a credential.
+      operationId: apps_create
+      x-action: apps.create
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -924,7 +934,7 @@ paths:
               type: object
               properties:
                 blueprint: { $ref: "#/components/schemas/AppBlueprint" }
-                name: { type: string, maxLength: 120 }
+                name: { type: string, maxLength: 190 }
                 type: { type: string, enum: [web, spa, cli, service, agent, advanced], default: web }
                 client_type: { type: string, enum: [confidential, public] }
                 grant_types: { type: array, items: { type: string } }
@@ -932,6 +942,7 @@ paths:
                 post_logout_redirect_uris: { type: array, items: { type: string } }
                 scopes: { type: array, items: { type: string } }
                 first_party: { type: boolean, default: false }
+                manifest_url: { type: ["string", "null"], format: uri, maxLength: 500, description: "Where the app publishes its roles-and-permissions manifest (short form)." }
                 organization_id: { type: ["string", "null"], description: "The owning organization; null for the environment's own app." }
                 jwks: { type: ["object", "null"], description: "A public JWK Set, for a `private_key_jwt` app." }
       responses:
@@ -957,6 +968,8 @@ paths:
         carries the app's settings and none of its identity or credentials: no client id,
         no secret, no key set, no owning organization. `POST /apps` with it as `blueprint`
         creates the same app in another environment.
+      operationId: apps_blueprint
+      x-action: apps.blueprint
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -969,6 +982,36 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/AppBlueprint" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apps/{id}/secrets:
+    get:
+      tags: [Apps]
+      summary: List an app's live client secrets
+      description: |
+        Requires scope `apps:read`. Every live secret, newest first: its id (what
+        `DELETE /apps/{id}/secrets/{secret_id}` names), the characters it ends in, and its
+        dates — never a secret. `expires_at` is set on one a rotation replaced, still working
+        through its overlap. An app holds a handful at most, so there is no page to turn.
+      operationId: apps_secrets_list
+      x-action: apps.secrets.list
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AppSecret" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -1931,10 +1974,31 @@ components:
         redirect_uris: { type: array, items: { type: string } }
         post_logout_redirect_uris: { type: array, items: { type: string } }
         scopes: { type: array, items: { type: string } }
+        manifest_url: { type: ["string", "null"], description: Where it publishes its roles-and-permissions manifest. }
+        access_token_ttl: { type: ["integer", "null"], description: Its access-token lifetime in seconds; null for the install's default. }
+        backchannel_logout_uri: { type: ["string", "null"], description: Where it is sent a logout token (OIDC Back-Channel Logout); null when it is not told. }
+        backchannel_logout_session_required: { type: boolean }
+        api_key_prefix: { type: ["string", "null"], description: The prefix of its customer API keys; null when it accepts none. }
         created_at: { type: ["string", "null"], format: date-time }
         client_secret:
-          type: string
-          description: Only on the response that created the app, and only for an app that authenticates with a secret. Never again.
+          type: ["string", "null"]
+          description: Only on the response that created (or copied) the app, and only for an app that authenticates with a secret. Never again — null on an idempotent replay.
+    AppSecret:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        hint: { type: ["string", "null"], description: The characters the secret ends in; null for one older than per-secret storage. }
+        created_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: ["string", "null"], format: date-time, description: Set on a secret a rotation replaced — it stops working then. }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        client_secret:
+          type: ["string", "null"]
+          description: Only on the rotation that minted it. Never again — null on an idempotent replay.
+        previous_expire_at:
+          type: ["string", "null"]
+          format: date-time
+          description: On a rotation — when the secrets it replaced stop working.
     AppBlueprint:
       type: object
       description: |
