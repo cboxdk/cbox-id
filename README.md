@@ -5,7 +5,7 @@ The hosted, self-hostable identity platform — the deployable app built on
 (SAML/OIDC), directory sync (SCIM), RBAC, billing-driven entitlements, and a
 tamper-evident audit trail.
 
-Repo: `cboxdk/cbox-id` (private). This app composes the framework package and
+Repo: `cboxdk/cbox-id` (public; Elastic-2.0). This app composes the framework package and
 adds the admin console + hosted-cloud concerns (UI, onboarding, billing).
 
 ## Stack

@@ -7,22 +7,11 @@ on:
 
 jobs:
   test:
-    # UNTRUSTED CODE NEVER REACHES THE SELF-HOSTED RUNNER.
-    #
-    # This job checks out the head of a pull request and then runs `composer install`,
-    # `npm ci` and the whole suite — every one of which executes code from the branch.
-    # On a self-hosted runner that is arbitrary code execution on an internal machine,
-    # from anyone who can open a PR.
-    #
-    # `build-image.yml` already refuses PRs outright for exactly this reason, and says so:
-    # "a self-hosted runner has host access, so untrusted PR code must not reach it." The
-    # risk was known and written down in one workflow and left open in the two that
-    # actually run the foreign code.
-    #
-    # A PR therefore runs on an ephemeral GitHub-hosted runner; a push to `main` — where
-    # the code is already trusted, because it is already deployed — keeps the self-hosted
-    # one and its warm caches.
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
+    # GITHUB-HOSTED, ALWAYS. The repository is public, so GitHub's runners cost nothing
+    # here, and an ephemeral runner is the only safe place for a pull request's code:
+    # `composer install`, `npm ci` and the suite all execute code from the branch. The
+    # org's own runners are for private repositories only.
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -31,20 +20,15 @@ jobs:
         # in the deployed app is caught, not just in the library it embeds.
         php: ['8.4', '8.5']
 
+    # The toolchain is the cbox base image's dev tier, not a stack of setup actions: PHP,
+    # Composer, Node 22 and Playwright's Chromium are baked in, pinned by the `-v1` release
+    # channel. The visual baselines are drawn in this same image
+    # (`visual-baselines.yml`), so the renderer that judges them is the one that drew them.
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:${{ matrix.php }}-bookworm-dev-v1
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          extensions: sodium, openssl, pdo_sqlite
-          coverage: none
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -54,9 +38,6 @@ jobs:
 
       - name: Build assets
         run: npm run build
-
-      - name: Install Playwright browser (for Pest 4 browser tests)
-        run: npx playwright install --with-deps chromium
 
       - name: Prepare environment
         run: |
@@ -72,8 +53,11 @@ jobs:
       - name: Static analysis (PHPStan/Larastan)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
 
-      # `visual` RUNS HERE NOW, and the baselines it compares against were drawn by this
-      # runner — see `.github/workflows/visual-baselines.yml`. That is the whole trick: a
+      # `visual` RUNS IN THE 8.5 CELL ONLY, the image `.github/workflows/visual-baselines.yml`
+      # draws the baselines in. A baseline is a picture of one renderer; the 8.4 image may
+      # carry another Chromium build, so judging it there would fail for reasons nobody
+      # can act on. (It once ran on a self-hosted runner for pushes to main while the
+      # baselines were drawn on ubuntu-latest, and failed on every push for that alone.) That is the whole trick: a
       # screenshot baseline is a picture of ONE renderer, and pictures drawn on a
       # maintainer's macOS/arm64 laptop fail on Linux/x64 for reasons nobody can act on
       # (text rasterises differently, the pinned font is substituted). This job judges
@@ -84,7 +68,28 @@ jobs:
       # rubber stamp. If the new picture is the one you meant, run the Visual baselines
       # workflow and commit what it uploads.
       - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
-        run: vendor/bin/pest
+        run: vendor/bin/pest ${{ matrix.php != '8.5' && '--exclude-group=visual' || '' }}
+
+  # ---------------------------------------------------------------------------
+  # SUPPLY CHAIN — its own job so it ALWAYS runs.
+  #
+  # These steps used to sit at the end of `test`, after the suite. When a screenshot
+  # baseline drifted, the suite failed first and the licence gate, the vulnerability
+  # audit and the SBOM drift check were simply skipped — on main, for every push, while
+  # the badge only said "tests failed". A known-vulnerable dependency then sat in the
+  # lock file unreported. Nothing here needs the suite, a browser or built assets, so
+  # nothing about the suite may stop it.
+  # ---------------------------------------------------------------------------
+  supply-chain:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
         run: composer license-check
@@ -120,13 +125,9 @@ jobs:
   # pointing it at a non-existent driver and watching the suite fail to resolve it
   # — worth re-checking if this job ever goes suspiciously green.
   #
-  # RUNS ON GITHUB-HOSTED RUNNERS, unlike every other job here. Service containers
-  # are unreachable on the self-hosted runner: they start and report healthy, but it
-  # mounts the host's Docker socket, so the published port lands on the host while
-  # the job runs in a container that is on neither that loopback nor the service
-  # network. This job failed on `Connection refused` every time it ran — as does the
-  # equivalent job in cboxdk/laravel-id — and a database matrix that has never
-  # connected is worse than none, because the badge says otherwise.
+  # GITHUB-HOSTED, like every job here. On a self-hosted runner that mounted the host's
+  # Docker socket the job and its service landed on different networks, and this job
+  # failed on `Connection refused` every time it ran.
   # ---------------------------------------------------------------------------
   engines:
     runs-on: ubuntu-latest
@@ -139,17 +140,13 @@ jobs:
           # which is the only spelling MySQL accepts for a json default.
           - driver: mysql
             image: mysql:8.4
-            # Host ports differ per engine so two cells can share one self-hosted
-            # runner without fighting over the default port.
-            port: 33306
-            service_port: 3306
+            port: 3306
             health: mysqladmin ping -h 127.0.0.1 -u root -proot
           # Kept green for self-hosters, and because it was production until the
           # move to Cloud — dropping it would quietly un-support it.
           - driver: pgsql
             image: postgres:17
-            port: 55432
-            service_port: 5432
+            port: 5432
             health: pg_isready -U cbox_id -d cbox_id
     name: ${{ matrix.image }}
     services:
@@ -164,37 +161,24 @@ jobs:
           POSTGRES_DB: cbox_id
           POSTGRES_USER: cbox_id
           POSTGRES_PASSWORD: secret
-        ports:
-          - ${{ matrix.port }}:${{ matrix.service_port }}
         options: >-
           --health-cmd "${{ matrix.health }}"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 30
+    # The same dev-tier image as `test`. The job runs in a container on the service
+    # network, so the database is reached by its service name on its own port.
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
     env:
       DB_CONNECTION: ${{ matrix.driver }}
-      # The documented address for a service container on a GitHub-hosted runner:
-      # the job runs on the host, so the published port is on its loopback. It is
-      # only exotic elsewhere — see the note on this job's runner choice above.
-      DB_HOST: 127.0.0.1
+      DB_HOST: db
       DB_PORT: ${{ matrix.port }}
       DB_DATABASE: cbox_id
       DB_USERNAME: cbox_id
       DB_PASSWORD: secret
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: pdo_mysql, pdo_pgsql, sodium, openssl
-          coverage: none
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
