@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\SignIn\AuthPolicyFields;
+use App\Actions\SignIn\InheritSignInPolicy;
+use App\Actions\SignIn\SetSelfServiceSignup;
+use App\Actions\SignIn\UpdateSignInPolicy;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
 use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\CurrentEnvironment;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
-use App\Platform\OrganizationActivity;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -49,10 +51,26 @@ use Inertia\Response;
  * the framework merges the two by taking the stricter value, a page that showed only the
  * effective result would present the operator's floor as the tenant's own setting and then
  * refuse to let them lower it, with nothing on screen explaining why.
+ *
+ * Every write is an ACTION (`App\Actions\SignIn\*`): the same class the management API's
+ * `/v1/sign-in/*` runs, so a rule is checked, refused and recorded the same way whichever
+ * door changed it. This controller maps the form to the action's input, and its refusals
+ * back onto the form's fields.
  */
 final readonly class AuthPolicyController extends ConsoleController
 {
     private const PER_PAGE = 25;
+
+    /** The action's input names, as this page's form fields. */
+    private const FIELDS = [
+        'min_length' => 'minLength',
+        'require_breach_check' => 'requireBreachCheck',
+        'max_age_days' => 'maxAgeDays',
+        'reuse_history' => 'reuseHistory',
+        'mfa' => 'mfa',
+        'sso' => 'sso',
+        'lockout_threshold' => 'lockoutThreshold',
+    ];
 
     public function edit(AuthPolicies $policies): Response
     {
@@ -129,36 +147,21 @@ final readonly class AuthPolicyController extends ConsoleController
      * environment — every organization in it included — so an organization administrator
      * has no say in it, and its arrival from the other plane is refused rather than
      * quietly applied to the environment anyway.
+     *
+     * The write is the ACTION ({@see SetSelfServiceSignup}) the management API runs, which
+     * records it on the workspace's trail and refuses when there is no workspace to record
+     * it on — before the switch moves.
      */
-    public function selfServiceSignup(
-        SaveSelfServiceSignupRequest $request,
-        SelfServiceSignup $selfService,
-        OrganizationActivity $activity,
-    ): RedirectResponse {
+    public function selfServiceSignup(SaveSelfServiceSignupRequest $request): RedirectResponse
+    {
         $this->scope->assertMayAdministerEnvironment();
-
-        $environment = $this->currentEnvironment();
-
-        abort_if($environment === null, 404);
-
-        // Where the change is recorded: the workspace whose membership opened this
-        // console, as every other environment-plane write records it. Resolved before the
-        // write, so there is no path that changes the door and then has nowhere to say so.
-        $auditScope = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
-
-        abort_unless(is_string($auditScope) && $auditScope !== '', 403);
 
         $enabled = $request->enabled();
 
-        if ($selfService->set($environment, $enabled)) {
-            $activity->record(
-                $auditScope,
-                $enabled ? 'environment.self_service_signup_enabled' : 'environment.self_service_signup_disabled',
-                $this->scope->actorId(),
-                targetType: 'environment',
-                targetId: $environment->id,
-                request: $request,
-            );
+        $result = $this->act(SetSelfServiceSignup::class, ['enabled' => $enabled], [], 'enabled');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
         return back()->with('status', $enabled
@@ -166,33 +169,26 @@ final readonly class AuthPolicyController extends ConsoleController
             : 'Self-service sign-up is off. People join by invitation.');
     }
 
-    public function update(SaveAuthPolicyRequest $request, AuthPolicies $policies): RedirectResponse
+    /**
+     * Save the rules at this plane's level, through the ACTION the management API runs
+     * ({@see UpdateSignInPolicy}): the baseline here on the environment plane, this
+     * organization's override on the other — where a loosening is refused field by field.
+     *
+     * The action writes through the {@see AuthPolicies} contract, which is what makes the
+     * session revocation happen at all: it lives in a decorator around that interface.
+     */
+    public function update(SaveAuthPolicyRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
         $policy = $request->policy();
 
-        if (! $this->onEnvironmentPlane()) {
-            $refusals = $this->loosenings($policy, $policies->forEnvironment());
+        $result = $this->act(UpdateSignInPolicy::class, [
+            'organization_id' => $this->onEnvironmentPlane() ? null : $this->organizationId(),
+            ...AuthPolicyFields::toArray($policy),
+        ], self::FIELDS);
 
-            if ($refusals !== []) {
-                return back()->withInput()->withErrors($refusals);
-            }
-        }
-
-        /*
-         * THROUGH THE CONTRACT on both planes, which is what makes the session revocation
-         * happen at all: it lives in a decorator around this interface, so a page that
-         * reached for the concrete store would tighten the mandate and leave every password
-         * session it just invalidated wide open.
-         */
-        if ($this->onEnvironmentPlane()) {
-            $policies->setForEnvironment($policy);
-        } else {
-            $policies->setForOrganization($this->organizationId(), $policy);
-        }
-
-        return back()->with('status', 'Sign-in rules saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sign-in rules saved.');
     }
 
     /**
@@ -201,7 +197,7 @@ final readonly class AuthPolicyController extends ConsoleController
      * Organization plane only — the environment baseline is what everything else inherits
      * FROM, so there is nothing above it to fall back to.
      */
-    public function inherit(AuthPolicies $policies): RedirectResponse
+    public function inherit(): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -210,58 +206,9 @@ final readonly class AuthPolicyController extends ConsoleController
         abort_if($this->onEnvironmentPlane(), 403,
             'The environment baseline is what organizations inherit; it cannot itself inherit.');
 
-        $policies->clearForOrganization($this->organizationId());
+        $result = $this->act(InheritSignInPolicy::class, ['organization_id' => $this->organizationId()]);
 
-        return back()->with('status', 'Back to the environment defaults.');
-    }
-
-    /**
-     * Field errors for anything an override tries to LOOSEN.
-     *
-     * Every one of these is a value `tightenedWith()` would throw away, so storing one
-     * would leave the console showing a number that is not in force anywhere. Refused with
-     * a message naming the floor instead — the difference between a console that appears
-     * to have saved something and one an administrator can trust.
-     *
-     * @return array<string, string>
-     */
-    private function loosenings(AuthPolicy $policy, AuthPolicy $baseline): array
-    {
-        $errors = [];
-
-        if ($policy->minLength < $baseline->minLength) {
-            $errors['minLength'] = 'Your environment requires at least '.$baseline->minLength.' characters.';
-        }
-
-        if ($policy->reuseHistory < $baseline->reuseHistory) {
-            $errors['reuseHistory'] = 'Your environment blocks reuse of the last '.$baseline->reuseHistory.'.';
-        }
-
-        // Null means "no limit", so it is the LOOSEST value either field can hold: an
-        // override may shorten the environment's deadline, never remove it.
-        if ($baseline->maxAgeDays !== null
-            && ($policy->maxAgeDays === null || $policy->maxAgeDays > $baseline->maxAgeDays)) {
-            $errors['maxAgeDays'] = 'Your environment forces a change after '.$baseline->maxAgeDays.' days at the latest.';
-        }
-
-        if ($baseline->lockoutThreshold !== null
-            && ($policy->lockoutThreshold === null || $policy->lockoutThreshold > $baseline->lockoutThreshold)) {
-            $errors['lockoutThreshold'] = 'Your environment locks out after '.$baseline->lockoutThreshold.' failed attempts at the most.';
-        }
-
-        if ($baseline->requireBreachCheck && ! $policy->requireBreachCheck) {
-            $errors['requireBreachCheck'] = 'Your environment requires the breach check.';
-        }
-
-        if ($policy->mfa->atLeast($baseline->mfa) !== $policy->mfa) {
-            $errors['mfa'] = 'Your environment requires at least "'.$baseline->mfa->value.'".';
-        }
-
-        if ($policy->sso->atLeast($baseline->sso) !== $policy->sso) {
-            $errors['sso'] = 'Your environment requires at least "'.$baseline->sso->value.'".';
-        }
-
-        return $errors;
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Back to the environment defaults.');
     }
 
     /**

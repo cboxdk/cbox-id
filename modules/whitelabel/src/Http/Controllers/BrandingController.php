@@ -7,6 +7,7 @@ namespace Cbox\Id\Whitelabel\Http\Controllers;
 use App\Http\Controllers\Console\ConsoleController;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Help\HelpTopic;
+use Cbox\Id\Whitelabel\Actions\SaveBranding;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Http\Requests\SaveBrandingRequest;
@@ -74,64 +75,68 @@ final readonly class BrandingController extends ConsoleController
         ]);
     }
 
+    /**
+     * Save through the ACTION the management API runs ({@see SaveBranding}) — the palette
+     * check and the altitude rule are the action's — then store the two uploads beside it.
+     *
+     * THE ALTITUDE THE SCOPE RESOLVES, and no other. This used to read and write the
+     * `organization_id IS NULL` row unconditionally behind an ORG-admin check, so an admin of
+     * one tenant re-branded the console and the hosted sign-in page for every other tenant;
+     * it was then pinned to the organization, which left the environment default with no
+     * editor. The scope answers null only on the environment plane, and the action refuses
+     * any other organization than the scope's on the organization plane.
+     *
+     * The images are uploads, which a JSON API does not carry and the action therefore does
+     * not take: they are stored after the action has accepted the rest, so a refused palette
+     * never leaves an orphaned file behind.
+     */
     public function save(SaveBrandingRequest $request, BrandProfiles $profiles, BrandAssetStore $assets): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $clean = [];
+        $organizationId = $this->scope->organizationId();
+        $palette = [];
 
         foreach (PaletteTokens::TOKENS as $token) {
-            $value = $request->palette()[$token] ?? '';
-
-            if ($value === '') {
-                continue;
-            }
-
-            if (! PaletteTokens::isValidColor($value)) {
-                return back()->withInput()->withErrors([
-                    'palette.'.$token => 'Use a hex (#0a2540) or oklch(...) colour.',
-                ]);
-            }
-
-            $clean[$token] = $value;
+            $palette[$token] = $request->palette()[$token] ?? '';
         }
 
-        /*
-         * THE ALTITUDE THE SCOPE RESOLVES, and no other.
-         *
-         * This used to read and write `forEnvironment()` unconditionally — the
-         * `organization_id IS NULL` row every organization inherits — behind an ORG-admin
-         * check, so an admin of one tenant re-branded the console and the hosted sign-in page
-         * for every other tenant in the environment. It was then pinned to the organization,
-         * which closed that and left the environment default with no editor.
-         */
-        $organizationId = $this->scope->organizationId();
-        $profile = $this->profile() ?? new BrandProfile(['organization_id' => $organizationId]);
-
-        $logoUrl = $profile->logo_url;
-        $faviconUrl = $profile->favicon_url;
-
-        if ($request->file('logo') !== null) {
-            $assets->forget($profile->logo_url);
-            $logoUrl = $assets->put('logo', $request->file('logo'));
-        }
-
-        if ($request->file('favicon') !== null) {
-            $assets->forget($profile->favicon_url);
-            $faviconUrl = $assets->put('favicon', $request->file('favicon'));
-        }
-
-        $profile->fill([
+        $result = $this->act(SaveBranding::class, [
             'organization_id' => $organizationId,
-            'palette' => $clean,
+            'palette' => $palette,
             'app_name' => $request->appName(),
             'email_from_name' => $request->emailFromName(),
-            'email_templates' => $profile->email_templates->with('welcome', $request->emailTemplate()),
-            'logo_url' => $logoUrl,
-            'favicon_url' => $faviconUrl,
-        ]);
+            'email_template' => $request->emailTemplate(),
+        ], [
+            ...array_combine(
+                array_map(static fn (string $token): string => 'palette.'.$token, PaletteTokens::TOKENS),
+                array_map(static fn (string $token): string => 'palette.'.$token, PaletteTokens::TOKENS),
+            ),
+            'app_name' => 'appName',
+            'email_from_name' => 'emailFromName',
+            'email_template' => 'emailTemplate',
+        ], 'appName');
 
-        $profiles->save($profile);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var BrandProfile $profile */
+        $profile = $result->value;
+
+        if ($request->file('logo') !== null || $request->file('favicon') !== null) {
+            if ($request->file('logo') !== null) {
+                $assets->forget($profile->logo_url);
+                $profile->logo_url = $assets->put('logo', $request->file('logo'));
+            }
+
+            if ($request->file('favicon') !== null) {
+                $assets->forget($profile->favicon_url);
+                $profile->favicon_url = $assets->put('favicon', $request->file('favicon'));
+            }
+
+            $profiles->save($profile);
+        }
 
         return back()->with('status', 'Branding saved.');
     }

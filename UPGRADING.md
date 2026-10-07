@@ -16,6 +16,17 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### laravel-id 1.21: run the migrations
+
+`cboxdk/laravel-id` is now `^1.21`. Run `php artisan migrate`: the framework's 1.21
+migrations are additive. Read the package's
+[1.21 upgrade notes](https://github.com/cboxdk/laravel-id/blob/v1.21.0/UPGRADING.md).
+
+- **New API endpoints** for sign-in rules, social providers, frontend keys, SAML apps,
+  the legacy login, branding and the custom domain, behind the new `signin:*`,
+  `frontend_keys:*`, `saml_apps:*`, `branding:*` and `domains:*` scopes. An existing key
+  carries none of them, so nothing changes until an administrator mints a key that does.
+
 ### Your customers' administrators lose the product's pages
 
 Multi-tenant deployments only. On a customer's environment host, the organization console

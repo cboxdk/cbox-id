@@ -24,7 +24,7 @@ use Tests\Feature\Actions\ActionParityTest;
 final class ParityAllowlist
 {
     /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 251;
+    public const int BASELINE = 229;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -125,14 +125,11 @@ final class ParityAllowlist
             'account.sessions.revoke',
             'account.sessions.revoke-others',
             'account.social.destroy',
-            'appearance.update',
             'approvals.approve',
             'approvals.deny',
             'audit-streams.destroy',
             'audit-streams.store',
             'audit-streams.toggle',
-            'auth-policy.inherit',
-            'auth-policy.update',
             'clients.destroy',
             'clients.manifest',
             'clients.rotate',
@@ -179,14 +176,10 @@ final class ParityAllowlist
             'environment-domains.destroy',
             'environment-domains.store',
             'environment-domains.verify',
-            'environment.appearance.update',
             'environment.approvals.deny',
             'environment.audit-streams.destroy',
             'environment.audit-streams.store',
             'environment.audit-streams.toggle',
-            'environment.auth-policy.inherit',
-            'environment.auth-policy.self-service-signup',
-            'environment.auth-policy.update',
             'environment.clients.copy',
             'environment.clients.destroy',
             'environment.clients.manifest',
@@ -229,13 +222,7 @@ final class ParityAllowlist
             'environment.hooks.toggle',
             'environment.impersonate',
             'environment.keys.destroy',
-            'environment.keys.frontend.destroy',
-            'environment.keys.frontend.origins',
-            'environment.keys.frontend.store',
             'environment.keys.store',
-            'environment.legacy-login.approve',
-            'environment.legacy-login.probe',
-            'environment.legacy-login.revoke',
             'environment.organizations.api-keys.revoke',
             'environment.organizations.destroy',
             'environment.organizations.domains.capture',
@@ -265,14 +252,9 @@ final class ParityAllowlist
             'environment.roles.store',
             'environment.roles.update',
             'environment.settings.rename',
-            'environment.social-providers.destroy',
-            'environment.social-providers.store',
             'environment.sod-policies.destroy',
             'environment.sod-policies.store',
             'environment.sod-policies.toggle',
-            'environment.sso-providers.destroy',
-            'environment.sso-providers.store',
-            'environment.sso-providers.update',
             'environment.staff.destroy',
             'environment.staff.store',
             'environment.support-sessions.end',
@@ -304,7 +286,6 @@ final class ParityAllowlist
             'environment.webhooks.rotate',
             'environment.webhooks.store',
             'environment.webhooks.update',
-            'environment.whitelabel.branding.save',
             'governance.close',
             'governance.item',
             'governance.store',
@@ -351,8 +332,6 @@ final class ParityAllowlist
             'roles.update',
             'settings.organization.destroy',
             'settings.rename',
-            'social-providers.destroy',
-            'social-providers.store',
             'sod-policies.destroy',
             'sod-policies.store',
             'sod-policies.toggle',
@@ -367,7 +346,6 @@ final class ParityAllowlist
             'webhooks.rotate',
             'webhooks.store',
             'webhooks.update',
-            'whitelabel.branding.save',
         ];
     }
 

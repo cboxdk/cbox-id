@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRegistry;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,12 +13,22 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Discovered from the directory directly: a dataset is resolved before the application
-// boots, so it cannot ask the container for the registry.
-dataset('actions', fn (): array => array_map(
-    static fn (ActionDefinition $action): array => [$action],
-    (new ActionRegistry(dirname(__DIR__, 3).'/app/Actions'))->all(),
-));
+// Discovered from the directories directly: a dataset is resolved before the application
+// boots, so it cannot ask the container for the registry. A module's actions live in its
+// own `src/Actions`, under the namespace composer maps that module to.
+dataset('actions', function (): array {
+    $root = dirname(__DIR__, 3);
+    $registry = new ActionRegistry($root.'/app/Actions');
+    $composer = json_decode((string) file_get_contents($root.'/composer.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    foreach ($composer['autoload']['psr-4'] ?? [] as $namespace => $path) {
+        if (is_string($path) && str_starts_with($path, 'modules/') && is_dir($root.'/'.$path.'Actions')) {
+            $registry->discoverIn($root.'/'.$path.'Actions', $namespace.'Actions');
+        }
+    }
+
+    return array_map(static fn (ActionDefinition $action): array => [$action], $registry->all());
+});
 
 it('discovers the actions', function (): void {
     expect(app(ActionRegistry::class)->all())->not->toBeEmpty();
@@ -34,10 +44,10 @@ it('is routed on REST exactly as it declares, behind its scope', function (Actio
 })->with('actions');
 
 it('requires a scope a key can actually carry', function (ActionDefinition $action): void {
-    $scope = EnvironmentApiScope::tryFrom($action->scope);
+    $scopes = app(ManagementScopes::class);
 
-    expect($scope)->not->toBeNull("{$action->name} requires {$action->scope}, which is no environment key scope")
-        ->and(in_array($scope, EnvironmentApiScope::offerable(), true))->toBeTrue("{$action->scope} is not offered on the key form");
+    expect($scopes->knows($action->scope))->toBeTrue("{$action->name} requires {$action->scope}, which no key can carry — add it to AppManagementScopes::APP_SCOPES")
+        ->and(in_array($action->scope, $scopes->offerable(), true))->toBeTrue("{$action->scope} is not offered on the key form");
 })->with('actions');
 
 it('matches its danger to its method and scope', function (ActionDefinition $action): void {
