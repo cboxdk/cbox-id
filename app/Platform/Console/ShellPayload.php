@@ -118,6 +118,7 @@ final readonly class ShellPayload
 
         $isAdmin = Console::context()->isAdmin();
         $workspace = $this->scope->atWorkspaceAltitude();
+        $customer = $this->scope->atCustomerAltitude();
 
         $areas = [];
         // Whether this page is one the workspace console does not offer — reached by URL.
@@ -152,6 +153,13 @@ final readonly class ShellPayload
                 if ($workspace && ! WorkspaceAltitude::keepsPage($area->key, $page->route)) {
                     $offRail = $offRail || $this->routeIsCurrent($page->route, $claimed);
 
+                    continue;
+                }
+
+                // A CUSTOMER'S CONSOLE is an admin portal and the person's own pages — see
+                // CustomerConsole. Withheld AND refused: the same list answers 404 at the
+                // door, so there is no "reached by URL" case to put a notice above.
+                if ($customer && ! CustomerConsole::keepsPage($area->key, $page->route)) {
                     continue;
                 }
 

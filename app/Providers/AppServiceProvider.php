@@ -12,7 +12,6 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
-use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
@@ -85,12 +84,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Contributed to `cbox-id:doctor` rather than shipped as a second health command.
-        // Both findings these catch failed silently — a deployment claiming a shape it
-        // cannot serve, and two console planes grown apart — so the only thing that makes
-        // them visible is a command someone actually runs.
+        // A deployment claiming a shape it cannot serve fails silently, so the only thing
+        // that makes it visible is a command someone actually runs.
+        //
+        // There was a console-parity check here too, failing the doctor whenever the
+        // organization and environment consoles offered different pages. They do now, on
+        // purpose: a customer's organization console is an admin portal and the product's
+        // administration is the environment console's (see CustomerConsole).
         $checks = $this->app->make(HealthChecks::class);
         $checks->add($this->app->make(TenancyHealthCheck::class));
-        $checks->add($this->app->make(ConsoleParityHealthCheck::class));
         $checks->add($this->app->make(SchedulerDoctorCheck::class));
         $checks->add($this->app->make(ProductionConfigDoctorCheck::class));
 

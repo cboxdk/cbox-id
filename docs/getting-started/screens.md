@@ -26,19 +26,20 @@ you signed in and what you administer:
 | Console | Where | Who it is for |
 |---|---|---|
 | **Workspace console** | The platform root host of a hosted deployment | Your own Cbox workspace: projects, team, keys, billing |
-| **Organization console** | An organization's host, or a single-tenant install | One organization: its members, sign-in, apps |
-| **Environment console** | `/admin` on an environment's own host | One environment: every organization in it, and their users |
+| **Organization console** | A customer's environment host, or a single-tenant install | One organization: on a customer's host an admin portal (members, SSO, directory sync, roles, audit log); on a single-tenant install everything, apps included |
+| **Environment console** | `/admin` on an environment's own host | One environment: every organization in it, their users, and the product's apps, hooks and settings |
 
-The organization and environment consoles offer the same capabilities; the environment
-console adds **Organizations** and an acting-organization picker, because it administers
-many organizations rather than one. A health check (`cbox-id:doctor`) fails if the two
-ever offer different capabilities. [Workspaces &
+On a hosted deployment the two are deliberately different. A customer's administrator gets
+an admin portal and their own pages; the product's administration (apps, webhooks, the
+token vault and the rest) is the environment console's alone, and its URLs answer 404 on
+the customer's console. On a single-tenant install there is no environment console, so the
+organization console keeps every page. [Workspaces &
 organizations](../core-concepts/workspaces-and-organizations.md) explains the difference
-between a workspace and an organization.
+between a workspace and an organization, and lists what a customer's console keeps.
 
-Every page has **one URL**, the same on both consoles; the environment console's is that
-path under `/admin` (`/apps` and `/admin/apps`). Old paths answer with a 301, so a
-bookmark still works. [Upgrading](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)
+A page offered by both consoles has **one URL**; the environment console's is that path
+under `/admin` (`/roles` and `/admin/roles`). Old paths answer with a 301, so a bookmark
+still works. [Upgrading](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)
 lists them.
 
 The deployment's own pages (workspaces, environments, organizations, operators) are the
@@ -112,6 +113,11 @@ environment's console; everyone else lands on **Projects**, where each environme
 **Open console**.
 
 ## The organization console, area by area
+
+The full organization console, as a single-tenant install (and an operator) sees it. On a
+customer's environment host it keeps Overview and Approve agent requests, People (Members,
+Roles, Permissions), Single sign-on and Sync users in, the Activity log, and My account;
+every other page below is on the environment console instead.
 
 ### Overview
 
@@ -204,7 +210,7 @@ No screenshot of its own. The 2026-07-13 image above filed these settings under
 
 ## The environment console
 
-The same areas as the organization console, plus the ones that only make sense for a
+Every area of the full organization console, plus the ones that only make sense for a
 whole environment:
 
 - **Overview:** Overview, Usage, **Review agent requests** (every pending agent request

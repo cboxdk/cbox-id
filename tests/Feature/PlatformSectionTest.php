@@ -260,3 +260,49 @@ it('creates operators and toggles their status, but never the current one', func
     expect($rows->firstWhere('id', $me->id)['isSelf'])->toBeTrue()
         ->and($rows->firstWhere('id', $grace->id)['isSelf'])->toBeFalse();
 });
+
+/**
+ * THE TARGET SWITCHER MUST OFFER THE THING ITS LABEL LOOKS LIKE.
+ *
+ * Selecting a row re-points the operator console at that environment while staying on the
+ * operator host — the platform pages read through the pointed environment, so that
+ * operation has to exist. But "switch target" most naturally reads as "take me to that
+ * environment", and that path existed only from Projects: `environment.open` mints a
+ * signed handoff to the environment's own host, no second login.
+ *
+ * So the control that read like navigation could not navigate, and the one that could was
+ * on another page. Both are in the menu now.
+ */
+it('offers both re-pointing and opening from the operator target switcher', function (): void {
+    actAsOperator('switcher@platform.test');
+    platformRootEnvironment();
+
+    // The switcher only renders with somewhere to switch TO — `$canSwitchEnv` is
+    // `count() > 1`, which is right: a menu with one entry and no destination is noise.
+    app(EnvironmentContext::class)->withoutScope(
+        fn () => Environment::query()->create([
+            'name' => 'Production', 'slug' => 'a-tenant-env',
+        ]),
+    );
+
+    $options = collect(
+        (array) $this->get(route('platform.environments'))->assertOk()->inertiaProps('shell.environments')
+    );
+
+    // ASKED OF THE PROPS, not of the document: the switcher is a React menu, so the
+    // re-point URL is built on the client and never appears in the HTML — a string match
+    // on the page would now pass or fail for reasons that have nothing to do with what
+    // the menu offers.
+    $other = $options->firstWhere('current', false);
+
+    expect($other)->not->toBeNull('the switcher had nothing to switch to')
+        // The handoff link — the half that was missing. A signed hand-off to the
+        // environment's own host, so "switch target" can actually take you there.
+        ->and($other['openHref'])->toMatch('#/open/[0-9a-zA-Z]+#');
+
+    // …and re-pointing still works, driven rather than matched: the operator-only target
+    // key moves to the chosen plane. That is the other half of the menu.
+    targetPlatformEnvironment($other['id']);
+
+    expect(session(OperatorEnvironment::SESSION_KEY))->toBe('a-tenant-env');
+})->group('ux');

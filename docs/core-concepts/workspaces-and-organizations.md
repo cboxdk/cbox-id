@@ -89,14 +89,45 @@ Those pages are **hidden from the rail, not redirected.** Three reasons:
 The workspace console also has no Overview page (`/dashboard`) and no setup guide
 (`/get-started`). Both described the workspace's own record, not your product.
 
-Everyone else keeps the full console: an operator, a single-tenant install (where the
-root environment *is* the product) and every organization on any other host.
+An operator and a single-tenant install (where the root environment *is* the product)
+keep the full organization console. Your customers get the narrower one below.
+
+### Your customer's organization console
+
+On your environment's own host, signed in as one of your customers' administrators: a
+person who signs in to your product and administers their company's organization in it.
+This console is an admin portal for their IT department, plus their own pages:
+
+| Area | Pages |
+|---|---|
+| **Overview** | Overview (their organization's numbers and recent activity), Approve agent requests |
+| **People** | Members, Roles, Permissions |
+| **Sign-in** | Single sign-on (with its verified domains), Sync users in |
+| **Logs** | Activity log |
+| **My account** | Security, Sessions & activity, API keys (when one of your apps offers them), Trusted devices (when the devices module is on) |
+
+Everything else is your product's administration and lives in the environment console:
+apps and APIs, webhooks, inline hooks, the token vault, access reviews, role conflicts,
+sync users out, log streaming, social sign-in, sign-in rules, appearance and branding,
+usage, settings, member API keys, the setup guide and the module pages (sign-in activity,
+compliance, connectors, trusted-device inventory, risk events).
+
+Those pages are **not there** on this console, not just hidden from the rail: their URLs
+answer 404, writes included. Unlike the workspace console there is nothing to strand, since
+the same records stay reachable from your environment console at `/admin`. One list decides
+both the rail and the 404, so the two cannot disagree
+([`CustomerConsole`](https://github.com/cboxdk/cbox-id/blob/main/app/Platform/Console/CustomerConsole.php)).
+
+The organization console and the environment console used to be required to offer the
+same capabilities, with a doctor check that failed if they did not. That rule is gone:
+the consoles differ on purpose now.
 
 ### An environment console
 
 At `/admin` on that environment's own host, reached from **Projects** with **Open
 console**. Its rail is about your product: **Organizations** (your customers), their
-users, roles, sign-in, apps and keys. Nothing on it is about your Cbox workspace.
+users, roles, sign-in, apps and keys. Nothing on it is about your Cbox workspace, and
+everything your customers' own console leaves out is here.
 
 The topbar says where you are and how to get back:
 

@@ -789,6 +789,29 @@ class ConsoleScope
     }
 
     /**
+     * Whether this console is a CUSTOMER's own — see {@see CustomerConsole}.
+     *
+     * Three conditions, each load-bearing. The organization console, because the
+     * environment console is the vendor's and keeps everything. A customer's environment on
+     * a multi-tenant deployment, because that is the one shape with an environment console
+     * beside this one to have taken the rest: on a single-tenant install this console IS
+     * the administration, and at the platform root it is the operator's and the workspace's.
+     * And not an operator, for the same reason {@see atWorkspaceAltitude()} gives — the
+     * full console is their job, and an operator whose environment selection is pinned to a
+     * tenant must not lose it for having looked there.
+     *
+     * Asked of the RESOLVED environment, as the workspace altitude is, so the two altitudes
+     * cannot both be true of one request: one needs the platform root, the other anything
+     * but it.
+     */
+    public function atCustomerAltitude(): bool
+    {
+        return $this->plane() === ConsolePlane::Organization
+            && $this->planes->onCustomerEnvironment()
+            && ! $this->isPlatformOperator();
+    }
+
+    /**
      * The route that lists this organization's PEOPLE, or null on a plane that has none.
      *
      * TWO PAGES, and which one depends on the organization. A customer's team is its
@@ -853,9 +876,9 @@ class ConsoleScope
      * for EVERY organization in the environment — one tenant's admin revoking another
      * tenant's keys, or approving where the whole environment's passwords are sent.
      *
-     * A capability belongs to both planes unless somebody said otherwise, and this is that
-     * sentence: not drift, and not to be "restored" — the page is absent from the
-     * organization plane because the thing it administers is not the organization's.
+     * Not drift, and not to be "restored": the page is absent from the organization plane
+     * because the thing it administers is not the organization's — on any host, unlike the
+     * pages {@see CustomerConsole} withholds from a customer's environment alone.
      *
      * @throws AuthorizationException
      */

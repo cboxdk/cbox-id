@@ -524,8 +524,16 @@ Route::middleware('plane:console')->group(function (): void {
  * get the same console every other tenant's do. What the root still does not serve is the
  * IdP protocol surface (`plane:issuer`) and the environment-admin door
  * (`plane:environment`); those are different questions and are now asked as such.
+ *
+ * `console.customer` NARROWS IT ON A CUSTOMER'S ENVIRONMENT HOST, and nowhere else. There
+ * the person signed in administers their company's organization inside somebody else's
+ * product, and gets an admin portal (members, single sign-on and its domains, directory
+ * sync, roles, the audit log) plus their own pages; the product's administration — apps,
+ * webhooks, the vault and the rest — is the environment console's, at `/admin`. Every route
+ * below stays REGISTERED, because on a single-tenant install and at the platform root this
+ * group is the only console there is. See {@see \App\Platform\Console\CustomerConsole}.
  */
-Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
+Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer'])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
 
@@ -812,8 +820,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // somewhere to land that is not the form you just submitted. This plane gains editing
     // an app's details and rotating its secret with it; the other gains the roles manifest.
     Route::get('/apps', [ClientController::class, 'index'])->name('clients');
-    // Publishable keys and the legacy-login declaration are NOT here, and that is the
-    // one deliberate exception to "a capability belongs to both planes". Both are owned
+    // Publishable keys and the legacy-login declaration are NOT here, on any host. Both are owned
     // by the environment and have no organization column, so on this plane every
     // organization's administrator would be administering every other organization's —
     // revoking their keys, or approving where the whole environment's passwords are sent.

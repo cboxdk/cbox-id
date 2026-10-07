@@ -40,8 +40,8 @@ final class ConsoleServiceProvider extends ServiceProvider
         $this->app->bind(CurrentContext::class, ConsoleCurrentContext::class);
 
         // Where a MODULE declares a console page — for both planes at once. A singleton
-        // because it is filled during provider boot and read by both rails and the
-        // parity health check for the rest of the process's life.
+        // because it is filled during provider boot and read by both rails for the rest
+        // of the process's life.
         $this->app->singleton(ConsolePages::class);
 
         // The API key pages' rail gates, answered once per request (see ApiKeyPresence).
@@ -53,6 +53,14 @@ final class ConsoleServiceProvider extends ServiceProvider
         $this->identityPlatformFeatures();
 
         $nav = Console::nav();
+
+        // ONE RAIL, THREE CONSOLES. Everything below is the organization console in full —
+        // what a single-tenant install and an operator get. Two altitudes draw less of it,
+        // each from a list of its own: a workspace at the platform root
+        // ({@see \App\Platform\Console\WorkspaceAltitude}) and a customer's administrator on
+        // a customer's environment host ({@see \App\Platform\Console\CustomerConsole}), who
+        // gets an admin portal and their own pages. An area added here appears on neither
+        // of those until its list says so.
 
         // OVERVIEW IS THE ONE AREA THAT MIXES BOTH KINDS. The rail's role gate works on
         // whole AREAS — a plain member sees `overview`, `account` and nothing else — while
@@ -156,9 +164,9 @@ final class ConsoleServiceProvider extends ServiceProvider
         // their pages to this area rather than minting their own (see below).
         $nav->area('audit', 'Logs', 'audit', 70)
             ->page('audit', 'Activity log', order: 10)
-            // Environment-plane-only until now. Shipping the audit trail to a SIEM is an
-            // obligation the ORGANIZATION carries, so hiding it from the organization
-            // plane meant the party answerable for it could not see whether it ran.
+            // Where this console is the environment's own administration — a single-tenant
+            // install, the platform root. Not on a customer's console: there shipping the
+            // trail to a SIEM is the vendor's job, done from the environment console.
             ->page('audit-streams', 'Log streaming', order: 20);
 
         $nav->area('settings', 'Settings', 'settings', 80)

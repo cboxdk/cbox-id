@@ -25,8 +25,8 @@ uses(RefreshDatabase::class);
  *
  * One component serves both planes now, and the routable index/new/show shape won over
  * the organization plane's single page: an endpoint has a lifecycle worth linking to,
- * and the one-time signing secret needs somewhere to land. The parity tests in
- * ConsoleParityTest hold the other door open; this file holds this one.
+ * and the one-time signing secret needs somewhere to land. The environment-plane
+ * halves in ConsoleCapabilitiesTest hold the other door open; this file holds this one.
  */
 function hooksAdmin(MembershipRole $role = MembershipRole::Owner): string
 {

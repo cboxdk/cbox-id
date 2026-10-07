@@ -8,7 +8,6 @@ use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\ConsoleLocation;
-use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Providers\ConsoleServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -139,9 +138,9 @@ class ConsoleNavigation
      * Pages whose route is missing are dropped rather than rendered. That is the one
      * place this file is deliberately quiet: the rail renders on EVERY page of the plane,
      * so a module that declared both planes and routed one would take the whole
-     * environment console down with a RouteNotFoundException. The
-     * {@see ConsoleParityHealthCheck} reports exactly that case, which
-     * is where a missing route should be loud — in the doctor, not in a 500 on every page.
+     * environment console down with a RouteNotFoundException. The suite is where that
+     * case is loud instead (tests/Feature/ModuleConsolePagesTest.php routes every declared
+     * page on every plane it names) — in CI, not in a 500 on every page.
      *
      * @param  list<NavArea>  $areas
      * @return list<NavArea>

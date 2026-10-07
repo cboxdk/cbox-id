@@ -56,7 +56,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
  */
 function twoTenants(): array
 {
-    // See ModulePlaneParityTest: `/admin` exists only on a multi-tenant deployment, and
+    // See ModuleConsolePagesTest: `/admin` exists only on a multi-tenant deployment, and
     // these assertions are about what an environment administrator sees there.
     multiTenantDeployment();
     platformRootEnvironment();

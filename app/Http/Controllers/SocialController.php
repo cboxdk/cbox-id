@@ -139,6 +139,11 @@ final class SocialController extends Controller
         return $this->start($request, $provider, route('social.connect.callback', $provider));
     }
 
+    /**
+     * Back to MY ACCOUNT, where linked providers are listed and unlinked — not to the
+     * organization's Settings, which is not where the person started and which a
+     * customer's console does not offer at all (see CustomerConsole).
+     */
     public function connectCallback(string $provider, Request $request, Subjects $subjects, CurrentUser $me): RedirectResponse
     {
         $operator = $this->providers->find($provider);
@@ -148,16 +153,16 @@ final class SocialController extends Controller
         $principal = $this->resolve($request, $operator, route('social.connect.callback', $provider));
 
         if ($principal === null) {
-            return redirect()->route('settings')->with('error', 'Connecting '.$operator->label().' was cancelled or failed.');
+            return redirect()->route('account')->with('error', 'Connecting '.$operator->label().' was cancelled or failed.');
         }
 
         try {
             $subjects->link($me->id(), $principal);
         } catch (IdentityAlreadyLinked) {
-            return redirect()->route('settings')->with('error', 'That '.$operator->label().' account is already linked to another user.');
+            return redirect()->route('account')->with('error', 'That '.$operator->label().' account is already linked to another user.');
         }
 
-        return redirect()->route('settings')->with('status', $operator->label().' connected.');
+        return redirect()->route('account')->with('status', $operator->label().' connected.');
     }
 
     /**

@@ -16,6 +16,27 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Your customers' administrators lose the product's pages
+
+Multi-tenant deployments only. On a customer's environment host, the organization console
+(the one a customer's administrator signs in to as a user of your product) keeps Members,
+Roles, Permissions, Single sign-on and its domains, Sync users in, the Activity log, the
+Overview and the person's own pages. Everything else answers **404** there: apps, webhooks,
+inline hooks, token vault, access reviews, role conflicts, sync users out, log streaming,
+social sign-in, sign-in rules, appearance, settings, usage, member API keys, the setup guide
+and the module pages (sign-in activity, compliance, connectors, trusted devices, risk
+events, branding).
+
+- **Nothing is deleted.** Every record those pages manage is still there, and environment
+  administrators reach all of it at `/admin` on the same host, as before.
+- **Tell the customers who used them.** A customer admin who registered an app, a webhook
+  or a log stream for their organization can no longer change it themselves; an
+  environment administrator does it from `/admin`, acting on that organization. Bookmarks
+  to those pages will 404.
+- **Single-tenant installs, operators and the workspace console are unchanged.**
+- **`cbox-id:doctor` no longer has a "Console parity" check.** If you alert on its output
+  by check name, drop that one.
+
 ### Run the scheduler — and alert on it
 
 `cbox.yaml` now declares a `scheduler` process (`php artisan schedule:work`). Every other

@@ -331,7 +331,10 @@ it('keeps a scope the environment kept for itself off an organization\'s app, th
     crudSetup();
     $api = taxApiThroughConsole();
 
-    // …and now an organization's administrator, on their own console, with their own app.
+    // …and now an organization's administrator, on their own console, with their own app —
+    // a single-tenant install's console, the one that still offers an organization its apps
+    // (a customer's console on a multi-tenant host does not; see CustomerConsoleTest).
+    singleTenantDeployment();
     [, $org] = actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
 
