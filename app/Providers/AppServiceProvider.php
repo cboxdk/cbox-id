@@ -6,6 +6,7 @@ use App\Http\ApiRateLimiters;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Listeners\SuppressSandboxMail;
+use App\Mcp\McpCaller;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
@@ -56,6 +57,10 @@ class AppServiceProvider extends ServiceProvider
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
         $this->app->scoped(EnvironmentApiContext::class);
+
+        // Who is calling the MCP server on this request — set by AuthenticateMcp, read by
+        // every tool. Scoped and cleared after the request, like the key context above.
+        $this->app->scoped(McpCaller::class);
 
         // …and what it does is recorded as ITS act: the framework services behind the
         // management API write their own audit entries, mostly with no actor at all.

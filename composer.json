@@ -29,6 +29,7 @@
         "firebase/php-jwt": "^7.0",
         "inertiajs/inertia-laravel": "^3.3",
         "laravel/framework": "^13.0",
+        "laravel/mcp": "^1.0",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1"
     },

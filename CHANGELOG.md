@@ -150,6 +150,19 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **An MCP server on every environment host, at `/mcp`.** Claude Code, Cursor or any MCP
+  client connects with a management key (`Authorization: Bearer cbid_env_…`) and gets one
+  tool per action, built from the action registry: today the seven APIs actions
+  (`apis_create`, `apis_delete`, …), plus `whoami` and `list_actions`. A tool appears only
+  when the key holds its scope, and every call runs through the same runner as the REST
+  API, so the checks, refusals (`{error, message, field}` as a tool error) and activity log
+  entries are the API's. Write tools take an `idempotency_key` that shares its records with
+  the API's `Idempotency-Key`. Destructive actions are annotated as such so a client asks
+  before running them. A refused request gets a `WWW-Authenticate` challenge pointing at
+  `/.well-known/oauth-protected-resource/mcp` (RFC 9728), which names the environment's
+  issuer; OAuth sign-in for MCP clients is not accepted yet. Rate limited per key at 240 a
+  minute (`CBOX_ID_API_RATE_LIMIT_MCP`); laravel/mcp's tool search is available behind
+  `CBOX_ID_MCP_TOOL_SEARCH`, off by default. See `docs/guides/agents-and-mcp.md`.
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,
