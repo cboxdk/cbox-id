@@ -30,9 +30,10 @@ We don't currently operate a bug-bounty program.
 
 ## Supported versions
 
-The project is **pre-1.0** and pinned to a pre-1.0 framework (`cboxdk/laravel-id`).
-Fixes land on the latest `main`; we don't backport to older tags. Run a current
-checkout.
+Cbox ID ships tagged releases (1.x) on the 1.x line of its framework,
+`cboxdk/laravel-id` — the exact constraint is in `composer.json`. Fixes land on `main`
+and go out in the next release; we don't backport to older tags. Run the latest release
+or a current checkout.
 
 ## Framework-level security posture
 

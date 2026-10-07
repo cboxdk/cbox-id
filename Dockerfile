@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Image for cboxdk/cbox-id — Laravel 13 + Livewire/Volt/Tailwind v4 identity app,
+# Image for cboxdk/cbox-id — Laravel 13 + Inertia/React/Tailwind v4 identity app,
 # built FROM the public cbox php-fpm-nginx base image. Built + pushed by
 # .github/workflows/build-image.yml on the self-hosted runners.
 #
