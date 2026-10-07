@@ -1,5 +1,5 @@
 name: cbox-id
-image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.4-bookworm
+image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
 port: 80
 source: true
 url: APP_URL

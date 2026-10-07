@@ -20,25 +20,17 @@ on:
 jobs:
   baselines:
     runs-on: ubuntu-latest
+    # The SAME image the `test` job in ci.yml judges them in — the cbox base image's dev
+    # tier, Playwright's Chromium baked in, pinned by `-v1`. A baseline drawn anywhere
+    # else is a picture of a different renderer.
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: sodium, openssl, sockets
-          coverage: none
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
 
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
 
       - name: Prepare environment
         run: |

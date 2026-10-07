@@ -21,13 +21,10 @@ jobs:
     # `composer install`, `npm ci` and the suite all execute code from the branch. The
     # org's own runners are for private repositories only.
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
     steps:
       - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.4"
-          coverage: none
-          tools: composer:v2
       - run: composer install --no-interaction --no-progress
       - name: composer audit
         run: composer audit --no-dev

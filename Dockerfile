@@ -13,7 +13,7 @@
 # ---- build stage: composer + frontend (vite) ----
 # Runs on the build host's native arch; vendor/ + public/build are arch-neutral,
 # so the runtime image just COPYs them.
-FROM --platform=$BUILDPLATFORM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm AS build
+FROM --platform=$BUILDPLATFORM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1 AS build
 WORKDIR /var/www/html
 
 # PHP deps first for layer caching. --no-scripts: no app env at build time; the
@@ -30,7 +30,7 @@ COPY . .
 RUN npm run build && rm -rf node_modules
 
 # ---- runtime image ----
-FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm
+FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
 WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 
