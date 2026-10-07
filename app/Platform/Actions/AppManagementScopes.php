@@ -64,6 +64,46 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Read the audit log',
             'description' => 'Read this environment\'s audit trail: who did what, to what, and when.',
         ],
+        'signin:read' => [
+            'label' => 'Read sign-in rules',
+            'description' => 'Read the sign-in rules, the social sign-in providers and the legacy login declaration — never a provider\'s secret.',
+        ],
+        'signin:write' => [
+            'label' => 'Change how people sign in',
+            'description' => 'Change password, MFA and SSO rules, self-service sign-up, social sign-in providers and the legacy login approval.',
+        ],
+        'frontend_keys:read' => [
+            'label' => 'Read frontend keys',
+            'description' => 'List the publishable keys browser apps present to the Frontend API, with their allowed origins.',
+        ],
+        'frontend_keys:write' => [
+            'label' => 'Manage frontend keys',
+            'description' => 'Create publishable keys, change which origins may present them, and revoke them.',
+        ],
+        'saml_apps:read' => [
+            'label' => 'Read SAML applications',
+            'description' => 'List the applications that trust this environment as their SAML identity provider — never their certificates.',
+        ],
+        'saml_apps:write' => [
+            'label' => 'Manage SAML applications',
+            'description' => 'Register, change and remove the applications people sign in to with their account here.',
+        ],
+        'branding:read' => [
+            'label' => 'Read branding',
+            'description' => 'Read the hosted sign-in theme and branding of the environment and its organizations.',
+        ],
+        'branding:write' => [
+            'label' => 'Change branding',
+            'description' => 'Change the hosted sign-in theme and branding of the environment and its organizations.',
+        ],
+        'domains:read' => [
+            'label' => 'Read custom domains',
+            'description' => 'Read this environment\'s custom domain and the DNS record that proves it.',
+        ],
+        'domains:write' => [
+            'label' => 'Manage custom domains',
+            'description' => 'Add, verify and remove the custom domain this environment is served on.',
+        ],
     ];
 
     public function knows(string $scope): bool

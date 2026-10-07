@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\LegacyLogin\ApproveLegacyLogin;
+use App\Actions\LegacyLogin\ProbeLegacyLogin;
+use App\Actions\LegacyLogin\RevokeLegacyLogin;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\ProbeLegacyLoginRequest;
-use App\Platform\CurrentUser;
 use App\Platform\EnvironmentSudo;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Migration\LegacyLoginApprovals;
-use App\Platform\Migration\LegacyLoginProbe;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +33,9 @@ use Inertia\Response;
  *
  * EVERY WRITE ASKS FOR A FRESH STEP-UP, in both directions. Approving is the click that
  * redirects where passwords go; withdrawing is the one that locks every un-migrated person
- * out of the product, which is an outage an attacker would choose the timing of.
+ * out of the product, which is an outage an attacker would choose the timing of. The step-up
+ * is the console's, asked here before the write; the write itself is the ACTION
+ * (`App\Actions\LegacyLogin\*`) the management API runs, which records who did it.
  */
 final readonly class LegacyLoginController extends ConsoleController
 {
@@ -78,43 +81,45 @@ final readonly class LegacyLoginController extends ConsoleController
      * endpoint does not answer is a real person's login — failing closed, so they simply
      * cannot sign in and nobody knows why.
      */
-    public function probe(ProbeLegacyLoginRequest $request, LegacyLoginApprovals $approvals, LegacyLoginProbe $probe): RedirectResponse
+    public function probe(ProbeLegacyLoginRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        $declaration = $approvals->current();
+        $result = $this->act(ProbeLegacyLogin::class, ['email' => $request->email()], ['email' => 'email'], 'email');
 
-        if ($declaration === null) {
-            return back()->withErrors(['email' => 'No app has declared an endpoint to probe.']);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
         // The RESULT is a sentence about somebody's account at another system, so it rides
         // the flash channel rather than being written into the history entry.
-        $this->inertia->flash('probeResult', $probe->describe($declaration, $request->email()));
+        $this->inertia->flash('probeResult', $result->value);
 
         return back();
     }
 
-    public function approve(LegacyLoginApprovals $approvals, CurrentUser $me): RedirectResponse
+    public function approve(): RedirectResponse
     {
         $this->scope->assertMayAdministerEnvironment();
         $this->assertFreshStepUp();
 
-        // `id()` is non-null behind the console's own gate — the assertion above has
-        // already refused anybody without a session — so there is nothing to branch on.
-        $approvals->approve($me->id());
+        $result = $this->act(ApproveLegacyLogin::class, []);
 
-        return back()->with('status', 'Approved. Sign-ins for people who are not in Cbox ID yet now go to that endpoint.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Approved. Sign-ins for people who are not in Cbox ID yet now go to that endpoint.');
     }
 
-    public function revoke(LegacyLoginApprovals $approvals): RedirectResponse
+    public function revoke(): RedirectResponse
     {
         $this->scope->assertMayAdministerEnvironment();
         $this->assertFreshStepUp();
 
-        $approvals->revoke();
+        $result = $this->act(RevokeLegacyLogin::class, []);
 
-        return back()->with('status', 'Withdrawn. People already migrated are unaffected; anyone still on the old system cannot sign in.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Withdrawn. People already migrated are unaffected; anyone still on the old system cannot sign in.');
     }
 
     /**

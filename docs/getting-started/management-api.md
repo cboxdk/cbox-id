@@ -37,6 +37,11 @@ environment's host** and nowhere else. Give it the scopes the job needs and no m
 | `log_streams:read` / `:write` | list audit log streams / create, disable, resume and delete them |
 | `events:read` | read the environment's domain events with a cursor |
 | `audit:read` | read the environment's audit trail with a cursor |
+| `signin:read` / `:write` | read / change sign-in rules, self-service sign-up, social providers and the legacy login |
+| `frontend_keys:read` / `:write` | list publishable keys / create them, change their origins, revoke them |
+| `saml_apps:read` / `:write` | list SAML applications / register, change and remove them |
+| `branding:read` / `:write` | read / change the sign-in theme and white-label branding |
+| `domains:read` / `:write` | read / add, verify and remove this environment's custom domain |
 
 Send it as `Authorization: Bearer cbid_env_…` to `https://{your-environment-host}/api/v1/…`.
 A key without the route's scope gets `403` with the missing scope named.
@@ -225,6 +230,36 @@ events — the facts webhooks deliver — oldest first. Keep the last `id` and p
 `after` to get only what is new; `types[]=user.created` narrows it. `GET /api/v1/audit-log`
 reads the audit trail the same way, narrowed by `action`, `actor_type` or
 `organization_id`. Both are strictly this environment's.
+## Sign-in, branding and the domain
+
+How people sign in is on the API too, each behind its own scope, and each the same action
+the console runs — the same rules, refusals and activity-log entries.
+
+- **Sign-in rules** (`signin:read` / `signin:write`): `GET /api/v1/sign-in/policy` reads the
+  environment baseline, or with `?organization_id=` what governs one organization and
+  whether it inherits. `PATCH` changes only the rules you send (`min_length`, `mfa`,
+  `sso`, …) — at the baseline, or as an organization's override, which may only tighten
+  it: a looser rule is `422 loosens_environment_baseline`, naming every floor.
+  `DELETE /sign-in/policy/organizations/{id}` drops an override. Requiring SSO signs out
+  every password session it governs.
+- **Self-service sign-up**: `PUT /api/v1/sign-in/self-service-signup` with `enabled`.
+- **Social sign-in**: `POST /api/v1/sign-in/social-providers` with `organization_id`,
+  `provider` (`google`, `github`, `apple`, …), `client_id`, `client_secret` and the
+  provider's `parameters`. The response gives the `callback_uri` to register with the
+  provider; the secret is never returned. `DELETE /sign-in/social-providers/{id}` removes one.
+- **Legacy login** (`signin:*`): `GET /api/v1/legacy-login`, then
+  `POST /legacy-login/probe` with your own address, then `/approve` (or `/revoke`).
+  Approving sends every not-yet-migrated person's password to the declared URL.
+- **Frontend keys** (`frontend_keys:*`): `/api/v1/frontend-keys` creates publishable keys
+  with their allowed `origins`; `PUT /frontend-keys/{id}/origins` replaces the list.
+- **SAML apps** (`saml_apps:*`): `/api/v1/saml-apps` registers the applications people
+  sign in to with their account here. The `certificate` is write-only (`has_certificate`).
+- **Branding** (`branding:*`): `PUT /api/v1/branding/appearance` (the hosted sign-in theme;
+  an unreadable palette is refused) and `PUT /api/v1/branding/whitelabel` — the environment
+  default, or one organization's with `organization_id`.
+- **Custom domain** (`domains:*`): `POST /api/v1/domains` returns the DNS TXT record,
+  `POST /domains/verify` promotes the domain once it is visible (`422 dns_not_propagated`
+  until then), `DELETE /domains` removes it. Only ever the environment the key belongs to.
 
 ## Errors
 

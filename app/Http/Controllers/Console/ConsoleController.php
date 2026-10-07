@@ -95,7 +95,7 @@ abstract readonly class ConsoleController extends PageController
      *
      * `$fields` maps the action's input names to this page's form field names
      * (`client_id` → `clientId`); a refusal about a field the page does not have lands on
-     * `$fallback`. A 404 is a 404.
+     * `$fallback`. A refusal about several fields lands on each of them. A 404 is a 404.
      *
      * @param  class-string<Action>  $action
      * @param  array<string, mixed>  $input
@@ -107,6 +107,16 @@ abstract readonly class ConsoleController extends PageController
             return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal($this->scope), $input);
         } catch (ActionRefused $refused) {
             abort_if($refused->status === 404, 404);
+
+            if ($refused->fields !== []) {
+                $errors = [];
+
+                foreach ($refused->fields as $name => $message) {
+                    $errors[$fields[$name] ?? $fallback] = $message;
+                }
+
+                return back()->withInput()->withErrors($errors);
+            }
 
             $field = $refused->field === null ? $fallback : ($fields[$refused->field] ?? $fallback);
 

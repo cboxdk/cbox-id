@@ -2191,6 +2191,145 @@ components:
         name: { type: ["string", "null"] }
         status: { type: string, enum: [active, disabled, locked] }
         email_verified_at: { type: ["string", "null"], format: date-time }
+    SignInRules:
+      type: object
+      required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold]
+      properties:
+        min_length: { type: integer, description: "Minimum password length." }
+        require_breach_check: { type: boolean, description: "Passwords found in known breaches are refused." }
+        max_age_days: { type: ["integer", "null"], description: "Days before a password must be changed; null for no limit." }
+        reuse_history: { type: integer, description: "Previous passwords that may not be reused." }
+        mfa: { type: string, enum: [off, optional, required] }
+        sso: { type: string, enum: [off, preferred, required], description: "`required` refuses every other way in." }
+        lockout_threshold: { type: ["integer", "null"], description: "Failed attempts before a lockout; null for none." }
+    SignInPolicy:
+      type: object
+      required: [organization_id, policy, baseline, override, inheriting]
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the environment baseline." }
+        policy:
+          $ref: "#/components/schemas/SignInRules"
+          description: "What is in force at this level: the baseline, or the organization's override tightened over it."
+        baseline: { $ref: "#/components/schemas/SignInRules" }
+        override:
+          description: "What the organization stored itself; null when it inherits (and always for the baseline)."
+          oneOf:
+            - { $ref: "#/components/schemas/SignInRules" }
+            - { type: "null" }
+        inheriting: { type: boolean, description: "True for an organization with no override of its own." }
+    SocialProvider:
+      type: object
+      required: [id, organization_id, provider, name, protocol, status, callback_uri]
+      description: "Its client secret and private key are write-only and never returned."
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"] }
+        provider: { type: ["string", "null"], description: "The catalogue key: google, github, apple…" }
+        name: { type: string }
+        protocol: { type: string, enum: [oidc, oauth2] }
+        status: { type: string }
+        callback_uri: { type: string, description: "The redirect URI to register with the provider." }
+        created_at: { type: ["string", "null"], format: date-time }
+    FrontendKey:
+      type: object
+      required: [id, name, key, mode, origins, active]
+      description: "A publishable key. Returned in full: it is public by design; the origins are the control."
+      properties:
+        id: { type: string }
+        name: { type: string }
+        key: { type: string }
+        mode: { type: string, enum: [test, live] }
+        origins: { type: array, items: { type: string } }
+        active: { type: boolean }
+        created_at: { type: ["string", "null"], format: date-time }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        revoked_at: { type: ["string", "null"], format: date-time }
+    SamlApp:
+      type: object
+      required: [id, entity_id, acs_url, name_id_format, name_id_attribute, attribute_mappings, want_authn_requests_signed, has_certificate, status]
+      description: "An application that trusts this environment as its SAML identity provider. Its certificate is write-only."
+      properties:
+        id: { type: string }
+        entity_id: { type: string }
+        acs_url: { type: string }
+        name_id_format: { type: string }
+        name_id_attribute: { type: string }
+        attribute_mappings:
+          type: array
+          items:
+            type: object
+            required: [attribute, field]
+            properties:
+              attribute: { type: string }
+              field: { type: string }
+        want_authn_requests_signed: { type: boolean }
+        has_certificate: { type: boolean }
+        status: { type: string }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    LegacyLogin:
+      type: object
+      required: [declared, url, client_id, declared_by, approved, approved_at, approved_by]
+      description: "The legacy sign-in endpoint an app declared for migration. Its shared secret is never returned."
+      properties:
+        declared: { type: boolean }
+        url: { type: ["string", "null"] }
+        client_id: { type: ["string", "null"], description: "The app that declared it." }
+        declared_by: { type: ["string", "null"], description: "That app's name." }
+        approved: { type: boolean }
+        approved_at: { type: ["string", "null"], format: date-time }
+        approved_by: { type: ["string", "null"], description: "The person or key that approved it." }
+    ThemeMode:
+      type: object
+      properties:
+        primary: { type: string }
+        background: { type: string }
+        foreground: { type: string }
+        muted: { type: string }
+    Appearance:
+      type: object
+      required: [organization_id, customized, theme, logo]
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the environment default." }
+        customized: { type: boolean, description: "Whether this level has a theme of its own." }
+        theme:
+          type: object
+          properties:
+            preset: { type: string }
+            radius: { type: string }
+            font: { type: string }
+            light: { $ref: "#/components/schemas/ThemeMode" }
+            dark: { $ref: "#/components/schemas/ThemeMode" }
+        logo: { type: ["string", "null"] }
+    WhitelabelBranding:
+      type: object
+      required: [organization_id, palette, app_name, email_from_name, email_template, logo_url, favicon_url]
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the environment default." }
+        palette:
+          type: object
+          additionalProperties: { type: ["string", "null"] }
+        app_name: { type: ["string", "null"] }
+        email_from_name: { type: ["string", "null"] }
+        email_template: { type: ["string", "null"] }
+        logo_url: { type: ["string", "null"], description: "Uploaded from the console." }
+        favicon_url: { type: ["string", "null"], description: "Uploaded from the console." }
+    CustomDomain:
+      type: object
+      required: [domain, verified_at, pending]
+      properties:
+        domain: { type: ["string", "null"], description: "The verified domain serving this environment." }
+        verified_at: { type: ["string", "null"], format: date-time }
+        pending:
+          description: "A domain waiting for its DNS proof, and the TXT record to publish."
+          oneOf:
+            - type: object
+              required: [domain, record_name, record_value]
+              properties:
+                domain: { type: string }
+                record_name: { type: string }
+                record_value: { type: string }
+            - { type: "null" }
     PageMeta:
       type: object
       properties:

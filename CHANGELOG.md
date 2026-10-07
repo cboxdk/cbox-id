@@ -231,6 +231,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   gains `manifest_url`, `access_token_ttl`, `backchannel_logout_uri`,
   `backchannel_logout_session_required` and `api_key_prefix`. The parity count of console
   writes that are not yet actions drops from 251 to 226.
+- **How people sign in, as actions — and on the management API.** The sign-in rules,
+  self-service sign-up, social sign-in providers, frontend keys, SAML applications, the
+  legacy-login approval, branding and the custom domain are now actions: the console's
+  pages (environment and organization planes) and the management API run the same classes,
+  so a change is checked, refused and recorded the same way whichever door made it. New on
+  `/api/v1`: `GET/PATCH /sign-in/policy`, `DELETE /sign-in/policy/organizations/{id}`,
+  `PUT /sign-in/self-service-signup`, `GET/POST /sign-in/social-providers`,
+  `DELETE /sign-in/social-providers/{id}`, `GET/POST /frontend-keys`,
+  `PUT /frontend-keys/{id}/origins`, `DELETE /frontend-keys/{id}`, `/saml-apps` (list,
+  get, create, update, delete), `GET /legacy-login` and `POST /legacy-login/probe|approve|revoke`,
+  `GET/PUT /branding/appearance`, `GET/PUT /branding/whitelabel` and `GET/POST/DELETE /domains`
+  with `POST /domains/verify` — behind the new `signin:*`, `frontend_keys:*`,
+  `saml_apps:*`, `branding:*` and `domains:*` key scopes. Changing how people sign in is
+  `critical`; secrets (a provider's client secret, a SAML certificate) are input only and
+  never returned. An organization override that would loosen the environment baseline is
+  refused (`422 loosens_environment_baseline`, every loosened rule named). Modules can ship
+  their own actions: the white-label module's lives in the module and is named to the
+  registry from its service provider. The parity count of console writes that are not yet
+  actions is down from 251 to 229.
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,
@@ -448,6 +467,16 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **Sign-in changes are on the audit trail.** Changing the sign-in rules (`auth_policy.updated`,
+  `auth_policy.inherited`), removing a social provider (`social_provider.removed`),
+  registering, changing or removing a SAML application (`saml_app.*`) and approving or
+  withdrawing the legacy login (`legacy_login.approved` / `.revoked`) recorded nothing
+  before; they are recorded now, from the console as the person and from the API as the key.
+  A second SAML application with an entity id already registered is refused rather than
+  failing on the database, and revoking or editing a frontend key that does not exist is a
+  404 rather than a silent no-op.
+- **Requires `cboxdk/laravel-id` ^1.21.** Management-key scopes are its `ManagementScopes`
+  vocabulary: the framework's own plus this app's (`AppManagementScopes`).
 - **A customer's organization console is an admin portal now.** On a customer's
   environment host of a multi-tenant deployment, the organization console offers Members,
   Roles and Permissions, Single sign-on (with its domains), Sync users in, the Activity

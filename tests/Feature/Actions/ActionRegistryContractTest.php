@@ -13,12 +13,22 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Discovered from the directory directly: a dataset is resolved before the application
-// boots, so it cannot ask the container for the registry.
-dataset('actions', fn (): array => array_map(
-    static fn (ActionDefinition $action): array => [$action],
-    (new ActionRegistry(dirname(__DIR__, 3).'/app/Actions'))->all(),
-));
+// Discovered from the directories directly: a dataset is resolved before the application
+// boots, so it cannot ask the container for the registry. A module's actions live in its
+// own `src/Actions`, under the namespace composer maps that module to.
+dataset('actions', function (): array {
+    $root = dirname(__DIR__, 3);
+    $registry = new ActionRegistry($root.'/app/Actions');
+    $composer = json_decode((string) file_get_contents($root.'/composer.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    foreach ($composer['autoload']['psr-4'] ?? [] as $namespace => $path) {
+        if (is_string($path) && str_starts_with($path, 'modules/') && is_dir($root.'/'.$path.'Actions')) {
+            $registry->discoverIn($root.'/'.$path.'Actions', $namespace.'Actions');
+        }
+    }
+
+    return array_map(static fn (ActionDefinition $action): array => [$action], $registry->all());
+});
 
 it('discovers the actions', function (): void {
     expect(app(ActionRegistry::class)->all())->not->toBeEmpty();

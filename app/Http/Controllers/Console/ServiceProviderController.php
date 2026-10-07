@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\SamlApps\CreateSamlApp;
+use App\Actions\SamlApps\DeleteSamlApp;
+use App\Actions\SamlApps\SamlAppFields;
+use App\Actions\SamlApps\UpdateSamlApp;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\AttributeMappings;
@@ -15,7 +19,6 @@ use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\Models\ServiceProvider;
 use Cbox\Id\SamlIdp\Support\IdpDescriptor;
-use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -32,10 +35,25 @@ use Inertia\Response;
  * Every read and write re-resolves the provider through the registry, which is scoped to
  * this environment — an id from another plane resolves to null and is a 404, never a
  * cross-tenant read or write.
+ *
+ * Every write is an ACTION (`App\Actions\SamlApps\*`), the same class the management API's
+ * `/v1/saml-apps` runs — the certificate rule, the unique entity id and the audit entry are
+ * the action's. This controller maps the form onto it.
  */
 final readonly class ServiceProviderController extends ConsoleController
 {
     private const PER_PAGE = 25;
+
+    /** The action's input names, as this page's form fields. */
+    private const FIELDS = [
+        'entity_id' => 'entityId',
+        'acs_url' => 'acsUrl',
+        'name_id_format' => 'nameIdFormat',
+        'name_id_attribute' => 'nameIdAttribute',
+        'attribute_mappings' => 'attributeMappings',
+        'want_authn_requests_signed' => 'wantAuthnRequestsSigned',
+        'certificate' => 'certificate',
+    ];
 
     public function index(Request $request): Response
     {
@@ -98,7 +116,7 @@ final readonly class ServiceProviderController extends ConsoleController
         ]);
     }
 
-    public function store(SaveServiceProviderRequest $request, ServiceProviders $providers): RedirectResponse
+    public function store(SaveServiceProviderRequest $request): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
@@ -106,21 +124,17 @@ final readonly class ServiceProviderController extends ConsoleController
         // shape this gate holds until an address is confirmed.
         app(VerifiedEmailGate::class)->require('register a SAML application');
 
-        $refusal = $this->certificateRefusal($request->wantAuthnRequestsSigned(), $request->certificate(), null);
+        $result = $this->act(CreateSamlApp::class, [
+            'entity_id' => $request->entityId(),
+            ...$this->input($request),
+        ], self::FIELDS, 'entityId');
 
-        if ($refusal !== null) {
-            return $refusal;
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $provider = $providers->register(new NewServiceProvider(
-            entityId: $request->entityId(),
-            acsUrl: $request->acsUrl(),
-            nameIdFormat: $request->nameIdFormat(),
-            nameIdAttribute: $request->nameIdAttribute(),
-            attributeMappings: $request->attributeMappings(),
-            certificate: $request->certificate(),
-            wantAuthnRequestsSigned: $request->wantAuthnRequestsSigned(),
-        ));
+        /** @var ServiceProvider $provider */
+        $provider = $result->value;
 
         return to_route('environment.sso-providers.show', $provider->id)
             ->with('status', 'SAML application registered.');
@@ -162,42 +176,45 @@ final readonly class ServiceProviderController extends ConsoleController
 
         $model = $this->resolve($provider);
 
-        $refusal = $this->certificateRefusal(
-            $request->wantAuthnRequestsSigned(),
-            $request->certificate(),
-            $model->certificate,
-        );
+        // A blank certificate field keeps the one on file — the action only ever REPLACES
+        // it — rather than wiping it and silently turning off the verification the flag
+        // says is happening.
+        $result = $this->act(UpdateSamlApp::class, [
+            'id' => $model->id,
+            'entity_id' => $request->entityId(),
+            ...$this->input($request),
+        ], self::FIELDS, 'entityId');
 
-        if ($refusal !== null) {
-            return $refusal;
-        }
-
-        $model->entity_id = $request->entityId();
-        $model->acs_url = $request->acsUrl();
-        $model->name_id_format = $request->nameIdFormat();
-        $model->name_id_attribute = $request->nameIdAttribute();
-        $model->attribute_mappings = $request->attributeMappings();
-        $model->want_authn_requests_signed = $request->wantAuthnRequestsSigned();
-
-        // Only overwrite the certificate when a replacement was actually provided — a blank
-        // field keeps the existing one rather than wiping it, which would silently turn off
-        // the verification the flag above says is happening.
-        if ($request->certificate() !== null) {
-            $model->certificate = $request->certificate();
-        }
-
-        $model->save();
-
-        return back()->with('status', 'SAML application updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'SAML application updated.');
     }
 
     public function destroy(string $provider): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $this->resolve($provider)->delete();
+        $result = $this->act(DeleteSamlApp::class, ['id' => $this->resolve($provider)->id]);
 
-        return to_route('environment.sso-providers')->with('status', 'SAML application removed.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route('environment.sso-providers')->with('status', 'SAML application removed.');
+    }
+
+    /**
+     * The form, as the action's input. Everything but the entity id, which the two writes
+     * treat differently.
+     *
+     * @return array<string, mixed>
+     */
+    private function input(SaveServiceProviderRequest $request): array
+    {
+        return [
+            'acs_url' => $request->acsUrl(),
+            'name_id_format' => $request->nameIdFormat()->value,
+            'name_id_attribute' => $request->nameIdAttribute(),
+            'attribute_mappings' => SamlAppFields::rows($request->attributeMappings()),
+            'want_authn_requests_signed' => $request->wantAuthnRequestsSigned(),
+            'certificate' => $request->certificate(),
+        ];
     }
 
     private function assertEnvironmentAdmin(): void
@@ -218,26 +235,6 @@ final readonly class ServiceProviderController extends ConsoleController
         abort_if($model === null, 404);
 
         return $model;
-    }
-
-    /**
-     * A SIGNED-REQUEST SP IS USELESS WITHOUT A CERTIFICATE TO VERIFY AGAINST.
-     *
-     * Refused rather than saved, because the half-configured combination does not fail
-     * loudly: the flag says requests are verified and nothing verifies them, which is worse
-     * than never having turned it on. `$existing` is what is already on file — a blank
-     * field on the edit form means "keep it", so only the case where there is nothing at
-     * all is a refusal.
-     */
-    private function certificateRefusal(bool $signed, ?string $supplied, ?string $existing): ?RedirectResponse
-    {
-        if (! $signed || $supplied !== null || $existing !== null) {
-            return null;
-        }
-
-        return back()
-            ->withInput()
-            ->withErrors(['certificate' => 'A signing certificate is required for signed AuthnRequests.']);
     }
 
     /**
