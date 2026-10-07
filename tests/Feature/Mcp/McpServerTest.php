@@ -112,7 +112,11 @@ it('lists only the tools the key\'s scopes allow, plus whoami, list_actions and 
 
     expect($reader)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'apis_list', 'apis_get']);
 
-    $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
+    $people = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
+
+    expect($people)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'users_list', 'users_get', 'users_sessions_list']);
+
+    $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::DirectoriesRead])->plaintext));
 
     expect($nothing)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status']);
 

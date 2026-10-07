@@ -24,7 +24,7 @@ use Tests\Feature\Actions\ActionParityTest;
 final class ParityAllowlist
 {
     /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 160;
+    public const int BASELINE = 104;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -43,6 +43,15 @@ final class ParityAllowlist
             'environment.acting-organization.choose',
             'environment.acting-organization.clear',
             'environment.sudo.confirm',
+            // An environment administrator stepping into a person's own BROWSER session — the
+            // session is swapped under this browser, and a REST call has no browser to swap.
+            // An agent that must act as a customer's user starts a support session
+            // (`support_sessions.start`) for a named staff member instead.
+            'environment.impersonate',
+            // The console's "sign in to <app> as <user>" hands THIS browser to the app with a
+            // one-time handoff only the same administrator's browser can redeem. The machine
+            // twin is `support_sessions.start`, which names a staff member as the actor.
+            'environment.users.support-sessions.store',
             'first-run.claim',
             'frontend.sign-in',
             'frontend.sign-in.factor',
@@ -82,6 +91,10 @@ final class ParityAllowlist
             'platform.environment.switch',
             'portal.enter.store',
             'portal.finish',
+            // An OWNER closing their own organization from inside it, behind a fresh password
+            // and the organization's name typed out, then landed somewhere they still belong.
+            // The environment's authority archives one with `organizations.delete`.
+            'settings.organization.destroy',
             'signup.register',
             'sso.saml.acs',
             'sudo.confirm',
@@ -188,59 +201,12 @@ final class ParityAllowlist
             'environment.governance.close',
             'environment.governance.item',
             'environment.governance.store',
-            'environment.impersonate',
-            'environment.organizations.api-keys.revoke',
-            'environment.organizations.destroy',
-            'environment.organizations.domains.capture',
-            'environment.organizations.domains.remove',
-            'environment.organizations.domains.store',
-            'environment.organizations.domains.verify',
-            'environment.organizations.invitations.resend',
-            'environment.organizations.invitations.revoke',
-            'environment.organizations.invitations.store',
-            'environment.organizations.members.access',
-            'environment.organizations.members.remove',
-            'environment.organizations.members.role',
-            'environment.organizations.members.store',
-            'environment.organizations.members.transfer-ownership',
-            'environment.organizations.reactivate',
-            'environment.organizations.store',
-            'environment.organizations.suspend',
-            'environment.organizations.update',
-            'environment.permissions.destroy',
-            'environment.permissions.store',
-            'environment.permissions.update',
             'environment.provisioning.destroy',
             'environment.provisioning.store',
             'environment.provisioning.toggle',
-            'environment.roles.destroy',
-            'environment.roles.permissions',
-            'environment.roles.store',
-            'environment.roles.update',
-            'environment.settings.rename',
             'environment.sod-policies.destroy',
             'environment.sod-policies.store',
             'environment.sod-policies.toggle',
-            'environment.staff.destroy',
-            'environment.staff.store',
-            'environment.support-sessions.end',
-            'environment.users.deactivate',
-            'environment.users.mfa',
-            'environment.users.organizations.access',
-            'environment.users.organizations.remove',
-            'environment.users.organizations.role',
-            'environment.users.organizations.store',
-            'environment.users.password',
-            'environment.users.password-reset',
-            'environment.users.reactivate',
-            'environment.users.roles',
-            'environment.users.sessions.revoke',
-            'environment.users.sessions.revoke-all',
-            'environment.users.store',
-            'environment.users.support-sessions.store',
-            'environment.users.update',
-            'environment.users.verification',
-            'environment.users.verify',
             'environment.vault.grants.destroy',
             'environment.vault.grants.store',
             'environment.vault.revoke',
@@ -249,9 +215,6 @@ final class ParityAllowlist
             'governance.close',
             'governance.item',
             'governance.store',
-            'permissions.destroy',
-            'permissions.store',
-            'permissions.update',
             'platform.customers.store',
             'platform.customers.toggle',
             'platform.environments.provision',
@@ -265,12 +228,6 @@ final class ParityAllowlist
             'provisioning.destroy',
             'provisioning.store',
             'provisioning.toggle',
-            'roles.destroy',
-            'roles.permissions',
-            'roles.store',
-            'roles.update',
-            'settings.organization.destroy',
-            'settings.rename',
             'sod-policies.destroy',
             'sod-policies.store',
             'sod-policies.toggle',

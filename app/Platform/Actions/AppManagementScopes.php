@@ -113,6 +113,10 @@ class AppManagementScopes extends EnumManagementScopes
             'description' => 'Erase a person for good (GDPR Art. 17): their credentials, sessions, memberships and personal data are deleted and their account pseudonymised. Cannot be undone.',
             'critical' => true,
         ],
+        'role_definitions:write' => [
+            'label' => 'Define roles and permissions',
+            'description' => 'Create, rename, re-permission and delete roles, and author the manual permissions they are composed of. Granting roles to people is `roles:write`.',
+        ],
     ];
 
     public function knows(string $scope): bool

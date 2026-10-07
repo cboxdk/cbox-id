@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Roles\CreateRole;
+use App\Actions\Roles\DeleteRole;
+use App\Actions\Roles\GrantRolePermission;
+use App\Actions\Roles\RevokeRolePermission;
+use App\Actions\Roles\RoleAuthority;
+use App\Actions\Roles\UpdateRole;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveRoleRequest;
@@ -51,18 +57,20 @@ use Inertia\Response;
  * Three sets, deliberately distinct:
  *   {@see visible()}    — may READ. The acting organization's own, plus environment-owned
  *                         ones that apply to it.
- *   {@see changeable()} — may WRITE. Environment-owned roles are excluded on the
- *                         organization plane: they are assignable inside every tenant, so
- *                         re-permissioning one grants access in organizations that are not
- *                         yours, and deleting one revokes it from all of them.
+ *   {@see RoleAuthority::changeable()} — may WRITE. Environment-owned roles are excluded
+ *                         on the organization plane: they are assignable inside every
+ *                         tenant, so re-permissioning one grants access in organizations
+ *                         that are not yours, and deleting one revokes it from all of them.
  *   {@see assignable()} — the permission catalogue this administrator may compose FROM. A
  *                         tenant sees only what apps in its reach declared AND marked
  *                         `tenant_assignable`; an app keeps its privileged internal keys
  *                         off the list by not marking them.
  *
- * App-declared roles (`source = manifest`) are the declaring app's source of truth and are
- * read-only on both planes — {@see writable()} refuses them once, for every mutation,
- * rather than each action remembering.
+ * EVERY WRITE IS AN ACTION (app/Actions/Roles) — the one the management API and MCP run —
+ * and the write set and the app-declared refusal live there, in {@see RoleAuthority},
+ * answered from WHO is asking rather than from which organization the page shows. App-
+ * declared roles (`source = manifest`) are the declaring app's source of truth and are
+ * read-only on both planes.
  */
 final readonly class RoleController extends ConsoleController
 {
@@ -192,7 +200,7 @@ final readonly class RoleController extends ConsoleController
         ]);
     }
 
-    public function store(StoreRoleRequest $request, Roles $roles): RedirectResponse
+    public function store(StoreRoleRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -209,10 +217,10 @@ final readonly class RoleController extends ConsoleController
 
         if ($request->environmentWide()) {
             /*
-             * Server-side, not merely an absent checkbox: a role with no organization is
-             * assignable inside every tenant in the environment, so an organization
-             * administrator who could mint one would be defining access for organizations
-             * that are not theirs.
+             * A role with no organization is assignable inside every tenant in the
+             * environment, so an organization administrator who could mint one would be
+             * defining access for organizations that are not theirs. The action refuses it
+             * too; this says so on the checkbox rather than as a 403.
              */
             if ($this->scope->plane() !== ConsolePlane::Environment) {
                 return back()->withInput()->withErrors([
@@ -222,6 +230,7 @@ final readonly class RoleController extends ConsoleController
 
             $organizationId = null;
         } else {
+            // WHOSE role it is, named explicitly: the organization this page administers.
             $organizationId = $this->actingOrganizationId();
 
             if ($organizationId === null) {
@@ -231,25 +240,20 @@ final readonly class RoleController extends ConsoleController
             }
         }
 
-        // Only ever scope to an app that is in reach — never trust the posted client_id.
-        $appId = $request->appId();
-        $clientId = $appId !== null && array_key_exists($appId, $this->usableApps()) ? $appId : null;
+        $result = $this->act(CreateRole::class, [
+            'name' => $request->name(),
+            'description' => $request->description(),
+            'organization_id' => $organizationId,
+            'client_id' => $request->appId(),
+            'permissions' => $request->permissionIds(),
+        ], ['name' => 'name', 'description' => 'description', 'client_id' => 'app', 'permissions' => 'permissions'], 'name');
 
-        $role = $roles->define($organizationId, $request->name(), $request->description(), $clientId);
-
-        /*
-         * The opening permissions, resolved against the catalogue this administrator may
-         * actually assign from — a posted id that matches nothing there is dropped rather
-         * than trusted. The checkbox list is drawn from the same query; this is the half
-         * that holds when the checkbox is bypassed.
-         *
-         * Through the contract, never raw SQL. These used to be `DB::table()` inserts: no
-         * audit entry and no `role.permission_granted`, so a change to privileged access
-         * left nothing on /audit and nothing for a SIEM.
-         */
-        foreach ($this->assignable()->whereKey($request->permissionIds())->get(['id']) as $permission) {
-            $roles->attachPermission($role->id, $permission->id, $organizationId);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
+
+        /** @var Role $role */
+        $role = $result->value;
 
         return to_route($this->scope->routeName('roles.show'), $role->id)
             ->with('status', 'Role "'.$role->name.'" created.');
@@ -306,17 +310,17 @@ final readonly class RoleController extends ConsoleController
         ]);
     }
 
-    public function update(SaveRoleRequest $request, string $role, Roles $roles): RedirectResponse
+    public function update(SaveRoleRequest $request, string $role): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $model = $this->writable($role);
+        $result = $this->act(UpdateRole::class, [
+            'id' => $role,
+            'name' => $request->name(),
+            'description' => $request->description(),
+        ], ['name' => 'name', 'description' => 'description'], 'name');
 
-        // There is no rename service for roles, so name and description go through the
-        // contract's updateRole(), which records the change.
-        $roles->updateRole($model->id, $request->name(), $request->description(), $this->fenceOrganizationId());
-
-        return back()->with('status', 'Role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role updated.');
     }
 
     /**
@@ -324,80 +328,46 @@ final readonly class RoleController extends ConsoleController
      *
      * AN EXPLICIT SET RATHER THAN A TOGGLE: the detail page's checkbox and the list's
      * picker both land here, and a toggle turns a double-click — or a retried request —
-     * into a silent flip back. The caller says which state it means.
-     *
-     * The permission is resolved through {@see assignable()}, so an app's privileged
-     * internal key it never marked tenant-assignable, or a permission from an app out of
-     * reach, matches nothing and is ignored rather than trusted.
+     * into a silent flip back. The caller says which state it means, and each state is its
+     * own action. The permission is resolved there against the catalogue this administrator
+     * may compose from, so an app's privileged key it never marked tenant-assignable, or a
+     * permission from an app out of reach, matches nothing.
      */
-    public function permissions(Request $request, string $role, Roles $roles): RedirectResponse
+    public function permissions(Request $request, string $role): RedirectResponse
     {
         $this->scope->assertMayAdminister();
-
-        $model = $this->writable($role);
 
         $request->validate([
             'permission' => ['required', 'string'],
             'granted' => ['required', 'boolean'],
         ]);
 
-        $permission = $this->assignable()
-            // Never another app's key, whatever the role's own scope claims: a role scoped
-            // to one app may hold that app's permissions and the unscoped ones.
-            ->where(fn (Builder $q): Builder => $q
-                ->whereNull('client_id')
-                ->orWhere('client_id', $model->client_id))
-            ->whereKey($request->string('permission')->toString())
-            ->first();
-
-        if ($permission === null) {
-            return back();
-        }
-
-        $fence = $this->fenceOrganizationId();
+        $input = ['id' => $role, 'permission_id' => $request->string('permission')->toString()];
 
         if ($request->boolean('granted')) {
-            $roles->attachPermission($model->id, $permission->id, $fence);
+            $result = $this->act(GrantRolePermission::class, $input, ['permission_id' => 'permission'], 'permission');
 
-            return back()->with('status', 'Permission granted.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission granted.');
         }
 
-        $roles->revokePermission($model->id, $permission->id, $fence);
+        $result = $this->act(RevokeRolePermission::class, $input, ['permission_id' => 'permission'], 'permission');
 
-        return back()->with('status', 'Permission revoked.');
-    }
-
-    public function destroy(string $role, Roles $roles): RedirectResponse
-    {
-        $this->scope->assertMayAdminister();
-
-        $model = $this->writable($role);
-
-        /*
-         * Through the contract, never raw SQL. This used to be a `DB::table()` delete: no
-         * observer, no FK cascade, so a change to privileged access affecting EVERY holder
-         * of the role left nothing on /audit, nothing for a SIEM, and no `role.unassigned`
-         * for the downstream apps that mirror grants off it.
-         */
-        $roles->deleteRole($model->id, $this->fenceOrganizationId());
-
-        return to_route($this->scope->routeName('roles'))->with('status', 'Role deleted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission revoked.');
     }
 
     /**
-     * The role as something this administrator may WRITE to, or a 404.
-     *
-     * Resolved through the changeable set rather than checked after the fact, so an id
-     * that is not theirs to touch never becomes a Role object at all — and app-declared
-     * roles refuse here rather than in four separate actions.
+     * Delete the role — and every grant of it, through the contract, so the change to every
+     * holder's access is on the trail and announced to the apps that mirror grants.
      */
-    private function writable(string $role): Role
+    public function destroy(string $role): RedirectResponse
     {
-        $model = $this->changeable()->whereKey($role)->firstOrFail();
+        $this->scope->assertMayAdminister();
 
-        abort_if($model->source === RoleSource::Manifest, 403, 'This role is declared by an application, which is its source of truth.');
+        $result = $this->act(DeleteRole::class, ['id' => $role]);
 
-        return $model;
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route($this->scope->routeName('roles'))->with('status', 'Role deleted.');
     }
 
     /**
@@ -433,26 +403,7 @@ final readonly class RoleController extends ConsoleController
                 ->where(fn (Builder $q): Builder => $q->whereNull('client_id')->orWhereIn('client_id', $clientIds))));
     }
 
-    /**
-     * The roles this administrator may WRITE to, as a query rather than a predicate, so a
-     * mutation resolves its target INSIDE the gate instead of checking afterwards.
-     *
-     * @return Builder<Role>
-     */
-    private function changeable(): Builder
-    {
-        if ($this->scope->plane() === ConsolePlane::Environment) {
-            // Environment-scoped by the model, so this is every role in THIS environment
-            // and never another's.
-            return Role::query();
-        }
-
-        return Role::query()
-            ->whereNotNull('organization_id')
-            ->where('organization_id', $this->scope->requireOrganizationId());
-    }
-
-    /** The readable half of {@see changeable()}, for what the page draws. */
+    /** The readable half of {@see RoleAuthority::changeable()}, for what the page draws. */
     private function mayChange(Role $role): bool
     {
         if ($this->scope->plane() === ConsolePlane::Environment) {
@@ -461,22 +412,6 @@ final readonly class RoleController extends ConsoleController
 
         return $role->organization_id !== null
             && $role->organization_id === $this->scope->organizationId();
-    }
-
-    /**
-     * The organization the role service fences on, or null on the environment plane —
-     * where an operator legitimately manages the environment's own roles and there is no
-     * tenant to name.
-     *
-     * Belt and braces alongside {@see changeable()}: this page already resolves a role
-     * inside an ownership-scoped set, and the service fences on its own, so a later edit
-     * that loosens the resolve here cannot quietly reopen a cross-tenant write.
-     */
-    private function fenceOrganizationId(): ?string
-    {
-        return $this->scope->plane() === ConsolePlane::Environment
-            ? null
-            : $this->scope->requireOrganizationId();
     }
 
     /**

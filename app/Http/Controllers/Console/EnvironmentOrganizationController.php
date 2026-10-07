@@ -4,6 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Invitations\ResendInvitation;
+use App\Actions\Invitations\RevokeInvitation;
+use App\Actions\Invitations\SendInvitation;
+use App\Actions\Members\AddMember;
+use App\Actions\Members\ChangeMemberRole;
+use App\Actions\Members\GrantMemberRole;
+use App\Actions\Members\RemoveMember;
+use App\Actions\Members\RevokeMemberRole;
+use App\Actions\Organizations\AddOrganizationDomain;
+use App\Actions\Organizations\CreateOrganization;
+use App\Actions\Organizations\DeleteOrganization;
+use App\Actions\Organizations\ReactivateOrganization;
+use App\Actions\Organizations\RemoveOrganizationDomain;
+use App\Actions\Organizations\SetDomainCapture;
+use App\Actions\Organizations\SuspendOrganization;
+use App\Actions\Organizations\TransferOwnership;
+use App\Actions\Organizations\UpdateOrganization;
+use App\Actions\Organizations\VerifyOrganizationDomain;
 use App\Http\Props\Shared\AppApiKeyRows;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
@@ -16,36 +34,27 @@ use App\Http\Requests\Console\AddOrganizationMemberRequest;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\ApiKeys\MemberApiKeys;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\GrantAccessRole;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\AppReturnTargets;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
-use App\Platform\Invitations\Exceptions\InvitationRefused;
-use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
-use App\Platform\Membership\MembershipLifecycle;
-use App\Platform\Membership\MembershipRefused;
+use App\Platform\Invitations\ValueObjects\SentInvitation;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
-use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Federation\Contracts\DomainVerification;
-use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
 use Cbox\Id\Federation\Models\VerifiedDomain;
-use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
-use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,6 +76,10 @@ use Inertia\Response;
  * that rendered the button, and every id a mutation is handed — a member, a role, a
  * domain — is checked against THAT organization before it is used. A page like this is
  * where a missed check is a cross-tenant write.
+ *
+ * Every mutation is an ACTION (app/Actions/Organizations, Members, Invitations) — the same
+ * change, rules and audit entry the management API and MCP make — and those checks live
+ * there, once, for every door. The organization is always passed explicitly, from the URL.
  */
 final readonly class EnvironmentOrganizationController extends ConsoleController
 {
@@ -118,19 +131,26 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         ]);
     }
 
-    public function store(StoreOrganizationRequest $request, Organizations $organizations): RedirectResponse
+    public function store(StoreOrganizationRequest $request): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $slug = $this->uniqueSlug($organizations, Str::slug($request->slug() ?? $request->name()));
+        // A handle somebody typed is theirs, and a taken one is refused by name; left blank,
+        // the action walks the name to the first free one.
+        $slug = $request->slug() === null ? null : Str::slug($request->slug());
 
-        $settings = $request->metadata() === [] ? [] : ['metadata' => $request->metadata()];
+        $result = $this->act(CreateOrganization::class, [
+            'name' => $request->name(),
+            'slug' => $slug === '' ? null : $slug,
+            'metadata' => $request->metadata(),
+        ], ['name' => 'name', 'slug' => 'slug', 'metadata' => 'metadata'], 'name');
 
-        $organization = $organizations->create(new NewOrganization(
-            name: $request->name(),
-            slug: $slug,
-            settings: $settings,
-        ));
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var Organization $organization */
+        $organization = $result->value;
 
         return to_route('environment.organizations.show', $organization->id)
             ->with('status', 'Organization created.');
@@ -237,116 +257,93 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         ]);
     }
 
-    public function update(SaveOrganizationRequest $request, string $organization, Organizations $organizations): RedirectResponse
+    /**
+     * Name, handle and metadata through the action — which renames through the framework
+     * (announced as `organization.updated`, the old name kept on the trail) where this used
+     * to save the model and record nothing. Anything else under `settings` belongs to
+     * another screen and survives.
+     */
+    public function update(SaveOrganizationRequest $request, string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($organization);
-        $slug = Str::slug($request->slug());
+        $result = $this->act(UpdateOrganization::class, [
+            'id' => $organization,
+            'name' => $request->name(),
+            'slug' => Str::slug($request->slug()),
+            'metadata' => $request->metadata(),
+        ], ['name' => 'name', 'slug' => 'slug', 'metadata' => 'metadata'], 'name', [
+            'slug_taken' => 'That URL handle is already used by another organization.',
+        ]);
 
-        $existing = $organizations->bySlug($slug);
-
-        if ($existing !== null && $existing->id !== $model->id) {
-            return back()->withInput()->withErrors([
-                'slug' => 'That URL handle is already used by another organization.',
-            ]);
-        }
-
-        // Only the metadata subtree is edited here; anything else under `settings` belongs
-        // to a different screen and must survive this save.
-        $settings = $model->settings;
-        $metadata = $request->metadata();
-
-        if ($metadata === []) {
-            unset($settings['metadata']);
-        } else {
-            $settings['metadata'] = $metadata;
-        }
-
-        $model->name = $request->name();
-        $model->slug = $slug;
-        $model->settings = $settings;
-        $model->save();
-
-        return back()->with('status', 'Organization updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization updated.');
     }
 
-    public function suspend(string $organization, Organizations $organizations): RedirectResponse
+    public function suspend(string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $organizations->suspend($this->resolve($organization)->id, $this->actorId());
+        $result = $this->act(SuspendOrganization::class, ['id' => $organization]);
 
-        return back()->with('status', 'Organization suspended.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization suspended.');
     }
 
-    public function reactivate(string $organization, Organizations $organizations): RedirectResponse
+    public function reactivate(string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $organizations->reactivate($this->resolve($organization)->id, $this->actorId());
+        $result = $this->act(ReactivateOrganization::class, ['id' => $organization]);
 
-        return back()->with('status', 'Organization reactivated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization reactivated.');
     }
 
     /**
-     * Soft-delete the tenant: status → Deleted, which takes it out of every list AND
-     * refuses its members at the request pipeline, the device flow and the consent screen,
-     * exactly as a suspension does.
-     *
-     * {@see Organizations::archive()}, the framework's verb for it — the same one suspend
-     * and reactivate above use. This wrote the status onto the model and recorded its own
-     * `organization.deleted` entry, which skipped what only the service does: forgetting
-     * the organization's cached environment resolution, and announcing it to webhook
-     * subscribers as `organization.deleted` (and the legacy `organization.archived`).
+     * Soft-delete the tenant: status → Deleted, which takes it out of every list AND refuses
+     * its members at the request pipeline, the device flow and the consent screen, exactly as
+     * a suspension does — {@see Organizations::archive()}, through the action.
      */
-    public function destroy(string $organization, Organizations $organizations): RedirectResponse
+    public function destroy(string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $organizations->archive($this->resolve($organization)->id, $this->actorId());
+        $result = $this->act(DeleteOrganization::class, ['id' => $organization]);
 
-        return to_route('environment.organizations')->with('status', 'Organization deleted.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route('environment.organizations')->with('status', 'Organization deleted.');
     }
 
-    public function addMember(
-        AddOrganizationMemberRequest $request,
-        string $organization,
-        Memberships $memberships,
-        OrgAccessRoles $catalog,
-    ): RedirectResponse {
+    /**
+     * Add an existing user by address, with the access roles ticked — one action, so a
+     * segregation-of-duties conflict refuses the lot rather than leaving half of it behind.
+     */
+    public function addMember(AddOrganizationMemberRequest $request, string $organization): RedirectResponse
+    {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($organization);
-        $user = User::query()->where('email', $request->email())->first();
+        $result = $this->act(AddMember::class, [
+            'organization_id' => $organization,
+            'email' => $request->email(),
+            'role' => $request->role()->value,
+            'roles' => $request->accessRoleIds(),
+        ], ['email' => 'email', 'user_id' => 'email', 'role' => 'role', 'roles' => 'accessRoles', 'organization_id' => 'email'], 'email', [
+            'already_member' => 'That user is already a member.',
+        ]);
 
-        if ($user === null) {
-            return back()->withInput()->withErrors([
-                'email' => 'No user with that email in this environment. Create the user first.',
-            ]);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        if ($memberships->of($model->id, $user->id) !== null) {
+        if ($result->status === 200) {
             return back()->withInput()->withErrors(['email' => 'That user is already a member.']);
         }
-
-        /*
-         * The membership is the "belongs to org" record; its tier governs org
-         * administration and support-impersonation safety. What the person can DO in the
-         * apps comes from the access roles below.
-         */
-        $memberships->add($model->id, $user->id, $request->role());
-
-        $this->grantAccessRoles($model->id, $user->id, $request->accessRoleIds(), $catalog);
 
         return back()->with('status', 'Member added.');
     }
 
-    public function changeMemberRole(Request $request, string $organization, string $member, Memberships $memberships): RedirectResponse
+    public function changeMemberRole(Request $request, string $organization, string $member): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
-
-        $model = $this->resolve($organization);
 
         // Untrusted: an unassignable or unknown role is refused outright rather than
         // coerced to a default — and the refusal NAMES THE CHOICES, the same sentence the
@@ -358,126 +355,107 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             return back()->withErrors(['role' => OrgRoles::message()]);
         }
 
-        if ($memberships->of($model->id, $member) === null) {
-            return back();
-        }
+        $result = $this->act(ChangeMemberRole::class, [
+            'organization_id' => $organization,
+            'user_id' => $member,
+            'role' => $next->value,
+        ], ['role' => 'role'], 'role', ['last_owner' => 'An organization must keep at least one owner.']);
 
-        try {
-            $memberships->changeRole($model->id, $member, $next);
-        } catch (LastOwner) {
-            return back()->withErrors(['role' => 'An organization must keep at least one owner.']);
-        }
-
-        return back()->with('status', 'Built-in role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Built-in role updated.');
     }
 
     /**
      * Grant or revoke one RBAC access-role for a member.
      *
      * AN EXPLICIT SET rather than a toggle: the row's checkbox and a retried request must
-     * not disagree about which state was asked for.
+     * not disagree about which state was asked for. One action per state; segregation of
+     * duties refuses a toxic pair and the refusal names both roles.
      */
-    public function setAccessRole(
-        Request $request,
-        string $organization,
-        string $member,
-        Memberships $memberships,
-        OrgAccessRoles $catalog,
-    ): RedirectResponse {
+    public function setAccessRole(Request $request, string $organization, string $member): RedirectResponse
+    {
         $this->assertEnvironmentAdmin();
-
-        $model = $this->resolve($organization);
 
         $request->validate([
             'role' => ['required', 'string'],
             'granted' => ['required', 'boolean'],
         ]);
 
-        $roleId = $request->string('role')->toString();
-
-        // Only a real member of this org, and only a role genuinely assignable here.
-        if ($memberships->of($model->id, $member) === null || ! $catalog->isAssignable($model->id, $roleId)) {
-            return back();
-        }
+        $input = ['organization_id' => $organization, 'user_id' => $member, 'role_id' => $request->string('role')->toString()];
 
         if (! $request->boolean('granted')) {
-            app(GrantAccessRole::class)->revoke($model->id, $member, $roleId);
+            $result = $this->act(RevokeMemberRole::class, $input, ['role_id' => 'accessRole'], 'accessRole');
 
-            return back()->with('status', 'Access revoked.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access revoked.');
         }
 
-        // Segregation of duties refuses a toxic pair here exactly as it does on the
-        // Members page, and the refusal names both roles.
-        $refusal = app(GrantAccessRole::class)->grant($model->id, $member, $roleId, GrantSource::Manual);
+        $result = $this->act(GrantMemberRole::class, $input, ['role_id' => 'accessRole'], 'accessRole');
 
-        if ($refusal !== null) {
-            return back()->withErrors(['accessRole' => $refusal->message()]);
-        }
-
-        return back()->with('status', 'Access granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access granted.');
     }
 
-    public function removeMember(string $organization, string $member, Memberships $memberships): RedirectResponse
+    public function removeMember(string $organization, string $member): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($organization);
+        $result = $this->act(RemoveMember::class, [
+            'organization_id' => $organization,
+            'user_id' => $member,
+        ], ['user_id' => 'member'], 'member', ['last_owner' => 'An organization must keep at least one owner.']);
 
-        if ($memberships->of($model->id, $member) === null) {
-            return back();
-        }
-
-        try {
-            $memberships->remove($model->id, $member);
-        } catch (LastOwner) {
-            return back()->withErrors(['member' => 'An organization must keep at least one owner.']);
-        }
-
-        return back()->with('status', 'Member removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Member removed.');
     }
 
-    public function invite(
-        InviteOrganizationMemberRequest $request,
-        string $organization,
-        OrganizationInvitations $invitations,
-    ): RedirectResponse {
-        $this->assertEnvironmentAdmin();
-
-        $model = $this->resolve($organization);
-
-        // The invitee accepts via the emailed token — nobody is added without consent. The
-        // same service the organization's own People page uses, so an invitation from here
-        // offers the same roles, parks access roles the same way and can be re-sent.
-        try {
-            $sent = $invitations->send($request->toInvitation($model->id, $this->inviter()));
-        } catch (InvitationRefused $refused) {
-            return back()->withInput()->withErrors([$refused->field() => $refused->getMessage()]);
-        }
-
-        return back()->with('status', 'Invitation sent to '.$sent->invitation->email.'.');
-    }
-
-    public function resendInvitation(string $organization, string $invitation, OrganizationInvitations $invitations): RedirectResponse
+    /**
+     * The invitee accepts via the emailed token — nobody is added without consent. The same
+     * action an app's backend sends one with, signed with this administrator's name.
+     */
+    public function invite(InviteOrganizationMemberRequest $request, string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        try {
-            $sent = $invitations->resend($this->resolve($organization)->id, $invitation, $this->inviter());
-        } catch (InvitationRefused $refused) {
-            return back()->with('error', $refused->getMessage());
+        $result = $this->act(SendInvitation::class, [
+            'organization_id' => $organization,
+            'email' => $request->email(),
+            'role' => $request->role()->value,
+            'roles' => $request->accessRoleIds(),
+            'client_id' => $request->filled('client_id') ? $request->string('client_id')->toString() : null,
+            'return_to' => $request->filled('return_to') ? $request->string('return_to')->toString() : null,
+        ], ['email' => 'email', 'role' => 'role', 'roles' => 'accessRoles', 'client_id' => 'client_id', 'return_to' => 'return_to'], 'email', [
+            // The picker's own sentence: the person chose from a list, not by id.
+            'role_not_assignable' => OrgAccessRoles::NOT_OFFERED,
+            'unknown_role' => OrgAccessRoles::NOT_OFFERED,
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        return back()->with('status', 'Invitation sent again to '.$sent->invitation->email.'.');
+        return back()->with('status', 'Invitation sent to '.$request->email().'.');
     }
 
-    public function revokeInvitation(string $organization, string $invitation, OrganizationInvitations $invitations): RedirectResponse
+    public function resendInvitation(string $organization, string $invitation): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        try {
-            $invitations->revoke($this->resolve($organization)->id, $invitation, $this->actorId());
-        } catch (InvitationRefused $refused) {
-            return back()->with('error', $refused->getMessage());
+        $result = $this->attempt(ResendInvitation::class, ['organization_id' => $organization, 'invitation_id' => $invitation]);
+
+        if ($result instanceof ActionRefused) {
+            return back()->with('error', $result->getMessage());
+        }
+
+        $sent = $result->value;
+
+        return back()->with('status', 'Invitation sent again'.($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
+    }
+
+    public function revokeInvitation(string $organization, string $invitation): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        $result = $this->attempt(RevokeInvitation::class, ['organization_id' => $organization, 'invitation_id' => $invitation]);
+
+        if ($result instanceof ActionRefused) {
+            return back()->with('error', $result->getMessage());
         }
 
         return back()->with('status', 'Invitation revoked. That link no longer works.');
@@ -490,76 +468,65 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * owner steps down to admin. That is also how an organization this console created —
      * which starts with no owner at all — gets its first one.
      */
-    public function transferOwnership(string $organization, string $member, MembershipLifecycle $lifecycle): RedirectResponse
+    public function transferOwnership(string $organization, string $member): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($organization);
+        $result = $this->act(TransferOwnership::class, ['id' => $organization, 'user_id' => $member], ['user_id' => 'member'], 'member');
 
-        try {
-            $lifecycle->transferOwnership($model->id, $member, null, $this->actorId());
-        } catch (MembershipRefused $refused) {
-            return back()->withErrors(['member' => $refused->getMessage()]);
-        }
-
-        return back()->with('status', 'Ownership transferred.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Ownership transferred.');
     }
 
-    public function addDomain(AddOrganizationDomainRequest $request, string $organization, DomainVerification $domains): RedirectResponse
+    public function addDomain(AddOrganizationDomainRequest $request, string $organization): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        try {
-            $domains->add($this->resolve($organization)->id, $request->domain());
-        } catch (DomainAlreadyClaimed) {
-            return back()->withInput()->withErrors(['domain' => 'That domain is already claimed.']);
-        }
+        $result = $this->act(AddOrganizationDomain::class, [
+            'organization_id' => $organization,
+            'domain' => $request->domain(),
+        ], ['domain' => 'domain'], 'domain');
 
-        return back()->with('status', 'Domain added — add the DNS TXT record shown below, then verify.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Domain added — add the DNS TXT record shown below, then verify.');
     }
 
-    public function verifyDomain(string $organization, string $domain, DomainVerification $domains): RedirectResponse
+    public function verifyDomain(string $organization, string $domain): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        if ($domains->verify($this->ownedDomain($organization, $domain)->id)) {
-            return back()->with('status', 'Domain verified.');
-        }
+        $result = $this->act(VerifyOrganizationDomain::class, ['organization_id' => $organization, 'domain_id' => $domain], [], 'domain');
 
-        return back()->withErrors([
-            'domain' => 'Verification failed — the DNS TXT record was not found yet.',
-        ]);
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain verified.');
     }
 
-    public function toggleCapture(string $organization, string $domain, DomainVerification $domains): RedirectResponse
+    /**
+     * Capture routes everyone on this email domain to the organization's SSO connection, so
+     * turning it on is refused for a domain nobody proved they own. The page's button flips
+     * it; the action is told which state it means.
+     */
+    public function toggleCapture(string $organization, string $domain): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
         $model = $this->ownedDomain($organization, $domain);
 
-        /*
-         * Capture routes everyone on this email domain to the organization's SSO
-         * connection, so enabling it on an UNPROVEN domain lets an organization claim
-         * addresses it does not own. The service asserts this too — this check stays
-         * because a refusal a person can read beats an unhandled exception, and because
-         * the service is the backstop for callers that forget.
-         */
-        if (! $model->capture && ! $model->isVerified()) {
-            return back()->withErrors(['domain' => 'Verify the domain before turning capture on.']);
-        }
+        $result = $this->act(SetDomainCapture::class, [
+            'organization_id' => $model->organization_id,
+            'domain_id' => $model->id,
+            'enabled' => ! $model->capture,
+        ], [], 'domain');
 
-        $domains->setCapture($model->id, ! $model->capture);
-
-        return back()->with('status', 'Domain capture updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain capture updated.');
     }
 
-    public function removeDomain(string $organization, string $domain, DomainVerification $domains): RedirectResponse
+    public function removeDomain(string $organization, string $domain): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $domains->remove($this->ownedDomain($organization, $domain)->id);
+        $result = $this->act(RemoveOrganizationDomain::class, ['organization_id' => $organization, 'domain_id' => $domain], [], 'domain');
 
-        return back()->with('status', 'Domain removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain removed.');
     }
 
     /**
@@ -652,30 +619,6 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     }
 
     /**
-     * Grant the chosen access roles, ignoring any posted id that is not genuinely
-     * assignable in this organization (deny-by-default). The assignable set is resolved
-     * ONCE rather than re-queried per selected role.
-     *
-     * @param  list<string>  $roleIds
-     */
-    private function grantAccessRoles(string $organizationId, string $userId, array $roleIds, OrgAccessRoles $catalog): void
-    {
-        if ($roleIds === []) {
-            return;
-        }
-
-        $assignable = $catalog->assignable($organizationId)->pluck('id')->all();
-
-        foreach ($roleIds as $roleId) {
-            if (in_array($roleId, $assignable, true)) {
-                // A grant withheld by segregation of duties is not fatal: the rest of the
-                // assignment stands and the governance screen reports what was not given.
-                app(GrantAccessRole::class)->grant($organizationId, $userId, $roleId, GrantSource::Manual);
-            }
-        }
-    }
-
-    /**
      * @return list<array{key: string, value: string}>
      */
     private function metadataOf(Organization $organization): array
@@ -696,61 +639,5 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         }
 
         return $rows;
-    }
-
-    private function uniqueSlug(Organizations $organizations, string $base): string
-    {
-        $base = $base !== '' ? $base : 'org';
-        $slug = $base;
-        $n = 2;
-
-        while ($organizations->bySlug($slug) !== null) {
-            $slug = $base.'-'.$n;
-            $n++;
-        }
-
-        return $slug;
-    }
-
-    /**
-     * WHO is acting — the SUBJECT id, which is the id the audit trail is keyed on.
-     *
-     * It used to be the member row's id, and briefly the MEMBERSHIP id: both are row ids in
-     * a table that is not `users`, so an entry written here resolved against a different id
-     * space than one written by the console.
-     */
-    private function actorId(): string
-    {
-        return app(EnvironmentAdminAuth::class)->subjectId() ?? '';
-    }
-
-    /**
-     * Who is sending an invitation from here: the administrator's SUBJECT id, which the
-     * trail is keyed on, and the name to sign it with.
-     */
-    private function inviter(): Inviter
-    {
-        $actorId = $this->actorId();
-
-        return new Inviter($actorId === '' ? null : $actorId, $this->inviterName());
-    }
-
-    /**
-     * The name to sign an invitation with — through the SUBJECT, because a membership
-     * carries authority and not identity.
-     */
-    private function inviterName(): string
-    {
-        $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
-
-        $subject = $subjectId === null ? null : app(PlatformRoot::class)->run(
-            fn () => app(Subjects::class)->find($subjectId),
-        );
-
-        if ($subject === null) {
-            return 'An administrator';
-        }
-
-        return $subject->name ?? $subject->email ?? 'An administrator';
     }
 }

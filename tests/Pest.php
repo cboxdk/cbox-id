@@ -412,7 +412,16 @@ function mcpCall(string $token, string $tool, array $arguments = []): array
  */
 function mcpTools(string $token): array
 {
-    $tools = mcpRpc($token, 'tools/list')->assertOk()->json('result.tools');
+    // Paged: follow `nextCursor` the way a client does — a key holding every scope sees
+    // more tools than one page carries.
+    $tools = [];
+    $cursor = null;
+
+    do {
+        $page = mcpRpc($token, 'tools/list', $cursor === null ? [] : ['cursor' => $cursor])->assertOk();
+        $tools = [...$tools, ...(array) $page->json('result.tools')];
+        $cursor = $page->json('result.nextCursor');
+    } while (is_string($cursor) && $cursor !== '');
 
     return collect($tools)->keyBy('name')->all();
 }

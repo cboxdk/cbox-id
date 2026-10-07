@@ -26,13 +26,16 @@ environment's host** and nowhere else. Give it the scopes the job needs and no m
 | `organizations:read` / `:write` | list and read organizations / create, rename, archive, transfer ownership |
 | `users:read` / `:write` | list and read users / create and deactivate them |
 | `users:erase` | **critical** — erase a person for good (GDPR Art. 17); not implied by `users:write` |
+| `organizations:read` / `:write` | list and read organizations / create, rename, suspend, archive, transfer ownership, claim email domains |
+| `users:read` / `:write` | find users and their sessions / create, change, deactivate, set passwords, reset two-factor, sign them out |
 | `members:read` / `:write` | list an organization's members / add, re-tier and remove them |
 | `invitations:read` / `:write` | list pending invitations / send, re-send and withdraw them |
-| `roles:read` / `:write` | list roles and who holds them / grant and take them back |
+| `roles:read` / `:write` | list roles and permissions and who holds them / grant and take them back |
+| `role_definitions:write` | define, rename, re-permission and delete roles; author permissions |
 | `apps:read` / `:write` | list apps and export blueprints / register apps |
 | `apis:read` / `:write` | list APIs / register, change and delete them |
 | `api_keys:read` / `:write` | list member API keys / revoke them |
-| `support:write` | start a support session |
+| `support:write` | start and end support sessions |
 | `webhooks:read` / `:write` | list webhook endpoints / register, repoint, pause, resume, re-key and delete them |
 | `hooks:read` / `:write` | list inline hooks / register, pause, activate and remove them |
 | `log_streams:read` / `:write` | list audit log streams / create, disable, resume and delete them |
@@ -69,26 +72,62 @@ already holds the same role answers `200`.
 Endpoints whose reference lists the `Idempotency-Key` header take one on a write. Send any
 unique string (a UUID); a retry with the same key and the same body gets the first answer
 back, marked `Idempotent-Replayed: true`, for 24 hours. The same key on a different body is
-`422 idempotency_key_reused`. More endpoints take it as their areas move onto the shared
-action layer.
+`422 idempotency_key_reused`. Every write takes one.
+
+Every endpoint here is an **action** — the same one the console runs and the MCP server
+offers as a tool — with the same rules and the same audit entry, the key named as the
+actor. A key minted with a step-up policy waits for its owner's approval before a critical
+one (`202 approval_required`): changing a user's address, setting their password, marking
+it verified, resetting two-factor, handing over ownership, granting a staff role, turning
+domain capture on or off, starting a support session.
+
+## Finding somebody
+
+```http
+GET /api/v1/users?email=ada@acme.example
+GET /api/v1/users?q=lovelace&status=active
+GET /api/v1/organizations?q=acme
+```
+
+`email` is an exact (case-insensitive) match; `q` is a fragment of the address or the name
+(of the name or slug, for organizations). Lists page with `limit` and `after`.
+
+## A user's account
+
+```http
+PATCH  /api/v1/users/{id}                 { "name": "Ada L", "email": "ada.l@acme.example" }
+POST   /api/v1/users/{id}/password-reset  (mails a reset link to their own address)
+POST   /api/v1/users/{id}/password        { "password": "…", "reason": "Ticket 4411" }
+DELETE /api/v1/users/{id}/mfa             (they enrol a second factor again)
+GET    /api/v1/users/{id}/sessions
+DELETE /api/v1/users/{id}/sessions        (signed out everywhere, grants revoked)
+DELETE /api/v1/users/{id}                 (deactivated — never deleted)
+POST   /api/v1/users/{id}/reactivate
+```
+
+A changed address must be verified again. A password set here is temporary by default and
+mailed to the person unless `send_email` is `false`; it is never in the answer.
 
 ## The team
 
 ```http
-POST   /api/v1/organizations/{id}/members            { "user_id": "…", "role": "member" }
-PATCH  /api/v1/organizations/{id}/members/{userId}   { "role": "admin" }
-DELETE /api/v1/organizations/{id}/members/{userId}
-POST   /api/v1/organizations/{id}/transfer-ownership { "user_id": "…" }
+POST   /api/v1/organizations/{organization_id}/members             { "user_id": "…", "role": "member" }
+PATCH  /api/v1/organizations/{organization_id}/members/{user_id}   { "role": "admin" }
+DELETE /api/v1/organizations/{organization_id}/members/{user_id}
+POST   /api/v1/organizations/{id}/transfer-ownership             { "user_id": "…" }
+POST   /api/v1/organizations/{id}/suspend                        (and /reactivate)
 ```
 
-A member's `role` is the built-in tier — `admin` or `member`. **Owner is never assigned**:
-ownership moves with `transfer-ownership`, and the previous owner stays on as an admin.
+A member's `role` is the built-in tier — `admin` or `member`. Name the person by `email`
+instead of `user_id` if that is what you have, and send `roles` to grant access roles in
+the same step. **Owner is never assigned**: ownership moves with `transfer-ownership`, and
+every previous owner stays on as an admin.
 Removing or demoting the only owner is refused with `409 last_owner`.
 
 ## Invitations that carry your app's roles
 
 ```http
-POST /api/v1/organizations/{id}/invitations
+POST /api/v1/organizations/{organization_id}/invitations
 {
   "email": "grace@acme.example",
   "role": "member",
@@ -106,15 +145,15 @@ POST /api/v1/organizations/{id}/invitations
 - The person gets a mail, opens a page that says who invited them to what, and presses
   **Accept**. Opening the link does not accept it — mail scanners open every link.
 
-Re-send with `POST …/invitations/{invitationId}/resend` (a fresh link, and a new
+Re-send with `POST …/invitations/{invitation_id}/resend` (a fresh link, and a new
 invitation id — the old one stops working) and withdraw with `DELETE`.
 
 ## Roles, and your staff
 
 ```http
 GET    /api/v1/roles?client_id=<your app>
-PUT    /api/v1/organizations/{id}/members/{userId}/roles/viewer?client_id=<your app>
-DELETE /api/v1/organizations/{id}/members/{userId}/roles/viewer?client_id=<your app>
+PUT    /api/v1/organizations/{organization_id}/members/{user_id}/roles/viewer?client_id=<your app>
+DELETE /api/v1/organizations/{organization_id}/members/{user_id}/roles/viewer?client_id=<your app>
 PUT    /api/v1/users/{id}/environment-roles/support?client_id=<your app>
 ```
 
@@ -130,6 +169,19 @@ after the person has joined.
 
 Every grant is checked against the environment's [role conflicts](../guides/role-conflicts.md)
 (`409 role_conflict`).
+
+Roles your app does not declare in a manifest are defined here too, with
+`role_definitions:write`: `POST /roles` (`organization_id` null for every organization),
+`PATCH` and `DELETE /roles/{id}`, and `PUT`/`DELETE /roles/{id}/permissions/{permission_id}`.
+`GET|POST /permissions` lists the catalogue and authors a `feature:action` key of your own.
+A role your app declared is your manifest's (`403`).
+
+## Email domains
+
+`POST /api/v1/organizations/{organization_id}/domains` claims an email domain for an
+organization and answers with the DNS TXT record to publish; `…/domains/{domain_id}/verify`
+checks it, and `PUT …/domains/{domain_id}/capture` with `{"enabled": true}` routes everyone
+with an address there to the organization's SSO — only once verified.
 
 ## Apps and APIs
 
@@ -202,7 +254,8 @@ most an hour). The customer's activity log and webhooks (`support_session.starte
 who acted and why. The response's `scopes` are exactly what the session's tokens carry:
 once one belongs to a registered API the tokens are for that API, so a scope no API
 registered (`apps.manifest`, say) is not among them. Scopes of two APIs are refused with
-`422 invalid_target` before anything starts.
+`422 invalid_target` before anything starts. `DELETE /api/v1/support-sessions/{id}` ends
+one early: every token it issued is revoked.
 
 ## Webhooks, hooks, log streams and the trail
 

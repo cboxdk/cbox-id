@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\SupportSessions\EndSupportSession;
 use App\Http\Requests\Console\StartSupportSessionRequest;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\EnvironmentAdminAuth;
@@ -104,13 +105,19 @@ final readonly class SupportSessionController extends ConsoleController
         return $this->inertia->location($launch);
     }
 
-    public function destroy(string $session, SupportAccess $support): RedirectResponse
+    /**
+     * End a session now — the action the management API ends one with, so a session from
+     * another environment is a 404 here too, and the trail names who ended it.
+     */
+    public function destroy(string $session): RedirectResponse
     {
-        $actorId = $this->administrator();
+        $this->administrator();
 
-        abort_unless($support->end($session, $actorId), 404);
+        $result = $this->act(EndSupportSession::class, ['id' => $session]);
 
-        return back()->with('status', 'Support session ended — every token it issued is revoked.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Support session ended — every token it issued is revoked.');
     }
 
     /** The administrator acting, as a subject of the platform root. */

@@ -74,13 +74,26 @@ tags:
 paths:
   /organizations:
     get:
+      operationId: organizations_list
+      x-action: organizations.list
       tags: [Organizations]
       summary: List organizations
-      description: "Requires scope `organizations:read`."
+      description: |
+        Requires scope `organizations:read`. A page at a time, archived ones included. Narrow
+        with `q` (a fragment of the name or slug) or `status`.
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
+        - name: q
+          in: query
+          required: false
+          schema: { type: string, maxLength: 190 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [active, suspended, deleted] }
       responses:
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "200":
           description: OK
           content:
@@ -92,13 +105,18 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Organization" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
+      operationId: organizations_create
+      x-action: organizations.create
       tags: [Organizations]
       summary: Create an organization, optionally with its owner
       description: "Requires scope `organizations:write`."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -138,6 +156,10 @@ paths:
                   description: >-
                     `reseller` manages customer organizations beneath it in the tree;
                     `customer` is a leaf tenant.
+                metadata:
+                  type: ["object", "null"]
+                  additionalProperties: { type: string, maxLength: 500 }
+                  description: Free-form text values you keep on the organization.
       responses:
         "201":
           description: Created
@@ -147,12 +169,15 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/Organization" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /organizations/{id}:
     get:
+      operationId: organizations_get
+      x-action: organizations.get
       tags: [Organizations]
       summary: Get an organization
       description: "Requires scope `organizations:read`."
@@ -167,13 +192,16 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/Organization" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     patch:
+      operationId: organizations_update
+      x-action: organizations.update
       tags: [Organizations]
-      summary: Rename an organization, or change its slug
+      summary: Rename an organization, change its slug, or replace its metadata
       description: |
         Requires scope `organizations:write`. A field left out is left alone; a request
         that changes nothing answers with the organization as it is and records nothing.
@@ -181,6 +209,7 @@ paths:
         organization's trail as `organization.renamed`, with the values before and after.
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -190,6 +219,10 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 190 }
                 slug: { type: string, minLength: 1, maxLength: 190, description: "URL-safe; unique within the environment." }
+                metadata:
+                  type: ["object", "null"]
+                  additionalProperties: { type: string, maxLength: 500 }
+                  description: Replaces the metadata as a whole; `null` or `{}` clears it.
       responses:
         "200":
           description: The organization after the change.
@@ -200,12 +233,15 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Organization" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
+      operationId: organizations_delete
+      x-action: organizations.delete
       tags: [Organizations]
       summary: Archive an organization
       description: |
@@ -218,6 +254,7 @@ paths:
         projects on this platform (a platform customer, not a tenant of your app).
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: The archived organization.
@@ -228,6 +265,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Organization" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -235,6 +273,8 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /organizations/{id}/transfer-ownership:
     post:
+      operationId: organizations_transfer_ownership
+      x-action: organizations.transfer_ownership
       tags: [Organizations]
       summary: Make a member the organization's owner
       description: |
@@ -247,6 +287,7 @@ paths:
         Refusals: `422 not_a_member`, `409 not_active`, `409 already_owner`.
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -266,19 +307,22 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Member" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organizations/{id}/members:
+  /organizations/{organization_id}/members:
     get:
+      operationId: members_list
+      x-action: members.list
       tags: [Members]
       summary: List an organization's members
       description: "Requires scope `members:read`. Every membership, whatever its status, oldest first."
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
       responses:
@@ -294,16 +338,25 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Member" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
+      operationId: members_add
+      x-action: members.add
       tags: [Members]
       summary: Add an existing user as a member
       description: |
-        Requires scope `members:write`. Straight in — no invitation, no mail. The user must
-        exist in this environment (`422 user_not_found`).
+        Requires scope `members:write`. Straight in — no invitation, no mail. Name the user by
+        `user_id` or by `email`; they must exist in this environment (`422 user_not_found`).
+        A suspended or archived organization takes no new members (`409 organization_inactive`).
+
+        `roles` grants access roles at the same time — ids, or your app's manifest keys with
+        `client_id` — with the environment's authority (staff roles included). One the
+        organization cannot hold is `422 role_not_assignable`; a segregation-of-duties
+        conflict is `409 role_conflict`, and nothing is added.
 
         `role` is `admin` or `member` (default `member`). `owner` is never assignable:
         ownership moves with `transfer-ownership`.
@@ -312,17 +365,23 @@ paths:
         existing membership. A member on a *different* role is `409 already_member` — change
         the role with `PATCH`.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id]
               properties:
                 user_id: { type: string }
+                email: { type: string, format: email, description: "Instead of `user_id`." }
                 role: { $ref: "#/components/schemas/AssignableMemberRole" }
+                roles:
+                  type: array
+                  maxItems: 50
+                  items: { type: string }
+                client_id: { type: ["string", "null"], description: "The app whose manifest keys `roles` are." }
       responses:
         "200":
           description: Already a member with that role — nothing changed.
@@ -342,22 +401,26 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Member" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organizations/{id}/members/{userId}:
+  /organizations/{organization_id}/members/{user_id}:
     patch:
+      operationId: members_update
+      x-action: members.update
       tags: [Members]
       summary: Change a member's role
       description: |
         Requires scope `members:write`. `role` is `admin` or `member`. Demoting the only
         owner is refused with `409 last_owner` — transfer ownership first.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -377,6 +440,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Member" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -384,23 +448,29 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
+      operationId: members_remove
+      x-action: members.remove
       tags: [Members]
       summary: Remove a member
       description: |
         Requires scope `members:write`. The member's roles in the organization go with the
         membership. Removing the only owner is refused with `409 last_owner`.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "204": { description: "Removed." }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organizations/{id}/members/{userId}/roles:
+  /organizations/{organization_id}/members/{user_id}/roles:
     get:
+      operationId: members_roles_list
+      x-action: members.roles.list
       tags: [Roles]
       summary: List the roles a member holds in the organization
       description: |
@@ -408,7 +478,7 @@ paths:
         everywhere in the environment (staff) are listed under
         `/users/{id}/environment-roles`.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/UserId"
       responses:
         "200":
@@ -422,12 +492,15 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/RoleAssignment" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organizations/{id}/members/{userId}/roles/{roleId}:
+  /organizations/{organization_id}/members/{user_id}/roles/{role_id}:
     put:
+      operationId: members_roles_grant
+      x-action: members.roles.grant
       tags: [Roles]
       summary: Grant a member a role in the organization
       description: |
@@ -443,10 +516,11 @@ paths:
         Refusals: `422 role_not_assignable` (another organization's role, or one from an app
         this organization cannot use), `409 role_conflict` (segregation of duties).
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/UserId"
         - $ref: "#/components/parameters/RoleId"
         - $ref: "#/components/parameters/RoleClientId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: Granted (or already held).
@@ -457,6 +531,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/RoleAssignment" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -464,27 +539,33 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
+      operationId: members_roles_revoke
+      x-action: members.roles.revoke
       tags: [Roles]
       summary: Take a role back from a member
       description: "Requires scope `roles:write`. Idempotent — a role the member does not hold is a 204 too."
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/UserId"
         - $ref: "#/components/parameters/RoleId"
         - $ref: "#/components/parameters/RoleClientId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "204": { description: "Not held any more." }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organizations/{id}/invitations:
+  /organizations/{organization_id}/invitations:
     get:
+      operationId: invitations_list
+      x-action: invitations.list
       tags: [Invitations]
       summary: List an organization's pending invitations
       description: "Requires scope `invitations:read`. Pending and unexpired only."
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
       responses:
@@ -500,11 +581,14 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/Invitation" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
+      operationId: invitations_send
+      x-action: invitations.send
       tags: [Invitations]
       summary: Invite someone to the organization
       description: |
@@ -516,7 +600,7 @@ paths:
           app's manifest **keys** when `client_id` names the app that declared them. Only
           roles the organization's own administrators could grant are accepted: a **staff
           role** is refused (`422 role_not_assignable`) — grant it after they join, with
-          `PUT …/members/{userId}/roles/{roleId}`.
+          `PUT …/members/{user_id}/roles/{role_id}`.
         - `client_id` + `return_to` — after accepting, the person is sent to `return_to`,
           which must be on one of that app's registered redirect-URI origins (checked again
           when the invitation is accepted).
@@ -528,7 +612,8 @@ paths:
         `422 return_without_app`, `422 return_to_malformed`, `422 return_to_not_registered`,
         `503 mail_failed` (nothing was created — retry).
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -556,6 +641,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Invitation" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -563,25 +649,31 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/MailFailed" }
-  /organizations/{id}/invitations/{invitationId}:
+  /organizations/{organization_id}/invitations/{invitation_id}:
     delete:
+      operationId: invitations_revoke
+      x-action: invitations.revoke
       tags: [Invitations]
       summary: Withdraw a pending invitation
       description: |
         Requires scope `invitations:write`. The link stops working, and the roles parked
         for it go with it. `409 not_pending` for one already accepted, withdrawn or expired.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/InvitationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "204": { description: "Withdrawn." }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organizations/{id}/invitations/{invitationId}/resend:
+  /organizations/{organization_id}/invitations/{invitation_id}/resend:
     post:
+      operationId: invitations_resend
+      x-action: invitations.resend
       tags: [Invitations]
       summary: Mail a pending invitation again
       description: |
@@ -593,8 +685,9 @@ paths:
         One re-send per address per minute (`429 too_soon`); `409 not_pending` for one that
         was accepted, withdrawn or has expired; `503 mail_failed` keeps the invitation.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/InvitationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: Sent again.
@@ -605,21 +698,24 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/Invitation" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/MailFailed" }
-  /organizations/{id}/api-keys:
+  /organizations/{organization_id}/api-keys:
     get:
+      operationId: api_keys_list
+      x-action: api_keys.list
       tags: [API keys]
       summary: List the API keys an organization's members created for your apps
       description: |
         Requires scope `api_keys:read`. Revoked and expired keys are included, marked by
         `status`. Never the key itself. Narrow to one app with `?client_id=`.
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/OrganizationId"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
         - name: client_id
@@ -639,12 +735,43 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/ApiKey" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{organization_id}/domains:
+    get:
+      operationId: organizations_domains_list
+      x-action: organizations.domains.list
+      tags: [Organizations]
+      summary: List the email domains an organization claims
+      description: |
+        Requires scope `organizations:read`. Verified or not, each with the DNS TXT record
+        that proves it (`record_name`, `record_value`). A handful at most; not paged.
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/OrganizationDomain" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /api-keys/{id}:
     delete:
+      operationId: api_keys_revoke
+      x-action: api_keys.revoke
       tags: [API keys]
       summary: Revoke a member API key
       description: |
@@ -653,21 +780,42 @@ paths:
         management key as the actor.
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "204": { description: "Revoked." }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /users:
     get:
+      operationId: users_list
+      x-action: users.list
       tags: [Users]
       summary: List users
-      description: "Requires scope `users:read`."
+      description: |
+        Requires scope `users:read`. A page at a time, in id order. Narrow it the ways you
+        look for somebody: `email` (exactly that address, case-insensitive), `q` (a fragment
+        of the address or the name) and `status`. Filters combine.
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
+        - name: email
+          in: query
+          required: false
+          schema: { type: string, format: email, maxLength: 190 }
+        - name: q
+          in: query
+          required: false
+          description: A fragment of the address or the name.
+          schema: { type: string, maxLength: 190 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [active, disabled, locked] }
       responses:
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "200":
           description: OK
           content:
@@ -679,13 +827,18 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/User" }
                   meta: { $ref: "#/components/schemas/PageMeta" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
+      operationId: users_create
+      x-action: users.create
       tags: [Users]
       summary: Create a user
       description: "Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -696,7 +849,15 @@ paths:
               properties:
                 email: { type: string, format: email, maxLength: 190 }
                 name: { type: ["string", "null"], maxLength: 190 }
-                password: { type: ["string", "null"], minLength: 8, maxLength: 255 }
+                password:
+                  type: ["string", "null"]
+                  minLength: 8
+                  maxLength: 255
+                  description: Checked against this environment's password policy (`422 password_policy`).
+                send_sign_in_link:
+                  type: boolean
+                  default: false
+                  description: Mail the new user a one-click sign-in link.
       responses:
         "201":
           description: Created
@@ -706,12 +867,15 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/User" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /users/{id}:
     get:
+      operationId: users_get
+      x-action: users.get
       tags: [Users]
       summary: Get a user
       description: "Requires scope `users:read`."
@@ -726,19 +890,24 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/User" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
+      operationId: users_deactivate
+      x-action: users.deactivate
       tags: [Users]
       summary: Deactivate a user
       description: |
         Requires scope `users:write`. A **soft disable** — the identity can no longer
-        authenticate, but is never hard-deleted. Returns the user in its new
-        `inactive` state.
+        authenticate, but is never hard-deleted — and every OAuth grant they hold is
+        revoked, which reactivating them does not bring back. Returns the user in its new
+        `disabled` state. Idempotent. The console's "Deactivate" is this action.
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: OK
@@ -748,12 +917,44 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/User" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users/{id}/sessions:
+    get:
+      operationId: users_sessions_list
+      x-action: users.sessions.list
+      tags: [Users]
+      summary: List a user's live sign-in sessions
+      description: |
+        Requires scope `users:read`. The fifty most recently active, newest first — enough to
+        recognise a device and end one (`DELETE /users/{id}/sessions/{session_id}`), not a log.
+        `impersonation` marks a session somebody else opened as this person.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/UserSession" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /users/{id}/environment-roles:
     get:
+      operationId: users_environment_roles_list
+      x-action: users.environment_roles.list
       tags: [Roles]
       summary: List the roles a user holds everywhere (staff)
       description: "Requires scope `roles:read`."
@@ -771,12 +972,15 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/RoleAssignment" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /users/{id}/environment-roles/{roleId}:
+  /users/{id}/environment-roles/{role_id}:
     get:
+      operationId: users_environment_roles_get
+      x-action: users.environment_roles.get
       tags: [Roles]
       summary: Whether a user holds a role everywhere
       description: "Requires scope `roles:read`. `200` with the grant, or `404` when it is not held."
@@ -794,11 +998,14 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/RoleAssignment" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     put:
+      operationId: users_environment_roles_grant
+      x-action: users.environment_roles.grant
       tags: [Roles]
       summary: Grant a role everywhere in the environment (staff)
       description: |
@@ -812,6 +1019,7 @@ paths:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RoleId"
         - $ref: "#/components/parameters/RoleClientId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: Granted (or already held).
@@ -822,6 +1030,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/RoleAssignment" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -829,6 +1038,8 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
+      operationId: users_environment_roles_revoke
+      x-action: users.environment_roles.revoke
       tags: [Roles]
       summary: Take back an environment-wide grant
       description: "Requires scope `roles:write`. Idempotent."
@@ -836,14 +1047,18 @@ paths:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RoleId"
         - $ref: "#/components/parameters/RoleClientId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "204": { description: "Not held any more." }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /roles:
     get:
+      operationId: roles_list
+      x-action: roles.list
       tags: [Roles]
       summary: List roles
       description: |
@@ -871,6 +1086,7 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/Role" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -1183,6 +1399,8 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /support-sessions:
     post:
+      operationId: support_sessions_start
+      x-action: support_sessions.start
       tags: [Support sessions]
       summary: Start a support session
       description: |
@@ -1191,7 +1409,7 @@ paths:
         `organization_id`), for a stated `reason`, for at most 60 minutes.
 
         The actor must hold your app's own `support:impersonate` permission through an
-        **environment-wide** grant (see `PUT /users/{id}/environment-roles/{roleId}`);
+        **environment-wide** grant (see `PUT /users/{id}/environment-roles/{role_id}`);
         otherwise `403 not_permitted`. The app must be a first-party app the environment
         owns that uses the authorization-code grant (`422 client_not_eligible`). The target
         must be an active member (`422 target_not_member`) of an active organization
@@ -1209,6 +1427,8 @@ paths:
         registered API, the token is for that API and a scope no API registered (such as
         `apps.manifest`) is left out. Scopes of two registered APIs cannot be audienced to
         one token and are refused before the session starts (`422 invalid_target`).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -1237,6 +1457,7 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/SupportSession" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -1789,18 +2010,24 @@ components:
       in: path
       required: true
       schema: { type: string }
+    OrganizationId:
+      name: organization_id
+      in: path
+      required: true
+      description: The organization's id.
+      schema: { type: string }
     UserId:
-      name: userId
+      name: user_id
       in: path
       required: true
       schema: { type: string }
     InvitationId:
-      name: invitationId
+      name: invitation_id
       in: path
       required: true
       schema: { type: string }
     RoleId:
-      name: roleId
+      name: role_id
       in: path
       required: true
       description: The role's id — or its manifest `key`, together with `?client_id=` naming the app that declared it.
@@ -1809,7 +2036,7 @@ components:
       name: client_id
       in: query
       required: false
-      description: The app whose manifest `key` `{roleId}` is. Not needed when `{roleId}` is an id.
+      description: The app whose manifest `key` `{role_id}` is. Not needed when `{role_id}` is an id.
       schema: { type: string }
     Limit:
       name: limit
@@ -1903,6 +2130,24 @@ components:
         status: { type: string, enum: [active, suspended, deleted] }
         parent_id: { type: ["string", "null"] }
         created_at: { type: ["string", "null"], format: date-time }
+        metadata:
+          type: ["object", "null"]
+          additionalProperties: { type: string }
+          description: Free-form text values kept on the organization; null when there are none.
+    OrganizationDomain:
+      type: object
+      required: [id, organization_id, domain, verified, capture, record_name, record_value]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        domain: { type: string, description: "An email domain the organization claims, like acme.com." }
+        verified: { type: boolean }
+        verified_at: { type: ["string", "null"], format: date-time }
+        capture:
+          type: boolean
+          description: Whether everyone signing in with an address here is routed to the organization's SSO.
+        record_name: { type: string, description: "Where to publish the DNS TXT record that proves the claim." }
+        record_value: { type: string, description: "What to publish there." }
     AssignableMemberRole:
       type: string
       enum: [admin, member]
@@ -2206,6 +2451,28 @@ components:
         name: { type: ["string", "null"] }
         status: { type: string, enum: [active, disabled, locked] }
         email_verified_at: { type: ["string", "null"], format: date-time }
+    UserSession:
+      type: object
+      required: [id, expires_at, impersonation]
+      properties:
+        id: { type: string }
+        user_agent: { type: ["string", "null"] }
+        ip: { type: ["string", "null"] }
+        last_active_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: string, format: date-time }
+        impersonation: { type: boolean, description: "Somebody else opened it as this person." }
+    Permission:
+      type: object
+      required: [id, name, manual, tenant_assignable, orphaned]
+      properties:
+        id: { type: string }
+        name: { type: string, description: "The `feature:action` key an app reads out of a token." }
+        description: { type: ["string", "null"] }
+        client_id: { type: ["string", "null"], description: "The app that declared it; null for one authored here." }
+        organization_id: { type: ["string", "null"], description: "Set for one organization's own; null for the shared tier." }
+        tenant_assignable: { type: boolean, description: "Whether organizations may compose it into their own roles." }
+        manual: { type: boolean, description: "Authored here rather than declared by an app." }
+        orphaned: { type: boolean, description: "Its app stopped declaring it." }
     SignInRules:
       type: object
       required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold]
