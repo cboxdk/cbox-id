@@ -171,9 +171,9 @@ it('puts the create flow behind the step-up, and offers every scope with its ris
         ->and($scopes['apps:write']['held'])->toBeTrue()
         ->and($scopes['apps:read']['risk'])->toBe('read')
         ->and($scopes['branding:write']['risk'])->toBe('write')
-        // The framework's people endpoints are not actions, so approvals cannot hold them.
-        ->and($scopes['users:write']['held'])->toBeFalse()
-        ->and($scopes['users:write']['risk'])->toBe('destructive');
+        // The people endpoints are actions too, so approvals hold them like any other.
+        ->and($scopes['users:write']['held'])->toBeTrue()
+        ->and($scopes['users:write']['risk'])->toBe('critical');
 
     expect(collect($props['actions'])->pluck('name')->all())->toContain('keys.create', 'apps.secrets.rotate')
         ->and($props['defaults']['preset'])->toBe('support');
@@ -289,8 +289,8 @@ it('gives the MCP address of this environment and the snippets\' inputs, and off
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('environment/agents/connect')
             ->where('title', 'Connect')
-            // The /mcp resource takes management keys only today.
-            ->where('oauthAvailable', false))
+            // The /mcp resource accepts self-registered clients, so signing in is offered.
+            ->where('oauthAvailable', true))
         ->inertiaProps();
 
     expect($props['mcpUrl'])->toEndWith('/mcp')

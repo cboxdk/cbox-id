@@ -22,36 +22,14 @@ use Cbox\Id\Platform\Enums\EnvironmentApiScope;
  * no edit here. The same registry is what an approval policy is checked against, which is
  * why a scope also says whether approvals can HOLD it ({@see self::held()}).
  *
- * THE EXCEPTION, said out loud. The people endpoints — organizations, users, members,
- * invitations, role assignments, member API keys, support sessions — are the framework's
- * REST controllers, not actions yet. They have no Danger to read, so {@see self::FRAMEWORK}
- * states one from what each endpoint can do, and they are marked as not held: an approval
+ * A scope no action requires (a framework scope this deployment offers before any action
+ * uses it) falls back to Write or Read by its name, and is marked as not held: an approval
  * policy is enforced by the action runner, and a request that never passes through it is
- * never held. The console says so beside them rather than letting a policy look wider
- * than it is.
+ * never held. The console says so beside it rather than letting a policy look wider than
+ * it is.
  */
 final readonly class AgentScopes
 {
-    /**
-     * The risk of the framework-served scopes, from the most harmful thing each allows.
-     *
-     * @var array<string, Danger>
-     */
-    private const array FRAMEWORK = [
-        // Transfers ownership — the definition of Critical.
-        'organizations:write' => Danger::Critical,
-        // Deactivates and deletes people.
-        'users:write' => Danger::Destructive,
-        'members:write' => Danger::Destructive,
-        // Revokes invitations.
-        'invitations:write' => Danger::Destructive,
-        // Grants roles: a privilege change, so Critical.
-        'roles:write' => Danger::Critical,
-        'api_keys:write' => Danger::Destructive,
-        // Acts as a user.
-        'support:write' => Danger::Critical,
-    ];
-
     /** What the resource part of a scope is called on screen. */
     private const array RESOURCES = [
         'organizations' => 'Organizations',
@@ -131,7 +109,7 @@ final readonly class AgentScopes
         $actions = $this->actionsByScope();
         $risks = [];
 
-        foreach ([...EnvironmentKeyScopes::offered(), ...array_keys($actions), ...array_keys(self::FRAMEWORK)] as $scope) {
+        foreach ([...EnvironmentKeyScopes::offered(), ...array_keys($actions)] as $scope) {
             $risks[$scope] = $this->riskOf($scope, $actions[$scope] ?? []);
         }
 
@@ -188,7 +166,7 @@ final readonly class AgentScopes
     private function riskOf(string $scope, array $actions): Danger
     {
         if ($actions === []) {
-            return self::FRAMEWORK[$scope] ?? (EnvironmentKeyScopes::writes($scope) ? Danger::Write : Danger::Read);
+            return EnvironmentKeyScopes::writes($scope) ? Danger::Write : Danger::Read;
         }
 
         $highest = Danger::Read;
