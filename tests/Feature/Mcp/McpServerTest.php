@@ -10,12 +10,20 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\EnvironmentKeyAuditLog;
 use Cbox\Id\Api\Support\ServerMetadata;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\Api;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
+use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 use Illuminate\Testing\TestResponse;
 use Laravel\Mcp\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -30,14 +38,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 */
 
 /**
- * @param  list<EnvironmentApiScope>  $scopes
+ * @param  list<EnvironmentApiScope|string>  $scopes
  */
 function mcpIssue(array $scopes = [EnvironmentApiScope::ApisRead, EnvironmentApiScope::ApisWrite], string $environmentId = 'env_test'): IssuedEnvironmentApiKey
 {
     return app(EnvironmentApiKeys::class)->issue(
         $environmentId,
         'Agent',
-        array_map(fn (EnvironmentApiScope $scope): string => $scope->value, $scopes),
+        array_map(fn (EnvironmentApiScope|string $scope): string => $scope instanceof EnvironmentApiScope ? $scope->value : $scope, $scopes),
     );
 }
 
@@ -149,14 +157,14 @@ it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', functio
     expect($scopes)->toContain('apis:read', 'apis:write');
 });
 
-it('lists only the tools the key\'s scopes allow, plus whoami and list_actions', function (): void {
+it('lists only the tools the key\'s scopes allow, plus whoami, list_actions and approval_status', function (): void {
     $reader = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::ApisRead])->plaintext));
 
-    expect($reader)->toEqualCanonicalizing(['whoami', 'list_actions', 'apis_list', 'apis_get']);
+    expect($reader)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'apis_list', 'apis_get']);
 
     $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
 
-    expect($nothing)->toEqualCanonicalizing(['whoami', 'list_actions']);
+    expect($nothing)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status']);
 
     $writer = array_keys(mcpTools(mcpIssue()->plaintext));
 
@@ -331,7 +339,7 @@ it('groups the action tools behind search_tools and execute_tools when tool sear
     config(['api.mcp.tool_search' => true]);
     $key = mcpIssue([EnvironmentApiScope::ApisRead])->plaintext;
 
-    expect(array_keys(mcpTools($key)))->toEqualCanonicalizing(['whoami', 'list_actions', 'search_tools', 'execute_tools']);
+    expect(array_keys(mcpTools($key)))->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'search_tools', 'execute_tools']);
 
     $found = json_decode(mcpCall($key, 'search_tools', ['query' => 'api'])['content'][0]['text'], true);
 
@@ -350,7 +358,7 @@ it('groups the action tools behind search_tools and execute_tools when tool sear
  * console can do and an agent cannot — this is the MCP twin of ActionParityTest.
  */
 it('offers every action in the registry as a tool, with its own input schema', function (): void {
-    $all = mcpIssue(EnvironmentApiScope::offerable())->plaintext;
+    $all = mcpIssue(app(ManagementScopes::class)->offerable())->plaintext;
     $tools = mcpTools($all);
 
     foreach (app(ActionRegistry::class)->all() as $action) {
@@ -359,9 +367,54 @@ it('offers every action in the registry as a tool, with its own input schema', f
         $schema = $tools[$action->toolName()]['inputSchema'];
         $declared = json_decode(json_encode($action->input()->jsonSchema(), JSON_THROW_ON_ERROR), true);
 
-        expect(array_diff_key($schema['properties'], [ActionTool::IDEMPOTENCY_KEY => true]))->toBe($declared['properties'] ?? [])
+        expect(array_diff_key($schema['properties'], [ActionTool::IDEMPOTENCY_KEY => true, ActionTool::APPROVAL_ID => true]))->toBe($declared['properties'] ?? [])
+            ->and(array_key_exists(ActionTool::APPROVAL_ID, $schema['properties']))->toBeTrue("{$action->name} cannot be finished after an approval")
             ->and($schema['required'] ?? [])->toBe($declared['required'] ?? [])
             ->and(array_key_exists(ActionTool::IDEMPOTENCY_KEY, $schema['properties']))->toBe($action->danger !== Danger::Read)
             ->and(array_key_exists(ActionTool::IDEMPOTENCY_KEY, $declared['properties'] ?? []))->toBeFalse("{$action->name} declares a field named idempotency_key, which MCP uses for retries.");
     }
 });
+
+// ── Approvals ───────────────────────────────────────────────────────────────────
+
+/*
+ * A key whose policy holds an action answers `approval_pending` over MCP — not an error —
+ * and the agent finishes the call once the person approves, exactly as over REST.
+ */
+it('holds an action for the owner\'s approval and finishes it with approval_id', function (): void {
+    platformRootEnvironment();
+    $environment = Environment::query()->find('env_test') ?? tap(new Environment, function ($environment): void {
+        $environment->forceFill([
+            'id' => 'env_test', 'name' => 'Test', 'slug' => 'env-test',
+            'type' => EnvironmentType::Production,
+            'status' => EnvironmentStatus::Active,
+            'is_default' => false, 'settings' => [],
+        ])->save();
+    });
+    serveOnTestHost($environment);
+
+    $owner = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->create('mcp-owner@workspace.test', 'Owner', 'supersecret123')->id);
+    $key = app(EnvironmentApiKeys::class)->issue('env_test', 'Agent', ['keys:read', 'keys:write'], null, new KeyProvenance(
+        createdByType: 'organization_member',
+        createdById: $owner,
+        stepUpPolicy: ['min_danger' => 'critical', 'actions' => []],
+    ))->plaintext;
+
+    $arguments = ['name' => 'Minted by an agent', 'scopes' => ['keys:read'], 'idempotency_key' => 'mcp-held'];
+
+    $held = mcpCall($key, 'keys_create', $arguments);
+
+    expect($held['isError'] ?? false)->toBeFalse()
+        ->and($held['structuredContent']['status'])->toBe('approval_pending');
+
+    $approvalId = $held['structuredContent']['approval']['id'];
+
+    expect(mcpCall($key, 'approval_status', ['approval_id' => $approvalId])['structuredContent']['status'])->toBe('pending');
+
+    app(PlatformRoot::class)->run(fn () => app(BackchannelAuthentication::class)->approve($approvalId, $owner));
+
+    $done = mcpCall($key, 'keys_create', [...$arguments, 'approval_id' => $approvalId]);
+
+    expect($done['isError'] ?? false)->toBeFalse()
+        ->and($done['structuredContent']['data']['name'])->toBe('Minted by an agent');
+})->group('security');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp;
 
+use App\Mcp\Tools\ApprovalStatus;
 use App\Mcp\Tools\ListActions;
 use App\Mcp\Tools\WhoAmI;
 use App\Platform\Actions\ActionPlane;
@@ -18,8 +19,9 @@ use Laravel\Mcp\Server\Tools\ToolSearch;
  *
  * It is a third door to the action layer, beside the console and the REST API: one tool
  * per action in the registry ({@see ActionTool}), built here at start-up, so an action
- * added to `app/Actions` is a tool with no edit to this file. Two tools are always there:
- * `whoami`, and `list_actions` — a compact index an agent can plan from.
+ * added to `app/Actions` is a tool with no edit to this file. Three tools are always there:
+ * `whoami`, `list_actions` — a compact index an agent can plan from — and `approval_status`,
+ * for an action held for a person's approval.
  *
  * ON TOOL SEARCH. laravel/mcp can group tools behind `search_tools` / `execute_tools`
  * ({@see ToolSearch}) so a large catalogue does not fill the agent's context. It is OFF by
@@ -54,6 +56,7 @@ final class IdServer extends Server
     protected array $tools = [
         WhoAmI::class,
         ListActions::class,
+        ApprovalStatus::class,
     ];
 
     protected function boot(): void

@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\Principal;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -59,6 +60,8 @@ final class ActionTool extends Tool
 {
     /** The argument that carries the REST door's `Idempotency-Key` header. */
     public const string IDEMPOTENCY_KEY = 'idempotency_key';
+
+    public const string APPROVAL_ID = 'approval_id';
 
     public function __construct(private readonly ActionDefinition $action) {}
 
@@ -142,12 +145,20 @@ final class ActionTool extends Tool
     public function inputSchema(): array
     {
         $schema = $this->action->input()->jsonSchema();
+        $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
+
+        // Any action can be held for a person's approval when the key's policy says so.
+        $properties[self::APPROVAL_ID] = [
+            'type' => 'string',
+            'description' => 'Only after an `approval_pending` answer, once `approval_status` says approved: the approval id. Repeat the call with exactly the same arguments.',
+        ];
 
         if (! $this->action->danger->writes()) {
+            $schema['properties'] = $properties;
+
             return $schema;
         }
 
-        $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
         $properties[self::IDEMPOTENCY_KEY] = [
             'type' => 'string',
             'minLength' => 1,
@@ -184,7 +195,8 @@ final class ActionTool extends Tool
         /** @var array<string, mixed> $input */
         $input = $request->all();
         $idempotencyKey = $input[self::IDEMPOTENCY_KEY] ?? null;
-        unset($input[self::IDEMPOTENCY_KEY]);
+        $approvalId = $input[self::APPROVAL_ID] ?? null;
+        unset($input[self::IDEMPOTENCY_KEY], $input[self::APPROVAL_ID]);
 
         if ($idempotencyKey !== null && (! is_string($idempotencyKey) || $idempotencyKey === '' || strlen($idempotencyKey) > 255)) {
             return self::refusal('validation_failed', 'The idempotency_key must be a string of 1 to 255 characters.', self::IDEMPOTENCY_KEY, [
@@ -193,7 +205,22 @@ final class ActionTool extends Tool
         }
 
         try {
-            $result = $runner->run($this->action, $principal, $input, $idempotencyKey);
+            $result = $runner->run($this->action, $principal, $input, $idempotencyKey, is_string($approvalId) && $approvalId !== '' ? $approvalId : null);
+        } catch (ApprovalRequired $held) {
+            // Not an error: the call is waiting for a person. Said in a shape an agent can
+            // act on without parsing prose.
+            $body = [
+                'status' => 'approval_pending',
+                'approval' => [
+                    'id' => $held->approvalId,
+                    'binding_code' => $held->bindingCode,
+                    'expires_at' => $held->expiresAt->toIso8601String(),
+                ],
+                'next' => 'Tell the person to approve the request showing code '.$held->bindingCode.' on their Cbox ID app. Poll `approval_status` with this approval id; once it is `approved`, call '.$this->name().' again with exactly the same arguments plus `approval_id`'.($this->action->danger->writes() ? ' (and the same `idempotency_key`, if you sent one)' : '').'.',
+            ];
+
+            return Response::make([Response::text('Waiting for approval · code '.$held->bindingCode), Response::text(self::json($body))])
+                ->withStructuredContent($body);
         } catch (ActionRefused $refused) {
             return self::refusal($refused->error, $refused->getMessage(), $refused->field);
         } catch (ValidationException $invalid) {
