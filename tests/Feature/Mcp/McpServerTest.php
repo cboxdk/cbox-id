@@ -149,13 +149,13 @@ it('completes the initialize handshake a client opens with', function (): void {
 });
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
-    $scopes = collect(app(ActionRegistry::class)->all())->pluck('scope')->unique()->sort()->values()->all();
+    $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')->unique()->sort()->values()->all();
 
     $this->getJson('/.well-known/oauth-protected-resource/mcp')
         ->assertOk()
         ->assertJsonPath('resource', 'http://localhost/mcp')
         ->assertJsonPath('authorization_servers', [ServerMetadata::issuer()])
-        ->assertJsonPath('scopes_supported', $scopes)
+        ->assertJsonPath('scopes_supported', [...$scopes, 'offline_access'])
         ->assertJsonPath('bearer_methods_supported', ['header']);
 
     expect($scopes)->toContain('apis:read', 'apis:write');

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Mcp\ProtectedResourceMetadataController;
 use App\Http\Middleware\AuthenticateMcp;
 use App\Mcp\IdServer;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
@@ -19,14 +18,6 @@ use Laravel\Mcp\Server\Middleware\AddWwwAuthenticateHeader;
  * only within it; the limiter is a named one keyed on the credential (App\Http\
  * ApiRateLimiters, budget in config/api.php), like every management-plane route.
  */
-
-// RFC 9728: where an MCP client refused at `/mcp` learns which authorization server to
-// use. Public — it names the issuer and the scopes, both already public in discovery — and
-// throttled by IP like the framework's other metadata documents, since there is no
-// credential to key on.
-Route::middleware([ResolveEnvironment::class, 'throttle:300,1'])
-    ->get(ProtectedResourceMetadataController::PATH, ProtectedResourceMetadataController::class)
-    ->name('mcp.protected-resource');
 
 Route::middleware([ResolveEnvironment::class, 'throttle:api-mcp', AuthenticateMcp::class])->group(function (): void {
     // Without AddWwwAuthenticateHeader, which laravel/mcp attaches to the route and ALSO

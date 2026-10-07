@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Http\Controllers\Mcp\ProtectedResourceMetadataController;
 use App\Mcp\McpCaller;
+use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\WorkspaceApiContext;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
+use Cbox\Id\OAuthServer\Support\BearerChallenge;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\DatabaseOrganizationApiKeys;
@@ -41,7 +43,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * A request without a usable credential gets the RFC 6750 challenge with the RFC 9728
  * `resource_metadata` pointer, which is how an MCP client discovers where to sign in:
- * {@see ProtectedResourceMetadataController}. `error="invalid_token"` only when a token
+ * the document the framework serves for {@see McpProtectedResources}. `error="invalid_token"` only when a token
  * was presented — §3.1 says a request that carried none gets no error code.
  */
 final class AuthenticateMcp
@@ -52,6 +54,7 @@ final class AuthenticateMcp
         private readonly EnvironmentApiContext $context,
         private readonly WorkspaceApiContext $workspace,
         private readonly McpCaller $caller,
+        private readonly ProtectedResources $resources,
     ) {}
 
     /**
@@ -63,7 +66,7 @@ final class AuthenticateMcp
         $principal = is_string($token) && $token !== '' ? $this->principalFor($token) : null;
 
         if ($principal === null) {
-            return $this->challenge($request, presented: is_string($token) && $token !== '');
+            return $this->challenge(presented: is_string($token) && $token !== '');
         }
 
         $this->caller->set($principal);
@@ -112,18 +115,19 @@ final class AuthenticateMcp
         return new EnvironmentKeyPrincipal($key);
     }
 
-    private function challenge(Request $request, bool $presented): Response
+    private function challenge(bool $presented): Response
     {
-        $challenge = 'Bearer resource_metadata="'.ProtectedResourceMetadataController::urlFor($request).'"';
+        $resource = $this->resources->forMetadataPath('/.well-known/oauth-protected-resource'.McpProtectedResources::PATH);
+        $challenge = $resource === null ? new BearerChallenge : BearerChallenge::for($resource);
 
         if ($presented) {
-            $challenge .= ', error="invalid_token"';
+            $challenge = $challenge->withError('invalid_token');
         }
 
         return response()->json(
             ['error' => 'unauthorized', 'message' => 'A valid management key (Bearer cbid_env_… for an environment, cbid_ws_… for a workspace) is required.'],
             401,
-            ['WWW-Authenticate' => $challenge],
+            $challenge->headers(),
         );
     }
 }

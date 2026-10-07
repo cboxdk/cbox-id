@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
+use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\AuthoritativeDnsResolver;
@@ -25,6 +26,8 @@ use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
@@ -38,6 +41,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // The MCP server at `/mcp` is a protected resource of every environment's issuer,
+        // declared beside whatever config declares (RFC 9728 metadata, RFC 8707 audience).
+        $this->app->extend(ProtectedResources::class, fn (ProtectedResources $configured, Application $app): ProtectedResources => new McpProtectedResources(
+            $configured,
+            $app->make(IssuerResolver::class),
+            $app->make(ActionRegistry::class),
+        ));
+
         // Domain-ownership verification reads the challenge TXT from the domain's
         // authoritative nameservers, not the framework's default recursive
         // resolver — so a freshly published record verifies immediately instead of
