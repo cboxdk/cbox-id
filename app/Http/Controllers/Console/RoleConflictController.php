@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Governance\DefineSodPolicy;
+use App\Actions\Governance\DeleteSodPolicy;
+use App\Actions\Governance\SetSodPolicyStatus;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\StoreRoleConflictRequest;
 use App\Platform\Console\ConsolePlane;
@@ -159,7 +162,7 @@ final readonly class RoleConflictController extends ConsoleController
         ]);
     }
 
-    public function store(StoreRoleConflictRequest $request, SegregationOfDuties $sod): RedirectResponse
+    public function store(StoreRoleConflictRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -187,12 +190,20 @@ final readonly class RoleConflictController extends ConsoleController
             }
         }
 
-        $policy = $sod->definePolicy(
-            $organizationId,
-            $request->name(),
-            $request->roleIds(),
-            $request->description(),
-        );
+        $result = $this->act(DefineSodPolicy::class, [
+            'organization_id' => $organizationId,
+            'environment_wide' => $organizationId === null,
+            'name' => $request->name(),
+            'description' => $request->description(),
+            'role_ids' => $request->roleIds(),
+        ], ['role_ids' => 'roles', 'environment_wide' => 'environmentWide', 'description' => 'description'], fallback: 'name');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var SodPolicy $policy */
+        $policy = $result->value;
 
         return to_route($this->scope->routeName('sod-policies.show'), $policy->id)
             ->with('status', 'Rule "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
@@ -271,20 +282,23 @@ final readonly class RoleConflictController extends ConsoleController
      * knows which it is in, so a posted intent would only add a way for the switch and the
      * row to disagree.
      */
-    public function toggle(string $policy, SegregationOfDuties $sod): RedirectResponse
+    public function toggle(string $policy): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
         $model = $this->changeable()->whereKey($policy)->firstOrFail();
 
-        if ($model->organization_id === null) {
-            // The unscoped call, which the contract reserves for the control plane — only
-            // reachable here by an administrator who holds the environment.
-            $sod->setActive($model->id, ! $model->active);
-        } else {
-            // The framework asserts ownership too, so this is the console's half of the
-            // same gate rather than the only one.
-            $sod->setActiveForOrganization($model->organization_id, $model->id, ! $model->active);
+        // The action takes the unscoped call for an environment-wide rule — reachable only
+        // with the environment's authority — and the scoped one, which asserts ownership
+        // too, for an organization's.
+        $result = $this->act(SetSodPolicyStatus::class, [
+            'id' => $model->id,
+            'active' => ! $model->active,
+            'organization_id' => $this->actingOrganizationId(),
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
         return back()->with('status', $model->active
@@ -299,7 +313,11 @@ final readonly class RoleConflictController extends ConsoleController
         $model = $this->changeable()->whereKey($policy)->firstOrFail();
         $name = $model->name;
 
-        $model->delete();
+        $result = $this->act(DeleteSodPolicy::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         return to_route($this->scope->routeName('sod-policies'))
             ->with('status', 'Rule "'.$name.'" removed.');

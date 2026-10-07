@@ -4,11 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\PortalLinks\CreatePortalLink;
+use App\Actions\Sso\ActivateSsoConnection;
+use App\Actions\Sso\AddSsoDomain;
+use App\Actions\Sso\CreateSsoConnection;
+use App\Actions\Sso\DeleteSsoConnection;
+use App\Actions\Sso\DisableSsoConnection;
+use App\Actions\Sso\ImportSamlMetadata;
+use App\Actions\Sso\RemoveSsoDomain;
+use App\Actions\Sso\RequireSso;
+use App\Actions\Sso\SetSsoDomainCapture;
+use App\Actions\Sso\SsoFields;
+use App\Actions\Sso\UpdateSsoConnection;
+use App\Actions\Sso\VerifySsoDomain;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveConnectionRequest;
 use App\Http\Requests\Console\StoreConnectionRequest;
-use App\Platform\AdminPortal;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalScope;
@@ -16,20 +28,10 @@ use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
-use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Enums\ConnectionType;
-use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
-use Cbox\Id\Federation\Exceptions\OidcDiscoveryFailed;
-use Cbox\Id\Federation\Exceptions\SamlMetadataImportFailed;
-use Cbox\Id\Federation\Exceptions\UnsafeFederationUrl;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
-use Cbox\Id\Federation\OidcDiscovery;
-use Cbox\Id\Federation\Saml\SamlMetadataImporter;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
-use Cbox\Id\Identity\Enums\SsoEnforcement;
-use Cbox\Id\Identity\ValueObjects\AuthPolicy;
-use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -139,17 +141,20 @@ final readonly class ConnectionController extends ConsoleController
      * Mint a single-use Admin Portal link and reveal its URL once, so an administrator can
      * hand SSO setup to an external IT administrator without granting them an account.
      */
-    public function invite(AdminPortal $portal): RedirectResponse
+    public function invite(): RedirectResponse
     {
         $this->guardEntitled();
 
-        // `actorId()`, not the subject's: on the environment plane there is no subject
-        // session to ask, and the one thing this link records is who minted it.
-        $token = $portal->generate(
-            $this->scope->requireOrganizationId(),
-            PortalScope::Sso,
-            $this->scope->actorId(),
-        );
+        // The action a management key mints a link with, recording who minted it — the
+        // scope's `actorId()` here, since the environment plane has no subject session.
+        $result = $this->act(CreatePortalLink::class, [
+            'organization_id' => $this->scope->requireOrganizationId(),
+            'covers' => PortalScope::Sso->value,
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         /*
          * ON THE FLASH CHANNEL. This link admits its holder to the tenant's SSO setup with
@@ -157,7 +162,7 @@ final readonly class ConnectionController extends ConsoleController
          * history entry and readable by pressing Back, which is the Inertia shape of the
          * hazard the Volt page's `protected` property was avoiding.
          */
-        $this->inertia->flash('portalUrl', route('portal.enter', $token));
+        $this->inertia->flash('portalUrl', $result->value);
 
         return back();
     }
@@ -187,16 +192,17 @@ final readonly class ConnectionController extends ConsoleController
             'domain.regex' => 'Enter a valid domain, e.g. acme.com.',
         ]);
 
-        try {
-            $record = $domains->add(
-                $this->scope->requireOrganizationId(),
-                (string) $request->string('domain'),
-            );
-        } catch (DomainAlreadyClaimed) {
-            return back()->withInput()->withErrors([
-                'domain' => 'That domain is already claimed by another organization.',
-            ]);
+        $result = $this->act(AddSsoDomain::class, [
+            'organization_id' => $this->scope->requireOrganizationId(),
+            'domain' => (string) $request->string('domain'),
+        ], fallback: 'domain');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
+
+        /** @var VerifiedDomain $record */
+        $record = $result->value;
 
         $this->inertia->flash('dns', [
             'host' => $domains->challengeHost($record->domain),
@@ -208,18 +214,24 @@ final readonly class ConnectionController extends ConsoleController
     }
 
     /** Re-check the DNS TXT record for a domain this organization owns. */
-    public function verifyDomain(string $domain, DomainVerification $domains): RedirectResponse
+    public function verifyDomain(string $domain): RedirectResponse
     {
         $this->guardEntitled();
         $this->ownedDomain($domain);
 
-        return $domains->verify($domain)
+        $result = $this->act(VerifySsoDomain::class, ['id' => $domain, 'organization_id' => $this->scope->requireOrganizationId()]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return ($result->payload['verified'] ?? false) === true
             ? back()->with('status', 'Domain verified.')
             : back()->with('error', "We couldn't find the TXT record yet — DNS can take a few minutes.");
     }
 
     /** Toggle the capture gate on a VERIFIED domain this organization owns. */
-    public function toggleCapture(string $domain, DomainVerification $domains): RedirectResponse
+    public function toggleCapture(string $domain): RedirectResponse
     {
         $this->guardEntitled();
         $record = $this->ownedDomain($domain);
@@ -227,21 +239,31 @@ final readonly class ConnectionController extends ConsoleController
         // Capture only makes sense once control of the domain is proven.
         abort_unless($record->isVerified(), 403);
 
-        $domains->setCapture($domain, ! $record->capture);
+        // The switch sends the state it moves TO; the action takes it explicitly so an API
+        // retry cannot undo itself.
+        $result = $this->act(SetSsoDomainCapture::class, [
+            'id' => $record->id,
+            'capture' => ! $record->capture,
+            'organization_id' => $this->scope->requireOrganizationId(),
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         return back()->with('status', $record->capture
             ? 'Capture disabled.'
             : 'Capture enabled — matching users must use SSO.');
     }
 
-    public function removeDomain(string $domain, DomainVerification $domains): RedirectResponse
+    public function removeDomain(string $domain): RedirectResponse
     {
         $this->guardEntitled();
         $this->ownedDomain($domain);
 
-        $domains->remove($domain);
+        $result = $this->act(RemoveSsoDomain::class, ['id' => $domain, 'organization_id' => $this->scope->requireOrganizationId()]);
 
-        return back()->with('status', 'Domain removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain removed.');
     }
 
     public function create(): Response
@@ -270,7 +292,7 @@ final readonly class ConnectionController extends ConsoleController
      * Parsed by the vetted framework importer; only the IdP fields are filled, and the
      * administrator still reviews and submits.
      */
-    public function importMetadata(Request $request, SamlMetadataImporter $importer): RedirectResponse
+    public function importMetadata(Request $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -280,24 +302,18 @@ final readonly class ConnectionController extends ConsoleController
             return back()->withErrors(['metadata' => 'Paste the IdP metadata XML, or a metadata URL.']);
         }
 
-        try {
-            $metadata = str_starts_with($input, 'http://') || str_starts_with($input, 'https://')
-                ? $importer->fromUrl($input)
-                : $importer->fromXml($input);
-        } catch (SamlMetadataImportFailed|UnsafeFederationUrl $e) {
-            return back()->withErrors(['metadata' => $e->getMessage()]);
+        $result = $this->act(ImportSamlMetadata::class, ['metadata' => $input], fallback: 'metadata');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $this->inertia->flash('metadata', [
-            'idp_entity_id' => $metadata->entityId,
-            'idp_sso_url' => $metadata->ssoUrl,
-            'idp_x509cert' => $metadata->x509cert,
-        ]);
+        $this->inertia->flash('metadata', $result->payload);
 
         return back()->with('status', 'Metadata imported — review the fields and create the connection.');
     }
 
-    public function store(StoreConnectionRequest $request, Connections $connections): RedirectResponse
+    public function store(StoreConnectionRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -336,27 +352,23 @@ final readonly class ConnectionController extends ConsoleController
             app(VerifiedEmailGate::class)->require('create an identity connection');
         }
 
-        $type = $request->connectionType();
-        $config = $request->config();
+        // The action discovers an OIDC issuer's endpoints — SSRF-guarded — so the connection
+        // is complete: the client needs them at redirect time, and an issuer alone would
+        // dead-end mid-flow.
+        $result = $this->act(CreateSsoConnection::class, [
+            ...$request->config(),
+            'organization_id' => $organizationId,
+            'environment_wide' => $organizationId === null,
+            'name' => $request->name(),
+            'type' => $request->connectionType()->value,
+        ], self::formFields(), fallback: 'name');
 
-        if ($type === ConnectionType::Oidc) {
-            /*
-             * Resolve the provider's authorization and token endpoints from its issuer
-             * (SSRF-guarded discovery) so the connection is complete — the OIDC client
-             * needs them at redirect time, and an issuer alone would dead-end mid-flow.
-             */
-            try {
-                $config = array_merge($config, app(OidcDiscovery::class)
-                    ->fromIssuer((string) $request->string('issuer'))
-                    ->toConfig());
-            } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
-                return back()->withInput()->withErrors([
-                    'issuer' => "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})",
-                ]);
-            }
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $connection = $connections->create($organizationId, $type, $request->name(), $config);
+        /** @var Connection $connection */
+        $connection = $result->value;
 
         return to_route($this->scope->routeName('connections.show'), $connection->id)
             ->with('status', 'Connection created as a draft.');
@@ -429,80 +441,54 @@ final readonly class ConnectionController extends ConsoleController
         ]);
     }
 
-    public function update(
-        SaveConnectionRequest $request,
-        string $connection,
-        Connections $connections,
-        SecretBox $secretBox,
-    ): RedirectResponse {
+    /**
+     * Secrets are write-once: the action carries the sealed value through for any left
+     * blank, and re-discovers an OIDC issuer so its endpoints cannot drift from it.
+     */
+    public function update(SaveConnectionRequest $request, string $connection): RedirectResponse
+    {
         $model = $this->guardEntitledConnection($connection);
 
-        // Start from the sealed config so any secret left blank is carried through.
-        $current = $this->safeConfig($model, $connections);
+        $config = [];
 
-        if ($model->type === ConnectionType::Saml) {
-            $cert = $request->secretOr('idp_x509cert', self::configString($current, 'idp_x509cert'));
-
-            if ($cert === '') {
-                return back()->withInput()->withErrors(['idp_x509cert' => 'A signing certificate is required.']);
-            }
-
-            $config = [
-                'idp_entity_id' => trim((string) $request->string('idp_entity_id')),
-                'idp_sso_url' => trim((string) $request->string('idp_sso_url')),
-                'idp_x509cert' => $cert,
-                'sp_entity_id' => trim((string) $request->string('sp_entity_id')),
-                'sp_acs_url' => trim((string) $request->string('sp_acs_url')),
-            ];
-        } else {
-            $key = $request->secretOr('signing_key', self::configString($current, 'signing_key'));
-
-            if ($key === '') {
-                return back()->withInput()->withErrors(['signing_key' => 'A signing key is required.']);
-            }
-
-            // Secrets are write-once: a blank field keeps the sealed value.
-            $secret = $request->secretOr('client_secret', self::configString($current, 'client_secret'));
-
-            if ($secret === '') {
-                return back()->withInput()->withErrors(['client_secret' => 'A client secret is required.']);
-            }
-
-            $config = [
-                'issuer' => trim((string) $request->string('issuer')),
-                'client_id' => trim((string) $request->string('client_id')),
-                'client_secret' => $secret,
-                'signing_key' => $key,
-            ];
-
-            try {
-                $config = array_merge($config, app(OidcDiscovery::class)
-                    ->fromIssuer((string) $request->string('issuer'))
-                    ->toConfig());
-            } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
-                return back()->withInput()->withErrors([
-                    'issuer' => "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})",
-                ]);
-            }
+        foreach ($model->type === ConnectionType::Saml ? SsoFields::SAML : SsoFields::OIDC as $field) {
+            $config[$field] = trim((string) $request->string($field));
         }
 
-        $model->name = $request->name();
-        $model->config_encrypted = $secretBox->seal(
-            json_encode($config, JSON_THROW_ON_ERROR),
-            $model->secretContext(),
-        );
-        $model->save();
+        $result = $this->act(UpdateSsoConnection::class, [
+            ...$config,
+            'id' => $model->id,
+            'organization_id' => $this->actingOrganizationId(),
+            'name' => $request->name(),
+        ], self::formFields(), fallback: 'name');
 
-        return back()->with('status', 'Connection updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Connection updated.');
     }
 
-    public function activate(string $connection, Connections $connections): RedirectResponse
+    /**
+     * The form's fields are named as the action's inputs are, so a refusal about the
+     * certificate or the issuer lands on that field rather than on the name.
+     *
+     * @return array<string, string>
+     */
+    private static function formFields(): array
+    {
+        $names = [...SsoFields::SAML, ...SsoFields::OIDC, 'name', 'type'];
+
+        return array_combine($names, $names);
+    }
+
+    public function activate(string $connection): RedirectResponse
     {
         $model = $this->guardEntitledConnection($connection);
 
         // The service scopes the flip to the owning organization, so a draft cannot be
         // activated across tenants.
-        $connections->activate($model->organization_id, $model->id);
+        $result = $this->act(ActivateSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         /*
          * OFFERED, NOT APPLIED, and offered HERE rather than on a settings page nobody
@@ -520,20 +506,11 @@ final readonly class ConnectionController extends ConsoleController
     }
 
     /**
-     * Turn the mandate on for this connection's organization.
-     *
-     * Written through the {@see AuthPolicies} contract, which is what makes the session
-     * revocation happen: it lives in a decorator around this interface, so reaching for
-     * the concrete store would refuse tomorrow's password logins and leave every session
-     * that was opened with one wide open.
-     *
-     * The new override is the organization's EXISTING policy with the mandate raised — its
-     * own override if it has one, otherwise the environment baseline. Starting from a bare
-     * {@see AuthPolicy} would write this organization's first override out of the value
-     * object's defaults, quietly restating a 12-character minimum for a tenant whose
-     * environment asked for 16.
+     * Turn the mandate on for this connection's organization — through {@see RequireSso},
+     * which writes the organization's EXISTING policy with the mandate raised, through the
+     * contract whose decorator ends every password session there.
      */
-    public function requireSso(string $connection, AuthPolicies $policies): RedirectResponse
+    public function requireSso(string $connection): RedirectResponse
     {
         $model = $this->guardEntitledConnection($connection);
 
@@ -545,39 +522,28 @@ final readonly class ConnectionController extends ConsoleController
             return back()->with('error', 'This connection belongs to the environment, not to one organization. Set the requirement under Sign-in rules.');
         }
 
-        $current = $policies->overrideFor($model->organization_id) ?? $policies->forEnvironment();
+        $result = $this->act(RequireSso::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
 
-        $policies->setForOrganization($model->organization_id, new AuthPolicy(
-            minLength: $current->minLength,
-            requireBreachCheck: $current->requireBreachCheck,
-            maxAgeDays: $current->maxAgeDays,
-            reuseHistory: $current->reuseHistory,
-            mfa: $current->mfa,
-            sso: SsoEnforcement::Required,
-            lockoutThreshold: $current->lockoutThreshold,
-        ));
-
-        return to_route($this->scope->routeName('connections.show'), $model->id)
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections.show'), $model->id)
             ->with('status', 'Single sign-on is now required.');
     }
 
     public function disable(string $connection): RedirectResponse
     {
-        // No service method disables a connection; the status flips on the scoped model
-        // directly (mirrors how the organization console persists status changes).
         $model = $this->guardEntitledConnection($connection);
-        $model->status = ConnectionStatus::Inactive;
-        $model->save();
 
-        return back()->with('status', 'Connection disabled.');
+        $result = $this->act(DisableSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Connection disabled.');
     }
 
     public function destroy(string $connection): RedirectResponse
     {
-        // No service delete exists; the scoped model is removed directly.
-        $this->guardEntitledConnection($connection)->delete();
+        $model = $this->guardEntitledConnection($connection);
 
-        return to_route($this->scope->routeName('connections'))->with('status', 'Connection deleted.');
+        $result = $this->act(DeleteSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections'))->with('status', 'Connection deleted.');
     }
 
     /**

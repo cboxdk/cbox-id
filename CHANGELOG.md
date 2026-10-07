@@ -8,6 +8,32 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Enterprise SSO, directory sync, outbound provisioning, access governance, the token
+  vault and Admin Portal links are actions** — management API endpoints and MCP tools, and
+  the console's own writes run the same actions. New environment-plane endpoints:
+  `/sso/connections` (create, update, activate, disable, require-sso, delete, list, get),
+  `/sso/domains` (claim, verify, capture, remove, list), `/sso/saml-metadata` (parse IdP
+  metadata, stores nothing), `/directories` (SCIM register, Google/Entra connect, rename,
+  status, token rotate, group→role mapping, delete, list, get, groups),
+  `/provisioning-targets`, `/sod-policies`, `/access-reviews` (open, items, decide, close),
+  `/token-vault/secrets` (store, rotate, revoke, grants) and
+  `POST /organizations/{organization_id}/portal-links`. New key scopes: `sso:*`,
+  `directory_sync:*`, `provisioning:*`, `governance:*`, `token_vault:*` and
+  `portal_links:write` — `token_vault:*` manages the vault and is not the `vault.manage` /
+  `vault.lease` scopes an app's own token carries. Secrets are input only: a SCIM bearer
+  token and a portal link are shown once and redacted from idempotent replays; IdP
+  certificates, client secrets, signing keys, provider credentials and vault values are
+  never returned. Critical: connection update/activate/disable/delete/require-sso, domain
+  capture, SCIM register and rotate, pull connect, target register, SoD switch and delete,
+  vault rotate and grant, portal links.
+- Writes that recorded nothing now leave an attributed audit entry, from the console and
+  the API alike: `sso_connection.created|updated|disabled|deleted`, `directory.registered|
+  connected|renamed|token_rotated|paused|resumed|deleted|group_role_mapped|
+  group_role_unmapped`, `provisioning_connection.registered|paused|resumed|deleted`,
+  `sod.policy_deleted`, and `auth_policy.updated` for require-SSO.
+
 ### Changed
 
 - Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.

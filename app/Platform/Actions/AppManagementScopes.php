@@ -104,6 +104,50 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage custom domains',
             'description' => 'Add, verify and remove the custom domain this environment is served on.',
         ],
+        'sso:read' => [
+            'label' => 'Read single sign-on',
+            'description' => 'List the SAML and OIDC connections organizations sign in through, and the email domains that route people to them — never a certificate, client secret or signing key.',
+        ],
+        'sso:write' => [
+            'label' => 'Manage single sign-on',
+            'description' => 'Create, change, enable, disable and delete SSO connections, require SSO for an organization, and verify and capture its email domains. Changes how people sign in.',
+        ],
+        'directory_sync:read' => [
+            'label' => 'Read directory sync',
+            'description' => 'List the directories (SCIM, Google Workspace, Microsoft Entra) that sync people in, their groups and sync errors — never a bearer token or provider credentials.',
+        ],
+        'directory_sync:write' => [
+            'label' => 'Manage directory sync',
+            'description' => 'Connect, rename, pause, re-key and delete inbound directories, and map their groups onto roles. A new or rotated SCIM bearer token is shown once.',
+        ],
+        'provisioning:read' => [
+            'label' => 'Read outbound provisioning',
+            'description' => 'List the downstream SCIM targets this environment pushes people to, and whether each is failing — never their credentials.',
+        ],
+        'provisioning:write' => [
+            'label' => 'Manage outbound provisioning',
+            'description' => 'Register, pause, resume and delete the SCIM targets this environment sends people\'s data to.',
+        ],
+        'governance:read' => [
+            'label' => 'Read access governance',
+            'description' => 'Read role-conflict (segregation of duties) rules and access reviews, with every item a review asks someone to certify.',
+        ],
+        'governance:write' => [
+            'label' => 'Manage access governance',
+            'description' => 'Define, switch and remove role-conflict rules; open access reviews, record decisions and close them — closing applies every revoke.',
+        ],
+        'token_vault:read' => [
+            'label' => 'Read the token vault',
+            'description' => 'List the downstream credentials stored in the token vault and which apps may lease each — never a stored value.',
+        ],
+        'token_vault:write' => [
+            'label' => 'Manage the token vault',
+            'description' => 'Store, rotate and revoke downstream credentials, and grant or withdraw an app\'s right to lease one. Not the vault.manage / vault.lease scopes an app\'s own token carries.',
+        ],
+        'portal_links:write' => [
+            'label' => 'Create Admin Portal links',
+            'description' => 'Mint a one-time Admin Portal link that lets an organization\'s IT administrator set up its SSO, domains or directory sync without an account. The link is shown once.',
+        ],
     ];
 
     public function knows(string $scope): bool

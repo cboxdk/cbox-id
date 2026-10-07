@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Provisioning\DeleteProvisioningTarget;
+use App\Actions\Provisioning\RegisterProvisioningTarget;
+use App\Actions\Provisioning\SetProvisioningTargetStatus;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\RegisterOutboundSyncRequest;
@@ -11,7 +14,6 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\Provisioning\Enums\ConnectionStatus;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
@@ -111,7 +113,7 @@ final readonly class OutboundSyncController extends ConsoleController
         ]);
     }
 
-    public function store(RegisterOutboundSyncRequest $request, ProvisioningConnections $connections): RedirectResponse
+    public function store(RegisterOutboundSyncRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -144,14 +146,26 @@ final readonly class OutboundSyncController extends ConsoleController
             }
         }
 
-        $connection = $connections->register(
-            $organizationId,
-            $request->name(),
-            $request->baseUrl(),
-            $request->scheme(),
-            $request->secret(),
-            authConfig: $request->authConfig(),
-        )->connection;
+        $config = $request->authConfig();
+
+        $result = $this->act(RegisterProvisioningTarget::class, [
+            'organization_id' => $organizationId,
+            'environment_wide' => $organizationId === null,
+            'name' => $request->name(),
+            'base_url' => $request->baseUrl(),
+            'auth_scheme' => $request->scheme()->value,
+            'secret' => $request->secret(),
+            'token_url' => $config['token_url'] ?? null,
+            'client_id' => $config['client_id'] ?? null,
+            'scope' => $config['scope'] ?? null,
+        ], ['base_url' => 'baseUrl', 'token_url' => 'tokenUrl', 'client_id' => 'clientId', 'secret' => 'secret', 'auth_scheme' => 'scheme', 'scope' => 'scope'], fallback: 'name');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var ProvisioningConnection $connection */
+        $connection = $result->value;
 
         return to_route($this->scope->routeName('provisioning.show'), $connection->id)
             ->with('status', 'Provisioning connection registered.');
@@ -193,34 +207,37 @@ final readonly class OutboundSyncController extends ConsoleController
      * knows which it is in, so a posted intent would only add a way for the button and the
      * row to disagree.
      */
-    public function toggle(string $sync, ProvisioningConnections $connections): RedirectResponse
+    public function toggle(string $sync): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
         $connection = $this->resolve($sync);
+        $resume = $connection->status !== ConnectionStatus::Active;
 
-        if ($connection->status === ConnectionStatus::Active) {
-            $connections->pause($connection->id);
+        $result = $this->act(SetProvisioningTargetStatus::class, [
+            'id' => $connection->id,
+            'active' => $resume,
+            'organization_id' => $this->scope->organizationId(),
+        ]);
 
-            return back()->with('status', 'Connection paused — changes stop being pushed downstream.');
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        // No `resume()` on the contract: pausing is the operation it models, and coming
-        // back is the absence of it. Written here rather than invented on the contract,
-        // which would be a second way to say the same thing.
-        $connection->status = ConnectionStatus::Active;
-        $connection->save();
-
-        return back()->with('status', 'Connection resumed — changes are pushed again from now on.');
+        return back()->with('status', $resume
+            ? 'Connection resumed — changes are pushed again from now on.'
+            : 'Connection paused — changes stop being pushed downstream.');
     }
 
     public function destroy(string $sync): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $this->resolve($sync)->delete();
+        $connection = $this->resolve($sync);
 
-        return to_route($this->scope->routeName('provisioning'))
+        $result = $this->act(DeleteProvisioningTarget::class, ['id' => $connection->id, 'organization_id' => $this->scope->organizationId()]);
+
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('provisioning'))
             ->with('status', 'Connection deleted.');
     }
 
