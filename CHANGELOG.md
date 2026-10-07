@@ -8,7 +8,16 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Erase a person (GDPR Art. 17).** `users.erase` — the console's new Danger zone on a user's page, `POST /api/v1/users/{id}/erase` and the MCP tool `users_erase` — runs laravel-id 1.22's `SubjectEraser` in one transaction and returns its `ErasureReceipt`. Critical: the console asks for a fresh credential and the person's address typed out; a key needs the new `users:erase` scope (offered, flagged critical on the key form, not implied by `users:write`). The app's own stores are erasure steps of the same pipeline: Frontend API sign-in tickets, checklist dismissals, the risk trail's address pseudonym, and — registered by their modules — devices, push history and enrolment codes, and risk-plus's review trail and signal memory. The only owner of an organization is refused (`409 last_owner`) and nothing changes. The audit trail is not rewritten and still verifies.
+- **Organization-owned SAML applications.** A SAML app can belong to one organization (`organization_id` on `/v1/saml-apps`, "For which organization?" in the console); only its active members are then asserted to it. The list flags environment-wide apps.
+- `CBOX_ID_CRYPTO_PREVIOUS_KEYS` and a master-key rotation runbook (Operations › Rotating the crypto master key). The devices module registers its sealed push token with `SealedColumns`, so `cbox-id:crypto:rewrap` covers it.
+- `CBOX_ID_LOCKOUT_THRESHOLD`, `CBOX_ID_LOCKOUT_WINDOW_MINUTES`, `CBOX_ID_LOCKOUT_DURATION_MINUTES` in `.env.example` and the configuration docs.
+
 ### Changed
+
+- **Sign-in rules: an empty lockout threshold is the deployment default, not "off".** Since laravel-id 1.22, 10 failures inside 15 minutes lock an account when no rule names a threshold; the page said "leave empty to disable lockout" and now states the default this deployment actually applies.
 
 - Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
 

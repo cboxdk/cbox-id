@@ -13,6 +13,7 @@ use Cbox\Id\Devices\Contracts\PushDispatcher;
 use Cbox\Id\Devices\Contracts\PushTransport;
 use Cbox\Id\Devices\Decorators\PushNotifyingActionApprovals;
 use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
+use Cbox\Id\Devices\Erasure\DevicesErasureStep;
 use Cbox\Id\Devices\Listeners\SendSecurityAlert;
 use Cbox\Id\Devices\Models\PushNotification;
 use Cbox\Id\Devices\Support\DeviceCircuitBreaker;
@@ -20,7 +21,10 @@ use Cbox\Id\Devices\Support\DeviceConfig;
 use Cbox\Id\Devices\Support\DeviceRateLimiter;
 use Cbox\Id\Devices\Transports\FcmPushTransport;
 use Cbox\Id\Devices\Transports\NullPushTransport;
+use Cbox\Id\Identity\Contracts\ErasureSteps;
+use Cbox\Id\Kernel\Crypto\Contracts\SealedColumns;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Kernel\Crypto\ValueObjects\SealedColumn;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ActionApprovals;
@@ -160,6 +164,20 @@ class DevicesServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'devices');
         $this->loadRoutesFrom(__DIR__.'/../routes/devices.php');
+
+        // The push token is sealed under the crypto master key, so a key rotation has to
+        // reach it: an unregistered column keeps the old key and stops opening the day that
+        // key is dropped — and every handset silently stops getting approval prompts.
+        $this->callAfterResolving(SealedColumns::class, static function (SealedColumns $columns): void {
+            $columns->register(new SealedColumn('id_devices', 'token_encrypted', 'cbox-id:device-token:'));
+        });
+
+        // A person's handsets are personal data the framework does not know about; erasing
+        // the person erases them, unconditionally — a module turned off later still holds
+        // the rows it collected while it was on.
+        $this->callAfterResolving(ErasureSteps::class, static function (ErasureSteps $steps): void {
+            $steps->register(new DevicesErasureStep);
+        });
 
         // Security alerts take the opposite trade to approvals: they ride the ordinary
         // relay, so they are never on the login critical path.

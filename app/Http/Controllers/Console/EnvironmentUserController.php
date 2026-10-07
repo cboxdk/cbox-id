@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Users\EraseUser;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Props\Shared\SimplePaginationProps;
@@ -61,19 +62,22 @@ use Inertia\Response;
  * ENVIRONMENT PLANE › USERS — every end-user identity in this environment, and the whole
  * lifecycle of one of them.
  *
- * THERE IS DELIBERATELY NO DELETE HERE. This page once carried one: it stripped the
- * memberships, called `$user->delete()`, and reported "User deleted." The schema carries
- * no foreign key on `user_id` anywhere, so nothing ever refused the delete and the "they
- * still have linked records" guard it was wrapped in could not fire. What actually
- * survived the row: sessions, passkeys, MFA factors and TOTP seeds, password history,
- * `identities.raw` (the person's whole IdP profile), magic links, email-verification
- * tokens, OAuth access/refresh tokens, `directory_users.resource` (the whole SCIM payload)
- * and role assignments. No domain event fired, so nothing downstream was deprovisioned,
- * and no audit entry recorded the act.
+ * THERE IS DELIBERATELY NO DELETE HERE — THERE IS AN ERASURE. This page once carried a
+ * delete: it stripped the memberships, called `$user->delete()`, and reported "User
+ * deleted." The schema carries no foreign key on `user_id` anywhere, so nothing ever
+ * refused the delete and the "they still have linked records" guard it was wrapped in could
+ * not fire. What actually survived the row: sessions, passkeys, MFA factors and TOTP seeds,
+ * password history, `identities.raw` (the person's whole IdP profile), magic links,
+ * email-verification tokens, OAuth access/refresh tokens, `directory_users.resource` (the
+ * whole SCIM payload) and role assignments. No domain event fired, so nothing downstream
+ * was deprovisioned, and no audit entry recorded the act.
  *
  * An administrator being told an erasure happened when it did not is worse than having no
- * button at all — it retires the request. Deactivation is what this console can honestly
- * do, so deactivation is what it offers.
+ * button at all — it retires the request. So the button came back only once there was an
+ * erasure behind it: {@see self::erase()} runs `users.erase` ({@see EraseUser}), the
+ * framework's one-transaction GDPR Art. 17 pipeline plus this app's own stores, behind a
+ * fresh credential and the person's address typed out. Deactivation stays the reversible
+ * off-switch beside it.
  *
  * EVERY MUTATION RE-RESOLVES THE USER from the URL through the environment-scoped model,
  * so an id from another environment 404s rather than being acted on. Under Livewire the
@@ -317,6 +321,7 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'resetMfa' => route('environment.users.mfa', $model->id),
                 'deactivate' => route('environment.users.deactivate', $model->id),
                 'reactivate' => route('environment.users.reactivate', $model->id),
+                'erase' => route('environment.users.erase', $model->id),
                 'revokeAllSessions' => route('environment.users.sessions.revoke-all', $model->id),
                 'assignOrganization' => route('environment.users.organizations.store', $model->id),
                 'environmentRole' => route('environment.users.roles', $model->id),
@@ -490,6 +495,50 @@ final readonly class EnvironmentUserController extends ConsoleController
         $subjects->deactivate($this->resolve($user)->id);
 
         return back()->with('status', 'User deactivated — they can no longer sign in.');
+    }
+
+    /**
+     * ERASE THIS PERSON — GDPR Art. 17 — through the same action the management API and MCP
+     * run, so the rule (an organization's only owner is refused), the receipt and the
+     * `user.erased` tombstone are the action's.
+     *
+     * TWO GATES, because nothing undoes it. A fresh credential, like every takeover-shaped
+     * action on this page — an administrator's browser left open on a desk must not be
+     * enough. And the person's address typed out, checked HERE rather than only in the
+     * dialog: the dialog is the page being careful, and a crafted POST never opens it.
+     *
+     * After it, the row is still there — pseudonymised, disabled, id kept — so the list is
+     * where to land: this page would now describe somebody called `erased-…`.
+     */
+    public function erase(Request $request, string $user): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        $model = $this->resolve($user);
+
+        $challenge = $this->stepUp(
+            $model->id,
+            'Erasing a person deletes their credentials, memberships and personal data for good. Nothing brings it back.',
+        );
+
+        if ($challenge !== null) {
+            return $challenge;
+        }
+
+        if (! hash_equals($model->email, trim($request->string('confirmation')->toString()))) {
+            return back()->withErrors(['erase' => 'Type this user’s email address exactly to erase them.']);
+        }
+
+        $result = $this->act(EraseUser::class, ['id' => $model->id], fallback: 'erase');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return to_route('environment.users')->with(
+            'status',
+            'User erased. Their account is pseudonymised and the erasure is recorded as user.erased in the activity log.',
+        );
     }
 
     public function reactivate(string $user, Subjects $subjects): RedirectResponse

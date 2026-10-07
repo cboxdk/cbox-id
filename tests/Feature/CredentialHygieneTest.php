@@ -146,7 +146,7 @@ it('shows each environment scope by its label with its key beside it', function 
         ->issue($environmentId, 'Reporting', ['organizations:read']));
 
     expect(listedEnvironmentKeys($environmentId)['Reporting']['scopes'])->toBe([
-        ['value' => 'organizations:read', 'label' => 'Read organizations', 'writes' => false],
+        ['value' => 'organizations:read', 'label' => 'Read organizations', 'writes' => false, 'critical' => false],
     ]);
 });
 

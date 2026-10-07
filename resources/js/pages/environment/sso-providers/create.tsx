@@ -2,10 +2,11 @@ import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import { Button, Icon, PageHeader, type MetadataRow } from '@/ui';
-import { ServiceProviderFields } from './fields';
+import { type OrganizationOption, ServiceProviderFields } from './fields';
 
 type Props = PageProps<{
     formats: { value: string; label: string }[];
+    organizations: OrganizationOption[];
     defaults: {
         nameIdFormat: string;
         nameIdAttribute: string;
@@ -17,6 +18,7 @@ type Props = PageProps<{
 
 export default function RegisterServiceProvider({
     formats,
+    organizations,
     defaults,
     indexHref,
     storeHref,
@@ -29,6 +31,7 @@ export default function RegisterServiceProvider({
         attributeMappings: defaults.attributeMappings,
         wantAuthnRequestsSigned: false,
         certificate: '',
+        organizationId: '',
     });
 
     return (
@@ -58,7 +61,12 @@ export default function RegisterServiceProvider({
                     form.post(storeHref);
                 }}
             >
-                <ServiceProviderFields form={form} formats={formats} hasCertificate={false} />
+                <ServiceProviderFields
+                    form={form}
+                    formats={formats}
+                    organizations={organizations}
+                    hasCertificate={false}
+                />
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>

@@ -23,6 +23,7 @@ final readonly class EnvironmentScopeProps implements Prop
         public string $value,
         public string $label,
         public bool $writes,
+        public bool $critical = false,
     ) {}
 
     public static function from(EnvironmentApiScope $scope): self
@@ -64,11 +65,11 @@ final readonly class EnvironmentScopeProps implements Prop
 
         return $scope !== null
             ? self::from($scope)
-            : new self($value, AppManagementScopes::label($value), AppManagementScopes::writes($value));
+            : new self($value, AppManagementScopes::label($value), AppManagementScopes::writes($value), AppManagementScopes::critical($value));
     }
 
     /**
-     * @return array{value: string, label: string, writes: bool}
+     * @return array{value: string, label: string, writes: bool, critical: bool}
      */
     public function toArray(): array
     {
@@ -76,6 +77,8 @@ final readonly class EnvironmentScopeProps implements Prop
             'value' => $this->value,
             'label' => $this->label,
             'writes' => $this->writes,
+            // Cannot be undone — erasing a person. Flagged on the form beside "writes".
+            'critical' => $this->critical,
         ];
     }
 }

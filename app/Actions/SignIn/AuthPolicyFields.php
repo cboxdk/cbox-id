@@ -33,7 +33,7 @@ final class AuthPolicyFields
             Field::integer('reuse_history')->min(0)->max(24)->describe('How many previous passwords may not be reused.'),
             Field::string('mfa')->oneOf(array_map(static fn (MfaRequirement $case): string => $case->value, MfaRequirement::cases()))->describe('Whether a second factor is off, optional or required.'),
             Field::string('sso')->oneOf(array_map(static fn (SsoEnforcement $case): string => $case->value, SsoEnforcement::cases()))->describe('Whether SSO is off, preferred, or required — `required` refuses every other way in and signs out password sessions.'),
-            Field::integer('lockout_threshold')->nullable()->min(3)->max(100)->describe('Failed attempts before an account is locked; null for no lockout.'),
+            Field::integer('lockout_threshold')->nullable()->min(3)->max(100)->describe('Failed attempts before an account is locked; null for the deployment default (10 inside 15 minutes unless CBOX_ID_LOCKOUT_THRESHOLD says otherwise).'),
         ];
     }
 

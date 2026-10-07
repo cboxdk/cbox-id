@@ -34,9 +34,9 @@ guarded webhooks, and the standards conformance matrix.
 
 → **[Framework compliance mapping](https://github.com/cboxdk/laravel-id/blob/main/docs/security/compliance.md)** —
 the authoritative control-by-control table. Everything there applies to this
-deployment because this app composes that package — with one **exception you must read
-before citing that table**: [erasure (GDPR Art. 17) is not
-implemented](#not-implemented-erasure-gdpr-art-17), here or in the framework.
+deployment because this app composes that package. Read [erasure (GDPR Art.
+17)](#erasure-gdpr-art-17) before citing the erasure row: it says exactly what is erased
+and what is kept.
 
 ## App-layer controls this deployment adds
 
@@ -56,31 +56,47 @@ See [Configuration](../configuration/environment-variables.md) for the settings
 behind these and [Operations](../operations/operations.md) for key custody,
 rotation, and break-glass.
 
-## Not implemented: erasure (GDPR Art. 17)
+## Erasure (GDPR Art. 17)
 
-**This deployment cannot erase a person's data, and nothing in it should be presented
-to an assessor as a right-to-erasure control.** State this plainly in your own
-records; a control claimed but absent is worse than a control acknowledged as missing,
-because it stops anyone from building it.
+**Erase user** (environment console › Users › a person › Danger zone), the management
+API's `POST /v1/users/{id}/erase` and the MCP tool `users_erase` are one action,
+`users.erase`. It runs the framework's `SubjectEraser` — see the framework's
+[erasure](https://github.com/cboxdk/laravel-id/blob/main/docs/security/erasure.md) page
+for every store it covers — in **one database transaction**, with this app's own stores
+registered as steps of the same pipeline. It is `critical`: the console demands a fresh
+credential and the person's address typed out; a management key needs the `users:erase`
+scope, which `users:write` does not include.
 
-What actually exists today, and what it does:
+What it does:
 
-| Capability | What it does | What it does **not** do |
-|---|---|---|
-| **Deactivate a user** (environment console › Users) | Sets the subject to `disabled`. Sign-in is refused and existing sessions stop working on their next request. Reversible. | Removes nothing. Sessions, passkeys, MFA factors and TOTP seeds, password history, identity-provider profiles (`identities.raw`), magic links, verification tokens, OAuth access/refresh tokens, directory/SCIM records (`directory_users.resource`) and role assignments are all retained. |
-| **Revoke sessions and tokens** | Terminates sessions and revokes issued credentials. | Removes no stored personal data. |
-| **Delete an organization** (environment console › Organizations) | Soft status change to `deleted`: the organization leaves every list and its members are refused at sign-in, device authorization and consent. | Erases nothing — the organization's rows, and its members', are kept for audit. |
-| **Risk-decision retention** (`risk_decisions`, default 90 days) | Bounds how long pseudonymised signup/login scoring data is held; rows matching a subject's pseudonym can be deleted on request (see [Adaptive risk](./adaptive-risk.md)). | Is a retention window on one table, not subject erasure. |
+- Revokes the person's sessions (relying parties receive back-channel logout) and OAuth
+  grants; deletes passkeys, second factors, recovery codes, password history, linked
+  identity-provider profiles, memberships, role grants, API tokens, vault secrets and the
+  stored copies of their details in the event outbox, webhook deliveries and the SCIM
+  queue.
+- Deletes what this app adds: enrolled handsets, their push history and enrolment codes
+  (devices module); embedded sign-in tickets; setup-checklist dismissals; the flagged
+  sign-ins on the risk review trail and the adaptive signals' memory of the address
+  (risk-plus module). The keyed pseudonym of the address on `risk_decisions` is removed;
+  the scored decision itself stays, naming nobody.
+- Pseudonymises the account row in place — the id is kept, email and name become
+  placeholders, the account is disabled — records a `user.erased` audit tombstone and
+  emits `user.erased`, which outbound SCIM answers with a `DELETE` on every connection.
+- Returns a **receipt** (store by store, in numbers, no personal data) to keep with your
+  Art. 30 records.
 
-There is no erasure service, command, endpoint or console action anywhere in this
-codebase. Satisfying an Art. 17 request against this deployment is a **manual,
-out-of-band** exercise today, and the DPIA and records of processing you maintain
-under [*What remains yours*](#what-remains-yours-organizational-controls) must say so.
+It refuses to erase the only owner of an organization (transfer ownership first), and a
+refusal changes nothing — the whole erasure rolls back.
 
-Erasure is **planned** — a designed programme with an erasure ledger, a grace window,
-downstream deprovisioning and crypto-shredded audit, rather than a row delete. It is
-not built, so nothing above is written in the present tense. This section changes only
-when the code does.
+What it deliberately keeps, and you should document under Art. 17(3)(b)/(e):
+
+| Kept | Why |
+|---|---|
+| **The audit trail** | Every column of an entry is inside its hash and chained into the next; rewriting one breaks verification for everything after it. Past entries keep the person's **opaque id**, which identifies nobody once the account row is pseudonymised. Some entries also carry values that are personal data in their own right — the IP of sign-in events, an address as the target of an invitation. The chain verifies after an erasure. |
+| **Access-review history and support sessions** | Records of decisions taken, keyed by id. |
+| **Everything outside this database** | Your SIEM (if audit streaming is on), webhook receivers (they get `user.erased` and should erase their copy), downstream SCIM apps whose `DELETE` failed (it retries and dead-letters visibly), and backups. |
+
+Deactivation (Users › Deactivate) remains the reversible off-switch: it removes nothing.
 
 ## What remains yours (organizational controls)
 

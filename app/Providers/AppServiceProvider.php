@@ -16,6 +16,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
+use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
@@ -25,6 +26,7 @@ use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
+use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
@@ -58,6 +60,12 @@ class AppServiceProvider extends ServiceProvider
         // the framework's SystemDnsResolver binding (app providers load last).
         // Discovered once per process: every door reads the same list.
         $this->app->singleton(ActionRegistry::class);
+
+        // The tables this app adds that name a person, so erasing one reaches them too —
+        // in the framework's transaction, after the framework's own steps.
+        $this->callAfterResolving(ErasureSteps::class, static function (ErasureSteps $steps, Application $app): void {
+            AppErasureSteps::register($steps, $app);
+        });
 
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.

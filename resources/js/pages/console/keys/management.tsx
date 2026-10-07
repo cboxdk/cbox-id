@@ -29,6 +29,8 @@ interface Scope {
     label: string;
     /** True for anything that is not `:read` — the distinction that matters here. */
     writes: boolean;
+    /** Cannot be undone — erasing a person. Offered, and said so. */
+    critical: boolean;
 }
 
 interface KeyRow {
@@ -182,7 +184,13 @@ export default function ManagementKeys({
                                                 {key.scopes.map((scope) => (
                                                     <li key={scope.value}>
                                                         <Badge
-                                                            tone={scope.writes ? 'warn' : 'neutral'}
+                                                            tone={
+                                                                scope.critical
+                                                                    ? 'danger'
+                                                                    : scope.writes
+                                                                      ? 'warn'
+                                                                      : 'neutral'
+                                                            }
                                                         >
                                                             {scope.label}
                                                             <span
@@ -269,8 +277,14 @@ export default function ManagementKeys({
                                                             when ticking boxes for a credential
                                                             that can provision people.
                                                         */}
-                                                        {scope.writes && (
-                                                            <Badge tone="warn">writes</Badge>
+                                                        {scope.critical ? (
+                                                            <Badge tone="danger">
+                                                                critical · cannot be undone
+                                                            </Badge>
+                                                        ) : (
+                                                            scope.writes && (
+                                                                <Badge tone="warn">writes</Badge>
+                                                            )
                                                         )}
                                                     </span>
                                                 }

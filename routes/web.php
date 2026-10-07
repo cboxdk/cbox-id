@@ -1149,6 +1149,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/users/{user}/two-factor/reset', [EnvironmentUserController::class, 'resetMfa'])->name('environment.users.mfa');
         Route::post('/users/{user}/deactivate', [EnvironmentUserController::class, 'deactivate'])->name('environment.users.deactivate');
         Route::post('/users/{user}/reactivate', [EnvironmentUserController::class, 'reactivate'])->name('environment.users.reactivate');
+        Route::post('/users/{user}/erase', [EnvironmentUserController::class, 'erase'])->name('environment.users.erase');
 
         Route::delete('/users/{user}/sessions', [EnvironmentUserController::class, 'revokeAllSessions'])->name('environment.users.sessions.revoke-all');
         Route::delete('/users/{user}/sessions/{session}', [EnvironmentUserController::class, 'revokeSession'])->name('environment.users.sessions.revoke');
