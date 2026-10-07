@@ -99,6 +99,9 @@ final readonly class ActionOpenApi
             'description' => $this->requirement($action)." Danger: {$action->danger->value}.",
             'operationId' => $action->toolName(),
             'x-action' => $action->name,
+            // Machine-readable twins of the sentence above, for generated clients.
+            'x-scope' => $action->scope,
+            'x-danger' => $action->danger->value,
         ];
 
         $operation['parameters'] = $parameters;

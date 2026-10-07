@@ -104,6 +104,8 @@ paths:
       description: 'Requires scope `governance:write`. Danger: write.'
       operationId: access_reviews_create
       x-action: access_reviews.create
+      x-scope: 'governance:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -173,6 +175,8 @@ paths:
       description: 'Requires scope `governance:read`. Danger: read.'
       operationId: access_reviews_list
       x-action: access_reviews.list
+      x-scope: 'governance:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -234,6 +238,8 @@ paths:
       description: 'Requires scope `governance:read`. Danger: read.'
       operationId: access_reviews_get
       x-action: access_reviews.get
+      x-scope: 'governance:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -285,6 +291,8 @@ paths:
       description: 'Requires scope `governance:write`. Danger: destructive.'
       operationId: access_reviews_close
       x-action: access_reviews.close
+      x-scope: 'governance:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -347,6 +355,8 @@ paths:
       description: 'Requires scope `governance:read`. Danger: read.'
       operationId: access_reviews_items_list
       x-action: access_reviews.items.list
+      x-scope: 'governance:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -417,6 +427,8 @@ paths:
       description: 'Requires scope `governance:write`. Danger: write.'
       operationId: access_reviews_items_decide
       x-action: access_reviews.items.decide
+      x-scope: 'governance:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -542,6 +554,8 @@ paths:
       description: 'Requires scope `approvals:read`. Danger: read.'
       operationId: approvals_list
       x-action: approvals.list
+      x-scope: 'approvals:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -593,6 +607,8 @@ paths:
       description: 'Requires scope `approvals:write`. Danger: destructive.'
       operationId: approvals_deny
       x-action: approvals.deny
+      x-scope: 'approvals:write'
+      x-danger: destructive
       parameters:
         -
           name: request_id
@@ -849,6 +865,8 @@ paths:
       description: 'Requires scope `apis:write`. Danger: write.'
       operationId: apis_scopes_define
       x-action: apis.scopes.define
+      x-scope: 'apis:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -915,6 +933,8 @@ paths:
       description: 'Requires scope `apis:write`. Danger: destructive.'
       operationId: apis_scopes_remove
       x-action: apis.scopes.remove
+      x-scope: 'apis:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -1227,6 +1247,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_delete
       x-action: apps.delete
+      x-scope: 'apps:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -1266,6 +1288,8 @@ paths:
       description: 'Requires scope `apps:read`. Danger: read.'
       operationId: apps_get
       x-action: apps.get
+      x-scope: 'apps:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -1306,6 +1330,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_update
       x-action: apps.update
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1414,6 +1440,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_copy
       x-action: apps.copy
+      x-scope: 'apps:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -1484,6 +1512,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_manifest_set
       x-action: apps.manifest.set
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1547,6 +1577,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_manifest_sync
       x-action: apps.manifest.sync
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1596,6 +1628,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_scopes_set
       x-action: apps.scopes.set
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1697,6 +1731,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_secrets_rotate
       x-action: apps.secrets.rotate
+      x-scope: 'apps:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -1760,6 +1796,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_secrets_revoke
       x-action: apps.secrets.revoke
+      x-scope: 'apps:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -1808,6 +1846,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_api_key_prefix
       x-action: apps.settings.api_key_prefix
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1870,6 +1910,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_backchannel_logout
       x-action: apps.settings.backchannel_logout
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1936,6 +1978,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_token_exchange
       x-action: apps.settings.token_exchange
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1996,6 +2040,8 @@ paths:
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_token_lifetime
       x-action: apps.settings.token_lifetime
+      x-scope: 'apps:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -2057,6 +2103,8 @@ paths:
       description: 'Requires scope `audit:read`. Danger: read.'
       operationId: audit_list
       x-action: audit.list
+      x-scope: 'audit:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -2142,6 +2190,8 @@ paths:
       description: 'Requires scope `branding:read`. Danger: read.'
       operationId: branding_appearance_get
       x-action: branding.appearance.get
+      x-scope: 'branding:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -2181,6 +2231,8 @@ paths:
       description: 'Requires scope `branding:write`. Danger: write.'
       operationId: branding_appearance_set
       x-action: branding.appearance.set
+      x-scope: 'branding:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -2291,6 +2343,8 @@ paths:
       description: 'Requires scope `branding:read`. Danger: read.'
       operationId: branding_whitelabel_get
       x-action: branding.whitelabel.get
+      x-scope: 'branding:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -2330,6 +2384,8 @@ paths:
       description: 'Requires scope `branding:write`. Danger: write.'
       operationId: branding_whitelabel_set
       x-action: branding.whitelabel.set
+      x-scope: 'branding:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -2588,6 +2644,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_create
       x-action: directories.create
+      x-scope: 'directory_sync:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -2645,6 +2703,8 @@ paths:
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_list
       x-action: directories.list
+      x-scope: 'directory_sync:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -2706,6 +2766,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_connect
       x-action: directories.connect
+      x-scope: 'directory_sync:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -2791,6 +2853,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: destructive.'
       operationId: directories_delete
       x-action: directories.delete
+      x-scope: 'directory_sync:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -2843,6 +2907,8 @@ paths:
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_get
       x-action: directories.get
+      x-scope: 'directory_sync:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -2893,6 +2959,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_update
       x-action: directories.update
+      x-scope: 'directory_sync:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -2961,6 +3029,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_groups_map
       x-action: directories.groups.map
+      x-scope: 'directory_sync:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -3038,6 +3108,8 @@ paths:
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_groups_list
       x-action: directories.groups.list
+      x-scope: 'directory_sync:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -3108,6 +3180,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_token_rotate
       x-action: directories.token.rotate
+      x-scope: 'directory_sync:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -3170,6 +3244,8 @@ paths:
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_status_set
       x-action: directories.status.set
+      x-scope: 'directory_sync:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -3237,6 +3313,8 @@ paths:
       description: 'Requires scope `domains:write`. Danger: write.'
       operationId: domains_add
       x-action: domains.add
+      x-scope: 'domains:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -3284,6 +3362,8 @@ paths:
       description: 'Requires scope `domains:read`. Danger: read.'
       operationId: domains_get
       x-action: domains.get
+      x-scope: 'domains:read'
+      x-danger: read
       parameters:
         - $ref: '#/components/parameters/CboxApproval'
       responses:
@@ -3315,6 +3395,8 @@ paths:
       description: 'Requires scope `domains:write`. Danger: destructive.'
       operationId: domains_remove
       x-action: domains.remove
+      x-scope: 'domains:write'
+      x-danger: destructive
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -3341,6 +3423,8 @@ paths:
       description: 'Requires scope `domains:write`. Danger: write.'
       operationId: domains_verify
       x-action: domains.verify
+      x-scope: 'domains:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -3376,6 +3460,8 @@ paths:
       description: 'Requires scope `events:read`. Danger: read.'
       operationId: events_list
       x-action: events.list
+      x-scope: 'events:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -3451,6 +3537,8 @@ paths:
       description: 'Requires scope `frontend_keys:write`. Danger: write.'
       operationId: frontend_keys_create
       x-action: frontend_keys.create
+      x-scope: 'frontend_keys:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -3514,6 +3602,8 @@ paths:
       description: 'Requires scope `frontend_keys:read`. Danger: read.'
       operationId: frontend_keys_list
       x-action: frontend_keys.list
+      x-scope: 'frontend_keys:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -3565,6 +3655,8 @@ paths:
       description: 'Requires scope `frontend_keys:write`. Danger: destructive.'
       operationId: frontend_keys_revoke
       x-action: frontend_keys.revoke
+      x-scope: 'frontend_keys:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -3600,6 +3692,8 @@ paths:
       description: 'Requires scope `frontend_keys:write`. Danger: write.'
       operationId: frontend_keys_set_origins
       x-action: frontend_keys.set_origins
+      x-scope: 'frontend_keys:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -3661,6 +3755,8 @@ paths:
       description: 'Requires scope `hooks:write`. Danger: critical.'
       operationId: hooks_create
       x-action: hooks.create
+      x-scope: 'hooks:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -3734,6 +3830,8 @@ paths:
       description: 'Requires scope `hooks:read`. Danger: read.'
       operationId: hooks_list
       x-action: hooks.list
+      x-scope: 'hooks:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -3790,6 +3888,8 @@ paths:
       description: 'Requires scope `hooks:write`. Danger: destructive.'
       operationId: hooks_delete
       x-action: hooks.delete
+      x-scope: 'hooks:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -3829,6 +3929,8 @@ paths:
       description: 'Requires scope `hooks:read`. Danger: read.'
       operationId: hooks_get
       x-action: hooks.get
+      x-scope: 'hooks:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -3874,6 +3976,8 @@ paths:
       description: 'Requires scope `hooks:write`. Danger: critical.'
       operationId: hooks_update
       x-action: hooks.update
+      x-scope: 'hooks:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -3935,6 +4039,8 @@ paths:
       description: 'Requires scope `keys:write`. Danger: critical.'
       operationId: keys_create
       x-action: keys.create
+      x-scope: 'keys:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -4022,6 +4128,8 @@ paths:
       description: 'Requires scope `keys:read`. Danger: read.'
       operationId: keys_list
       x-action: keys.list
+      x-scope: 'keys:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -4073,6 +4181,8 @@ paths:
       description: 'Requires scope `keys:write`. Danger: destructive.'
       operationId: keys_revoke
       x-action: keys.revoke
+      x-scope: 'keys:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -4108,6 +4218,8 @@ paths:
       description: 'Requires scope `keys:write`. Danger: critical.'
       operationId: keys_rotate
       x-action: keys.rotate
+      x-scope: 'keys:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -4164,6 +4276,8 @@ paths:
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: legacy_login_get
       x-action: legacy_login.get
+      x-scope: 'signin:read'
+      x-danger: read
       parameters:
         - $ref: '#/components/parameters/CboxApproval'
       responses:
@@ -4196,6 +4310,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: legacy_login_approve
       x-action: legacy_login.approve
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -4231,6 +4347,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: write.'
       operationId: legacy_login_probe
       x-action: legacy_login.probe
+      x-scope: 'signin:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -4280,6 +4398,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: legacy_login_revoke
       x-action: legacy_login.revoke
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -4315,6 +4435,8 @@ paths:
       description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_create
       x-action: log_streams.create
+      x-scope: 'log_streams:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -4404,6 +4526,8 @@ paths:
       description: 'Requires scope `log_streams:read`. Danger: read.'
       operationId: log_streams_list
       x-action: log_streams.list
+      x-scope: 'log_streams:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -4460,6 +4584,8 @@ paths:
       description: 'Requires scope `log_streams:write`. Danger: destructive.'
       operationId: log_streams_delete
       x-action: log_streams.delete
+      x-scope: 'log_streams:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -4499,6 +4625,8 @@ paths:
       description: 'Requires scope `log_streams:read`. Danger: read.'
       operationId: log_streams_get
       x-action: log_streams.get
+      x-scope: 'log_streams:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -4544,6 +4672,8 @@ paths:
       description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_update
       x-action: log_streams.update
+      x-scope: 'log_streams:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -4932,6 +5062,8 @@ paths:
       description: 'Requires scope `organizations:write`. Danger: write.'
       operationId: organizations_reactivate
       x-action: organizations.reactivate
+      x-scope: 'organizations:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -4977,6 +5109,8 @@ paths:
       description: 'Requires scope `organizations:write`. Danger: write.'
       operationId: organizations_suspend
       x-action: organizations.suspend
+      x-scope: 'organizations:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -5159,6 +5293,8 @@ paths:
       description: 'Requires scope `organizations:write`. Danger: write.'
       operationId: organizations_domains_add
       x-action: organizations.domains.add
+      x-scope: 'organizations:write'
+      x-danger: write
       parameters:
         -
           name: organization_id
@@ -5217,6 +5353,8 @@ paths:
       description: 'Requires scope `organizations:write`. Danger: destructive.'
       operationId: organizations_domains_remove
       x-action: organizations.domains.remove
+      x-scope: 'organizations:write'
+      x-danger: destructive
       parameters:
         -
           name: organization_id
@@ -5261,6 +5399,8 @@ paths:
       description: 'Requires scope `organizations:write`. Danger: critical.'
       operationId: organizations_domains_capture
       x-action: organizations.domains.capture
+      x-scope: 'organizations:write'
+      x-danger: critical
       parameters:
         -
           name: organization_id
@@ -5326,6 +5466,8 @@ paths:
       description: 'Requires scope `organizations:write`. Danger: write.'
       operationId: organizations_domains_verify
       x-action: organizations.domains.verify
+      x-scope: 'organizations:write'
+      x-danger: write
       parameters:
         -
           name: organization_id
@@ -5904,6 +6046,8 @@ paths:
       description: 'Requires scope `portal_links:write`. Danger: critical.'
       operationId: organizations_portal_links_create
       x-action: organizations.portal_links.create
+      x-scope: 'portal_links:write'
+      x-danger: critical
       parameters:
         -
           name: organization_id
@@ -5970,6 +6114,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: write.'
       operationId: permissions_create
       x-action: permissions.create
+      x-scope: 'role_definitions:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -6036,6 +6182,8 @@ paths:
       description: 'Requires scope `roles:read`. Danger: read.'
       operationId: permissions_list
       x-action: permissions.list
+      x-scope: 'roles:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -6111,6 +6259,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: destructive.'
       operationId: permissions_delete
       x-action: permissions.delete
+      x-scope: 'role_definitions:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -6151,6 +6301,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: write.'
       operationId: permissions_update
       x-action: permissions.update
+      x-scope: 'role_definitions:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -6216,6 +6368,8 @@ paths:
       description: 'Requires scope `provisioning:write`. Danger: critical.'
       operationId: provisioning_targets_create
       x-action: provisioning.targets.create
+      x-scope: 'provisioning:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -6314,6 +6468,8 @@ paths:
       description: 'Requires scope `provisioning:read`. Danger: read.'
       operationId: provisioning_targets_list
       x-action: provisioning.targets.list
+      x-scope: 'provisioning:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -6375,6 +6531,8 @@ paths:
       description: 'Requires scope `provisioning:write`. Danger: destructive.'
       operationId: provisioning_targets_delete
       x-action: provisioning.targets.delete
+      x-scope: 'provisioning:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -6427,6 +6585,8 @@ paths:
       description: 'Requires scope `provisioning:read`. Danger: read.'
       operationId: provisioning_targets_get
       x-action: provisioning.targets.get
+      x-scope: 'provisioning:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -6478,6 +6638,8 @@ paths:
       description: 'Requires scope `provisioning:write`. Danger: write.'
       operationId: provisioning_targets_status_set
       x-action: provisioning.targets.status.set
+      x-scope: 'provisioning:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -6592,6 +6754,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: write.'
       operationId: roles_create
       x-action: roles.create
+      x-scope: 'role_definitions:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -6668,6 +6832,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: destructive.'
       operationId: roles_delete
       x-action: roles.delete
+      x-scope: 'role_definitions:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -6708,6 +6874,8 @@ paths:
       description: 'Requires scope `roles:read`. Danger: read.'
       operationId: roles_get
       x-action: roles.get
+      x-scope: 'roles:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -6757,6 +6925,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: write.'
       operationId: roles_update
       x-action: roles.update
+      x-scope: 'role_definitions:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -6823,6 +6993,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: write.'
       operationId: roles_permissions_grant
       x-action: roles.permissions.grant
+      x-scope: 'role_definitions:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -6880,6 +7052,8 @@ paths:
       description: 'Requires scope `role_definitions:write`. Danger: destructive.'
       operationId: roles_permissions_revoke
       x-action: roles.permissions.revoke
+      x-scope: 'role_definitions:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -6938,6 +7112,8 @@ paths:
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_create
       x-action: saml_apps.create
+      x-scope: 'saml_apps:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -7036,6 +7212,8 @@ paths:
       description: 'Requires scope `saml_apps:read`. Danger: read.'
       operationId: saml_apps_list
       x-action: saml_apps.list
+      x-scope: 'saml_apps:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -7087,6 +7265,8 @@ paths:
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_delete
       x-action: saml_apps.delete
+      x-scope: 'saml_apps:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -7121,6 +7301,8 @@ paths:
       description: 'Requires scope `saml_apps:read`. Danger: read.'
       operationId: saml_apps_get
       x-action: saml_apps.get
+      x-scope: 'saml_apps:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -7161,6 +7343,8 @@ paths:
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_update
       x-action: saml_apps.update
+      x-scope: 'saml_apps:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -7266,6 +7450,8 @@ paths:
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_policy_get
       x-action: signin.policy.get
+      x-scope: 'signin:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -7305,6 +7491,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_update
       x-action: signin.policy.update
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -7399,6 +7587,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_inherit
       x-action: signin.policy.inherit
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         -
           name: organization_id
@@ -7440,6 +7630,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_self_service_signup_set
       x-action: signin.self_service_signup.set
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -7487,6 +7679,8 @@ paths:
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_social_list
       x-action: signin.social.list
+      x-scope: 'signin:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -7545,6 +7739,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_set
       x-action: signin.social.set
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -7660,6 +7856,8 @@ paths:
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_delete
       x-action: signin.social.delete
+      x-scope: 'signin:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -7713,6 +7911,8 @@ paths:
       description: 'Requires scope `governance:write`. Danger: write.'
       operationId: sod_policies_create
       x-action: sod_policies.create
+      x-scope: 'governance:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -7789,6 +7989,8 @@ paths:
       description: 'Requires scope `governance:read`. Danger: read.'
       operationId: sod_policies_list
       x-action: sod_policies.list
+      x-scope: 'governance:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -7850,6 +8052,8 @@ paths:
       description: 'Requires scope `governance:write`. Danger: critical.'
       operationId: sod_policies_delete
       x-action: sod_policies.delete
+      x-scope: 'governance:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -7902,6 +8106,8 @@ paths:
       description: 'Requires scope `governance:read`. Danger: read.'
       operationId: sod_policies_get
       x-action: sod_policies.get
+      x-scope: 'governance:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -7953,6 +8159,8 @@ paths:
       description: 'Requires scope `governance:write`. Danger: critical.'
       operationId: sod_policies_status_set
       x-action: sod_policies.status.set
+      x-scope: 'governance:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8020,6 +8228,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_connections_create
       x-action: sso.connections.create
+      x-scope: 'sso:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -8145,6 +8355,8 @@ paths:
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_list
       x-action: sso.connections.list
+      x-scope: 'sso:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -8206,6 +8418,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_delete
       x-action: sso.connections.delete
+      x-scope: 'sso:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8258,6 +8472,8 @@ paths:
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_get
       x-action: sso.connections.get
+      x-scope: 'sso:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -8308,6 +8524,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_update
       x-action: sso.connections.update
+      x-scope: 'sso:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8431,6 +8649,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_activate
       x-action: sso.connections.activate
+      x-scope: 'sso:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8493,6 +8713,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_disable
       x-action: sso.connections.disable
+      x-scope: 'sso:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8555,6 +8777,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_require_sso
       x-action: sso.connections.require_sso
+      x-scope: 'sso:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8617,6 +8841,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_domains_create
       x-action: sso.domains.create
+      x-scope: 'sso:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -8674,6 +8900,8 @@ paths:
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_domains_list
       x-action: sso.domains.list
+      x-scope: 'sso:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -8735,6 +8963,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: destructive.'
       operationId: sso_domains_delete
       x-action: sso.domains.delete
+      x-scope: 'sso:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -8788,6 +9018,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_domains_capture
       x-action: sso.domains.capture
+      x-scope: 'sso:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -8855,6 +9087,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_domains_verify
       x-action: sso.domains.verify
+      x-scope: 'sso:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -8917,6 +9151,8 @@ paths:
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_saml_metadata_import
       x-action: sso.saml_metadata.import
+      x-scope: 'sso:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -9073,6 +9309,8 @@ paths:
       description: 'Requires scope `support:write`. Danger: destructive.'
       operationId: support_sessions_end
       x-action: support_sessions.end
+      x-scope: 'support:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -9109,6 +9347,8 @@ paths:
       description: 'Requires scope `token_vault:write`. Danger: write.'
       operationId: token_vault_secrets_create
       x-action: token_vault.secrets.create
+      x-scope: 'token_vault:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -9177,6 +9417,8 @@ paths:
       description: 'Requires scope `token_vault:read`. Danger: read.'
       operationId: token_vault_secrets_list
       x-action: token_vault.secrets.list
+      x-scope: 'token_vault:read'
+      x-danger: read
       parameters:
         -
           name: organization_id
@@ -9238,6 +9480,8 @@ paths:
       description: 'Requires scope `token_vault:read`. Danger: read.'
       operationId: token_vault_secrets_get
       x-action: token_vault.secrets.get
+      x-scope: 'token_vault:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -9289,6 +9533,8 @@ paths:
       description: 'Requires scope `token_vault:write`. Danger: critical.'
       operationId: token_vault_grants_create
       x-action: token_vault.grants.create
+      x-scope: 'token_vault:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -9357,6 +9603,8 @@ paths:
       description: 'Requires scope `token_vault:write`. Danger: destructive.'
       operationId: token_vault_grants_delete
       x-action: token_vault.grants.delete
+      x-scope: 'token_vault:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -9418,6 +9666,8 @@ paths:
       description: 'Requires scope `token_vault:write`. Danger: destructive.'
       operationId: token_vault_secrets_revoke
       x-action: token_vault.secrets.revoke
+      x-scope: 'token_vault:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -9480,6 +9730,8 @@ paths:
       description: 'Requires scope `token_vault:write`. Danger: critical.'
       operationId: token_vault_secrets_rotate
       x-action: token_vault.secrets.rotate
+      x-scope: 'token_vault:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -9733,6 +9985,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: critical.'
       operationId: users_update
       x-action: users.update
+      x-scope: 'users:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -9932,6 +10186,8 @@ paths:
       description: 'Requires scope `users:erase`. Danger: critical.'
       operationId: users_erase
       x-action: users.erase
+      x-scope: 'users:erase'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -9976,6 +10232,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: critical.'
       operationId: users_mfa_reset
       x-action: users.mfa.reset
+      x-scope: 'users:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -10012,6 +10270,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: critical.'
       operationId: users_password_set
       x-action: users.password.set
+      x-scope: 'users:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -10093,6 +10353,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: write.'
       operationId: users_password_reset_send
       x-action: users.password_reset.send
+      x-scope: 'users:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -10129,6 +10391,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: write.'
       operationId: users_reactivate
       x-action: users.reactivate
+      x-scope: 'users:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -10210,6 +10474,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: destructive.'
       operationId: users_sessions_revoke_all
       x-action: users.sessions.revoke_all
+      x-scope: 'users:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -10246,6 +10512,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: destructive.'
       operationId: users_sessions_revoke
       x-action: users.sessions.revoke
+      x-scope: 'users:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -10290,6 +10558,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: write.'
       operationId: users_verification_send
       x-action: users.verification.send
+      x-scope: 'users:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -10326,6 +10596,8 @@ paths:
       description: 'Requires scope `users:write`. Danger: critical.'
       operationId: users_verify
       x-action: users.verify
+      x-scope: 'users:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -10657,6 +10929,8 @@ paths:
       description: 'Requires scope `webhooks:write`. Danger: critical.'
       operationId: webhooks_create
       x-action: webhooks.create
+      x-scope: 'webhooks:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -10767,6 +11041,8 @@ paths:
       description: 'Requires scope `webhooks:read`. Danger: read.'
       operationId: webhooks_list
       x-action: webhooks.list
+      x-scope: 'webhooks:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -10823,6 +11099,8 @@ paths:
       description: 'Requires scope `webhooks:write`. Danger: destructive.'
       operationId: webhooks_delete
       x-action: webhooks.delete
+      x-scope: 'webhooks:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -10862,6 +11140,8 @@ paths:
       description: 'Requires scope `webhooks:read`. Danger: read.'
       operationId: webhooks_get
       x-action: webhooks.get
+      x-scope: 'webhooks:read'
+      x-danger: read
       parameters:
         -
           name: id
@@ -10907,6 +11187,8 @@ paths:
       description: 'Requires scope `webhooks:write`. Danger: write.'
       operationId: webhooks_update
       x-action: webhooks.update
+      x-scope: 'webhooks:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -10974,6 +11256,8 @@ paths:
       description: 'Requires scope `webhooks:write`. Danger: write.'
       operationId: webhooks_pause
       x-action: webhooks.pause
+      x-scope: 'webhooks:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -11023,6 +11307,8 @@ paths:
       description: 'Requires scope `webhooks:write`. Danger: write.'
       operationId: webhooks_resume
       x-action: webhooks.resume
+      x-scope: 'webhooks:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -11072,6 +11358,8 @@ paths:
       description: 'Requires scope `webhooks:write`. Danger: critical.'
       operationId: webhooks_secret_rotate
       x-action: webhooks.secret.rotate
+      x-scope: 'webhooks:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -13381,6 +13669,9 @@ components:
         message:
           type: string
           description: 'Human-readable explanation'
+        request_id:
+          type: string
+          description: 'The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem.'
         errors:
           type: object
           description: |

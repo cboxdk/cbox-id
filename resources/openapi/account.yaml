@@ -53,6 +53,8 @@ paths:
       description: 'Requires scope `account:applications:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_applications_revoke
       x-action: account.applications.revoke
+      x-scope: 'account:applications:write'
+      x-danger: destructive
       parameters:
         -
           name: client_id
@@ -87,6 +89,8 @@ paths:
       description: 'Requires scope `account:devices:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_devices_remove
       x-action: account.devices.remove
+      x-scope: 'account:devices:write'
+      x-danger: destructive
       parameters:
         -
           name: device_id
@@ -121,6 +125,8 @@ paths:
       description: 'Requires scope `account:api_keys:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_api_keys_create
       x-action: account.api_keys.create
+      x-scope: 'account:api_keys:write'
+      x-danger: critical
       parameters:
         -
           name: organization_id
@@ -195,6 +201,8 @@ paths:
       description: 'Requires scope `account:api_keys:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_api_keys_revoke
       x-action: account.api_keys.revoke
+      x-scope: 'account:api_keys:write'
+      x-danger: destructive
       parameters:
         -
           name: organization_id
@@ -235,6 +243,8 @@ paths:
       description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_passkeys_remove
       x-action: account.passkeys.remove
+      x-scope: 'account:sign_in:write'
+      x-danger: critical
       parameters:
         -
           name: passkey_id
@@ -269,6 +279,8 @@ paths:
       description: 'Requires scope `account:profile:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_profile_update
       x-action: account.profile.update
+      x-scope: 'account:profile:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -318,6 +330,8 @@ paths:
       description: 'Requires scope `account:sessions:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_sessions_revoke_others
       x-action: account.sessions.revoke_others
+      x-scope: 'account:sessions:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -353,6 +367,8 @@ paths:
       description: 'Requires scope `account:sessions:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_sessions_revoke
       x-action: account.sessions.revoke
+      x-scope: 'account:sessions:write'
+      x-danger: destructive
       parameters:
         -
           name: session_id
@@ -387,6 +403,8 @@ paths:
       description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_social_unlink
       x-action: account.social.unlink
+      x-scope: 'account:sign_in:write'
+      x-danger: critical
       parameters:
         -
           name: provider
@@ -597,6 +615,9 @@ components:
         message:
           type: string
           description: 'Human-readable explanation'
+        request_id:
+          type: string
+          description: 'The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem.'
         errors:
           type: object
           description: 'Present on `validation_failed` only — the offending fields, each mapped to its messages.'

@@ -178,6 +178,7 @@ components:
       properties:
         error: { type: string, description: Stable machine code }
         message: { type: string, description: Human-readable explanation }
+        request_id: { type: string, description: "The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem." }
         errors:
           type: object
           description: Present on `validation_failed` only — the offending fields, each mapped to its messages.

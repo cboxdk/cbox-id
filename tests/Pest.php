@@ -2110,3 +2110,17 @@ function mintAppKey(array $fixture, string $holder, array $permissions = [], str
         name: $name,
     ))->key;
 }
+
+/**
+ * A JSON body without its `request_id` — the one field that differs between two requests
+ * whose answers must otherwise be identical (see AssignRequestId).
+ *
+ * @return array<array-key, mixed>
+ */
+function withoutRequestId(TestResponse $response): array
+{
+    $body = (array) $response->json();
+    unset($body['request_id']);
+
+    return $body;
+}

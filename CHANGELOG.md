@@ -10,6 +10,11 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- Every response carries an `X-Request-Id` header, and every JSON error envelope (`{error, message}`) carries the same id as `request_id`. A well-formed inbound `X-Request-Id` is kept, so an ingress's or caller's trace id joins up; anything else is replaced. The id is in Laravel's `Context`, so every log line written while serving the request, including by the jobs it dispatches, carries it.
+- Generated OpenAPI operations carry `x-scope` and `x-danger` beside `x-action`, so generated clients read them instead of parsing the description.
+
+### Added
+
 - **Erase a person (GDPR Art. 17).** `users.erase` — the console's new Danger zone on a user's page, `POST /api/v1/users/{id}/erase` and the MCP tool `users_erase` — runs laravel-id 1.22's `SubjectEraser` in one transaction and returns its `ErasureReceipt`. Critical: the console asks for a fresh credential and the person's address typed out; a key needs the new `users:erase` scope (offered, flagged critical on the key form, not implied by `users:write`). The app's own stores are erasure steps of the same pipeline: Frontend API sign-in tickets, checklist dismissals, the risk trail's address pseudonym, and — registered by their modules — devices, push history and enrolment codes, and risk-plus's review trail and signal memory. The only owner of an organization is refused (`409 last_owner`) and nothing changes. The audit trail is not rewritten and still verifies.
 - **Organization-owned SAML applications.** A SAML app can belong to one organization (`organization_id` on `/v1/saml-apps`, "For which organization?" in the console); only its active members are then asserted to it. The list flags environment-wide apps.
 - `CBOX_ID_CRYPTO_PREVIOUS_KEYS` and a master-key rotation runbook (Operations › Rotating the crypto master key). The devices module registers its sealed push token with `SealedColumns`, so `cbox-id:crypto:rewrap` covers it.

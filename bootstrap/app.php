@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\ApiErrorRenderer;
+use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateDelegatedApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
@@ -83,6 +84,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // violation noise. The package route is the one we want; leave it unshadowed.
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Every response names its request, and every log line written while serving it
+        // carries the same id — first, so even an early refusal has one.
+        $middleware->prepend(AssignRequestId::class);
+
         // Behind a TLS-terminating reverse proxy (Traefik on k8s, Cloudflare,
         // etc.), trust the forwarded headers so the audit trail records the real
         // client IP, rate limiting keys on it, and issuer/cookie host are right.

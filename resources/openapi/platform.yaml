@@ -61,6 +61,8 @@ paths:
       description: 'Requires scope `operator:environments:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_environments_create
       x-action: platform.environments.create
+      x-scope: 'operator:environments:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -114,6 +116,8 @@ paths:
       description: 'Requires scope `operator:organizations:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_organizations_create
       x-action: platform.organizations.create
+      x-scope: 'operator:organizations:write'
+      x-danger: critical
       parameters:
         -
           name: environment_id
@@ -180,6 +184,8 @@ paths:
       description: 'Requires scope `operator:organizations:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_organizations_move
       x-action: platform.organizations.move
+      x-scope: 'operator:organizations:write'
+      x-danger: critical
       parameters:
         -
           name: environment_id
@@ -241,6 +247,8 @@ paths:
       description: 'Requires scope `operator:organizations:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_organizations_set_status
       x-action: platform.organizations.set_status
+      x-scope: 'operator:organizations:write'
+      x-danger: critical
       parameters:
         -
           name: environment_id
@@ -304,6 +312,8 @@ paths:
       description: 'Requires scope `operator:environments:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_environments_provision
       x-action: platform.environments.provision
+      x-scope: 'operator:environments:write'
+      x-danger: critical
       parameters:
         -
           name: environment_id
@@ -373,6 +383,8 @@ paths:
       description: 'Requires scope `operator:operators:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_operators_create
       x-action: platform.operators.create
+      x-scope: 'operator:operators:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -431,6 +443,8 @@ paths:
       description: 'Requires scope `operator:operators:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_operators_set_status
       x-action: platform.operators.set_status
+      x-scope: 'operator:operators:write'
+      x-danger: critical
       parameters:
         -
           name: operator_id
@@ -488,6 +502,8 @@ paths:
       description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_workspaces_create
       x-action: platform.workspaces.create
+      x-scope: 'operator:workspaces:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -554,6 +570,8 @@ paths:
       description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_workspaces_set_status
       x-action: platform.workspaces.set_status
+      x-scope: 'operator:workspaces:write'
+      x-danger: critical
       parameters:
         -
           name: workspace_id
@@ -874,6 +892,9 @@ components:
         message:
           type: string
           description: 'Human-readable explanation'
+        request_id:
+          type: string
+          description: 'The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem.'
         errors:
           type: object
           description: 'Present on `validation_failed` only — the offending fields, each mapped to its messages.'

@@ -92,6 +92,8 @@ paths:
       description: 'Requires scope `settings:write` and a role that may `manage-members`. Danger: write.'
       operationId: workspace_settings_update
       x-action: workspace.settings.update
+      x-scope: 'settings:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -328,6 +330,8 @@ paths:
       description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: destructive.'
       operationId: environments_domain_remove
       x-action: environments.domain.remove
+      x-scope: 'environments:write'
+      x-danger: destructive
       parameters:
         -
           name: environment_id
@@ -361,6 +365,8 @@ paths:
       description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: write.'
       operationId: environments_domain_request
       x-action: environments.domain.request
+      x-scope: 'environments:write'
+      x-danger: write
       parameters:
         -
           name: environment_id
@@ -417,6 +423,8 @@ paths:
       description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: write.'
       operationId: environments_domain_verify
       x-action: environments.domain.verify
+      x-scope: 'environments:write'
+      x-danger: write
       parameters:
         -
           name: environment_id
@@ -460,6 +468,8 @@ paths:
       description: 'Requires scope `keys:write` and a role that may `manage-environments`. Danger: critical.'
       operationId: keys_environment_create
       x-action: keys.environment.create
+      x-scope: 'keys:write'
+      x-danger: critical
       parameters:
         -
           name: environment_id
@@ -530,6 +540,8 @@ paths:
       description: 'Requires scope `keys:write` and a role that may `manage-environments`. Danger: destructive.'
       operationId: keys_environment_revoke
       x-action: keys.environment.revoke
+      x-scope: 'keys:write'
+      x-danger: destructive
       parameters:
         -
           name: environment_id
@@ -666,6 +678,8 @@ paths:
       description: 'Requires scope `keys:write` and a role that may `manage-environments` and `manage-members`. Danger: critical.'
       operationId: keys_workspace_create
       x-action: keys.workspace.create
+      x-scope: 'keys:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -742,6 +756,8 @@ paths:
       description: 'Requires scope `workspace:read` and a role that may `manage-members`. Danger: read.'
       operationId: keys_workspace_list
       x-action: keys.workspace.list
+      x-scope: 'workspace:read'
+      x-danger: read
       parameters:
         -
           name: limit
@@ -793,6 +809,8 @@ paths:
       description: 'Requires scope `keys:write` and a role that may `manage-environments` and `manage-members`. Danger: destructive.'
       operationId: keys_workspace_revoke
       x-action: keys.workspace.revoke
+      x-scope: 'keys:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -941,6 +959,8 @@ paths:
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: destructive.'
       operationId: team_remove
       x-action: team.remove
+      x-scope: 'team:write'
+      x-danger: destructive
       parameters:
         -
           name: id
@@ -975,6 +995,8 @@ paths:
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: write.'
       operationId: team_environment_access
       x-action: team.environment_access
+      x-scope: 'team:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1036,6 +1058,8 @@ paths:
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: write.'
       operationId: team_role
       x-action: team.role
+      x-scope: 'team:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1095,6 +1119,8 @@ paths:
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: critical.'
       operationId: team_transfer_ownership
       x-action: team.transfer_ownership
+      x-scope: 'team:write'
+      x-danger: critical
       parameters:
         -
           name: id
@@ -1203,6 +1229,8 @@ paths:
       description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
       operationId: projects_verification_resend
       x-action: projects.verification.resend
+      x-scope: 'projects:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -1238,6 +1266,8 @@ paths:
       description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
       operationId: projects_rename
       x-action: projects.rename
+      x-scope: 'projects:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1293,6 +1323,8 @@ paths:
       description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
       operationId: projects_reactivate
       x-action: projects.reactivate
+      x-scope: 'projects:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1336,6 +1368,8 @@ paths:
       description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
       operationId: projects_suspend
       x-action: projects.suspend
+      x-scope: 'projects:write'
+      x-danger: write
       parameters:
         -
           name: id
@@ -1785,6 +1819,9 @@ components:
         message:
           type: string
           description: 'Human-readable explanation'
+        request_id:
+          type: string
+          description: 'The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem.'
         errors:
           type: object
           description: |
