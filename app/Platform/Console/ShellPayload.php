@@ -4,28 +4,20 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
-use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Props\Shell\ActingOrganizationProps;
 use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellNoticeProps;
 use App\Http\Props\Shell\ShellProps;
-use App\Http\Props\Shell\SwitchOptionProps;
-use App\Http\Props\Shell\WorkspaceLinkProps;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
-use App\Platform\PlaneResolver;
+use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Facades\Console;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
 
 /**
  * WHAT THE CONSOLE CHROME IS, FOR THIS REQUEST.
@@ -38,9 +30,18 @@ use Illuminate\Support\Collection;
  * behaved differently on a phone depending on which plane served it.
  *
  * None of that was a rendering problem. It was that the chrome was described twice.
+ *
+ * BUILT ONCE PER REQUEST. Two callers ask for it on every console page — the controller,
+ * for the tab title's section word, and the shared `shell` prop — and each used to build
+ * the whole thing: the rail, the memberships, and now the projects and environments of the
+ * context switcher. The result is kept on the REQUEST rather than on this object, so it
+ * cannot outlive the request it describes however the container holds this class.
  */
 final readonly class ShellPayload
 {
+    /** Where the built shell is kept, on the request it was built for. */
+    public const MEMO = 'cbox.console.shell';
+
     /**
      * Areas an ordinary member sees.
      *
@@ -89,7 +90,7 @@ final readonly class ShellPayload
         private Entitlements $entitlements,
         private ConsoleNavigation $navigation,
         private Request $request,
-        private PlaneResolver $planes,
+        private ShellContext $context,
     ) {}
 
     /**
@@ -98,10 +99,22 @@ final readonly class ShellPayload
      */
     public function build(): ?ShellProps
     {
-        return match ($this->scope->plane()) {
+        // An array around the answer, because NULL is an answer too — a page with no
+        // chrome would otherwise be rebuilt by every caller that asked.
+        $memo = $this->request->attributes->get(self::MEMO);
+
+        if (is_array($memo) && array_key_exists('shell', $memo)) {
+            return $memo['shell'] instanceof ShellProps ? $memo['shell'] : null;
+        }
+
+        $shell = match ($this->scope->plane()) {
             ConsolePlane::Environment => $this->environmentShell(),
             ConsolePlane::Organization => $this->organizationShell(),
         };
+
+        $this->request->attributes->set(self::MEMO, ['shell' => $shell]);
+
+        return $shell;
     }
 
     /**
@@ -117,8 +130,17 @@ final readonly class ShellPayload
         }
 
         $isAdmin = Console::context()->isAdmin();
+        $isOperator = $this->scope->isPlatformOperator();
         $workspace = $this->scope->atWorkspaceAltitude();
         $customer = $this->scope->atCustomerAltitude();
+
+        // PLATFORM ADMIN IS A MODE, NOT THREE MORE AREAS. The platform section used to be
+        // appended to the bottom of every rail an operator saw, so the controls that
+        // suspend a customer sat one icon below the operator's own Settings, with nothing
+        // to say which side of that line a page was on. Now the rail is one or the other:
+        // the platform areas inside /platform, everything else outside it, and the account
+        // menu is the door between them.
+        $platformMode = $isOperator && $this->request->routeIs('platform.*');
 
         $areas = [];
         // Whether this page is one the workspace console does not offer — reached by URL.
@@ -136,6 +158,10 @@ final readonly class ShellPayload
 
         foreach (Console::nav()->areas() as $area) {
             if (! $isAdmin && ! in_array($area->key, self::MEMBER_AREAS, true)) {
+                continue;
+            }
+
+            if (in_array($area->key, self::PLATFORM_AREAS, true) !== $platformMode) {
                 continue;
             }
 
@@ -203,23 +229,33 @@ final readonly class ShellPayload
         return new ShellProps(
             areas: $areas,
             activeArea: $active?->key,
-            section: $active !== null && in_array($active->key, self::PLATFORM_AREAS, true)
-                ? 'Platform'
-                : null,
-            organizations: $this->switchableOrganizations(),
-            // The account plane's switcher above already names the one organization a
+            section: $platformMode ? 'Platform' : null,
+            context: $this->context->forOrganizationPlane($this->activePageRoute($active)),
+            // The account plane's context switcher already names the one organization a
             // member acts in, and choosing another is the authorization this plane exists
             // to withhold.
             actingOrganization: null,
-            environments: $this->targetEnvironments(),
-            isOperator: $this->scope->isPlatformOperator(),
+            isOperator: $isOperator,
+            platformMode: $platformMode,
             // A workspace's home is Projects; `dashboard` would hand it straight on to an
-            // environment, which is not what clicking the brand mark in its own console means.
-            brandHref: route($workspace ? 'projects' : 'dashboard'),
-            navPinned: $this->request->cookie('cbox-nav-pinned') === '1',
+            // environment, which is not what clicking the brand mark in its own console
+            // means. In platform admin the brand mark stays in platform admin.
+            brandHref: route(match (true) {
+                $platformMode => 'platform.customers',
+                $workspace => 'projects',
+                default => 'dashboard',
+            }),
+            navPinned: NavPin::pinned($this->request),
             accountHref: route('account'),
             switchUserHref: route('accounts'),
             altitude: $workspace ? ConsoleAltitude::Workspace : ConsoleAltitude::Organization,
+            workspaceSettingsHref: $this->scope->membershipRole() !== null
+                && $this->scope->capabilities()?->canManageMembers() === true
+                && Route::has('organization-settings')
+                    ? route('organization-settings')
+                    : null,
+            platformHref: $isOperator ? route('platform.customers') : null,
+            exitPlatformHref: $platformMode ? route('dashboard') : null,
             notice: $offRail ? new ShellNoticeProps(
                 message: 'This page manages your workspace’s own record in Cbox — the team that signs in to this console — not your product. Your apps, users and roles live in each environment’s console.',
                 href: route('projects'),
@@ -237,7 +273,9 @@ final readonly class ShellPayload
      */
     private function environmentShell(): ?ShellProps
     {
-        if (app(EnvironmentAdminAuth::class)->membership() === null) {
+        $membership = app(EnvironmentAdminAuth::class)->membership();
+
+        if ($membership === null) {
             return null;
         }
 
@@ -251,7 +289,11 @@ final readonly class ShellPayload
             // The environment console is already one environment's, and its name is in
             // the topbar. A second word in the tab title would say nothing.
             section: null,
-            organizations: [],
+            // THE WAY TO EVERY OTHER ENVIRONMENT, and back to the workspace. This console
+            // had a back arrow and the environment's name as plain text; moving from
+            // staging to production meant going back to Projects on another host and
+            // opening it again.
+            context: $this->context->forEnvironmentPlane($membership, $this->activePageRoute($active)),
             /*
              * THE CONTROL THAT DECIDES WHAT EVERY PAGE HERE MEANS.
              *
@@ -269,53 +311,32 @@ final readonly class ShellPayload
                 chooseUrl: route('environment.acting-organization.choose'),
                 clearUrl: route('environment.acting-organization.clear'),
             ),
-            environments: [],
             isOperator: false,
+            platformMode: false,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,
-            navPinned: $this->request->cookie('cbox-nav-pinned') === '1',
-            accountHref: $this->onWorkspaceHost('account'),
-            switchUserHref: $this->onWorkspaceHost('accounts'),
-            workspace: $this->workspaceLink(),
+            navPinned: NavPin::pinned($this->request),
+            accountHref: $this->context->onWorkspaceHost('account'),
+            switchUserHref: $this->context->onWorkspaceHost('accounts'),
             altitude: ConsoleAltitude::Environment,
+            workspaceSettingsHref: OrganizationCapabilities::of($membership->role)->canManageMembers()
+                ? $this->context->onWorkspaceHost('organization-settings')
+                : null,
         );
     }
 
     /**
-     * A console page on the WORKSPACE's host, for a link drawn on an environment console.
-     *
-     * The environment console is on the environment's own host, where the administrator
-     * holds an environment binding and no subject session; the person's own pages — their
-     * account, the signed-in-user switcher, the workspace's Projects — are on the host the
-     * handoff came from. Same host derivation as the handoff's own refusal path
-     * ({@see AuthenticateEnvironmentAdmin}), so the way out and the
-     * way in agree.
+     * The nav page this request lights, so the context switcher can land on the same page
+     * in another environment when the page itself carries an entity in its URL.
      */
-    private function onWorkspaceHost(string $route): string
+    private function activePageRoute(?NavAreaProps $area): ?string
     {
-        $host = $this->planes->consoleHost();
-
-        return $host === null
-            ? route($route)
-            : 'https://'.$host.route($route, [], false);
-    }
-
-    /** The workspace this environment console belongs to, named, with the way back. */
-    private function workspaceLink(): ?WorkspaceLinkProps
-    {
-        $organizationId = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
-
-        if (! is_string($organizationId) || $organizationId === '') {
-            return null;
+        foreach ($area->pages ?? [] as $page) {
+            if ($page->active) {
+                return $page->route;
+            }
         }
 
-        $name = app(PlatformRoot::class)->run(
-            fn (): ?string => app(Organizations::class)->find($organizationId)?->name,
-        );
-
-        return new WorkspaceLinkProps(
-            name: is_string($name) && $name !== '' ? $name : 'Workspace',
-            href: $this->onWorkspaceHost('projects'),
-        );
+        return null;
     }
 
     /**
@@ -440,118 +461,5 @@ final readonly class ShellPayload
         }
 
         return true;
-    }
-
-    /**
-     * The organizations this subject belongs to — and an empty list when there is only
-     * one, because a switcher that cannot switch is a control that lies.
-     *
-     * This runs on EVERY authenticated console page, so the single-membership case (the
-     * overwhelming majority) costs zero organization queries, and the multi case resolves
-     * every name in one batch rather than one query per membership.
-     *
-     * @return list<SwitchOptionProps>
-     */
-    private function switchableOrganizations(): array
-    {
-        $memberships = app(Memberships::class)->forUser($this->user->id());
-
-        if ($memberships->count() <= 1) {
-            return [];
-        }
-
-        /** @var list<string> $ids */
-        $ids = [];
-
-        foreach ($memberships as $membership) {
-            $ids[] = $membership->organization_id;
-        }
-
-        $organizations = app(Organizations::class)->findMany($ids);
-        $currentId = $this->user->organizationId();
-
-        $options = [];
-
-        foreach ($memberships as $membership) {
-            $id = $membership->organization_id;
-            $organization = $organizations[$id] ?? null;
-
-            // A membership whose organization no longer resolves is not a row somebody
-            // can switch to. Skipped rather than rendered blank, which is what an
-            // `?? 'Unknown'` here would produce.
-            if ($organization === null) {
-                continue;
-            }
-
-            $options[] = new SwitchOptionProps(
-                id: $id,
-                label: $organization->name,
-                caption: $membership->role->label(),
-                current: $id === $currentId,
-            );
-        }
-
-        return $options;
-    }
-
-    /**
-     * The environments an operator can point this console at.
-     *
-     * WHY THE OWNER IS NAMED. "Production" is a name half the customers on an install
-     * will have, and a control that says only that tells an operator nothing about whose
-     * estate their next click lands in. The owner is reached THROUGH the project;
-     * `environments.account_id` was the shortcut, and it is gone.
-     *
-     * Two queries for the whole list even though this renders on every console page: the
-     * work is skipped outright for the overwhelming majority of sessions (nobody is an
-     * operator), and the owner names come from one batched lineage lookup rather than a
-     * query per environment.
-     *
-     * @return list<SwitchOptionProps>
-     */
-    private function targetEnvironments(): array
-    {
-        if (! $this->scope->isPlatformOperator()) {
-            return [];
-        }
-
-        $context = app(EnvironmentContext::class);
-        $activeId = $context->current()?->environmentKey();
-
-        /** @var Collection<int, Environment> $environments */
-        $environments = $context->withoutScope(
-            fn () => Environment::query()
-                ->orderBy('created_at')
-                ->get(['id', 'name', 'slug', 'project_id']),
-        );
-
-        if ($environments->count() <= 1) {
-            return [];
-        }
-
-        $lineage = app(EnvironmentLineages::class)->for($environments);
-
-        $options = [];
-
-        foreach ($environments as $environment) {
-            $options[] = new SwitchOptionProps(
-                id: $environment->id,
-                label: isset($lineage[$environment->id])
-                    ? $lineage[$environment->id]->qualify($environment->name)
-                    : $environment->name,
-                caption: $environment->slug,
-                current: $environment->id === $activeId,
-                // Two DIFFERENT operations, and the Volt menu offered only one. Selecting
-                // a row re-points this console at that environment while the operator
-                // stays on the operator host with operator authority — which is what the
-                // platform pages need, since they read through the pointed environment.
-                // Opening it is the other thing the label looks like it means, and that
-                // path (a signed handoff, no second login) was reachable only from
-                // Projects. Both are here, and each says which it is.
-                openHref: route('environment.open', $environment->id),
-            );
-        }
-
-        return $options;
     }
 }

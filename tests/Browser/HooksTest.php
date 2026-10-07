@@ -58,7 +58,7 @@ it('reveals the signing secret once and lets the reader clear it off the screen'
 
     $page = visit('/inline-hooks/new');
 
-    $page->assertSee('New inline hook')
+    $page->assertSee('New hook')
         ->fill('url', 'https://hooks.example.test/token')
         ->press('Register endpoint');
 

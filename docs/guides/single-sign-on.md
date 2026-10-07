@@ -6,7 +6,7 @@ description: Connect Microsoft Entra ID, Okta or Google Workspace so your people
 
 # Single sign-on
 
-**Console page:** Sign-in › Single sign-on
+**Console page:** Sign-in › Enterprise SSO (Authentication › Enterprise SSO in an environment console)
 
 Single sign-on lets your people authenticate against the identity provider your
 company already runs, instead of holding a second set of credentials here. You
@@ -71,7 +71,7 @@ because it is already claimed, that is why.
 
 Claiming a domain decides who Cbox ID RECOGNISES. It does not, on its own, decide
 whether those people may still use a password. That is the **Single sign-on** setting
-on **Sign-in › Sign-in rules**, and the three values differ:
+on **Authentication policy**, and the three values differ:
 
 | Setting | What somebody on a verified domain sees |
 |---|---|

@@ -69,10 +69,12 @@ it('offers an account-less operator no area that needs an account', function ():
         ->and($routes)->not->toContain('organization-settings')
         // …and the platform section IS there, or the assertions above pass on an empty rail.
         ->and($routes)->toContain('platform.customers')
-        ->and($routes)->toContain('platform.operators')
-        // Their own security page survives, and should: it is the one area that belongs to
-        // every signed-in person rather than to an organization.
-        ->and($routes)->toContain('account');
+        ->and($routes)->toContain('platform.operators');
+
+    // Their own security page survives, and should: it is the one thing that belongs to
+    // every signed-in person rather than to an organization. Inside platform admin it is
+    // the account menu's, not the rail's — the rail there is the platform's alone.
+    expect($shell['accountHref'])->toBe(route('account'));
 });
 
 it('lands an account-less operator on the platform rather than on an empty Projects page', function (): void {

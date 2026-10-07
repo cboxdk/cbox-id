@@ -99,7 +99,7 @@ domain whose organization requires SSO is sent to its identity provider instead.
 ## Turning it on
 
 Self-service sign-up is **off** for every environment until an administrator turns it on,
-under **Sign-in › Sign-in rules › Self-service sign-up** in the environment console. It
+under **Authentication › Authentication policy › Self-service sign-up** in the environment console. It
 governs three things at once:
 
 - the environment's `/signup` page and the "Create an account" link on its sign-in page;

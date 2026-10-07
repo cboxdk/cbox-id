@@ -933,10 +933,10 @@
     .cbx-rail.open .cbx-pin-btn, :root.cbx-nav-pinned .cbx-pin-btn { opacity: 1; pointer-events: auto; }
     .cbx-rail-brand { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
     .cbx-rail-brand svg, .cbx-rail-brand img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .cbx-rail a, .cbx-rail button.cbx-railitem { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 9px; border-radius: 8px; text-decoration: none; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); margin-bottom: 2px; white-space: nowrap; width: 100%; box-sizing: border-box; background: transparent; border: 0; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
-    .cbx-rail a svg, .cbx-rail button.cbx-railitem svg { flex-shrink: 0; color: var(--sidebar-muted); }
-    .cbx-rail a .lbl, .cbx-rail button.cbx-railitem .lbl { font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 120ms var(--ease); }
-    .cbx-rail a:hover, .cbx-rail button.cbx-railitem:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    .cbx-rail a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 9px; border-radius: 8px; text-decoration: none; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); margin-bottom: 2px; white-space: nowrap; width: 100%; box-sizing: border-box; background: transparent; border: 0; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-rail a svg { flex-shrink: 0; color: var(--sidebar-muted); }
+    .cbx-rail a .lbl { font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 120ms var(--ease); }
+    .cbx-rail a:hover { background: var(--sidebar-accent); color: var(--foreground); }
     .cbx-rail a.cbx-on { background: var(--accent-soft); color: var(--nav-active-fg); font-weight: 600; }
     .cbx-rail a.cbx-on svg { color: var(--nav-active-fg); }
     .cbx-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; transition: opacity 120ms var(--ease); }
@@ -949,9 +949,8 @@
      * 210px on the very first frame, so it never animates 52→210 on a navigation. */
     .cbx-rail.open { width: 210px; border-color: var(--border); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
     :root.cbx-nav-pinned .cbx-rail { width: 210px; border-color: var(--border); box-shadow: var(--shadow-card); }
-    .cbx-rail.open a .lbl, .cbx-rail.open button.cbx-railitem .lbl,
-    :root.cbx-nav-pinned .cbx-rail a .lbl,
-    :root.cbx-nav-pinned .cbx-rail button.cbx-railitem .lbl { opacity: 1; }
+    .cbx-rail.open a .lbl,
+    :root.cbx-nav-pinned .cbx-rail a .lbl { opacity: 1; }
     /* The spacer reserves flow. Unpinned reserves just the collapsed strip (64px) so
      * the hover-expand overlays without pushing the page; pinned reserves the full
      * rail width + its two 6px insets (222px) so content docks cleanly beside it. */
@@ -960,7 +959,6 @@
         .cbx-rail-spacer { display: block; width: 64px; flex-shrink: 0; }
         :root.cbx-nav-pinned .cbx-rail-spacer { width: 222px; }
     }
-    .cbx-rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; position: relative; padding-top: 8px; }
     /* Pin toggle — a tilted (loose) pin when unpinned, upright + accent when pinned.
      * CSS-driven off the SSR pinned class AND the Alpine .is-pinned class so it is
      * correct on the first frame and updates instantly on toggle. */
@@ -1344,50 +1342,131 @@
         white-space: normal;
     }
 
-    /* WHAT AUTHORITY YOU ARE HOLDING, on every console page. The retired platform
-       shell said "Platform operator" under its brand and it was the only thing on
-       screen that did — on a console where one click suspends a customer. Folding
-       the section into the one console dropped it, because the topbar names the
-       ORGANIZATION you act for, which for an operator is their own employer. */
-    .cbx-operator-pill {
+    /* PLATFORM ADMIN, said above every page of it. The warning tone because that is
+       what it is: a click here acts on every workspace on the install. Full width and
+       worded, never a tint alone — colour is not an indicator (SC 1.4.1). */
+    .cbx-platform-strip {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        padding: 8px 16px;
+        background: var(--warning-soft);
+        color: var(--warning-strong);
+        border-bottom: 1px solid color-mix(in oklch, var(--warning) 30%, transparent);
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    .cbx-platform-badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; letter-spacing: 0.01em; }
+    .cbx-platform-copy { color: var(--foreground); }
+    .cbx-platform-exit {
+        margin-left: auto;
+        font-weight: 600;
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        border-radius: var(--radius-sm);
+    }
+    .cbx-platform-exit:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+    /* THE CONTEXT SWITCHER — Workspace / Project / Environment, the topbar's left half.
+       Each crumb is a quiet button; the menu it opens is a cmdk list in a popover, the
+       same pairing as the Combobox. Active state is a filled background, never a bar. */
+    .cbx-topbar-context { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
+    .cbx-ctx { display: flex; align-items: center; gap: 2px; min-width: 0; }
+    .cbx-ctx-sep { color: var(--faint); padding: 0 2px; flex-shrink: 0; }
+    .cbx-ctx-trigger,
+    .cbx-ctx-static {
+        display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 3px 10px;
-        border-radius: 9999px;
+        min-width: 0;
+        height: 32px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 13px;
+        font-weight: 500;
+    }
+    /* Clipped rather than overflowing: squeezed by a long workspace name, a crumb's label
+       truncates inside its own box instead of drawing over the next crumb. */
+    .cbx-ctx-trigger,
+    .cbx-ctx-static { overflow: hidden; }
+    .cbx-ctx-trigger { cursor: pointer; transition: background-color var(--dur-hover) var(--ease); }
+    .cbx-ctx-trigger:hover,
+    .cbx-ctx-trigger[data-state='open'] { background: var(--secondary); }
+    .cbx-ctx-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .cbx-ctx-label { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cbx-ctx-placeholder { color: var(--muted-foreground); }
+    .cbx-ctx-chevron { width: 14px; height: 14px; flex-shrink: 0; color: var(--muted-foreground); }
+    .cbx-ctx-tile {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+        border-radius: var(--radius-sm);
         background: var(--accent-soft);
         color: var(--primary);
         font-size: 11px;
+        font-weight: 700;
+    }
+    .cbx-ctx-menu { width: 18rem; max-width: calc(100vw - 32px); padding: 0; }
+    .cbx-ctx-menu [cmdk-list] { max-height: min(20rem, 60vh); overflow-y: auto; padding: 4px; }
+    .cbx-ctx-menu > [cmdk-root] > .cbx-menulabel { padding: 10px 12px 2px; }
+    .cbx-ctx-group [cmdk-group-heading] {
+        padding: 8px 8px 4px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.01em;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+    }
+    .cbx-ctx-footnote { margin: 0; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted-foreground); }
+    .cbx-menuitem.is-current { font-weight: 600; }
+    /* ON A PHONE the switcher lives in the navigation sheet, where it has the width to be
+       read, and the bottom bar names the environment and its type at all times. The
+       topbar keeps only the tenant filter, which is per-page state somebody needs in reach.
+       Hidden here because it is drawn there — never hidden without a replacement. */
+    /* In the sheet each crumb is a full-width row — a phone has the height, not the width.
+       The right padding keeps the first row clear of the sheet's close button. */
+    .cbx-ctx-sheet { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 0 44px 4px 0; }
+    .cbx-ctx-sheet .cbx-ctx { flex-direction: column; align-items: stretch; gap: 2px; }
+    .cbx-ctx-sheet .cbx-ctx-sep { display: none; }
+    .cbx-ctx-sheet .cbx-ctx-trigger,
+    .cbx-ctx-sheet .cbx-ctx-static,
+    .cbx-ctx-sheet .cbx-switcher-item { width: 100%; justify-content: flex-start; }
+    .cbx-ctx-sheet .cbx-ctx-label { max-width: none; flex: 1; text-align: left; }
+    @media (max-width: 639px) {
+        .cbx-topbar-context > .cbx-ctx,
+        .cbx-topbar-context > .cbx-ctx + .cbx-ctx-sep { display: none; }
+    }
+    @media (min-width: 640px) and (max-width: 1023px) {
+        .cbx-topbar-context .cbx-ctx-label { max-width: 7rem; }
     }
 
-    /* THE WAY BACK from an environment console to its workspace, and the environment
-       it is in — the first two crumbs of the topbar there. The back crumb is a quiet
-       link rather than a button: it leaves this host, and reads as a place. */
-    .cbx-crumb-back {
+    /* Who you are, top right. */
+    .cbx-avatar-btn {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        min-width: 0;
-        max-width: 12rem;
-        padding: 4px 8px;
-        border-radius: var(--radius-md);
-        color: var(--muted-foreground);
-        font-size: 13px;
-        font-weight: 500;
-        transition: background-color 150ms cubic-bezier(.4,0,.2,1), color 150ms cubic-bezier(.4,0,.2,1);
+        justify-content: center;
+        padding: 3px;
+        border: 0;
+        border-radius: 9999px;
+        background: transparent;
+        cursor: pointer;
+        transition: background-color var(--dur-hover) var(--ease);
     }
-    .cbx-crumb-back:hover { background: var(--accent-soft); color: var(--foreground); }
-    .cbx-crumb-back:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-    .cbx-crumb-env {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-width: 0;
-        max-width: 11rem;
-        font-size: 13px;
-        font-weight: 600;
-    }
+    .cbx-avatar-btn:hover,
+    .cbx-avatar-btn[data-state='open'] { background: var(--secondary); }
+    .cbx-avatar-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .cbx-account-hd { padding: 8px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+    .cbx-account-name { margin: 0; font-size: 13px; font-weight: 600; }
+    .cbx-account-email { margin: 2px 0 0; font-size: 12px; color: var(--muted-foreground); }
+    .cbx-account-hint { margin-left: auto; font-size: 11.5px; color: var(--muted-foreground); }
 
     /* A page the rail does not offer, reached by URL: one sentence saying what it is and
        where the reader probably meant to go. Info tone, never a warning — nothing is

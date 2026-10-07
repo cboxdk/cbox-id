@@ -6,7 +6,7 @@ description: Endpoints Cbox ID calls in the middle of an operation, whose answer
 
 # Inline hooks
 
-**Console page:** Developers › Inline hooks
+**Console page:** Developers › Hooks
 
 An inline hook is your endpoint, called **while** an operation is happening, whose
 answer changes what happens next: add a claim to a token, or refuse a sign-in

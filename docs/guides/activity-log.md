@@ -6,7 +6,7 @@ description: The tamper-evident record of every administrative change in your or
 
 # Activity log
 
-**Console page:** Logs › Activity log
+**Console page:** Logs › Audit log (Monitoring › Audit log in an environment console)
 
 Every administrative change in your organization lands here: who did it, what they
 did it to, and when. Members added and removed, roles granted, connections created

@@ -26,9 +26,9 @@
     `cbx-nav-pinned` on <html> from the cookie, for the same reason the theme is: the
     rail is 52px collapsed and 210px pinned, and a class applied by JavaScript arrives
     after the first paint — so the console animated 52 → 210px on every hard refresh for
-    anybody who had pinned it.
+    anybody who had pinned it. Pinned is the default — see App\Platform\Console\NavPin.
 --}}
-<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
+<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ \App\Platform\Console\NavPin::pinned() ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

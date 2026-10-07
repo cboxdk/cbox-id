@@ -6,7 +6,7 @@ description: Let Microsoft Entra ID, Okta or Google Workspace create, update and
 
 # Sync users in
 
-**Console page:** Sign-in › Sync users in
+**Console page:** Sign-in › Directory Sync (Authentication › Directory Sync in an environment console)
 
 Syncing users in means your identity provider — not you — decides who exists here.
 It creates people when they join, updates them when their details change, and

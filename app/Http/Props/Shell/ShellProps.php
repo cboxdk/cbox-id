@@ -25,8 +25,6 @@ final readonly class ShellProps implements Prop
 {
     /**
      * @param  list<NavAreaProps>  $areas
-     * @param  list<SwitchOptionProps>  $organizations  empty unless there is more than one to choose between
-     * @param  list<SwitchOptionProps>  $environments  operators only
      */
     public function __construct(
         public array $areas,
@@ -42,18 +40,28 @@ final readonly class ShellProps implements Prop
          * install from one customer on it.
          */
         public ?string $section,
-        public array $organizations,
+        /**
+         * Where the person is and where else they can go — the topbar's
+         * `Workspace ▾ / Project ▾ / Environment ▾`. See {@see ShellContextProps}.
+         */
+        public ShellContextProps $context,
         /**
          * The environment plane's acting organization, and null on every other plane.
          *
-         * Separate from `$organizations` because the two answer different questions: that
-         * one is "which of MY organizations", answered with a list because a person belongs
-         * to a handful; this is "which TENANT of this environment", where the set is
-         * unbounded and the chrome must never try to enumerate it.
+         * Separate from the context's workspaces because the two answer different
+         * questions: those are "which of MY organizations", answered with a list because a
+         * person belongs to a handful; this is "which TENANT of this environment", where
+         * the set is unbounded and the chrome must never try to enumerate it.
          */
         public ?ActingOrganizationProps $actingOrganization,
-        public array $environments,
         public bool $isOperator,
+        /**
+         * Whether this page is in PLATFORM ADMIN — the install as a whole, every customer
+         * on it. Drawn as a mode of its own (a strip, a rail of its own, a way out) because
+         * a click there can suspend a customer, and a page in the middle of the console
+         * looked like every other page.
+         */
+        public bool $platformMode,
         public string $brandHref,
         public bool $navPinned,
         /**
@@ -67,8 +75,15 @@ final readonly class ShellProps implements Prop
         public string $switchUserHref,
         /** Which console this is — a workspace's, an organization's, or an environment's. */
         public ConsoleAltitude $altitude,
-        /** The environment console's way back to its workspace; null on every other console. */
-        public ?WorkspaceLinkProps $workspace = null,
+        /**
+         * The account menu's "Workspace settings", where this person may change them —
+         * absolute on the environment console, for the same reason as `$accountHref`.
+         */
+        public ?string $workspaceSettingsHref = null,
+        /** The account menu's way INTO platform admin. Operators only. */
+        public ?string $platformHref = null,
+        /** The platform strip's way OUT — the operator's own console. Platform mode only. */
+        public ?string $exitPlatformHref = null,
         public ?ShellNoticeProps $notice = null,
     ) {}
 
@@ -81,16 +96,18 @@ final readonly class ShellProps implements Prop
             'areas' => $this->areas,
             'activeArea' => $this->activeArea,
             'section' => $this->section,
-            'organizations' => $this->organizations,
+            'context' => $this->context,
             'actingOrganization' => $this->actingOrganization,
-            'environments' => $this->environments,
             'isOperator' => $this->isOperator,
+            'platformMode' => $this->platformMode,
             'brandHref' => $this->brandHref,
             'navPinned' => $this->navPinned,
             'accountHref' => $this->accountHref,
             'switchUserHref' => $this->switchUserHref,
             'altitude' => $this->altitude->value,
-            'workspace' => $this->workspace,
+            'workspaceSettingsHref' => $this->workspaceSettingsHref,
+            'platformHref' => $this->platformHref,
+            'exitPlatformHref' => $this->exitPlatformHref,
             'notice' => $this->notice,
         ];
     }

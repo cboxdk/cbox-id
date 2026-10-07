@@ -85,7 +85,7 @@ it('signs a person in through the form and back out again', function (): void {
      * only way a person on a shared machine can end the session, and it posts rather than
      * links, so it is the kind of thing a routing change breaks silently.
      */
-    $page->click('button.cbx-railitem');
+    $page->click('button.cbx-avatar-btn');
 
     /*
      * A MENU ITEM, not a button — the account menu is a Radix dropdown and its entries are

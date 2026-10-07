@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\HandoffTarget;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 final class EnvironmentHandoffController extends Controller
 {
@@ -30,10 +32,12 @@ final class EnvironmentHandoffController extends Controller
      * reached. A refusal added to the redemption alone is a redirect loop.
      */
     public function openEnvironment(
+        Request $request,
         string $environment,
         ConsoleScope $scope,
         Memberships $members,
         EnvironmentAdminHandoff $handoff,
+        HandoffTarget $targets,
     ): RedirectResponse {
         $organizationId = $scope->organizationId();
         $subjectId = $scope->actorId();
@@ -62,8 +66,20 @@ final class EnvironmentHandoffController extends Controller
         // The handoff carries the SUBJECT — the credential of record. The membership behind
         // it is re-resolved on redemption, not carried in the token.
         $token = $handoff->mint($subjectId, $env->id);
+        $query = ['token' => $token];
 
-        return redirect()->away('https://'.$this->host($env).'/admin/handoff?token='.urlencode($token));
+        // THE PAGE TO LAND ON, when the topbar's environment switcher asked for one — so
+        // Users in staging opens as Users in production. Validated here and again on
+        // redemption ({@see HandoffTarget}); an invalid one is dropped rather than refused,
+        // and the handoff lands on the environment's home exactly as it did before.
+        $to = $targets->sanitize($request->query('to'));
+
+        if ($to !== null) {
+            $query['to'] = $to;
+            $query['to_sig'] = $targets->sign($token, $to);
+        }
+
+        return redirect()->away('https://'.$this->host($env).'/admin/handoff?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986));
     }
 
     /** The environment's own host — its VERIFIED custom domain, else {slug}.{base_domain}. */

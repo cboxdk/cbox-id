@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Platform\Console\HandoffTarget;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IntendedUrl;
 use App\Platform\OrganizationCapabilities;
@@ -40,6 +41,7 @@ final class EnvironmentAdminController extends Controller
         PlatformRoot $platformRoot,
         EnvironmentAdminAuth $auth,
         SubjectCredentialGate $gate,
+        HandoffTarget $targets,
     ): RedirectResponse {
         $token = $request->query('token');
         $grant = is_string($token) ? $handoff->verify($token) : null;
@@ -128,7 +130,19 @@ final class EnvironmentAdminController extends Controller
         // tenant sign-in form with the intent rewritten. The console became unreachable
         // from a browser that had merely visited `/device` once. An intent is honoured
         // only by the plane that can serve it.
-        return redirect()->to(IntendedUrl::pullForAdminConsole() ?? route('environment.home'));
+        //
+        // The intent is PULLED either way, so a stale one cannot surface on a later visit.
+        $intended = IntendedUrl::pullForAdminConsole();
+
+        // THE PAGE THE CONTEXT SWITCHER ASKED FOR, when it asked: the same console page,
+        // in this environment. Read with `input()` so it is found whether the handoff
+        // arrives as a link or as a posted form, and only honoured when it was minted
+        // with this very token and names one of this console's own pages
+        // ({@see HandoffTarget}). It wins over an intent because it is the newer and more
+        // deliberate of the two — a click made a second ago, not a page bounced off once.
+        $to = $targets->verify($token, $request->input('to'), $request->input('to_sig'));
+
+        return redirect()->to($to ?? $intended ?? route('environment.home'));
     }
 
     public function logout(Request $request, EnvironmentAdminAuth $auth): RedirectResponse
