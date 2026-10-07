@@ -14,6 +14,29 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - **Organization-owned SAML applications.** A SAML app can belong to one organization (`organization_id` on `/v1/saml-apps`, "For which organization?" in the console); only its active members are then asserted to it. The list flags environment-wide apps.
 - `CBOX_ID_CRYPTO_PREVIOUS_KEYS` and a master-key rotation runbook (Operations › Rotating the crypto master key). The devices module registers its sealed push token with `SealedColumns`, so `cbox-id:crypto:rewrap` covers it.
 - `CBOX_ID_LOCKOUT_THRESHOLD`, `CBOX_ID_LOCKOUT_WINDOW_MINUTES`, `CBOX_ID_LOCKOUT_DURATION_MINUTES` in `.env.example` and the configuration docs.
+- **Enterprise SSO, directory sync, outbound provisioning, access governance, the token
+  vault and Admin Portal links are actions** — management API endpoints and MCP tools, and
+  the console's own writes run the same actions. New environment-plane endpoints:
+  `/sso/connections` (create, update, activate, disable, require-sso, delete, list, get),
+  `/sso/domains` (claim, verify, capture, remove, list), `/sso/saml-metadata` (parse IdP
+  metadata, stores nothing), `/directories` (SCIM register, Google/Entra connect, rename,
+  status, token rotate, group→role mapping, delete, list, get, groups),
+  `/provisioning-targets`, `/sod-policies`, `/access-reviews` (open, items, decide, close),
+  `/token-vault/secrets` (store, rotate, revoke, grants) and
+  `POST /organizations/{organization_id}/portal-links`. New key scopes: `sso:*`,
+  `directory_sync:*`, `provisioning:*`, `governance:*`, `token_vault:*` and
+  `portal_links:write` — `token_vault:*` manages the vault and is not the `vault.manage` /
+  `vault.lease` scopes an app's own token carries. Secrets are input only: a SCIM bearer
+  token and a portal link are shown once and redacted from idempotent replays; IdP
+  certificates, client secrets, signing keys, provider credentials and vault values are
+  never returned. Critical: connection update/activate/disable/delete/require-sso, domain
+  capture, SCIM register and rotate, pull connect, target register, SoD switch and delete,
+  vault rotate and grant, portal links.
+- Writes that recorded nothing now leave an attributed audit entry, from the console and
+  the API alike: `sso_connection.created|updated|disabled|deleted`, `directory.registered|
+  connected|renamed|token_rotated|paused|resumed|deleted|group_role_mapped|
+  group_role_unmapped`, `provisioning_connection.registered|paused|resumed|deleted`,
+  `sod.policy_deleted`, and `auth_policy.updated` for require-SSO.
 
 ### Changed
 

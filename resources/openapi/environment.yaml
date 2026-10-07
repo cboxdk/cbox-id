@@ -76,8 +76,10 @@ tags:
   - name: 'Support sessions'
   - name: Devices
   - name: Approvals
+  - name: Governance
   - name: 'Audit log'
   - name: Branding
+  - name: 'Directory sync'
   - name: Domains
   - name: Events
   - name: 'Frontend keys'
@@ -85,10 +87,410 @@ tags:
   - name: 'Management keys'
   - name: 'Legacy login'
   - name: 'Log streams'
+  - name: 'Admin Portal'
+  - name: Provisioning
   - name: 'SAML apps'
   - name: Sign-in
+  - name: 'Single sign-on'
+  - name: 'Token vault'
   - name: Webhooks
 paths:
+  /access-reviews:
+    post:
+      tags:
+        - Governance
+      summary: "Open an access review of one organization's roles and memberships — or of staff roles — for someone to certify or revoke."
+      description: 'Requires scope `governance:write`. Danger: write.'
+      operationId: access_reviews_create
+      x-action: access_reviews.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 'What the review is: "Q3 finance access".'
+                  maxLength: 190
+                covers:
+                  type: string
+                  description: "organization (default): one organization's access, named by organization_id. staff: every environment-wide staff grant."
+                  enum:
+                    - organization
+                    - staff
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization to review. Required unless covers is staff.'
+                  maxLength: 64
+                due_in_days:
+                  type: integer
+                  description: 'Days until it is due. Default 7.'
+                  minimum: 1
+                  maximum: 365
+              required:
+                - name
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AccessReview'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Governance
+      summary: 'List access reviews (certification campaigns), open and closed, optionally those covering one organization.'
+      description: 'Requires scope `governance:read`. Danger: read.'
+      operationId: access_reviews_list
+      x-action: access_reviews.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'Only reviews covering this organization: its own and the staff reviews.'
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AccessReview'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/access-reviews/{id}':
+    get:
+      tags:
+        - Governance
+      summary: 'Read one access review: its status, due date, pending-item policy and item count.'
+      description: 'Requires scope `governance:read`. Danger: read.'
+      operationId: access_reviews_get
+      x-action: access_reviews.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The review's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AccessReview'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/access-reviews/{id}/close':
+    post:
+      tags:
+        - Governance
+      summary: "Close an access review and apply it: every revoke is carried out, and undecided items get the review's pending policy (revoke by default)."
+      description: 'Requires scope `governance:write`. Danger: destructive.'
+      operationId: access_reviews_close
+      x-action: access_reviews.close
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The review's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AccessReview'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/access-reviews/{id}/items':
+    get:
+      tags:
+        - Governance
+      summary: 'List the items an access review asks someone to certify or revoke: who holds what, and the decision on each.'
+      description: 'Requires scope `governance:read`. Danger: read.'
+      operationId: access_reviews_items_list
+      x-action: access_reviews.items.list
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The review's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AccessReviewItem'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/access-reviews/{id}/items/{item_id}':
+    post:
+      tags:
+        - Governance
+      summary: 'Certify or revoke one item of an open access review. Revokes are applied when the review closes.'
+      description: 'Requires scope `governance:write`. Danger: write.'
+      operationId: access_reviews_items_decide
+      x-action: access_reviews.items.decide
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The review's id."
+        -
+          name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The item's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  description: 'certified keeps the access; revoked takes it away when the review closes.'
+                  enum:
+                    - certified
+                    - revoked
+                note:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Why, for whoever audits the review.'
+                  maxLength: 1000
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+              required:
+                - decision
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AccessReviewItem'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/action-approvals/{id}':
     get:
       tags:
@@ -2090,6 +2492,655 @@ paths:
           $ref: '#/components/responses/BearerForbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /directories:
+    post:
+      tags:
+        - 'Directory sync'
+      summary: 'Register a SCIM directory for an organization. Answers the SCIM base URL and a bearer token, shown once.'
+      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      operationId: directories_create
+      x-action: directories.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: 'The organization whose people it provisions.'
+                  maxLength: 64
+                name:
+                  type: string
+                  description: 'What administrators call it: "Okta SCIM".'
+                  maxLength: 120
+              required:
+                - organization_id
+                - name
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Directory sync'
+      summary: 'List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in, optionally for one organization, with their last sync error.'
+      description: 'Requires scope `directory_sync:read`. Danger: read.'
+      operationId: directories_list
+      x-action: directories.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only this organization's."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Directory'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /directories/connect:
+    post:
+      tags:
+        - 'Directory sync'
+      summary: "Connect a Google Workspace or Microsoft Entra directory to sync an organization's people from, verifying the credentials first. Runs the first sync."
+      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      operationId: directories_connect
+      x-action: directories.connect
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: 'The organization whose people it provisions.'
+                  maxLength: 64
+                provider:
+                  type: string
+                  description: 'google_workspace or microsoft_entra.'
+                  enum:
+                    - google_workspace
+                    - microsoft_entra
+                credentials:
+                  type: object
+                  description: "The provider's credentials. Write-only: sealed, never returned."
+                  properties:
+                    service_account_json:
+                      type: string
+                      description: "Google: the service account's JSON key, whole."
+                      maxLength: 20000
+                    admin_email:
+                      type: string
+                      description: 'Google: the administrator the service account acts as.'
+                      maxLength: 190
+                    tenant_id:
+                      type: string
+                      description: 'Entra: the directory (tenant) id.'
+                      maxLength: 190
+                    client_id:
+                      type: string
+                      description: "Entra: the app registration's client id."
+                      maxLength: 190
+                    client_secret:
+                      type: string
+                      description: "Entra: the app registration's client secret."
+                      maxLength: 500
+              required:
+                - organization_id
+                - provider
+                - credentials
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}':
+    delete:
+      tags:
+        - 'Directory sync'
+      summary: 'Delete an inbound directory. Its token stops working; the people it provisioned keep their accounts.'
+      description: 'Requires scope `directory_sync:write`. Danger: destructive.'
+      operationId: directories_delete
+      x-action: directories.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Directory sync'
+      summary: 'Read one inbound directory: its provider, status, SCIM base URL and last sync error. Never its token or credentials.'
+      description: 'Requires scope `directory_sync:read`. Danger: read.'
+      operationId: directories_get
+      x-action: directories.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Directory sync'
+      summary: 'Rename an inbound directory.'
+      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      operationId: directories_update
+      x-action: directories.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                name:
+                  type: string
+                  description: 'The new name.'
+                  maxLength: 120
+              required:
+                - name
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/group-roles':
+    post:
+      tags:
+        - 'Directory sync'
+      summary: 'Map a directory group onto a role (everyone in the group holds it as membership syncs), or unmap it.'
+      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      operationId: directories_groups_map
+      x-action: directories.groups.map
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                group_id:
+                  type: string
+                  description: "One of the directory's groups."
+                  maxLength: 64
+                role_id:
+                  type: string
+                  description: "A role the organization's own people may hold."
+                  maxLength: 64
+                mapped:
+                  type: boolean
+                  description: 'true to map the group onto the role, false to unmap it.'
+              required:
+                - group_id
+                - role_id
+                - mapped
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DirectoryGroup'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/groups':
+    get:
+      tags:
+        - 'Directory sync'
+      summary: 'List the groups a directory has synced, with the role ids each group is mapped onto.'
+      description: 'Requires scope `directory_sync:read`. Danger: read.'
+      operationId: directories_groups_list
+      x-action: directories.groups.list
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DirectoryGroup'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/rotate':
+    post:
+      tags:
+        - 'Directory sync'
+      summary: 'Issue a new bearer token for a SCIM directory, returned once. The old token stops working immediately.'
+      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      operationId: directories_token_rotate
+      x-action: directories.token.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/status':
+    post:
+      tags:
+        - 'Directory sync'
+      summary: "Pause or resume an inbound directory's provisioning."
+      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      operationId: directories_status_set
+      x-action: directories.status.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  description: 'true to resume provisioning, false to pause it.'
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+              required:
+                - active
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /domains:
@@ -4759,6 +5810,72 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/organizations/{organization_id}/portal-links':
+    post:
+      tags:
+        - 'Admin Portal'
+      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up its SSO and domains, or its directory sync, without an account. The URL is shown once."
+      description: 'Requires scope `portal_links:write`. Danger: critical.'
+      operationId: organizations_portal_links_create
+      x-action: organizations.portal_links.create
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization the link sets up.'
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                covers:
+                  type: string
+                  description: 'What the link may configure: sso (connection and email domains), scim (directory sync), or both.'
+                  enum:
+                    - sso
+                    - scim
+                    - both
+              required:
+                - covers
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PortalLink'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /permissions:
     post:
       tags:
@@ -4991,6 +6108,335 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Permission'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /provisioning-targets:
+    post:
+      tags:
+        - Provisioning
+      summary: "Register a downstream app this platform pushes an organization's people to over SCIM, or every organization's with environment_wide."
+      description: 'Requires scope `provisioning:write`. Danger: critical.'
+      operationId: provisioning_targets_create
+      x-action: provisioning.targets.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization the target belongs to. Send this or environment_wide.'
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make the target the environment's own rather than one organization's. Send this or organization_id."
+                name:
+                  type: string
+                  description: 'What administrators call it: "Slack", "Salesforce".'
+                  maxLength: 190
+                base_url:
+                  type: string
+                  description: "The target's SCIM base URL. Must be a public address."
+                  format: uri
+                  maxLength: 500
+                auth_scheme:
+                  type: string
+                  description: 'bearer (a long-lived token the app issued you) or oauth2_client_credentials (a token fetched before each batch).'
+                  enum:
+                    - bearer
+                    - oauth2_client_credentials
+                secret:
+                  type: string
+                  description: 'The bearer token, or the OAuth client secret. Write-only.'
+                  maxLength: 4096
+                token_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'oauth2_client_credentials: the token endpoint.'
+                  format: uri
+                  maxLength: 2048
+                client_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'oauth2_client_credentials: the client id.'
+                  maxLength: 400
+                scope:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'oauth2_client_credentials: the scope to ask for, if the app wants one.'
+                  maxLength: 400
+              required:
+                - name
+                - base_url
+                - auth_scheme
+                - secret
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProvisioningTarget'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Provisioning
+      summary: 'List the downstream SCIM targets people are provisioned to, optionally for one organization, with their failures. Never their credentials.'
+      description: 'Requires scope `provisioning:read`. Danger: read.'
+      operationId: provisioning_targets_list
+      x-action: provisioning.targets.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only this organization's."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProvisioningTarget'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/provisioning-targets/{id}':
+    delete:
+      tags:
+        - Provisioning
+      summary: 'Delete a downstream SCIM target. Nothing more is pushed to it.'
+      description: 'Requires scope `provisioning:write`. Danger: destructive.'
+      operationId: provisioning_targets_delete
+      x-action: provisioning.targets.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The target's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Provisioning
+      summary: 'Read one downstream SCIM target: its URL, auth scheme, status and last error. Never its credential.'
+      description: 'Requires scope `provisioning:read`. Danger: read.'
+      operationId: provisioning_targets_get
+      x-action: provisioning.targets.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The target's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProvisioningTarget'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/provisioning-targets/{id}/status':
+    post:
+      tags:
+        - Provisioning
+      summary: 'Pause or resume pushing people to a downstream SCIM target.'
+      description: 'Requires scope `provisioning:write`. Danger: write.'
+      operationId: provisioning_targets_status_set
+      x-action: provisioning.targets.status.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The target's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  description: 'true to resume pushing, false to pause.'
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+              required:
+                - active
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProvisioningTarget'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         401:
@@ -6173,6 +7619,1263 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /sod-policies:
+    post:
+      tags:
+        - Governance
+      summary: 'Define a role-conflict rule: two or more roles no one person may hold together. Enforced on every grant from now on.'
+      description: 'Requires scope `governance:write`. Danger: write.'
+      operationId: sod_policies_create
+      x-action: sod_policies.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization the rule belongs to. Send this or environment_wide.'
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make the rule the environment's own rather than one organization's. Send this or organization_id."
+                name:
+                  type: string
+                  description: 'What the rule is for: "Payments maker/checker".'
+                  maxLength: 190
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Why the roles conflict.'
+                  maxLength: 500
+                role_ids:
+                  type: array
+                  description: 'The roles no one person may hold together; at least two.'
+                  minItems: 2
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 64
+              required:
+                - name
+                - role_ids
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SodPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Governance
+      summary: 'List role-conflict (segregation of duties) rules: sets of roles no one person may hold together. Optionally those binding one organization.'
+      description: 'Requires scope `governance:read`. Danger: read.'
+      operationId: sod_policies_list
+      x-action: sod_policies.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'Only the rules binding this organization: its own and the environment-wide ones.'
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SodPolicy'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sod-policies/{id}':
+    delete:
+      tags:
+        - Governance
+      summary: 'Remove a role-conflict rule. Grants it refused are allowed from then on.'
+      description: 'Requires scope `governance:write`. Danger: critical.'
+      operationId: sod_policies_delete
+      x-action: sod_policies.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The rule's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Governance
+      summary: 'Read one role-conflict rule: the roles no one person may hold together, and whether it is enforced.'
+      description: 'Requires scope `governance:read`. Danger: read.'
+      operationId: sod_policies_get
+      x-action: sod_policies.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The rule's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'Only if it binds this organization (its own, or environment-wide); anything else is a 404.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SodPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sod-policies/{id}/status':
+    post:
+      tags:
+        - Governance
+      summary: 'Enforce a role-conflict rule, or stop enforcing it — switched off, grants that break it are allowed again.'
+      description: 'Requires scope `governance:write`. Danger: critical.'
+      operationId: sod_policies_status_set
+      x-action: sod_policies.status.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The rule's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  description: 'true to enforce the rule, false to stop enforcing it.'
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+              required:
+                - active
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SodPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sso/connections:
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Connect an organization's SAML or OIDC identity provider as a draft. Activate it to start signing people in through it."
+      description: 'Requires scope `sso:write`. Danger: write.'
+      operationId: sso_connections_create
+      x-action: sso.connections.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization the connection belongs to. Send this or environment_wide.'
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make the connection the environment's own rather than one organization's. Send this or organization_id."
+                name:
+                  type: string
+                  description: 'What administrators call it: "Okta", "Entra ID".'
+                  maxLength: 120
+                type:
+                  type: string
+                  description: 'saml or oidc. The config fields of that type are required.'
+                  enum:
+                    - saml
+                    - oidc
+                idp_entity_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "SAML: the identity provider's entity id."
+                  maxLength: 500
+                idp_sso_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: "SAML: the identity provider's single sign-on URL."
+                  format: uri
+                  maxLength: 500
+                idp_x509cert:
+                  type:
+                    - string
+                    - 'null'
+                  description: "SAML: the identity provider's signing certificate (PEM). Write-only."
+                  maxLength: 20000
+                sp_entity_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'SAML: the entity id this environment presents as the service provider.'
+                  maxLength: 500
+                sp_acs_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'SAML: where the identity provider posts its assertions.'
+                  format: uri
+                  maxLength: 500
+                issuer:
+                  type:
+                    - string
+                    - 'null'
+                  description: "OIDC: the provider's issuer URL; its endpoints are discovered from it."
+                  format: uri
+                  maxLength: 500
+                client_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'OIDC: the client id registered at the provider.'
+                  maxLength: 500
+                client_secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'OIDC: the client secret. Write-only.'
+                  maxLength: 500
+                signing_key:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'OIDC: the signing key. Write-only.'
+                  maxLength: 20000
+              required:
+                - name
+                - type
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoConnection'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Single sign-on'
+      summary: 'List the SAML and OIDC connections organizations sign in through, optionally for one organization. Never a certificate or secret.'
+      description: 'Requires scope `sso:read`. Danger: read.'
+      operationId: sso_connections_list
+      x-action: sso.connections.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only this organization's."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SsoConnection'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}':
+    delete:
+      tags:
+        - 'Single sign-on'
+      summary: 'Delete an SSO connection and its settings. Where SSO is required, its people cannot sign in until another is activated.'
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_delete
+      x-action: sso.connections.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Single sign-on'
+      summary: 'Read one SSO connection: its type, status, entity ids, URLs, issuer and client id. Never a certificate or secret.'
+      description: 'Requires scope `sso:read`. Danger: read.'
+      operationId: sso_connections_get
+      x-action: sso.connections.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoConnection'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Single sign-on'
+      summary: "Change an SSO connection's name or identity-provider settings. Secrets left out keep the ones on file."
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_update
+      x-action: sso.connections.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                name:
+                  type: string
+                  description: 'A new name.'
+                  maxLength: 120
+                idp_entity_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "SAML: the identity provider's entity id."
+                  maxLength: 500
+                idp_sso_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: "SAML: the identity provider's single sign-on URL."
+                  format: uri
+                  maxLength: 500
+                idp_x509cert:
+                  type:
+                    - string
+                    - 'null'
+                  description: "SAML: the identity provider's signing certificate (PEM). Write-only."
+                  maxLength: 20000
+                sp_entity_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'SAML: the entity id this environment presents as the service provider.'
+                  maxLength: 500
+                sp_acs_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'SAML: where the identity provider posts its assertions.'
+                  format: uri
+                  maxLength: 500
+                issuer:
+                  type:
+                    - string
+                    - 'null'
+                  description: "OIDC: the provider's issuer URL; its endpoints are discovered from it."
+                  format: uri
+                  maxLength: 500
+                client_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'OIDC: the client id registered at the provider.'
+                  maxLength: 500
+                client_secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'OIDC: the client secret. Write-only.'
+                  maxLength: 500
+                signing_key:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'OIDC: the signing key. Write-only.'
+                  maxLength: 20000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoConnection'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/activate':
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: 'Activate an SSO connection: people whose email domain routes to it start signing in through it.'
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_activate
+      x-action: sso.connections.activate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoConnection'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/disable':
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: 'Disable an SSO connection without deleting it. Where SSO is required, its people cannot sign in until it is re-activated.'
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_disable
+      x-action: sso.connections.disable
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoConnection'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/require-sso':
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: 'Require single sign-on for the organization an SSO connection belongs to. Ends every password session there.'
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_require_sso
+      x-action: sso.connections.require_sso
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SignInPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sso/domains:
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Claim an email domain for an organization's single sign-on, and get the DNS TXT record to publish to prove it."
+      description: 'Requires scope `sso:write`. Danger: write.'
+      operationId: sso_domains_create
+      x-action: sso.domains.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: 'The organization claiming it.'
+                  maxLength: 64
+                domain:
+                  type: string
+                  description: 'The email domain, e.g. acme.com.'
+                  maxLength: 253
+              required:
+                - organization_id
+                - domain
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Single sign-on'
+      summary: 'List the email domains organizations claimed for single sign-on, whether each is verified and captured, and the DNS record that proves an unverified one.'
+      description: 'Requires scope `sso:read`. Danger: read.'
+      operationId: sso_domains_list
+      x-action: sso.domains.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only this organization's."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SsoDomain'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/domains/{id}':
+    delete:
+      tags:
+        - 'Single sign-on'
+      summary: "Remove a claimed email domain. Its people stop being routed to the organization's SSO connection."
+      description: 'Requires scope `sso:write`. Danger: destructive.'
+      operationId: sso_domains_delete
+      x-action: sso.domains.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The domain's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/domains/{id}/capture':
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Turn capture on or off for a verified domain: captured, everyone with an address at it must sign in through the organization's SSO."
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_domains_capture
+      x-action: sso.domains.capture
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The domain's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                capture:
+                  type: boolean
+                  description: 'true to capture the domain, false to release it.'
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+              required:
+                - capture
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/domains/{id}/verify':
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Check a claimed domain's DNS TXT record now. Answers the domain, with verified true once the record is found."
+      description: 'Requires scope `sso:write`. Danger: write.'
+      operationId: sso_domains_verify
+      x-action: sso.domains.verify
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The domain's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sso/saml-metadata:
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Parse an identity provider's SAML metadata (XML or a metadata URL) into the entity id, SSO URL and certificate a SAML connection needs. Stores nothing."
+      description: 'Requires scope `sso:write`. Danger: write.'
+      operationId: sso_saml_metadata_import
+      x-action: sso.saml_metadata.import
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: string
+                  description: 'The IdP metadata XML, or an https URL it is published at.'
+                  maxLength: 500000
+              required:
+                - metadata
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SamlMetadata'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /support-sessions:
     post:
       operationId: support_sessions_start
@@ -6298,6 +9001,445 @@ paths:
       responses:
         204:
           description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /token-vault/secrets:
+    post:
+      tags:
+        - 'Token vault'
+      summary: "Store a downstream credential (a third-party API key) in an organization's token vault, or the environment's own. The value is sealed and never returned."
+      description: 'Requires scope `token_vault:write`. Danger: write.'
+      operationId: token_vault_secrets_create
+      x-action: token_vault.secrets.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+                  maxLength: 64
+                name:
+                  type: string
+                  description: 'What it is: "Stripe live key".'
+                  maxLength: 190
+                provider:
+                  type: string
+                  description: 'Whose credential it is: "stripe", "openai".'
+                  maxLength: 190
+                secret:
+                  type: string
+                  description: 'The credential. Write-only: sealed, never returned.'
+                  maxLength: 20000
+              required:
+                - name
+                - provider
+                - secret
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TokenVaultSecret'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Token vault'
+      summary: "List the downstream credentials stored in an organization's token vault (or the environment's own): names, providers, status. Never a value."
+      description: 'Requires scope `token_vault:read`. Danger: read.'
+      operationId: token_vault_secrets_list
+      x-action: token_vault.secrets.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TokenVaultSecret'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/token-vault/secrets/{id}':
+    get:
+      tags:
+        - 'Token vault'
+      summary: 'Read one stored credential and the client ids granted to lease it. Never its value.'
+      description: 'Requires scope `token_vault:read`. Danger: read.'
+      operationId: token_vault_secrets_get
+      x-action: token_vault.secrets.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TokenVaultSecret'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/token-vault/secrets/{id}/grants':
+    post:
+      tags:
+        - 'Token vault'
+      summary: 'Grant an app (by OAuth client id) the right to lease a stored credential.'
+      description: 'Requires scope `token_vault:write`. Danger: critical.'
+      operationId: token_vault_grants_create
+      x-action: token_vault.grants.create
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+                  maxLength: 64
+                client_id:
+                  type: string
+                  description: 'The OAuth client id of the app that may lease it.'
+                  maxLength: 190
+              required:
+                - client_id
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TokenVaultSecret'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/token-vault/secrets/{id}/grants/{client_id}':
+    delete:
+      tags:
+        - 'Token vault'
+      summary: "Withdraw an app's right to lease a stored credential."
+      description: 'Requires scope `token_vault:write`. Danger: destructive.'
+      operationId: token_vault_grants_delete
+      x-action: token_vault.grants.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id."
+        -
+          name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The OAuth client id whose grant is withdrawn.'
+            maxLength: 190
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/token-vault/secrets/{id}/revoke':
+    post:
+      tags:
+        - 'Token vault'
+      summary: 'Revoke a stored credential permanently. No app can lease it again.'
+      description: 'Requires scope `token_vault:write`. Danger: destructive.'
+      operationId: token_vault_secrets_revoke
+      x-action: token_vault.secrets.revoke
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TokenVaultSecret'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/token-vault/secrets/{id}/rotate':
+    post:
+      tags:
+        - 'Token vault'
+      summary: "Replace a stored credential's value. Every later lease hands out the new one. The value is never returned."
+      description: 'Requires scope `token_vault:write`. Danger: critical.'
+      operationId: token_vault_secrets_rotate
+      x-action: token_vault.secrets.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
+                  maxLength: 64
+                secret:
+                  type: string
+                  description: 'The new value. Write-only: sealed, never returned.'
+                  maxLength: 20000
+              required:
+                - secret
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TokenVaultSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         401:
@@ -9586,6 +12728,499 @@ components:
                 record_value:
                   type: string
             - type: 'null'
+    SsoConnection:
+      type: object
+      required:
+        - id
+        - organization_id
+        - name
+        - type
+        - status
+        - active
+        - config
+      description: 'A SAML or OIDC connection an organization signs in through. Its certificate, client secret and signing key are write-only.'
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null when the environment owns it: it signs people in and enrols them nowhere.'
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+            - saml
+            - oidc
+            - oauth2
+        provider:
+          type:
+            - string
+            - 'null'
+          description: "The catalogue provider a social sign-in connection came from; null for an organization's own identity provider."
+        status:
+          type: string
+          enum:
+            - draft
+            - active
+            - inactive
+        active:
+          type: boolean
+        config:
+          type: object
+          description: 'The settings that are not secrets.'
+          properties:
+            idp_entity_id:
+              type: string
+            idp_sso_url:
+              type: string
+            sp_entity_id:
+              type: string
+            sp_acs_url:
+              type: string
+            issuer:
+              type: string
+            client_id:
+              type: string
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    SsoDomain:
+      type: object
+      required:
+        - id
+        - organization_id
+        - domain
+        - verified
+        - capture
+        - verification
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        domain:
+          type: string
+        verified:
+          type: boolean
+        verified_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        capture:
+          type: boolean
+          description: "Everyone with an address at the domain must sign in through the organization's SSO."
+        verification:
+          description: 'The DNS TXT record that proves the domain, while it is unverified.'
+          oneOf:
+            -
+              type: object
+              required:
+                - type
+                - name
+                - value
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - TXT
+                name:
+                  type: string
+                value:
+                  type: string
+            - type: 'null'
+    SamlMetadata:
+      type: object
+      required:
+        - idp_entity_id
+        - idp_sso_url
+        - idp_x509cert
+      description: "An identity provider's settings read from its SAML metadata. Nothing is stored."
+      properties:
+        idp_entity_id:
+          type: string
+        idp_sso_url:
+          type: string
+        idp_x509cert:
+          type: string
+          description: "The IdP's public signing certificate, from its own metadata."
+    PortalLink:
+      type: object
+      required:
+        - id
+        - organization_id
+        - covers
+        - url
+        - expires_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        covers:
+          type: string
+          enum:
+            - sso
+            - scim
+            - both
+        url:
+          type:
+            - string
+            - 'null'
+          description: |
+            The one-time setup link — the whole credential. Shown once; `null` on an
+            idempotent replay of this answer.
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    Directory:
+      type: object
+      required:
+        - id
+        - organization_id
+        - name
+        - provider
+        - pull
+        - active
+        - status
+      description: "A directory syncing an organization's people in. Its token and credentials are never returned after they are minted."
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        name:
+          type: string
+        provider:
+          type: string
+          enum:
+            - scim
+            - google_workspace
+            - microsoft_entra
+        pull:
+          type: boolean
+          description: 'true when this platform fetches from the provider; false for a SCIM endpoint the provider posts to.'
+        active:
+          type: boolean
+        status:
+          type: string
+          enum:
+            - active
+            - paused
+        scim_base_url:
+          type:
+            - string
+            - 'null'
+          description: 'Where the identity provider sends SCIM requests. null for a pull directory.'
+        last_synced_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_sync_error:
+          type:
+            - string
+            - 'null'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        bearer_token:
+          type:
+            - string
+            - 'null'
+          description: |
+            The SCIM bearer token, on the create and rotate answers only — shown once, never
+            retrievable again. `null` on an idempotent replay of that answer.
+    DirectoryGroup:
+      type: object
+      required:
+        - id
+        - directory_id
+        - name
+        - role_ids
+      properties:
+        id:
+          type: string
+        directory_id:
+          type: string
+        name:
+          type: string
+        external_id:
+          type:
+            - string
+            - 'null'
+        role_ids:
+          type: array
+          items:
+            type: string
+          description: 'The roles everyone in the group holds.'
+    ProvisioningTarget:
+      type: object
+      required:
+        - id
+        - organization_id
+        - name
+        - base_url
+        - auth_scheme
+        - active
+      description: 'A downstream app people are pushed to over SCIM. Its credential is write-only.'
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: "null when it receives every organization's people."
+        name:
+          type: string
+        base_url:
+          type: string
+        auth_scheme:
+          type: string
+          enum:
+            - bearer
+            - oauth2_client_credentials
+        token_url:
+          type:
+            - string
+            - 'null'
+        client_id:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+          description: 'false while paused.'
+        consecutive_failures:
+          type: integer
+        last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_error:
+          type:
+            - string
+            - 'null'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    SodPolicy:
+      type: object
+      required:
+        - id
+        - organization_id
+        - name
+        - role_ids
+        - active
+      description: 'A role-conflict (segregation of duties) rule: roles no one person may hold together.'
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null when it binds every organization.'
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        role_ids:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    AccessReview:
+      type: object
+      required:
+        - id
+        - organization_id
+        - staff
+        - name
+        - status
+        - open
+        - pending_policy
+        - item_count
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for a staff review of environment-wide grants.'
+        staff:
+          type: boolean
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+            - open
+            - closed
+        open:
+          type: boolean
+        pending_policy:
+          type: string
+          enum:
+            - revoke
+            - certify
+          description: 'What closing does to an item nobody decided.'
+        item_count:
+          type: integer
+        due_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        closed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_by:
+          type:
+            - string
+            - 'null'
+          description: 'The person or key that opened it.'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    AccessReviewItem:
+      type: object
+      required:
+        - id
+        - review_id
+        - subject_id
+        - access_type
+        - access_ref
+        - decision
+        - applied
+      properties:
+        id:
+          type: string
+        review_id:
+          type: string
+        subject_id:
+          type: string
+        access_type:
+          type: string
+          enum:
+            - role
+            - membership
+            - environment_role
+        access_ref:
+          type: string
+          description: 'The role id, or the organization id of a membership.'
+        organization_id:
+          type:
+            - string
+            - 'null'
+        decision:
+          type: string
+          enum:
+            - pending
+            - certified
+            - revoked
+        decided_by:
+          type:
+            - string
+            - 'null'
+        decided_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        note:
+          type:
+            - string
+            - 'null'
+        applied:
+          type: boolean
+          description: 'Whether a revoke was carried out when the review closed.'
+        application_note:
+          type:
+            - string
+            - 'null'
+          description: 'Why a revoke could not be applied.'
+    TokenVaultSecret:
+      type: object
+      required:
+        - id
+        - organization_id
+        - name
+        - provider
+        - status
+        - revoked
+      description: 'A downstream credential in the token vault. Its value is write-only.'
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: "null for the environment's own secrets."
+        name:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - expired
+            - revoked
+        revoked:
+          type: boolean
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        rotated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        grants:
+          type: array
+          items:
+            type: string
+          description: 'The OAuth client ids that may lease it. Not on lists.'
     PageMeta:
       type: object
       properties:

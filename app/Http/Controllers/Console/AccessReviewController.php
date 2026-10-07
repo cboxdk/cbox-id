@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Governance\CloseAccessReview;
+use App\Actions\Governance\DecideAccessReviewItem;
+use App\Actions\Governance\OpenAccessReview;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\OpenAccessReviewRequest;
@@ -123,6 +126,8 @@ final readonly class AccessReviewController extends ConsoleController
 
     public function store(OpenAccessReviewRequest $request, AccessReviews $reviews): RedirectResponse
     {
+        // The action decides the same way for the API; these refusals stay here so a person
+        // gets the page and the wording they always did.
         $this->scope->assertMayAdminister();
 
         /*
@@ -146,12 +151,19 @@ final readonly class AccessReviewController extends ConsoleController
             ]);
         }
 
-        $campaign = $reviews->open(
-            $organizationId,
-            $request->name(),
-            now()->addWeek(),
-            createdBy: $this->scope->actorId(),
-        );
+        // Who opened it is the scope's `actorId()`, as it always was — the action's principal.
+        $result = $this->act(OpenAccessReview::class, [
+            'name' => $request->name(),
+            'covers' => $organizationId === null ? 'staff' : 'organization',
+            'organization_id' => $organizationId,
+        ], fallback: 'name');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var CertificationCampaign $campaign */
+        $campaign = $result->value;
 
         return to_route($this->scope->routeName('governance.show'), $campaign->id)
             ->with('status', 'Access review "'.$campaign->name.'" opened with '
@@ -222,7 +234,7 @@ final readonly class AccessReviewController extends ConsoleController
      * be able to say Certify without the page having a different opinion about which
      * button it drew.
      */
-    public function item(ReviewAccessItemRequest $request, string $campaign, string $item, AccessReviews $reviews): RedirectResponse
+    public function item(ReviewAccessItemRequest $request, string $campaign, string $item): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -230,12 +242,18 @@ final readonly class AccessReviewController extends ConsoleController
         // though the contract also fences the item on the organization below.
         $model = $this->visible($campaign);
 
-        $organizationId = $this->writeOrganizationId($model);
-        $reviewer = $this->scope->actorId();
+        // The action records the reviewer as the person (`actorId()`) and checks the item
+        // against the organization THIS console administers, never the campaign's own.
+        $result = $this->act(DecideAccessReviewItem::class, [
+            'id' => $model->id,
+            'item_id' => $item,
+            'decision' => $request->certifies() ? 'certified' : 'revoked',
+            'organization_id' => $this->writeOrganizationId($model),
+        ], fallback: 'decision');
 
-        $request->certifies()
-            ? $reviews->certify($item, $reviewer, $organizationId)
-            : $reviews->revoke($item, $reviewer, $organizationId);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         return back()->with('status', $request->certifies() ? 'Access certified.' : 'Access revoked.');
     }
@@ -246,7 +264,7 @@ final readonly class AccessReviewController extends ConsoleController
      * Guarded to OPEN campaigns: closing a closed one would re-apply decisions that have
      * already taken effect, against a roster that has moved on since.
      */
-    public function close(string $campaign, AccessReviews $reviews): RedirectResponse
+    public function close(string $campaign): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -256,7 +274,14 @@ final readonly class AccessReviewController extends ConsoleController
             return back();
         }
 
-        $reviews->close($model->id, $this->writeOrganizationId($model));
+        $result = $this->act(CloseAccessReview::class, [
+            'id' => $model->id,
+            'organization_id' => $this->writeOrganizationId($model),
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         return back()->with('status', 'Access review closed — revoked access was applied.');
     }

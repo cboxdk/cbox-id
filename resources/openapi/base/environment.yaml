@@ -2635,6 +2635,177 @@ components:
                 record_name: { type: string }
                 record_value: { type: string }
             - { type: "null" }
+    SsoConnection:
+      type: object
+      required: [id, organization_id, name, type, status, active, config]
+      description: "A SAML or OIDC connection an organization signs in through. Its certificate, client secret and signing key are write-only."
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it signs people in and enrols them nowhere." }
+        name: { type: string }
+        type: { type: string, enum: [saml, oidc, oauth2] }
+        provider: { type: ["string", "null"], description: "The catalogue provider a social sign-in connection came from; null for an organization's own identity provider." }
+        status: { type: string, enum: [draft, active, inactive] }
+        active: { type: boolean }
+        config:
+          type: object
+          description: "The settings that are not secrets."
+          properties:
+            idp_entity_id: { type: string }
+            idp_sso_url: { type: string }
+            sp_entity_id: { type: string }
+            sp_acs_url: { type: string }
+            issuer: { type: string }
+            client_id: { type: string }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    SsoDomain:
+      type: object
+      required: [id, organization_id, domain, verified, capture, verification]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        domain: { type: string }
+        verified: { type: boolean }
+        verified_at: { type: ["string", "null"], format: date-time }
+        capture: { type: boolean, description: "Everyone with an address at the domain must sign in through the organization's SSO." }
+        verification:
+          description: "The DNS TXT record that proves the domain, while it is unverified."
+          oneOf:
+            - type: object
+              required: [type, name, value]
+              properties:
+                type: { type: string, enum: [TXT] }
+                name: { type: string }
+                value: { type: string }
+            - { type: "null" }
+    SamlMetadata:
+      type: object
+      required: [idp_entity_id, idp_sso_url, idp_x509cert]
+      description: "An identity provider's settings read from its SAML metadata. Nothing is stored."
+      properties:
+        idp_entity_id: { type: string }
+        idp_sso_url: { type: string }
+        idp_x509cert: { type: string, description: "The IdP's public signing certificate, from its own metadata." }
+    PortalLink:
+      type: object
+      required: [id, organization_id, covers, url, expires_at]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        covers: { type: string, enum: [sso, scim, both] }
+        url:
+          type: ["string", "null"]
+          description: |
+            The one-time setup link — the whole credential. Shown once; `null` on an
+            idempotent replay of this answer.
+        expires_at: { type: ["string", "null"], format: date-time }
+    Directory:
+      type: object
+      required: [id, organization_id, name, provider, pull, active, status]
+      description: "A directory syncing an organization's people in. Its token and credentials are never returned after they are minted."
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        name: { type: string }
+        provider: { type: string, enum: [scim, google_workspace, microsoft_entra] }
+        pull: { type: boolean, description: "true when this platform fetches from the provider; false for a SCIM endpoint the provider posts to." }
+        active: { type: boolean }
+        status: { type: string, enum: [active, paused] }
+        scim_base_url: { type: ["string", "null"], description: "Where the identity provider sends SCIM requests. null for a pull directory." }
+        last_synced_at: { type: ["string", "null"], format: date-time }
+        last_sync_error: { type: ["string", "null"] }
+        created_at: { type: ["string", "null"], format: date-time }
+        bearer_token:
+          type: ["string", "null"]
+          description: |
+            The SCIM bearer token, on the create and rotate answers only — shown once, never
+            retrievable again. `null` on an idempotent replay of that answer.
+    DirectoryGroup:
+      type: object
+      required: [id, directory_id, name, role_ids]
+      properties:
+        id: { type: string }
+        directory_id: { type: string }
+        name: { type: string }
+        external_id: { type: ["string", "null"] }
+        role_ids: { type: array, items: { type: string }, description: "The roles everyone in the group holds." }
+    ProvisioningTarget:
+      type: object
+      required: [id, organization_id, name, base_url, auth_scheme, active]
+      description: "A downstream app people are pushed to over SCIM. Its credential is write-only."
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null when it receives every organization's people." }
+        name: { type: string }
+        base_url: { type: string }
+        auth_scheme: { type: string, enum: [bearer, oauth2_client_credentials] }
+        token_url: { type: ["string", "null"] }
+        client_id: { type: ["string", "null"] }
+        active: { type: boolean, description: "false while paused." }
+        consecutive_failures: { type: integer }
+        last_success_at: { type: ["string", "null"], format: date-time }
+        last_error: { type: ["string", "null"] }
+        created_at: { type: ["string", "null"], format: date-time }
+    SodPolicy:
+      type: object
+      required: [id, organization_id, name, role_ids, active]
+      description: "A role-conflict (segregation of duties) rule: roles no one person may hold together."
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null when it binds every organization." }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        role_ids: { type: array, items: { type: string } }
+        active: { type: boolean }
+        created_at: { type: ["string", "null"], format: date-time }
+    AccessReview:
+      type: object
+      required: [id, organization_id, staff, name, status, open, pending_policy, item_count]
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null for a staff review of environment-wide grants." }
+        staff: { type: boolean }
+        name: { type: string }
+        status: { type: string, enum: [open, closed] }
+        open: { type: boolean }
+        pending_policy: { type: string, enum: [revoke, certify], description: "What closing does to an item nobody decided." }
+        item_count: { type: integer }
+        due_at: { type: ["string", "null"], format: date-time }
+        closed_at: { type: ["string", "null"], format: date-time }
+        created_by: { type: ["string", "null"], description: "The person or key that opened it." }
+        created_at: { type: ["string", "null"], format: date-time }
+    AccessReviewItem:
+      type: object
+      required: [id, review_id, subject_id, access_type, access_ref, decision, applied]
+      properties:
+        id: { type: string }
+        review_id: { type: string }
+        subject_id: { type: string }
+        access_type: { type: string, enum: [role, membership, environment_role] }
+        access_ref: { type: string, description: "The role id, or the organization id of a membership." }
+        organization_id: { type: ["string", "null"] }
+        decision: { type: string, enum: [pending, certified, revoked] }
+        decided_by: { type: ["string", "null"] }
+        decided_at: { type: ["string", "null"], format: date-time }
+        note: { type: ["string", "null"] }
+        applied: { type: boolean, description: "Whether a revoke was carried out when the review closed." }
+        application_note: { type: ["string", "null"], description: "Why a revoke could not be applied." }
+    TokenVaultSecret:
+      type: object
+      required: [id, organization_id, name, provider, status, revoked]
+      description: "A downstream credential in the token vault. Its value is write-only."
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null for the environment's own secrets." }
+        name: { type: string }
+        provider: { type: string }
+        status: { type: string, enum: [active, expired, revoked] }
+        revoked: { type: boolean }
+        expires_at: { type: ["string", "null"], format: date-time }
+        rotated_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
+        grants: { type: array, items: { type: string }, description: "The OAuth client ids that may lease it. Not on lists." }
     PageMeta:
       type: object
       properties:
