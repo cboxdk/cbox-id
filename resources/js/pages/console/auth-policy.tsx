@@ -325,7 +325,7 @@ export default function AuthPolicyPage({
                     description="The rules in force after this environment's baseline is applied. An organization's own override can only make these stricter."
                 >
                     <div className="overflow-x-auto">
-                        <Table caption="Sign-in rules in force, per organization">
+                        <Table caption="Authentication policy in force, per organization">
                             <thead>
                                 <tr>
                                     <Th>Organization</Th>

@@ -110,9 +110,9 @@ it('hides what an account role may not see, and drops the area when it holds not
 it('claims a page detail route without claiming its prefix siblings', function (): void {
     $nav = (new ConsoleNavigation)->environment();
 
-    expect($nav->areaFor('environment.audit')?->label)->toBe('Logs')
-        ->and($nav->areaFor('environment.audit.show')?->label)->toBe('Logs')
-        ->and($nav->areaFor('environment.users.show')?->label)->toBe('People')
+    expect($nav->areaFor('environment.audit')?->label)->toBe('Monitoring')
+        ->and($nav->areaFor('environment.audit.show')?->label)->toBe('Monitoring')
+        ->and($nav->areaFor('environment.users.show')?->label)->toBe('Users & orgs')
         ->and($nav->areaFor('billing'))->toBeNull();
 
     $audit = $nav->areaFor('environment.audit');
@@ -135,8 +135,8 @@ it('knows where every page in every plane sits', function (): void {
 
     expect($location->areaLabel('billing'))->toBe('Workspace')
         ->and($location->areaLabel('account'))->toBe('My account')
-        ->and($location->areaLabel('environment.connections'))->toBe('Sign-in')
-        ->and($location->areaLabel('environment.users.show'))->toBe('People')
+        ->and($location->areaLabel('environment.connections'))->toBe('Authentication')
+        ->and($location->areaLabel('environment.users.show'))->toBe('Users & orgs')
         ->and($location->areaLabel('platform.usage'))->toBe('Insights')
         ->and($location->areaLabel('platform.operators'))->toBe('Administration');
 

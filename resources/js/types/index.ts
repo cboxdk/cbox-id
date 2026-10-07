@@ -186,15 +186,49 @@ export interface SwitchOption {
     label: string;
     caption: string | null;
     current: boolean;
-    /** Where the row leads when it is more than a selection — an environment's own console. */
+    /** Where the row leads when choosing it is a page load rather than a POST. */
     openHref: string | null;
 }
 
-/** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */
+/** `App\Http\Props\Shell\ContextEnvironmentProps` */
+export interface ContextEnvironment {
+    id: string;
+    name: string;
+    /** The environment type's backing value — `production`, `sandbox`, … */
+    type: string;
+    current: boolean;
+    /** The workspace host's `/open/{environment}`, carrying the page to land on. Leaves this host. */
+    href: string;
+}
+
+/** `App\Http\Props\Shell\ContextProjectProps` */
+export interface ContextProject {
+    id: string;
+    name: string;
+    /** Whether the environment this console stands on belongs to this project. */
+    current: boolean;
+    environments: ContextEnvironment[];
+}
+
+/**
+ * `App\Http\Props\Shell\ShellContextProps` — the topbar's
+ * `Workspace ▾ / Project ▾ / Environment ▾`.
+ */
+export interface ShellContext {
+    /** "Workspace" where the organization owns projects, "Organization" everywhere else. */
+    noun: string;
+    /** Always holds the current one, even when it is the only one. */
+    workspaces: SwitchOption[];
+    /** Where choosing a workspace POSTs; null where each row is a link instead. */
+    switchUrl: string | null;
+    /** Only the environments this person may open, grouped by project. */
+    projects: ContextProject[];
+}
+
 /**
  * The environment console's acting tenant, and where to change it.
  *
- * NOT A LIST OF OPTIONS, unlike `Shell.organizations` beside it: that names the handful of
+ * NOT A LIST OF OPTIONS, unlike `ShellContext.workspaces`: that names the handful of
  * organizations a person belongs to, and this names every tenant in the environment, which
  * is unbounded. The chrome carries the current one and a URL to search.
  */
@@ -207,16 +241,18 @@ export interface ActingOrganization {
     clearUrl: string;
 }
 
+/** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */
 export interface Shell {
     areas: NavArea[];
     activeArea: string | null;
     /** "Platform" for the pages about the whole install, null for a customer's own. */
     section: string | null;
-    organizations: SwitchOption[];
+    context: ShellContext;
     /** Environment plane only; null on every other. */
     actingOrganization: ActingOrganization | null;
-    environments: SwitchOption[];
     isOperator: boolean;
+    /** Inside platform admin — the install as a whole. Its own rail, strip and way out. */
+    platformMode: boolean;
     brandHref: string;
     navPinned: boolean;
     /** Absolute on the environment console: the person's own pages live on the workspace host. */
@@ -224,16 +260,14 @@ export interface Shell {
     switchUserHref: string;
     /** `App\Platform\Console\ConsoleAltitude` — which console this page is drawn in. */
     altitude: 'workspace' | 'organization' | 'environment';
-    /** The environment console's way back to its workspace; null on every other console. */
-    workspace: WorkspaceLink | null;
+    /** The account menu's Workspace settings, where this person may change them. */
+    workspaceSettingsHref: string | null;
+    /** The account menu's way into platform admin. Operators only. */
+    platformHref: string | null;
+    /** The platform strip's way out. Platform mode only. */
+    exitPlatformHref: string | null;
     /** A sentence above a page the rail does not offer, and where to go instead. */
     notice: ShellNotice | null;
-}
-
-/** `App\Http\Props\Shell\WorkspaceLinkProps` */
-export interface WorkspaceLink {
-    name: string;
-    href: string;
 }
 
 /** `App\Http\Props\Shell\ShellNoticeProps` */

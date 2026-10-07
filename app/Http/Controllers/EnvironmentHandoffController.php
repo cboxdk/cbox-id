@@ -6,12 +6,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\SecurityHeaders;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\HandoffTarget;
 use App\Platform\CspNonce;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 final class EnvironmentHandoffController extends Controller
@@ -40,12 +42,14 @@ final class EnvironmentHandoffController extends Controller
      * accepts nothing else.
      */
     public function openEnvironment(
+        Request $request,
         string $environment,
         ConsoleScope $scope,
         Memberships $members,
         EnvironmentAdminHandoff $handoff,
         CspNonce $nonce,
         PlaneResolver $planes,
+        HandoffTarget $targets,
     ): RedirectResponse|Response {
         $organizationId = $scope->organizationId();
         $subjectId = $scope->actorId();
@@ -74,8 +78,20 @@ final class EnvironmentHandoffController extends Controller
         // The handoff carries the SUBJECT — the credential of record. The membership behind
         // it is re-resolved on redemption, not carried in the token.
         $token = $handoff->mint($subjectId, $env->id);
+        $query = ['token' => $token];
 
-        return $this->postTo($env, $token, $nonce, $planes);
+        // THE PAGE TO LAND ON, when the topbar's environment switcher asked for one — so
+        // Users in staging opens as Users in production. Validated here and again on
+        // redemption ({@see HandoffTarget}); an invalid one is dropped rather than refused,
+        // and the handoff lands on the environment's home exactly as it did before.
+        $to = $targets->sanitize($request->query('to'));
+
+        if ($to !== null) {
+            $query['to'] = $to;
+            $query['to_sig'] = $targets->sign($token, $to);
+        }
+
+        return $this->postTo($env, $query, $nonce, $planes);
     }
 
     /**
@@ -105,7 +121,10 @@ final class EnvironmentHandoffController extends Controller
      * `Referrer-Policy: no-referrer` (also stated in the markup) so the account page this
      * was opened from is not announced to the tenant's host.
      */
-    private function postTo(Environment $environment, string $token, CspNonce $nonce, PlaneResolver $planes): Response
+    /**
+     * @param  array<string, string>  $fields  The token, and the page to land on when the switcher named one.
+     */
+    private function postTo(Environment $environment, array $fields, CspNonce $nonce, PlaneResolver $planes): Response
     {
         $origin = 'https://'.$this->host($environment);
 
@@ -119,7 +138,7 @@ final class EnvironmentHandoffController extends Controller
 
         return response()->view('environment-handoff', [
             'action' => $origin.'/admin/handoff',
-            'token' => $token,
+            'fields' => $fields,
             'nonce' => $nonce->value(),
             'environmentName' => $environment->name,
         ])->withHeaders([

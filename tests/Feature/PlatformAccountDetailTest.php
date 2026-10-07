@@ -308,21 +308,21 @@ it('gives every environment its lineage on the flat list, and names the two that
         ->toBe([route('platform.customers.show', $estate['organization']->id)]);
 });
 
-it('names the owner in the target switcher, on every console page', function (): void {
+it('names the owner beside every environment the operator can point the console at', function (): void {
     $estate = acmeEstate();
     targetEnvironment($estate['portal']->slug);
     nextRequest();
 
-    // The chrome control that decides which estate every subsequent read comes from used
-    // to say "Production" and nothing else. Read off the shared shell prop, which is where
-    // every console page on both planes gets the switcher from — so this is one assertion
-    // about all of them rather than about the page it happens to be made on.
-    $options = collect((array) $this->get(route('platform.customers'))->assertSuccessful()->inertiaProps('shell.environments'));
+    // "Production" is a name half the customers on an install will have, so the list an
+    // operator re-points the console from names whose it is. It was the topbar's target
+    // switcher; that is the context switcher now, and re-pointing is done here.
+    $props = (array) $this->get(route('platform.environments'))->assertSuccessful()->inertiaProps();
+    $rows = collect($props['environments']);
 
-    expect($options->pluck('label'))->toContain('Acme / Production')
+    expect($rows->pluck('qualifiedName'))->toContain('Acme / Production')
         // And the CURRENT one is the one just targeted, or the label above could belong to
-        // any row in the menu.
-        ->and($options->firstWhere('current', true)['label'])->toBe('Acme / Production');
+        // any row in the list.
+        ->and($rows->firstWhere('id', $props['activeId'])['qualifiedName'] ?? null)->toBe('Acme / Production');
 });
 
 it('answers lineage for the platform root and for an orphan without inventing an owner', function (): void {

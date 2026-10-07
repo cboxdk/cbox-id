@@ -6,7 +6,7 @@ description: Run a round of certification over who holds which role and membersh
 
 # Access reviews
 
-**Console page:** Access control › Access reviews
+**Console page:** Access control › Access reviews (Advanced › Access reviews in an environment console)
 
 An access review is a round where you go through who holds which role and
 membership, and confirm each one is still needed. A review covers one organization, or,

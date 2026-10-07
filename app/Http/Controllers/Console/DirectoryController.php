@@ -79,7 +79,7 @@ final readonly class DirectoryController extends ConsoleController
             ->whereIn('id', $directories->pluck('organization_id')->filter()->unique())
             ->pluck('name', 'id');
 
-        return $this->page('console/directories/index', 'Sync users in', [
+        return $this->page('console/directories/index', 'Directory Sync', [
             'help' => HelpProps::for(HelpTopic::SyncUsersIn),
             'directories' => $directories->getCollection()->map(fn (Directory $directory): array => [
                 'id' => $directory->id,

@@ -69,6 +69,6 @@ it. An admin revoking somebody else's key is recorded as the admin.
 
 ## For app developers
 
-An app offers keys once it has a key prefix: **Developers › Apps ›** *the app* **›
+An app offers keys once it has a key prefix: **Developers › Applications ›** *the app* **›
 Settings › API keys**. For the whole integration, verifying keys included, see
 [Let your customers create API keys](../getting-started/let-your-customers-create-api-keys.md).

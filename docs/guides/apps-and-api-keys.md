@@ -6,7 +6,7 @@ description: Register an app so people can sign in to it with their Cbox ID acco
 
 # Apps
 
-**Console page:** Developers › Apps (`/apps`, or `/admin/apps` in an environment console)
+**Console page:** Developers › Applications (`/apps`, or `/admin/apps` in an environment console)
 
 Every app that signs people in through Cbox ID, or calls its API, is registered
 here and gets its own credentials. Registering an app is what turns Cbox ID from a

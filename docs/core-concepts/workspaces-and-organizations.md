@@ -64,11 +64,11 @@ Its rail holds the workspace and nothing else:
 | Area | Pages |
 |---|---|
 | **Workspace** | Projects, Team, Keys, Environment domains, Billing, Workspace settings |
-| **Team sign-in** | Single sign-on, Sign-in rules: how your own team signs in to Cbox |
-| **Logs** | Activity log |
+| **Team sign-in** | Enterprise SSO, Authentication policy: how your own team signs in to Cbox |
+| **Logs** | Audit log |
 | **My account** | Security, Sessions & activity |
 
-The pages that administer end users (roles, permissions, apps, webhooks, inline hooks,
+The pages that administer end users (roles, permissions, applications, webhooks, hooks,
 token vault, connectors, access reviews and the rest) are not on this rail. At the
 platform root they would administer your workspace's own record in Cbox's environment,
 which nobody signs in to except your team. Your product's users, apps and roles live in
@@ -102,13 +102,13 @@ This console is an admin portal for their IT department, plus their own pages:
 |---|---|
 | **Overview** | Overview (their organization's numbers and recent activity), Approve agent requests |
 | **People** | Members, Roles, Permissions |
-| **Sign-in** | Single sign-on (with its verified domains), Sync users in |
-| **Logs** | Activity log |
+| **Sign-in** | Enterprise SSO (with its verified domains), Directory Sync |
+| **Logs** | Audit log |
 | **My account** | Security, Sessions & activity, API keys (when one of your apps offers them), Trusted devices (when the devices module is on) |
 
 Everything else is your product's administration and lives in the environment console:
-apps and APIs, webhooks, inline hooks, the token vault, access reviews, role conflicts,
-sync users out, log streaming, social sign-in, sign-in rules, appearance and branding,
+applications and APIs, webhooks, hooks, the token vault, access reviews, role conflicts,
+outbound provisioning, log streams, social login, authentication policy, appearance and branding,
 usage, settings, member API keys, the setup guide and the module pages (sign-in activity,
 compliance, connectors, trusted-device inventory, risk events).
 
@@ -125,19 +125,77 @@ the consoles differ on purpose now.
 ### An environment console
 
 At `/admin` on that environment's own host, reached from **Projects** with **Open
-console**. Its rail is about your product: **Organizations** (your customers), their
-users, roles, sign-in, apps and keys. Nothing on it is about your Cbox workspace, and
-everything your customers' own console leaves out is here.
+console**, or from the environment switcher in any console's topbar. Its rail is about
+your product, in the words other identity platforms use for the same things. Nothing on
+it is about your Cbox workspace, and everything your customers' own console leaves out is
+here.
 
-The topbar says where you are and how to get back:
+| Area | Pages |
+|---|---|
+| **Home** | Overview |
+| **Users & orgs** | Users, Organizations (your customers), Roles, Permissions |
+| **Authentication** | Authentication policy, Social login, Enterprise SSO, Directory Sync, Trusted devices (devices module) |
+| **Developers** | Applications, APIs, API keys, Webhooks, Hooks |
+| **Connectors** | Catalog, Connections (connectors module) |
+| **AI agents** | Approvals |
+| **Branding** | Appearance, Branding (white-label module) |
+| **Monitoring** | Audit log, Log streams, Usage, Sign-in activity, Audit trail, Exports & retention, Risk events (each from its module) |
+| **Advanced** | Admins & support, Access reviews, Role conflicts, Token vault, Outbound provisioning, SAML apps, Legacy login |
+| **Settings** | Settings |
+
+**Authentication** holds every way people come *in*; the outbound directions (SAML apps
+that trust this environment, provisioning out to other systems) are under **Advanced**
+with the rest of what is set up once and rarely revisited. The URLs did not change when
+the pages were renamed, so bookmarks and links keep working.
+
+## Moving between them
+
+Every console has the same topbar: where you are on the left, search and your account on
+the right.
 
 ```
-← Acme / Production [Live] / Acting organization ▾
+Acme ▾  /  Checkout ▾  /  Production ▾ [PRODUCTION]  /  All organizations ▾
 ```
 
-The first crumb names your workspace and goes back to its **Projects** page. **My
-account** and **Switch user** in the account menu open on the workspace host, because
-your own sign-in belongs to the workspace, not to the environment.
+- **Workspace ▾** lists the workspaces you belong to. On the workspace console choosing
+  one switches to it; on an environment console it opens the workspace console, where
+  your workspace session is. An organization that owns no projects shows its name here
+  as **Organization**, with nothing after it.
+- **Project ▾** lists your workspace's projects. Choosing one opens the environment there
+  that matches the one you are in: production for production.
+- **Environment ▾** lists the environments of this project you may administer, each with
+  its type. Choosing one opens the **same page** there: Users in sandbox becomes Users in
+  production. A page about one record (a user, an app) opens that list instead, and a
+  page the other environment does not have opens its Overview.
+- On the workspace console no environment is current, so the second crumb is
+  **Environments ▾**: every environment you may open, grouped by project.
+- **All organizations ▾**, on an environment console only, filters every page to one of
+  your customers. It is a search, because an environment can hold thousands.
+
+Only what you may open is listed. A Viewer sees no environments, and a member limited to
+some environments sees those. Another workspace's projects appear only once you switch to
+it. Each menu gets a search box once it holds more than eight entries.
+
+Switching environment goes through the same signed handoff as **Open console**; the page
+to land on travels with it, and the environment refuses any target that is not one of its
+own console pages.
+
+**The account menu** is the avatar top right: **Workspace settings** (if you may change
+them), **My account**, **Switch user**, **Platform admin** (operators only), **Theme** and
+**Sign out**. On an environment console the account links open on the workspace host,
+because your own sign-in belongs to the workspace, not to the environment.
+
+**The rail shows its labels by default.** The pin at the top of the rail collapses it to
+icons; the choice is remembered in this browser.
+
+### Platform admin
+
+Whoever runs the install reaches the platform pages (workspaces, environments, usage,
+queues, operators) from **Platform admin** in the account menu, not from the rail. Inside
+it the rail holds only the platform areas, and a strip across the top says **Platform
+admin** with **Exit platform admin** beside it, because a click there acts on every
+workspace on the install. Re-pointing the platform pages at another environment is done
+on **Platform › Environments**.
 
 ## Where you land after signing in
 
@@ -149,8 +207,8 @@ A workspace member lands where they work:
 - Otherwise you land on **Projects**, which lists every environment with **Open console**
   beside it.
 
-The first crumb in an environment console links to Projects, not to this landing, or it
-would send you straight back into the environment.
+The workspace crumb in an environment console links to Projects, not to this landing, or
+it would send you straight back into the environment.
 
 ## Related
 

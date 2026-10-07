@@ -13,7 +13,7 @@ use App\Providers\ConsoleServiceProvider;
  * The console has two navigations. The organization plane assembles its rail at runtime
  * from the console-kit registry, keyed on a short string ('overview', 'audit'); the
  * environment plane declares its rail statically in {@see ConsoleNavigation}, keyed on
- * the label a person reads ('Overview', 'Logs'). Nothing connected the two, so a module
+ * the label a person reads ('Home', 'Monitoring'). Nothing connected the two, so a module
  * that registered into 'audit' contributed to one rail and was invisible on the other —
  * which is how six modules ended up on one plane without anyone deciding they should be.
  *
@@ -110,37 +110,49 @@ enum ConsoleArea: string
      * from the account layer; their own password, passkeys and sessions live in the
      * workspace console, not in the tenant environment they are administering — so there
      * is no "My account" area here for a personal page to land in.
+     *
+     * THE ENVIRONMENT RAIL IS FILED BY TASK, not by this enum, so two cases can name one
+     * area and a case can name an area by a different word than the organization rail
+     * uses. Each answer below is where that area's MODULE pages belong on a rail grouped
+     * the way {@see ConsoleNavigation::environment()} groups it:
+     *
+     *  - Overview's module page (sign-in analytics) is a measurement, so it sits beside
+     *    Usage in Monitoring rather than alone on Home.
+     *  - Logs is Monitoring — the audit trail, its exports, risk events.
+     *  - Governance is Advanced, where access reviews and role conflicts are.
+     *  - Settings' module page is the white-label branding page, which belongs beside
+     *    Appearance. The environment console's own Settings is one page and stays one.
      */
     public function environmentLabel(): ?string
     {
         return match ($this) {
-            self::Overview => 'Overview',
-            self::Directory => 'People',
-            self::Authentication => 'Sign-in',
-            self::Governance => 'Access control',
+            self::Overview => 'Monitoring',
+            self::Directory => 'Users & orgs',
+            self::Authentication => 'Authentication',
+            self::Governance => 'Advanced',
             self::Developers => 'Developers',
             self::Connectors => 'Connectors',
-            self::Logs => 'Logs',
-            self::Settings => 'Settings',
+            self::Logs => 'Monitoring',
+            self::Settings => 'Branding',
             self::Account => null,
         };
     }
 
     /**
      * The environment rail's icon, used only when a module's area is not already one of
-     * the environment console's own.
+     * the environment console's own — which today is Connectors alone.
      */
     public function environmentIcon(): string
     {
         return match ($this) {
-            self::Overview => 'dashboard',
+            self::Overview => 'chart',
             self::Directory => 'members',
             self::Authentication => 'fingerprint',
-            self::Governance => 'scale',
+            self::Governance => 'sliders',
             self::Developers => 'code',
             self::Connectors => 'puzzle',
-            self::Logs => 'audit',
-            self::Settings => 'settings',
+            self::Logs => 'chart',
+            self::Settings => 'palette',
             self::Account => 'user',
         };
     }

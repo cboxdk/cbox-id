@@ -519,6 +519,36 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   404 rather than a silent no-op.
 - **Requires `cboxdk/laravel-id` ^1.21.** Management-key scopes are its `ManagementScopes`
   vocabulary: the framework's own plus this app's (`AppManagementScopes`).
+- **One context switcher in every console's topbar: `Workspace ▾ / Project ▾ /
+  Environment ▾ [PRODUCTION]`.** It lists the workspaces you belong to, the current
+  workspace's projects, and only the environments you may administer (the same two checks
+  `/open/{environment}` makes). Choosing an environment opens the same console page there
+  when it exists without a record in its URL, else that page's list, else the Overview:
+  the page travels through `/open/{environment}?to=` into the handoff, bound to its token
+  with an HMAC and checked on both ends against an allow-list (a path under `/admin` that
+  routes to an environment-console GET page; `//host`, backslashes, absolute URLs and
+  anything else are dropped). The environment console has the switcher too; it used to
+  show a back arrow and the environment's name. It replaces the organization switcher and
+  the operator's "target environment" menu, which moved to Platform › Environments.
+- **The account menu is the avatar, top right:** Workspace settings, My account, Switch
+  user, Platform admin (operators), Theme, Sign out.
+- **The rail shows its labels by default.** Pinned is the default; unpinning is
+  remembered in the `cbox-nav-pinned` cookie, which now records only an explicit `0`.
+- **Platform admin is a mode.** The Platform, Insights and Administration areas are no
+  longer appended to every operator's rail; the account menu opens them, the rail there
+  holds only them, and a strip across the top says "Platform admin" with "Exit platform
+  admin".
+- **The environment console is filed by task, in market terms:** Home, Users & orgs,
+  Authentication, Developers, AI agents, Branding, Monitoring, Advanced, Settings (plus
+  Connectors when that module is on). Renamed pages, on both consoles where a page is
+  shared: Single sign-on → Enterprise SSO, Sync users in → Directory Sync, Sync users out
+  → Outbound provisioning, Activity log → Audit log, Log streaming → Log streams, Sign-in
+  rules → Authentication policy, Social sign-in → Social login, Apps → Applications,
+  Inline hooks → Hooks, SAML applications → SAML apps, Staff → Admins & support, Review
+  agent requests → Approvals, and the environment console's Keys → API keys. URLs and
+  route names are unchanged.
+- **The console chrome is built once per request.** The controller and the shared prop
+  each built it before.
 - **A customer's organization console is an admin portal now.** On a customer's
   environment host of a multi-tenant deployment, the organization console offers Members,
   Roles and Permissions, Single sign-on (with its domains), Sync users in, the Activity

@@ -6,7 +6,7 @@ description: Let people sign in with Google, Microsoft, GitHub, Discord, Apple, 
 
 # Social sign-in and connected accounts
 
-**Console page:** Sign-in › Social sign-in
+**Console page:** Sign-in › Social login (Authentication › Social login in an environment console)
 
 Single sign-on connects your *company's* identity provider. Social sign-in is the
 other case: individual people arriving with an account they already hold somewhere
@@ -54,7 +54,7 @@ treats it as a text field will fail half a year later on a day nobody touched it
 
 ## Enabling a provider
 
-Open **Sign-in › Social sign-in** and pick a provider. The screen is ordered the way the
+Open **Social login** and pick a provider. The screen is ordered the way the
 setup actually goes:
 
 1. **The redirect URI**, first and copyable. Register it with the provider exactly as

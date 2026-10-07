@@ -43,7 +43,7 @@ export default function RegisterServiceProvider({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                SAML applications
+                SAML apps
             </Link>
 
             <div className="mt-2">

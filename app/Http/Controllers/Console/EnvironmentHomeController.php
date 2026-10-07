@@ -53,19 +53,19 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.users'),
                 ],
                 [
-                    'label' => 'SSO connections',
+                    'label' => 'Enterprise SSO',
                     'icon' => 'fingerprint',
                     'count' => Connection::query()->count(),
                     'href' => route('environment.connections'),
                 ],
                 [
-                    'label' => 'Apps',
+                    'label' => 'Applications',
                     'icon' => 'code',
                     'count' => Client::query()->count(),
                     'href' => route('environment.clients'),
                 ],
                 [
-                    'label' => 'Sync users in',
+                    'label' => 'Directory Sync',
                     'icon' => 'directory',
                     'count' => Directory::query()->count(),
                     'href' => route('environment.directories'),

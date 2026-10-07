@@ -91,7 +91,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $edited = $onEnvironmentPlane ? $baseline : $policies->resolve($this->organizationId());
         $override = $onEnvironmentPlane ? null : $policies->overrideFor($this->organizationId());
 
-        return $this->page('console/auth-policy', 'Sign-in rules', [
+        return $this->page('console/auth-policy', 'Authentication policy', [
             'help' => HelpProps::for(HelpTopic::SignInRules),
             'onEnvironmentPlane' => $onEnvironmentPlane,
             'policy' => self::toProps($edited),

@@ -6,7 +6,7 @@ description: Sign in to one of your apps as one of its users, for a stated reaso
 
 # Support access
 
-**Console page (environment console):** People › Users › *a person* › Support access
+**Console page (environment console):** Users & orgs › Users › *a person* › Support access
 
 Support access lets an environment administrator see an app exactly as one of its users
 does. You sign in to the app **as them**, in one of their organizations, for a reason you
@@ -29,7 +29,7 @@ The person is not asked, which is why it is bounded this tightly:
 
 ## Start one
 
-1. Open the person under **People › Users**.
+1. Open the person under **Users & orgs › Users**.
 2. Under **Support access**, pick the app, the organization, a reason and how long.
 3. Press **Sign in to *app* as *person***.
 

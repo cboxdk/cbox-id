@@ -122,20 +122,20 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/organizations/new' => 'New organization',
         '/admin/users' => 'Users',
         '/admin/users/new' => 'New user',
-        // "Apps" on both consoles — one component, one title, one slug.
-        '/admin/apps' => 'Apps',
-        '/admin/single-sign-on' => 'Single sign-on',
+        // "Applications" on both consoles — one component, one title, one slug.
+        '/admin/apps' => 'Applications',
+        '/admin/single-sign-on' => 'Enterprise SSO',
         '/admin/single-sign-on/new' => 'connection',
         // Renamed: it registers SAML service providers that trust us, which is the
-        // opposite direction from Single sign-on, and "Login methods" named that one.
-        '/admin/saml-apps' => 'SAML applications',
-        '/admin/saml-apps/new' => 'SAML application',
-        '/admin/sync-in' => 'Sync users in',
+        // opposite direction from Enterprise SSO, and "Login methods" named that one.
+        '/admin/saml-apps' => 'SAML apps',
+        '/admin/saml-apps/new' => 'SAML app',
+        '/admin/sync-in' => 'Directory Sync',
         '/admin/sync-in/new' => 'directory',
-        // "Sync users out", the name its page, its help topic and the organization
-        // plane's registry have always used; only the environment rail said "Outbound
-        // sync", one line under the "Sync users in" it is the pair of.
-        '/admin/sync-out' => 'Sync users out',
+        // One name on both rails and on the page: the rail and the heading drifted apart
+        // here once ("Outbound sync" over a page headed otherwise), which is what this
+        // sweep exists to notice.
+        '/admin/sync-out' => 'Outbound provisioning',
         '/admin/sync-out/new' => 'connection',
         '/admin/roles' => 'Roles',
         '/admin/roles/new' => 'role',
@@ -148,14 +148,14 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/access-reviews' => 'Access reviews',
         '/admin/role-conflicts' => 'Role conflicts',
 
-        '/admin/inline-hooks' => 'Inline hooks',
+        '/admin/inline-hooks' => 'Hooks',
         '/admin/token-vault' => 'Token vault',
-        '/admin/log-streaming' => 'Log streaming',
+        '/admin/log-streaming' => 'Log streams',
         // "Usage" on BOTH planes now. It was "Analytics" here and "Usage" on the
         // organization plane, over the same `auth.*` counters — and this plane's version
         // was the primitive one: raw metric keys, no labels, no time window.
         '/admin/usage' => 'Usage',
-        '/admin/approvals' => 'Review agent requests',
+        '/admin/approvals' => 'Approvals',
     ] as $path => $needle) {
         $this->get($path)->assertOk()->assertSee($needle);
     }
@@ -173,10 +173,10 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
     foreach ([
         '/admin/webhooks' => ['console/webhooks/index', 'Webhooks'],
         '/admin/webhooks/new' => ['console/webhooks/create', 'New webhook'],
-        '/admin/audit' => ['console/audit', 'Activity log'],
+        '/admin/audit' => ['console/audit', 'Audit log'],
         '/admin/settings' => ['console/settings', 'Settings'],
         '/admin/appearance' => ['console/appearance', 'Appearance'],
-        '/admin/sign-in-rules' => ['console/auth-policy', 'Sign-in rules'],
+        '/admin/sign-in-rules' => ['console/auth-policy', 'Authentication policy'],
     ] as $path => [$component, $title]) {
         $this->get($path)
             ->assertOk()

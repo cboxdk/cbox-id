@@ -78,7 +78,7 @@ export default function ServiceProviders({
         <>
             <PageHeader
                 help={help}
-                description="Applications that trust this environment as their SAML identity provider. To let people sign in with an account they already have elsewhere, use Sign-in → Single sign-on."
+                description="Applications that trust this environment as their SAML identity provider. To let people sign in with an account they already have elsewhere, use Authentication → Enterprise SSO."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
@@ -107,7 +107,7 @@ export default function ServiceProviders({
                     type="search"
                     style={{ maxWidth: '24rem' }}
                     placeholder="Search by entity ID"
-                    aria-label="Search SAML applications"
+                    aria-label="Search SAML apps"
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -136,7 +136,7 @@ export default function ServiceProviders({
                     ) : (
                         <EmptyState
                             icon="key"
-                            title="No SAML applications yet"
+                            title="No SAML apps yet"
                             description="Register one to let an application sign its users in with the accounts they already have in this environment."
                             actions={
                                 <Button asChild variant="primary">

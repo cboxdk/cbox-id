@@ -6,7 +6,7 @@ description: The three kinds of key Cbox ID issues (management keys, workspace k
 
 # Keys
 
-**Console page:** Workspace › Keys, and Developers › Keys in an environment console
+**Console page:** Workspace › Keys, and Developers › API keys in an environment console
 
 Each console has one Keys page. The kind of key is a tab, and the tab is in the URL, so
 a link to one tab opens that tab.

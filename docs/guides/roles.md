@@ -61,7 +61,7 @@ inside one organization from that organization's page in the environment console
 
 ## Staff roles
 
-**Console page (environment console):** People › Staff
+**Console page (environment console):** Advanced › Admins & support
 
 A **staff role** is a role you grant to your own people across the whole environment. It
 applies in every organization, and to a person who belongs to none. No organization's

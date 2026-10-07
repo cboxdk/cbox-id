@@ -74,14 +74,14 @@ it('resolves a page eyebrow to the nav area that owns it', function (): void {
  */
 it('keeps every nav label identical to its page title', function (): void {
     $expected = [
-        'connections' => 'Single sign-on',
-        'directories' => 'Sync users in',
-        'provisioning' => 'Sync users out',
-        'hooks' => 'Inline hooks',
+        'connections' => 'Enterprise SSO',
+        'directories' => 'Directory Sync',
+        'provisioning' => 'Outbound provisioning',
+        'hooks' => 'Hooks',
         'vault' => 'Token vault',
         'sod-policies' => 'Role conflicts',
-        'clients' => 'Apps',
-        'audit' => 'Activity log',
+        'clients' => 'Applications',
+        'audit' => 'Audit log',
     ];
 
     /*

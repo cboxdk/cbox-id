@@ -440,7 +440,7 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
                 Grafana, Vault, and most SaaS predating this vocabulary — is asking for
                 these same roles under the name its ecosystem uses. There is nothing
                 separate to create, and looking for a Groups page is the wrong search.
-                (Directory groups, on Sync users in, are the opposite direction: an
+                (Directory groups, on Directory Sync, are the opposite direction: an
                 upstream provider's groups mapped ONTO these roles, and they never reach a
                 token themselves.)
             */}
