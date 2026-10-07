@@ -379,9 +379,9 @@ it('hands a key-minted key its parent\'s approvals, on either plane, answered by
     ])->assertCreated();
     $environmentKey = EnvironmentApiKey::query()->withoutGlobalScopes()->findOrFail($envKey->json('data.id'));
 
-    expect($childKey->step_up_policy)->toBe($policy)
+    expect($childKey->step_up_policy)->toEqual($policy)
         ->and((new WorkspaceKeyPrincipal($childKey))->approverSubjectId())->toBe($person)
-        ->and($environmentKey->step_up_policy)->toBe($policy)
+        ->and($environmentKey->step_up_policy)->toEqual($policy)
         ->and((new EnvironmentKeyPrincipal($environmentKey))->approverSubjectId())->toBe($person);
 });
 
