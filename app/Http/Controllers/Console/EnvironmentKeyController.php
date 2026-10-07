@@ -114,7 +114,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
             // without the reserved scopes no route requires. Writes are marked, because
             // that is the difference that matters when somebody is ticking boxes for a
             // credential that can provision people.
-            'scopes' => array_map(EnvironmentScopeProps::from(...), EnvironmentKeyScopes::offered()),
+            'scopes' => array_map(EnvironmentScopeProps::offered(...), EnvironmentKeyScopes::offered()),
             'lifetimes' => array_map(
                 fn (KeyLifetime $lifetime): array => ['value' => $lifetime->value, 'label' => $lifetime->label()],
                 KeyLifetime::cases(),

@@ -1949,6 +1949,76 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ApiScope" }
         created_at: { type: ["string", "null"], format: date-time }
+    Webhook:
+      type: object
+      required: [id, url, organization_id, event_types, active]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it receives EVERY organization's events." }
+        event_types: { type: array, items: { type: string } }
+        active: { type: boolean, description: "false while paused." }
+        consecutive_failures: { type: integer }
+        last_success_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
+        secret:
+          type: ["string", "null"]
+          description: |
+            The signing secret, on the create and rotate answers only — shown once, never
+            retrievable again. `null` on an idempotent replay of that answer.
+    InlineHook:
+      type: object
+      required: [id, url, hook_point, organization_id, active]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        hook_point: { type: string, enum: [token_minting, post_login, pre_registration, post_registration, pre_password_change, post_password_change] }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it runs for EVERY organization." }
+        active: { type: boolean }
+        created_at: { type: ["string", "null"], format: date-time }
+        secret:
+          type: ["string", "null"]
+          description: The signing secret, on the create answer only — shown once. `null` on an idempotent replay.
+    LogStream:
+      type: object
+      required: [id, name, destination, endpoint_url, auth, organization_id, enabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        destination: { type: string, enum: [splunk_hec, elastic_ecs, graylog_gelf, cef_http, generic_json] }
+        endpoint_url: { type: string }
+        auth: { type: string, enum: [none, bearer, splunk, hmac] }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it carries EVERY organization's entries." }
+        enabled: { type: boolean }
+        consecutive_failures: { type: integer }
+        last_success_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
+        secret:
+          type: ["string", "null"]
+          description: A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.
+    DomainEvent:
+      type: object
+      required: [id, type, organization_id, occurred_at, payload]
+      properties:
+        id: { type: string, description: "A ULID; pass the last one you saw as `after`." }
+        type: { type: string, description: "e.g. `user.created` — the webhook event name." }
+        organization_id: { type: ["string", "null"] }
+        occurred_at: { type: ["string", "null"], format: date-time }
+        payload: { type: object }
+    AuditEntry:
+      type: object
+      required: [id, action, actor_type, actor_id, organization_id, target_type, target_id, context, recorded_at]
+      properties:
+        id: { type: string, description: "A ULID; pass the last one you saw as `after`." }
+        action: { type: string, description: "e.g. `webhook.created`." }
+        actor_type: { type: string, enum: [user, service, system, operator, organization_member] }
+        actor_id: { type: ["string", "null"], description: "For `service`, the management key's or app's id." }
+        organization_id: { type: ["string", "null"] }
+        target_type: { type: ["string", "null"] }
+        target_id: { type: ["string", "null"] }
+        context: { type: object }
+        ip: { type: ["string", "null"] }
+        recorded_at: { type: ["string", "null"], format: date-time }
     ApiKey:
       type: object
       required: [id, prefix, organization_id, user_id, client_id, permissions, status, revoked]

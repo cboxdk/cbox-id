@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as 
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Listeners\SuppressSandboxMail;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -23,6 +24,7 @@ use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
         // the framework's SystemDnsResolver binding (app providers load last).
         // Discovered once per process: every door reads the same list.
         $this->app->singleton(ActionRegistry::class);
+
+        // The scopes a management key may carry: the framework's core set plus the ones
+        // this app's actions guard. The framework refuses to mint anything else.
+        $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
 
         $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
             return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());

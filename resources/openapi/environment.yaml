@@ -76,6 +76,11 @@ tags:
   - name: 'Support sessions'
   - name: Devices
   - name: Approvals
+  - name: 'Audit log'
+  - name: Events
+  - name: 'Inline hooks'
+  - name: 'Log streams'
+  - name: Webhooks
 paths:
   '/api-keys/{id}':
     delete:
@@ -681,6 +686,83 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /audit-log:
+    get:
+      tags:
+        - 'Audit log'
+      summary: "Read this environment's audit trail oldest first, optionally narrowed by action, actor type or organization; pass the last id as `after` to page."
+      description: 'Requires scope `audit:read`. Danger: read.'
+      operationId: audit_list
+      x-action: audit.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        -
+          name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only this action, e.g. `webhook.created`.'
+            maxLength: 190
+        -
+          name: actor_type
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only entries by this kind of actor; `service` is a management key or an app.'
+            enum:
+              - user
+              - service
+              - system
+              - operator
+              - organization_member
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's entries."
+            maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEntry'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /devices:
     post:
       tags:
@@ -837,6 +919,557 @@ paths:
           $ref: '#/components/responses/BearerForbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /events:
+    get:
+      tags:
+        - Events
+      summary: "Read this environment's domain events (the facts webhooks deliver) oldest first; pass the last id as `after` to poll for new ones."
+      description: 'Requires scope `events:read`. Danger: read.'
+      operationId: events_list
+      x-action: events.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        -
+          name: types
+          in: query
+          required: false
+          schema:
+            type: array
+            description: 'Only these event types, e.g. `user.created`.'
+            maxItems: 50
+            items:
+              type: string
+              maxLength: 190
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's events."
+            maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DomainEvent'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /hooks:
+    post:
+      tags:
+        - 'Inline hooks'
+      summary: 'Register an inline hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
+      description: 'Requires scope `hooks:write`. Danger: critical.'
+      operationId: hooks_create
+      x-action: hooks.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hook_point:
+                  type: string
+                  description: 'When it is called.'
+                  enum:
+                    - token_minting
+                    - post_login
+                    - pre_registration
+                    - post_registration
+                    - pre_password_change
+                    - post_password_change
+                url:
+                  type: string
+                  description: 'A public HTTPS URL, called in the middle of the operation.'
+                  format: uri
+                  maxLength: 500
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide."
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id."
+              required:
+                - hook_point
+                - url
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InlineHook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Inline hooks'
+      summary: 'List the inline hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
+      description: 'Requires scope `hooks:read`. Danger: read.'
+      operationId: hooks_list
+      x-action: hooks.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InlineHook'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/hooks/{id}':
+    delete:
+      tags:
+        - 'Inline hooks'
+      summary: 'Remove an inline hook. It is no longer called at its hook point.'
+      description: 'Requires scope `hooks:write`. Danger: destructive.'
+      operationId: hooks_delete
+      x-action: hooks.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The inline hook id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        204:
+          description: Done.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Inline hooks'
+      summary: 'Get one inline hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
+      description: 'Requires scope `hooks:read`. Danger: read.'
+      operationId: hooks_get
+      x-action: hooks.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The inline hook id.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InlineHook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Inline hooks'
+      summary: 'Pause (active: false) or activate (active: true) an inline hook.'
+      description: 'Requires scope `hooks:write`. Danger: critical.'
+      operationId: hooks_update
+      x-action: hooks.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The inline hook id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  description: 'True to call it at its hook point; false to pause it.'
+              required:
+                - active
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InlineHook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /log-streams:
+    post:
+      tags:
+        - 'Log streams'
+      summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON). A generated HMAC key is returned once.'
+      description: 'Requires scope `log_streams:write`. Danger: critical.'
+      operationId: log_streams_create
+      x-action: log_streams.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 190
+                destination:
+                  type: string
+                  enum:
+                    - splunk_hec
+                    - elastic_ecs
+                    - graylog_gelf
+                    - cef_http
+                    - generic_json
+                endpoint_url:
+                  type: string
+                  description: 'A public URL the entries are POSTed to.'
+                  format: uri
+                  maxLength: 2048
+                auth:
+                  type: string
+                  description: "How the endpoint is authenticated. Left out, the destination's default."
+                  enum:
+                    - none
+                    - bearer
+                    - splunk
+                    - hmac
+                secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The bearer or Splunk token the endpoint expects. Left out with `hmac`, a key is generated and returned once.'
+                  maxLength: 4096
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide."
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id."
+              required:
+                - name
+                - destination
+                - endpoint_url
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStream'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Log streams'
+      summary: "List the SIEM destinations this environment's audit trail is streamed to, and whether each is enabled. Never a secret."
+      description: 'Requires scope `log_streams:read`. Danger: read.'
+      operationId: log_streams_list
+      x-action: log_streams.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogStream'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/log-streams/{id}':
+    delete:
+      tags:
+        - 'Log streams'
+      summary: 'Delete an audit log stream. Nothing more is delivered to its endpoint.'
+      description: 'Requires scope `log_streams:write`. Danger: destructive.'
+      operationId: log_streams_delete
+      x-action: log_streams.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The log stream id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        204:
+          description: Done.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Log streams'
+      summary: 'Get one audit log stream: destination, endpoint, auth scheme, owner and health. Never its secret.'
+      description: 'Requires scope `log_streams:read`. Danger: read.'
+      operationId: log_streams_get
+      x-action: log_streams.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The log stream id.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStream'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Log streams'
+      summary: 'Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.'
+      description: 'Requires scope `log_streams:write`. Danger: write.'
+      operationId: log_streams_update
+      x-action: log_streams.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The log stream id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: 'True to deliver; false to stop, keeping what is pending.'
+              required:
+                - enabled
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStream'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /oauth/api-keys/verify:
@@ -2329,6 +2962,405 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /webhooks:
+    post:
+      tags:
+        - Webhooks
+      summary: 'Register a webhook endpoint for one organization or the whole environment. Returns its signing secret once.'
+      description: 'Requires scope `webhooks:write`. Danger: critical.'
+      operationId: webhooks_create
+      x-action: webhooks.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: 'A public HTTPS URL. Signed deliveries are POSTed here.'
+                  format: uri
+                  maxLength: 500
+                event_types:
+                  type: array
+                  description: 'The events it receives.'
+                  minItems: 1
+                  items:
+                    type: string
+                    enum:
+                      - user.created
+                      - user.updated
+                      - user.deactivated
+                      - user.login
+                      - user.reactivated
+                      - identity.linked
+                      - organization.created
+                      - organization.suspended
+                      - organization.reactivated
+                      - organization.updated
+                      - organization.deleted
+                      - membership.created
+                      - membership.updated
+                      - membership.deleted
+                      - invitation.created
+                      - invitation.accepted
+                      - invitation.revoked
+                      - role.assigned
+                      - role.unassigned
+                      - role.assigned_everywhere
+                      - role.unassigned_everywhere
+                      - api_key.created
+                      - api_key.revoked
+                      - support_session.started
+                      - directory.user.provisioned
+                      - directory.user.deprovisioned
+                      - directory.user.deactivated
+                      - directory.group.membership_changed
+                      - domain.added
+                      - domain.removed
+                      - domain.verified
+                      - connection.activated
+                      - entitlement.set
+                      - entitlement.updated
+                      - entitlement.revoked
+                      - vault.grant.created
+                      - vault.grant.revoked
+                      - vault.secret.revoked
+                      - governance.access.revoked
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide."
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id."
+              required:
+                - url
+                - event_types
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Webhooks
+      summary: 'List the webhook endpoints registered in this environment: URL, owner, subscribed events and whether each is active.'
+      description: 'Requires scope `webhooks:read`. Danger: read.'
+      operationId: webhooks_list
+      x-action: webhooks.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}':
+    delete:
+      tags:
+        - Webhooks
+      summary: 'Delete a webhook endpoint. It stops receiving events at once.'
+      description: 'Requires scope `webhooks:write`. Danger: destructive.'
+      operationId: webhooks_delete
+      x-action: webhooks.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        204:
+          description: Done.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Webhooks
+      summary: 'Get one webhook endpoint: URL, owner, subscribed events, health. Never its signing secret.'
+      description: 'Requires scope `webhooks:read`. Danger: read.'
+      operationId: webhooks_get
+      x-action: webhooks.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Webhooks
+      summary: "Change a webhook endpoint's URL and/or the events it subscribes to."
+      description: 'Requires scope `webhooks:write`. Danger: write.'
+      operationId: webhooks_update
+      x-action: webhooks.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: 'A public HTTPS URL. Left out, unchanged.'
+                  format: uri
+                  maxLength: 500
+                event_types:
+                  type: array
+                  description: 'The COMPLETE set of events afterwards. Left out, unchanged.'
+                  minItems: 1
+                  items:
+                    type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/pause':
+    post:
+      tags:
+        - Webhooks
+      summary: 'Pause a webhook endpoint: it stops receiving events until resumed.'
+      description: 'Requires scope `webhooks:write`. Danger: write.'
+      operationId: webhooks_pause
+      x-action: webhooks.pause
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/resume':
+    post:
+      tags:
+        - Webhooks
+      summary: 'Resume a paused webhook endpoint: it receives events again.'
+      description: 'Requires scope `webhooks:write`. Danger: write.'
+      operationId: webhooks_resume
+      x-action: webhooks.resume
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/rotate':
+    post:
+      tags:
+        - Webhooks
+      summary: 'Issue a new signing secret for a webhook endpoint, returned once. The old secret stops verifying immediately.'
+      description: 'Requires scope `webhooks:write`. Danger: critical.'
+      operationId: webhooks_secret_rotate
+      x-action: webhooks.secret.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
     EnvironmentApiKey:
@@ -2986,6 +4018,226 @@ components:
           items:
             $ref: '#/components/schemas/ApiScope'
         created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    Webhook:
+      type: object
+      required:
+        - id
+        - url
+        - organization_id
+        - event_types
+        - active
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: "null when the environment owns it: it receives EVERY organization's events."
+        event_types:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+          description: 'false while paused.'
+        consecutive_failures:
+          type: integer
+        last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        secret:
+          type:
+            - string
+            - 'null'
+          description: |
+            The signing secret, on the create and rotate answers only — shown once, never
+            retrievable again. `null` on an idempotent replay of that answer.
+    InlineHook:
+      type: object
+      required:
+        - id
+        - url
+        - hook_point
+        - organization_id
+        - active
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        hook_point:
+          type: string
+          enum:
+            - token_minting
+            - post_login
+            - pre_registration
+            - post_registration
+            - pre_password_change
+            - post_password_change
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null when the environment owns it: it runs for EVERY organization.'
+        active:
+          type: boolean
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        secret:
+          type:
+            - string
+            - 'null'
+          description: 'The signing secret, on the create answer only — shown once. `null` on an idempotent replay.'
+    LogStream:
+      type: object
+      required:
+        - id
+        - name
+        - destination
+        - endpoint_url
+        - auth
+        - organization_id
+        - enabled
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        destination:
+          type: string
+          enum:
+            - splunk_hec
+            - elastic_ecs
+            - graylog_gelf
+            - cef_http
+            - generic_json
+        endpoint_url:
+          type: string
+        auth:
+          type: string
+          enum:
+            - none
+            - bearer
+            - splunk
+            - hmac
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: "null when the environment owns it: it carries EVERY organization's entries."
+        enabled:
+          type: boolean
+        consecutive_failures:
+          type: integer
+        last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        secret:
+          type:
+            - string
+            - 'null'
+          description: 'A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.'
+    DomainEvent:
+      type: object
+      required:
+        - id
+        - type
+        - organization_id
+        - occurred_at
+        - payload
+      properties:
+        id:
+          type: string
+          description: 'A ULID; pass the last one you saw as `after`.'
+        type:
+          type: string
+          description: 'e.g. `user.created` — the webhook event name.'
+        organization_id:
+          type:
+            - string
+            - 'null'
+        occurred_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        payload:
+          type: object
+    AuditEntry:
+      type: object
+      required:
+        - id
+        - action
+        - actor_type
+        - actor_id
+        - organization_id
+        - target_type
+        - target_id
+        - context
+        - recorded_at
+      properties:
+        id:
+          type: string
+          description: 'A ULID; pass the last one you saw as `after`.'
+        action:
+          type: string
+          description: 'e.g. `webhook.created`.'
+        actor_type:
+          type: string
+          enum:
+            - user
+            - service
+            - system
+            - operator
+            - organization_member
+        actor_id:
+          type:
+            - string
+            - 'null'
+          description: "For `service`, the management key's or app's id."
+        organization_id:
+          type:
+            - string
+            - 'null'
+        target_type:
+          type:
+            - string
+            - 'null'
+        target_id:
+          type:
+            - string
+            - 'null'
+        context:
+          type: object
+        ip:
+          type:
+            - string
+            - 'null'
+        recorded_at:
           type:
             - string
             - 'null'

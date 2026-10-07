@@ -17,7 +17,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\PlatformRoot;
@@ -169,8 +169,9 @@ it('does not offer a scope no route requires — reserved, or catalogued ahead o
         ->pluck('value')
         ->all();
 
-    // Every scope the framework offers now has an endpoint here — and nothing reserved.
-    expect($offered)->toBe(EnvironmentApiScope::offerableValues())
+    // Every scope the vocabulary offers (the framework's, plus the app's own actions')
+    // has an endpoint here — and nothing reserved.
+    expect($offered)->toBe(app(ManagementScopes::class)->offerable())
         ->and($offered)->not->toContain('directories:read')
         ->and($offered)->not->toContain('directories:write');
 

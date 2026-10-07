@@ -24,7 +24,7 @@ use Tests\Feature\Actions\ActionParityTest;
 final class ParityAllowlist
 {
     /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 251;
+    public const int BASELINE = 227;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -128,9 +128,6 @@ final class ParityAllowlist
             'appearance.update',
             'approvals.approve',
             'approvals.deny',
-            'audit-streams.destroy',
-            'audit-streams.store',
-            'audit-streams.toggle',
             'auth-policy.inherit',
             'auth-policy.update',
             'clients.destroy',
@@ -181,9 +178,6 @@ final class ParityAllowlist
             'environment-domains.verify',
             'environment.appearance.update',
             'environment.approvals.deny',
-            'environment.audit-streams.destroy',
-            'environment.audit-streams.store',
-            'environment.audit-streams.toggle',
             'environment.auth-policy.inherit',
             'environment.auth-policy.self-service-signup',
             'environment.auth-policy.update',
@@ -224,9 +218,6 @@ final class ParityAllowlist
             'environment.governance.close',
             'environment.governance.item',
             'environment.governance.store',
-            'environment.hooks.destroy',
-            'environment.hooks.store',
-            'environment.hooks.toggle',
             'environment.impersonate',
             'environment.keys.destroy',
             'environment.keys.frontend.destroy',
@@ -298,19 +289,10 @@ final class ParityAllowlist
             'environment.vault.revoke',
             'environment.vault.rotate',
             'environment.vault.store',
-            'environment.webhooks.destroy',
-            'environment.webhooks.pause',
-            'environment.webhooks.resume',
-            'environment.webhooks.rotate',
-            'environment.webhooks.store',
-            'environment.webhooks.update',
             'environment.whitelabel.branding.save',
             'governance.close',
             'governance.item',
             'governance.store',
-            'hooks.destroy',
-            'hooks.store',
-            'hooks.toggle',
             'keys.destroy',
             'keys.store',
             'keys.workspace.destroy',
@@ -361,12 +343,6 @@ final class ParityAllowlist
             'vault.revoke',
             'vault.rotate',
             'vault.store',
-            'webhooks.destroy',
-            'webhooks.pause',
-            'webhooks.resume',
-            'webhooks.rotate',
-            'webhooks.store',
-            'webhooks.update',
             'whitelabel.branding.save',
         ];
     }
