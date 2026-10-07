@@ -85,25 +85,38 @@ it('carries a valid target from the workspace host into the handoff, and drops a
 
     signInAsMember($subjectId);
 
-    $open = fn (string $to): string => (string) $this->get('https://cboxid.com'.route('environment.open', $sandbox->id, absolute: false).'?to='.rawurlencode($to))
-        ->assertRedirect()
-        ->headers->get('Location');
+    // The handoff is a self-submitting POST form; read the fields it would post.
+    $open = function (string $to) use ($sandbox): array {
+        $html = (string) $this->get('https://cboxid.com'.route('environment.open', $sandbox->id, absolute: false).'?to='.rawurlencode($to))
+            ->assertOk()
+            ->getContent();
 
-    $valid = $open('/admin/users');
-    parse_str((string) parse_url($valid, PHP_URL_QUERY), $query);
+        preg_match('/<form method="post" action="([^"]+)"/', $html, $action);
+        preg_match_all('/<input type="hidden" name="([^"]+)" value="([^"]*)">/', $html, $inputs, PREG_SET_ORDER);
 
-    expect($valid)->toStartWith('https://'.$sandbox->slug.'.cboxid.com/admin/handoff?')
-        ->and($query['to'] ?? null)->toBe('/admin/users')
-        ->and($query['to_sig'] ?? null)->toBe(app(HandoffTarget::class)->sign((string) $query['token'], '/admin/users'));
+        $fields = [];
+
+        foreach ($inputs as [, $name, $value]) {
+            $fields[$name] = html_entity_decode($value, ENT_QUOTES | ENT_HTML5);
+        }
+
+        return [$action[1] ?? '', $fields];
+    };
+
+    [$action, $fields] = $open('/admin/users');
+
+    expect($action)->toBe('https://'.$sandbox->slug.'.cboxid.com/admin/handoff')
+        ->and($fields['to'] ?? null)->toBe('/admin/users')
+        ->and($fields['to_sig'] ?? null)->toBe(app(HandoffTarget::class)->sign((string) $fields['token'], '/admin/users'));
 
     foreach (['//evil.example', '\\\\evil.example', 'https://evil.example', '/account', '/admin/nope'] as $bad) {
-        $location = $open($bad);
-        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+        [$action, $fields] = $open($bad);
 
         // Still a handoff — the target is dropped, not the request.
-        expect($location)->toStartWith('https://'.$sandbox->slug.'.cboxid.com/admin/handoff?token=')
-            ->and($query)->not->toHaveKey('to')
-            ->and($query)->not->toHaveKey('to_sig');
+        expect($action)->toBe('https://'.$sandbox->slug.'.cboxid.com/admin/handoff')
+            ->and($fields)->toHaveKey('token')
+            ->and($fields)->not->toHaveKey('to')
+            ->and($fields)->not->toHaveKey('to_sig');
     }
 });
 
@@ -116,19 +129,19 @@ it('lands a redeemed handoff on its target, and on the home page when the target
 
     // Signed for this token: lands where it was asked to.
     $token = $handoff->mint($member->user_id, $envId);
-    $this->get('/admin/handoff?'.http_build_query(['token' => $token, 'to' => '/admin/users', 'to_sig' => $targets->sign($token, '/admin/users')]))
+    $this->post('/admin/handoff', ['token' => $token, 'to' => '/admin/users', 'to_sig' => $targets->sign($token, '/admin/users')])
         ->assertRedirect('/admin/users');
 
     expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
 
     // The path swapped in transit — the session is still established, the target is not.
     $token = $handoff->mint($member->user_id, $envId);
-    $this->get('/admin/handoff?'.http_build_query(['token' => $token, 'to' => '/admin/roles', 'to_sig' => $targets->sign($token, '/admin/users')]))
+    $this->post('/admin/handoff', ['token' => $token, 'to' => '/admin/roles', 'to_sig' => $targets->sign($token, '/admin/users')])
         ->assertRedirect(route('environment.home'));
 
     // An off-site target, however it is signed, never becomes a Location.
     $token = $handoff->mint($member->user_id, $envId);
-    $this->get('/admin/handoff?'.http_build_query(['token' => $token, 'to' => '//evil.example', 'to_sig' => $targets->sign($token, '//evil.example')]))
+    $this->post('/admin/handoff', ['token' => $token, 'to' => '//evil.example', 'to_sig' => $targets->sign($token, '//evil.example')])
         ->assertRedirect(route('environment.home'));
 });
 
