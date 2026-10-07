@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Workspace\Keys\CreateEnvironmentKey;
+use App\Actions\Workspace\Keys\RevokeEnvironmentKey;
 use App\Http\Props\Console\EnvironmentKeyRowProps;
 use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\KeyTabs;
@@ -23,6 +26,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -160,6 +164,30 @@ final readonly class EnvironmentKeyController extends ConsoleController
             return to_route($sudo);
         }
 
+        // The workspace console mints through the action `POST /api/v1/workspace/
+        // environments/{id}/keys` runs, so a key made here and a key made by a workspace key
+        // are refused, attributed and recorded alike. The environment console's own path
+        // stays below until the environment plane's key actions land.
+        if (! $this->onEnvironmentPlane()) {
+            $result = $this->act(CreateEnvironmentKey::class, [
+                'environment_id' => $environmentId,
+                'name' => $request->name(),
+                'scopes' => $request->scopes(),
+                'expires_at' => $request->expiresAt()?->toIso8601String(),
+            ], ['name' => 'name', 'scopes' => 'scopes', 'expires_at' => 'expires'], 'name');
+
+            if ($result instanceof RedirectResponse) {
+                return $result;
+            }
+
+            /** @var IssuedEnvironmentApiKey $minted */
+            $minted = $result->value;
+
+            $this->inertia->flash('freshKey', $minted->plaintext);
+
+            return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
+        }
+
         $issued = $keys->issue($environmentId, $request->name(), $request->scopes(), $request->expiresAt());
 
         $activity->record(
@@ -201,6 +229,18 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         if ($sudo !== null) {
             return to_route($sudo);
+        }
+
+        if (! $this->onEnvironmentPlane()) {
+            try {
+                $this->runAction(RevokeEnvironmentKey::class, ['environment_id' => $environmentId, 'id' => $key]);
+            } catch (ActionRefused) {
+                // A key that is not the named environment's is answered with nothing, as
+                // before: it is a row this person was never shown.
+                return back();
+            }
+
+            return back()->with('status', 'Management key revoked.');
         }
 
         // Only revoke a key that belongs to the named — and reachable — environment.

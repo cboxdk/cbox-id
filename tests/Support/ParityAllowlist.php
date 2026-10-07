@@ -24,7 +24,7 @@ use Tests\Feature\Actions\ActionParityTest;
 final class ParityAllowlist
 {
     /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 251;
+    public const int BASELINE = 233;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -311,18 +311,6 @@ final class ParityAllowlist
             'hooks.destroy',
             'hooks.store',
             'hooks.toggle',
-            'keys.destroy',
-            'keys.store',
-            'keys.workspace.destroy',
-            'keys.workspace.store',
-            'members.access',
-            'members.invitations.resend',
-            'members.invitations.revoke',
-            'members.invite',
-            'members.remove',
-            'members.role',
-            'members.transfer-ownership',
-            'organization-settings.update',
             'permissions.destroy',
             'permissions.store',
             'permissions.update',
@@ -336,12 +324,6 @@ final class ParityAllowlist
             'platform.organizations.reparent',
             'platform.organizations.store',
             'platform.organizations.toggle',
-            'projects.environments.store',
-            'projects.reactivate',
-            'projects.rename',
-            'projects.store',
-            'projects.suspend',
-            'projects.verification.resend',
             'provisioning.destroy',
             'provisioning.store',
             'provisioning.toggle',

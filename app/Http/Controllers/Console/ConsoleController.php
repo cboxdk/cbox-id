@@ -13,6 +13,7 @@ use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ShellPayload;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Response;
@@ -95,31 +96,51 @@ abstract readonly class ConsoleController extends PageController
      *
      * `$fields` maps the action's input names to this page's form field names
      * (`client_id` → `clientId`); a refusal about a field the page does not have lands on
-     * `$fallback`. A 404 is a 404.
+     * `$fallback`. `$messages` lets a page say a refusal in its own words — keyed by the
+     * refusal's code — where the API's sentence is written for a machine's caller. A 404 is
+     * a 404.
      *
      * @param  class-string<Action>  $action
      * @param  array<string, mixed>  $input
      * @param  array<string, string>  $fields
+     * @param  array<string, string>  $messages
      */
-    protected function act(string $action, array $input, array $fields = [], string $fallback = 'form'): ActionResult|RedirectResponse
+    protected function act(string $action, array $input, array $fields = [], string $fallback = 'form', array $messages = []): ActionResult|RedirectResponse
     {
         try {
-            return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal($this->scope), $input);
+            return $this->runAction($action, $input);
         } catch (ActionRefused $refused) {
             abort_if($refused->status === 404, 404);
 
             $field = $refused->field === null ? $fallback : ($fields[$refused->field] ?? $fallback);
 
-            return back()->withInput()->withErrors([$field => $refused->getMessage()]);
+            return back()->withInput()->withErrors([$field => $messages[$refused->error] ?? $refused->getMessage()]);
         } catch (ValidationException $invalid) {
             $errors = [];
 
-            foreach ($invalid->errors() as $field => $messages) {
-                $first = is_array($messages) ? ($messages[0] ?? null) : null;
+            foreach ($invalid->errors() as $field => $lines) {
+                $first = is_array($lines) ? ($lines[0] ?? null) : null;
                 $errors[$fields[$field] ?? $fallback] = is_string($first) ? $first : $invalid->getMessage();
             }
 
             return back()->withInput()->withErrors($errors);
         }
+    }
+
+    /**
+     * Run an action as the person signed in and let a refusal through, for a page whose
+     * answer to one is not a form error — a quiet no-op, a flash on the button that asked.
+     * {@see self::act()} is the form-shaped version.
+     *
+     * @param  class-string<Action>  $action
+     * @param  array<string, mixed>  $input
+     *
+     * @throws ActionRefused
+     * @throws AuthorizationException
+     * @throws ValidationException
+     */
+    protected function runAction(string $action, array $input): ActionResult
+    {
+        return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal($this->scope), $input);
     }
 }

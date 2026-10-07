@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\Principal\Principal;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -25,6 +26,12 @@ use Illuminate\Support\Facades\Cache;
  *
  * Only successes are kept. A refusal is cheap to repeat and may stop being one — the slug
  * freed, the scope granted — so retrying after one runs the request again.
+ *
+ * SECRETS ARE NEVER KEPT. An action that returns one (a key's value, a client secret)
+ * names the field in `redact`; it is stored as null, so a replay returns everything but
+ * the secret — which was shown once, to the first answer. A caller that lost that answer
+ * revokes what it made and asks again; a table of plaintext credentials kept "for retries"
+ * would be the most valuable thing in the database.
  */
 final class IdempotencyGuard
 {
@@ -76,7 +83,7 @@ final class IdempotencyGuard
                 'action' => $action->name,
                 'request_hash' => $hash,
                 'status' => $result->status ?? $action->status,
-                'payload' => $result->payload,
+                'payload' => $this->redacted($result->payload, $action->redact),
                 'meta' => $result->meta,
                 'expires_at' => Carbon::now()->addHours(self::TTL_HOURS),
             ]);
@@ -87,6 +94,30 @@ final class IdempotencyGuard
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * The payload with every named secret set to null. A dotted name reaches into a nested
+     * object (`initial_key.token`); a field the payload does not carry is left absent
+     * rather than invented.
+     *
+     * @param  array<mixed>|null  $payload
+     * @param  list<string>  $fields
+     * @return array<mixed>|null
+     */
+    private function redacted(?array $payload, array $fields): ?array
+    {
+        if ($payload === null) {
+            return null;
+        }
+
+        foreach ($fields as $field) {
+            if (Arr::has($payload, $field)) {
+                Arr::set($payload, $field, null);
+            }
+        }
+
+        return $payload;
     }
 
     /**

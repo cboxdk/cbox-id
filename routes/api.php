@@ -14,10 +14,6 @@ use App\Http\Controllers\Api\Environment\RoleController;
 use App\Http\Controllers\Api\Environment\SupportSessionController;
 use App\Http\Controllers\Api\Environment\UserController;
 use App\Http\Controllers\Api\VaultController;
-use App\Http\Controllers\Api\Workspace\CurrentWorkspaceController;
-use App\Http\Controllers\Api\Workspace\EnvironmentController;
-use App\Http\Controllers\Api\Workspace\MemberController;
-use App\Http\Controllers\Api\Workspace\ProjectController;
 use App\Platform\Actions\ActionRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
@@ -48,9 +44,10 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
  * Workspace management plane (GLOBAL). Unlike the environment-scoped routes above, these
  * do NOT resolve an environment (ResolveEnvironment) — a workspace operates above every
  * environment it owns. Authenticated by a `Bearer cbid_ws_…` workspace key via
- * `workspace.api`, with a required capability on write routes so a read-only key can't
- * mutate. Intended to be served on the platform-root host (e.g. api.cboxid.com); an
- * environment-scoped credential is never accepted here.
+ * `workspace.api`, with the scope each action requires — bounded by the key's role, so a
+ * read-only key can't mutate however it is scoped. Intended to be served on the
+ * platform-root host (e.g. api.cboxid.com); an environment-scoped credential is never
+ * accepted here.
  *
  * It was `/v1/organization` with `cbid_org_` keys until the console's own word for the
  * thing — a workspace — became the API's too. A clean break, not an alias: see UPGRADING.
@@ -67,23 +64,13 @@ Route::get('v1/workspace/openapi.yaml', function () {
 Route::middleware('throttle:api-workspace')
     ->prefix('v1/workspace')
     ->group(function (): void {
-        // Every route resolves the key exactly once, with the capability its data
-        // requires — reads are gated too, so a leaked developer/CI key can't
-        // enumerate the member roster (PII) or read billing.
-        Route::get('/', [CurrentWorkspaceController::class, 'show'])->middleware('workspace.api');
-
-        // Projects (IdP products) — each its own billing anchor + environment allowance.
-        Route::get('projects', [ProjectController::class, 'index'])->middleware('workspace.api');
-        Route::post('projects', [ProjectController::class, 'store'])->middleware('workspace.api:manage-environments');
-
-        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('workspace.api');
-        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('workspace.api:manage-environments');
-
-        Route::get('members', [MemberController::class, 'index'])->middleware('workspace.api:read-members');
-        Route::post('members', [MemberController::class, 'store'])->middleware('workspace.api:manage-members');
-        Route::get('invitations', [MemberController::class, 'invitations'])->middleware('workspace.api:read-members');
-        Route::post('invitations/{id}/resend', [MemberController::class, 'resendInvitation'])->middleware('workspace.api:manage-members');
-        Route::delete('invitations/{id}', [MemberController::class, 'revokeInvitation'])->middleware('workspace.api:manage-members');
+        // EVERY route here is an action, routed from the registry with the scope it
+        // declares (`workspace.api:<scope>`): the key is resolved once, its ROLE must hold
+        // the capability the scope needs and the key must carry the scope. Reads are gated
+        // too, so a leaked developer/CI key can't enumerate the member roster (PII) or
+        // read billing. The console's Projects, Team, Keys and Workspace settings pages
+        // run the same actions.
+        ActionRoutes::workspace();
     });
 
 /*

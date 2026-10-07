@@ -3,13 +3,16 @@
 declare(strict_types=1);
 
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ActionRoutes;
+use App\Platform\Actions\WorkspaceScopes;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| What every action must be, so every door can rely on it.
+| What every action must be, so every door can rely on it — on whichever plane it lives.
 |--------------------------------------------------------------------------
 */
 
@@ -20,24 +23,36 @@ dataset('actions', fn (): array => array_map(
     (new ActionRegistry(dirname(__DIR__, 3).'/app/Actions'))->all(),
 ));
 
-it('discovers the actions', function (): void {
-    expect(app(ActionRegistry::class)->all())->not->toBeEmpty();
-});
+it('discovers the actions, on every plane', function (ActionPlane $plane): void {
+    expect(app(ActionRegistry::class)->forPlane($plane))->not->toBeEmpty();
+})->with(ActionPlane::cases());
 
-it('is routed on REST exactly as it declares, behind its scope', function (ActionDefinition $action): void {
+it('is routed on REST exactly as it declares, behind its plane\'s key and its scope', function (ActionDefinition $action): void {
     $route = Route::getRoutes()->getByName('api.actions.'.$action->name);
 
     expect($route)->not->toBeNull()
         ->and($route->methods())->toContain($action->method)
-        ->and('/'.$route->uri())->toBe('/api/v1'.$action->path)
-        ->and($route->gatherMiddleware())->toContain('env.api:'.$action->scope);
+        ->and(rtrim('/'.$route->uri(), '/'))->toBe(rtrim('/api/v1'.$action->documentedPath(), '/'))
+        ->and($route->gatherMiddleware())->toContain(ActionRoutes::middleware($action));
 })->with('actions');
 
-it('requires a scope a key can actually carry', function (ActionDefinition $action): void {
+it('requires a scope its plane\'s key can actually carry', function (ActionDefinition $action): void {
+    if ($action->plane === ActionPlane::Workspace) {
+        expect(WorkspaceScopes::knows($action->scope))->toBeTrue("{$action->name} requires {$action->scope}, which is no workspace key scope");
+
+        return;
+    }
+
     $scope = EnvironmentApiScope::tryFrom($action->scope);
 
     expect($scope)->not->toBeNull("{$action->name} requires {$action->scope}, which is no environment key scope")
         ->and(in_array($scope, EnvironmentApiScope::offerable(), true))->toBeTrue("{$action->scope} is not offered on the key form");
+})->with('actions');
+
+it('names a console gate its plane can answer', function (ActionDefinition $action): void {
+    // A workspace action is run by a workspace key too, and a key's role can only answer a
+    // WORKSPACE capability — an environment-console gate would refuse every key, silently.
+    expect($action->consoleGate->isWorkspace())->toBe($action->plane === ActionPlane::Workspace);
 })->with('actions');
 
 it('matches its danger to its method and scope', function (ActionDefinition $action): void {
@@ -62,4 +77,12 @@ it('claims only console routes that exist', function (ActionDefinition $action):
     $missing = array_values(array_filter($action->consoleRoutes, static fn (string $name): bool => ! Route::has($name)));
 
     expect($missing)->toBe([], "{$action->name} claims routes that do not exist");
+})->with('actions');
+
+it('marks every action that returns a credential as one, so a replay never carries it', function (ActionDefinition $action): void {
+    // A Critical write is one that may mint a credential; one whose response schema has a
+    // `token` must redact it, or the idempotency store becomes a table of live keys.
+    $mints = in_array($action->schema, ['EnvironmentKey', 'WorkspaceKey', 'CreatedEnvironment'], true) && $action->danger->writes();
+
+    expect($mints ? $action->redact !== [] : true)->toBeTrue("{$action->name} returns a key but redacts nothing");
 })->with('actions');

@@ -6,6 +6,7 @@ namespace App\Platform\Actions\Principal;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
@@ -42,7 +43,9 @@ final readonly class EnvironmentKeyPrincipal implements Principal
     {
         $scope = EnvironmentApiScope::tryFrom($action->scope);
 
-        if ($scope === null || ! $this->key->isActive() || ! $this->key->can($scope)) {
+        // An environment key reaches its own environment's actions only — the workspace above
+        // it is reached with a workspace key, and no scope name can bridge the two.
+        if ($action->plane !== ActionPlane::Environment || $scope === null || ! $this->key->isActive() || ! $this->key->can($scope)) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
         }
     }

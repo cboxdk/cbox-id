@@ -41,6 +41,17 @@ final readonly class ActionResult
         return new self($value, $payload, 200, $meta);
     }
 
+    /**
+     * A whole list, unpaged: one a workspace holds a handful of (its projects, its pending
+     * invitations), where a cursor would be ceremony around a single page.
+     *
+     * @param  list<mixed>  $payload
+     */
+    public static function items(mixed $value, array $payload): self
+    {
+        return new self($value, $payload, 200);
+    }
+
     public static function none(mixed $value = null): self
     {
         return new self($value, null, 204);
