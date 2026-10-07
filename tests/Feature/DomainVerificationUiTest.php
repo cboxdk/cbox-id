@@ -167,10 +167,20 @@ it('refuses acting on another org\'s domain id (cross-org tampering)', function 
     $orgB = app(Organizations::class)->create(new NewOrganization('B', 'dom-b'));
     $foreign = app(DomainVerification::class)->add($orgB->id, 'foreign.com');
 
-    domainAction($foreign->id, 'verify')->assertForbidden();
-    domainAction($foreign->id, 'capture')->assertForbidden();
-    test()->from(route('connections'))->delete(route('connections.domains.destroy', $foreign->id))->assertForbidden();
+    // 404, not 403: another organization's domain is not a permission this admin lacks,
+    // it is a row they have no business learning exists. The lookup is scoped in the query.
+    domainAction($foreign->id, 'verify')->assertNotFound();
+    domainAction($foreign->id, 'capture')->assertNotFound();
+    test()->from(route('connections'))->delete(route('connections.domains.destroy', $foreign->id))->assertNotFound();
 
     // Untouched.
     expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();
 });
+
+it('404s a domain action aimed at an id that names no domain', function () {
+    ssoAdmin('dom-unknown');
+
+    domainAction('01JUNKNOWNDOMAIN000000000', 'verify')->assertNotFound();
+    domainAction('01JUNKNOWNDOMAIN000000000', 'capture')->assertNotFound();
+    test()->from(route('connections'))->delete(route('connections.domains.destroy', '01JUNKNOWNDOMAIN000000000'))->assertNotFound();
+})->group('security');

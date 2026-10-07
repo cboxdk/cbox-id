@@ -10,6 +10,34 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **The environment-admin handoff no longer puts its token in a URL.** Opening an
+  environment redirected to `/admin/handoff?token=…`, which wrote a live bearer token into
+  the browser history and the access logs between the browser and the tenant host. The
+  account host now answers with a self-submitting form that POSTs the token; that page
+  carries its own narrow CSP (the request nonce, `form-action` limited to the account
+  hosts and the one environment), `Cache-Control: no-store` and
+  `Referrer-Policy: no-referrer`. `/admin/handoff` accepts POST only, reads the token from
+  the body only, answers `no-store`/`no-referrer`, and is the one CSRF-exempt path under
+  `admin/` — the signed, single-use token is the proof. A GET (an old `?token=` link) is
+  refused to the env-admin gate without the token being read.
+- **Single-use links and passkey ceremonies are rate limited.** `POST /magic/{token}`,
+  `POST /setup/{token}`, `/invite/{token}/accept` (both verbs), `POST /verify-email/{token}`,
+  `/passkeys/login` and `/passkeys/login/options`, `/passkeys/register/options`, and the
+  Frontend API's `sign-in/passkey` pair had no throttle. Named limiters key on route,
+  environment and client address (plus a token fingerprint on the link doors: 10 presses
+  of one token, 30 of any, per minute; passkeys 30 per minute). CORS preflights are not
+  counted.
+- **A plain member's People page no longer carries the organization's authorization
+  model.** The roster shipped every access role with its permission catalogue, and each
+  colleague's role assignments, to every member, and relied on the page to hide them.
+  Members now get names, addresses and tiers; access roles and permissions go to
+  administrators only.
+- **Console lookups by id are one scoped query.** Revoking a workspace or management key,
+  acting on an SSO domain (console and Admin Portal) and acting on an identity-platform
+  member loaded the whole collection and picked the row out in PHP. Each is now a single
+  query with the organization or environment fence in it. A foreign or unknown id answers
+  404 — keys used to bounce back silently, and domains answered 403.
+
 - **The Token Vault decided whose secrets a token reached from the token's `org` claim
   alone.** For a user-delegated token that claim is the PERSON's organization, so any
   member who consented to an app holding `vault.manage` gave it rotate, revoke and grant
@@ -422,6 +450,16 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   on the environment plane, is a test now.
 - Linking a social account from My account, and confirming a step-up with nothing to
   return to, land on My account instead of the organization's Settings.
+- **Docs say what the app is.** README and the Dockerfile described a Livewire + Volt UI
+  (it is Inertia + React); SECURITY.md said the project was pre-1.0; the console action
+  sweep is marked as describing the pre-Inertia console, superseded by the action layer
+  and tracked by the action parity test; the deployment guide no longer points at Laravel
+  Cloud as where the workers run. `MERGE-PLAN.md`, a working doc that asked to be deleted
+  once executed, is gone.
+- **`docker-compose.yml` reads `APP_KEY` and `CBOX_ID_CRYPTO_KEY` from the environment.**
+  The public throwaway values remain the defaults, so `docker compose up` still works with
+  no setup, under a DEV ONLY banner.
+
 - **Requires `cboxdk/laravel-queue-autoscale` ^4.3** (was ^3.0, never started) and
   `cboxdk/laravel-queue-metrics` ^3.4. `cbox.yaml` and `docker-compose.yml` run
   `queue:autoscale` as the queue process.

@@ -201,6 +201,24 @@ return Application::configure(basePath: dirname(__DIR__))
              * signed in here.
              */
             'oauth/authorize',
+
+            /*
+             * The environment-admin handoff redemption, on the ENVIRONMENT host. The form
+             * that posts here is rendered by the ACCOUNT host, a different origin with a
+             * different session, so it cannot know this host's CSRF token — there is no
+             * request in the flow that could have fetched it. Exempting it is safe because
+             * the token in the body IS the proof CSRF stands in for: it is signed by the
+             * platform, minted for one subject and THIS environment only, short-lived and
+             * single-use, and the membership behind it is re-resolved before anything is
+             * established. A forged cross-site post without such a token establishes
+             * nothing; one WITH a token can only sign the browser in as whoever minted it,
+             * into the environment they already administer — the same reach the GET this
+             * replaced had, minus the URL in everybody's logs.
+             *
+             * THE EXACT PATH. `admin/logout` and every console write under `admin/` ride
+             * an ambient session and keep their token check.
+             */
+            'admin/handoff',
         ]);
 
         // The sidebar pin state is a pure UI preference written by JS

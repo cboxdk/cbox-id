@@ -6,6 +6,17 @@ description: Every client-invokable console action that accepts an id, and the o
 
 # Console action ownership sweep
 
+> **Historical: this describes the pre-Inertia console.** The inventory below was taken
+> when every console mutation was a Volt component method behind `/livewire/update`. That
+> console is gone. Today the id arrives as a **route parameter**, and the shape that
+> replaces this checklist is the action layer (`app/Platform/Actions`, with actions under
+> `app/Actions`): an action declares its scope and input once and is run by one runner for
+> every door, and its lookups are fenced to the organization or environment the route
+> resolves. The console writes that are **not yet** actions are counted by
+> `tests/Feature/Actions/ActionParityTest.php` against `tests/Support/ParityAllowlist.php`,
+> which fails if the number grows — that count is where the remaining sweep is tracked.
+> Read what follows for the rule and for what was found, not as a map of the code today.
+
 An action that takes an id from the client is **directly invokable by the client**. Scoping
 the list a page renders is therefore a display concern, not an authorization control — the
 guarantee has to live in the query that mutates.

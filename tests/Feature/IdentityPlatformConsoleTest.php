@@ -826,3 +826,12 @@ it('refuses to remove a customer\'s member from the environment roster', functio
     // may manage that customer's people.
     expect(freshMembership($target))->not->toBeNull('the member lost their place in their own organization');
 })->group('security');
+
+it('404s a member action aimed at an id that names no membership', function (): void {
+    ['subjectId' => $ownerSubjectId] = provisionAccount();
+    signInAsMember($ownerSubjectId);
+
+    $this->patch(route('members.role', '01JUNKNOWNMEMBER000000000'), ['role' => MembershipRole::Admin->value])
+        ->assertNotFound();
+    $this->delete(route('members.remove', '01JUNKNOWNMEMBER000000000'))->assertNotFound();
+})->group('security');

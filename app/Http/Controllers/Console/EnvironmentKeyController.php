@@ -19,6 +19,8 @@ use App\Platform\EnvironmentKeyScopes;
 use App\Platform\Help\HelpTopic;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
@@ -216,6 +218,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         string $key,
         Memberships $members,
         EnvironmentApiKeys $keys,
+        EnvironmentContext $environments,
         OrganizationActivity $activity,
     ): RedirectResponse {
         $this->assertMayManageEnvironments();
@@ -233,11 +236,21 @@ final readonly class EnvironmentKeyController extends ConsoleController
         }
 
         // Only revoke a key that belongs to the named — and reachable — environment.
-        $found = $keys->forEnvironment($environmentId)->firstWhere('id', $key);
+        //
+        // One row, read INSIDE that environment's scope — the same fence `forEnvironment()`
+        // draws, without hydrating every key the environment ever minted to find one. A
+        // key of another environment is simply not in this scope, so it is a 404 rather
+        // than a quiet bounce.
+        $found = $environments->runAs(
+            GenericEnvironment::of($environmentId),
+            fn (): ?EnvironmentApiKey => EnvironmentApiKey::query()->whereKey($key)->first(),
+        );
+
+        abort_if($found === null, 404);
 
         // An already-revoked key stays revoked and records nothing new: the log is the act
         // that stopped it, not every request naming a row that no longer offers one.
-        if ($found === null || $found->revoked_at !== null) {
+        if ($found->revoked_at !== null) {
             return back();
         }
 

@@ -174,7 +174,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
     // environment whose OWNER is not active, so the tenant host stops resolving at all,
     // falls back to the platform root, and `plane:subject` 404s the whole console. The
     // redemption never reaches a controller.
-    $this->get("/admin/handoff?token={$token}")->assertNotFound();
+    $this->post('/admin/handoff', ['token' => $token])->assertNotFound();
 
     // The INNER check, driven at the controller because the wall above is now the reason
     // an HTTP request cannot reach it. Not redundant with the wall: host resolution is
@@ -185,7 +185,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
 
     $response = app()->call(
         [app(EnvironmentAdminController::class), 'handoff'],
-        ['request' => Request::create('/admin/handoff', 'GET', ['token' => $token])],
+        ['request' => Request::create('/admin/handoff', 'POST', ['token' => $token])],
     );
 
     expect($response)->toBeInstanceOf(RedirectResponse::class)
@@ -204,7 +204,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
  * The chain here crosses HOSTS — root, tenant, root — which the harness expresses because
  * every hop is an absolute URL and one session serves both. That is not what a browser
  * does (each host has its own cookies), but it is the loop the browser walks: the tenant
- * half needs no session at all, only the token in the URL.
+ * half needs no session at all, only the token in the form it is handed.
  *
  * @return array{0: TestResponse, 1: list<string>}
  */
@@ -213,14 +213,48 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
     $response = $test->get($url);
     $chain = [$url];
 
-    for ($hop = 0; $hop < $hops && $response->isRedirect(); $hop++) {
+    for ($hop = 0; $hop < $hops && ($response->isRedirect() || handoffForm($response) !== null); $hop++) {
+        nextRequest();
+
+        // The minting door answers with a self-submitting POST rather than a redirect, so
+        // the token never sits in a URL. A browser submits it at once; so does the walk.
+        $form = handoffForm($response);
+
+        if ($form !== null) {
+            $chain[] = 'POST '.$form['action'];
+            $response = $test->post($form['action'], ['token' => $form['token']]);
+
+            continue;
+        }
+
         $location = (string) $response->headers->get('Location');
         $chain[] = $location;
-        nextRequest();
         $response = $test->get($location);
     }
 
     return [$response, $chain];
+}
+
+/**
+ * The action and token of the handoff page's self-submitting form, or null when the
+ * response is not that page.
+ *
+ * @return array{action: string, token: string}|null
+ */
+function handoffForm(TestResponse $response): ?array
+{
+    $html = (string) $response->getContent();
+
+    if (! $response->isOk()
+        || preg_match('#<form method="post" action="([^"]+/admin/handoff)">#', $html, $action) !== 1
+        || preg_match('#name="token" value="([^"]+)"#', $html, $token) !== 1) {
+        return null;
+    }
+
+    return [
+        'action' => html_entity_decode($action[1]),
+        'token' => html_entity_decode($token[1]),
+    ];
 }
 
 /**
@@ -347,7 +381,11 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     signInAsMember($result->owner->id);
 
     // Same as above: the host the fixture serves on, not the one this file used to name.
-    [$response, $chain] = chainFrom($this, 'https://'.$result->environment->domain.'/admin/handoff?token='.$token);
+    $refused = $this->post('https://'.$result->environment->domain.'/admin/handoff', ['token' => $token]);
+    $refused->assertRedirect();
+    nextRequest();
+
+    [$response, $chain] = chainFrom($this, (string) $refused->headers->get('Location'));
 
     expect($response->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
         ->and(end($chain))->toBe('https://cboxid.com/password/change')

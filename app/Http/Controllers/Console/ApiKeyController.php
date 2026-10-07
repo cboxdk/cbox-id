@@ -137,11 +137,18 @@ final readonly class ApiKeyController extends ConsoleController
         // Only a key that belongs to THIS organization. The id comes from the URL, and a
         // revoke by id alone would let one account's administrator stop another's
         // automation.
-        $found = $keys->forOrganization($organizationId)->firstWhere('id', $key);
+        //
+        // ONE ROW, ASKED FOR BY BOTH KEYS. This used to load every key the organization
+        // had ever minted and pick the one out in PHP — the same fence, at the cost of
+        // the whole table per click. The organization predicate is in the query, so a
+        // foreign id is not a row this request can see: 404, like every other console
+        // lookup, rather than a silent bounce that looked like success.
+        $found = OrganizationApiKey::query()
+            ->where('organization_id', $organizationId)
+            ->whereKey($key)
+            ->first();
 
-        if ($found === null) {
-            return back();
-        }
+        abort_if($found === null, 404);
 
         // A key that is already revoked stays one, and says nothing new: the log records
         // the act that stopped it, not every click on a row that no longer offers one.

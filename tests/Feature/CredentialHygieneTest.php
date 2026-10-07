@@ -18,6 +18,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\PlatformRoot;
@@ -552,3 +553,21 @@ it('does not repeat the organization on a list that is already one organization\
 
     expect($rows->firstWhere('name', 'Editor')['organization'])->toBeNull();
 });
+
+/**
+ * ONE ROW, FENCED IN THE QUERY. The revoke used to load every key the organization had
+ * minted and pick one out in PHP, and answered a foreign or unknown id with a silent
+ * bounce. It is a 404 now, like every other console lookup — and the foreign key is left
+ * exactly as it was.
+ */
+it('404s a workspace key revoke aimed at another organization\'s key, or at no key', function (): void {
+    aKeyManager();
+
+    $other = app(Organizations::class)->create(new NewOrganization('Rival', 'rival-keys'));
+    $theirs = app(OrganizationApiKeys::class)->issue($other->id, 'Their CI', MembershipRole::Developer);
+
+    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', $theirs->key->id))->assertNotFound();
+    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', '01JUNKNOWNKEYID0000000000'))->assertNotFound();
+
+    expect(OrganizationApiKey::query()->whereKey($theirs->key->id)->value('revoked_at'))->toBeNull();
+})->group('security');

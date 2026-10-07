@@ -96,6 +96,7 @@ use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\TargetEnvironment;
+use App\Http\WebRateLimiters;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
@@ -140,9 +141,16 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
         // handle rather than in a session cookie, for the same reason everything else here
         // does: the caller is on somebody else's origin.
+        //
+        // Throttled per (environment, address) on top of the channel's per-KEY ceiling: a
+        // publishable key is public and shared by a customer's whole traffic, so its 600 a
+        // minute is no limit on one caller minting challenges into the cache. The limiter
+        // runs after the key door, so the environment it scopes to is the key's own.
         Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'challenge'])
+            ->middleware('throttle:passkey')
             ->name('frontend.sign-in.passkey.options');
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
+            ->middleware('throttle:passkey')
             ->name('frontend.sign-in.passkey');
     });
 }
@@ -314,9 +322,10 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
     // Opening the link renders a button; pressing it signs in. Mail scanners fetch every
-    // link they see, so a GET that redeemed handed the session to the scanner.
+    // link they see, so a GET that redeemed handed the session to the scanner. Only the
+    // POST looks the token up, so only the POST is throttled ({@see WebRateLimiters}).
     Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->name('magic.redeem');
-    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem.store');
+    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->middleware('throttle:link-token')->name('magic.redeem.store');
 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
@@ -332,9 +341,11 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
         Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
     });
 
-    // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
-    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
-    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->name('passkeys.login');
+    // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof. Both
+    // halves are throttled: the first writes a fresh challenge into the session for any
+    // anonymous caller, the second is a credential check ({@see WebRateLimiters}).
+    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:passkey')->name('passkeys.login.options');
+    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware('throttle:passkey')->name('passkeys.login');
 
     // Social sign-in (Google, GitHub, Microsoft) over OAuth.
     Route::get('/auth/{provider}/redirect', [SocialController::class, 'redirect'])->name('social.redirect');
@@ -370,7 +381,7 @@ Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
     // same two steps, for the same reason: a scanner confirming the address first left the
     // person holding a link that said it was invalid.
     Route::get('/verify-email/{token}', [EmailVerificationController::class, 'show'])->name('verification.verify');
-    Route::post('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->name('verification.verify.store');
+    Route::post('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->middleware('throttle:link-token')->name('verification.verify.store');
 });
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
@@ -512,7 +523,7 @@ Route::middleware('plane:console')->group(function (): void {
     // The link is pasted into mail, Slack or Teams, and every one of those previews it —
     // so opening it renders a button and only the POST spends it.
     Route::get('/setup/{token}', [AdminPortalController::class, 'show'])->name('portal.enter');
-    Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter.store');
+    Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->middleware('throttle:link-token')->name('portal.enter.store');
 });
 
 /*
@@ -696,7 +707,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
     Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
 
-    // Open an environment → signed handoff → its own admin console (no second login).
+    // Open an environment → signed handoff, POSTed by a self-submitting form → its own
+    // admin console (no second login).
     Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
 
     Route::get('/team', [MemberController::class, 'index'])->name('members');
@@ -1009,7 +1021,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // credential is persistence — gate it behind a fresh step-up, symmetric with
     // the sudo required to REMOVE a passkey in settings. BlockDuringImpersonation
     // runs first so an impersonator gets an unambiguous 403, never a step-up prompt.
-    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register.options');
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo', 'throttle:passkey'])->name('passkeys.register.options');
     Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register');
 
     // Explicit account linking — connect a social provider to the signed-in user.
@@ -1043,7 +1055,13 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 | can mint because the root environment belongs to no account.
 */
 Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
+    // The token arrives in the BODY of the account host's self-submitting form, never in
+    // a URL, and only the POST redeems. The GET survives as a refusal, not a door: an old
+    // bookmark or a pasted `?token=` link is sent to the env-admin gate without the token
+    // ever being read — and that gate mints a fresh handoff the proper way, so the person
+    // still lands in the console and the stale credential buys nothing. CSRF-exempt in
+    // bootstrap/app.php, where the reasoning lives.
+    Route::match(['get', 'post'], '/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 
     // The ENVIRONMENT control plane — the account-member admin's env-scoped console
@@ -1538,8 +1556,11 @@ Route::middleware('plane:console')->group(function (): void {
     // Guest-accessible but gated by a signed URL (the token IS the signature; no token
     // table needed). The invitee sets their password and is signed in. The component
     // locks the token so it cannot be swapped after the signed load.
+    //
+    // Throttled on BOTH verbs, unlike the other mailed links: this page looks the token up
+    // to say who is inviting whom, so the GET is a lookup too ({@see WebRateLimiters}).
     Route::get('/invite/{token}/accept', [InvitationAcceptController::class, 'show'])
-        ->middleware('signed')
+        ->middleware(['signed', 'throttle:link-token'])
         ->name('organization.invite.accept');
 
     // SIGNED TOO, and not as belt-and-braces. The token is the whole credential, and the
@@ -1547,7 +1568,7 @@ Route::middleware('plane:console')->group(function (): void {
     // that accepted a bare token would hand back exactly what that signature refuses.
     // The form posts to a URL signed on the page it was rendered from.
     Route::post('/invite/{token}/accept', [InvitationAcceptController::class, 'store'])
-        ->middleware('signed')
+        ->middleware(['signed', 'throttle:link-token'])
         ->name('organization.invite.accept.store');
 });
 

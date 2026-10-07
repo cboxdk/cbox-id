@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\AdminPortalLink;
 use App\Platform\AdminPortal;
 use App\Platform\Enums\PortalScope;
+use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -270,3 +271,24 @@ it('is single-use: a token cannot be redeemed twice (R7)', function () {
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull()
         ->and(app(AdminPortal::class)->redeem($token))->toBeNull();
 });
+
+/**
+ * The id comes from a third party's browser. The bound organization is a predicate in the
+ * lookup, so another organization's domain — or an id that names nothing — is a 404, and
+ * the foreign row is untouched.
+ */
+it('404s a portal domain action aimed at another organization\'s domain, or at no domain', function () {
+    $orgA = gateAdmin('portal-foreign-a');
+    grantFeature($orgA, 'cbox-id-sso');
+    $orgB = gateAdmin('portal-foreign-b');
+    $theirs = app(DomainVerification::class)->add($orgB, 'theirs.example');
+
+    $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
+    expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
+
+    $this->from(route('portal.setup'))->post(route('portal.domains.verify', $theirs->id))->assertNotFound();
+    $this->from(route('portal.setup'))->delete(route('portal.domains.destroy', $theirs->id))->assertNotFound();
+    $this->from(route('portal.setup'))->post(route('portal.domains.verify', '01JUNKNOWNDOMAIN000000000'))->assertNotFound();
+
+    expect(VerifiedDomain::query()->whereKey($theirs->id)->exists())->toBeTrue();
+})->group('security');
