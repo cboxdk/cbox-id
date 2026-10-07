@@ -8,7 +8,49 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **The operator API, `/api/v1/platform`** — the deployment itself as actions, run by the
+  console's Platform pages and by REST alike: `platform.workspaces.create` /
+  `.set_status`, `platform.environments.create` / `.provision`,
+  `platform.organizations.create` / `.set_status` / `.move` (inside a named environment),
+  `platform.operators.create` / `.set_status`. Every write is critical. No key of any kind
+  is accepted: only a platform operator's delegated token carrying `operator:*` scopes
+  (`operator:workspaces:write`, `operator:environments:write`,
+  `operator:organizations:write`, `operator:operators:write`). Statuses take the state
+  you want rather than flipping, so a retry never undoes itself. Spec at
+  `/api/v1/platform/openapi.yaml`.
+- **My account API, `/api/v1/me`** — the person's own profile, sessions, application
+  grants, personal API keys (`/organizations/{id}/api-keys`), passkeys, social links and
+  trusted devices, as actions (`account.*`), behind `account:*` scopes. Only a token the
+  person delegated reaches it; no management key acts as a person. Password, second-factor
+  enrolment, recovery codes and passkey registration stay ceremonies in the browser. Spec
+  at `/api/v1/me/openapi.yaml`.
+- Both planes answer 401 to every bearer until delegated management tokens are issued: the
+  resolver is the `DelegatedTokens` contract (bound to `NoDelegatedTokens`), the one seam
+  that opens them. Until then the console is the only way in.
+- **Custom domains from the workspace plane:** `environments.domain.request`, `.verify`
+  and `.remove` at `/api/v1/workspace/environments/{id}/domain` (scope
+  `environments:write`) — the workspace console's Environment domains page runs the same
+  actions, recorded on the workspace's trail as the key or the member.
+- **Agent requests on the environment plane:** `approvals.list` (`GET /agent-requests`,
+  `approvals:read`) and `approvals.deny` (`POST /agent-requests/{id}/deny`,
+  `approvals:write`) — the environment console's Approvals page denies through it.
+  Approving stays the person's own consent and has no action.
+
 ### Changed
+
+- **The Platform section's customer pages are at `/platform/workspaces`**, with route names
+  `platform.workspaces.*`. `/platform/customers` and `/platform/customers/{id}` answer 301
+  to the new paths, query string kept.
+- Console writes that name an id they cannot reach now answer 404 throughout the actions
+  moved here: an environment domain write for an environment the member cannot reach
+  (was 403), an unknown operator on the roster toggle (was a silent redirect), an
+  organization or parent from another environment in the operator's organization writes
+  (a foreign parent was accepted on create).
+- The parity allowlist names a reason for every UI-only console write, grouped as
+  ceremonies, file downloads, UI preferences and vendor UI. Impersonation (operator and
+  environment admin) is a ceremony: a browser session by definition.
 
 - Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
 

@@ -9,6 +9,7 @@ use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\WorkspaceScopes;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\CurrentUser;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -41,8 +42,38 @@ final readonly class ConsoleSessionPrincipal implements Principal
         match ($action->consoleGate) {
             ConsoleGate::EnvironmentAdmin => $this->scope->assertMayAdministerEnvironment(),
             ConsoleGate::Administer => $this->scope->assertMayAdminister(),
+            ConsoleGate::Operator => $this->assertOperator(),
+            ConsoleGate::Person => $this->assertPerson(),
             default => $this->assertWorkspaceCapability($action->consoleGate),
         };
+    }
+
+    /**
+     * The platform pages' own question, asked of the session that already exists: does the
+     * person signed in run this deployment ({@see ConsoleScope::operator()} — an ACTIVE
+     * operator record behind their subject). The pages 404 a stranger before an action is
+     * reached; this is the refusal for any door that skipped that.
+     *
+     * @throws AuthorizationException
+     */
+    private function assertOperator(): void
+    {
+        if (! $this->scope->isPlatformOperator()) {
+            throw new AuthorizationException('Only a platform operator can do this.');
+        }
+    }
+
+    /**
+     * Somebody is signed in. The account actions ask nothing more, because they are keyed
+     * to that person and take no id of an account to act on.
+     *
+     * @throws AuthorizationException
+     */
+    private function assertPerson(): void
+    {
+        if (! app(CurrentUser::class)->check()) {
+            throw new AuthorizationException('Sign in to change your account.');
+        }
     }
 
     public function supportsIdempotency(): bool

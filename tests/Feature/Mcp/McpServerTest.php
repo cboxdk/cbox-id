@@ -384,6 +384,13 @@ it('offers every action in the registry as a tool, with its own input schema', f
             continue; // Only the owner, in the console: no key holds the Owner role.
         }
 
+        // The operator's and the person's own planes are no key's: never a tool for one.
+        if ($action->plane->personal()) {
+            expect($tools)->not->toHaveKey($action->toolName(), "Personal action {$action->name} is offered to a key.");
+
+            continue;
+        }
+
         expect($tools)->toHaveKey($action->toolName(), message: "Action {$action->name} has no MCP tool.");
 
         $schema = $tools[$action->toolName()]['inputSchema'];

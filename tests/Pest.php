@@ -984,7 +984,7 @@ function targetPlatformEnvironment(string $environmentId): TestResponse
 function platformCustomers(array $query = []): array
 {
     /** @var array{customers: list<array<string, mixed>>, pagination: array<string, mixed>, search: string} $props */
-    $props = (array) test()->get(route('platform.customers', $query))->assertOk()->inertiaProps();
+    $props = (array) test()->get(route('platform.workspaces', $query))->assertOk()->inertiaProps();
 
     return $props;
 }
@@ -992,14 +992,14 @@ function platformCustomers(array $query = []): array
 /** One customer's own page, as props. */
 function platformCustomer(string $organizationId): array
 {
-    return (array) test()->get(route('platform.customers.show', $organizationId))->assertOk()->inertiaProps();
+    return (array) test()->get(route('platform.workspaces.show', $organizationId))->assertOk()->inertiaProps();
 }
 
 /** Onboard a customer the way the list's form does. */
 function createCustomer(array $changes = []): TestResponse
 {
-    return test()->from(route('platform.customers'))
-        ->post(route('platform.customers.store'), [
+    return test()->from(route('platform.workspaces'))
+        ->post(route('platform.workspaces.store'), [
             'name' => 'Northwind',
             'ownerName' => 'Ada Lovelace',
             'ownerEmail' => 'owner@northwind.example',
@@ -1011,22 +1011,22 @@ function createCustomer(array $changes = []): TestResponse
 /** Suspend or reactivate a customer, from either the list or its own page. */
 function toggleCustomer(string $organizationId): TestResponse
 {
-    return test()->from(route('platform.customers.show', $organizationId))
-        ->post(route('platform.customers.toggle', $organizationId));
+    return test()->from(route('platform.workspaces.show', $organizationId))
+        ->post(route('platform.workspaces.toggle', $organizationId));
 }
 
 /** Point the console at one of a customer's own environments, and stay on the customer. */
 function targetCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
 {
-    return test()->from(route('platform.customers.show', $organizationId))
-        ->post(route('platform.customers.target', [$organizationId, $environmentId]));
+    return test()->from(route('platform.workspaces.show', $organizationId))
+        ->post(route('platform.workspaces.target', [$organizationId, $environmentId]));
 }
 
 /** Target one of a customer's environments AND open the tenants inside it. */
 function openCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
 {
-    return test()->from(route('platform.customers.show', $organizationId))
-        ->post(route('platform.customers.open', [$organizationId, $environmentId]));
+    return test()->from(route('platform.workspaces.show', $organizationId))
+        ->post(route('platform.workspaces.open', [$organizationId, $environmentId]));
 }
 
 /** Bootstrap a plane with its first organization and an owner admin. */

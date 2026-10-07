@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Account\RevokeApplication;
+use App\Actions\Account\RevokeOtherSessions;
+use App\Actions\Account\RevokeSession;
+use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\CurrentUser;
 use App\Platform\DeviceLabel;
 use App\Platform\Help\HelpTopic;
 use App\Platform\PlatformAuth;
-use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
@@ -41,6 +44,8 @@ use Inertia\Response;
  */
 final readonly class AccountActivityController extends PageController
 {
+    use RunsActions;
+
     /**
      * How far back the activity list reaches.
      *
@@ -143,74 +148,49 @@ final readonly class AccountActivityController extends PageController
     }
 
     /**
-     * Sign one session out.
-     *
-     * The id is checked against THIS subject's sessions before anything is revoked. Under
-     * Volt the same check had to be written by hand in the action because every action was
-     * a POST anybody signed in could make; it is written by hand here too, and for the same
-     * reason — a route parameter is still the client's.
+     * Sign out one of your sessions through {@see RevokeSession}: looked up with you in the
+     * query, so another person's session id is not found.
      */
-    public function revokeSession(string $session, SessionManager $sessions): RedirectResponse
+    public function revokeSession(string $session): RedirectResponse
     {
-        $subjectId = $this->subjectId();
+        $result = $this->act(RevokeSession::class, ['session_id' => $session]);
 
-        $model = Session::query()
-            ->where('id', $session)
-            ->where('user_id', $subjectId)
-            ->whereNull('revoked_at')
-            ->first();
-
-        // 404, not 403: another person's session id is not a control this reader is failing
-        // to press, it is a row they have no business learning exists.
-        abort_if(! $model instanceof Session, 404);
-
-        $sessions->revoke($model->id);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         /*
          * Signing out the one you are holding is a legitimate thing to want, and it means
          * what it says: the next request has no session, so send them to the door rather
          * than back to a page they are no longer entitled to.
          */
-        if ($model->id === $this->currentSessionId()) {
+        if ($session === $this->currentSessionId()) {
             return redirect()->route('login');
         }
 
         return back()->with('status', 'Signed out of that session.');
     }
 
-    public function revokeOtherSessions(SessionManager $sessions): RedirectResponse
+    /** Sign out everywhere else through {@see RevokeOtherSessions}; the route asks for `sudo`. */
+    public function revokeOtherSessions(): RedirectResponse
     {
-        $subjectId = $this->subjectId();
-        $current = $this->currentSessionId();
+        $result = $this->act(RevokeOtherSessions::class, []);
 
-        Session::query()
-            ->where('user_id', $subjectId)
-            ->whereNull('revoked_at')
-            ->when($current !== null, fn (Builder $query): Builder => $query->whereKeyNot($current))
-            ->pluck('id')
-            ->each(function (mixed $id) use ($sessions): void {
-                if (is_string($id)) {
-                    $sessions->revoke($id);
-                }
-            });
-
-        return back()->with('status', 'Signed out everywhere else.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Signed out everywhere else.');
     }
 
     /**
-     * Withdraw one application's access.
+     * Withdraw one application's access through {@see RevokeApplication}.
      *
      * Not `revokeForUser()`, which signs the person out of everything: that is the right
      * answer to "my account is compromised" and the wrong one to "I do not use that CLI any
      * more", and offering only the blunt version is why people use neither.
      */
-    public function revokeApplication(string $client, RefreshTokens $tokens): RedirectResponse
+    public function revokeApplication(string $client): RedirectResponse
     {
-        // Scoped to the acting subject by the call itself — the client id is all this takes
-        // from the request, and it can only ever withdraw the reader's own grants.
-        $tokens->revokeForUserAndClient($this->subjectId(), $client);
+        $result = $this->act(RevokeApplication::class, ['client_id' => $client]);
 
-        return back()->with('status', 'Access withdrawn. That application can no longer act as you.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access withdrawn. That application can no longer act as you.');
     }
 
     /**

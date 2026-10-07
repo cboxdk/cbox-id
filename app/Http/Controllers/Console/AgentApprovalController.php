@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Approvals\DenyAgentRequest;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Identity\Models\User;
-use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Http\RedirectResponse;
@@ -131,15 +131,21 @@ final readonly class AgentApprovalController extends ConsoleController
         ]);
     }
 
-    public function deny(string $request, BackchannelAuthentication $backchannel): RedirectResponse
+    /**
+     * Deny through {@see DenyAgentRequest} — the action an environment key runs too — which
+     * finds only a request still pending in THIS environment (another plane's is a 404) and
+     * denies it as the request's own subject: denial cannot grant anything, so it is a
+     * fail-closed operator act rather than consent on somebody else's behalf.
+     */
+    public function deny(string $request): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->pending($request);
+        $result = $this->act(DenyAgentRequest::class, ['request_id' => $request]);
 
-        // Act as the request's own subject: denial cannot grant anything, so this is a
-        // fail-closed operator action rather than consent on somebody else's behalf.
-        $backchannel->deny($model->id, $model->user_id);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         /*
          * BACK TO PAGE ONE. Deny the last row on page two and the paginator still asks for
@@ -152,24 +158,5 @@ final readonly class AgentApprovalController extends ConsoleController
     private function assertEnvironmentAdmin(): void
     {
         abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
-    }
-
-    /**
-     * A pending, unexpired request THIS environment owns, or refuse.
-     *
-     * The query is environment-scoped, so an id from another plane resolves to null and is
-     * a 404 — never a cross-tenant mutation.
-     */
-    private function pending(string $id): BackchannelAuthRequest
-    {
-        $request = BackchannelAuthRequest::query()
-            ->whereKey($id)
-            ->where('status', 'pending')
-            ->where('expires_at', '>', now())
-            ->first();
-
-        abort_if($request === null, 404);
-
-        return $request;
     }
 }

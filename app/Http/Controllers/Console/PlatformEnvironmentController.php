@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Platform\AsOperator;
+use App\Actions\Platform\Environments\CreatePlatformEnvironment;
+use App\Actions\Platform\Environments\ProvisionEnvironment;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreatePlatformEnvironmentRequest;
@@ -12,24 +15,14 @@ use App\Platform\Console\EnvironmentLineage;
 use App\Platform\Console\EnvironmentLineages;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Help\HelpTopic;
-use Cbox\Id\Identity\Contracts\PasswordPolicyGuard;
-use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Identity\Exceptions\PolicyViolation;
 use Cbox\Id\Identity\Models\User;
-use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
@@ -136,99 +129,66 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             'activeId' => $activeId,
             'storeHref' => route('platform.environments.store'),
             'targetHref' => route('platform.environment.switch'),
-            'customersHref' => route('platform.customers'),
+            'customersHref' => route('platform.workspaces'),
         ]);
     }
 
-    public function store(CreatePlatformEnvironmentRequest $request, EnvironmentContext $context, KeyManager $keys): RedirectResponse
+    /**
+     * Create an environment through {@see CreatePlatformEnvironment}, the action the
+     * operator API runs too: created WITHOUT the domain — an unverified domain written here
+     * makes the plane unusable rather than reachable — with its signing key warmed. The
+     * operator verifies the domain by DNS, through the same door every other writer uses.
+     */
+    public function store(CreatePlatformEnvironmentRequest $request): RedirectResponse
     {
         $this->assertOperator();
 
         $domain = $request->domain();
 
-        if ($domain !== null && Environment::query()->where('domain', $domain)->exists()) {
-            return back()->withInput()->withErrors([
-                'domain' => 'That domain is already routed to another environment.',
-            ]);
+        $result = $this->act(CreatePlatformEnvironment::class, [
+            'name' => $request->name(),
+            'domain' => $domain,
+        ], ['name' => 'name', 'domain' => 'domain'], 'name');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        // Created WITHOUT the domain — see CreatePlatformEnvironmentRequest for why an
-        // unverified domain written here makes the plane unusable rather than reachable.
-        // The operator runs the same DNS-TXT verification every other writer uses. One
-        // door, one invariant.
-        $environment = Environment::query()->create([
-            'name' => $request->name(),
-            'slug' => $this->uniqueSlug($request->name()),
-            'status' => 'active',
-        ]);
-
-        // Warm the new plane's own signing key so its JWKS/discovery is live now.
-        $context->runAs($environment, static fn () => $keys->activeSigningKey());
+        /** @var array{name: string} $environment */
+        $environment = $result->payload;
 
         return back()->with('status', $domain === null
-            ? 'Environment "'.$environment->name.'" created.'
-            : 'Environment "'.$environment->name.'" created. Add '.$domain.' from the environment\'s domain settings to verify it by DNS — an unverified domain cannot be its issuer.');
+            ? 'Environment "'.$environment['name'].'" created.'
+            : 'Environment "'.$environment['name'].'" created. Add '.$domain.' from the environment\'s domain settings to verify it by DNS — an unverified domain cannot be its issuer.');
     }
 
     /**
-     * Bootstrap a plane: create its first organization and an owner admin. This is how an
-     * operator seeds a brand-new environment so real users can sign in.
+     * Bootstrap a plane — its first organization and an owner admin — through
+     * {@see ProvisionEnvironment}, which asks every question inside the target environment:
+     * an email is unique per plane, and the password policy is the tenant's own.
      */
-    public function provision(
-        ProvisionEnvironmentAdminRequest $request,
-        string $environment,
-        EnvironmentContext $context,
-    ): RedirectResponse {
+    public function provision(ProvisionEnvironmentAdminRequest $request, string $environment): RedirectResponse
+    {
         $this->assertOperator();
 
-        // Resolved from the URL, unscoped, exactly like the list: an environment is not
-        // environment-owned, and the operator is provisioning INTO another plane.
-        $target = $context->withoutScope(
-            static fn (): ?Environment => Environment::query()->find($environment)
-        );
+        $result = $this->act(ProvisionEnvironment::class, [
+            'environment_id' => $environment,
+            'organization_name' => $request->orgName(),
+            'admin_name' => $request->adminName(),
+            'admin_email' => $request->adminEmail(),
+            'admin_password' => $request->adminPassword(),
+        ], [
+            'organization_name' => 'orgName',
+            'admin_name' => 'adminName',
+            'admin_email' => 'adminEmail',
+            'admin_password' => 'adminPassword',
+        ], 'orgName');
 
-        abort_if($target === null, 404);
-
-        /*
-         * Both of these questions can only be answered INSIDE the target environment:
-         * email uniqueness is per-plane, and the password policy is the TENANT's, not
-         * whichever plane the operator console happens to be sitting on. An operator
-         * provisioning into a strict tenant is bound by that tenant's rules.
-         */
-        $problem = $context->runAs($target, function () use ($request): ?array {
-            if (app(Subjects::class)->findByEmail($request->adminEmail()) !== null) {
-                return ['adminEmail', 'A user with that email already exists in this environment.'];
-            }
-
-            try {
-                // No subject exists yet — this call CREATES the admin — so the
-                // no-subject variant, named rather than implied by an omitted argument.
-                app(PasswordPolicyGuard::class)->assertAcceptableForNewSubject($request->adminPassword());
-            } catch (PolicyViolation $violation) {
-                return ['adminPassword', $violation->getMessage()];
-            }
-
-            return null;
-        });
-
-        if ($problem !== null) {
-            return back()->withInput()->withErrors([$problem[0] => $problem[1]]);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $context->runAs($target, function () use ($request): void {
-            $subject = app(Subjects::class)->create($request->adminEmail(), $request->adminName(), $request->adminPassword());
-            User::query()->where('email', $request->adminEmail())->update(['email_verified_at' => now()]);
-
-            $organization = app(Organizations::class)->create(new NewOrganization(
-                name: $request->orgName(),
-                slug: Str::slug($request->orgName()),
-                type: OrganizationType::Customer,
-            ));
-
-            app(Memberships::class)->add($organization->id, $subject->id, MembershipRole::Owner);
-        });
-
-        return back()->with('status', 'Provisioned an organization and admin in "'.$target->name.'".');
+        return back()->with('status', 'Provisioned an organization and admin in "'.AsOperator::environment($environment)->name.'".');
     }
 
     /**
@@ -245,26 +205,13 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             'organizationId' => $lineage->organizationId,
             'organizationName' => $lineage->organizationName,
             'organizationHref' => $lineage->belongsToOrganization() && $lineage->organizationId !== null
-                ? route('platform.customers.show', $lineage->organizationId)
+                ? route('platform.workspaces.show', $lineage->organizationId)
                 : null,
             'projectName' => $lineage->projectName,
             'isPlatformRoot' => $lineage->isPlatformRoot,
             'isUnattached' => $lineage->isUnattached(),
             'note' => $lineage->note(),
         ];
-    }
-
-    private function uniqueSlug(string $name): string
-    {
-        $base = Str::slug($name) ?: 'env';
-        $slug = $base;
-        $n = 2;
-
-        while (Environment::query()->where('slug', $slug)->exists()) {
-            $slug = $base.'-'.$n++;
-        }
-
-        return $slug;
     }
 
     /**

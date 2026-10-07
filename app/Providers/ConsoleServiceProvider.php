@@ -224,7 +224,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         // WORKSPACES, not "Customers": the word the workspace's own console uses for itself,
         // so an operator and the person on the phone to them say the same word.
         $nav->area('platform', 'Platform', 'rocket', 100)
-            ->page('platform.customers', 'Workspaces', feature: 'platform.operator', order: 10)
+            ->page('platform.workspaces', 'Workspaces', feature: 'platform.operator', order: 10)
             ->page('platform.environments', 'Environments', feature: 'platform.operator', order: 20)
             ->page('platform.organizations', 'Organizations', feature: 'platform.operator', order: 30);
 

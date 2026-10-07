@@ -11,9 +11,12 @@ use App\Mcp\McpCaller;
 use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
+use App\Platform\Actions\Principal\DelegatedTokens;
+use App\Platform\Actions\Principal\NoDelegatedTokens;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
+use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Health\ProductionConfigDoctorCheck;
@@ -74,6 +77,12 @@ class AppServiceProvider extends ServiceProvider
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
         $this->app->scoped(EnvironmentApiContext::class);
+
+        // The person a delegated token speaks for, on the planes no key reaches (platform,
+        // account) — and what turns a bearer into one. Recognises nothing until delegated
+        // management tokens are issued; binding their resolver here opens both planes.
+        $this->app->scoped(DelegatedApiContext::class);
+        $this->app->bindIf(DelegatedTokens::class, NoDelegatedTokens::class);
 
         // Who is calling the MCP server on this request — set by AuthenticateMcp, read by
         // every tool. Scoped and cleared after the request, like the key context above.

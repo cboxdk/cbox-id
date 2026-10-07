@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices;
 
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
@@ -83,6 +84,14 @@ class DevicesServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // This module's actions — removing one of your own devices, as the account API's
+        // `DELETE /me/devices/{id}` — named to the registry from here, so the module needs
+        // no edit to app/ and the action leaves with it. As the registry is resolved rather
+        // than at boot, so no provider order can route the list before this directory is on it.
+        $this->app->afterResolving(ActionRegistry::class, static function (ActionRegistry $registry): void {
+            $registry->discoverIn(__DIR__.'/Actions', __NAMESPACE__.'\\Actions');
+        });
+
         // Inert by default. A deployment with no FCM credentials records notifications
         // and sends nothing, rather than failing at send time — a misconfigured push
         // must never be able to break a login.

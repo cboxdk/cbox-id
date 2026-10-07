@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Account\RemovePasskey;
+use App\Actions\Account\UnlinkSocialAccount;
+use App\Actions\Account\UpdateProfile;
+use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\ChangeOwnPasswordRequest;
 use App\Http\Requests\Account\SaveProfileRequest;
@@ -23,6 +27,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\LinkedIdentity;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +54,8 @@ use Inertia\Response;
  */
 final readonly class AccountController extends PageController
 {
+    use RunsActions;
+
     /** Attempts allowed against a freshly-generated TOTP secret before backing off. */
     private const ENROL_ATTEMPTS = 5;
 
@@ -123,25 +130,21 @@ final readonly class AccountController extends PageController
         ]);
     }
 
-    /**
-     * Rename yourself.
-     *
-     * The panel was read-only, which meant the name a person is addressed by across every
-     * screen could only be changed by an administrator — or not at all, if they had none.
-     * That is the most ordinary self-service edit there is.
-     */
-    public function updateProfile(SaveProfileRequest $request, Subjects $subjects): RedirectResponse
+    /** Change the display name through {@see UpdateProfile}, the account plane's action. */
+    public function updateProfile(SaveProfileRequest $request): RedirectResponse
     {
-        $me = app(CurrentUser::class);
+        $result = $this->act(UpdateProfile::class, ['name' => $request->displayName()], ['name' => 'displayName'], 'displayName');
 
-        abort_unless($me->check(), 403);
-
-        $updated = $subjects->update($me->id(), name: $request->displayName());
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         // Pushed back so every surface bound to CurrentUser — the avatar initial, the
         // greeting, the passkey label — reflects the new name on the redirect that follows
         // rather than one request later.
-        $me->refreshSubject($updated);
+        if ($result->value instanceof Subject) {
+            app(CurrentUser::class)->refreshSubject($result->value);
+        }
 
         return back()->with('status', 'Name updated.');
     }
@@ -256,66 +259,25 @@ final readonly class AccountController extends PageController
     }
 
     /**
-     * Remove one passkey.
-     *
-     * Scoped to the acting subject IN THE QUERY rather than checked after the fetch: the id
-     * comes from the page, which is to say from the client.
+     * Remove one of your passkeys through {@see RemovePasskey}. Somebody else's is not found:
+     * a 404, not a 403 — it is a row this reader has no business learning exists.
      */
     public function removePasskey(string $passkey): RedirectResponse
     {
-        $me = app(CurrentUser::class);
+        $result = $this->act(RemovePasskey::class, ['passkey_id' => $passkey]);
 
-        abort_unless($me->check(), 403);
-
-        $deleted = WebAuthnCredential::query()
-            ->where('user_id', $me->id())
-            ->where('id', $passkey)
-            ->delete();
-
-        // 404, not 403: another person's passkey is not a control this reader is failing to
-        // press, it is a row they have no business learning exists.
-        abort_if($deleted === 0, 404);
-
-        return back()->with('status', 'Passkey removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Passkey removed.');
     }
 
     /**
-     * Disconnect a social account.
-     *
-     * LAST-FACTOR GUARD: never strip the only remaining way to sign in. Somebody left with
-     * no password, no passkey and no linked identity cannot get back in, and this page is
-     * the one place that can see all three at once.
+     * Disconnect a social account through {@see UnlinkSocialAccount}, which keeps the
+     * LAST-FACTOR GUARD: never strip the only remaining way to sign in.
      */
-    public function unlinkProvider(string $provider, Subjects $subjects): RedirectResponse
+    public function unlinkProvider(string $provider): RedirectResponse
     {
-        $me = app(CurrentUser::class);
+        $result = $this->act(UnlinkSocialAccount::class, ['provider' => $provider], ['provider' => 'unlink'], 'unlink');
 
-        abort_unless($me->check(), 403);
-
-        $identity = 'social:'.$provider;
-
-        $linked = collect($subjects->linkedIdentities($me->id()));
-
-        abort_unless(
-            $linked->contains(fn (LinkedIdentity $each): bool => $each->provider === $identity),
-            404,
-        );
-
-        $othersRemain = $linked
-            ->reject(fn (LinkedIdentity $each): bool => $each->provider === $identity)
-            ->isNotEmpty();
-
-        $hasPasskey = WebAuthnCredential::query()->where('user_id', $me->id())->exists();
-
-        if (! $othersRemain && ! $hasPasskey && ! $this->hasPassword($me->id())) {
-            return back()->withErrors([
-                'unlink' => 'This is your only sign-in method — add a password or passkey before disconnecting it.',
-            ]);
-        }
-
-        $subjects->unlink($me->id(), $identity);
-
-        return back()->with('status', ucfirst($provider).' disconnected.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', ucfirst($provider).' disconnected.');
     }
 
     public function signOutOtherSessions(SessionManager $sessions): RedirectResponse

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Workspace\Environments\RemoveEnvironmentDomain;
+use App\Actions\Workspace\Environments\RequestEnvironmentDomain;
+use App\Actions\Workspace\Environments\VerifyEnvironmentDomain;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RequestEnvironmentDomainRequest;
 use App\Platform\Help\HelpTopic;
-use App\Platform\OrganizationActivity;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +33,11 @@ use Inertia\Response;
  * A READ IS REDIRECTED AND A WRITE IS REFUSED. Somebody arriving here who may not manage
  * environments followed a link or typed a URL, and the console sends them where they can
  * be; a write that fails the same question has nowhere to be sent.
+ *
+ * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Environments/*Domain`), the same one a
+ * workspace key runs at `/api/v1/workspace/environments/{id}/domain` — and it resolves
+ * the environment against the ones this person may reach before any service sees the
+ * id, so somebody else's environment is not found rather than refused.
  */
 final readonly class EnvironmentDomainController extends ConsoleController
 {
@@ -77,90 +83,57 @@ final readonly class EnvironmentDomainController extends ConsoleController
         ]);
     }
 
-    public function store(RequestEnvironmentDomainRequest $request, Memberships $members, EnvironmentDomains $domains): RedirectResponse
+    /**
+     * Ask for a domain through {@see RequestEnvironmentDomain} — the action a workspace key
+     * runs too. The environment is resolved there, against the environments this person
+     * may reach, before any service sees the id: one they cannot reach is not found.
+     */
+    public function store(RequestEnvironmentDomainRequest $request): RedirectResponse
     {
-        $environmentId = $this->writable($request->environmentId(), $members);
+        abort_unless($this->scope->capabilities()?->canManageEnvironments() === true, 403);
 
-        try {
-            $domains->request($environmentId, $request->domain());
-        } catch (InvalidCustomDomain $e) {
-            // The service's own sentence, on the field that caused it: it names what is
-            // wrong with the domain, which is something the person can act on.
-            return back()->withInput()->withErrors(['domain' => $e->getMessage()]);
-        }
+        $result = $this->act(RequestEnvironmentDomain::class, [
+            'environment_id' => $request->environmentId(),
+            'domain' => $request->domain(),
+        ], ['domain' => 'domain'], 'domain');
 
-        return back()->with('status', 'Add the TXT record below, then verify.');
-    }
-
-    public function verify(Request $request, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): RedirectResponse
-    {
-        $environmentId = $this->writable(trim($request->string('environment')->toString()), $members);
-
-        $result = $domains->verify($environmentId);
-
-        if (! $result->verified) {
-            /*
-             * NOT AN ERROR ON THE DOMAIN FIELD. The domain is fine and the record is
-             * probably right — DNS simply has not propagated — so this says what to do
-             * (wait, try again) rather than implying the value needs correcting.
-             */
-            return back()->withErrors([
-                'verify' => 'The DNS TXT record isn\'t visible yet. DNS can take a few minutes to propagate — try again shortly.',
-            ]);
-        }
-
-        $organizationId = $this->scope->organizationId();
-
-        if ($organizationId !== null) {
-            $activity->record(
-                $organizationId,
-                'organization.custom_domain_verified',
-                $this->scope->actorId(),
-                targetType: 'environment',
-                targetId: $environmentId,
-                context: ['domain' => $result->domain],
-                request: $request,
-            );
-        }
-
-        return back()->with('status', $result->domain.' is verified and now serves this environment.');
-    }
-
-    public function destroy(Request $request, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): RedirectResponse
-    {
-        $environmentId = $this->writable(trim($request->string('environment')->toString()), $members);
-
-        $domains->clear($environmentId);
-
-        $organizationId = $this->scope->organizationId();
-
-        if ($organizationId !== null) {
-            $activity->record(
-                $organizationId,
-                'organization.custom_domain_removed',
-                $this->scope->actorId(),
-                targetType: 'environment',
-                targetId: $environmentId,
-                request: $request,
-            );
-        }
-
-        return back()->with('status', 'Custom domain removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Add the TXT record below, then verify.');
     }
 
     /**
-     * The environment this write may act on, or a refusal.
-     *
-     * The capability AND the reachability, together and before anything else runs: an id
-     * the caller cannot reach must never become an argument to a service that resolves it
-     * unscoped.
+     * Verify through {@see VerifyEnvironmentDomain}. A record that is not visible yet is
+     * NOT AN ERROR ON THE DOMAIN FIELD: the domain is fine and the record is probably
+     * right — DNS simply has not propagated — so the refusal lands on `verify` and says
+     * what to do rather than implying the value needs correcting.
      */
-    private function writable(string $environmentId, Memberships $members): string
+    public function verify(Request $request): RedirectResponse
     {
         abort_unless($this->scope->capabilities()?->canManageEnvironments() === true, 403);
-        abort_unless(in_array($environmentId, $this->reachable($members), true), 403);
 
-        return $environmentId;
+        $result = $this->act(VerifyEnvironmentDomain::class, [
+            'environment_id' => trim($request->string('environment')->toString()),
+        ], fallback: 'verify');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var array{domain: string|null} $domain */
+        $domain = $result->payload;
+
+        return back()->with('status', ($domain['domain'] ?? 'The domain').' is verified and now serves this environment.');
+    }
+
+    /** Remove the domain through {@see RemoveEnvironmentDomain}, recorded on the workspace's trail. */
+    public function destroy(Request $request): RedirectResponse
+    {
+        abort_unless($this->scope->capabilities()?->canManageEnvironments() === true, 403);
+
+        $result = $this->act(RemoveEnvironmentDomain::class, [
+            'environment_id' => trim($request->string('environment')->toString()),
+        ], ['domain' => 'domain'], 'domain');
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Custom domain removed.');
     }
 
     /**

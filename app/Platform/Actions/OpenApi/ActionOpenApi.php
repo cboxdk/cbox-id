@@ -186,6 +186,14 @@ final readonly class ActionOpenApi
     {
         $sentence = "Requires scope `{$action->scope}`";
 
+        if ($action->plane === ActionPlane::Platform) {
+            return $sentence.' on an access token delegated by an active platform operator. No management key is accepted.';
+        }
+
+        if ($action->plane === ActionPlane::Account) {
+            return $sentence.' on an access token you delegated; it acts on your own account only. No management key is accepted.';
+        }
+
         if ($action->plane !== ActionPlane::Workspace) {
             return $sentence.'.';
         }

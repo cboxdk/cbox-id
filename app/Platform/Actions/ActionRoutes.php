@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Http\Controllers\Api\ActionController;
+use App\Http\Middleware\AuthenticateDelegatedApi;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -29,13 +30,29 @@ final class ActionRoutes
         self::register(ActionPlane::Workspace);
     }
 
+    /**
+     * The operator API: only a platform operator's delegated token, never a key
+     * ({@see AuthenticateDelegatedApi}).
+     */
+    public static function platform(): void
+    {
+        self::register(ActionPlane::Platform);
+    }
+
+    /** A person's own account: only a token that person delegated, never a key. */
+    public static function account(): void
+    {
+        self::register(ActionPlane::Account);
+    }
+
     /** The route middleware an action is guarded by on its plane. */
     public static function middleware(ActionDefinition $action): string
     {
         return match ($action->plane) {
-            ActionPlane::Environment => 'env.api',
-            ActionPlane::Workspace => 'workspace.api',
-        }.':'.$action->scope;
+            ActionPlane::Environment => 'env.api:',
+            ActionPlane::Workspace => 'workspace.api:',
+            ActionPlane::Platform, ActionPlane::Account => 'delegated.api:'.$action->plane->value.',',
+        }.$action->scope;
     }
 
     private static function register(ActionPlane $plane): void

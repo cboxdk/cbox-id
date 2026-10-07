@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Actions\ActionRunner;
 use App\Rules\NotBreached;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -97,6 +98,13 @@ it('screens every password-accepting flow against the breach corpus', function (
          */
         $context = $source.consumersOf($file);
 
+        /*
+         * AND THE ACTION A CONTROLLER RUNS. A console write that became an action keeps its
+         * screening in the action — the one place every door goes through — so the
+         * controller that hands the password over is judged with it.
+         */
+        $context .= actionsRunBy($context);
+
         // A component "accepts a password" when it validates one into a real credential.
         // Detect by what the component DOES, not by one key spelling: account.blade.php
         // validates 'newPassword', so a 'password' => [...] pattern missed it entirely.
@@ -186,6 +194,27 @@ function requestRulesReachableFrom(string $source): string
             if (is_string($path) && is_file($path)) {
                 $extra .= (string) file_get_contents($path);
             }
+        }
+    }
+
+    return $extra;
+}
+
+/**
+ * The actions $source imports, as source: where a console write that became an action
+ * screens what it is given ({@see ActionRunner}).
+ */
+function actionsRunBy(string $source): string
+{
+    preg_match_all('/^use App\\\\Actions\\\\([A-Za-z0-9\\\\]+);/m', $source, $matches);
+
+    $extra = '';
+
+    foreach (array_unique($matches[1]) as $class) {
+        $path = base_path('app/Actions/'.str_replace('\\', '/', $class).'.php');
+
+        if (is_file($path)) {
+            $extra .= (string) file_get_contents($path);
         }
     }
 

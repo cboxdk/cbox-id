@@ -104,6 +104,14 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage custom domains',
             'description' => 'Add, verify and remove the custom domain this environment is served on.',
         ],
+        'approvals:read' => [
+            'label' => 'Read agent requests',
+            'description' => 'List the pending requests from agents to act as one of this environment\'s people (OIDC CIBA): which app, for whom, and what it asks.',
+        ],
+        'approvals:write' => [
+            'label' => 'Deny agent requests',
+            'description' => 'Deny a pending agent request. Denying grants nothing; approving is only ever the person\'s own act.',
+        ],
     ];
 
     public function knows(string $scope): bool

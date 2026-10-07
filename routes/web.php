@@ -1503,19 +1503,22 @@ Route::prefix('platform')->group(function (): void {
         // cboxdk/laravel-queue-monitor under `/platform/queues/monitor`, behind the same
         // operator gate plus the host bulkhead — see config/queue-monitor.php.
         Route::get('/queues', PlatformQueuesController::class)->name('platform.queues');
-        Route::get('/customers', [PlatformCustomerController::class, 'index'])->name('platform.customers');
-        Route::post('/customers', [PlatformCustomerController::class, 'store'])->name('platform.customers.store');
+        // WORKSPACES — the customers on the install. `/customers` until the console's own
+        // word for a customer became the URL's too; the old paths answer 301 (see the
+        // moved-pages table below), and the writes, which nothing bookmarks, simply moved.
+        Route::get('/workspaces', [PlatformCustomerController::class, 'index'])->name('platform.workspaces');
+        Route::post('/workspaces', [PlatformCustomerController::class, 'store'])->name('platform.workspaces.store');
 
-        // `platform.customers.show`, not `platform.account`. The console derives both the
+        // `platform.workspaces.show`, not `platform.workspace`. The console derives both the
         // eyebrow above the page title and the lit rail entry from the route name by the
         // same prefix rule ({@see \App\Platform\Navigation\NavPage::owns()}), so a detail
         // page named as a CHILD of its list gets "Platform" over its heading and keeps
-        // Accounts lit in the rail without a single hand-written label. `platform.organization`
+        // Workspaces lit in the rail without a single hand-written label. `platform.organization`
         // predates that rule and has to pass its own eyebrow; this one does not.
-        Route::get('/customers/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.customers.show');
-        Route::post('/customers/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.customers.toggle');
-        Route::post('/customers/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.customers.target');
-        Route::post('/customers/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.customers.open');
+        Route::get('/workspaces/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.workspaces.show');
+        Route::post('/workspaces/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.workspaces.toggle');
+        Route::post('/workspaces/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.workspaces.target');
+        Route::post('/workspaces/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.workspaces.open');
         Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
         Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('platform.organizations.store');
         Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('platform.organization');
@@ -1647,6 +1650,10 @@ foreach ([
     '/api-keys' => '/keys/workspace',
     '/environment-keys' => '/keys',
     '/organization-settings' => '/workspace-settings',
+
+    // The platform section: a customer is a workspace, in the URL as on the page.
+    '/platform/customers' => '/platform/workspaces',
+    '/platform/customers/{organization}' => '/platform/workspaces/{organization}',
 
     // The environment console.
     '/admin/applications' => '/admin/apps',

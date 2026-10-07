@@ -118,7 +118,7 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
     // and the 404 is what proves the rail is not the authorization — a member who types
     // the URL is turned away by AuthenticateOperator whatever the nav says.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
-        ->and(railRoutes())->not->toContain('platform.customers')
+        ->and(railRoutes())->not->toContain('platform.workspaces')
         ->and(railRoutes())->not->toContain('platform.environments')
         ->and(railRoutes())->not->toContain('platform.operators');
 
@@ -166,7 +166,7 @@ it('gives the platform pages to an operator, in the same rail', function (): voi
 
     $hrefs = collect($shell['areas'])->pluck('href');
 
-    expect($hrefs)->toContain(route('platform.customers'))
+    expect($hrefs)->toContain(route('platform.workspaces'))
         ->and($hrefs)->toContain(route('platform.operators'))
         // …and a customer area beside them, which is the whole claim: one rail, both
         // altitudes, no second shell to change into.

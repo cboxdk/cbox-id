@@ -478,10 +478,10 @@ it('has no accessibility issues on the ported platform console pages', function 
  */
 dataset('platform pages', [
     'environments' => ['/platform', 'Environments'],
-    'customers' => ['/platform/customers', 'Workspaces'],
+    'customers' => ['/platform/workspaces', 'Workspaces'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
-    'customer' => ['/platform/customers/first', 'Acme'],
+    'customer' => ['/platform/workspaces/first', 'Acme'],
     'organizations' => ['/platform/organizations', 'Organizations'],
     // The tenant's OWN page: a usage grid, a member table with an impersonation form on
     // every row, an entitlement table and an activity table — the densest page on the plane.
