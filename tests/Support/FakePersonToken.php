@@ -65,6 +65,17 @@ readonly class FakePersonToken implements PersonPrincipal
         return null;
     }
 
+    public function approverEnvironmentId(): ?string
+    {
+        return null;
+    }
+
+    /** A person's own account and the operator console reach no customer organization. */
+    public function confinedToOrganization(): ?string
+    {
+        return null;
+    }
+
     public function subjectId(): string
     {
         return $this->subjectId;
