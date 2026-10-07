@@ -1,9 +1,9 @@
 name: Build Image
 
 # Builds the cbox-id runtime image FROM the public cbox php-fpm-nginx base and
-# pushes it to ghcr.io/cboxdk/cbox-id. Runs on the org self-hosted runners
-# (same fleet as php-baseimages). No secrets: all deps are public, push uses the
-# built-in GITHUB_TOKEN.
+# pushes it to ghcr.io/cboxdk/cbox-id. Runs on GitHub-hosted runners: the repository is
+# public, so they cost nothing, and the org's own runners are for private repositories.
+# No secrets: all deps are public, push uses the built-in GITHUB_TOKEN.
 
 on:
   push:
@@ -20,11 +20,10 @@ concurrency:
 
 jobs:
   build:
-    # Native amd64 on the self-hosted runners. Guarded so it NEVER runs for a
-    # fork pull_request or a non-canonical repo — a self-hosted runner has host
-    # access, so untrusted PR code must not reach it.
+    # Native amd64. Guarded so it never runs for a fork pull_request or a
+    # non-canonical repo: this job holds `packages: write`.
     if: github.repository == 'cboxdk/cbox-id' && github.event_name != 'pull_request'
-    runs-on: [self-hosted, linux, x64, buildx, cbox]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
@@ -67,8 +66,9 @@ jobs:
         with:
           context: .
           push: true
-          # arm64 disabled: the runners are amd64 and QEMU-emulated arm64 builds
-          # blow the timeout. Re-enable once a native ARM runner exists.
+          # amd64 only: QEMU-emulated arm64 blows the timeout. GitHub's native
+          # `ubuntu-24.04-arm` runners are free for public repositories, so arm64 can
+          # come back as a second native job merged into one manifest.
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

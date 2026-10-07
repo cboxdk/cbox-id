@@ -12,6 +12,8 @@ use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Health\ConsoleParityHealthCheck;
+use App\Platform\Health\ProductionConfigDoctorCheck;
+use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\OrganizationApiContext;
 use Cbox\Dns\Dns;
@@ -85,6 +87,8 @@ class AppServiceProvider extends ServiceProvider
         $checks = $this->app->make(HealthChecks::class);
         $checks->add($this->app->make(TenancyHealthCheck::class));
         $checks->add($this->app->make(ConsoleParityHealthCheck::class));
+        $checks->add($this->app->make(SchedulerDoctorCheck::class));
+        $checks->add($this->app->make(ProductionConfigDoctorCheck::class));
 
         // Real email never leaves a sandbox environment.
         Event::listen(MessageSending::class, SuppressSandboxMail::class);

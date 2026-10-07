@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Environment;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Environment\CreateAppRequest;
 use App\Http\Resources\Environment\AppResource;
+use App\Platform\ScopeCatalog;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
@@ -51,8 +52,19 @@ final class AppController extends Controller
         }
 
         try {
+            $blueprint = $request->blueprint();
+            $reserved = ScopeCatalog::reservedAmong($blueprint->scopes);
+
+            if ($reserved !== []) {
+                return $this->refuse(
+                    'scope_not_grantable',
+                    'A management key cannot give an app '.implode(', ', $reserved).'. Grant it in the console, on the app\'s Scopes page.',
+                    422,
+                );
+            }
+
             $registered = $clients->import(
-                $request->blueprint(),
+                $blueprint,
                 $organizationId,
                 $request->jwks(),
                 AuditActor::service($this->actingKey()->id),

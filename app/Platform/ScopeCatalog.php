@@ -24,6 +24,35 @@ final class ScopeCatalog
     public const PLATFORM_API = 'Platform API';
 
     /**
+     * Platform scopes a management KEY may not hand an app. Each is authority over data
+     * the key itself was never given — every stored secret, every person's permissions —
+     * and a key that can only register apps (`apps:write`) must not be able to mint itself
+     * that authority by creating an app that holds it and asking for a token. An
+     * administrator grants them in the console; the management API refuses them until it
+     * has a scope of its own for this.
+     *
+     * Not here, deliberately:
+     *  - `vault.lease` opens nothing without a grant from a holder of `vault.manage`;
+     *  - `apps.manifest` lets an app declare ITS OWN roles and nothing else, and a backend
+     *    registering its app and publishing its manifest is the documented way to build on
+     *    Cbox ID (tests/Feature/AppBuiltOnCboxIdChainTest.php).
+     *
+     * @var list<string>
+     */
+    public const array RESERVED_FOR_CONSOLE = ['vault.manage', 'decisions:read'];
+
+    /**
+     * The reserved platform scopes among $scopes.
+     *
+     * @param  list<string>  $scopes
+     * @return list<string>
+     */
+    public static function reservedAmong(array $scopes): array
+    {
+        return array_values(array_intersect($scopes, self::RESERVED_FOR_CONSOLE));
+    }
+
+    /**
      * @return list<array{key: string, label: string, description: string, category: string, recommended: bool, consent?: string}>
      */
     public function all(): array

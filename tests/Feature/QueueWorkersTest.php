@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Health\QueueWorkersDoctorCheck;
 use App\Platform\Health\QueueWorkersHealthCheck;
+use App\Platform\Health\SchedulerHeartbeat;
 use App\Platform\Queues\CacheManagerHeartbeat;
 use App\Platform\Queues\Contracts\ManagerHeartbeat;
 use App\Platform\Queues\Contracts\QueueHealth;
@@ -69,6 +70,9 @@ function jobWaitingFor(int $seconds): void
 function healthStatus(): array
 {
     config(['health.security.token' => 'probe-token', 'health.cache.enabled' => false]);
+
+    // The scheduler shares this endpoint; a live one keeps the status code about the queue.
+    SchedulerHeartbeat::beat();
 
     $response = test()->getJson('/health/status?token=probe-token');
     $check = $response->json('operations.checks.queue_workers');

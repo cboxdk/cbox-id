@@ -6,12 +6,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\RequireScope;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Exceptions\LeaseDenied;
 use Cbox\Id\TokenVault\Exceptions\SecretNotFound;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,26 +30,54 @@ use Illuminate\Http\Request;
 final class VaultController extends Controller
 {
     /**
-     * The organization the CALLER is entitled to act within, taken from the verified
-     * access token — never from the request body.
+     * The organization the CALLER is entitled to act within — decided by the APP the token
+     * was issued to, and never by the token's `org` claim alone.
      *
-     * This is the vault's tenancy boundary. Reading it from input would let any caller
-     * label a secret with, or reach a secret belonging to, an organization that is not
-     * theirs; the body previously carried `owner_type`/`owner_id` directly. A token with
-     * no org claim addresses only unowned (platform) secrets, which is the operator's
-     * own set — not a wildcard.
+     * This is the vault's tenancy boundary. It used to be the `org` claim and nothing else,
+     * and for a user-delegated token that claim is the PERSON's current organization, not
+     * the app's. So any member — not just an administrator — who consented to an app
+     * holding `vault.manage` handed that app rotate, revoke and grant over their whole
+     * organization's vault, even when the app belonged to another organization.
+     *
+     * Now:
+     *  - an app an ORGANIZATION owns acts in that organization only, and a token that names
+     *    a different one is refused outright;
+     *  - an app the ENVIRONMENT owns (the developer's own product, already trusted with the
+     *    whole environment) acts in the organization its token names, or — with none, as a
+     *    machine token — in the environment's own unowned secrets;
+     *  - a token whose app this environment does not know is refused.
+     *
+     * A refusal is a 403 with no detail. Callers on the lease path turn it into the vault's
+     * uniform `lease_denied`.
+     *
+     * @throws AuthorizationException when the token's app may not act in the vault here
      */
     private function owner(Request $request): ?VaultOwner
     {
         $token = $request->attributes->get('cbox_token');
 
-        if (! $token instanceof Introspection) {
-            return null;
+        if (! $token instanceof Introspection || $token->clientId === null) {
+            throw new AuthorizationException('This token may not use the vault.');
         }
 
-        $org = $token->claims['org'] ?? null;
+        $client = Client::query()->where('client_id', $token->clientId)->first();
 
-        return is_string($org) && $org !== '' ? VaultOwner::organization($org) : null;
+        if ($client === null) {
+            throw new AuthorizationException('This token may not use the vault.');
+        }
+
+        $claimed = $token->claims['org'] ?? null;
+        $claimed = is_string($claimed) && $claimed !== '' ? $claimed : null;
+
+        if ($client->organization_id !== null) {
+            if ($claimed !== null && $claimed !== $client->organization_id) {
+                throw new AuthorizationException('This token may not use the vault.');
+            }
+
+            return VaultOwner::organization($client->organization_id);
+        }
+
+        return $claimed === null ? null : VaultOwner::organization($claimed);
     }
 
     /** Ingest a downstream credential, sealed at rest. */
@@ -149,7 +179,7 @@ final class VaultController extends Controller
 
         try {
             $lease = $vault->lease($id, $token->clientId, $request->string('purpose')->toString(), $this->owner($request));
-        } catch (LeaseDenied) {
+        } catch (LeaseDenied|AuthorizationException) {
             // Uniform on purpose (see the docblock): unknown, revoked, expired and
             // ungranted are one indistinguishable refusal. The `message` is a CONSTANT
             // so carrying the API's standard envelope adds no signal to enumerate with.
