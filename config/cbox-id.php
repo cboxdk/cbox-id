@@ -38,6 +38,61 @@ return [
          * all — a field OpenID Connect Discovery marks REQUIRED.
          */
         'authorization_endpoint_path' => '/oauth/authorize',
+
+        /*
+         * Dynamic Client Registration (RFC 7591) at `/oauth/register`, in the `mcp`
+         * profile by default: anybody may register, but only a PUBLIC client (no secret,
+         * PKCE at /authorize), with the authorization-code and refresh grants, https or
+         * loopback redirect URIs, and the scopes of the resources open to self-registered
+         * clients — this app's `/mcp` (see App\Mcp\McpProtectedResources) — plus the
+         * protocol scopes. It is how Claude Code and other MCP clients sign a person in
+         * knowing nothing but the server's URL.
+         *
+         * Nothing such a client receives is the person's without their say: the consent
+         * screen can never be skipped for it, and every call is bounded by what the person
+         * may do themselves. `max_per_ip_per_hour` (CBOX_ID_DCR_MAX_PER_IP_PER_HOUR, 20)
+         * caps how many one address registers, and the prune below sweeps the ones nobody
+         * uses.
+         *
+         * The framework default is `disabled`. `CBOX_ID_DCR_MODE` still wins:
+         * `disabled`, `protected` (initial access token required — pair with
+         * CBOX_ID_DCR_INITIAL_ACCESS_TOKEN) or `open` (any client, any grant on the
+         * allow-list — what a self-hosted `cbox` CLI that registers ITSELF with the device
+         * grant needs; provisioning it with `php artisan cbox-id:cli:client` is better).
+         */
+        'dynamic_registration' => [
+            'mode' => env('CBOX_ID_DCR_MODE', 'mcp'),
+        ],
+
+        /*
+         * Client ID Metadata Documents: an MCP client may present the https URL of a JSON
+         * document describing itself as its `client_id`, and skip registration. ON here
+         * (the framework's default is off): it is the MCP specification's preferred way in,
+         * and nothing is stored — the document is fetched through the SSRF guard, cached,
+         * and the client is always shown on the consent screen with the host that
+         * published it. `CBOX_ID_CIMD_ENABLED=false` turns it off; the fetch limits keep
+         * the framework's `CBOX_ID_CIMD_*` defaults.
+         */
+        'client_id_metadata_documents' => [
+            'enabled' => (bool) env('CBOX_ID_CIMD_ENABLED', true),
+        ],
+    ],
+
+    /*
+     * The retention sweep. Only the key this app changes is restated; every other table
+     * keeps the framework's default and its `CBOX_ID_PRUNE_*` variable.
+     *
+     * `oauth_clients`: SELF-REGISTERED clients (RFC 7591) nobody has used for this many
+     * days and that hold no live refresh token are removed. Open registration in the `mcp`
+     * profile means anyone can create one, so the table would otherwise grow with every
+     * agent somebody tried once. The framework leaves it off; 30 days here. A client an
+     * administrator registered is never swept. CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS=null
+     * keeps them all.
+     */
+    'prune' => [
+        'retention_days' => [
+            'oauth_clients' => env('CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS', 30),
+        ],
     ],
 
     /*

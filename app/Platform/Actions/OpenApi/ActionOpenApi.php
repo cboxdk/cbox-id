@@ -7,6 +7,7 @@ namespace App\Platform\Actions\OpenApi;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\WorkspaceScopes;
 
@@ -101,6 +102,12 @@ final readonly class ActionOpenApi
         ];
 
         $operation['parameters'] = $parameters;
+
+        // A person's access token runs the actions their own console offers — and the
+        // document says so where it is true, rather than on every operation of the plane.
+        if ($action->plane === ActionPlane::Environment && $action->consoleGate === ConsoleGate::Administer) {
+            $operation['security'] = [['EnvironmentApiKey' => []], ['ManagementAccessToken' => []]];
+        }
 
         if (! $reads && $rest !== []) {
             $required = array_values(array_map(static fn (Field $field): string => $field->name, array_filter($rest, static fn (Field $field): bool => $field->isRequired())));

@@ -43,14 +43,22 @@ final class CliBootstrapController
 
         $issuer = $issuers->issuer();
 
+        $signIn = CliClient::signIn($client);
+
         return new JsonResponse([
             'issuer' => $issuer,
             'client_id' => $client->client_id,
-            'scopes' => CliClient::SCOPES,
-            'grant_types' => CliClient::GRANTS,
+            // The sign-in scopes AND the management plane's: `cbox login` asks for these.
+            'scopes' => $signIn['scopes'],
+            'grant_types' => $signIn['grant_types'],
+            // The RFC 8707 `resource` to name when redeeming the device code, so the token
+            // is audienced to this environment's management plane — good at `/mcp` and on
+            // the REST environment API alike, as the person who approved it.
+            'resource' => $signIn['resource'],
             // Where the management planes live, so the CLI can save an endpoint
             // alongside the sign-in rather than making one up from the issuer.
             'api_base' => rtrim($issuer, '/').'/api/v1',
+            'mcp_url' => $signIn['resource'],
         ]);
     }
 }

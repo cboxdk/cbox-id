@@ -1,11 +1,15 @@
 import { useForm, usePage } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Field, Icon, Input, PageHeader } from '@/ui';
+import { Button, Field, Icon, Input, PageHeader, Pill } from '@/ui';
 
 interface ScopeRow {
     scope: string;
     label: string;
+    /** A management-plane scope: what the device may DO as this person. */
+    management?: boolean;
+    /** Some critical action needs it. */
+    critical?: boolean;
 }
 
 type Props = PageProps<{
@@ -140,14 +144,36 @@ function Consent({
                         {client.scopes.map((row) => (
                             <li key={row.scope} className="flex items-center gap-2.5 text-sm">
                                 <Icon
-                                    name="check"
+                                    name={row.critical ? 'warning' : 'check'}
                                     className="w-4 h-4 shrink-0"
-                                    style={{ color: 'var(--success-strong)' }}
+                                    style={{
+                                        color: row.critical
+                                            ? 'var(--danger-strong)'
+                                            : 'var(--success-strong)',
+                                    }}
                                 />
                                 <span>{row.label}</span>
+                                {row.critical && (
+                                    <Pill tone="destructive" dot={false}>
+                                        Critical
+                                    </Pill>
+                                )}
                             </li>
                         ))}
                     </ul>
+                    {/*
+                        A CLI signed in with management scopes acts as this person on the
+                        management plane — say what bounds it, and that critical actions will
+                        still come back here to be approved.
+                    */}
+                    {client.scopes.some((row) => row.management === true) && (
+                        <p className="mt-3 text-xs" style={{ color: 'var(--muted)' }}>
+                            Anything it does as you is limited to what you may do yourself, and
+                            recorded in the audit log.
+                            {client.scopes.some((row) => row.critical === true) &&
+                                ' Critical actions still wait for your approval on your device, every time.'}
+                        </p>
+                    )}
                 </>
             )}
 

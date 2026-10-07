@@ -29,6 +29,15 @@ return [
         'cancel' => 'Cancel',
         'authorize' => 'Authorize',
         'redirect_notice' => 'You’ll be redirected to :host after authorizing.',
+        // A client that registered itself (RFC 7591, or a client ID metadata document).
+        'self_registered_owner' => 'the app itself',
+        'self_registered' => 'This app registered itself. Nobody at :account has reviewed it — only continue if you started this sign-in yourself.',
+        'published_by' => 'Described by :host — the one thing about this app that has been checked.',
+        'about_app' => 'About this app',
+        // Management-plane scopes an agent acts with as the person.
+        'critical' => 'Critical',
+        'acts_as_you' => 'Anything it does as you is limited to what you may do yourself, and recorded in the audit log.',
+        'critical_notice' => 'Critical actions still wait for your approval on your device, every time.',
 
         /*
          * What the person is shown for each BUILT-IN scope ({@see \App\Platform\ScopeCatalog}
@@ -53,6 +62,7 @@ return [
         'expired' => 'This authorization request has expired or was already used. Please start again.',
         'par_required' => 'This server requires pushed authorization requests. Send the request to /oauth/par first.',
         'unknown_client' => 'Unknown client. This application is not registered with Cbox ID.',
+        'client_document' => 'This application’s description could not be read. It is published at the address the application gave as its ID, and that document is missing, unreachable or invalid.',
         'redirect_mismatch' => 'The redirect URI does not match any registered for this application.',
         'stale' => 'This authorization request can no longer be completed. Please start again.',
         'account_attention' => 'Your account needs attention before you can continue. Please sign in again.',

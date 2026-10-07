@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\CurrentUser;
+use App\Platform\OAuth\ConsentScopes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\DeviceAuthorization;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -224,7 +225,7 @@ final readonly class DeviceApprovalController extends PageController
     /**
      * Resolve a user code to the client and scopes behind it, or null.
      *
-     * @return array{code: string, clientName: string, scopes: list<array{scope: string, label: string}>}|null
+     * @return array{code: string, clientName: string, scopes: list<array{scope: string, label: string, management: bool, critical: bool}>}|null
      */
     private function resolve(string $userCode, DeviceAuthorization $devices, ClientRegistry $clients, CurrentUser $me): ?array
     {
@@ -246,12 +247,14 @@ final readonly class DeviceApprovalController extends PageController
         return [
             'code' => $code,
             'clientName' => $client->name,
+            /*
+             * The consent screen's rows ({@see ConsentScopes}) — so a management scope the
+             * `cbox` CLI asks for reads as what it lets the CLI do, with the critical ones
+             * flagged — in this page's own words for the sign-in scopes it already names.
+             */
             'scopes' => array_map(
-                static fn (string $scope): array => [
-                    'scope' => $scope,
-                    'label' => self::SCOPE_LABELS[$scope] ?? $scope,
-                ],
-                $pending->scopes,
+                static fn (array $row): array => [...$row, 'label' => self::SCOPE_LABELS[$row['scope']] ?? $row['label']],
+                app(ConsentScopes::class)->rows($pending->scopes),
             ),
         ];
     }

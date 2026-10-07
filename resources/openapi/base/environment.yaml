@@ -1715,6 +1715,21 @@ components:
         in the console under Identity platform › Environment keys — not in the environment's own
         console. Bound to that environment's host, and carries an explicit list of scopes; it may
         also carry an expiry.
+    ManagementAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A PERSON's OAuth access token, issued by this environment's issuer and audienced to
+        its management plane (`resource=https://<environment-host>/mcp` — the same token the
+        MCP server takes). `cbox login` and MCP clients obtain one by signing the person in.
+
+        It may run an operation only when it carries the operation's scope AND the person
+        could run it on their own console here: an organization administrator, confined to
+        the organization the token is bound to. Operations that belong to the environment
+        console do not list it. Every critical operation answers `202 approval_required`
+        until the person approves it on their device. A DPoP-bound token is presented as
+        `Authorization: DPoP <token>` with a proof.
     AppClientCredentials:
       type: http
       scheme: basic

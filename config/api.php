@@ -49,6 +49,18 @@ return [
      */
     'mcp' => [
         'tool_search' => (bool) env('CBOX_ID_MCP_TOOL_SEARCH', false),
+
+        /*
+         * Whether an MCP client that registered ITSELF — RFC 7591 in `mcp` mode, or a
+         * client ID metadata document — may be issued a token for `/mcp`. On by default:
+         * that is how Claude Code and every other MCP client signs a person in, knowing
+         * nothing but the server's URL. The person is still asked on the consent screen,
+         * every time, and the token is still bounded by what they may do themselves.
+         *
+         * Off, `/mcp` takes tokens only for clients an administrator registered (the
+         * `cbox` CLI among them) and management keys. See App\Mcp\McpProtectedResources.
+         */
+        'dynamic_clients' => (bool) env('CBOX_ID_MCP_DYNAMIC_CLIENTS', true),
     ],
 
 ];

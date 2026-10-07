@@ -6,13 +6,15 @@ namespace App\Platform\Actions\Principal;
 
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\Approvals\StepUpPolicy;
+use App\Platform\Actions\OrganizationTarget;
+use App\Platform\Integrations\IntegrationReach;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * Who is running an action, whichever door they came through.
  *
- * The console, a management key and (next) a delegated token or an operator are different
+ * The console, a management key, a delegated token and (next) an operator are different
  * credentials with different rules, and an action must not care which: it asks the
  * principal whether it may run, and records what it did as the principal's act.
  */
@@ -49,8 +51,30 @@ interface Principal
     public function stepUpPolicy(): ?StepUpPolicy;
 
     /**
-     * The person who approves this principal's held actions — a subject in the platform root,
-     * where their devices are enrolled — or null when there is nobody to ask.
+     * The person who approves this principal's held actions — a subject of the environment
+     * {@see approverEnvironmentId()} names, where their devices are enrolled — or null when
+     * there is nobody to ask.
      */
     public function approverSubjectId(): ?string;
+
+    /**
+     * Where the approver is a subject, and so where an approval is filed and answered: null
+     * for the platform root — the people behind keys and consoles live there — or the id of
+     * the environment a signed-in person belongs to.
+     */
+    public function approverEnvironmentId(): ?string;
+
+    /**
+     * The organization this principal acts within, or null when it acts with the
+     * environment's own authority, above every organization in it.
+     *
+     * The ONE question every action that reaches into organizations asks
+     * ({@see OrganizationTarget}, {@see IntegrationReach}, the app actions' lookup), so a new
+     * kind of principal is confined by saying so here rather than by being remembered at
+     * each of them. A principal that should be confined and cannot say to what throws: null
+     * is a grant of the whole environment, never a "don't know".
+     *
+     * @throws AuthorizationException
+     */
+    public function confinedToOrganization(): ?string;
 }
