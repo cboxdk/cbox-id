@@ -21,7 +21,11 @@ use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 class AppManagementScopes extends EnumManagementScopes
 {
     /**
-     * @var array<string, array{label: string, description: string}>
+     * `critical` marks a scope whose action cannot be undone — offered like any other, but
+     * the key form flags it, because ticking it hands a credential the power to destroy
+     * something nothing brings back.
+     *
+     * @var array<string, array{label: string, description: string, critical?: bool}>
      */
     public const array APP_SCOPES = [
         'keys:read' => [
@@ -104,6 +108,11 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage custom domains',
             'description' => 'Add, verify and remove the custom domain this environment is served on.',
         ],
+        'users:erase' => [
+            'label' => 'Erase users',
+            'description' => 'Erase a person for good (GDPR Art. 17): their credentials, sessions, memberships and personal data are deleted and their account pseudonymised. Cannot be undone.',
+            'critical' => true,
+        ],
     ];
 
     public function knows(string $scope): bool
@@ -125,6 +134,12 @@ class AppManagementScopes extends EnumManagementScopes
     public static function label(string $scope): string
     {
         return self::APP_SCOPES[$scope]['label'] ?? EnvironmentApiScope::tryFrom($scope)?->label() ?? $scope;
+    }
+
+    /** Whether $scope lets a key do something that cannot be undone. */
+    public static function critical(string $scope): bool
+    {
+        return self::APP_SCOPES[$scope]['critical'] ?? false;
     }
 
     public static function writes(string $scope): bool

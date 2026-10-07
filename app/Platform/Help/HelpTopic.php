@@ -209,13 +209,13 @@ enum HelpTopic: string
 
             self::Organizations => 'Each organization is a company or team using your product, with its own members, roles, domains and single sign-on. Create one for each company that signs up, and open it to manage its members, invitations and verified domains, or to suspend it.',
 
-            self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, or change which organizations and roles they hold.',
+            self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, change which organizations and roles they hold, or erase them for good on a right-to-erasure request.',
             self::Staff => 'A staff role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
             self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s activity log records who did it and why.',
 
             self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in. The environment sets a baseline every organization inherits, and an organization can make its own rules stricter but never looser.',
 
-            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Single sign-on under Sign-in.',
+            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Single sign-on under Sign-in.',
 
             self::LegacyLogin => 'While you move off another system, an app can ask for the email and password of anyone not yet in Cbox ID to be checked against its old login endpoint. Test the endpoint before you approve it: a person it accepts is created here and never sent there again, but while it is down, nobody who has not moved yet can sign in.',
 

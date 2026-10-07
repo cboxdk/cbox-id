@@ -2246,8 +2246,8 @@ components:
         revoked_at: { type: ["string", "null"], format: date-time }
     SamlApp:
       type: object
-      required: [id, entity_id, acs_url, name_id_format, name_id_attribute, attribute_mappings, want_authn_requests_signed, has_certificate, status]
-      description: "An application that trusts this environment as its SAML identity provider. Its certificate is write-only."
+      required: [id, entity_id, acs_url, name_id_format, name_id_attribute, attribute_mappings, want_authn_requests_signed, has_certificate, organization_id, status]
+      description: "An application that trusts this environment as its SAML identity provider. Its certificate is write-only. An application owned by an organization is only ever asserted to that organization's active members; one with no organization is open to every person in the environment."
       properties:
         id: { type: string }
         entity_id: { type: string }
@@ -2264,9 +2264,32 @@ components:
               field: { type: string }
         want_authn_requests_signed: { type: boolean }
         has_certificate: { type: boolean }
+        organization_id: { type: ["string", "null"], description: "The organization whose active members alone may sign in to it; null for an environment-wide application." }
         status: { type: string }
         created_at: { type: ["string", "null"], format: date-time }
         updated_at: { type: ["string", "null"], format: date-time }
+    ErasureReceipt:
+      type: object
+      required: [subject_id, erased_at, subject_pseudonymised, audit_entry_id, steps]
+      description: "The record of one erasure (GDPR Art. 17): what each store did, in numbers. Carries no personal data — safe to log, file with your Art. 30 records, or hand to the person who asked."
+      properties:
+        subject_id: { type: string, description: "The erased person's id. Kept: the row is pseudonymised in place, not deleted." }
+        erased_at: { type: string, format: date-time }
+        subject_pseudonymised: { type: boolean, description: "Whether the account row's email and name were replaced with placeholders." }
+        audit_entry_id: { type: ["string", "null"], description: "The `user.erased` tombstone on the audit trail." }
+        steps:
+          type: array
+          description: "One entry per store, in the order they ran — including stores that held nothing, so a receipt shows a store was checked."
+          items:
+            type: object
+            required: [step, counts, note]
+            properties:
+              step: { type: string, description: "The store, e.g. `identity.credentials`, `oauth.grants`, `devices.devices`." }
+              counts:
+                type: object
+                description: "What was removed or rewritten there, by item."
+                additionalProperties: { type: integer }
+              note: { type: ["string", "null"], description: "Why a step could not act, when it could not." }
     LegacyLogin:
       type: object
       required: [declared, url, client_id, declared_by, approved, approved_at, approved_by]

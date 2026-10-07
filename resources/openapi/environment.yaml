@@ -4254,6 +4254,12 @@ paths:
                     - 'null'
                   description: "The application's signing certificate (PEM). Write-only; left out or null keeps the one on file."
                   maxLength: 20000
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization that owns the application: only its active members are signed in to it, and the assertion names it. Null makes it environment-wide — every person in the environment may sign in to it.'
+                  maxLength: 64
               required:
                 - entity_id
                 - acs_url
@@ -4409,7 +4415,7 @@ paths:
     patch:
       tags:
         - 'SAML apps'
-      summary: "Change a SAML application's entity id, ACS URL, NameID, attribute mappings or signing certificate."
+      summary: "Change a SAML application's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization."
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_update
       x-action: saml_apps.update
@@ -4478,6 +4484,12 @@ paths:
                     - 'null'
                   description: "The application's signing certificate (PEM). Write-only; left out or null keeps the one on file."
                   maxLength: 20000
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization that owns the application: only its active members are signed in to it, and the assertion names it. Null makes it environment-wide — every person in the environment may sign in to it.'
+                  maxLength: 64
       responses:
         200:
           description: OK
@@ -4605,7 +4617,7 @@ paths:
                   type:
                     - integer
                     - 'null'
-                  description: 'Failed attempts before an account is locked; null for no lockout.'
+                  description: 'Failed attempts before an account is locked; null for the deployment default (10 inside 15 minutes unless CBOX_ID_LOCKOUT_THRESHOLD says otherwise).'
                   minimum: 3
                   maximum: 100
       responses:
@@ -5275,6 +5287,50 @@ paths:
           $ref: '#/components/responses/Forbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/users/{id}/erase':
+    post:
+      tags:
+        - Users
+      summary: 'Erase a person (GDPR Art. 17): revoke their sessions and tokens, delete their credentials, memberships and personal data, and pseudonymise their account. Cannot be undone.'
+      description: 'Requires scope `users:erase`. Danger: critical.'
+      operationId: users_erase
+      x-action: users.erase
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The user's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ErasureReceipt'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /vault/secrets:
@@ -7304,8 +7360,9 @@ components:
         - attribute_mappings
         - want_authn_requests_signed
         - has_certificate
+        - organization_id
         - status
-      description: 'An application that trusts this environment as its SAML identity provider. Its certificate is write-only.'
+      description: "An application that trusts this environment as its SAML identity provider. Its certificate is write-only. An application owned by an organization is only ever asserted to that organization's active members; one with no organization is open to every person in the environment."
       properties:
         id:
           type: string
@@ -7333,6 +7390,11 @@ components:
           type: boolean
         has_certificate:
           type: boolean
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'The organization whose active members alone may sign in to it; null for an environment-wide application.'
         status:
           type: string
         created_at:
@@ -7345,6 +7407,53 @@ components:
             - string
             - 'null'
           format: date-time
+    ErasureReceipt:
+      type: object
+      required:
+        - subject_id
+        - erased_at
+        - subject_pseudonymised
+        - audit_entry_id
+        - steps
+      description: 'The record of one erasure (GDPR Art. 17): what each store did, in numbers. Carries no personal data — safe to log, file with your Art. 30 records, or hand to the person who asked.'
+      properties:
+        subject_id:
+          type: string
+          description: "The erased person's id. Kept: the row is pseudonymised in place, not deleted."
+        erased_at:
+          type: string
+          format: date-time
+        subject_pseudonymised:
+          type: boolean
+          description: "Whether the account row's email and name were replaced with placeholders."
+        audit_entry_id:
+          type:
+            - string
+            - 'null'
+          description: 'The `user.erased` tombstone on the audit trail.'
+        steps:
+          type: array
+          description: 'One entry per store, in the order they ran — including stores that held nothing, so a receipt shows a store was checked.'
+          items:
+            type: object
+            required:
+              - step
+              - counts
+              - note
+            properties:
+              step:
+                type: string
+                description: 'The store, e.g. `identity.credentials`, `oauth.grants`, `devices.devices`.'
+              counts:
+                type: object
+                description: 'What was removed or rewritten there, by item.'
+                additionalProperties:
+                  type: integer
+              note:
+                type:
+                  - string
+                  - 'null'
+                description: 'Why a step could not act, when it could not.'
     LegacyLogin:
       type: object
       required:

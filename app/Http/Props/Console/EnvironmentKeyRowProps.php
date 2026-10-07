@@ -44,7 +44,7 @@ final readonly class EnvironmentKeyRowProps implements Prop
     }
 
     /**
-     * @return array{id: string, name: string, prefix: string, scopes: list<array{value: string, label: string, writes: bool}>, lifecycle: array<string, string|null>, revokeHref: string|null}
+     * @return array{id: string, name: string, prefix: string, scopes: list<array{value: string, label: string, writes: bool, critical: bool}>, lifecycle: array<string, string|null>, revokeHref: string|null}
      */
     public function toArray(): array
     {

@@ -25,6 +25,7 @@ environment's host** and nowhere else. Give it the scopes the job needs and no m
 |---|---|
 | `organizations:read` / `:write` | list and read organizations / create, rename, archive, transfer ownership |
 | `users:read` / `:write` | list and read users / create and deactivate them |
+| `users:erase` | **critical** — erase a person for good (GDPR Art. 17); not implied by `users:write` |
 | `members:read` / `:write` | list an organization's members / add, re-tier and remove them |
 | `invitations:read` / `:write` | list pending invitations / send, re-send and withdraw them |
 | `roles:read` / `:write` | list roles and who holds them / grant and take them back |
@@ -254,6 +255,15 @@ the console runs — the same rules, refusals and activity-log entries.
   with their allowed `origins`; `PUT /frontend-keys/{id}/origins` replaces the list.
 - **SAML apps** (`saml_apps:*`): `/api/v1/saml-apps` registers the applications people
   sign in to with their account here. The `certificate` is write-only (`has_certificate`).
+  `organization_id` makes one organization's app: only its active members are signed in
+  to it and everybody else is refused (`saml_idp.assertion_refused` on the audit trail).
+  Null — the default, and what every app registered before this field was — is
+  environment-wide: anybody with an account in the environment can sign in to it.
+- **Erase a person** (`users:erase`): `POST /api/v1/users/{id}/erase` runs the GDPR Art. 17
+  erasure in one transaction and returns its receipt — what each store removed, in
+  numbers, with no personal data. `409 last_owner` for the only owner of an organization
+  (transfer ownership first). See [Compliance › Erasure](../security/compliance.md#erasure-gdpr-art-17)
+  for exactly what is erased and what is kept.
 - **Branding** (`branding:*`): `PUT /api/v1/branding/appearance` (the hosted sign-in theme;
   an unreadable palette is refused) and `PUT /api/v1/branding/whitelabel` — the environment
   default, or one organization's with `organization_id`.
