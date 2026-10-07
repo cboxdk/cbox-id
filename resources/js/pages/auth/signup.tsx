@@ -1,5 +1,6 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useCallback } from 'react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input, PasswordField, Turnstile } from '@/ui';
@@ -23,6 +24,7 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
     const challenged = usePage().flash.challenged === true;
     // A customer environment's own sign-up says the customer's name, never ours.
     const { brand } = usePage<Props>().props;
+    const { t } = useTranslator();
 
     const form = useForm({
         organization: '',
@@ -42,19 +44,19 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
                 {createsIdp
-                    ? 'Create your workspace'
+                    ? t('auth.signup.heading.creates_idp')
                     : forApp !== null
-                      ? 'Create your account'
-                      : 'Create your organization'}
+                      ? t('auth.signup.heading.for_app')
+                      : t('auth.signup.heading.default')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {createsIdp
-                    ? 'A workspace for your company, and your own hosted identity provider — SSO, users and sign-in you fully control, live in a minute.'
+                    ? t('auth.signup.lead.creates_idp')
                     : forApp !== null
-                      ? `Sign up for ${forApp}. You will be the owner of your team, and can invite people once you are in.`
+                      ? t('auth.signup.lead.join', { name: forApp })
                       : brand !== null
-                        ? `Sign up for ${brand.name}. You will be the owner of your team, and can invite people once you are in.`
-                        : 'Set up Cbox ID for your team in under a minute.'}
+                        ? t('auth.signup.lead.join', { name: brand.name })
+                        : t('auth.signup.lead.default')}
             </p>
 
             <form
@@ -84,10 +86,10 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
                 <Field
                     label={
                         createsIdp
-                            ? 'Workspace name'
+                            ? t('auth.signup.organization_label.creates_idp')
                             : forApp !== null
-                              ? 'Team or company name'
-                              : 'Organization name'
+                              ? t('auth.signup.organization_label.for_app')
+                              : t('auth.signup.organization_label.default')
                     }
                     error={form.errors.organization}
                 >
@@ -95,25 +97,25 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
                         name="organization"
                         scale="lg"
                         autoComplete="organization"
-                        placeholder="Acme Inc."
+                        placeholder={t('auth.signup.organization_placeholder')}
                         value={form.data.organization}
                         onChange={(event) => form.setData('organization', event.target.value)}
                     />
                 </Field>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                    <Field label="Your name" error={form.errors.name}>
+                    <Field label={t('auth.signup.name_label')} error={form.errors.name}>
                         <Input
                             name="name"
                             scale="lg"
                             autoComplete="name"
-                            placeholder="Dana Reeves"
+                            placeholder={t('auth.signup.name_placeholder')}
                             value={form.data.name}
                             onChange={(event) => form.setData('name', event.target.value)}
                         />
                     </Field>
 
-                    <Field label="Work email" error={form.errors.email}>
+                    <Field label={t('auth.signup.email_label')} error={form.errors.email}>
                         <Input
                             name="email"
                             scale="lg"
@@ -131,17 +133,20 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
 
                 <div>
                     <PasswordField
-                        label="Password"
+                        label={t('auth.common.password')}
                         name="password"
                         autoComplete="new-password"
-                        placeholder="At least 12 characters"
+                        placeholder={t('auth.password_field.policy', { count: 12 })}
                         policy
+                        policyLabel={t('auth.password_field.policy', { count: 12 })}
+                        showLabel={t('auth.password_field.show')}
+                        hideLabel={t('auth.password_field.hide')}
                         error={form.errors.password}
                         value={form.data.password}
                         onChange={(event) => form.setData('password', event.target.value)}
                     />
                     <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
-                        Checked against known breaches.
+                        {t('auth.signup.breach_note')}
                     </p>
                 </div>
 
@@ -163,21 +168,21 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
                     loading={form.processing}
                 >
                     {createsIdp
-                        ? 'Create workspace'
+                        ? t('auth.signup.submit.creates_idp')
                         : forApp !== null
-                          ? 'Create account and continue'
-                          : 'Create organization'}
+                          ? t('auth.signup.submit.for_app')
+                          : t('auth.signup.submit.default')}
                 </Button>
             </form>
 
             <p className="mt-8 text-sm text-center" style={{ color: 'var(--muted-foreground)' }}>
-                Already have an account?{' '}
+                {t('auth.signup.have_account')}{' '}
                 <Link
                     href={login.url()}
                     className="font-medium underline underline-offset-2"
                     style={{ color: 'var(--accent-strong)' }}
                 >
-                    Sign in
+                    {t('auth.common.sign_in')}
                 </Link>
             </p>
         </>

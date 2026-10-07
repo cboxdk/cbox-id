@@ -35,13 +35,13 @@ final readonly class MagicLinkController extends PageController
 {
     public function show(string $token): Response
     {
-        return $this->page('auth/confirm-sign-in', 'Sign in', [
+        return $this->page('auth/confirm-sign-in', __('auth.confirm_sign_in.title'), [
             'confirmation' => new LinkConfirmationProps(
-                heading: 'Finish signing in',
-                lead: 'You opened a sign-in link. Continue to sign in on this device.',
-                actionLabel: 'Sign in',
+                heading: __('auth.confirm_sign_in.heading'),
+                lead: __('auth.confirm_sign_in.lead'),
+                actionLabel: __('auth.confirm_sign_in.action'),
                 actionUrl: route('magic.redeem.store', $token),
-                note: 'The link works once. If you did not ask to sign in, close this page — nothing happens until you press the button.',
+                note: __('auth.confirm_sign_in.note'),
             ),
         ]);
     }
@@ -52,13 +52,13 @@ final readonly class MagicLinkController extends PageController
         // context can be retried from a safer one. (Magic-link is already an
         // email-possession factor, so a step-up on top would be redundant.)
         if ($risk->shouldBlock($risk->assess($request, 'login'))) {
-            return redirect()->route('login')->with('error', 'We could not process this request. Please try again later.');
+            return redirect()->route('login')->with('error', __('auth.common.could_not_process'));
         }
 
         try {
             $session = $magicLink->redeem($token);
         } catch (InvalidMagicLink) {
-            return redirect()->route('login')->with('error', 'That sign-in link is invalid or has expired.');
+            return redirect()->route('login')->with('error', __('auth.confirm_sign_in.invalid'));
         }
 
         // The redemption already STARTED a framework session — the link is spent and the

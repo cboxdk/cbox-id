@@ -7,7 +7,12 @@ namespace App\Platform\OAuth\Exceptions;
 use App\Platform\OAuth\Enums\OrganizationCreationRefusal;
 use RuntimeException;
 
-/** The hosted create-an-organization step refused — with the reason and the sentence to show. */
+/**
+ * The hosted create-an-organization step refused — with the reason and the sentence to show.
+ *
+ * The sentence is in the visitor's language: the only place it is ever shown is that
+ * hosted step, and the locale is resolved before the request reaches the service that throws.
+ */
 final class OrganizationCreationRefused extends RuntimeException
 {
     private function __construct(public readonly OrganizationCreationRefusal $reason, string $message)
@@ -19,7 +24,7 @@ final class OrganizationCreationRefused extends RuntimeException
     {
         return new self(
             OrganizationCreationRefusal::NotOffered,
-            'Creating an organization is not available here. Ask an administrator to invite you to one.',
+            __('oauth.create_organization.not_offered'),
         );
     }
 
@@ -27,7 +32,7 @@ final class OrganizationCreationRefused extends RuntimeException
     {
         return new self(
             OrganizationCreationRefusal::TooMany,
-            'You have created several organizations in a short time. Try again in '.max(1, (int) ceil($seconds / 60)).' minutes.',
+            trans_choice('oauth.create_organization.too_many', max(1, (int) ceil($seconds / 60))),
         );
     }
 }

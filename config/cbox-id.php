@@ -11,6 +11,15 @@ return [
      */
     'issuer' => env('CBOX_ID_ISSUER'),
 
+    /*
+     * Workspace keys start `cbid_ws_`: the console calls the plane a workspace, so the
+     * credential says so too, and a leaked one reads as what it is. The framework's
+     * default is `cbid_org_`; keys minted under it no longer resolve (see UPGRADING).
+     */
+    'management_keys' => [
+        'organization_prefix' => 'cbid_ws_',
+    ],
+
     'oauth' => [
         /*
          * This app DOES serve the interactive /authorize endpoint (routes/web.php), so
@@ -125,6 +134,23 @@ return [
         'name' => env('CBOX_ID_BRAND_NAME', 'Cbox ID'),
         'tagline' => env('CBOX_ID_BRAND_TAGLINE', 'One identity layer for every app you ship.'),
         'trust_line' => env('CBOX_ID_BRAND_TRUST_LINE', ''),
+    ],
+
+    /*
+     * The languages the HOSTED surfaces speak — sign-in, sign-up, consent, the Admin
+     * Portal, and the mail those flows send. The admin console is English regardless.
+     *
+     * These are the deployment's defaults. An environment may narrow or reorder them in
+     * its own settings (`default_locale`, `enabled_locales`), which is where a vendor
+     * whose end users are all in one country says so; see docs/guides/languages.md.
+     *
+     * `enabled` is a comma-separated list of the supported codes — en, da, de, sv, nb,
+     * fr. A code outside that list is ignored rather than trusted: there is no catalogue
+     * to show for it, and a page in a half-supported language is worse than English.
+     */
+    'locales' => [
+        'default' => env('CBOX_ID_DEFAULT_LOCALE', 'en'),
+        'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fr'),
     ],
 
     /*

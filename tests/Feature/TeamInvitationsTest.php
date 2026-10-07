@@ -30,7 +30,7 @@ use Inertia\Testing\AssertableInertia;
 |--------------------------------------------------------------------------
 |
 | Two doors send this invitation: Workspace › Team in the console, and
-| `POST /api/v1/organization/members` with a workspace key. Both go through
+| `POST /api/v1/workspace/members` with a workspace key. Both go through
 | TeamInvitations, so what the invitee receives, what the activity log says, and how a
 | failure is answered are the same whichever door was used. Only the name signing the
 | invitation (a person, or the key) and the actor on the log differ.
@@ -75,7 +75,7 @@ it('sends the same invitation from the console and from the workspace API', func
         ->post(route('members.invite'), ['email' => 'console@acme.example', 'role' => 'developer'])
         ->assertSessionHasNoErrors();
 
-    test()->withToken($key)->postJson('/api/v1/organization/members', ['email' => 'api@acme.example', 'role' => 'developer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'developer'])
         ->assertCreated()
         ->assertJsonPath('data.status', 'invited');
 
@@ -121,7 +121,7 @@ it('sends the same invitation from the console and from the workspace API', func
 it('names the key that sent it on the page the invitee lands on', function (): void {
     ['organization' => $organization, 'key' => $key] = teamWorkspace();
 
-    test()->withToken($key)->postJson('/api/v1/organization/members', ['email' => 'api@acme.example', 'role' => 'viewer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'viewer'])
         ->assertCreated();
 
     $url = null;
@@ -144,17 +144,17 @@ it('names the key that sent it on the page the invitee lands on', function (): v
 it('lists, re-sends and withdraws a team invitation from the workspace API', function (): void {
     ['organization' => $organization, 'key' => $key, 'keyId' => $keyId] = teamWorkspace();
 
-    $id = test()->withToken($key)->postJson('/api/v1/organization/members', ['email' => 'api@acme.example', 'role' => 'member'])
+    $id = test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'member'])
         ->assertCreated()->json('data.id');
 
-    test()->withToken($key)->getJson('/api/v1/organization/invitations')
+    test()->withToken($key)->getJson('/api/v1/workspace/invitations')
         ->assertOk()
         ->assertJsonPath('data.0.email', 'api@acme.example')
         ->assertJsonPath('data.0.role', 'member')
         ->assertJsonPath('data.0.invited_by', 'Deploy bot');
 
     // A fresh link; the old one stops working.
-    $fresh = test()->withToken($key)->postJson("/api/v1/organization/invitations/{$id}/resend")
+    $fresh = test()->withToken($key)->postJson("/api/v1/workspace/invitations/{$id}/resend")
         ->assertOk()->json('data.id');
 
     expect($fresh)->not->toBe($id)
@@ -162,18 +162,18 @@ it('lists, re-sends and withdraws a team invitation from the workspace API', fun
         ->and(teamActivity($organization->id, 'organization.member_invited')?->context['resent'] ?? null)->toBeTrue();
 
     // Once a minute, as on the console.
-    test()->withToken($key)->postJson("/api/v1/organization/invitations/{$fresh}/resend")
+    test()->withToken($key)->postJson("/api/v1/workspace/invitations/{$fresh}/resend")
         ->assertStatus(429)->assertJsonPath('error', 'too_soon');
 
-    test()->withToken($key)->deleteJson("/api/v1/organization/invitations/{$fresh}")->assertNoContent();
+    test()->withToken($key)->deleteJson("/api/v1/workspace/invitations/{$fresh}")->assertNoContent();
 
     expect(teamPending($organization->id))->toBe([])
         ->and(teamActivity($organization->id, 'organization.invitation_revoked')?->actor_id)->toBe($keyId);
 
     // Gone is gone: the same id again, and the superseded one, are nothing to withdraw.
-    test()->withToken($key)->deleteJson("/api/v1/organization/invitations/{$fresh}")
+    test()->withToken($key)->deleteJson("/api/v1/workspace/invitations/{$fresh}")
         ->assertNotFound()->assertJsonPath('error', 'not_found');
-    test()->withToken($key)->deleteJson("/api/v1/organization/invitations/{$id}")->assertNotFound();
+    test()->withToken($key)->deleteJson("/api/v1/workspace/invitations/{$id}")->assertNotFound();
 });
 
 it('never reaches another workspace\'s invitation from the API', function (): void {
@@ -188,9 +188,9 @@ it('never reaches another workspace\'s invitation from the API', function (): vo
         AuditActor::organizationMember($other['subjectId']),
     );
 
-    test()->withToken($key)->deleteJson("/api/v1/organization/invitations/{$theirs->id}")->assertNotFound();
-    test()->withToken($key)->postJson("/api/v1/organization/invitations/{$theirs->id}/resend")->assertNotFound();
-    test()->withToken($key)->getJson('/api/v1/organization/invitations')->assertOk()->assertJsonCount(0, 'data');
+    test()->withToken($key)->deleteJson("/api/v1/workspace/invitations/{$theirs->id}")->assertNotFound();
+    test()->withToken($key)->postJson("/api/v1/workspace/invitations/{$theirs->id}/resend")->assertNotFound();
+    test()->withToken($key)->getJson('/api/v1/workspace/invitations')->assertOk()->assertJsonCount(0, 'data');
 
     expect(teamPending($other['organization']->id))->toHaveCount(1)
         ->and(teamPending($other['organization']->id)[0]->status)->toBe(InvitationStatus::Pending);
@@ -201,7 +201,7 @@ it('answers a failed mail the same from both doors: nothing is left behind', fun
 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('SMTP is down'));
 
-    test()->withToken($key)->postJson('/api/v1/organization/members', ['email' => 'api@acme.example', 'role' => 'viewer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'viewer'])
         ->assertStatus(503)
         ->assertJsonPath('error', 'mail_failed')
         ->assertJsonPath('message', InvitationRefused::mailFailed(invitationKept: false)->getMessage());
@@ -217,7 +217,7 @@ it('answers a failed mail the same from both doors: nothing is left behind', fun
 it('refuses somebody already on the team with the same sentence from both doors', function (): void {
     ['ownerId' => $ownerId, 'key' => $key] = teamWorkspace();
 
-    test()->withToken($key)->postJson('/api/v1/organization/members', ['email' => 'owner@acme.example', 'role' => 'viewer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'owner@acme.example', 'role' => 'viewer'])
         ->assertStatus(422)
         ->assertJsonPath('error', 'email_taken')
         ->assertJsonPath('message', 'That person is already on this list.');
@@ -234,7 +234,7 @@ it('never invites an owner, whoever asks', function (): void {
     ['organization' => $organization, 'ownerId' => $ownerId, 'key' => $key] = teamWorkspace();
 
     // The doors validate the role first…
-    test()->withToken($key)->postJson('/api/v1/organization/members', ['email' => 'x@acme.example', 'role' => 'owner'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'role' => 'owner'])
         ->assertStatus(422);
 
     // …and the service refuses it on its own, for any caller that skips them.

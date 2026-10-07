@@ -80,6 +80,19 @@ Override the wordmark/hero without editing Blade.
 | `CBOX_ID_BRAND_TAGLINE` | The sign-in hero headline. | `One identity layer for every app you ship.` | Set to your own tagline. |
 | `CBOX_ID_BRAND_TRUST_LINE` | Free text under the hero (e.g. a compliance note). | *(empty — on purpose)* | Set **only** if the claim is actually true for your deployment. Never ship an unearned certification badge. |
 
+`CBOX_ID_BRAND_NAME` is also the product name in the hosted emails and on the error pages.
+
+## Languages
+
+The languages used by the hosted pages (sign-in, consent, Admin Portal) and the emails
+they send. The admin console is always English. An environment can override both values
+in its own settings. See the [languages guide](../guides/languages.md).
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_DEFAULT_LOCALE` | The language used when neither the app (`ui_locales`), the visitor's own pick nor their browser names one that is switched on. Also the language of emails an administrator sends. | `en` | When most of your users share a language other than English. |
+| `CBOX_ID_LOCALES` | Comma-separated list of the languages that are switched on. The order sets the order of the language menu. Supported: `en`, `da`, `de`, `sv`, `nb`, `fr`; other codes are ignored. | `en,da,de,sv,nb,fr` | To leave out languages you cannot support people in. |
+
 ## Sessions
 
 Session lifetime knobs applied by the identity engine (in addition to the standard
@@ -325,7 +338,7 @@ tenant behind that address. Each value is requests **per minute, per credential*
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` | Budget for the organization plane (`/api/v1/organization/*`). | `120` | Raise for an organization driving many projects/environments from CI. |
+| `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` | Budget for the organization plane (`/api/v1/workspace/*`). | `120` | Raise for an organization driving many projects/environments from CI. |
 | `CBOX_ID_API_RATE_LIMIT_ENVIRONMENT` | Budget for the environment plane (`/api/v1/organizations`, `/api/v1/users`). | `240` | Raise for bulk provisioning; this is the plane a Terraform/SDK sync hammers. |
 | `CBOX_ID_API_RATE_LIMIT_VAULT` | Budget for the token-vault endpoints. | `120` | Rarely. |
 | `CBOX_ID_API_RATE_LIMIT_APPS` | Budget for the app-manifest push endpoint. | `60` | Rarely — a manifest push is a deploy-time event. |

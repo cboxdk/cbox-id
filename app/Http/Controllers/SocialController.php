@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Mail\EmailVerificationMail;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\Social\OperatorProvider;
@@ -61,7 +62,7 @@ final class SocialController extends Controller
         $principal = $this->resolve($request, $operator, route('social.callback', $provider));
 
         if ($principal === null) {
-            return redirect()->route('login')->with('error', 'Sign-in with '.$operator->label().' was cancelled or failed.');
+            return redirect()->route('login')->with('error', __('auth.login.social.failed', ['provider' => $operator->label()]));
         }
 
         try {
@@ -75,7 +76,7 @@ final class SocialController extends Controller
             // their relationship with the user, not ours.
             if ($provisioning->created && $principal->email !== null) {
                 $token = app(EmailVerification::class)->issue($subject->id, $principal->email);
-                Mail::to($principal->email)->send(new EmailVerificationMail(
+                Mail::to($principal->email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail(
                     // MailLinks: mailed, so the origin comes from the deployment.
                     $links->route('verification.verify', $token),
                 ));
@@ -200,7 +201,7 @@ final class SocialController extends Controller
                 'reason' => $e->getMessage(),
             ]);
 
-            return redirect()->route('login')->with('error', 'Sign-in with '.$operator->label().' is unavailable right now.');
+            return redirect()->route('login')->with('error', __('auth.login.social.unavailable', ['provider' => $operator->label()]));
         }
 
         return redirect()->away($url);

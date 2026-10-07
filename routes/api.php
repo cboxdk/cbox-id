@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
+use App\Http\Controllers\Api\Environment\ActionApprovalController;
 use App\Http\Controllers\Api\Environment\ApiKeyController;
-use App\Http\Controllers\Api\Environment\AppController;
 use App\Http\Controllers\Api\Environment\EnvironmentRoleController;
 use App\Http\Controllers\Api\Environment\InvitationController;
 use App\Http\Controllers\Api\Environment\MemberController as EnvironmentMemberController;
@@ -13,10 +13,6 @@ use App\Http\Controllers\Api\Environment\OrganizationController;
 use App\Http\Controllers\Api\Environment\RoleController;
 use App\Http\Controllers\Api\Environment\SupportSessionController;
 use App\Http\Controllers\Api\Environment\UserController;
-use App\Http\Controllers\Api\Organization\CurrentOrganizationController;
-use App\Http\Controllers\Api\Organization\EnvironmentController;
-use App\Http\Controllers\Api\Organization\MemberController;
-use App\Http\Controllers\Api\Organization\ProjectController;
 use App\Http\Controllers\Api\VaultController;
 use App\Platform\Actions\ActionRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
@@ -45,42 +41,39 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
     });
 
 /*
- * Organization management plane (GLOBAL). Unlike the environment-scoped routes above,
- * these do NOT resolve an environment (ResolveEnvironment) — an organization operates
- * above every environment it owns. Authenticated by a `Bearer cbid_org_…` organization
- * API key via `organization.api`, with a required capability on write routes so a
- * read-only key can't mutate. Intended to be served on the platform-root host
- * (e.g. api.cboxid.com); an environment-scoped credential is never accepted here.
+ * Workspace management plane (GLOBAL). Unlike the environment-scoped routes above, these
+ * do NOT resolve an environment (ResolveEnvironment) — a workspace operates above every
+ * environment it owns. Authenticated by a `Bearer cbid_ws_…` workspace key via
+ * `workspace.api`, with the scope each action requires — bounded by the key's role, so a
+ * read-only key can't mutate however it is scoped. Intended to be served on the
+ * platform-root host (e.g. api.cboxid.com); an environment-scoped credential is never
+ * accepted here.
+ *
+ * It was `/v1/organization` with `cbid_org_` keys until the console's own word for the
+ * thing — a workspace — became the API's too. A clean break, not an alias: see UPGRADING.
  */
-// The organization-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
+// The workspace-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
 // fetch the contract without a key.
-Route::get('v1/openapi.yaml', function () {
-    $spec = @file_get_contents(resource_path('openapi/organization.yaml'));
+Route::get('v1/workspace/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/workspace.yaml'));
     abort_if($spec === false, 404);
 
     return response($spec, 200, ['Content-Type' => 'application/yaml']);
-})->name('api.openapi');
+})->name('api.workspace.openapi');
 
-Route::middleware('throttle:api-organization')
-    ->prefix('v1/organization')
+Route::middleware('throttle:api-workspace')
+    ->prefix('v1/workspace')
     ->group(function (): void {
-        // Every route resolves the key exactly once, with the capability its data
-        // requires — reads are gated too, so a leaked developer/CI key can't
-        // enumerate the member roster (PII) or read billing.
-        Route::get('/', [CurrentOrganizationController::class, 'show'])->middleware('organization.api');
+        // EVERY route here is an action, routed from the registry with the scope it
+        // declares (`workspace.api:<scope>`): the key is resolved once, its ROLE must hold
+        // the capability the scope needs and the key must carry the scope. Reads are gated
+        // too, so a leaked developer/CI key can't enumerate the member roster (PII) or
+        // read billing. The console's Projects, Team, Keys and Workspace settings pages
+        // run the same actions.
+        ActionRoutes::workspace();
 
-        // Projects (IdP products) — each its own billing anchor + environment allowance.
-        Route::get('projects', [ProjectController::class, 'index'])->middleware('organization.api');
-        Route::post('projects', [ProjectController::class, 'store'])->middleware('organization.api:manage-environments');
-
-        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('organization.api');
-        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('organization.api:manage-environments');
-
-        Route::get('members', [MemberController::class, 'index'])->middleware('organization.api:read-members');
-        Route::post('members', [MemberController::class, 'store'])->middleware('organization.api:manage-members');
-        Route::get('invitations', [MemberController::class, 'invitations'])->middleware('organization.api:read-members');
-        Route::post('invitations/{id}/resend', [MemberController::class, 'resendInvitation'])->middleware('organization.api:manage-members');
-        Route::delete('invitations/{id}', [MemberController::class, 'revokeInvitation'])->middleware('organization.api:manage-members');
+        // Where an approval a workspace key's policy asked for stands — only its own.
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'showForWorkspace'])->middleware('workspace.api');
     });
 
 /*
@@ -141,15 +134,14 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
 
         Route::get('roles', [RoleController::class, 'index'])->middleware('env.api:roles:read');
 
-        Route::get('apps', [AppController::class, 'index'])->middleware('env.api:apps:read');
-        Route::post('apps', [AppController::class, 'store'])->middleware('env.api:apps:write');
-        Route::get('apps/{id}/blueprint', [AppController::class, 'blueprint'])->middleware('env.api:apps:read');
-
         // Everything that is an ACTION is routed from the action registry — its method,
         // path and scope are declared once, on the action — and run by the one
         // ActionController, the same way the console and MCP run it. Areas move here as
         // they become actions; the routes above are the ones still waiting.
         ActionRoutes::environment();
+
+        // Where an action approval this key asked for stands (see ActionApprovalGate).
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'show'])->middleware('env.api');
 
         Route::post('support-sessions', [SupportSessionController::class, 'store'])->middleware('env.api:support:write');
     });

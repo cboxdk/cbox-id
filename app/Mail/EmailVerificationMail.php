@@ -19,13 +19,13 @@ final class EmailVerificationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $brand = config('cbox-id.branding.name', 'Cbox ID');
-
-        return new Envelope(subject: 'Confirm your '.(is_string($brand) ? $brand : 'Cbox ID').' email address');
+        // Built inside the send's `withLocale()`, so `__()` here is already in the
+        // recipient's language; the send site states it (see App\Platform\Locale\MailLocale).
+        return new Envelope(subject: __('mail.email_verification.subject', ['brand' => MailText::brand()]));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.email-verification');
+        return new Content(view: 'mail.email-verification', with: ['brand' => MailText::brand()]);
     }
 }

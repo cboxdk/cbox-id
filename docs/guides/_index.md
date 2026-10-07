@@ -33,6 +33,7 @@ console explains itself in two or three sentences; when that is not enough, the
 - [Keys](keys.md) — management, workspace and frontend keys, and who can see which.
 - [APIs](apis.md) — the services your apps call, and which app may be given which of their scopes.
 - [API keys](api-keys.md) — keys people create for your apps' APIs, and how admins see and revoke them.
+- [Agents and MCP](agents-and-mcp.md) — connect Claude Code, Cursor or another MCP client to an environment, and what an agent may do there.
 - [Sync users out](sync-users-out.md) — push your people into your other SaaS products.
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Inline hooks](inline-hooks.md) — have a say while it happens.
@@ -40,6 +41,7 @@ console explains itself in two or three sentences; when that is not enough, the
 - [Agent approvals](agent-approvals.md) — approving a request to act as you, and reviewing every pending request in an environment.
 - [Support access](support-access.md) — signing in to one of your apps as one of its users, for a reason and at most an hour.
 - [Trusted devices](trusted-devices.md) — a phone as the authenticator that answers those approvals.
+- [Languages](languages.md) — which language sign-in, consent, the Admin Portal and their emails are shown in, and how to change the default.
 
 ## Proving it is under control
 

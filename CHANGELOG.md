@@ -10,6 +10,34 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **The environment-admin handoff no longer puts its token in a URL.** Opening an
+  environment redirected to `/admin/handoff?token=…`, which wrote a live bearer token into
+  the browser history and the access logs between the browser and the tenant host. The
+  account host now answers with a self-submitting form that POSTs the token; that page
+  carries its own narrow CSP (the request nonce, `form-action` limited to the account
+  hosts and the one environment), `Cache-Control: no-store` and
+  `Referrer-Policy: no-referrer`. `/admin/handoff` accepts POST only, reads the token from
+  the body only, answers `no-store`/`no-referrer`, and is the one CSRF-exempt path under
+  `admin/` — the signed, single-use token is the proof. A GET (an old `?token=` link) is
+  refused to the env-admin gate without the token being read.
+- **Single-use links and passkey ceremonies are rate limited.** `POST /magic/{token}`,
+  `POST /setup/{token}`, `/invite/{token}/accept` (both verbs), `POST /verify-email/{token}`,
+  `/passkeys/login` and `/passkeys/login/options`, `/passkeys/register/options`, and the
+  Frontend API's `sign-in/passkey` pair had no throttle. Named limiters key on route,
+  environment and client address (plus a token fingerprint on the link doors: 10 presses
+  of one token, 30 of any, per minute; passkeys 30 per minute). CORS preflights are not
+  counted.
+- **A plain member's People page no longer carries the organization's authorization
+  model.** The roster shipped every access role with its permission catalogue, and each
+  colleague's role assignments, to every member, and relied on the page to hide them.
+  Members now get names, addresses and tiers; access roles and permissions go to
+  administrators only.
+- **Console lookups by id are one scoped query.** Revoking a workspace or management key,
+  acting on an SSO domain (console and Admin Portal) and acting on an identity-platform
+  member loaded the whole collection and picked the row out in PHP. Each is now a single
+  query with the organization or environment fence in it. A foreign or unknown id answers
+  404 — keys used to bounce back silently, and domains answered 403.
+
 - **The Token Vault decided whose secrets a token reached from the token's `org` claim
   alone.** For a user-delegated token that claim is the PERSON's organization, so any
   member who consented to an app holding `vault.manage` gave it rotate, revoke and grant
@@ -149,6 +177,116 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   have been in when somebody wired the console page. `clear()` had the same gap.
 
 ### Added
+
+- **An MCP server on every environment host, at `/mcp`.** Claude Code, Cursor or any MCP
+  client connects with a management key (`Authorization: Bearer cbid_env_…`) and gets one
+  tool per action, built from the action registry: today the seven APIs actions
+  (`apis_create`, `apis_delete`, …), plus `whoami` and `list_actions`. A tool appears only
+  when the key holds its scope, and every call runs through the same runner as the REST
+  API, so the checks, refusals (`{error, message, field}` as a tool error) and activity log
+  entries are the API's. Write tools take an `idempotency_key` that shares its records with
+  the API's `Idempotency-Key`. Destructive actions are annotated as such so a client asks
+  before running them. A refused request gets a `WWW-Authenticate` challenge pointing at
+  `/.well-known/oauth-protected-resource/mcp` (RFC 9728), which names the environment's
+  issuer; OAuth sign-in for MCP clients is not accepted yet. Rate limited per key at 240 a
+  minute (`CBOX_ID_API_RATE_LIMIT_MCP`); laravel/mcp's tool search is available behind
+  `CBOX_ID_MCP_TOOL_SEARCH`, off by default. See `docs/guides/agents-and-mcp.md`.
+- **A key can be told to wait for its owner's approval.** `POST /api/v1/keys` takes
+  `require_approval` (`min_danger` and/or named `actions`). An action the policy names is
+  answered `202 approval_required`; the owner — whoever minted the key in the console, or
+  the first person in its minting chain — gets the request on their phone (Cbox
+  Authenticator) and in the console's approvals, the caller polls
+  `GET /api/v1/action-approvals/{id}`, and repeats the request with `Cbox-Approval: <id>`.
+  The approval is bound to exactly that request and spent once. A key-minted key is never
+  less supervised than its parent; a policy with nobody to approve fails closed.
+
+- **Webhooks, inline hooks and log streams on the management API, and every change to
+  them on the trail.** `/api/v1/webhooks` (list, get, create, update, pause, resume,
+  rotate, delete), `/api/v1/hooks` and `/api/v1/log-streams` (list, get, create, update,
+  delete) run the same actions as the console's pages, behind new `webhooks:*`, `hooks:*`
+  and `log_streams:*` scopes. A new one names its owner (`organization_id`, or
+  `environment_wide: true`). Signing secrets are returned once and never kept for an
+  idempotent replay. The console's webhook edit, pause, resume, re-key and delete, a hook's
+  pause/activate/remove and a stream's disable/resume/delete were model writes that left
+  no audit entry; every one now records `webhook.*`, `inline_hook.*` or `log_stream.*`
+  naming who did it, from either door. 24 console writes are now actions (pending list
+  251 → 227).
+- **`GET /api/v1/events` and `GET /api/v1/audit-log`.** Read this environment's domain
+  events (the facts webhooks deliver) and its audit trail with an `after` cursor, behind
+  `events:read` and `audit:read` — strictly this environment's, never another's.
+- **Apps are actions: everything the console does to an app, a management key can do too.**
+  The console's app pages (both consoles) and `/api/v1/apps` now run the same actions, so
+  a change is checked, refused and recorded the same way whichever door made it. New on
+  the API: `GET`, `PATCH` and `DELETE /apps/{id}`; `PUT /apps/{id}/scopes` (the complete
+  set); `GET /apps/{id}/secrets`, `POST /apps/{id}/secrets` (rotate, with
+  `grace_seconds` said explicitly) and `DELETE /apps/{id}/secrets/{secret_id}` (never the
+  last live one); `PUT /apps/{id}/manifest` and `POST /apps/{id}/manifest/sync`;
+  `PUT /apps/{id}/settings/token-lifetime`, `…/token-exchange`, `…/backchannel-logout` and
+  `…/api-key-prefix`; and `POST /apps/{id}/copy`, which only a person on the environment
+  console can use — a key exports the blueprint instead. Every `{id}` takes the app's id
+  or its `client_id`. A minted `client_secret` (create, rotate, copy) is in the first
+  answer only: an idempotent replay returns `null` and the stored replay never held it.
+  The platform scopes reserved for the console (`vault.manage`, `decisions:read`) are
+  refused on the scope endpoint too, unless the app already holds one. The `App` schema
+  gains `manifest_url`, `access_token_ttl`, `backchannel_logout_uri`,
+  `backchannel_logout_session_required` and `api_key_prefix`. The parity count of console
+  writes that are not yet actions drops from 251 to 226.
+- **How people sign in, as actions — and on the management API.** The sign-in rules,
+  self-service sign-up, social sign-in providers, frontend keys, SAML applications, the
+  legacy-login approval, branding and the custom domain are now actions: the console's
+  pages (environment and organization planes) and the management API run the same classes,
+  so a change is checked, refused and recorded the same way whichever door made it. New on
+  `/api/v1`: `GET/PATCH /sign-in/policy`, `DELETE /sign-in/policy/organizations/{id}`,
+  `PUT /sign-in/self-service-signup`, `GET/POST /sign-in/social-providers`,
+  `DELETE /sign-in/social-providers/{id}`, `GET/POST /frontend-keys`,
+  `PUT /frontend-keys/{id}/origins`, `DELETE /frontend-keys/{id}`, `/saml-apps` (list,
+  get, create, update, delete), `GET /legacy-login` and `POST /legacy-login/probe|approve|revoke`,
+  `GET/PUT /branding/appearance`, `GET/PUT /branding/whitelabel` and `GET/POST/DELETE /domains`
+  with `POST /domains/verify` — behind the new `signin:*`, `frontend_keys:*`,
+  `saml_apps:*`, `branding:*` and `domains:*` key scopes. Changing how people sign in is
+  `critical`; secrets (a provider's client secret, a SAML certificate) are input only and
+  never returned. An organization override that would loosen the environment baseline is
+  refused (`422 loosens_environment_baseline`, every loosened rule named). Modules can ship
+  their own actions: the white-label module's lives in the module and is named to the
+  registry from its service provider. The parity count of console writes that are not yet
+  actions is down from 251 to 229.
+- **The workspace API runs on the action layer, and one workspace key can bootstrap an
+  environment.** Every `/api/v1/workspace` endpoint is now an action, shared with the
+  workspace console's Projects, Team, Keys and Workspace settings pages, so both doors
+  refuse and record alike. Workspace keys can carry **scopes** below their role
+  (`workspace:read`, `projects:write`, `environments:write`, `team:read`, `team:write`,
+  `keys:write`, `settings:write`); a key with none is bounded by its role, as before.
+  `POST /workspace/environments` takes `initial_key` and returns the new environment's
+  first management key once, so an agent with one workspace key can create a project and
+  an environment and then configure it on the environment's own host. New endpoints:
+  `PATCH /workspace` (rename), `PATCH /workspace/projects/{id}`, `POST
+  /workspace/projects/{id}/suspend` and `/reactivate`, `POST
+  /workspace/projects/verification/resend`, `PATCH /workspace/members/{id}/role`, `PUT
+  /workspace/members/{id}/access`, `POST /workspace/members/{id}/transfer-ownership`
+  (owner, console only), `DELETE /workspace/members/{id}`, `POST/DELETE
+  /workspace/environments/{id}/keys`, and `GET/POST/DELETE /workspace/keys` — a key-minted
+  workspace key is never wider than its parent (role, scopes, expiry) and is revoked with
+  it. Writes take `Idempotency-Key`; a replay never carries a key's value. Creating an
+  environment over the API is now on the workspace's activity log, as it was from the
+  console. 18 console writes left the parity allowlist (251 → 233).
+- **The hosted pages and their emails speak six languages.** Sign-in, sign-up, MFA and
+  step-up, password reset, invitations, the OAuth consent screen and organization
+  picker, the Admin Portal, the error pages and the six hosted emails are now available
+  in English, Danish, German, Swedish, Norwegian Bokmål and French. The admin console
+  stays English. A visitor's language comes from, in order: OIDC `ui_locales` (kept for
+  the rest of that authorization), the new language menu in the sign-in footer (a
+  cookie), `Accept-Language`, and the environment's default. Languages that are not
+  supported or not switched on are skipped. `CBOX_ID_DEFAULT_LOCALE` and
+  `CBOX_ID_LOCALES` set the deployment's defaults; an environment can override them
+  with `default_locale` and `enabled_locales` in its settings. Self-service emails go
+  out in the language of the page they were requested from, and administrator-sent
+  emails in the environment's default. `<html lang>` and `Content-Language` match the
+  page. React pages get only their own group's text, through a typed `t()`; the key type
+  is generated from the English catalogue by `php artisan i18n:types`. See
+  docs/guides/languages.md.
+- **Hosted emails and error pages carry the configured product name.** The bodies,
+  the logo mark and the footer used to say "Cbox ID" even when `CBOX_ID_BRAND_NAME`
+  changed the subject line.
 
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
@@ -367,6 +505,16 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **Sign-in changes are on the audit trail.** Changing the sign-in rules (`auth_policy.updated`,
+  `auth_policy.inherited`), removing a social provider (`social_provider.removed`),
+  registering, changing or removing a SAML application (`saml_app.*`) and approving or
+  withdrawing the legacy login (`legacy_login.approved` / `.revoked`) recorded nothing
+  before; they are recorded now, from the console as the person and from the API as the key.
+  A second SAML application with an entity id already registered is refused rather than
+  failing on the database, and revoking or editing a frontend key that does not exist is a
+  404 rather than a silent no-op.
+- **Requires `cboxdk/laravel-id` ^1.21.** Management-key scopes are its `ManagementScopes`
+  vocabulary: the framework's own plus this app's (`AppManagementScopes`).
 - **A customer's organization console is an admin portal now.** On a customer's
   environment host of a multi-tenant deployment, the organization console offers Members,
   Roles and Permissions, Single sign-on (with its domains), Sync users in, the Activity
@@ -386,6 +534,19 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   on the environment plane, is a test now.
 - Linking a social account from My account, and confirming a step-up with nothing to
   return to, land on My account instead of the organization's Settings.
+- **Docs say what the app is.** README and the Dockerfile described a Livewire + Volt UI
+  (it is Inertia + React); SECURITY.md said the project was pre-1.0; the console action
+  sweep is marked as describing the pre-Inertia console, superseded by the action layer
+  and tracked by the action parity test; the deployment guide no longer points at Laravel
+  Cloud as where the workers run. `MERGE-PLAN.md`, a working doc that asked to be deleted
+  once executed, is gone.
+- **`docker-compose.yml` reads `APP_KEY` and `CBOX_ID_CRYPTO_KEY` from the environment.**
+  The public throwaway values remain the defaults, so `docker compose up` still works with
+  no setup, under a DEV ONLY banner.
+- **The workspace API is `/api/v1/workspace` with `cbid_ws_` keys** (was `/api/v1/organization`
+  with `cbid_org_`): one name for the plane in the console, the API and the credential.
+  Existing `cbid_org_` keys are revoked by a migration; no aliases. See UPGRADING.
+
 - **Requires `cboxdk/laravel-queue-autoscale` ^4.3** (was ^3.0, never started) and
   `cboxdk/laravel-queue-metrics` ^3.4. `cbox.yaml` and `docker-compose.yml` run
   `queue:autoscale` as the queue process.

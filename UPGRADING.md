@@ -16,6 +16,17 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### laravel-id 1.21: run the migrations
+
+`cboxdk/laravel-id` is now `^1.21`. Run `php artisan migrate`: the framework's 1.21
+migrations are additive. Read the package's
+[1.21 upgrade notes](https://github.com/cboxdk/laravel-id/blob/v1.21.0/UPGRADING.md).
+
+- **New API endpoints** for sign-in rules, social providers, frontend keys, SAML apps,
+  the legacy login, branding and the custom domain, behind the new `signin:*`,
+  `frontend_keys:*`, `saml_apps:*`, `branding:*` and `domains:*` scopes. An existing key
+  carries none of them, so nothing changes until an administrator mints a key that does.
+
 ### Your customers' administrators lose the product's pages
 
 Multi-tenant deployments only. On a customer's environment host, the organization console
@@ -36,6 +47,50 @@ events, branding).
 - **Single-tenant installs, operators and the workspace console are unchanged.**
 - **`cbox-id:doctor` no longer has a "Console parity" check.** If you alert on its output
   by check name, drop that one.
+
+### laravel-id 1.21: run the migrations; management keys can mint keys
+
+`cboxdk/laravel-id` is now `^1.21`. Run `php artisan migrate`: two additive framework
+migrations (who minted each management key and from which key; action approvals on the
+CIBA store). Read the package's
+[1.21 upgrade notes](https://github.com/cboxdk/laravel-id/blob/v1.21.0/UPGRADING.md).
+
+- **New API endpoints:** `GET/POST /api/v1/keys`, `POST /api/v1/keys/{id}/rotate` and
+  `DELETE /api/v1/keys/{id}`, behind the new `keys:read` / `keys:write` scopes. An existing
+  key carries neither, so nothing changes until an administrator mints a key that does.
+- **Revoking a key now revokes every key it minted.** Keys minted before this release have
+  no recorded parent and are unaffected.
+- **A key carrying a scope nothing recognises can no longer be minted** (the framework
+  refuses it). The console only ever offered recognised scopes.
+
+### Integrations on the management API; console integration writes are audited
+
+- **New scopes** `webhooks:read/write`, `hooks:read/write`, `log_streams:read/write`,
+  `events:read` and `audit:read`. An existing key carries none of them, so nothing changes
+  until an administrator mints a key that does.
+- **New audit entries.** Editing, pausing, resuming, re-keying and deleting a webhook,
+  pausing, activating and removing an inline hook, and disabling, resuming and deleting a
+  log stream now each write an entry (`webhook.*`, `inline_hook.*`, `log_stream.*`). A
+  SIEM filter keyed on action names will see them.
+- **Registering an inline hook or a log stream at a private address is now a form error**
+  on the URL field, as it already was for a webhook, rather than an unhandled exception.
+- **`cboxdk/laravel-id` is now `^1.21`** (its `ManagementScopes` contract carries the new
+  scopes). Run `php artisan migrate`; the framework's 1.21 migrations are additive.
+### The workspace API is `/api/v1/workspace`, and its keys start `cbid_ws_` — a clean break
+
+The plane the console calls a workspace was `/api/v1/organization` with `cbid_org_` keys
+on the API. It is now named the same everywhere. **There are no aliases.**
+
+- **Every existing `cbid_org_` key stops working** when you deploy. The migration marks
+  them revoked so the Keys page says so. Mint a `cbid_ws_` replacement under **Workspace
+  settings › Keys** and update whatever used the old one *before* you deploy if you need
+  zero downtime — or straight after, if a short gap is acceptable.
+- **Paths:** `/api/v1/organization/*` → `/api/v1/workspace/*`. The spec moved from
+  `/api/v1/openapi.yaml` to `/api/v1/workspace/openapi.yaml`.
+- **Rate limit:** `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` → `CBOX_ID_API_RATE_LIMIT_WORKSPACE`.
+- **CLI and SDKs:** use a release of `cbox-cli` and the SDKs that knows `cbid_ws_`.
+- The environment API (`/api/v1/*` on an environment's host, `cbid_env_` keys) is unchanged.
+
 
 ### Run the scheduler — and alert on it
 

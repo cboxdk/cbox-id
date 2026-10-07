@@ -4,7 +4,7 @@ use App\Http\ApiErrorRenderer;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
-use App\Http\Middleware\AuthenticateOrganizationApi;
+use App\Http\Middleware\AuthenticateWorkspaceApi;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -18,9 +18,11 @@ use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
+use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\TrustHostsExceptHealth;
+use App\Platform\Locale\LocaleResolver;
 use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
@@ -38,6 +40,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -62,6 +65,14 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        // The MCP server and its RFC 9728 document. A file of its own and NOT inside `web`:
+        // `/mcp` is a machine endpoint authenticated by a bearer credential, so it must not
+        // start a session, set a cookie or ask for a CSRF token — and routes/web.php puts
+        // everything in it into the `web` group. Nor under routes/api.php, whose `/api`
+        // prefix would put `/mcp` somewhere no MCP client looks.
+        then: static function (): void {
+            Route::group([], __DIR__.'/../routes/mcp.php');
+        },
         // No `health:` entry on purpose. Laravel's built-in health route renders an
         // HTML status page at /up, which SHADOWED the framework package's documented
         // JSON liveness probe (`{"status":"ok"}`) that deployments and the DAST
@@ -192,6 +203,24 @@ return Application::configure(basePath: dirname(__DIR__))
              * signed in here.
              */
             'oauth/authorize',
+
+            /*
+             * The environment-admin handoff redemption, on the ENVIRONMENT host. The form
+             * that posts here is rendered by the ACCOUNT host, a different origin with a
+             * different session, so it cannot know this host's CSRF token — there is no
+             * request in the flow that could have fetched it. Exempting it is safe because
+             * the token in the body IS the proof CSRF stands in for: it is signed by the
+             * platform, minted for one subject and THIS environment only, short-lived and
+             * single-use, and the membership behind it is re-resolved before anything is
+             * established. A forged cross-site post without such a token establishes
+             * nothing; one WITH a token can only sign the browser in as whoever minted it,
+             * into the environment they already administer — the same reach the GET this
+             * replaced had, minus the URL in everybody's logs.
+             *
+             * THE EXACT PATH. `admin/logout` and every console write under `admin/` ride
+             * an ambient session and keep their token check.
+             */
+            'admin/handoff',
         ]);
 
         // The sidebar pin state is a pure UI preference written by JS
@@ -264,7 +293,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // environment.
             'env.sudo' => RequireEnvironmentSudo::class,
             'scope' => RequireScope::class,
-            'organization.api' => AuthenticateOrganizationApi::class,
+            'workspace.api' => AuthenticateWorkspaceApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,
             // Host-plane bulkheads + the environment-admin (account-layer) console gate.
             'plane' => EnforcePlane::class,
@@ -274,6 +303,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // What a customer's own organization console offers, on a customer's
             // environment host — the rest is the environment console's (see the class).
             'console.customer' => EnforceCustomerConsole::class,
+            // The hosted surfaces' language. Named so the route file can say which groups
+            // are hosted — and the console groups, by not saying it, stay English.
+            'locale' => ResolveLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -284,6 +316,23 @@ return Application::configure(basePath: dirname(__DIR__))
         // throttled request rendered a bare `{"message":"Too Many Attempts."}`. Those
         // are the two most common failures a generated client meets.
         $exceptions->render(ApiErrorRenderer::render(...));
+
+        // THE ERROR PAGE IN THE LANGUAGE THE PERSON CHOSE. A hosted request has already
+        // set its locale by the time it fails; one that failed before reaching the route —
+        // a stale CSRF token on the sign-in form is the common case — has not, so a choice
+        // the person made (the picker's cookie, the relying party's `ui_locales`) is
+        // applied here. Returns null: it decides the language, not the response.
+        $exceptions->render(function (Throwable $e, Request $request): ?Response {
+            if (! $request->attributes->has(ResolveLocale::ATTRIBUTE)) {
+                $chosen = app(LocaleResolver::class)->chosen($request);
+
+                if ($chosen !== null) {
+                    app()->setLocale($chosen->value);
+                }
+            }
+
+            return null;
+        });
 
         // A DEPLOYMENT THAT WAS NEVER CONFIGURED SHOULD SAY SO, not 500.
         //

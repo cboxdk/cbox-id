@@ -13,6 +13,7 @@ use App\Platform\Appearance\BrandContext;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
@@ -80,7 +81,7 @@ final readonly class LoginController extends PageController
         // React exists. See BrandContext.
         $brand->brand($organization);
 
-        return $this->page('auth/login', 'Sign in', [
+        return $this->page('auth/login', __('auth.login.title'), [
             'purpose' => $this->purpose(),
             // What the identifier step captured, so the password step renders with the
             // address already in it. Laravel's old-input bag is server-side; a client
@@ -138,7 +139,7 @@ final readonly class LoginController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             return $this->refuse($request,
-                'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+                trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)));
         }
 
         // Risk-score the attempt: credential stuffing, bot velocity, IP reputation, Tor.
@@ -147,7 +148,7 @@ final readonly class LoginController extends PageController
         $assessment = $risk->assess($request, 'login', $request->email());
 
         if ($risk->shouldBlock($assessment)) {
-            return $this->refuse($request, 'We could not process this request. Please try again later.');
+            return $this->refuse($request, __('auth.common.could_not_process'));
         }
 
         $result = $auth->attemptPassword(
@@ -160,7 +161,7 @@ final readonly class LoginController extends PageController
         if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
 
-            return $this->refuse($request, 'Those credentials do not match our records.');
+            return $this->refuse($request, __('auth.login.invalid_credentials'));
         }
 
         /*
@@ -222,7 +223,7 @@ final readonly class LoginController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             return $this->refuse($request,
-                'Too many requests. Try again in '.RateLimiter::availableIn($key).' seconds.');
+                trans_choice('auth.common.too_many_requests', RateLimiter::availableIn($key)));
         }
 
         RateLimiter::hit($key, 120);
@@ -241,7 +242,7 @@ final readonly class LoginController extends PageController
         if ($signup->isOpen() || $subjects->findByEmail($request->email()) !== null) {
             $url = $mailLinks->route('magic.redeem', $links->request($request->email()));
 
-            Mail::to($request->email())->send(new MagicLinkMail($url));
+            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(new MagicLinkMail($url));
 
             // Local installs only: a developer with no mail transport can still walk the
             // flow. It is a live credential in a page body anywhere else.
@@ -325,7 +326,7 @@ final readonly class LoginController extends PageController
             // Never null in practice — every door reports the refusal only after walking
             // the same memberships — but the lookup is a second read, and a screen that
             // says nothing is worse than one that names no organization.
-            'organization' => $mandate === null ? 'Your organization' : $mandate->organizationName,
+            'organization' => $mandate === null ? __('auth.login.mandate.your_organization') : $mandate->organizationName,
             'startUrl' => $mandate?->startUrl,
             'reason' => $factor->sentence(),
         ];
@@ -349,8 +350,8 @@ final readonly class LoginController extends PageController
         $path = is_string($intended) ? parse_url($intended, PHP_URL_PATH) : null;
 
         return $path === '/device'
-            ? 'Sign in to approve the device that is waiting.'
-            : "Welcome back. Access your organization's identity console.";
+            ? __('auth.login.purpose.device')
+            : __('auth.login.purpose.default');
     }
 
     /**

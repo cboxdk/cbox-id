@@ -92,8 +92,9 @@ php artisan schedule:work          # a long-running process — or `schedule:run
 
 The queue manager starts and sizes the `queue:work` processes itself; do not run
 `queue:work` beside it. Without it no webhook, back-channel logout or queued mail is ever
-sent, and `/health/status` reports it. The Laravel Cloud background process, the systemd
-unit, the deploy step and the sizing are in [Queue workers](queue-workers.md).
+sent, and `/health/status` reports it. This repository's own manifests already declare
+it — `cbox.yaml` (the cbox platform) and `docker-compose.yml`; for any other host, the
+systemd unit, the deploy step and the sizing are in [Queue workers](queue-workers.md).
 
 The scheduler is not optional and its absence does not raise an error. Without it the
 domain-event outbox is never relayed, and because every subscriber hangs off that
@@ -231,7 +232,7 @@ environment's host:
   boundary here is the connection's environment scope, which holds on either plane, not
   the host.
 - The management plane itself: `/signup`, `/console/*` and the organization-management API
-  (`/api/v1/organization/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
+  (`/api/v1/workspace/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
   a different thing and is served on an environment's own host.
 - **The console** — `/login`, `/dashboard`, `/account` and every page behind them. The
   apex is a tenant, and its subjects sign in there. What it does *not* serve is the

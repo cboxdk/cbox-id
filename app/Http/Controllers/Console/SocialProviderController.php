@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\SignIn\EnableSocialProvider;
+use App\Actions\SignIn\RemoveSocialProvider;
+use App\Actions\SignIn\SocialProviderFields;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\EnableSocialProviderRequest;
 use App\Platform\Console\ConsoleScope;
@@ -13,15 +16,12 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ClientSecretKind;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Enums\ProviderCapability;
-use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Federation\Models\Connection;
-use Cbox\Id\Federation\OidcDiscovery;
 use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Federation\ValueObjects\ProviderTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
-use Throwable;
 
 /**
  * SOCIAL SIGN-IN — pick a provider from a list instead of describing one from memory.
@@ -41,6 +41,9 @@ use Throwable;
  * `CurrentUser::isAdmin()` — a question only the organization plane can answer — which is
  * why this capability shipped reachable from one console only: the person who owns the
  * environment could not reach the feature at all without impersonating one of their users.
+ *
+ * Enabling and removing are ACTIONS (`signin.social.set`, `signin.social.delete`), the same
+ * classes the management API runs; this controller maps the form onto them.
  */
 final readonly class SocialProviderController extends ConsoleController
 {
@@ -64,7 +67,7 @@ final readonly class SocialProviderController extends ConsoleController
          * or reloaded — and a person following a provider's own documentation in a second tab
          * is exactly the person who reloads.
          */
-        $template = $this->loginTemplate($request->string('provider')->toString());
+        $template = SocialProviderFields::loginTemplate($request->string('provider')->toString());
 
         return $this->page('console/social-providers', 'Social sign-in', [
             'enabled' => array_map(fn (Connection $connection): array => [
@@ -104,107 +107,43 @@ final readonly class SocialProviderController extends ConsoleController
         ]);
     }
 
-    public function store(
-        EnableSocialProviderRequest $request,
-        Connections $connections,
-        OidcDiscovery $discovery,
-    ): RedirectResponse {
+    /**
+     * Enable a provider through the ACTION the management API runs ({@see EnableSocialProvider}):
+     * the catalogue checks, the one-per-provider rule and discovery are the action's, so a
+     * provider enabled here and one enabled by a key are refused and recorded alike.
+     */
+    public function store(EnableSocialProviderRequest $request): RedirectResponse
+    {
         $this->scope->assertMayAdminister();
         app(VerifiedEmailGate::class)->require('add a sign-in provider');
 
-        $template = $this->loginTemplate($request->provider());
+        $template = SocialProviderFields::loginTemplate($request->provider());
+        $parameters = $template === null ? [] : array_map(static fn ($parameter): string => $parameter->key, $template->parameters);
 
-        if ($template === null) {
-            return back()->withErrors(['provider' => 'That provider is not one this console can offer.']);
+        // A refusal about a parameter lands on that parameter's own field.
+        $fields = ['provider' => 'provider', 'client_id' => 'clientId', 'client_secret' => 'clientSecret'];
+
+        foreach ($parameters as $key) {
+            $fields['parameters.'.$key] = 'parameters.'.$key;
         }
 
-        $secretRequired = ! $this->mintsItsOwnSecret($template);
-
-        if ($secretRequired && $request->clientSecret() === '') {
-            return back()->withInput()->withErrors(['clientSecret' => 'The client secret is required.']);
-        }
-
-        // EVERY MISSING PARAMETER AT ONCE. Reporting the first and stopping would walk
-        // somebody through Apple's three fields one round-trip at a time.
-        $values = $request->parameters();
-        $missing = [];
-
-        foreach ($template->parameters as $parameter) {
-            if (($values[$parameter->key] ?? '') === '') {
-                $missing['parameters.'.$parameter->key] = $parameter->label.' is required.';
-            }
-        }
-
-        if ($missing !== []) {
-            return back()->withInput()->withErrors($missing);
-        }
-
-        $organizationId = $this->scope->requireOrganizationId();
-
-        // One connection per provider per tenant. Two would each render a button with the
-        // same name, and nothing on the sign-in page could tell a person which to press.
-        foreach ($connections->catalogueProvidersFor($organizationId) as $existing) {
-            if ($existing->provider === $template->key) {
-                return back()->withInput()->withErrors([
-                    'clientId' => $template->name.' is already enabled. Remove it first if you want to use different credentials.',
-                ]);
-            }
-        }
-
-        $config = [
-            'provider' => $template->key,
+        $result = $this->act(EnableSocialProvider::class, [
+            'organization_id' => $this->scope->requireOrganizationId(),
+            'provider' => $request->provider(),
             'client_id' => $request->clientId(),
-            ...($secretRequired ? ['client_secret' => $request->clientSecret()] : []),
-            ...$values,
-        ];
+            'client_secret' => $request->clientSecret(),
+            'parameters' => array_intersect_key($request->parameters(), array_flip($parameters)),
+        ], $fields, 'clientId');
 
-        if ($template->isOidc()) {
-            $issuer = $template->issuerFor($values);
-
-            if ($issuer === null) {
-                return back()->withInput()->withErrors([
-                    'clientId' => 'Fill in every field above before enabling '.$template->name.'.',
-                ]);
-            }
-
-            $config['issuer'] = $issuer;
-
-            try {
-                /*
-                 * DISCOVERY NOW, not at somebody's first sign-in. An OIDC entry is cheap to
-                 * get wrong safely precisely because this runs here: a mistyped Okta domain
-                 * fails with the provider's own error while the administrator is still
-                 * looking at the form, rather than silently, later, for a user.
-                 */
-                $document = $discovery->fromIssuer($issuer);
-                $config['authorization_endpoint'] = $document->authorizationEndpoint;
-                $config['token_endpoint'] = $document->tokenEndpoint;
-                $config['jwks_uri'] = $document->jwksUri;
-            } catch (Throwable $e) {
-                return back()->withInput()->withErrors([
-                    'clientId' => 'We could not reach '.$template->name.' at '.$issuer.' — check the details above. ('.$e->getMessage().')',
-                ]);
-            }
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        try {
-            $connection = $connections->create(
-                organizationId: $organizationId,
-                type: $template->isOidc() ? ConnectionType::Oidc : ConnectionType::OAuth2,
-                name: $template->name,
-                config: $config,
-                provider: $template->key,
-            );
-        } catch (InvalidAssertion $e) {
-            return back()->withInput()->withErrors(['clientId' => $e->getMessage()]);
-        }
-
-        // Created as a draft, then activated: a half-saved provider must never appear as a
-        // button on the sign-in page while somebody is still typing.
-        $connections->activate($organizationId, $connection->id);
+        /** @var Connection $enabled */
+        $enabled = $result->value;
 
         return to_route($this->scope->routeName('social-providers'))
-            ->with('status', $template->name.' is now offered on your sign-in page.');
+            ->with('status', $enabled->name.' is now offered on your sign-in page.');
     }
 
     public function destroy(string $connection): RedirectResponse
@@ -212,46 +151,26 @@ final readonly class SocialProviderController extends ConsoleController
         $this->scope->assertMayAdminister();
 
         /*
-         * THE ORGANIZATION IS IN THE QUERY, not in an `if` after it. `Connections::byId()`
-         * resolves on the primary key alone, and this used to fetch that way and compare the
-         * owner afterwards — the same shape that shipped a cross-organization IDOR on
-         * `/governance/{campaign}`. 404 rather than a silent return: another tenant's
-         * provider is not a button this administrator is failing to press, it is a row they
-         * have no business learning exists.
+         * THE ORGANIZATION IS IN THE QUERY — the action's — not in an `if` after it.
+         * Another tenant's provider is a 404, not a button this administrator is failing to
+         * press: it is a row they have no business learning exists.
          */
-        $model = Connection::query()
-            ->whereKey($connection)
-            ->where('organization_id', $this->scope->requireOrganizationId())
-            ->first();
+        $result = $this->act(RemoveSocialProvider::class, [
+            'id' => $connection,
+            'organization_id' => $this->scope->requireOrganizationId(),
+        ]);
 
-        abort_if($model === null, 404);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
-        $name = $model->name;
-        $model->delete();
+        /** @var Connection $removed */
+        $removed = $result->value;
 
         return back()->with(
             'status',
-            $name.' is no longer offered. Anyone who signed in with it keeps their account and can still use their password.',
+            $removed->name.' is no longer offered. Anyone who signed in with it keeps their account and can still use their password.',
         );
-    }
-
-    /**
-     * A catalogue entry that can actually be used to sign somebody in, or null.
-     *
-     * The key arrives from the browser and everything downstream is looked up by it. Being
-     * IN the catalogue is not the same question as being usable here: an entry can carry a
-     * directory and no sign-in half, and this page would then build a connection out of
-     * endpoints it does not have. Deny-by-default, in the one place the key crosses in.
-     */
-    private function loginTemplate(string $key): ?ProviderTemplate
-    {
-        if ($key === '') {
-            return null;
-        }
-
-        $template = ProviderCatalog::find($key);
-
-        return $template?->supports(ProviderCapability::Login) === true ? $template : null;
     }
 
     /**

@@ -1,5 +1,6 @@
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input } from '@/ui';
@@ -18,6 +19,7 @@ type Props = PageProps<Record<string, never>>;
  */
 export default function Mfa(_props: Props) {
     const [useRecovery, setUseRecovery] = useState(false);
+    const { t } = useTranslator();
 
     const code = useForm({ code: '' });
     const recovery = useForm({ recoveryCode: '' });
@@ -25,13 +27,13 @@ export default function Mfa(_props: Props) {
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Two-factor verification
+                {t('auth.mfa.title')}
             </h1>
 
             {useRecovery ? (
                 <>
                     <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Enter one of the recovery codes you saved when enabling two-factor.
+                        {t('auth.mfa.recovery.lead')}
                     </p>
 
                     <form
@@ -41,7 +43,10 @@ export default function Mfa(_props: Props) {
                             recovery.post(recover.url());
                         }}
                     >
-                        <Field label="Recovery code" error={recovery.errors.recoveryCode}>
+                        <Field
+                            label={t('auth.mfa.recovery.label')}
+                            error={recovery.errors.recoveryCode}
+                        >
                             <Input
                                 name="recoveryCode"
                                 scale="lg"
@@ -62,7 +67,7 @@ export default function Mfa(_props: Props) {
                             className="w-full"
                             loading={recovery.processing}
                         >
-                            Verify recovery code
+                            {t('auth.mfa.recovery.submit')}
                         </Button>
                     </form>
 
@@ -72,13 +77,13 @@ export default function Mfa(_props: Props) {
                         className="mt-4 text-sm underline underline-offset-2"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Use your authenticator app instead
+                        {t('auth.mfa.recovery.switch')}
                     </button>
                 </>
             ) : (
                 <>
                     <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Enter the 6-digit code from your authenticator app.
+                        {t('auth.mfa.code.lead')}
                     </p>
 
                     <form
@@ -88,7 +93,7 @@ export default function Mfa(_props: Props) {
                             code.post(verify.url());
                         }}
                     >
-                        <Field label="Authentication code" error={code.errors.code}>
+                        <Field label={t('auth.mfa.code.label')} error={code.errors.code}>
                             <Input
                                 name="code"
                                 scale="lg"
@@ -113,7 +118,7 @@ export default function Mfa(_props: Props) {
                             className="w-full"
                             loading={code.processing}
                         >
-                            Verify
+                            {t('auth.common.verify')}
                         </Button>
                     </form>
 
@@ -123,7 +128,7 @@ export default function Mfa(_props: Props) {
                         className="mt-4 text-sm underline underline-offset-2"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Use a recovery code instead
+                        {t('auth.mfa.code.switch')}
                     </button>
                 </>
             )}
@@ -135,7 +140,7 @@ export default function Mfa(_props: Props) {
                     className="text-sm underline underline-offset-2"
                     style={{ color: 'var(--muted-foreground)' }}
                 >
-                    Cancel and sign out
+                    {t('auth.common.cancel_and_sign_out')}
                 </button>
             </div>
         </>

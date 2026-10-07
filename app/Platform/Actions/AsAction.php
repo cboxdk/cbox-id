@@ -20,12 +20,16 @@ final readonly class AsAction
     /**
      * @param  string  $name  Dotted, stable, public: `apis.create`. MCP tool names derive from it.
      * @param  string  $summary  One sentence an agent reads to decide whether to call it.
-     * @param  string  $scope  The environment-key scope it requires (`apis:write`).
+     * @param  string  $scope  The scope its plane's key must carry (`apis:write`, `projects:write`).
      * @param  array{0: string, 1: string}  $rest  Method and path below the plane's base: `['POST', '/apis']`.
      * @param  list<string>  $consoleRoutes  The console route names this action is the API twin of.
-     * @param  ConsoleGate  $consoleGate  The console gate a person passes to run it there.
+     * @param  ConsoleGate  $consoleGate  The console gate a person passes to run it there — and, on the
+     *                                    workspace plane, the capability a key's ROLE must hold too.
      * @param  string|null  $schema  The OpenAPI component (`#/components/schemas/…`) its `data` is.
      * @param  string|null  $tag  The OpenAPI tag it is listed under; derived from its name when null.
+     * @param  list<string>  $redact  `data` fields that are SECRETS (a key's value), dotted for a nested
+     *                                one (`initial_key.token`): shown once, and never kept for an
+     *                                idempotent replay.
      */
     public function __construct(
         public string $name,
@@ -39,5 +43,6 @@ final readonly class AsAction
         public ConsoleGate $consoleGate = ConsoleGate::EnvironmentAdmin,
         public ?string $schema = null,
         public ?string $tag = null,
+        public array $redact = [],
     ) {}
 }

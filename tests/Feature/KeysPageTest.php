@@ -150,3 +150,26 @@ it('revokes a management key from the environment console', function (): void {
     expect(app(EnvironmentApiKeys::class)->forEnvironment($environment->id)->firstWhere('id', $issued->key->id)?->revoked_at)
         ->not->toBeNull();
 });
+
+/**
+ * The key is read INSIDE the named environment's scope, so a key of any other environment
+ * is not a row this request can see: 404, and it stays live.
+ */
+it('404s a management key revoke aimed at another environment\'s key, or at no key', function (): void {
+    ['environment' => $environment] = anEnvironmentKeyAdmin();
+
+    $theirs = app(EnvironmentApiKeys::class)->issue('env_somebody_else', 'Theirs', ['users:read']);
+
+    confirmConsoleStepUp();
+
+    $this->from(route('environment.keys'))
+        ->delete(route('environment.keys.destroy', $theirs->key->id), ['environment' => $environment->id])
+        ->assertNotFound();
+
+    $this->from(route('environment.keys'))
+        ->delete(route('environment.keys.destroy', '01JUNKNOWNKEYID0000000000'), ['environment' => $environment->id])
+        ->assertNotFound();
+
+    expect(app(EnvironmentApiKeys::class)->forEnvironment('env_somebody_else')->firstWhere('id', $theirs->key->id)?->revoked_at)
+        ->toBeNull();
+})->group('security');

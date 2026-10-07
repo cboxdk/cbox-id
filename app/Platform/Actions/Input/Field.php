@@ -67,6 +67,9 @@ final class Field
     }
 
     /**
+     * An object with these fields and no others — or, with none, a free-form document
+     * (a blueprint, a JWK Set) whose shape is the action's to check.
+     *
      * @param  list<Field>  $properties
      */
     public static function object(string $name, array $properties): self
@@ -156,13 +159,22 @@ final class Field
     /**
      * Laravel validation rules for this field at $path, its children included.
      *
+     * `$within` is the path of an OPTIONAL object this field sits in. Laravel checks a
+     * dotted `required` whether or not its parent was sent, so an optional object with a
+     * required member would make the member required always; inside one, `required`
+     * becomes `required_with:<object>` — required exactly when the object is given.
+     *
      * @return array<string, list<string>>
      */
-    public function rules(?string $path = null): array
+    public function rules(?string $path = null, ?string $within = null): array
     {
         $path ??= $this->name;
 
-        $rules = [$this->required ? 'required' : 'sometimes'];
+        $rules = [match (true) {
+            ! $this->required => 'sometimes',
+            $within !== null => 'required_with:'.$within,
+            default => 'required',
+        }];
 
         if ($this->nullable) {
             $rules[] = 'nullable';
@@ -177,8 +189,14 @@ final class Field
             'integer' => ['integer'],
             'boolean' => ['boolean'],
             'array' => ['array'],
-            'object' => ['array:'.implode(',', array_map(static fn (Field $field): string => $field->name, $this->properties))],
+            'object' => [$this->properties === [] ? 'array' : 'array:'.implode(',', array_map(static fn (Field $field): string => $field->name, $this->properties))],
         }];
+
+        // The one format a rule enforces as well as describes: an address that is not one
+        // is refused at the door, as the forms that preceded the actions refused it.
+        if ($this->format === 'email') {
+            $rules[] = 'email';
+        }
 
         if ($this->min !== null) {
             $rules[] = 'min:'.$this->min;
@@ -199,7 +217,7 @@ final class Field
         }
 
         foreach ($this->properties as $property) {
-            $all = [...$all, ...$property->rules($path.'.'.$property->name)];
+            $all = [...$all, ...$property->rules($path.'.'.$property->name, $this->required ? $within : $path)];
         }
 
         return $all;

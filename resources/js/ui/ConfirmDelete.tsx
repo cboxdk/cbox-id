@@ -39,6 +39,15 @@ export interface ConfirmDeleteProps {
     environment?: string | null;
     confirming?: boolean;
     onConfirm: () => void;
+    /**
+     * The dialog's own words, for a page drawn in the visitor's language — the hosted Admin
+     * Portal. Each defaults to the console's English, so a console caller passes none.
+     */
+    cancelLabel?: string;
+    /** The field's label; defaults to "Type <name> to confirm". */
+    typeToConfirmLabel?: ReactNode;
+    /** The field's hint; defaults to "Exactly as shown — <action> stays disabled until it matches." */
+    hint?: string;
 }
 
 /**
@@ -78,6 +87,9 @@ function Confirmation({
     environment,
     confirming = false,
     onConfirm,
+    cancelLabel = 'Cancel',
+    typeToConfirmLabel,
+    hint,
 }: Omit<ConfirmDeleteProps, 'open'>) {
     const shared = usePage<SharedProps>().props.environment;
     const realm = environment === undefined ? shared.name : environment;
@@ -109,7 +121,7 @@ function Confirmation({
             description={consequence}
             footer={
                 <>
-                    <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={() => onOpenChange(false)}>{cancelLabel}</Button>
                     <Button
                         variant="danger"
                         disabled={!matches}
@@ -137,11 +149,16 @@ function Confirmation({
             <Field
                 id={field}
                 label={
-                    <>
-                        Type <span className="mono">{name}</span> to confirm
-                    </>
+                    typeToConfirmLabel ?? (
+                        <>
+                            Type <span className="mono">{name}</span> to confirm
+                        </>
+                    )
                 }
-                hint={`Exactly as shown — ${actionLabel ?? verb} stays disabled until it matches.`}
+                hint={
+                    hint ??
+                    `Exactly as shown — ${actionLabel ?? verb} stays disabled until it matches.`
+                }
             >
                 <Input
                     value={typed}

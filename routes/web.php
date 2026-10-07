@@ -80,6 +80,7 @@ use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
@@ -96,6 +97,7 @@ use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\TargetEnvironment;
+use App\Http\WebRateLimiters;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
@@ -140,9 +142,16 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
         // handle rather than in a session cookie, for the same reason everything else here
         // does: the caller is on somebody else's origin.
+        //
+        // Throttled per (environment, address) on top of the channel's per-KEY ceiling: a
+        // publishable key is public and shared by a customer's whole traffic, so its 600 a
+        // minute is no limit on one caller minting challenges into the cache. The limiter
+        // runs after the key door, so the environment it scopes to is the key's own.
         Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'challenge'])
+            ->middleware('throttle:passkey')
             ->name('frontend.sign-in.passkey.options');
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
+            ->middleware('throttle:passkey')
             ->name('frontend.sign-in.passkey');
     });
 }
@@ -177,8 +186,18 @@ if (app()->environment('local')) {
  * have no door at all. The gate here is possession of the setup token, which does not
  * depend on any of the state being bootstrapped.
  */
-Route::get('/first-run', [FirstRunController::class, 'show'])->name('first-run');
-Route::post('/first-run', [FirstRunController::class, 'claim'])->name('first-run.claim');
+Route::get('/first-run', [FirstRunController::class, 'show'])->middleware('locale')->name('first-run');
+Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware('locale')->name('first-run.claim');
+
+/*
+ * THE LANGUAGE PICKER on the hosted pages' footer. Remembers the choice in a cookie and
+ * sends the person back to the page they were on, now in that language.
+ *
+ * No plane gate: the hosted pages it sits under live on every plane — sign-in on the
+ * console host, consent on the issuer, sign-up on its own — and choosing a language
+ * discloses nothing and changes nothing but the next render.
+ */
+Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->name('locale.update');
 
 /*
  * The apex — one destination, because there is one console.
@@ -287,7 +306,7 @@ Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
  * `plane:signup` rather than `plane:account`, which is what made every tenant's sign-in
  * page link to a 404.
  */
-Route::middleware(['plane:signup', 'platform.guest'])->group(function (): void {
+Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
     Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');
 });
@@ -303,7 +322,7 @@ Route::middleware(['plane:signup', 'platform.guest'])->group(function (): void {
  * alongside this console, not the absence of one. The IdP protocol surface it must NOT
  * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
-Route::middleware(['plane:console', 'platform.guest'])->group(function (): void {
+Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     // Identifier-first: the address alone, so its home realm can be discovered before a
     // password form is drawn. A server step, because the domain map is the server's.
@@ -314,9 +333,10 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
     // Opening the link renders a button; pressing it signs in. Mail scanners fetch every
-    // link they see, so a GET that redeemed handed the session to the scanner.
+    // link they see, so a GET that redeemed handed the session to the scanner. Only the
+    // POST looks the token up, so only the POST is throttled ({@see WebRateLimiters}).
     Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->name('magic.redeem');
-    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem.store');
+    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->middleware('throttle:link-token')->name('magic.redeem.store');
 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
@@ -332,9 +352,11 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
         Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
     });
 
-    // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
-    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
-    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->name('passkeys.login');
+    // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof. Both
+    // halves are throttled: the first writes a fresh challenge into the session for any
+    // anonymous caller, the second is a credential check ({@see WebRateLimiters}).
+    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:passkey')->name('passkeys.login.options');
+    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware('throttle:passkey')->name('passkeys.login');
 
     // Social sign-in (Google, GitHub, Microsoft) over OAuth.
     Route::get('/auth/{provider}/redirect', [SocialController::class, 'redirect'])->name('social.redirect');
@@ -344,16 +366,16 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
 // The MFA challenge sits between password and a full session, so it is neither
 // fully guest nor fully authenticated. The pending sign-in in the session is the
 // authorization; there is no guard here that could ask a better question.
-Route::get('/mfa', [MfaController::class, 'show'])->name('mfa');
-Route::post('/mfa', [MfaController::class, 'verify'])->name('mfa.verify');
-Route::post('/mfa/recovery', [MfaController::class, 'recover'])->name('mfa.recover');
+Route::get('/mfa', [MfaController::class, 'show'])->middleware('locale')->name('mfa');
+Route::post('/mfa', [MfaController::class, 'verify'])->middleware('locale')->name('mfa.verify');
+Route::post('/mfa/recovery', [MfaController::class, 'recover'])->middleware('locale')->name('mfa.recover');
 
 // The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
 // state: primary auth passed, but an elevated risk assessment demands a second
 // factor before the session is established.
-Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->name('login.step-up');
-Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->name('login.step-up.verify');
-Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->name('login.step-up.resend');
+Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->middleware('locale')->name('login.step-up');
+Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->middleware('locale')->name('login.step-up.verify');
+Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->middleware('locale')->name('login.step-up.resend');
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
@@ -362,7 +384,7 @@ Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->na
 // THE GET SPENDS NOTHING. It shows who is inviting whom to what, and the POST accepts:
 // Outlook Safe Links and every other mail scanner fetch the link before the invitee does,
 // and on a GET that fetch accepted the invitation and signed the SCANNER in.
-Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+Route::middleware([BlockDuringImpersonation::class, 'locale'])->group(function (): void {
     Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->name('invitation.accept');
     Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept.store');
 
@@ -370,7 +392,7 @@ Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
     // same two steps, for the same reason: a scanner confirming the address first left the
     // person holding a link that said it was invalid.
     Route::get('/verify-email/{token}', [EmailVerificationController::class, 'show'])->name('verification.verify');
-    Route::post('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->name('verification.verify.store');
+    Route::post('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->middleware('throttle:link-token')->name('verification.verify.store');
 });
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
@@ -417,7 +439,7 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
      * the impersonation window and the operator's session, attributed to the person being
      * impersonated.
      */
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize');
 
 /*
@@ -431,11 +453,11 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
  * cannot influence any of them.
  */
 Route::post('/oauth/authorize/{authorization}/approve', [OAuthConsentController::class, 'approve'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.approve');
 
 Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::class, 'deny'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.deny');
 
 /*
@@ -451,7 +473,7 @@ Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::cl
  * the page would leave the browser on the step's URL, where a reload re-submits a choice
  * that was already spent.
  */
-Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->group(function (): void {
         Route::get('/oauth/authorize/{authorization}', [OAuthConsentController::class, 'review'])
             ->name('oauth.authorize.review');
@@ -480,7 +502,7 @@ Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, Block
  * organization is the real boundary and is unchanged: a tenant's link resolves to nothing
  * on another host, root included.
  */
-Route::middleware('plane:console')->group(function (): void {
+Route::middleware(['plane:console', 'locale'])->group(function (): void {
     Route::get('/setup/expired', [PortalSetupController::class, 'expired'])->name('portal.expired');
 
     /*
@@ -512,7 +534,7 @@ Route::middleware('plane:console')->group(function (): void {
     // The link is pasted into mail, Slack or Teams, and every one of those previews it —
     // so opening it renders a button and only the POST spends it.
     Route::get('/setup/{token}', [AdminPortalController::class, 'show'])->name('portal.enter');
-    Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter.store');
+    Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->middleware('throttle:link-token')->name('portal.enter.store');
 });
 
 /*
@@ -546,10 +568,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
-    Route::get('/accounts', [AccountsController::class, 'index'])->name('accounts');
+    Route::get('/accounts', [AccountsController::class, 'index'])->middleware('locale')->name('accounts');
     // A POST, because it moves the session. A GET that changes who you are is a GET any
     // image tag on any page can make.
-    Route::post('/accounts', [AccountsController::class, 'switchTo'])->name('accounts.switch');
+    Route::post('/accounts', [AccountsController::class, 'switchTo'])->middleware('locale')->name('accounts.switch');
     /*
      * The SAME sign-in page, for somebody already signed in.
      *
@@ -557,20 +579,20 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * IS a sign-in — the only difference is what the session does with the result, which
      * is a decision the sign-in POST makes rather than one the form has to know.
      */
-    Route::get('/accounts/add', [LoginController::class, 'show'])->name('accounts.add');
+    Route::get('/accounts/add', [LoginController::class, 'show'])->middleware('locale')->name('accounts.add');
 
     // The forced password change. Inside the authenticated group on purpose: the hold
     // that sends people here (see {@see \App\Http\Middleware\Authenticate}) exempts this
     // one route, so it is reachable only by someone who is signed in and owes a change.
-    Route::get('/password/change', [ChangePasswordController::class, 'edit'])->name('password.change');
-    Route::post('/password/change', [ChangePasswordController::class, 'update'])->name('password.change.update');
+    Route::get('/password/change', [ChangePasswordController::class, 'edit'])->middleware('locale')->name('password.change');
+    Route::post('/password/change', [ChangePasswordController::class, 'update'])->middleware('locale')->name('password.change.update');
 
     // The social link confirmation. Same shape as the password hold above and for the
     // same reason: reachable only by someone signed in who has an identity waiting on
     // their answer, and exempt from the hold so the redirect cannot loop.
-    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->name('link.confirm');
-    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->name('link.connect');
-    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->name('link.decline');
+    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->middleware('locale')->name('link.confirm');
+    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->middleware('locale')->name('link.connect');
+    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->middleware('locale')->name('link.decline');
 
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
@@ -696,7 +718,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
     Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
 
-    // Open an environment → signed handoff → its own admin console (no second login).
+    // Open an environment → signed handoff, POSTed by a self-submitting form → its own
+    // admin console (no second login).
     Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
 
     Route::get('/team', [MemberController::class, 'index'])->name('members');
@@ -1009,7 +1032,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // credential is persistence — gate it behind a fresh step-up, symmetric with
     // the sudo required to REMOVE a passkey in settings. BlockDuringImpersonation
     // runs first so an impersonator gets an unambiguous 403, never a step-up prompt.
-    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register.options');
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo', 'throttle:passkey'])->name('passkeys.register.options');
     Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register');
 
     // Explicit account linking — connect a social provider to the signed-in user.
@@ -1043,7 +1066,13 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 | can mint because the root environment belongs to no account.
 */
 Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
+    // The token arrives in the BODY of the account host's self-submitting form, never in
+    // a URL, and only the POST redeems. The GET survives as a refusal, not a door: an old
+    // bookmark or a pasted `?token=` link is sent to the env-admin gate without the token
+    // ever being read — and that gate mints a fresh handoff the proper way, so the person
+    // still lands in the console and the stale credential buys nothing. CSRF-exempt in
+    // bootstrap/app.php, where the reasoning lives.
+    Route::match(['get', 'post'], '/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 
     // The ENVIRONMENT control plane — the account-member admin's env-scoped console
@@ -1534,12 +1563,15 @@ Route::prefix('platform')->group(function (): void {
 | `plane:console`, like every other door: the host decides which surfaces exist, and
 | this one exists wherever the console does.
 */
-Route::middleware('plane:console')->group(function (): void {
+Route::middleware(['plane:console', 'locale'])->group(function (): void {
     // Guest-accessible but gated by a signed URL (the token IS the signature; no token
     // table needed). The invitee sets their password and is signed in. The component
     // locks the token so it cannot be swapped after the signed load.
+    //
+    // Throttled on BOTH verbs, unlike the other mailed links: this page looks the token up
+    // to say who is inviting whom, so the GET is a lookup too ({@see WebRateLimiters}).
     Route::get('/invite/{token}/accept', [InvitationAcceptController::class, 'show'])
-        ->middleware('signed')
+        ->middleware(['signed', 'throttle:link-token'])
         ->name('organization.invite.accept');
 
     // SIGNED TOO, and not as belt-and-braces. The token is the whole credential, and the
@@ -1547,7 +1579,7 @@ Route::middleware('plane:console')->group(function (): void {
     // that accepted a bare token would hand back exactly what that signature refuses.
     // The form posts to a URL signed on the page it was rendered from.
     Route::post('/invite/{token}/accept', [InvitationAcceptController::class, 'store'])
-        ->middleware('signed')
+        ->middleware(['signed', 'throttle:link-token'])
         ->name('organization.invite.accept.store');
 });
 

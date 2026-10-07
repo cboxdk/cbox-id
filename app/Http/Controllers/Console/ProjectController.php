@@ -4,28 +4,29 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Workspace\Environments\CreateEnvironment;
+use App\Actions\Workspace\Projects\CreateProject;
+use App\Actions\Workspace\Projects\ReactivateProject;
+use App\Actions\Workspace\Projects\RenameProject;
+use App\Actions\Workspace\Projects\ResendVerification;
+use App\Actions\Workspace\Projects\SuspendProject;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameProjectRequest;
 use App\Http\Requests\Console\StoreEnvironmentRequest;
 use App\Http\Requests\Console\StoreProjectRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
-use App\Platform\MemberEmailVerification;
-use App\Platform\OrganizationActivity;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\Enums\ProjectStatus;
-use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\TenantProvisioner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Response;
 
 /**
@@ -41,6 +42,11 @@ use Inertia\Response;
  * capability while the project page asked for that AND unscoped access — so a member
  * confined to staging was refused on the page that says so and permitted on the page that
  * does not. Two spellings of one rule is not a rule; {@see self::assertMayManage()} is.
+ *
+ * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Projects`, `…/Environments`), the same
+ * one `/api/v1/workspace` runs for a workspace key — so the page and the API refuse and
+ * record alike. This controller keeps what is the console's own: which page a refusal
+ * lands on, and the 403 a person who may not manage gets before anything runs.
  */
 final readonly class ProjectController extends ConsoleController
 {
@@ -150,27 +156,24 @@ final readonly class ProjectController extends ConsoleController
         ]);
     }
 
-    public function store(
-        StoreProjectRequest $request,
-        Organizations $organizations,
-        TenantProvisioner $provisioner,
-    ): RedirectResponse {
+    public function store(StoreProjectRequest $request): RedirectResponse
+    {
         abort_if($this->scope->membershipRole() === null, 403);
 
-        $organizationId = $this->scope->organizationId();
-
-        // Only roles that manage environments may stand up a new product.
-        abort_if($organizationId === null, 403);
+        // Only roles that manage environments may stand up a new product — asked here so a
+        // refusal is the 403 it always was, and again by the action's gate.
+        abort_if($this->scope->organizationId() === null, 403);
         abort_unless($this->scope->capabilities()?->canManageEnvironments() === true, 403);
 
-        // IN THE PLATFORM ROOT, for the same reason every other organization read is.
-        $organization = app(PlatformRoot::class)->run(fn () => $organizations->find($organizationId));
+        // The same action `POST /api/v1/workspace/projects` runs.
+        $result = $this->act(CreateProject::class, ['name' => $request->name()], ['name' => 'name'], 'name');
 
-        abort_if($organization === null, 403);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
-        // `addProject()` re-reads it under a lock and refuses a suspended customer; the
-        // model is what its signature asks for, not the authorization.
-        $project = $provisioner->addProject($organization, $request->name());
+        /** @var Project $project */
+        $project = $result->value;
 
         return to_route('projects.show', $project->id)
             ->with('status', 'Project created — add its first environment.');
@@ -235,20 +238,13 @@ final readonly class ProjectController extends ConsoleController
         ]);
     }
 
-    public function rename(RenameProjectRequest $request, string $project, Memberships $members, Projects $projects): RedirectResponse
+    public function rename(RenameProjectRequest $request, string $project, Memberships $members): RedirectResponse
     {
         $this->assertMayManage($members);
 
-        // The OWNER-CARRYING verb: `Project` has no global scope, so a bare
-        // `rename($id, …)` is a write across every customer's projects, fenced only by
-        // this page remembering to resolve first. It does — and now the query does too.
-        $projects->renameForOrganization(
-            $this->scope->requireOrganizationId(),
-            $this->owned($project)->id,
-            $request->name(),
-        );
+        $result = $this->act(RenameProject::class, ['id' => $this->owned($project)->id, 'name' => $request->name()], ['name' => 'name'], 'name');
 
-        return back()->with('status', 'Project renamed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Project renamed.');
     }
 
     /**
@@ -259,59 +255,42 @@ final readonly class ProjectController extends ConsoleController
         StoreEnvironmentRequest $request,
         string $project,
         Memberships $members,
-        TenantProvisioner $provisioner,
-        OrganizationActivity $activity,
     ): RedirectResponse {
         $this->assertMayManage($members);
 
         // Resolved against the acting organization, so a posted id belonging to another
-        // account is a 404 rather than a permitted write.
-        $model = $this->owned($project);
+        // account is a 404 rather than a permitted write. The action — the one
+        // `POST /api/v1/workspace/environments` runs — provisions it and records it.
+        $result = $this->act(
+            CreateEnvironment::class,
+            ['name' => $request->name(), 'type' => $request->type()->value, 'project_id' => $this->owned($project)->id],
+            ['name' => 'name', 'type' => 'type'],
+            'name',
+            ['environment_limit_reached' => 'This project is at its environment limit. Upgrade its plan to add more.'],
+        );
 
-        try {
-            $environment = $provisioner->addEnvironment($model, $request->name(), type: $request->type());
-        } catch (EnvironmentLimitReached) {
-            return back()->withInput()->withErrors([
-                'name' => 'This project is at its environment limit. Upgrade its plan to add more.',
-            ]);
-        }
-
-        $organizationId = $this->scope->organizationId();
-
-        if ($organizationId !== null) {
-            $activity->record(
-                $organizationId,
-                'organization.environment_created',
-                $this->scope->actorId(),
-                targetType: 'environment',
-                targetId: $environment->id,
-                context: ['name' => $request->name(), 'type' => $request->type()->value],
-                request: $request,
-            );
-        }
-
-        return back()->with('status', 'Environment created.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Environment created.');
     }
 
-    public function suspend(string $project, Memberships $members, Projects $projects): RedirectResponse
+    public function suspend(string $project, Memberships $members): RedirectResponse
     {
         $this->assertMayManage($members);
 
-        $projects->suspendForOrganization($this->scope->requireOrganizationId(), $this->owned($project)->id);
+        $result = $this->act(SuspendProject::class, ['id' => $this->owned($project)->id]);
 
-        return back()->with(
+        return $result instanceof RedirectResponse ? $result : back()->with(
             'status',
             'Project suspended — its environments stay live but no new ones can be added until reactivated.',
         );
     }
 
-    public function reactivate(string $project, Memberships $members, Projects $projects): RedirectResponse
+    public function reactivate(string $project, Memberships $members): RedirectResponse
     {
         $this->assertMayManage($members);
 
-        $projects->reactivateForOrganization($this->scope->requireOrganizationId(), $this->owned($project)->id);
+        $result = $this->act(ReactivateProject::class, ['id' => $this->owned($project)->id]);
 
-        return back()->with('status', 'Project reactivated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Project reactivated.');
     }
 
     /**
@@ -321,43 +300,33 @@ final readonly class ProjectController extends ConsoleController
      * NO ADDRESS IS ACCEPTED HERE. It mails whatever is on the row the session resolves;
      * there is deliberately no parameter anybody could point somewhere else.
      */
-    public function resendVerification(
-        CurrentUser $current,
-        MemberEmailVerification $verification,
-    ): RedirectResponse {
-        $subject = $current->subject();
-
-        abort_if($subject === null, 403);
+    public function resendVerification(CurrentUser $current): RedirectResponse
+    {
+        abort_if($current->subject() === null, 403);
 
         /*
-         * Outbound mail is the scarce, abusable resource: anyone who got this far can
+         * Outbound mail is the scarce, abusable resource: anyone who got this far could
          * otherwise pump mail at their own inbox and burn the sending reputation for
-         * everyone. Keyed on the SUBJECT, not the address or the IP — the caller is
-         * authenticated, so there is no cheaper key to rotate.
-         */
-        $key = 'organization-verify-resend|'.$subject->id;
-
-        /*
-         * ON THE INERTIA FLASH CHANNEL, not the session's `status`.
+         * everyone. The action limits it per PERSON mailed, whichever door asks
+         * ({@see ResendVerification}).
          *
-         * The answer to this click belongs to THIS click and nothing else: the toaster
-         * shows `status` for every mutation on the console, and a rate-limit sentence
-         * announced as a success toast is the wrong shape entirely. It is rendered on the
-         * page, beside the button that asked.
+         * ON THE INERTIA FLASH CHANNEL, not the session's `status` — the rate-limit
+         * refusal too. The answer to this click belongs to THIS click and nothing else:
+         * the toaster shows `status` for every mutation on the console, and a rate-limit
+         * sentence announced as a success toast is the wrong shape entirely. It is
+         * rendered on the page, beside the button that asked.
          */
-        if (RateLimiter::tooManyAttempts($key, 3)) {
-            $this->inertia->flash('resendNotice', 'That is a lot of emails. Try again in '
-                .RateLimiter::availableIn($key).' seconds, or check your spam folder in the meantime.');
+        try {
+            $result = $this->runAction(ResendVerification::class, []);
+        } catch (ActionRefused $refused) {
+            $this->inertia->flash('resendNotice', $refused->getMessage());
 
             return back();
         }
 
-        RateLimiter::hit($key, 600);
+        $message = $result->payload['message'] ?? null;
 
-        $this->inertia->flash(
-            'resendNotice',
-            $verification->resend($subject)->message($subject->email ?? ''),
-        );
+        $this->inertia->flash('resendNotice', is_string($message) ? $message : '');
 
         return back();
     }

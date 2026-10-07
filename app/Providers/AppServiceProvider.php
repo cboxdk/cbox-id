@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Http\ApiRateLimiters;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
+use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
+use App\Mcp\McpCaller;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -15,13 +18,14 @@ use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
@@ -44,17 +48,25 @@ class AppServiceProvider extends ServiceProvider
         // Discovered once per process: every door reads the same list.
         $this->app->singleton(ActionRegistry::class);
 
+        // The scopes a management key may carry: the framework's core set plus the ones
+        // this app's actions guard. The framework refuses to mint anything else.
+        $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
+
         $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
             return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());
         });
 
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
-        $this->app->scoped(OrganizationApiContext::class);
+        $this->app->scoped(WorkspaceApiContext::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
         $this->app->scoped(EnvironmentApiContext::class);
+
+        // Who is calling the MCP server on this request — set by AuthenticateMcp, read by
+        // every tool. Scoped and cleared after the request, like the key context above.
+        $this->app->scoped(McpCaller::class);
 
         // …and what it does is recorded as ITS act: the framework services behind the
         // management API write their own audit entries, mostly with no actor at all.
@@ -100,7 +112,12 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(MessageSending::class, SuppressSandboxMail::class);
 
         // The REST management API's named rate limiters. Without these registered,
-        // `throttle:api-organization` would be read as a numeric limit of 0.
+        // `throttle:api-workspace` would be read as a numeric limit of 0.
         ApiRateLimiters::register();
+
+        // The browser doors' named limiters — single-use links and passkey ceremonies.
+        // Same failure mode if one is missing: `throttle:link-token` unregistered is a
+        // numeric limit of zero, and every mailed link would answer 429.
+        WebRateLimiters::register();
     }
 }

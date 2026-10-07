@@ -16,6 +16,7 @@ final readonly class ActionDefinition
     /**
      * @param  class-string<Action>  $class
      * @param  list<string>  $consoleRoutes
+     * @param  list<string>  $redact
      */
     private function __construct(
         public string $class,
@@ -31,6 +32,7 @@ final readonly class ActionDefinition
         public ConsoleGate $consoleGate,
         public ?string $schema = null,
         public ?string $tag = null,
+        public array $redact = [],
     ) {}
 
     /**
@@ -62,12 +64,19 @@ final readonly class ActionDefinition
             consoleGate: $meta->consoleGate,
             schema: $meta->schema,
             tag: $meta->tag,
+            redact: $meta->redact,
         );
     }
 
     public function input(): InputSchema
     {
         return ($this->class)::input();
+    }
+
+    /** Where it is served from the API root (`/api/v1`): its plane's mount, then its own path. */
+    public function documentedPath(): string
+    {
+        return $this->plane->documentedPath($this->path);
     }
 
     /** The MCP tool name: the action name with dots as underscores. */

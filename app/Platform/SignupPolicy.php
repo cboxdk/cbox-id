@@ -77,12 +77,12 @@ final readonly class SignupPolicy
     public function closedMessage(): string
     {
         if ($this->onTenantEnvironment()) {
-            return 'You need an invitation to join. Ask the person who runs your team for one.';
+            return __('auth.signup.closed.tenant');
         }
 
         return $this->mode() === 'invite_only'
-            ? 'Signups are invite-only. Ask an administrator for an invitation.'
-            : 'Signups are currently closed.';
+            ? __('auth.signup.closed.invite_only')
+            : __('auth.signup.closed.closed');
     }
 
     /** A tenant environment on the SaaS shape — anywhere but the platform root. */

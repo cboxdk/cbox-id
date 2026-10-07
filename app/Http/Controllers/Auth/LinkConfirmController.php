@@ -40,7 +40,7 @@ final readonly class LinkConfirmController extends PageController
             return to_route('dashboard');
         }
 
-        return $this->page('auth/link-confirm', 'Connect your account', [
+        return $this->page('auth/link-confirm', __('auth.link_confirm.title'), [
             'provider' => $pending->label(),
             'email' => $pending->email,
             'name' => $pending->name,

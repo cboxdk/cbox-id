@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0f02741d96a02d6026e6ac6a4d000b7d",
+    "content-hash": "1f0c533df6b159ac4a8fa55e777d3906",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -566,16 +566,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v1.20.0",
+            "version": "v1.21.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "d2e4a763b304899657a8a73cbc639a67542f2f4b"
+                "reference": "92366e5a8e418ad5b81e0d3533cceda1266795fc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/d2e4a763b304899657a8a73cbc639a67542f2f4b",
-                "reference": "d2e4a763b304899657a8a73cbc639a67542f2f4b",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/92366e5a8e418ad5b81e0d3533cceda1266795fc",
+                "reference": "92366e5a8e418ad5b81e0d3533cceda1266795fc",
                 "shasum": ""
             },
             "require": {
@@ -638,9 +638,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v1.20.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.21.0"
             },
-            "time": "2026-09-25T07:27:08+00:00"
+            "time": "2026-10-07T20:33:49+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",
@@ -2785,6 +2785,80 @@
                 "source": "https://github.com/laravel/framework"
             },
             "time": "2026-10-06T13:52:37+00:00"
+        },
+        {
+            "name": "laravel/mcp",
+            "version": "v1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/mcp.git",
+                "reference": "92987a9d03847801299ff4abe909ba7686147dde"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/mcp/zipball/92987a9d03847801299ff4abe909ba7686147dde",
+                "reference": "92987a9d03847801299ff4abe909ba7686147dde",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "ext-mbstring": "*",
+                "illuminate/console": "^11.45.3|^12.41.1|^13.0",
+                "illuminate/container": "^11.45.3|^12.41.1|^13.0",
+                "illuminate/contracts": "^11.45.3|^12.41.1|^13.0",
+                "illuminate/http": "^11.45.3|^12.41.1|^13.0",
+                "illuminate/json-schema": "^12.41.1|^13.0",
+                "illuminate/routing": "^11.45.3|^12.41.1|^13.0",
+                "illuminate/support": "^11.45.3|^12.41.1|^13.0",
+                "illuminate/validation": "^11.45.3|^12.41.1|^13.0",
+                "php": "^8.2",
+                "symfony/process": "^7.4.5|^8.0.5"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.20",
+                "orchestra/testbench": "^9.15|^10.8|^11.0",
+                "pestphp/pest": "^3.8.5|^4.3.2",
+                "phpstan/phpstan": "^2.1.27",
+                "rector/rector": "^2.2.4"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Mcp": "Laravel\\Mcp\\Facades\\Mcp"
+                    },
+                    "providers": [
+                        "Laravel\\Mcp\\Server\\McpServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Mcp\\": "src/",
+                    "Laravel\\Mcp\\Server\\": "src/Server/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "Rapidly build MCP servers for your Laravel applications.",
+            "homepage": "https://github.com/laravel/mcp",
+            "keywords": [
+                "laravel",
+                "mcp"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/mcp/issues",
+                "source": "https://github.com/laravel/mcp"
+            },
+            "time": "2026-09-24T10:45:09+00:00"
         },
         {
             "name": "laravel/prompts",

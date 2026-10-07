@@ -34,19 +34,19 @@ final class OrganizationInviteMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->inviter.' invited you to administer '.$this->organization.' on '.self::brand(),
+            subject: __('mail.organization_invite.subject', [
+                'inviter' => $this->inviter,
+                'organization' => $this->organization,
+                'brand' => MailText::brand(),
+            ]),
         );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.organization-invite', with: ['brand' => self::brand()]);
-    }
-
-    private static function brand(): string
-    {
-        $brand = config('cbox-id.branding.name', 'Cbox ID');
-
-        return is_string($brand) && $brand !== '' ? $brand : 'Cbox ID';
+        return new Content(view: 'mail.organization-invite', with: [
+            'brand' => MailText::brand(),
+            'roleName' => MailText::role($this->role),
+        ]);
     }
 }

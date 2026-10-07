@@ -58,7 +58,7 @@ final readonly class FirstRunController extends PageController
         // learns nothing — the value goes to the log and the private disk.
         $tokens->issue();
 
-        return $this->page('auth/first-run', 'Set up Cbox ID', [
+        return $this->page('auth/first-run', __('auth.first_run.title'), [
             // The configured shape, shown so the operator sees what they are about to create.
             'multiTenant' => $planes->isMultiTenant(),
             // Multi-tenant with nowhere for the console to live — nothing safe to install.
@@ -92,7 +92,7 @@ final readonly class FirstRunController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, self::ATTEMPTS)) {
             return back()->withInput()->withErrors([
-                'token' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+                'token' => trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)),
             ]);
         }
 
@@ -100,7 +100,7 @@ final readonly class FirstRunController extends PageController
             RateLimiter::hit($key, 60);
 
             return back()->withInput()->withErrors([
-                'token' => 'That setup token does not match the one this deployment published.',
+                'token' => __('auth.first_run.token_mismatch'),
             ]);
         }
 

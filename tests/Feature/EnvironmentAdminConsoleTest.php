@@ -15,6 +15,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -98,7 +99,7 @@ it('redeems a signed handoff into an env-admin session', function (): void {
     $subjectId = $member->user_id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $envId);
 
-    $this->get("/admin/handoff?token={$token}")->assertRedirect(route('environment.home'));
+    $this->post('/admin/handoff', ['token' => $token])->assertRedirect(route('environment.home'));
 
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($subjectId)
         ->and(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
@@ -192,7 +193,7 @@ it('refuses a handoff minted for a different environment than the host', functio
     // Token says env X, but this host resolves env `$envId` → refused.
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, 'a_different_env');
 
-    $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
+    $this->post('/admin/handoff', ['token' => $token])->assertRedirect(route('admin.login'));
     expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
@@ -335,10 +336,11 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     signInAsMember($viewerSubjectId);
     $this->get($open)->assertForbidden();
 
-    // A developer is bounced to the environment host to redeem — a redirect, not a 403.
+    // A developer is handed to the environment host to redeem — a self-submitting form
+    // carrying the token, not a 403.
     [$dev, $devSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev-mint@acme.example');
     signInAsMember($devSubjectId);
-    $this->get($open)->assertRedirect();
+    $this->get($open)->assertOk()->assertSee('/admin/handoff', false);
 });
 
 /**
@@ -407,7 +409,7 @@ it('does not follow an end-user page an admin was bounced off', function (): voi
 
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
 
-    $this->get("/admin/handoff?token={$token}")->assertRedirect(route('environment.home'));
+    $this->post('/admin/handoff', ['token' => $token])->assertRedirect(route('environment.home'));
 
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($member->user_id)
         // And it is consumed, not left for the next sign-in on the other plane to trip on.
@@ -427,7 +429,7 @@ it('still resumes a page inside the admin console', function (): void {
 
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
 
-    $this->get("/admin/handoff?token={$token}")
+    $this->post('/admin/handoff', ['token' => $token])
         ->assertRedirect('https://'.$host.'/admin/organizations');
 });
 
@@ -455,3 +457,96 @@ it('drops the admin anchor when a subject signs in on the same host', function (
     expect(session(EnvironmentAdminAuth::ENV_KEY))->toBeNull()
         ->and(app(EnvironmentAdminAuth::class)->subjectId())->toBeNull();
 });
+
+/**
+ * THE HANDOFF TOKEN NEVER SITS IN A URL.
+ *
+ * It used to be a redirect to `/admin/handoff?token=…` — a live bearer credential written
+ * into the browser history and into the access log of every proxy between the browser and
+ * the tenant host. The minting door now answers with a self-submitting form that POSTs the
+ * token, and that page carries a policy of its own: the console's `form-action` names no
+ * tenant host, so under the global policy the post would simply be refused.
+ */
+it('hands the token over in a self-submitting POST, never in a URL', function (): void {
+    ['subjectId' => $subjectId, 'envId' => $envId, 'host' => $host] = envAdminSetup();
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+    signInAsMember($subjectId);
+
+    $response = $this->get('https://cboxid.com'.route('environment.open', $envId, absolute: false))
+        ->assertOk()
+        ->assertHeaderMissing('Location')
+        ->assertSee('<form method="post" action="https://'.$host.'/admin/handoff">', false)
+        ->assertHeader('Referrer-Policy', 'no-referrer');
+
+    expect((string) $response->headers->get('Cache-Control'))->toContain('no-store');
+
+    // The token is in the body, and it is a real one for this environment.
+    preg_match('#name="token" value="([^"]+)"#', (string) $response->getContent(), $token);
+    expect(app(EnvironmentAdminHandoff::class)->verify(html_entity_decode($token[1] ?? ''))?->environmentId)->toBe($envId);
+
+    // Its own policy, narrower than the console's everywhere — and naming the one tenant
+    // origin the form posts to, or the browser refuses the submission.
+    $csp = (string) $response->headers->get('Content-Security-Policy');
+    expect($csp)->toContain("default-src 'none'")
+        ->and($csp)->toContain('https://'.$host)
+        ->and($csp)->toContain("frame-ancestors 'none'")
+        ->and($csp)->not->toContain('unsafe-inline');
+
+    // The submit script runs under the nonce the header permits, and nothing else does.
+    preg_match("#script-src 'nonce-([^']+)'#", $csp, $nonce);
+    expect((string) $response->getContent())->toContain('<script nonce="'.($nonce[1] ?? 'missing').'">');
+})->group('security');
+
+it('refuses a handoff presented in a URL', function (): void {
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    serveOnTestHost($env);
+
+    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
+
+    // The old shape — a GET with the token in the query string — is not a door any more.
+    // It is refused to the gate without the token being read, and it says so in headers
+    // that keep the refusal out of every cache and every Referer.
+    $this->get('/admin/handoff?token='.urlencode($token))
+        ->assertRedirect(route('admin.login'))
+        ->assertHeader('Referrer-Policy', 'no-referrer');
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+
+    // Nor is a POST that carries the token in its URL rather than its body: accepting it
+    // there would keep exactly the leak the move to POST closes.
+    $this->post('/admin/handoff?token='.urlencode($token))->assertRedirect(route('admin.login'));
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+})->group('security');
+
+it('marks every handoff answer no-store and no-referrer', function (): void {
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    serveOnTestHost($env);
+
+    $refused = $this->post('/admin/handoff', ['token' => 'not-a-handoff'])
+        ->assertRedirect(route('admin.login'))
+        ->assertHeader('Referrer-Policy', 'no-referrer');
+    expect((string) $refused->headers->get('Cache-Control'))->toContain('no-store');
+
+    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
+
+    $redeemed = $this->post('/admin/handoff', ['token' => $token])
+        ->assertRedirect(route('environment.home'))
+        ->assertHeader('Referrer-Policy', 'no-referrer');
+    expect((string) $redeemed->headers->get('Cache-Control'))->toContain('no-store');
+})->group('security');
+
+/**
+ * The form is rendered by the ACCOUNT host, so it cannot carry the ENVIRONMENT host's CSRF
+ * token — and Laravel's test helpers skip CSRF, so only the configuration can say whether
+ * a real browser's post would be answered 419. Exactly this path and nothing else under
+ * `admin/`: every other write there rides an ambient session.
+ */
+it('exempts exactly the handoff redemption from CSRF', function (): void {
+    $property = new ReflectionProperty(ValidateCsrfToken::class, 'neverVerify');
+
+    /** @var list<string> $patterns */
+    $patterns = $property->getValue();
+
+    expect($patterns)->toContain('admin/handoff')
+        ->and(collect($patterns)->filter(fn (string $p): bool => str_starts_with($p, 'admin'))->values()->all())
+        ->toBe(['admin/handoff']);
+})->group('security');

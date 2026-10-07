@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button } from '@/ui';
@@ -20,24 +21,26 @@ type Props = PageProps<{
  * their address, and "no" is the answer that needs to be easy to reach.
  */
 export default function LinkConfirm({ provider, email }: Props) {
+    const { t, rich } = useTranslator();
     const [answering, setAnswering] = useState<'connect' | 'decline' | null>(null);
 
     return (
         <>
-            <h1 className="text-xl font-semibold tracking-tight">Connect {provider}?</h1>
+            <h1 className="text-xl font-semibold tracking-tight">
+                {t('auth.link_confirm.heading', { provider })}
+            </h1>
 
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Someone just signed in with {provider}
-                {email !== null && (
-                    <>
-                        {' '}
-                        as{' '}
-                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-                            {email}
-                        </span>
-                    </>
-                )}{' '}
-                — an address that already belongs to your account.
+                {email !== null
+                    ? rich('auth.link_confirm.lead_email', {
+                          provider,
+                          email: (
+                              <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                                  {email}
+                              </span>
+                          ),
+                      })
+                    : t('auth.link_confirm.lead', { provider })}
             </p>
 
             <div
@@ -45,13 +48,15 @@ export default function LinkConfirm({ provider, email }: Props) {
                 style={{ background: 'var(--secondary)', border: '1px solid var(--border)' }}
             >
                 <p>
-                    <b>If that was you</b>, connect it and you'll be able to sign in with{' '}
-                    {provider} or with your password from now on.
+                    {rich('auth.link_confirm.was_you', {
+                        emphasis: <b>{t('auth.link_confirm.was_you_emphasis')}</b>,
+                        provider,
+                    })}
                 </p>
                 <p className="mt-2.5" style={{ color: 'var(--muted-foreground)' }}>
-                    <b>If it wasn't</b>, decline. Someone else tried to sign in using your email
-                    address. Nothing will be added to your account, and your password still
-                    works as before.
+                    {rich('auth.link_confirm.was_not_you', {
+                        emphasis: <b>{t('auth.link_confirm.was_not_you_emphasis')}</b>,
+                    })}
                 </p>
             </div>
 
@@ -64,7 +69,7 @@ export default function LinkConfirm({ provider, email }: Props) {
                         router.post(decline.url());
                     }}
                 >
-                    No, that wasn't me
+                    {t('auth.link_confirm.decline')}
                 </Button>
 
                 <Button
@@ -76,12 +81,12 @@ export default function LinkConfirm({ provider, email }: Props) {
                         router.post(connect.url());
                     }}
                 >
-                    Yes, connect {provider}
+                    {t('auth.link_confirm.connect', { provider })}
                 </Button>
             </div>
 
             <p className="mt-5 text-xs" style={{ color: 'var(--faint)' }}>
-                You can disconnect {provider} at any time from your account's security settings.
+                {t('auth.link_confirm.disconnect_hint', { provider })}
             </p>
         </>
     );

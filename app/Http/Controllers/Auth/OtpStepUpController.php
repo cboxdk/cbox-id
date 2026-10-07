@@ -34,7 +34,7 @@ final readonly class OtpStepUpController extends PageController
             return to_route('login');
         }
 
-        return $this->page('auth/otp-step-up', 'Additional verification', [
+        return $this->page('auth/otp-step-up', __('auth.otp_step_up.title'), [
             // MASKED. The person already knows their own address; the point of showing it
             // is to say WHICH inbox to look in, and an unmasked address on a page reached
             // without a session is one an onlooker learns too.
@@ -54,14 +54,14 @@ final readonly class OtpStepUpController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             return back()->withErrors([
-                'code' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+                'code' => trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)),
             ]);
         }
 
         if (! $auth->completeOtpStepUp($request, $request->code())) {
             RateLimiter::hit($key, 60);
 
-            return back()->withErrors(['code' => 'That code is incorrect or has expired.']);
+            return back()->withErrors(['code' => __('auth.common.code_incorrect')]);
         }
 
         RateLimiter::clear($key);
@@ -87,7 +87,7 @@ final readonly class OtpStepUpController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             return back()->withErrors([
-                'code' => 'Too many requests. Try again in '.RateLimiter::availableIn($key).' seconds.',
+                'code' => trans_choice('auth.common.too_many_requests', RateLimiter::availableIn($key)),
             ]);
         }
 
@@ -97,11 +97,11 @@ final readonly class OtpStepUpController extends PageController
             $auth->resendOtpStepUp($request);
         } catch (OtpRateLimitExceeded) {
             return back()->withErrors([
-                'code' => 'Too many codes requested. Please wait a moment and try again.',
+                'code' => __('auth.otp_step_up.too_many_codes'),
             ]);
         }
 
-        $this->inertia->flash('resent', 'We sent a new code to '.self::mask($pending['email']).'.');
+        $this->inertia->flash('resent', __('auth.otp_step_up.resent', ['email' => self::mask($pending['email'])]));
 
         return back();
     }

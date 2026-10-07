@@ -11,7 +11,7 @@ info:
     the environment, and the request is authenticated with an environment API key
     (`cbid_env_…`).
 
-    This is distinct from the global organization API (`cbid_org_…`), which manages the
+    This is distinct from the global organization API (`cbid_ws_…`), which manages the
     organization, its environments and members. Credentials never cross planes — an
     organization key cannot call this API, and an environment key cannot call the organization
     API. An environment key is bound to the host it was minted for: presenting it on
@@ -880,6 +880,8 @@ paths:
       tags: [Apps]
       summary: List apps
       description: "Requires scope `apps:read`. Never a secret."
+      operationId: apps_list
+      x-action: apps.list
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/After"
@@ -915,7 +917,15 @@ paths:
           "Create app" does. `advanced` takes `client_type` and `grant_types`.
 
         The response carries `client_secret` for an app that authenticates with one —
-        **once**. Only its hash is kept.
+        **once**. Only its hash is kept, and an idempotent replay returns `client_secret: null`.
+
+        A platform scope reserved for the console (`vault.manage`, `decisions:read`) is
+        refused (`scope_not_grantable`), as is a registered API's scope this app's owner may
+        not hold. Danger: critical — it mints a credential.
+      operationId: apps_create
+      x-action: apps.create
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -924,7 +934,7 @@ paths:
               type: object
               properties:
                 blueprint: { $ref: "#/components/schemas/AppBlueprint" }
-                name: { type: string, maxLength: 120 }
+                name: { type: string, maxLength: 190 }
                 type: { type: string, enum: [web, spa, cli, service, agent, advanced], default: web }
                 client_type: { type: string, enum: [confidential, public] }
                 grant_types: { type: array, items: { type: string } }
@@ -932,6 +942,7 @@ paths:
                 post_logout_redirect_uris: { type: array, items: { type: string } }
                 scopes: { type: array, items: { type: string } }
                 first_party: { type: boolean, default: false }
+                manifest_url: { type: ["string", "null"], format: uri, maxLength: 500, description: "Where the app publishes its roles-and-permissions manifest (short form)." }
                 organization_id: { type: ["string", "null"], description: "The owning organization; null for the environment's own app." }
                 jwks: { type: ["object", "null"], description: "A public JWK Set, for a `private_key_jwt` app." }
       responses:
@@ -957,6 +968,8 @@ paths:
         carries the app's settings and none of its identity or credentials: no client id,
         no secret, no key set, no owning organization. `POST /apps` with it as `blueprint`
         creates the same app in another environment.
+      operationId: apps_blueprint
+      x-action: apps.blueprint
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -969,6 +982,36 @@ paths:
                 required: [data]
                 properties:
                   data: { $ref: "#/components/schemas/AppBlueprint" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apps/{id}/secrets:
+    get:
+      tags: [Apps]
+      summary: List an app's live client secrets
+      description: |
+        Requires scope `apps:read`. Every live secret, newest first: its id (what
+        `DELETE /apps/{id}/secrets/{secret_id}` names), the characters it ends in, and its
+        dates — never a secret. `expires_at` is set on one a rotation replaced, still working
+        through its overlap. An app holds a handful at most, so there is no page to turn.
+      operationId: apps_secrets_list
+      x-action: apps.secrets.list
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AppSecret" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -1109,6 +1152,33 @@ paths:
         "204": { description: "Deleted." }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /action-approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Where an approval this key asked for stands
+      description: |
+        Any key may poll the approvals it raised, and only those: another key's id is a 404.
+        `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [pending, approved, denied, expired, consumed] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /support-sessions:
@@ -1681,6 +1751,12 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    CboxApproval:
+      name: Cbox-Approval
+      in: header
+      required: false
+      description: The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Spent by this request, once.
+      schema: { type: string }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1898,10 +1974,31 @@ components:
         redirect_uris: { type: array, items: { type: string } }
         post_logout_redirect_uris: { type: array, items: { type: string } }
         scopes: { type: array, items: { type: string } }
+        manifest_url: { type: ["string", "null"], description: Where it publishes its roles-and-permissions manifest. }
+        access_token_ttl: { type: ["integer", "null"], description: Its access-token lifetime in seconds; null for the install's default. }
+        backchannel_logout_uri: { type: ["string", "null"], description: Where it is sent a logout token (OIDC Back-Channel Logout); null when it is not told. }
+        backchannel_logout_session_required: { type: boolean }
+        api_key_prefix: { type: ["string", "null"], description: The prefix of its customer API keys; null when it accepts none. }
         created_at: { type: ["string", "null"], format: date-time }
         client_secret:
-          type: string
-          description: Only on the response that created the app, and only for an app that authenticates with a secret. Never again.
+          type: ["string", "null"]
+          description: Only on the response that created (or copied) the app, and only for an app that authenticates with a secret. Never again — null on an idempotent replay.
+    AppSecret:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        hint: { type: ["string", "null"], description: The characters the secret ends in; null for one older than per-secret storage. }
+        created_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: ["string", "null"], format: date-time, description: Set on a secret a rotation replaced — it stops working then. }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        client_secret:
+          type: ["string", "null"]
+          description: Only on the rotation that minted it. Never again — null on an idempotent replay.
+        previous_expire_at:
+          type: ["string", "null"]
+          format: date-time
+          description: On a rotation — when the secrets it replaced stop working.
     AppBlueprint:
       type: object
       description: |
@@ -1949,6 +2046,76 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ApiScope" }
         created_at: { type: ["string", "null"], format: date-time }
+    Webhook:
+      type: object
+      required: [id, url, organization_id, event_types, active]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it receives EVERY organization's events." }
+        event_types: { type: array, items: { type: string } }
+        active: { type: boolean, description: "false while paused." }
+        consecutive_failures: { type: integer }
+        last_success_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
+        secret:
+          type: ["string", "null"]
+          description: |
+            The signing secret, on the create and rotate answers only — shown once, never
+            retrievable again. `null` on an idempotent replay of that answer.
+    InlineHook:
+      type: object
+      required: [id, url, hook_point, organization_id, active]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        hook_point: { type: string, enum: [token_minting, post_login, pre_registration, post_registration, pre_password_change, post_password_change] }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it runs for EVERY organization." }
+        active: { type: boolean }
+        created_at: { type: ["string", "null"], format: date-time }
+        secret:
+          type: ["string", "null"]
+          description: The signing secret, on the create answer only — shown once. `null` on an idempotent replay.
+    LogStream:
+      type: object
+      required: [id, name, destination, endpoint_url, auth, organization_id, enabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        destination: { type: string, enum: [splunk_hec, elastic_ecs, graylog_gelf, cef_http, generic_json] }
+        endpoint_url: { type: string }
+        auth: { type: string, enum: [none, bearer, splunk, hmac] }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it: it carries EVERY organization's entries." }
+        enabled: { type: boolean }
+        consecutive_failures: { type: integer }
+        last_success_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
+        secret:
+          type: ["string", "null"]
+          description: A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.
+    DomainEvent:
+      type: object
+      required: [id, type, organization_id, occurred_at, payload]
+      properties:
+        id: { type: string, description: "A ULID; pass the last one you saw as `after`." }
+        type: { type: string, description: "e.g. `user.created` — the webhook event name." }
+        organization_id: { type: ["string", "null"] }
+        occurred_at: { type: ["string", "null"], format: date-time }
+        payload: { type: object }
+    AuditEntry:
+      type: object
+      required: [id, action, actor_type, actor_id, organization_id, target_type, target_id, context, recorded_at]
+      properties:
+        id: { type: string, description: "A ULID; pass the last one you saw as `after`." }
+        action: { type: string, description: "e.g. `webhook.created`." }
+        actor_type: { type: string, enum: [user, service, system, operator, organization_member] }
+        actor_id: { type: ["string", "null"], description: "For `service`, the management key's or app's id." }
+        organization_id: { type: ["string", "null"] }
+        target_type: { type: ["string", "null"] }
+        target_id: { type: ["string", "null"] }
+        context: { type: object }
+        ip: { type: ["string", "null"] }
+        recorded_at: { type: ["string", "null"], format: date-time }
     ApiKey:
       type: object
       required: [id, prefix, organization_id, user_id, client_id, permissions, status, revoked]
@@ -2024,6 +2191,145 @@ components:
         name: { type: ["string", "null"] }
         status: { type: string, enum: [active, disabled, locked] }
         email_verified_at: { type: ["string", "null"], format: date-time }
+    SignInRules:
+      type: object
+      required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold]
+      properties:
+        min_length: { type: integer, description: "Minimum password length." }
+        require_breach_check: { type: boolean, description: "Passwords found in known breaches are refused." }
+        max_age_days: { type: ["integer", "null"], description: "Days before a password must be changed; null for no limit." }
+        reuse_history: { type: integer, description: "Previous passwords that may not be reused." }
+        mfa: { type: string, enum: [off, optional, required] }
+        sso: { type: string, enum: [off, preferred, required], description: "`required` refuses every other way in." }
+        lockout_threshold: { type: ["integer", "null"], description: "Failed attempts before a lockout; null for none." }
+    SignInPolicy:
+      type: object
+      required: [organization_id, policy, baseline, override, inheriting]
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the environment baseline." }
+        policy:
+          $ref: "#/components/schemas/SignInRules"
+          description: "What is in force at this level: the baseline, or the organization's override tightened over it."
+        baseline: { $ref: "#/components/schemas/SignInRules" }
+        override:
+          description: "What the organization stored itself; null when it inherits (and always for the baseline)."
+          oneOf:
+            - { $ref: "#/components/schemas/SignInRules" }
+            - { type: "null" }
+        inheriting: { type: boolean, description: "True for an organization with no override of its own." }
+    SocialProvider:
+      type: object
+      required: [id, organization_id, provider, name, protocol, status, callback_uri]
+      description: "Its client secret and private key are write-only and never returned."
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"] }
+        provider: { type: ["string", "null"], description: "The catalogue key: google, github, apple…" }
+        name: { type: string }
+        protocol: { type: string, enum: [oidc, oauth2] }
+        status: { type: string }
+        callback_uri: { type: string, description: "The redirect URI to register with the provider." }
+        created_at: { type: ["string", "null"], format: date-time }
+    FrontendKey:
+      type: object
+      required: [id, name, key, mode, origins, active]
+      description: "A publishable key. Returned in full: it is public by design; the origins are the control."
+      properties:
+        id: { type: string }
+        name: { type: string }
+        key: { type: string }
+        mode: { type: string, enum: [test, live] }
+        origins: { type: array, items: { type: string } }
+        active: { type: boolean }
+        created_at: { type: ["string", "null"], format: date-time }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        revoked_at: { type: ["string", "null"], format: date-time }
+    SamlApp:
+      type: object
+      required: [id, entity_id, acs_url, name_id_format, name_id_attribute, attribute_mappings, want_authn_requests_signed, has_certificate, status]
+      description: "An application that trusts this environment as its SAML identity provider. Its certificate is write-only."
+      properties:
+        id: { type: string }
+        entity_id: { type: string }
+        acs_url: { type: string }
+        name_id_format: { type: string }
+        name_id_attribute: { type: string }
+        attribute_mappings:
+          type: array
+          items:
+            type: object
+            required: [attribute, field]
+            properties:
+              attribute: { type: string }
+              field: { type: string }
+        want_authn_requests_signed: { type: boolean }
+        has_certificate: { type: boolean }
+        status: { type: string }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    LegacyLogin:
+      type: object
+      required: [declared, url, client_id, declared_by, approved, approved_at, approved_by]
+      description: "The legacy sign-in endpoint an app declared for migration. Its shared secret is never returned."
+      properties:
+        declared: { type: boolean }
+        url: { type: ["string", "null"] }
+        client_id: { type: ["string", "null"], description: "The app that declared it." }
+        declared_by: { type: ["string", "null"], description: "That app's name." }
+        approved: { type: boolean }
+        approved_at: { type: ["string", "null"], format: date-time }
+        approved_by: { type: ["string", "null"], description: "The person or key that approved it." }
+    ThemeMode:
+      type: object
+      properties:
+        primary: { type: string }
+        background: { type: string }
+        foreground: { type: string }
+        muted: { type: string }
+    Appearance:
+      type: object
+      required: [organization_id, customized, theme, logo]
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the environment default." }
+        customized: { type: boolean, description: "Whether this level has a theme of its own." }
+        theme:
+          type: object
+          properties:
+            preset: { type: string }
+            radius: { type: string }
+            font: { type: string }
+            light: { $ref: "#/components/schemas/ThemeMode" }
+            dark: { $ref: "#/components/schemas/ThemeMode" }
+        logo: { type: ["string", "null"] }
+    WhitelabelBranding:
+      type: object
+      required: [organization_id, palette, app_name, email_from_name, email_template, logo_url, favicon_url]
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the environment default." }
+        palette:
+          type: object
+          additionalProperties: { type: ["string", "null"] }
+        app_name: { type: ["string", "null"] }
+        email_from_name: { type: ["string", "null"] }
+        email_template: { type: ["string", "null"] }
+        logo_url: { type: ["string", "null"], description: "Uploaded from the console." }
+        favicon_url: { type: ["string", "null"], description: "Uploaded from the console." }
+    CustomDomain:
+      type: object
+      required: [domain, verified_at, pending]
+      properties:
+        domain: { type: ["string", "null"], description: "The verified domain serving this environment." }
+        verified_at: { type: ["string", "null"], format: date-time }
+        pending:
+          description: "A domain waiting for its DNS proof, and the TXT record to publish."
+          oneOf:
+            - type: object
+              required: [domain, record_name, record_value]
+              properties:
+                domain: { type: string }
+                record_name: { type: string }
+                record_value: { type: string }
+            - { type: "null" }
     PageMeta:
       type: object
       properties:
@@ -2055,6 +2361,28 @@ components:
         error: { type: string, enum: [invalid_request, invalid_token, insufficient_scope] }
         error_description: { type: string }
   responses:
+    ApprovalRequired:
+      description: |
+        Held for a person's approval: this key's policy requires its owner to approve this
+        action on their device first. Poll `approval.poll_url`, then repeat the same request
+        (same body, same `Idempotency-Key`) with `Cbox-Approval: <approval.id>`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, message, approval]
+            properties:
+              error: { type: string, enum: [approval_required] }
+              message: { type: string }
+              approval:
+                type: object
+                required: [id, status, binding_code, expires_at, poll_url]
+                properties:
+                  id: { type: string }
+                  status: { type: string }
+                  binding_code: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  poll_url: { type: string, format: uri }
     Unauthorized:
       description: Missing or invalid environment API key.
       content:

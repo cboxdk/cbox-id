@@ -11,9 +11,11 @@ adds the admin console + hosted-cloud concerns (UI, onboarding, billing).
 ## Stack
 
 - **Laravel 13**, PHP 8.4+ (argon2id password hashing is the configured default).
-- **Livewire + Volt + Tailwind v4** — server-rendered UI. Chosen for security:
-  session-cookie auth (no tokens in the browser), a minimal JS surface, and a
-  strict-CSP footprint suit an identity console.
+- **Inertia + React + Tailwind v4** — server-routed UI: every page and every write is
+  a Laravel route with its own middleware, and React renders what the controller hands
+  it. Chosen for security: session-cookie auth (no tokens in the browser), one
+  same-origin Vite bundle, and a `script-src` with no `unsafe-inline` or `unsafe-eval` suit
+  an identity console.
 - Depends on **`cboxdk/laravel-id`** (Composer/Packagist) plus the first-party
   observability stack (`laravel-telemetry`, `laravel-health`, `laravel-queue-metrics`,
   `laravel-queue-autoscale`).

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Branding\SetAppearance;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SaveAppearanceRequest;
 use App\Platform\Appearance\Appearance;
@@ -13,7 +14,6 @@ use App\Platform\Appearance\ThemeRadius;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
@@ -33,7 +33,8 @@ use Inertia\Response;
  *
  * The organization page also refused an unreadable palette and the environment page did
  * not, so an operator could set an environment default that no tenant's users could read.
- * That gate is on both now.
+ * That gate is on both now — in the ACTION (`branding.appearance.set`) the management API
+ * runs too, so the rule is the same whichever door changes a theme.
  */
 final readonly class AppearanceController extends ConsoleController
 {
@@ -87,38 +88,14 @@ final readonly class AppearanceController extends ConsoleController
         ]);
     }
 
-    public function update(
-        SaveAppearanceRequest $request,
-        Organizations $organizations,
-        EnvironmentContext $environments,
-    ): RedirectResponse {
+    /**
+     * Save the theme through the ACTION the management API runs ({@see SetAppearance}),
+     * which refuses an unreadable palette — on both altitudes, so an operator cannot set an
+     * environment default that no tenant's users can read.
+     */
+    public function update(SaveAppearanceRequest $request): RedirectResponse
+    {
         $this->scope->assertMayAdminister();
-
-        $appearance = Appearance::fromArray($request->theme());
-
-        /*
-         * REFUSE AN UNREADABLE PALETTE rather than warn about one.
-         *
-         * `hex()` validates the FORMAT, so nothing stopped a "light" mode with a
-         * near-black background — and the people who then cannot read the sign-in page are
-         * not the administrator choosing the colours, they are that organization's users.
-         * A warning the saver can click past puts the consequence on somebody who never
-         * saw it.
-         */
-        $failures = array_merge(
-            array_map(fn (string $why): string => 'Light mode: '.$why, $appearance->light->contrastFailures()),
-            array_map(fn (string $why): string => 'Dark mode: '.$why, $appearance->dark->contrastFailures()),
-        );
-
-        if ($failures !== []) {
-            return back()->withErrors(['theme' => implode(' ', $failures)]);
-        }
-
-        $payload = [
-            'appearance' => $appearance->toArray(),
-            'brand_color' => $appearance->light->primary,
-            'brand_logo_url' => $request->logo(),
-        ];
 
         if ($request->environmentDefault()) {
             /*
@@ -128,24 +105,23 @@ final readonly class AppearanceController extends ConsoleController
              */
             abort_unless($this->scope->plane() === ConsolePlane::Environment, 403,
                 'Only an environment administrator may change the environment default theme.');
-
-            $environment = $this->environment($environments);
-
-            if ($environment === null) {
-                return back();
-            }
-
-            $environment->settings = array_merge($environment->settings, $payload);
-            $environment->save();
-
-            return back()->with('status', 'Environment appearance saved.');
         }
 
-        // `requireOrganizationId()`, not the nullable reader: with none resolved this
-        // write would otherwise land wherever a downstream default pointed.
-        $organizations->updateSettings($this->scope->requireOrganizationId(), $payload);
+        $result = $this->act(SetAppearance::class, [
+            // `requireOrganizationId()`, not the nullable reader: with none resolved this
+            // write would otherwise land wherever a downstream default pointed.
+            'organization_id' => $request->environmentDefault() ? null : $this->scope->requireOrganizationId(),
+            // Through the sanitizer first, so the editor's extra keys (its name and logo
+            // preview) never reach the action as theme fields.
+            'theme' => Appearance::fromArray($request->theme())->toArray(),
+            'logo' => $request->logo(),
+        ], ['theme' => 'theme', 'logo' => 'logo'], 'theme');
 
-        return back()->with('status', 'Appearance saved.');
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return back()->with('status', $request->environmentDefault() ? 'Environment appearance saved.' : 'Appearance saved.');
     }
 
     /**

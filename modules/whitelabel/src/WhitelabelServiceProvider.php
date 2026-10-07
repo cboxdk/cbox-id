@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Id\Whitelabel;
 
 use App\Http\Props\Console\DashboardCardProps;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\DashboardCards;
@@ -43,6 +44,15 @@ class WhitelabelServiceProvider extends ServiceProvider
     {
         // The profile store — swappable, but Eloquent by default.
         $this->app->bindIf(BrandProfiles::class, DatabaseBrandProfiles::class);
+
+        // This module's actions — the branding the console saves, as the management API's
+        // `/branding/whitelabel` — named to the registry from here, the public socket, so
+        // the module still needs no edit to app/ and its endpoints leave with it. As the
+        // registry is resolved rather than at boot, so no provider order can route the list
+        // before this directory is on it.
+        $this->app->afterResolving(ActionRegistry::class, static function (ActionRegistry $registry): void {
+            $registry->discoverIn(__DIR__.'/Actions', __NAMESPACE__.'\\Actions');
+        });
 
         // Turn the feature on: replace the inert null resolver with the tenant one.
         $this->app->bind(BrandingResolver::class, TenantBrandingResolver::class);

@@ -212,7 +212,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 
     $flash = session()->get(SessionKey::FLASH_DATA, []);
 
-    expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)->toStartWith('cbid_org_')
+    expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)->toStartWith('cbid_ws_')
         ->and(app(OrganizationApiKeys::class)->forOrganization($account->id))->toHaveCount(1);
 
     // AND NOT AGAIN. The next render of the page carries no key at all — the flash is
@@ -825,4 +825,13 @@ it('refuses to remove a customer\'s member from the environment roster', functio
     // whose authority is "administers this environment" and which never asked whether they
     // may manage that customer's people.
     expect(freshMembership($target))->not->toBeNull('the member lost their place in their own organization');
+})->group('security');
+
+it('404s a member action aimed at an id that names no membership', function (): void {
+    ['subjectId' => $ownerSubjectId] = provisionAccount();
+    signInAsMember($ownerSubjectId);
+
+    $this->patch(route('members.role', '01JUNKNOWNMEMBER000000000'), ['role' => MembershipRole::Admin->value])
+        ->assertNotFound();
+    $this->delete(route('members.remove', '01JUNKNOWNMEMBER000000000'))->assertNotFound();
 })->group('security');

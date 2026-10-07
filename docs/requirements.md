@@ -42,7 +42,7 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `cboxdk/laravel-id` | `^1.19` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `^1.21` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
@@ -61,6 +61,7 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
+| `laravel/mcp` | `^1.0` | The MCP server at `/mcp` on each environment host. See [Agents and MCP](guides/agents-and-mcp.md). |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
 
 > Social and enterprise sign-in needs **no third-party package**. Google, Entra, Okta,

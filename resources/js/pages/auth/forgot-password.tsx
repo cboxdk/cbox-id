@@ -1,4 +1,5 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input } from '@/ui';
@@ -19,16 +20,17 @@ export default function ForgotPassword(_props: Props) {
     // On the flash channel: "a link is on its way" is a step in a flow, and a person
     // pressing Back should see the form again rather than a stale confirmation.
     const { sentTo, devResetUrl } = usePage().flash;
+    const { t, rich } = useTranslator();
 
     const form = useForm({ email: '' });
 
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Reset your password
+                {t('auth.forgot_password.heading')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Enter your email and we'll send a reset link.
+                {t('auth.forgot_password.lead')}
             </p>
 
             {sentTo !== undefined ? (
@@ -38,9 +40,9 @@ export default function ForgotPassword(_props: Props) {
                     className="mt-6 rounded-lg text-sm card block"
                     style={{ padding: '0.85rem 1rem' }}
                 >
-                    <p className="font-medium">Check your inbox</p>
+                    <p className="font-medium">{t('auth.common.check_your_inbox')}</p>
                     <p className="mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                        If an account exists for <b>{sentTo}</b>, a reset link is on its way.
+                        {rich('auth.forgot_password.sent_to', { email: <b>{sentTo}</b> })}
                     </p>
 
                     {/*
@@ -66,7 +68,7 @@ export default function ForgotPassword(_props: Props) {
                         form.post(sendResetLink.url());
                     }}
                 >
-                    <Field label="Email" error={form.errors.email}>
+                    <Field label={t('auth.common.email')} error={form.errors.email}>
                         <Input
                             name="email"
                             type="email"
@@ -88,7 +90,7 @@ export default function ForgotPassword(_props: Props) {
                         className="w-full"
                         loading={form.processing}
                     >
-                        Send reset link
+                        {t('auth.forgot_password.submit')}
                     </Button>
                 </form>
             )}
@@ -97,13 +99,13 @@ export default function ForgotPassword(_props: Props) {
                 className="mt-6 text-sm text-center"
                 style={{ color: 'var(--muted-foreground)' }}
             >
-                Remembered it?{' '}
+                {t('auth.forgot_password.remembered')}{' '}
                 <Link
                     href={login.url()}
                     className="font-medium underline underline-offset-2"
                     style={{ color: 'var(--accent-strong)' }}
                 >
-                    Back to sign in
+                    {t('auth.common.back_to_sign_in')}
                 </Link>
             </p>
         </>

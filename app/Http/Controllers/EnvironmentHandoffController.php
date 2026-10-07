@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\SecurityHeaders;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\CspNonce;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 
 final class EnvironmentHandoffController extends Controller
 {
     /**
      * "Open" an environment from the Identity platform area: mint a short-lived signed
-     * handoff and bounce to that environment's OWN host, where it is redeemed into an
+     * handoff and POST it to that environment's OWN host, where it is redeemed into an
      * env-admin session. No second login — the account member lands straight in the
      * environment's control plane. Access is re-checked here (never mint for an
      * environment the member can't reach) AND on redemption.
@@ -28,13 +32,21 @@ final class EnvironmentHandoffController extends Controller
      * requirements are held one layer up, in the `Authenticate` middleware, which takes a
      * member owing a password change to the change page before this method is ever
      * reached. A refusal added to the redemption alone is a redirect loop.
+     *
+     * THE TOKEN TRAVELS IN A FORM BODY, NOT A URL. This used to redirect to
+     * `/admin/handoff?token=…`, which wrote a live bearer credential into the browser
+     * history and the access log of everything between the browser and the environment
+     * host. It is now a self-submitting POST ({@see self::postTo()}), and the redemption
+     * accepts nothing else.
      */
     public function openEnvironment(
         string $environment,
         ConsoleScope $scope,
         Memberships $members,
         EnvironmentAdminHandoff $handoff,
-    ): RedirectResponse {
+        CspNonce $nonce,
+        PlaneResolver $planes,
+    ): RedirectResponse|Response {
         $organizationId = $scope->organizationId();
         $subjectId = $scope->actorId();
 
@@ -63,7 +75,59 @@ final class EnvironmentHandoffController extends Controller
         // it is re-resolved on redemption, not carried in the token.
         $token = $handoff->mint($subjectId, $env->id);
 
-        return redirect()->away('https://'.$this->host($env).'/admin/handoff?token='.urlencode($token));
+        return $this->postTo($env, $token, $nonce, $planes);
+    }
+
+    /**
+     * The self-submitting form that carries the token, with the headers that keep it
+     * from being stored or leaked.
+     *
+     * ITS OWN CONTENT POLICY, because the global one would refuse it twice. The console's
+     * `form-action` deliberately names no environment host — they are tenant-controlled
+     * and open-ended — so the post itself is blocked; and nothing in the global policy
+     * covers the one inline submit. {@see SecurityHeaders} defers
+     * to a response that declares its own policy, which is how the SAML POST binding
+     * works too, and this one is narrower than the global one everywhere:
+     *
+     *   - `default-src 'none'`: the page loads nothing at all;
+     *   - `script-src` is the request's nonce and nothing else — the SAME nonce the global
+     *     policy would have used, so a CDN that copies it onto a script it injects keeps
+     *     working on this page as it does on every other;
+     *   - `form-action` is this host, the account hosts, and the ONE environment origin
+     *     the token was minted for. The account hosts are not decoration: the browser
+     *     checks `form-action` against every hop of the submission's redirect chain, and a
+     *     refused redemption bounces through the environment's gate back to the account
+     *     host's minting door. Without them a refusal would die on a CSP violation instead
+     *     of landing where it can be resolved;
+     *   - no framing, no `<base>`.
+     *
+     * `Cache-Control: no-store` because the body IS a credential until it is spent, and
+     * `Referrer-Policy: no-referrer` (also stated in the markup) so the account page this
+     * was opened from is not announced to the tenant's host.
+     */
+    private function postTo(Environment $environment, string $token, CspNonce $nonce, PlaneResolver $planes): Response
+    {
+        $origin = 'https://'.$this->host($environment);
+
+        $policy = implode('; ', [
+            "default-src 'none'",
+            "script-src 'nonce-".$nonce->value()."'",
+            'form-action '.implode(' ', array_values(array_unique(["'self'", ...$planes->formActionHosts(), $origin]))),
+            "base-uri 'none'",
+            "frame-ancestors 'none'",
+        ]);
+
+        return response()->view('environment-handoff', [
+            'action' => $origin.'/admin/handoff',
+            'token' => $token,
+            'nonce' => $nonce->value(),
+            'environmentName' => $environment->name,
+        ])->withHeaders([
+            'Content-Security-Policy' => $policy,
+            'Cache-Control' => 'no-store',
+            'Pragma' => 'no-cache',
+            'Referrer-Policy' => 'no-referrer',
+        ]);
     }
 
     /** The environment's own host — its VERIFIED custom domain, else {slug}.{base_domain}. */

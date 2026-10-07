@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Props\Console\EnvironmentScopeProps;
+use App\Platform\EnvironmentKeyScopes;
 use App\Platform\Sudo;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
@@ -55,16 +55,17 @@ it('draws a labelled box for every scope a management key can be given', functio
 
     $page = visit('/keys');
 
-    // One checkbox per offered scope — the whole tenancy API, and nothing reserved.
+    // One checkbox per offered scope — the whole management API (the framework's scopes and
+    // the app's own actions'), and nothing reserved.
     $page->assertScript(
         'document.querySelectorAll("fieldset [role=checkbox]").length',
-        count(EnvironmentApiScope::offerable()),
+        count(EnvironmentKeyScopes::offered()),
     );
 
     // The label the console gives each scope — the framework's, except that the API-key
     // scopes say "member API keys" like every other place the console names those keys.
-    foreach (EnvironmentApiScope::offerable() as $scope) {
-        $page->assertSee(EnvironmentScopeProps::from($scope)->label)->assertSee($scope->value);
+    foreach (EnvironmentKeyScopes::offered() as $scope) {
+        $page->assertSee(EnvironmentScopeProps::offered($scope)->label)->assertSee($scope);
     }
 
     $page->assertDontSee('directories:read')

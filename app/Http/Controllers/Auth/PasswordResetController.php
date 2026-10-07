@@ -8,6 +8,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SendPasswordResetRequest;
 use App\Mail\PasswordResetMail;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Exceptions\InvalidPasswordReset;
@@ -29,7 +30,7 @@ final readonly class PasswordResetController extends PageController
 {
     public function request(): Response
     {
-        return $this->page('auth/forgot-password', 'Reset password');
+        return $this->page('auth/forgot-password', __('auth.forgot_password.title'));
     }
 
     public function send(
@@ -46,7 +47,7 @@ final readonly class PasswordResetController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             return back()->withInput()->withErrors([
-                'email' => 'Too many attempts. Please wait a few minutes and try again.',
+                'email' => __('auth.forgot_password.throttled'),
             ]);
         }
 
@@ -60,7 +61,7 @@ final readonly class PasswordResetController extends PageController
 
         if ($token !== null) {
             $url = $links->route('password.reset', $token);
-            Mail::to($request->email())->send(new PasswordResetMail($url));
+            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($url));
 
             // Surfaced only on a local install, so a developer with no mail transport can
             // still walk the flow. Never in any other environment: it is a live
@@ -78,7 +79,7 @@ final readonly class PasswordResetController extends PageController
 
     public function edit(string $token): Response
     {
-        return $this->page('auth/reset-password', 'Choose a new password', [
+        return $this->page('auth/reset-password', __('auth.reset_password.title'), [
             'token' => $token,
         ]);
     }
@@ -89,7 +90,7 @@ final readonly class PasswordResetController extends PageController
             $resets->reset($request->token(), $request->password());
         } catch (InvalidPasswordReset) {
             return back()->withErrors([
-                'password' => 'This reset link is invalid or has expired. Request a new one.',
+                'password' => __('auth.reset_password.invalid_link'),
             ]);
         } catch (PolicyViolation $violation) {
             /*
@@ -105,6 +106,6 @@ final readonly class PasswordResetController extends PageController
         }
 
         return to_route('login')
-            ->with('status', 'Your password has been reset — sign in with your new password.');
+            ->with('status', __('auth.reset_password.done'));
     }
 }

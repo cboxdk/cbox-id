@@ -13,7 +13,7 @@ info:
     the environment, and the request is authenticated with an environment API key
     (`cbid_env_…`).
 
-    This is distinct from the global organization API (`cbid_org_…`), which manages the
+    This is distinct from the global organization API (`cbid_ws_…`), which manages the
     organization, its environments and members. Credentials never cross planes — an
     organization key cannot call this API, and an environment key cannot call the organization
     API. An environment key is bound to the host it was minted for: presenting it on
@@ -76,7 +76,61 @@ tags:
   - name: 'Support sessions'
   - name: Devices
   - name: Approvals
+  - name: 'Audit log'
+  - name: Branding
+  - name: Domains
+  - name: Events
+  - name: 'Frontend keys'
+  - name: 'Inline hooks'
+  - name: 'Management keys'
+  - name: 'Legacy login'
+  - name: 'Log streams'
+  - name: 'SAML apps'
+  - name: Sign-in
+  - name: Webhooks
 paths:
+  '/action-approvals/{id}':
+    get:
+      tags:
+        - Approvals
+      summary: 'Where an approval this key asked for stands'
+      description: |
+        Any key may poll the approvals it raised, and only those: another key's id is a 404.
+        `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - status
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - pending
+                          - approved
+                          - denied
+                          - expired
+                          - consumed
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/api-keys/{id}':
     delete:
       tags:
@@ -319,6 +373,7 @@ paths:
             description: 'The scope key: `tax:assess`.'
             maxLength: 128
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: false
         content:
@@ -346,6 +401,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -382,9 +439,12 @@ paths:
             description: 'The scope key.'
             maxLength: 128
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -529,6 +589,8 @@ paths:
         - Apps
       summary: 'List apps'
       description: 'Requires scope `apps:read`. Never a secret.'
+      operationId: apps_list
+      x-action: apps.list
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
@@ -572,7 +634,15 @@ paths:
           "Create app" does. `advanced` takes `client_type` and `grant_types`.
 
         The response carries `client_secret` for an app that authenticates with one —
-        **once**. Only its hash is kept.
+        **once**. Only its hash is kept, and an idempotent replay returns `client_secret: null`.
+
+        A platform scope reserved for the console (`vault.manage`, `decisions:read`) is
+        refused (`scope_not_grantable`), as is a registered API's scope this app's owner may
+        not hold. Danger: critical — it mints a credential.
+      operationId: apps_create
+      x-action: apps.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -584,7 +654,7 @@ paths:
                   $ref: '#/components/schemas/AppBlueprint'
                 name:
                   type: string
-                  maxLength: 120
+                  maxLength: 190
                 type:
                   type: string
                   enum:
@@ -619,6 +689,13 @@ paths:
                 first_party:
                   type: boolean
                   default: false
+                manifest_url:
+                  type:
+                    - string
+                    - 'null'
+                  format: uri
+                  maxLength: 500
+                  description: 'Where the app publishes its roles-and-permissions manifest (short form).'
                 organization_id:
                   type:
                     - string
@@ -649,6 +726,149 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}':
+    delete:
+      tags:
+        - Apps
+      summary: 'Delete an app and every secret it holds. Anything signing in as it stops working immediately.'
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_delete
+      x-action: apps.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Apps
+      summary: 'Get one app (OAuth client) by its id or its client_id: its kind, grants, redirect URIs, scopes and settings. Never a secret.'
+      description: 'Requires scope `apps:read`. Danger: read.'
+      operationId: apps_get
+      x-action: apps.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Apps
+      summary: 'Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields left out are unchanged.'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_update
+      x-action: apps.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 190
+                redirect_uris:
+                  type: array
+                  description: 'The COMPLETE list afterwards.'
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 2048
+                post_logout_redirect_uris:
+                  type: array
+                  description: 'The COMPLETE list afterwards.'
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 2048
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/apps/{id}/blueprint':
     get:
       tags:
@@ -659,6 +879,8 @@ paths:
         carries the app's settings and none of its identity or credentials: no client id,
         no secret, no key set, no owning organization. `POST /apps` with it as `blueprint`
         creates the same app in another environment.
+      operationId: apps_blueprint
+      x-action: apps.blueprint
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
@@ -679,6 +901,962 @@ paths:
           $ref: '#/components/responses/Forbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/copy':
+    post:
+      tags:
+        - Apps
+      summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_copy
+      x-action: apps.copy
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                environment_id:
+                  type: string
+                  description: 'The environment to copy into: another environment of this project.'
+                  maxLength: 64
+                name:
+                  type: string
+                  description: 'What to call the copy there.'
+                  minLength: 1
+                  maxLength: 190
+                redirect_uris:
+                  type: array
+                  description: "Its redirect URIs there — staging's callback is rarely production's. Left out, none."
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 2048
+              required:
+                - environment_id
+                - name
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/manifest':
+    put:
+      tags:
+        - Apps
+      summary: 'Set or clear the URL an app publishes its roles-and-permissions manifest at. Does not fetch it; apps.manifest.sync does.'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_manifest_set
+      x-action: apps.manifest.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                manifest_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'An absolute URL; null or left out clears it.'
+                  format: uri
+                  maxLength: 500
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/manifest/sync':
+    post:
+      tags:
+        - Apps
+      summary: "Fetch an app's published manifest now and sync the roles and permissions it declares."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_manifest_sync
+      x-action: apps.manifest.sync
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/scopes':
+    put:
+      tags:
+        - Apps
+      summary: "Replace an app's complete scope set — the ceiling of what it may request, applied from its next token."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_scopes_set
+      x-action: apps.scopes.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  description: 'Required. The COMPLETE scope set afterwards; an empty list removes every scope.'
+                  maxItems: 200
+                  items:
+                    type: string
+                    maxLength: 128
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/secrets':
+    get:
+      tags:
+        - Apps
+      summary: "List an app's live client secrets"
+      description: |
+        Requires scope `apps:read`. Every live secret, newest first: its id (what
+        `DELETE /apps/{id}/secrets/{secret_id}` names), the characters it ends in, and its
+        dates — never a secret. `expires_at` is set on one a rotation replaced, still working
+        through its overlap. An app holds a handful at most, so there is no page to turn.
+      operationId: apps_secrets_list
+      x-action: apps.secrets.list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppSecret'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Apps
+      summary: 'Mint a new client secret for an app and retire the current ones after grace_seconds (0 = at once). The new secret is returned once.'
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_secrets_rotate
+      x-action: apps.secrets.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grace_seconds:
+                  type: integer
+                  description: 'How long the current secrets keep working, in seconds. 0 stops them at once.'
+                  minimum: 0
+                  maximum: 2592000
+              required:
+                - grace_seconds
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AppSecret'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/secrets/{secret_id}':
+    delete:
+      tags:
+        - Apps
+      summary: "Revoke one of an app's client secrets immediately. Never its last live secret — rotate that instead."
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_secrets_revoke
+      x-action: apps.secrets.revoke
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        -
+          name: secret_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id, from `GET /apps/{id}/secrets`."
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/api-key-prefix':
+    put:
+      tags:
+        - Apps
+      summary: "Set the prefix of an app's customer API keys (acme_live), which lets its users create keys for it, or null to stop new keys."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_api_key_prefix
+      x-action: apps.settings.api_key_prefix
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prefix:
+                  type:
+                    - string
+                    - 'null'
+                  description: '2–16 lowercase letters or digits starting with a letter, then `_live` or `_test`. Null or left out: no new keys.'
+                  maxLength: 32
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/backchannel-logout':
+    put:
+      tags:
+        - Apps
+      summary: 'Set or clear the URI an app is sent a logout token at when somebody signs out (OIDC Back-Channel Logout).'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_backchannel_logout
+      x-action: apps.settings.backchannel_logout
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uri:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'HTTPS (HTTP on localhost only). Null or left out: the app is not told.'
+                  format: uri
+                  maxLength: 2000
+                session_required:
+                  type: boolean
+                  description: 'Every logout token carries `sid`. Default false.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/token-exchange':
+    put:
+      tags:
+        - Apps
+      summary: 'Turn token exchange (RFC 8693) on or off for a confidential app.'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_token_exchange
+      x-action: apps.settings.token_exchange
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+              required:
+                - enabled
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/token-lifetime':
+    put:
+      tags:
+        - Apps
+      summary: "Set how long an app's access tokens live, in seconds, or null for the install's default."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_token_lifetime
+      x-action: apps.settings.token_lifetime
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_token_ttl:
+                  type:
+                    - integer
+                    - 'null'
+                  description: "Seconds, from 60 to the install's ceiling. Null or left out: the install's default."
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-log:
+    get:
+      tags:
+        - 'Audit log'
+      summary: "Read this environment's audit trail oldest first, optionally narrowed by action, actor type or organization; pass the last id as `after` to page."
+      description: 'Requires scope `audit:read`. Danger: read.'
+      operationId: audit_list
+      x-action: audit.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        -
+          name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only this action, e.g. `webhook.created`.'
+            maxLength: 190
+        -
+          name: actor_type
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only entries by this kind of actor; `service` is a management key or an app.'
+            enum:
+              - user
+              - service
+              - system
+              - operator
+              - organization_member
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's entries."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEntry'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /branding/appearance:
+    get:
+      tags:
+        - Branding
+      summary: "Read the hosted sign-in theme: the environment default, or one organization's own."
+      description: 'Requires scope `branding:read`. Danger: read.'
+      operationId: branding_appearance_get
+      x-action: branding.appearance.get
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Read this organization's theme. Left out, the environment default."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Appearance'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Branding
+      summary: 'Set the hosted sign-in theme (preset, colours, corners, type, logo) for the environment default or one organization.'
+      description: 'Requires scope `branding:write`. Danger: write.'
+      operationId: branding_appearance_set
+      x-action: branding.appearance.set
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Theme this organization. Left out, the environment default.'
+                  maxLength: 64
+                theme:
+                  type: object
+                  description: 'The theme. Both modes must be readable: text needs 4.5:1 against the background, muted text 3:1.'
+                  properties:
+                    preset:
+                      type: string
+                      description: 'A preset id: cbox, midnight, minimal, warm, contrast.'
+                      maxLength: 64
+                    radius:
+                      type: string
+                      description: 'Corner radius: 0rem, 0.25rem, 0.375rem, 0.5rem, 0.75rem, 1rem.'
+                      maxLength: 32
+                    font:
+                      type: string
+                      description: 'Type family: system, geometric, serif.'
+                      maxLength: 32
+                    light:
+                      type: object
+                      description: "Colours as #rrggbb. One left out takes the preset's."
+                      properties:
+                        primary:
+                          type: string
+                          maxLength: 32
+                        background:
+                          type: string
+                          maxLength: 32
+                        foreground:
+                          type: string
+                          maxLength: 32
+                        muted:
+                          type: string
+                          maxLength: 32
+                    dark:
+                      type: object
+                      description: "Colours as #rrggbb. One left out takes the preset's."
+                      properties:
+                        primary:
+                          type: string
+                          maxLength: 32
+                        background:
+                          type: string
+                          maxLength: 32
+                        foreground:
+                          type: string
+                          maxLength: 32
+                        muted:
+                          type: string
+                          maxLength: 32
+                logo:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'An https URL for the logo; null removes it, left out keeps it.'
+                  format: uri
+                  maxLength: 2048
+              required:
+                - theme
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Appearance'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /branding/whitelabel:
+    get:
+      tags:
+        - Branding
+      summary: 'Read the white-label branding (palette, app name, email sender, logo) of the environment default or one organization.'
+      description: 'Requires scope `branding:read`. Danger: read.'
+      operationId: branding_whitelabel_get
+      x-action: branding.whitelabel.get
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Read this organization's branding. Left out, the environment default."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WhitelabelBranding'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - Branding
+      summary: 'Save the white-label branding (palette, app name, email sender, welcome email) of the environment default or one organization.'
+      description: 'Requires scope `branding:write`. Danger: write.'
+      operationId: branding_whitelabel_set
+      x-action: branding.whitelabel.set
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Brand this organization. Left out, the environment default.'
+                  maxLength: 64
+                palette:
+                  type: object
+                  description: 'Colours as hex (#0a2540) or oklch(…), by token: primary, accent, ring, foreground, background. Sent, it is the complete palette; a token left out or blank is unset.'
+                  properties:
+                    primary:
+                      type:
+                        - string
+                        - 'null'
+                      maxLength: 100
+                    accent:
+                      type:
+                        - string
+                        - 'null'
+                      maxLength: 100
+                    ring:
+                      type:
+                        - string
+                        - 'null'
+                      maxLength: 100
+                    foreground:
+                      type:
+                        - string
+                        - 'null'
+                      maxLength: 100
+                    background:
+                      type:
+                        - string
+                        - 'null'
+                      maxLength: 100
+                app_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The product name shown in place of Cbox ID; null to unset.'
+                  maxLength: 120
+                email_from_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The sender name on mail; null to unset.'
+                  maxLength: 120
+                email_template:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The welcome email body; blank or null to use the default.'
+                  maxLength: 5000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WhitelabelBranding'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /devices:
@@ -837,6 +2015,1319 @@ paths:
           $ref: '#/components/responses/BearerForbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /domains:
+    post:
+      tags:
+        - Domains
+      summary: 'Start serving this environment on a custom domain: returns the DNS TXT record that proves you control it.'
+      description: 'Requires scope `domains:write`. Danger: write.'
+      operationId: domains_add
+      x-action: domains.add
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain:
+                  type: string
+                  description: 'The domain, for example login.example.com.'
+                  maxLength: 253
+              required:
+                - domain
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Domains
+      summary: "Read this environment's custom domain, and the DNS TXT record that proves a pending one."
+      description: 'Requires scope `domains:read`. Danger: read.'
+      operationId: domains_get
+      x-action: domains.get
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags:
+        - Domains
+      summary: 'Stop serving this environment on its custom domain. Anything using that domain stops reaching the environment.'
+      description: 'Requires scope `domains:write`. Danger: destructive.'
+      operationId: domains_remove
+      x-action: domains.remove
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /domains/verify:
+    post:
+      tags:
+        - Domains
+      summary: "Look for the pending domain's DNS TXT record and, once it is visible, serve this environment on that domain."
+      description: 'Requires scope `domains:write`. Danger: write.'
+      operationId: domains_verify
+      x-action: domains.verify
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /events:
+    get:
+      tags:
+        - Events
+      summary: "Read this environment's domain events (the facts webhooks deliver) oldest first; pass the last id as `after` to poll for new ones."
+      description: 'Requires scope `events:read`. Danger: read.'
+      operationId: events_list
+      x-action: events.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        -
+          name: types
+          in: query
+          required: false
+          schema:
+            type: array
+            description: 'Only these event types, e.g. `user.created`.'
+            maxItems: 50
+            items:
+              type: string
+              maxLength: 190
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's events."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DomainEvent'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /frontend-keys:
+    post:
+      tags:
+        - 'Frontend keys'
+      summary: 'Create a publishable frontend key for a browser app, usable only from the origins listed. The key is public by design.'
+      description: 'Requires scope `frontend_keys:write`. Danger: write.'
+      operationId: frontend_keys_create
+      x-action: frontend_keys.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 'What the key is for, so a person recognises it later.'
+                  maxLength: 120
+                mode:
+                  type: string
+                  description: "`test` or `live`; it is in the key's prefix."
+                  enum:
+                    - test
+                    - live
+                origins:
+                  type: array
+                  description: 'The exact origins (scheme, host, port) allowed to present the key, for example https://app.example.com. At least one.'
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 255
+              required:
+                - name
+                - mode
+                - origins
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FrontendKey'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Frontend keys'
+      summary: 'List the publishable frontend keys browser apps present to the Frontend API, in full, with their allowed origins.'
+      description: 'Requires scope `frontend_keys:read`. Danger: read.'
+      operationId: frontend_keys_list
+      x-action: frontend_keys.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FrontendKey'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/frontend-keys/{id}':
+    delete:
+      tags:
+        - 'Frontend keys'
+      summary: 'Revoke a publishable frontend key. Pages still holding it stop working immediately.'
+      description: 'Requires scope `frontend_keys:write`. Danger: destructive.'
+      operationId: frontend_keys_revoke
+      x-action: frontend_keys.revoke
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The key's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/frontend-keys/{id}/origins':
+    put:
+      tags:
+        - 'Frontend keys'
+      summary: 'Replace the exact list of origins allowed to present a publishable frontend key. Live on the next request.'
+      description: 'Requires scope `frontend_keys:write`. Danger: write.'
+      operationId: frontend_keys_set_origins
+      x-action: frontend_keys.set_origins
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The key's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                origins:
+                  type: array
+                  description: 'The exact origins (scheme, host, port) allowed to present the key, for example https://app.example.com. At least one.'
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 255
+              required:
+                - origins
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FrontendKey'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /hooks:
+    post:
+      tags:
+        - 'Inline hooks'
+      summary: 'Register an inline hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
+      description: 'Requires scope `hooks:write`. Danger: critical.'
+      operationId: hooks_create
+      x-action: hooks.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hook_point:
+                  type: string
+                  description: 'When it is called.'
+                  enum:
+                    - token_minting
+                    - post_login
+                    - pre_registration
+                    - post_registration
+                    - pre_password_change
+                    - post_password_change
+                url:
+                  type: string
+                  description: 'A public HTTPS URL, called in the middle of the operation.'
+                  format: uri
+                  maxLength: 500
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide."
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id."
+              required:
+                - hook_point
+                - url
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InlineHook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Inline hooks'
+      summary: 'List the inline hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
+      description: 'Requires scope `hooks:read`. Danger: read.'
+      operationId: hooks_list
+      x-action: hooks.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InlineHook'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/hooks/{id}':
+    delete:
+      tags:
+        - 'Inline hooks'
+      summary: 'Remove an inline hook. It is no longer called at its hook point.'
+      description: 'Requires scope `hooks:write`. Danger: destructive.'
+      operationId: hooks_delete
+      x-action: hooks.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The inline hook id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Inline hooks'
+      summary: 'Get one inline hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
+      description: 'Requires scope `hooks:read`. Danger: read.'
+      operationId: hooks_get
+      x-action: hooks.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The inline hook id.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InlineHook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Inline hooks'
+      summary: 'Pause (active: false) or activate (active: true) an inline hook.'
+      description: 'Requires scope `hooks:write`. Danger: critical.'
+      operationId: hooks_update
+      x-action: hooks.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The inline hook id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  description: 'True to call it at its hook point; false to pause it.'
+              required:
+                - active
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InlineHook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /keys:
+    post:
+      tags:
+        - 'Management keys'
+      summary: 'Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.'
+      description: 'Requires scope `keys:write`. Danger: critical.'
+      operationId: keys_create
+      x-action: keys.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 120
+                scopes:
+                  type: array
+                  description: 'The scopes the key carries. From a key: a subset of its own.'
+                  minItems: 1
+                  maxItems: 64
+                  items:
+                    type: string
+                    maxLength: 64
+                expires_at:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'When it stops working. From a key: required to be no later than the parent; defaults to the latest allowed.'
+                  format: date-time
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'What it is for — shown beside it in the console.'
+                  maxLength: 500
+                require_approval:
+                  type: object
+                  description: "Which of this key's actions need its owner's approval on their device first. From a key: never weaker than its own."
+                  properties:
+                    min_danger:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Every action at or above this danger waits for a person's approval."
+                      enum:
+                        - write
+                        - destructive
+                        - critical
+                    actions:
+                      type: array
+                      description: 'These actions wait for approval whatever their danger.'
+                      maxItems: 100
+                      items:
+                        type: string
+                        maxLength: 100
+              required:
+                - name
+                - scopes
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Management keys'
+      summary: "List this environment's management keys (names, scopes, parents, expiry, last use — never their values)."
+      description: 'Requires scope `keys:read`. Danger: read.'
+      operationId: keys_list
+      x-action: keys.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/keys/{id}':
+    delete:
+      tags:
+        - 'Management keys'
+      summary: 'Revoke a management key and every key it minted, immediately.'
+      description: 'Requires scope `keys:write`. Danger: destructive.'
+      operationId: keys_revoke
+      x-action: keys.revoke
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The key to revoke.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/keys/{id}/rotate':
+    post:
+      tags:
+        - 'Management keys'
+      summary: 'Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.'
+      description: 'Requires scope `keys:write`. Danger: critical.'
+      operationId: keys_rotate
+      x-action: keys.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The key to rotate.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grace_hours:
+                  type: integer
+                  description: 'How long the old key keeps working. Default 24.'
+                  minimum: 0
+                  maximum: 168
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /legacy-login:
+    get:
+      tags:
+        - 'Legacy login'
+      summary: 'Read the legacy login endpoint an app declared for migration, and whether it is approved to receive sign-ins.'
+      description: 'Requires scope `signin:read`. Danger: read.'
+      operationId: legacy_login_get
+      x-action: legacy_login.get
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LegacyLogin'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /legacy-login/approve:
+    post:
+      tags:
+        - 'Legacy login'
+      summary: 'Approve the declared legacy login endpoint: sign-ins for people not yet migrated, with their passwords, go to that URL.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: legacy_login_approve
+      x-action: legacy_login.approve
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LegacyLogin'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /legacy-login/probe:
+    post:
+      tags:
+        - 'Legacy login'
+      summary: 'Ask the declared legacy login endpoint whether it knows an address — your own — to test it before approving. Sends no password.'
+      description: 'Requires scope `signin:write`. Danger: write.'
+      operationId: legacy_login_probe
+      x-action: legacy_login.probe
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: 'An address that exists in your old system — your own.'
+                  format: email
+                  maxLength: 254
+              required:
+                - email
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /legacy-login/revoke:
+    post:
+      tags:
+        - 'Legacy login'
+      summary: 'Withdraw the legacy login approval. People not yet migrated can no longer sign in; the declaration stays on file.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: legacy_login_revoke
+      x-action: legacy_login.revoke
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LegacyLogin'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /log-streams:
+    post:
+      tags:
+        - 'Log streams'
+      summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON). A generated HMAC key is returned once.'
+      description: 'Requires scope `log_streams:write`. Danger: critical.'
+      operationId: log_streams_create
+      x-action: log_streams.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 190
+                destination:
+                  type: string
+                  enum:
+                    - splunk_hec
+                    - elastic_ecs
+                    - graylog_gelf
+                    - cef_http
+                    - generic_json
+                endpoint_url:
+                  type: string
+                  description: 'A public URL the entries are POSTed to.'
+                  format: uri
+                  maxLength: 2048
+                auth:
+                  type: string
+                  description: "How the endpoint is authenticated. Left out, the destination's default."
+                  enum:
+                    - none
+                    - bearer
+                    - splunk
+                    - hmac
+                secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The bearer or Splunk token the endpoint expects. Left out with `hmac`, a key is generated and returned once.'
+                  maxLength: 4096
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide."
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id."
+              required:
+                - name
+                - destination
+                - endpoint_url
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStream'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Log streams'
+      summary: "List the SIEM destinations this environment's audit trail is streamed to, and whether each is enabled. Never a secret."
+      description: 'Requires scope `log_streams:read`. Danger: read.'
+      operationId: log_streams_list
+      x-action: log_streams.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogStream'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/log-streams/{id}':
+    delete:
+      tags:
+        - 'Log streams'
+      summary: 'Delete an audit log stream. Nothing more is delivered to its endpoint.'
+      description: 'Requires scope `log_streams:write`. Danger: destructive.'
+      operationId: log_streams_delete
+      x-action: log_streams.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The log stream id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Log streams'
+      summary: 'Get one audit log stream: destination, endpoint, auth scheme, owner and health. Never its secret.'
+      description: 'Requires scope `log_streams:read`. Danger: read.'
+      operationId: log_streams_get
+      x-action: log_streams.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The log stream id.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStream'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Log streams'
+      summary: 'Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.'
+      description: 'Requires scope `log_streams:write`. Danger: critical.'
+      operationId: log_streams_update
+      x-action: log_streams.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The log stream id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: 'True to deliver; false to stop, keeping what is pending.'
+              required:
+                - enabled
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStream'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /oauth/api-keys/verify:
@@ -1697,6 +4188,749 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /saml-apps:
+    post:
+      tags:
+        - 'SAML apps'
+      summary: 'Register a SAML application that signs people in with their account here. Decides where assertions — and their attributes — are sent.'
+      description: 'Requires scope `saml_apps:write`. Danger: critical.'
+      operationId: saml_apps_create
+      x-action: saml_apps.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entity_id:
+                  type: string
+                  description: "The application's SAML EntityID, unique in this environment."
+                  maxLength: 500
+                acs_url:
+                  type: string
+                  description: 'Where assertions are posted: https (http only on localhost), absolute, no fragment.'
+                  format: uri
+                  maxLength: 1000
+                name_id_format:
+                  type: string
+                  description: 'The NameID format URN. Default emailAddress.'
+                  enum:
+                    - 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'
+                    - 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent'
+                    - 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
+                    - 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+                name_id_attribute:
+                  type: string
+                  description: "The person's field the NameID is read from. Default `email`."
+                  maxLength: 120
+                attribute_mappings:
+                  type: array
+                  description: 'The attributes the assertion carries. Sent, it is the COMPLETE list afterwards.'
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      attribute:
+                        type: string
+                        description: 'The attribute name the assertion emits: `email`, `displayName`.'
+                        maxLength: 190
+                      field:
+                        type: string
+                        description: "The person's field it is read from: `email`, `name`."
+                        maxLength: 190
+                    required:
+                      - attribute
+                      - field
+                want_authn_requests_signed:
+                  type: boolean
+                  description: "Verify the application's signature on every AuthnRequest. Needs a certificate."
+                certificate:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The application's signing certificate (PEM). Write-only; left out or null keeps the one on file."
+                  maxLength: 20000
+              required:
+                - entity_id
+                - acs_url
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SamlApp'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'SAML apps'
+      summary: 'List the SAML applications that trust this environment as their identity provider.'
+      description: 'Requires scope `saml_apps:read`. Danger: read.'
+      operationId: saml_apps_list
+      x-action: saml_apps.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SamlApp'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/saml-apps/{id}':
+    delete:
+      tags:
+        - 'SAML apps'
+      summary: 'Remove a SAML application. People can no longer sign in to it with their account here.'
+      description: 'Requires scope `saml_apps:write`. Danger: critical.'
+      operationId: saml_apps_delete
+      x-action: saml_apps.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The SAML application's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'SAML apps'
+      summary: 'Read one SAML application: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.'
+      description: 'Requires scope `saml_apps:read`. Danger: read.'
+      operationId: saml_apps_get
+      x-action: saml_apps.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The SAML application's id."
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SamlApp'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'SAML apps'
+      summary: "Change a SAML application's entity id, ACS URL, NameID, attribute mappings or signing certificate."
+      description: 'Requires scope `saml_apps:write`. Danger: critical.'
+      operationId: saml_apps_update
+      x-action: saml_apps.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The SAML application's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entity_id:
+                  type: string
+                  description: "The application's SAML EntityID, unique in this environment."
+                  maxLength: 500
+                acs_url:
+                  type: string
+                  description: 'Where assertions are posted: https (http only on localhost), absolute, no fragment.'
+                  format: uri
+                  maxLength: 1000
+                name_id_format:
+                  type: string
+                  description: 'The NameID format URN. Default emailAddress.'
+                  enum:
+                    - 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'
+                    - 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent'
+                    - 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
+                    - 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+                name_id_attribute:
+                  type: string
+                  description: "The person's field the NameID is read from. Default `email`."
+                  maxLength: 120
+                attribute_mappings:
+                  type: array
+                  description: 'The attributes the assertion carries. Sent, it is the COMPLETE list afterwards.'
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      attribute:
+                        type: string
+                        description: 'The attribute name the assertion emits: `email`, `displayName`.'
+                        maxLength: 190
+                      field:
+                        type: string
+                        description: "The person's field it is read from: `email`, `name`."
+                        maxLength: 190
+                    required:
+                      - attribute
+                      - field
+                want_authn_requests_signed:
+                  type: boolean
+                  description: "Verify the application's signature on every AuthnRequest. Needs a certificate."
+                certificate:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The application's signing certificate (PEM). Write-only; left out or null keeps the one on file."
+                  maxLength: 20000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SamlApp'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sign-in/policy:
+    get:
+      tags:
+        - Sign-in
+      summary: "Read the sign-in rules (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override."
+      description: 'Requires scope `signin:read`. Danger: read.'
+      operationId: signin_policy_get
+      x-action: signin.policy.get
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Read one organization's rules. Left out, the environment baseline."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SignInPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Sign-in
+      summary: "Change the sign-in rules of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions."
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_policy_update
+      x-action: signin.policy.update
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Write this organization's override. Left out, the environment baseline."
+                  maxLength: 64
+                min_length:
+                  type: integer
+                  description: 'Minimum password length.'
+                  minimum: 8
+                  maximum: 128
+                require_breach_check:
+                  type: boolean
+                  description: 'Refuse passwords that appear in known breaches.'
+                max_age_days:
+                  type:
+                    - integer
+                    - 'null'
+                  description: 'Days before a password must be changed; null for no limit.'
+                  minimum: 1
+                  maximum: 3650
+                reuse_history:
+                  type: integer
+                  description: 'How many previous passwords may not be reused.'
+                  minimum: 0
+                  maximum: 24
+                mfa:
+                  type: string
+                  description: 'Whether a second factor is off, optional or required.'
+                  enum:
+                    - 'off'
+                    - optional
+                    - required
+                sso:
+                  type: string
+                  description: 'Whether SSO is off, preferred, or required — `required` refuses every other way in and signs out password sessions.'
+                  enum:
+                    - 'off'
+                    - preferred
+                    - required
+                lockout_threshold:
+                  type:
+                    - integer
+                    - 'null'
+                  description: 'Failed attempts before an account is locked; null for no lockout.'
+                  minimum: 3
+                  maximum: 100
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SignInPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sign-in/policy/organizations/{organization_id}':
+    delete:
+      tags:
+        - Sign-in
+      summary: "Drop one organization's sign-in rules override, so it inherits the environment baseline again."
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_policy_inherit
+      x-action: signin.policy.inherit
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization whose override to drop.'
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sign-in/self-service-signup:
+    put:
+      tags:
+        - Sign-in
+      summary: 'Switch self-service sign-up on or off: whether people can create an account and their own organization in this environment.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_self_service_signup_set
+      x-action: signin.self_service_signup.set
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: 'On: anyone may create an account and their own organization. Off: people join by invitation.'
+              required:
+                - enabled
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sign-in/social-providers:
+    get:
+      tags:
+        - Sign-in
+      summary: 'List the social sign-in providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.'
+      description: 'Requires scope `signin:read`. Danger: read.'
+      operationId: signin_social_list
+      x-action: signin.social.list
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's providers."
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SocialProvider'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Sign-in
+      summary: 'Enable a social sign-in provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_social_set
+      x-action: signin.social.set
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: 'The organization whose sign-in page offers it.'
+                  maxLength: 64
+                provider:
+                  type: string
+                  description: 'The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook.'
+                  maxLength: 100
+                client_id:
+                  type: string
+                  description: 'The client id from your own account with the provider. For Apple, the Services ID.'
+                  maxLength: 400
+                client_secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The client secret. Write-only. Not used by Apple, which signs its own.'
+                  maxLength: 5000
+                parameters:
+                  type: object
+                  description: "What the chosen provider needs besides its client credentials — Microsoft's directory, Okta's domain, Apple's team id, key id and private key."
+                  properties:
+                    directory:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Directory (tenant) ID (Microsoft Entra ID).'
+                      maxLength: 5000
+                    domain:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Okta domain (Okta).'
+                      maxLength: 5000
+                    host:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Keycloak host (Keycloak).'
+                      maxLength: 5000
+                    key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Key ID (Apple).'
+                      maxLength: 5000
+                    private_key:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Private key (.p8) (Apple).'
+                      maxLength: 5000
+                    realm:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Realm (Keycloak).'
+                      maxLength: 5000
+                    team_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Team ID (Apple).'
+                      maxLength: 5000
+              required:
+                - organization_id
+                - provider
+                - client_id
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SocialProvider'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sign-in/social-providers/{id}':
+    delete:
+      tags:
+        - Sign-in
+      summary: 'Stop offering a social sign-in provider. People who used it keep their accounts.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_social_delete
+      x-action: signin.social.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The provider's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only remove it if it is this organization's."
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /support-sessions:
     post:
       tags:
@@ -2329,6 +5563,429 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /webhooks:
+    post:
+      tags:
+        - Webhooks
+      summary: 'Register a webhook endpoint for one organization or the whole environment. Returns its signing secret once.'
+      description: 'Requires scope `webhooks:write`. Danger: critical.'
+      operationId: webhooks_create
+      x-action: webhooks.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: 'A public HTTPS URL. Signed deliveries are POSTed here.'
+                  format: uri
+                  maxLength: 500
+                event_types:
+                  type: array
+                  description: 'The events it receives.'
+                  minItems: 1
+                  items:
+                    type: string
+                    enum:
+                      - user.created
+                      - user.updated
+                      - user.deactivated
+                      - user.login
+                      - user.reactivated
+                      - identity.linked
+                      - organization.created
+                      - organization.suspended
+                      - organization.reactivated
+                      - organization.updated
+                      - organization.deleted
+                      - membership.created
+                      - membership.updated
+                      - membership.deleted
+                      - invitation.created
+                      - invitation.accepted
+                      - invitation.revoked
+                      - role.assigned
+                      - role.unassigned
+                      - role.assigned_everywhere
+                      - role.unassigned_everywhere
+                      - api_key.created
+                      - api_key.revoked
+                      - support_session.started
+                      - directory.user.provisioned
+                      - directory.user.deprovisioned
+                      - directory.user.deactivated
+                      - directory.group.membership_changed
+                      - domain.added
+                      - domain.removed
+                      - domain.verified
+                      - connection.activated
+                      - entitlement.set
+                      - entitlement.updated
+                      - entitlement.revoked
+                      - vault.grant.created
+                      - vault.grant.revoked
+                      - vault.secret.revoked
+                      - governance.access.revoked
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide."
+                  maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id."
+              required:
+                - url
+                - event_types
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Webhooks
+      summary: 'List the webhook endpoints registered in this environment: URL, owner, subscribed events and whether each is active.'
+      description: 'Requires scope `webhooks:read`. Danger: read.'
+      operationId: webhooks_list
+      x-action: webhooks.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}':
+    delete:
+      tags:
+        - Webhooks
+      summary: 'Delete a webhook endpoint. It stops receiving events at once.'
+      description: 'Requires scope `webhooks:write`. Danger: destructive.'
+      operationId: webhooks_delete
+      x-action: webhooks.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Webhooks
+      summary: 'Get one webhook endpoint: URL, owner, subscribed events, health. Never its signing secret.'
+      description: 'Requires scope `webhooks:read`. Danger: read.'
+      operationId: webhooks_get
+      x-action: webhooks.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Webhooks
+      summary: "Change a webhook endpoint's URL and/or the events it subscribes to."
+      description: 'Requires scope `webhooks:write`. Danger: write.'
+      operationId: webhooks_update
+      x-action: webhooks.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: 'A public HTTPS URL. Left out, unchanged.'
+                  format: uri
+                  maxLength: 500
+                event_types:
+                  type: array
+                  description: 'The COMPLETE set of events afterwards. Left out, unchanged.'
+                  minItems: 1
+                  items:
+                    type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/pause':
+    post:
+      tags:
+        - Webhooks
+      summary: 'Pause a webhook endpoint: it stops receiving events until resumed.'
+      description: 'Requires scope `webhooks:write`. Danger: write.'
+      operationId: webhooks_pause
+      x-action: webhooks.pause
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/resume':
+    post:
+      tags:
+        - Webhooks
+      summary: 'Resume a paused webhook endpoint: it receives events again.'
+      description: 'Requires scope `webhooks:write`. Danger: write.'
+      operationId: webhooks_resume
+      x-action: webhooks.resume
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/rotate':
+    post:
+      tags:
+        - Webhooks
+      summary: 'Issue a new signing secret for a webhook endpoint, returned once. The old secret stops verifying immediately.'
+      description: 'Requires scope `webhooks:write`. Danger: critical.'
+      operationId: webhooks_secret_rotate
+      x-action: webhooks.secret.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
     EnvironmentApiKey:
@@ -2376,6 +6033,13 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    CboxApproval:
+      name: Cbox-Approval
+      in: header
+      required: false
+      description: 'The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Spent by this request, once.'
+      schema:
+        type: string
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -2865,14 +6529,77 @@ components:
           type: array
           items:
             type: string
+        manifest_url:
+          type:
+            - string
+            - 'null'
+          description: 'Where it publishes its roles-and-permissions manifest.'
+        access_token_ttl:
+          type:
+            - integer
+            - 'null'
+          description: "Its access-token lifetime in seconds; null for the install's default."
+        backchannel_logout_uri:
+          type:
+            - string
+            - 'null'
+          description: 'Where it is sent a logout token (OIDC Back-Channel Logout); null when it is not told.'
+        backchannel_logout_session_required:
+          type: boolean
+        api_key_prefix:
+          type:
+            - string
+            - 'null'
+          description: 'The prefix of its customer API keys; null when it accepts none.'
         created_at:
           type:
             - string
             - 'null'
           format: date-time
         client_secret:
+          type:
+            - string
+            - 'null'
+          description: 'Only on the response that created (or copied) the app, and only for an app that authenticates with a secret. Never again — null on an idempotent replay.'
+    AppSecret:
+      type: object
+      required:
+        - id
+      properties:
+        id:
           type: string
-          description: 'Only on the response that created the app, and only for an app that authenticates with a secret. Never again.'
+        hint:
+          type:
+            - string
+            - 'null'
+          description: 'The characters the secret ends in; null for one older than per-secret storage.'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'Set on a secret a rotation replaced — it stops working then.'
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        client_secret:
+          type:
+            - string
+            - 'null'
+          description: 'Only on the rotation that minted it. Never again — null on an idempotent replay.'
+        previous_expire_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'On a rotation — when the secrets it replaced stop working.'
     AppBlueprint:
       type: object
       description: |
@@ -2986,6 +6713,226 @@ components:
           items:
             $ref: '#/components/schemas/ApiScope'
         created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    Webhook:
+      type: object
+      required:
+        - id
+        - url
+        - organization_id
+        - event_types
+        - active
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: "null when the environment owns it: it receives EVERY organization's events."
+        event_types:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+          description: 'false while paused.'
+        consecutive_failures:
+          type: integer
+        last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        secret:
+          type:
+            - string
+            - 'null'
+          description: |
+            The signing secret, on the create and rotate answers only — shown once, never
+            retrievable again. `null` on an idempotent replay of that answer.
+    InlineHook:
+      type: object
+      required:
+        - id
+        - url
+        - hook_point
+        - organization_id
+        - active
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        hook_point:
+          type: string
+          enum:
+            - token_minting
+            - post_login
+            - pre_registration
+            - post_registration
+            - pre_password_change
+            - post_password_change
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null when the environment owns it: it runs for EVERY organization.'
+        active:
+          type: boolean
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        secret:
+          type:
+            - string
+            - 'null'
+          description: 'The signing secret, on the create answer only — shown once. `null` on an idempotent replay.'
+    LogStream:
+      type: object
+      required:
+        - id
+        - name
+        - destination
+        - endpoint_url
+        - auth
+        - organization_id
+        - enabled
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        destination:
+          type: string
+          enum:
+            - splunk_hec
+            - elastic_ecs
+            - graylog_gelf
+            - cef_http
+            - generic_json
+        endpoint_url:
+          type: string
+        auth:
+          type: string
+          enum:
+            - none
+            - bearer
+            - splunk
+            - hmac
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: "null when the environment owns it: it carries EVERY organization's entries."
+        enabled:
+          type: boolean
+        consecutive_failures:
+          type: integer
+        last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        secret:
+          type:
+            - string
+            - 'null'
+          description: 'A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.'
+    DomainEvent:
+      type: object
+      required:
+        - id
+        - type
+        - organization_id
+        - occurred_at
+        - payload
+      properties:
+        id:
+          type: string
+          description: 'A ULID; pass the last one you saw as `after`.'
+        type:
+          type: string
+          description: 'e.g. `user.created` — the webhook event name.'
+        organization_id:
+          type:
+            - string
+            - 'null'
+        occurred_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        payload:
+          type: object
+    AuditEntry:
+      type: object
+      required:
+        - id
+        - action
+        - actor_type
+        - actor_id
+        - organization_id
+        - target_type
+        - target_id
+        - context
+        - recorded_at
+      properties:
+        id:
+          type: string
+          description: 'A ULID; pass the last one you saw as `after`.'
+        action:
+          type: string
+          description: 'e.g. `webhook.created`.'
+        actor_type:
+          type: string
+          enum:
+            - user
+            - service
+            - system
+            - operator
+            - organization_member
+        actor_id:
+          type:
+            - string
+            - 'null'
+          description: "For `service`, the management key's or app's id."
+        organization_id:
+          type:
+            - string
+            - 'null'
+        target_type:
+          type:
+            - string
+            - 'null'
+        target_id:
+          type:
+            - string
+            - 'null'
+        context:
+          type: object
+        ip:
+          type:
+            - string
+            - 'null'
+        recorded_at:
           type:
             - string
             - 'null'
@@ -3192,6 +7139,373 @@ components:
             - string
             - 'null'
           format: date-time
+    SignInRules:
+      type: object
+      required:
+        - min_length
+        - require_breach_check
+        - max_age_days
+        - reuse_history
+        - mfa
+        - sso
+        - lockout_threshold
+      properties:
+        min_length:
+          type: integer
+          description: 'Minimum password length.'
+        require_breach_check:
+          type: boolean
+          description: 'Passwords found in known breaches are refused.'
+        max_age_days:
+          type:
+            - integer
+            - 'null'
+          description: 'Days before a password must be changed; null for no limit.'
+        reuse_history:
+          type: integer
+          description: 'Previous passwords that may not be reused.'
+        mfa:
+          type: string
+          enum:
+            - 'off'
+            - optional
+            - required
+        sso:
+          type: string
+          enum:
+            - 'off'
+            - preferred
+            - required
+          description: '`required` refuses every other way in.'
+        lockout_threshold:
+          type:
+            - integer
+            - 'null'
+          description: 'Failed attempts before a lockout; null for none.'
+    SignInPolicy:
+      type: object
+      required:
+        - organization_id
+        - policy
+        - baseline
+        - override
+        - inheriting
+      properties:
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for the environment baseline.'
+        policy:
+          $ref: '#/components/schemas/SignInRules'
+          description: "What is in force at this level: the baseline, or the organization's override tightened over it."
+        baseline:
+          $ref: '#/components/schemas/SignInRules'
+        override:
+          description: 'What the organization stored itself; null when it inherits (and always for the baseline).'
+          oneOf:
+            - $ref: '#/components/schemas/SignInRules'
+            - type: 'null'
+        inheriting:
+          type: boolean
+          description: 'True for an organization with no override of its own.'
+    SocialProvider:
+      type: object
+      required:
+        - id
+        - organization_id
+        - provider
+        - name
+        - protocol
+        - status
+        - callback_uri
+      description: 'Its client secret and private key are write-only and never returned.'
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+        provider:
+          type:
+            - string
+            - 'null'
+          description: 'The catalogue key: google, github, apple…'
+        name:
+          type: string
+        protocol:
+          type: string
+          enum:
+            - oidc
+            - oauth2
+        status:
+          type: string
+        callback_uri:
+          type: string
+          description: 'The redirect URI to register with the provider.'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    FrontendKey:
+      type: object
+      required:
+        - id
+        - name
+        - key
+        - mode
+        - origins
+        - active
+      description: 'A publishable key. Returned in full: it is public by design; the origins are the control.'
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+        mode:
+          type: string
+          enum:
+            - test
+            - live
+        origins:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    SamlApp:
+      type: object
+      required:
+        - id
+        - entity_id
+        - acs_url
+        - name_id_format
+        - name_id_attribute
+        - attribute_mappings
+        - want_authn_requests_signed
+        - has_certificate
+        - status
+      description: 'An application that trusts this environment as its SAML identity provider. Its certificate is write-only.'
+      properties:
+        id:
+          type: string
+        entity_id:
+          type: string
+        acs_url:
+          type: string
+        name_id_format:
+          type: string
+        name_id_attribute:
+          type: string
+        attribute_mappings:
+          type: array
+          items:
+            type: object
+            required:
+              - attribute
+              - field
+            properties:
+              attribute:
+                type: string
+              field:
+                type: string
+        want_authn_requests_signed:
+          type: boolean
+        has_certificate:
+          type: boolean
+        status:
+          type: string
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    LegacyLogin:
+      type: object
+      required:
+        - declared
+        - url
+        - client_id
+        - declared_by
+        - approved
+        - approved_at
+        - approved_by
+      description: 'The legacy sign-in endpoint an app declared for migration. Its shared secret is never returned.'
+      properties:
+        declared:
+          type: boolean
+        url:
+          type:
+            - string
+            - 'null'
+        client_id:
+          type:
+            - string
+            - 'null'
+          description: 'The app that declared it.'
+        declared_by:
+          type:
+            - string
+            - 'null'
+          description: "That app's name."
+        approved:
+          type: boolean
+        approved_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        approved_by:
+          type:
+            - string
+            - 'null'
+          description: 'The person or key that approved it.'
+    ThemeMode:
+      type: object
+      properties:
+        primary:
+          type: string
+        background:
+          type: string
+        foreground:
+          type: string
+        muted:
+          type: string
+    Appearance:
+      type: object
+      required:
+        - organization_id
+        - customized
+        - theme
+        - logo
+      properties:
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for the environment default.'
+        customized:
+          type: boolean
+          description: 'Whether this level has a theme of its own.'
+        theme:
+          type: object
+          properties:
+            preset:
+              type: string
+            radius:
+              type: string
+            font:
+              type: string
+            light:
+              $ref: '#/components/schemas/ThemeMode'
+            dark:
+              $ref: '#/components/schemas/ThemeMode'
+        logo:
+          type:
+            - string
+            - 'null'
+    WhitelabelBranding:
+      type: object
+      required:
+        - organization_id
+        - palette
+        - app_name
+        - email_from_name
+        - email_template
+        - logo_url
+        - favicon_url
+      properties:
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for the environment default.'
+        palette:
+          type: object
+          additionalProperties:
+            type:
+              - string
+              - 'null'
+        app_name:
+          type:
+            - string
+            - 'null'
+        email_from_name:
+          type:
+            - string
+            - 'null'
+        email_template:
+          type:
+            - string
+            - 'null'
+        logo_url:
+          type:
+            - string
+            - 'null'
+          description: 'Uploaded from the console.'
+        favicon_url:
+          type:
+            - string
+            - 'null'
+          description: 'Uploaded from the console.'
+    CustomDomain:
+      type: object
+      required:
+        - domain
+        - verified_at
+        - pending
+      properties:
+        domain:
+          type:
+            - string
+            - 'null'
+          description: 'The verified domain serving this environment.'
+        verified_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        pending:
+          description: 'A domain waiting for its DNS proof, and the TXT record to publish.'
+          oneOf:
+            -
+              type: object
+              required:
+                - domain
+                - record_name
+                - record_value
+              properties:
+                domain:
+                  type: string
+                record_name:
+                  type: string
+                record_value:
+                  type: string
+            - type: 'null'
     PageMeta:
       type: object
       properties:
@@ -3243,6 +7557,47 @@ components:
         error_description:
           type: string
   responses:
+    ApprovalRequired:
+      description: |
+        Held for a person's approval: this key's policy requires its owner to approve this
+        action on their device first. Poll `approval.poll_url`, then repeat the same request
+        (same body, same `Idempotency-Key`) with `Cbox-Approval: <approval.id>`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+              - message
+              - approval
+            properties:
+              error:
+                type: string
+                enum:
+                  - approval_required
+              message:
+                type: string
+              approval:
+                type: object
+                required:
+                  - id
+                  - status
+                  - binding_code
+                  - expires_at
+                  - poll_url
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  binding_code:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  poll_url:
+                    type: string
+                    format: uri
     Unauthorized:
       description: 'Missing or invalid environment API key.'
       content:

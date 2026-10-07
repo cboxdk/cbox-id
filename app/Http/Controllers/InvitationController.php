@@ -43,40 +43,40 @@ final readonly class InvitationController extends PageController
         $preview = $invitations->preview($token);
 
         if ($preview === null) {
-            return redirect()->route('login')->with('error', 'That invitation is invalid or has expired.');
+            return redirect()->route('login')->with('error', __('auth.join_organization.invalid'));
         }
 
-        $facts = [new LinkFact('Organization', $preview->organizationName)];
+        $facts = [new LinkFact(__('auth.join_organization.facts.organization'), $preview->organizationName)];
 
         if ($preview->inviterName !== null) {
-            $facts[] = new LinkFact('Invited by', $preview->inviterName);
+            $facts[] = new LinkFact(__('auth.join_organization.facts.invited_by'), $preview->inviterName);
         }
 
         // THE CONSOLE'S WORDS, in the console's order: exactly one built-in role, then the
         // roles in each app and the custom roles — the groups the inviter ticked them in.
         // "Role: Member" alone told somebody invited as an Editor that they were not one.
-        $facts[] = new LinkFact('Built-in role', $preview->role->label());
+        $facts[] = new LinkFact(__('auth.join_organization.facts.built_in_role'), $preview->role->label());
 
         foreach ($this->rolesByGroup($preview->roles) as $label => $names) {
             $facts[] = new LinkFact($label, implode(', ', $names));
         }
 
-        $facts[] = new LinkFact('Your email', $preview->email);
+        $facts[] = new LinkFact(__('auth.join_organization.facts.email'), $preview->email);
 
         if ($preview->appName !== null) {
-            $facts[] = new LinkFact('App', $preview->appName);
+            $facts[] = new LinkFact(__('auth.join_organization.facts.app'), $preview->appName);
         }
 
-        return $this->page('auth/join-organization', 'Join '.$preview->organizationName, [
+        return $this->page('auth/join-organization', __('auth.join_organization.title', ['organization' => $preview->organizationName]), [
             'confirmation' => new LinkConfirmationProps(
-                heading: 'Join '.$preview->organizationName.'?',
+                heading: __('auth.join_organization.heading', ['organization' => $preview->organizationName]),
                 lead: $preview->appName === null
-                    ? 'You have been invited to join this organization. Accept to become a member and sign in.'
-                    : 'You have been invited to join this organization. Accept to become a member, and we will take you to '.$preview->appName.'.',
-                actionLabel: 'Accept invitation',
+                    ? __('auth.join_organization.lead')
+                    : __('auth.join_organization.lead_app', ['app' => $preview->appName]),
+                actionLabel: __('auth.join_organization.action'),
                 actionUrl: route('invitation.accept.store', $token),
                 facts: $facts,
-                note: 'Not expecting this? Close this page — nothing happens unless you accept.',
+                note: __('auth.join_organization.note'),
             ),
         ]);
     }
@@ -86,7 +86,7 @@ final readonly class InvitationController extends PageController
         try {
             $accepted = $invitations->accept($token);
         } catch (InvalidInvitation) {
-            return redirect()->route('login')->with('error', 'That invitation is invalid or has expired.');
+            return redirect()->route('login')->with('error', __('auth.join_organization.invalid'));
         }
 
         // The membership is committed and STAYS committed: the invitation was valid, the
@@ -132,10 +132,10 @@ final readonly class InvitationController extends PageController
             if ($role->appName === null) {
                 $custom[] = $role->name;
             } else {
-                $apps['Roles in '.$role->appName][] = $role->name;
+                $apps[__('auth.join_organization.facts.app_roles', ['app' => $role->appName])][] = $role->name;
             }
         }
 
-        return $custom === [] ? $apps : ['Custom roles' => $custom, ...$apps];
+        return $custom === [] ? $apps : [__('auth.join_organization.facts.custom_roles') => $custom, ...$apps];
     }
 }

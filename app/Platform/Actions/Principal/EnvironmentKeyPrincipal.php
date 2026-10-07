@@ -6,9 +6,12 @@ namespace App\Platform\Actions\Principal;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
+use App\Platform\Actions\Approvals\StepUpPolicy;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
+use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
@@ -40,9 +43,9 @@ final readonly class EnvironmentKeyPrincipal implements Principal
 
     public function authorize(ActionDefinition $action): void
     {
-        $scope = EnvironmentApiScope::tryFrom($action->scope);
-
-        if ($scope === null || ! $this->key->isActive() || ! $this->key->can($scope)) {
+        // An environment key reaches its own environment's actions only — the workspace above
+        // it is reached with a workspace key, and no scope name can bridge the two.
+        if ($action->plane !== ActionPlane::Environment || ! app(ManagementScopes::class)->knows($action->scope) || ! $this->key->isActive() || ! $this->key->can($action->scope)) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
         }
     }
@@ -50,6 +53,53 @@ final readonly class EnvironmentKeyPrincipal implements Principal
     public function supportsIdempotency(): bool
     {
         return true;
+    }
+
+    public function label(): string
+    {
+        return 'Key "'.$this->key->name.'"';
+    }
+
+    public function stepUpPolicy(): ?StepUpPolicy
+    {
+        return StepUpPolicy::fromArray($this->key->step_up_policy);
+    }
+
+    /**
+     * The person behind this key: whoever minted it in the console, or — for a key minted by
+     * a key — whoever minted the first key in that chain, across into the workspace when a
+     * workspace key minted it. A chain that ends in no person has nobody to ask.
+     */
+    public function approverSubjectId(): ?string
+    {
+        $key = $this->key;
+
+        for ($depth = 0; $depth < 32; $depth++) {
+            if ($key->created_by_type === 'organization_member' && is_string($key->created_by_id) && $key->created_by_id !== '') {
+                return $key->created_by_id;
+            }
+
+            // Minted from the workspace by a workspace key: that key's person answers.
+            if ($key->created_by_type === 'workspace_key' && is_string($key->created_by_id)) {
+                $minter = OrganizationApiKey::query()->whereKey($key->created_by_id)->first();
+
+                return $minter === null ? null : (new WorkspaceKeyPrincipal($minter))->approverSubjectId();
+            }
+
+            if ($key->parent_key_id === null) {
+                return null;
+            }
+
+            $parent = EnvironmentApiKey::query()->whereKey($key->parent_key_id)->first();
+
+            if ($parent === null) {
+                return null;
+            }
+
+            $key = $parent;
+        }
+
+        return null;
     }
 
     public function key(): EnvironmentApiKey

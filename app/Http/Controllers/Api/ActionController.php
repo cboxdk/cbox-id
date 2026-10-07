@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\ApiErrorRenderer;
+use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRoutes;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\WorkspaceApiContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -20,9 +26,10 @@ use Illuminate\Http\Response;
  * The REST door to every action: one controller, routed per action from the registry
  * ({@see ActionRoutes}).
  *
- * It does three things and no more: names the principal (the management key the
- * middleware authenticated), gathers the input (URL parameters, query and body as one
- * argument list — the same list an MCP tool call carries), and renders the outcome in the
+ * It does three things and no more: names the principal (the key the plane's middleware
+ * authenticated — an environment key on an environment's host, a workspace key on the
+ * workspace plane), gathers the input (URL parameters, query and body as one argument
+ * list — the same list an MCP tool call carries), and renders the outcome in the
  * management API's envelope. Validation and authorization failures are thrown on to
  * {@see ApiErrorRenderer}, which renders them the same as before actions existed.
  */
@@ -31,7 +38,6 @@ final readonly class ActionController
     public function __construct(
         private ActionRegistry $registry,
         private ActionRunner $runner,
-        private EnvironmentApiContext $context,
     ) {}
 
     public function __invoke(Request $request): JsonResponse|Response
@@ -39,7 +45,6 @@ final readonly class ActionController
         $route = $request->route();
         $name = $route?->defaults['action'] ?? null;
         $action = $this->registry->named(is_string($name) ? $name : '');
-        $key = $this->context->key() ?? abort(401);
 
         /** @var array<string, mixed> $body */
         $body = $request->all();
@@ -50,15 +55,48 @@ final readonly class ActionController
         try {
             $result = $this->runner->run(
                 $action,
-                new EnvironmentKeyPrincipal($key),
+                $this->principal($action),
                 $input,
                 $request->headers->get('Idempotency-Key'),
+                $request->headers->get('Cbox-Approval'),
             );
+        } catch (ApprovalRequired $held) {
+            return response()->json([
+                'error' => 'approval_required',
+                'message' => $held->getMessage(),
+                'approval' => [
+                    'id' => $held->approvalId,
+                    'status' => 'pending',
+                    'binding_code' => $held->bindingCode,
+                    'expires_at' => $held->expiresAt->toIso8601String(),
+                    'poll_url' => url(($action->plane === ActionPlane::Workspace ? '/api/v1/workspace' : '/api/v1').'/action-approvals/'.$held->approvalId),
+                ],
+            ], 202, ['Retry-After' => (string) $held->interval]);
         } catch (ActionRefused $refused) {
             return response()->json(['error' => $refused->error, 'message' => $refused->getMessage()], $refused->status);
         }
 
         return $this->render($result, $action->status);
+    }
+
+    /**
+     * The key the action's OWN plane authenticated. Chosen by the action rather than by
+     * whichever context happens to be filled, so an action can only ever run as the
+     * credential its plane accepts — an environment action never as a workspace key.
+     */
+    /**
+     * The key's principal, by the action's plane. The contexts are asked of the container on
+     * every request, never held: the router keeps one controller per route, and the contexts
+     * are SCOPED — once a queued job has run in this process its scoped instances are
+     * forgotten, the middleware authenticates the next request into a fresh one, and a
+     * context held here would still be the old, cleared one: a valid key answered 401.
+     */
+    private function principal(ActionDefinition $action): Principal
+    {
+        return match ($action->plane) {
+            ActionPlane::Environment => new EnvironmentKeyPrincipal(app(EnvironmentApiContext::class)->key() ?? abort(401)),
+            ActionPlane::Workspace => new WorkspaceKeyPrincipal(app(WorkspaceApiContext::class)->key() ?? abort(401)),
+        };
     }
 
     private function render(ActionResult $result, int $status): JsonResponse|Response

@@ -46,6 +46,16 @@ subscribed to `*` receives both names for the same change, so count on one famil
 3. Verify every delivery against that secret before acting on it (below).
 4. Send yourself a test event and confirm the whole path works before you rely on it.
 
+From your backend or an agent, the same lifecycle is on the management API
+(`webhooks:write`): `POST /api/v1/webhooks` with `url`, `event_types` and an
+`organization_id` (or `"environment_wide": true`). The answer carries the signing secret
+once; `POST /api/v1/webhooks/{id}/rotate` issues a new one the same way. Every change —
+from the console or the API — is on the [activity log](activity-log.md) as `webhook.*`,
+naming who made it. See [the management API](../getting-started/management-api.md#webhooks-hooks-log-streams-and-the-trail).
+
+Can't accept inbound requests? Poll `GET /api/v1/events?after=<last id>` (`events:read`)
+for the same events instead.
+
 ## Verifying a delivery
 
 Each request carries two headers:

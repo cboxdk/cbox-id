@@ -18,7 +18,7 @@
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^1.0",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^1.19",
+        "cboxdk/laravel-id": "^1.21",
         "cboxdk/laravel-postal": "^0.1.1",
         "cboxdk/laravel-queue-autoscale": "^4.3",
         "cboxdk/laravel-queue-metrics": "^3.4",
@@ -29,6 +29,7 @@
         "firebase/php-jwt": "^7.0",
         "inertiajs/inertia-laravel": "^3.3",
         "laravel/framework": "^13.0",
+        "laravel/mcp": "^1.0",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1"
     },
