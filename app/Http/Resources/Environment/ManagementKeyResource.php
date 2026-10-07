@@ -26,6 +26,7 @@ final class ManagementKeyResource
             'active' => $key->isActive(),
             'parent_key_id' => $key->parent_key_id,
             'rotated_from_id' => $key->rotated_from_id,
+            'require_approval' => $key->step_up_policy,
             'created_by' => $key->created_by_type === null ? null : ['type' => $key->created_by_type, 'id' => $key->created_by_id],
             'expires_at' => Timestamp::of($key->expires_at),
             'last_used_at' => Timestamp::of($key->last_used_at),

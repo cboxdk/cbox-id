@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRoutes;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
 use Illuminate\Http\JsonResponse;
@@ -53,7 +54,20 @@ final readonly class ActionController
                 new EnvironmentKeyPrincipal($key),
                 $input,
                 $request->headers->get('Idempotency-Key'),
+                $request->headers->get('Cbox-Approval'),
             );
+        } catch (ApprovalRequired $held) {
+            return response()->json([
+                'error' => 'approval_required',
+                'message' => $held->getMessage(),
+                'approval' => [
+                    'id' => $held->approvalId,
+                    'status' => 'pending',
+                    'binding_code' => $held->bindingCode,
+                    'expires_at' => $held->expiresAt->toIso8601String(),
+                    'poll_url' => url('/api/v1/action-approvals/'.$held->approvalId),
+                ],
+            ], 202, ['Retry-After' => (string) $held->interval]);
         } catch (ActionRefused $refused) {
             return response()->json(['error' => $refused->error, 'message' => $refused->getMessage()], $refused->status);
         }

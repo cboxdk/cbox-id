@@ -88,6 +88,8 @@ final readonly class ActionOpenApi
             $parameters[] = ['$ref' => '#/components/parameters/IdempotencyKey'];
         }
 
+        $parameters[] = ['$ref' => '#/components/parameters/CboxApproval'];
+
         $operation = [
             'tags' => [$this->tag($action)],
             'summary' => $action->summary,
@@ -96,9 +98,7 @@ final readonly class ActionOpenApi
             'x-action' => $action->name,
         ];
 
-        if ($parameters !== []) {
-            $operation['parameters'] = $parameters;
-        }
+        $operation['parameters'] = $parameters;
 
         if (! $reads && $rest !== []) {
             $required = array_values(array_map(static fn (Field $field): string => $field->name, array_filter($rest, static fn (Field $field): bool => $field->isRequired())));
@@ -120,6 +120,8 @@ final readonly class ActionOpenApi
 
         $operation['responses'] = [
             (string) $action->status => $this->success($action),
+            // Any action can be held for a person's approval when the key's policy says so.
+            '202' => ['$ref' => '#/components/responses/ApprovalRequired'],
             '401' => ['$ref' => '#/components/responses/Unauthorized'],
             '403' => ['$ref' => '#/components/responses/Forbidden'],
         ];

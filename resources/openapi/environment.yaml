@@ -78,6 +78,48 @@ tags:
   - name: Approvals
   - name: 'Management keys'
 paths:
+  '/action-approvals/{id}':
+    get:
+      tags:
+        - Approvals
+      summary: 'Where an approval this key asked for stands'
+      description: |
+        Any key may poll the approvals it raised, and only those: another key's id is a 404.
+        `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - status
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - pending
+                          - approved
+                          - denied
+                          - expired
+                          - consumed
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/api-keys/{id}':
     delete:
       tags:
@@ -320,6 +362,7 @@ paths:
             description: 'The scope key: `tax:assess`.'
             maxLength: 128
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: false
         content:
@@ -347,6 +390,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -383,9 +428,12 @@ paths:
             description: 'The scope key.'
             maxLength: 128
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -850,6 +898,7 @@ paths:
       x-action: keys.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -880,6 +929,26 @@ paths:
                     - 'null'
                   description: 'What it is for — shown beside it in the console.'
                   maxLength: 500
+                require_approval:
+                  type: object
+                  description: "Which of this key's actions need its owner's approval on their device first. From a key: never weaker than its own."
+                  properties:
+                    min_danger:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Every action at or above this danger waits for a person's approval."
+                      enum:
+                        - write
+                        - destructive
+                        - critical
+                    actions:
+                      type: array
+                      description: 'These actions wait for approval whatever their danger.'
+                      maxItems: 100
+                      items:
+                        type: string
+                        maxLength: 100
               required:
                 - name
                 - scopes
@@ -895,6 +964,8 @@ paths:
                 properties:
                   data:
                     type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -927,6 +998,7 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -944,6 +1016,8 @@ paths:
                       type: object
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -969,9 +1043,12 @@ paths:
             type: string
             description: 'The key to revoke.'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1001,6 +1078,7 @@ paths:
             type: string
             description: 'The key to rotate.'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: false
         content:
@@ -1025,6 +1103,8 @@ paths:
                 properties:
                   data:
                     type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -2574,6 +2654,13 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    CboxApproval:
+      name: Cbox-Approval
+      in: header
+      required: false
+      description: 'The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Spent by this request, once.'
+      schema:
+        type: string
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -3441,6 +3528,47 @@ components:
         error_description:
           type: string
   responses:
+    ApprovalRequired:
+      description: |
+        Held for a person's approval: this key's policy requires its owner to approve this
+        action on their device first. Poll `approval.poll_url`, then repeat the same request
+        (same body, same `Idempotency-Key`) with `Cbox-Approval: <approval.id>`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - error
+              - message
+              - approval
+            properties:
+              error:
+                type: string
+                enum:
+                  - approval_required
+              message:
+                type: string
+              approval:
+                type: object
+                required:
+                  - id
+                  - status
+                  - binding_code
+                  - expires_at
+                  - poll_url
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  binding_code:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  poll_url:
+                    type: string
+                    format: uri
     Unauthorized:
       description: 'Missing or invalid environment API key.'
       content:

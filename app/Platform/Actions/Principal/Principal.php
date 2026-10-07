@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions\Principal;
 
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\Approvals\StepUpPolicy;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -40,4 +41,16 @@ interface Principal
      * machine principals take part.
      */
     public function supportsIdempotency(): bool;
+
+    /** A short human name for prompts and approvals: the key's name, the person's. */
+    public function label(): string;
+
+    /** Which of this principal's actions need a person's approval first; null for none. */
+    public function stepUpPolicy(): ?StepUpPolicy;
+
+    /**
+     * The person who approves this principal's held actions — a subject in the platform root,
+     * where their devices are enrolled — or null when there is nobody to ask.
+     */
+    public function approverSubjectId(): ?string;
 }
