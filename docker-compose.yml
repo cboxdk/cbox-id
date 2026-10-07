@@ -4,10 +4,25 @@
 #   docker compose exec app php artisan migrate --force
 #   open http://localhost:8080
 #
-# The keys below are THROWAWAY dev values — never use them anywhere real. For a
-# prod-shaped smoke test, override via a .env file or `image:` a pushed tag
-# instead of building. Valkey is a drop-in, wire-compatible Redis replacement, so
-# the app's REDIS_* config points straight at it.
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ DEV ONLY. The APP_KEY and CBOX_ID_CRYPTO_KEY defaults below are PUBLIC —     │
+# │ they are in this repository, so anything sealed under them is readable by   │
+# │ anyone who has read this file. They exist so `docker compose up` works with │
+# │ no setup. NEVER run a deployment that holds real data on them.              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+#
+# Each is `${VAR:-throwaway}`: export your own, or set them in the `.env` beside this
+# file (compose reads it for interpolation — so a Laravel `.env` that already sets
+# them wins), and every service picks them up:
+#
+#   export APP_KEY="base64:$(openssl rand -base64 32)"
+#   export CBOX_ID_CRYPTO_KEY="$(openssl rand -base64 32)"   # RAW base64, no base64: prefix
+#
+# The crypto key seals every stored secret; change it on an existing database and
+# those secrets cannot be opened again. The DB/Valkey passwords are dev-only too.
+# For a prod-shaped smoke test, also `image:` a pushed tag instead of building.
+# Valkey is a drop-in, wire-compatible Redis replacement, so the app's REDIS_*
+# config points straight at it.
 
 services:
   app:
@@ -19,11 +34,11 @@ services:
       APP_NAME: "Cbox ID (dev)"
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
+      APP_KEY: ${APP_KEY:-base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=}
       APP_URL: http://localhost:8080
       LOG_CHANNEL: stderr
 
-      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:-OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=}  # RAW base64, no base64: prefix
       CBOX_ID_ISSUER: http://localhost:8080
       CBOX_ID_WEBAUTHN_RP_ID: localhost
       CBOX_ID_WEBAUTHN_ORIGIN: http://localhost:8080
@@ -70,8 +85,8 @@ services:
     stop_grace_period: 60s
     environment:
       APP_ENV: local
-      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
-      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      APP_KEY: ${APP_KEY:-base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=}
+      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:-OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=}  # RAW base64, no base64: prefix
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: postgres
@@ -100,8 +115,8 @@ services:
     command: ["php", "artisan", "schedule:work"]
     environment:
       APP_ENV: local
-      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
-      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      APP_KEY: ${APP_KEY:-base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=}
+      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:-OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=}  # RAW base64, no base64: prefix
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: postgres
