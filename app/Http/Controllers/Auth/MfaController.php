@@ -33,7 +33,7 @@ final readonly class MfaController extends PageController
             return to_route('login');
         }
 
-        return $this->page('auth/mfa', 'Two-factor verification');
+        return $this->page('auth/mfa', __('auth.mfa.title'));
     }
 
     public function verify(VerifyMfaRequest $request, PlatformAuth $auth): RedirectResponse
@@ -47,7 +47,7 @@ final readonly class MfaController extends PageController
         if (! $auth->completeMfa($request, $request->code())) {
             RateLimiter::hit($throttle, 60);
 
-            return back()->withErrors(['code' => 'That code is incorrect or has expired.']);
+            return back()->withErrors(['code' => __('auth.common.code_incorrect')]);
         }
 
         RateLimiter::clear($throttle);
@@ -67,7 +67,7 @@ final readonly class MfaController extends PageController
             RateLimiter::hit($throttle, 60);
 
             return back()->withErrors([
-                'recoveryCode' => 'That recovery code is invalid or already used.',
+                'recoveryCode' => __('auth.mfa.recovery.invalid'),
             ]);
         }
 
@@ -91,7 +91,7 @@ final readonly class MfaController extends PageController
     private function tooManyAttempts(string $key, string $field): RedirectResponse
     {
         return back()->withErrors([
-            $field => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+            $field => trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)),
         ]);
     }
 

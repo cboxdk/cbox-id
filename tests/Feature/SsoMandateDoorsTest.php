@@ -216,8 +216,13 @@ it('refuses a redeemed magic link, and ends the session the redemption started',
             ->hasFlash('mandate.reason', RefusedFactor::MagicLink->sentence()));
 
     // Taken once: a refusal that survived would greet them again on their next visit.
+    // Asserted on the flash rather than the page text: the page now carries its own
+    // catalogue, which holds the refusal's wording whether a refusal is shown or not.
     nextRequest();
-    $this->get(route('login'))->assertDontSee('requires single sign-on');
+    $this->get(route('login'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->missingFlash('mandate'));
 })->group('security');
 
 it('refuses a passkey sign-in, and says the passkey worked', function (): void {

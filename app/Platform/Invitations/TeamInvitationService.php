@@ -11,6 +11,7 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
 use App\Platform\Invitations\ValueObjects\InvitationPreview;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonInterface;
@@ -286,7 +287,7 @@ final readonly class TeamInvitationService implements TeamInvitations
 
     private function mail(Invitation $invitation, string $token, Inviter $inviter): void
     {
-        Mail::to($invitation->email)->send(new OrganizationInviteMail(
+        Mail::to($invitation->email)->locale(app(MailLocale::class)->forRecipient())->send(new OrganizationInviteMail(
             organization: $this->organizations->find($invitation->organization_id)->name ?? 'your workspace',
             inviter: $inviter->name,
             // MailLinks, not URL::: a mailed link's origin comes from the deployment, not

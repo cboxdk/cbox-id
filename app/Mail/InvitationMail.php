@@ -36,11 +36,17 @@ final class InvitationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: $this->inviter.' invited you to join '.$this->organization);
+        return new Envelope(subject: __('mail.invitation.subject', [
+            'inviter' => $this->inviter,
+            'organization' => $this->organization,
+        ]));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.invitation');
+        return new Content(view: 'mail.invitation', with: [
+            'brand' => MailText::brand(),
+            'roleName' => MailText::role($this->role),
+        ]);
     }
 }

@@ -1,4 +1,5 @@
 import { useForm, usePage } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps, SharedProps } from '@/types';
 import { Button, Icon } from '@/ui';
@@ -38,8 +39,10 @@ export default function Consent({
     approveHref,
     denyHref,
 }: Props) {
+    const { t } = useTranslator();
+
     if (error !== undefined || client === undefined || me === undefined) {
-        return <Failure message={error ?? 'This authorization request could not be completed.'} />;
+        return <Failure message={error ?? t('oauth.failure.generic')} />;
     }
 
     return (
@@ -64,6 +67,7 @@ function useAccountName(): string {
 
 function Failure({ message }: { message: string }) {
     const accountName = useAccountName();
+    const { t } = useTranslator();
     return (
         <div>
             <div
@@ -78,12 +82,12 @@ function Failure({ message }: { message: string }) {
             >
                 !
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Authorization failed</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t('oauth.failure.heading')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
                 {message}
             </p>
             <Button asChild className="w-full mt-6">
-                <a href="/">Back to {accountName}</a>
+                <a href="/">{t('oauth.failure.back', { name: accountName })}</a>
             </Button>
         </div>
     );
@@ -109,6 +113,7 @@ function Authorize({
     const approve = useForm({});
     const deny = useForm({});
     const accountName = useAccountName();
+    const { t, rich } = useTranslator();
 
     return (
         <div>
@@ -124,9 +129,14 @@ function Authorize({
                 <Icon name="shield" className="w-5 h-5" />
             </div>
 
-            <h1 className="text-2xl font-semibold tracking-tight">Authorize {client.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+                {t('oauth.consent.heading', { client: client.name })}
+            </h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
-                <b>{client.name}</b> wants to access your {accountName} account.
+                {rich('oauth.consent.wants_access', {
+                    client: <b>{client.name}</b>,
+                    account: accountName,
+                })}
             </p>
 
             {/*
@@ -135,8 +145,9 @@ function Authorize({
                 this environment may register an app called "Cbox ID Account Sync".
             */}
             <p className="mt-1.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Registered by <b style={{ color: 'var(--muted)' }}>{client.owner}</b> — an
-                app&rsquo;s name is chosen by whoever registered it.
+                {rich('oauth.consent.registered_by', {
+                    owner: <b style={{ color: 'var(--muted)' }}>{client.owner}</b>,
+                })}
             </p>
 
             {/*
@@ -167,7 +178,9 @@ function Authorize({
                     */}
                     {organization !== null && (
                         <p className="text-xs truncate mt-0.5" style={{ color: 'var(--muted)' }}>
-                            In <b>{organization}</b>
+                            {rich('oauth.consent.in_organization', {
+                                organization: <b>{organization}</b>,
+                            })}
                         </p>
                     )}
                 </div>
@@ -175,7 +188,9 @@ function Authorize({
 
             {scopes.length > 0 && (
                 <>
-                    <p className="cbx-page-eyebrow mt-6">This will allow {client.name} to</p>
+                    <p className="cbx-page-eyebrow mt-6">
+                        {t('oauth.consent.will_allow', { client: client.name })}
+                    </p>
                     <ul className="mt-2.5 space-y-2">
                         {scopes.map((row) => (
                             <li key={row.scope} className="flex items-center gap-2.5 text-sm">
@@ -202,7 +217,7 @@ function Authorize({
                     loading={deny.processing}
                     onClick={() => deny.post(denyHref)}
                 >
-                    Cancel
+                    {t('oauth.consent.cancel')}
                 </Button>
                 <Button
                     variant="primary"
@@ -210,14 +225,15 @@ function Authorize({
                     loading={approve.processing}
                     onClick={() => approve.post(approveHref)}
                 >
-                    Authorize
+                    {t('oauth.consent.authorize')}
                 </Button>
             </div>
 
             {redirectHost !== null && (
                 <p className="mt-6 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    You&rsquo;ll be redirected to <span className="mono">{redirectHost}</span> after
-                    authorizing.
+                    {rich('oauth.consent.redirect_notice', {
+                        host: <span className="mono">{redirectHost}</span>,
+                    })}
                 </p>
             )}
         </div>

@@ -2,17 +2,19 @@ import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { SandboxBanner } from '@/chrome/Banners';
 import { Brand } from '@/chrome/Brand';
+import { LanguagePicker } from '@/chrome/LanguagePicker';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Toaster } from '@/chrome/Toaster';
+import { type MessageKey, useDocumentLanguage, useTranslator } from '@/i18n';
 import { toggleTheme } from '@/lib/theme';
 import type { SharedProps } from '@/types';
 import { Icon, TooltipProvider } from '@/ui';
 
-const FEATURES = [
-    'SAML & OIDC single sign-on',
-    'SCIM 2.0 directory provisioning',
-    'Passkeys, TOTP, and magic links',
-    'Hash-chained, tamper-evident audit',
+const FEATURES: MessageKey[] = [
+    'hosted.layout.features.sso',
+    'hosted.layout.features.scim',
+    'hosted.layout.features.mfa',
+    'hosted.layout.features.audit',
 ];
 
 /**
@@ -37,6 +39,9 @@ const FEATURES = [
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
     const { app, brand, title } = usePage<SharedProps>().props;
+    const { locale, t } = useTranslator();
+
+    useDocumentLanguage(locale);
 
     return (
         <TooltipProvider>
@@ -78,18 +83,24 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                             style={{ color: 'var(--faint)' }}
                         >
                             <span className="inline-flex items-center gap-1.5">
-                                <Icon name="shield" className="w-3.5 h-3.5" /> Secured by {app.name}
+                                <Icon name="shield" className="w-3.5 h-3.5" />{' '}
+                                {t('hosted.layout.secured_by', { name: app.name })}
                             </span>
 
-                            <button
-                                type="button"
-                                onClick={() => toggleTheme()}
-                                aria-label="Toggle light or dark theme"
-                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition hover:opacity-80"
-                                style={{ border: '1px solid var(--border)' }}
-                            >
-                                <Icon name="sun" className="w-3.5 h-3.5" /> Theme
-                            </button>
+                            <span className="inline-flex items-center gap-2">
+                                <LanguagePicker />
+
+                                <button
+                                    type="button"
+                                    onClick={() => toggleTheme()}
+                                    aria-label={t('hosted.layout.toggle_theme')}
+                                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition hover:opacity-80"
+                                    style={{ border: '1px solid var(--border)' }}
+                                >
+                                    <Icon name="sun" className="w-3.5 h-3.5" />{' '}
+                                    {t('hosted.layout.theme')}
+                                </button>
+                            </span>
                         </div>
                     </div>
                 </main>
@@ -102,7 +113,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                 {brand === null && (
                     <aside
                         className="auth-hero hidden lg:flex flex-col justify-between p-12 overflow-hidden"
-                        aria-label="About this product"
+                        aria-label={t('hosted.layout.about')}
                     >
                         <Brand compact className="opacity-95" />
 
@@ -114,8 +125,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                                 {app.tagline}
                             </h2>
                             <p className="mt-4 text-sm leading-relaxed" style={{ opacity: 0.82 }}>
-                                Enterprise SSO, SCIM directory sync, MFA and passkeys, RBAC, and a
-                                tamper-evident audit trail — self-hostable, and yours.
+                                {t('hosted.layout.hero_body')}
                             </p>
 
                             <ul className="mt-9 space-y-3.5">
@@ -124,7 +134,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                                         <span className="tick">
                                             <Icon name="check" className="w-3.5 h-3.5" />
                                         </span>
-                                        {feature}
+                                        {t(feature)}
                                     </li>
                                 ))}
                             </ul>

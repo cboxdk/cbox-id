@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input, PasswordField, PasswordManagerIdentity } from '@/ui';
@@ -10,14 +11,19 @@ type Props = PageProps<{
     claimHref: string;
 }>;
 
+/** The command that installs from the shell — named in three of this page's sentences. */
+const INSTALL = <code>php artisan cbox-id:install</code>;
+
 export default function FirstRun({ multiTenant, misconfigured, unmigrated, claimHref }: Props) {
+    const { t, rich } = useTranslator();
+
     return (
         <div>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Set up Cbox ID
+                {t('auth.first_run.title')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                This deployment is empty. Claim it once, from the machine that runs it.
+                {t('auth.first_run.lead')}
             </p>
 
             {/*
@@ -28,24 +34,27 @@ export default function FirstRun({ multiTenant, misconfigured, unmigrated, claim
                 than discovered by pressing the button.
             */}
             {unmigrated ? (
-                <Notice title="This deployment's database has no schema yet.">
-                    Run <code>php artisan migrate --force</code> on the server (or{' '}
-                    <code>php artisan cbox-id:install</code>, which migrates and installs in one
-                    step), then reload this page.
+                <Notice title={t('auth.first_run.unmigrated.title')}>
+                    {rich('auth.first_run.unmigrated.body', {
+                        migrate: <code>php artisan migrate --force</code>,
+                        install: INSTALL,
+                    })}
                 </Notice>
             ) : misconfigured ? (
-                <Notice title="This deployment is configured as multi-tenant but has no account host.">
-                    Set <code>CBOX_ID_CONSOLE_HOST</code> (where the console lives), or set{' '}
-                    <code>CBOX_ID_MULTI_TENANT=false</code> for a single-host install — then reload
-                    this page. You can also run <code>php artisan cbox-id:install</code>, which asks
-                    for both and writes them for you.
+                <Notice title={t('auth.first_run.misconfigured.title')}>
+                    {rich('auth.first_run.misconfigured.body', {
+                        console_host: <code>CBOX_ID_CONSOLE_HOST</code>,
+                        single_host: <code>CBOX_ID_MULTI_TENANT=false</code>,
+                        install: INSTALL,
+                    })}
                 </Notice>
             ) : (
                 <>
-                    <Notice title="Where is the setup token?">
-                        In <code>storage/app/private/cbox-id-first-run.token</code> on the server,
-                        and in the application log (<code>docker logs</code> for a container). It is
-                        never shown on this page.
+                    <Notice title={t('auth.first_run.token_notice.title')}>
+                        {rich('auth.first_run.token_notice.body', {
+                            path: <code>storage/app/private/cbox-id-first-run.token</code>,
+                            logs: <code>docker logs</code>,
+                        })}
                     </Notice>
 
                     <ClaimForm href={claimHref} multiTenant={multiTenant} />
@@ -53,8 +62,7 @@ export default function FirstRun({ multiTenant, misconfigured, unmigrated, claim
             )}
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
-                Prefer the command line? <code>php artisan cbox-id:install</code> does the same
-                thing, and is the only path that can also choose and record the deployment shape.
+                {rich('auth.first_run.cli_hint', { install: INSTALL })}
             </p>
         </div>
     );
@@ -75,12 +83,14 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
 }
 
 function ClaimForm({ href, multiTenant }: { href: string; multiTenant: boolean }) {
+    const { t } = useTranslator();
     const form = useForm({
         token: '',
         name: '',
         email: '',
         password: '',
-        environmentName: 'Production',
+        // In the page's language: a name the operator reads and may well keep, not a code.
+        environmentName: t('auth.first_run.environment_default'),
         organizationName: '',
     });
 
@@ -97,29 +107,29 @@ function ClaimForm({ href, multiTenant }: { href: string; multiTenant: boolean }
                 authority to install this deployment, and a manager that offered to save it
                 would be saving a credential for a door that is about to be bricked up.
             */}
-            <Field label="Setup token" error={form.errors.token}>
+            <Field label={t('auth.first_run.token_label')} error={form.errors.token}>
                 <Input
                     name="token"
                     type="password"
                     autoComplete="off"
                     className="input-lg"
-                    placeholder="Paste the token from the server"
+                    placeholder={t('auth.first_run.token_placeholder')}
                     value={form.data.token}
                     onChange={(event) => form.setData('token', event.target.value)}
                 />
             </Field>
 
-            <Field label="Your name" error={form.errors.name}>
+            <Field label={t('auth.first_run.name_label')} error={form.errors.name}>
                 <Input
                     name="name"
                     className="input-lg"
-                    placeholder="Root Operator"
+                    placeholder={t('auth.first_run.name_placeholder')}
                     value={form.data.name}
                     onChange={(event) => form.setData('name', event.target.value)}
                 />
             </Field>
 
-            <Field label="Your email" error={form.errors.email}>
+            <Field label={t('auth.first_run.email_label')} error={form.errors.email}>
                 <Input
                     name="email"
                     type="email"
@@ -139,26 +149,29 @@ function ClaimForm({ href, multiTenant }: { href: string; multiTenant: boolean }
             <PasswordManagerIdentity username={form.data.email} />
 
             <PasswordField
-                label="Password"
+                label={t('auth.common.password')}
                 name="password"
                 autoComplete="new-password"
                 className="input-lg"
                 policy
-                placeholder="At least 12 characters"
+                showLabel={t('auth.password_field.show')}
+                hideLabel={t('auth.password_field.hide')}
+                policyLabel={t('auth.password_field.policy', { count: 12 })}
+                placeholder={t('auth.password_field.policy', { count: 12 })}
                 error={form.errors.password}
                 value={form.data.password}
                 onChange={(event) => form.setData('password', event.target.value)}
             />
 
             <Field
-                label="Name your first environment"
-                hint="An environment is the hard isolation boundary — its own users, keys and issuer."
+                label={t('auth.first_run.environment_label')}
+                hint={t('auth.first_run.environment_hint')}
                 error={form.errors.environmentName}
             >
                 <Input
                     name="environmentName"
                     className="input-lg"
-                    placeholder="Production"
+                    placeholder={t('auth.first_run.environment_default')}
                     value={form.data.environmentName}
                     onChange={(event) => form.setData('environmentName', event.target.value)}
                 />
@@ -166,14 +179,14 @@ function ClaimForm({ href, multiTenant }: { href: string; multiTenant: boolean }
 
             {multiTenant && (
                 <Field
-                    label="Organization name"
-                    hint="This deployment is configured as multi-tenant, so the install also creates the first workspace — the organization that owns environments and billing."
+                    label={t('auth.first_run.organization_label')}
+                    hint={t('auth.first_run.organization_hint')}
                     error={form.errors.organizationName}
                 >
                     <Input
                         name="organizationName"
                         className="input-lg"
-                        placeholder="Your company"
+                        placeholder={t('auth.first_run.organization_placeholder')}
                         value={form.data.organizationName}
                         onChange={(event) => form.setData('organizationName', event.target.value)}
                     />
@@ -187,7 +200,7 @@ function ClaimForm({ href, multiTenant }: { href: string; multiTenant: boolean }
                 className="w-full"
                 loading={form.processing}
             >
-                Install this deployment
+                {t('auth.first_run.submit')}
             </Button>
         </form>
     );

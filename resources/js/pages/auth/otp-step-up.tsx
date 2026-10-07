@@ -1,4 +1,5 @@
 import { router, useForm, usePage } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Icon, Input } from '@/ui';
@@ -16,17 +17,17 @@ type Props = PageProps<{ maskedEmail: string }>;
  */
 export default function OtpStepUp({ maskedEmail }: Props) {
     const resentMessage = usePage().flash.resent;
+    const { t, rich } = useTranslator();
 
     const form = useForm({ code: '' });
 
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Additional verification
+                {t('auth.otp_step_up.title')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                This sign-in looked unusual, so we emailed a one-time code to{' '}
-                <b>{maskedEmail}</b>. Enter it to continue.
+                {rich('auth.otp_step_up.lead', { email: <b>{maskedEmail}</b> })}
             </p>
 
             {resentMessage !== undefined && (
@@ -45,7 +46,7 @@ export default function OtpStepUp({ maskedEmail }: Props) {
                     form.post(verify.url());
                 }}
             >
-                <Field label="Verification code" error={form.errors.code}>
+                <Field label={t('auth.otp_step_up.code_label')} error={form.errors.code}>
                     <Input
                         name="code"
                         scale="lg"
@@ -67,7 +68,7 @@ export default function OtpStepUp({ maskedEmail }: Props) {
                     className="w-full"
                     loading={form.processing}
                 >
-                    Verify
+                    {t('auth.common.verify')}
                 </Button>
             </form>
 
@@ -77,7 +78,7 @@ export default function OtpStepUp({ maskedEmail }: Props) {
                 className="mt-4 text-sm underline underline-offset-2"
                 style={{ color: 'var(--accent-strong)' }}
             >
-                Didn't get it? Resend code
+                {t('auth.otp_step_up.resend')}
             </button>
 
             <div className="mt-6">
@@ -87,7 +88,7 @@ export default function OtpStepUp({ maskedEmail }: Props) {
                     className="text-sm underline underline-offset-2"
                     style={{ color: 'var(--muted-foreground)' }}
                 >
-                    Cancel and sign out
+                    {t('auth.common.cancel_and_sign_out')}
                 </button>
             </div>
         </>

@@ -22,6 +22,7 @@ use App\Platform\Console\LikeTerm;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrganizationAccess;
@@ -179,7 +180,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             // that does not contain them.
             $token = app(MagicLink::class)->request($request->email());
 
-            Mail::to($request->email())->send(new MagicLinkMail(
+            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(new MagicLinkMail(
                 app(MailLinks::class)->route('magic.redeem', $token),
             ));
         }
@@ -384,10 +385,10 @@ final readonly class EnvironmentUserController extends ConsoleController
         ));
 
         if (! $request->reveal()) {
-            Mail::to($model->email)->send(new AdminAssignedPasswordMail(
+            Mail::to($model->email)->locale(app(MailLocale::class)->forRecipient())->send(new AdminAssignedPasswordMail(
                 password: $request->password(),
                 temporary: $request->temporary(),
-                expiresAt: $request->expiresAt()?->toDayDateTimeString(),
+                expiresAt: $request->expiresAt(),
             ));
 
             return back()->with('status', 'Password set and emailed to '.$model->email.'.');
@@ -412,7 +413,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         $token = $resets->request($model->email);
 
         if (is_string($token)) {
-            Mail::to($model->email)->send(new PasswordResetMail($links->route('password.reset', $token)));
+            Mail::to($model->email)->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($links->route('password.reset', $token)));
         }
 
         return back()->with('status', 'Password reset email sent to '.$model->email.'.');
@@ -430,7 +431,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $token = $verification->issue($model->id, $model->email);
 
-        Mail::to($model->email)->send(new EmailVerificationMail($links->route('verification.verify', $token)));
+        Mail::to($model->email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($links->route('verification.verify', $token)));
 
         return back()->with('status', 'Verification email sent to '.$model->email.'.');
     }

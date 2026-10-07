@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
+use App\Http\Middleware\ResolveLocale;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as RoutedRoute;
@@ -56,6 +57,12 @@ function appGuards(RoutedRoute $route): array
 
     foreach (app(Router::class)->gatherRouteMiddleware($route) as $middleware) {
         if (! is_string($middleware) || ! str_starts_with($middleware, 'App\\Http\\Middleware\\')) {
+            continue;
+        }
+
+        // The hosted pages' language is not a guard: it refuses nothing, so a write that
+        // does not resolve one is not looser than a page that does.
+        if ($middleware === ResolveLocale::class) {
             continue;
         }
 
@@ -233,6 +240,8 @@ it('guards every console write at least as tightly as the pages it sits beside',
         'frontend.sign-in.passkey.options',
         // Ending a session, from either side of an impersonation.
         'impersonation.exit',
+        // The hosted pages' language picker, posted from the footer of whichever page it is on.
+        'locale.update',
         'logout',
         // WebAuthn ceremonies: two round trips of JSON either side of the browser's own
         // credential prompt, issued by the page they belong to rather than routed to.

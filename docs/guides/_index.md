@@ -40,6 +40,7 @@ console explains itself in two or three sentences; when that is not enough, the
 - [Agent approvals](agent-approvals.md) — approving a request to act as you, and reviewing every pending request in an environment.
 - [Support access](support-access.md) — signing in to one of your apps as one of its users, for a reason and at most an hour.
 - [Trusted devices](trusted-devices.md) — a phone as the authenticator that answers those approvals.
+- [Languages](languages.md) — which language sign-in, consent, the Admin Portal and their emails are shown in, and how to change the default.
 
 ## Proving it is under control
 

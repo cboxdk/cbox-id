@@ -1,5 +1,6 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input } from '@/ui';
@@ -23,16 +24,18 @@ type Props = PageProps<{
 export default function CreateOrganization({ client, me, storeHref, pickerHref, denyHref }: Props) {
     const form = useForm({ name: '' });
     const [cancelling, setCancelling] = useState(false);
+    const { t, rich } = useTranslator();
 
     return (
         <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Create an organization</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+                {t('oauth.create_organization.heading')}
+            </h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
-                Your team or company in <b>{client.name}</b>. You will be its owner, and can invite
-                people once you are in.
+                {rich('oauth.create_organization.lead', { client: <b>{client.name}</b> })}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Signed in as {me.email ?? me.name}
+                {t('oauth.signed_in_as', { account: me.email ?? me.name })}
             </p>
 
             <form
@@ -42,7 +45,7 @@ export default function CreateOrganization({ client, me, storeHref, pickerHref, 
                     form.post(storeHref);
                 }}
             >
-                <Field label="Organization name" error={form.errors.name}>
+                <Field label={t('oauth.create_organization.name_label')} error={form.errors.name}>
                     <Input
                         name="name"
                         scale="lg"
@@ -61,14 +64,16 @@ export default function CreateOrganization({ client, me, storeHref, pickerHref, 
                     className="w-full"
                     loading={form.processing}
                 >
-                    Create and continue
+                    {t('oauth.create_organization.submit')}
                 </Button>
             </form>
 
             <div className="mt-6 flex flex-col gap-2">
                 {pickerHref !== null && (
                     <Button asChild className="w-full">
-                        <Link href={pickerHref}>Choose an existing organization</Link>
+                        <Link href={pickerHref}>
+                            {t('oauth.create_organization.choose_existing')}
+                        </Link>
                     </Button>
                 )}
 
@@ -81,7 +86,7 @@ export default function CreateOrganization({ client, me, storeHref, pickerHref, 
                         router.post(denyHref, {}, { onFinish: () => setCancelling(false) });
                     }}
                 >
-                    Cancel and return to {client.name}
+                    {t('oauth.cancel_and_return', { client: client.name })}
                 </Button>
             </div>
         </div>

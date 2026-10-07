@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Http\Props\Shared\AuthProps;
 use App\Http\Props\Shared\EnvironmentProps;
 use App\Http\Props\Shared\FlashProps;
+use App\Http\Props\Shared\I18nProps;
 use App\Http\Props\Shared\ImpersonationProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Appearance\BrandContext;
@@ -14,6 +15,7 @@ use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
+use App\Platform\Locale\HostedTranslations;
 use App\Platform\Theme;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Http\Request;
@@ -64,6 +66,7 @@ final class HandleInertiaRequests extends Middleware
         'impersonation',
         'flash',
         'shell',
+        'i18n',
         // Inertia's own, from `parent::share()`.
         'errors',
     ];
@@ -131,6 +134,15 @@ final class HandleInertiaRequests extends Middleware
              * membership lookups behind it. See {@see ShellPayload} for what goes in.
              */
             'shell' => fn (): ?ShellProps => app(ShellPayload::class)->build(),
+
+            /*
+             * THE HOSTED PAGES' LANGUAGE — the locale, the picker's options, and the one
+             * page group's strings. Null on the console, which is English and ships no
+             * catalogue. A closure because the controller decides which group it is
+             * rendering, and that has happened by the time Inertia resolves this.
+             * {@see HostedTranslations}.
+             */
+            'i18n' => fn (): ?I18nProps => app(HostedTranslations::class)->toProps(),
         ];
     }
 }

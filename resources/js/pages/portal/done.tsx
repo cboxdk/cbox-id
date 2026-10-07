@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import PortalLayout from '@/layouts/PortalLayout';
 import { Icon } from '@/ui';
 
@@ -11,6 +12,7 @@ import { Icon } from '@/ui';
  */
 export default function PortalDone() {
     const organization = usePage().flash.portalOrganization;
+    const { t } = useTranslator();
 
     return (
         <div className="card p-10 text-center">
@@ -25,13 +27,16 @@ export default function PortalDone() {
             >
                 <Icon name="check" className="w-5 h-5" />
             </div>
-            <h1 className="mt-4 text-lg font-semibold tracking-tight">All set</h1>
+            <h1 className="mt-4 text-lg font-semibold tracking-tight">
+                {t('portal.done.heading')}
+            </h1>
             <p
                 className="mt-2 text-sm leading-relaxed mx-auto"
                 style={{ color: 'var(--muted)', maxWidth: '28rem' }}
             >
-                Enterprise sign-in for {organization ?? 'this organization'} is configured. This
-                setup link has now been used and is closed. You can close this window.
+                {t('portal.done.body', {
+                    organization: organization ?? t('portal.done.this_organization'),
+                })}
             </p>
         </div>
     );

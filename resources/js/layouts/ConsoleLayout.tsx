@@ -11,6 +11,7 @@ import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Subnav } from '@/chrome/Subnav';
 import { Switcher } from '@/chrome/Switcher';
 import { Toaster } from '@/chrome/Toaster';
+import { useDocumentLanguage } from '@/i18n';
 import { setNavPinned } from '@/lib/theme';
 import type { SharedProps } from '@/types';
 import { Icon, TooltipProvider } from '@/ui';
@@ -44,6 +45,9 @@ export interface ConsoleLayoutProps {
  */
 export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
     const { shell, auth, title, environment } = usePage<SharedProps>().props;
+
+    // The console is English, whatever language the sign-in page before it was in.
+    useDocumentLanguage('en');
 
     const [pinned, setPinned] = useState(shell?.navPinned ?? false);
     // Read in a lazy initialiser rather than an effect: reading it after mount renders

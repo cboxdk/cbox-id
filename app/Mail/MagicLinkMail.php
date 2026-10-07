@@ -19,13 +19,13 @@ final class MagicLinkMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $brand = config('cbox-id.branding.name', 'Cbox ID');
-
-        return new Envelope(subject: 'Your '.(is_string($brand) ? $brand : 'Cbox ID').' sign-in link');
+        // Built inside the send's `withLocale()`, so `__()` here is already in the
+        // recipient's language; the send site states it (see App\Platform\Locale\MailLocale).
+        return new Envelope(subject: __('mail.magic_link.subject', ['brand' => MailText::brand()]));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.magic-link');
+        return new Content(view: 'mail.magic-link', with: ['brand' => MailText::brand()]);
     }
 }

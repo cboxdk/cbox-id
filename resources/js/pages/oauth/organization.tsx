@@ -1,5 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Avatar, Button, Icon, Spinner } from '@/ui';
@@ -46,6 +47,7 @@ export default function ChooseOrganization({
     const error = usePage().props.errors.organization;
     const [choosing, setChoosing] = useState<string | null>(null);
     const [cancelling, setCancelling] = useState(false);
+    const { t, rich } = useTranslator();
 
     const choose = (id: string) => {
         setChoosing(id);
@@ -54,12 +56,14 @@ export default function ChooseOrganization({
 
     return (
         <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Choose an organization</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+                {t('oauth.organization.heading')}
+            </h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
-                <b>{client.name}</b> will use the organization you pick, with your role in it.
+                {rich('oauth.organization.lead', { client: <b>{client.name}</b> })}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Signed in as {me.email ?? me.name}
+                {t('oauth.signed_in_as', { account: me.email ?? me.name })}
             </p>
 
             {error !== undefined && (
@@ -74,11 +78,14 @@ export default function ChooseOrganization({
                     style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
                 >
                     {createHref !== null
-                        ? 'You are not in any organization here yet. Create one to continue.'
-                        : 'You are not in any organization here yet. Ask someone to invite you to theirs, then try again.'}
+                        ? t('oauth.organization.none_create')
+                        : t('oauth.organization.none_invite')}
                 </div>
             ) : (
-                <ul className="mt-6 flex flex-col gap-2" aria-label="Your organizations">
+                <ul
+                    className="mt-6 flex flex-col gap-2"
+                    aria-label={t('oauth.organization.list_label')}
+                >
                     {organizations.map((organization) => {
                         const suggested = organization.id === selected;
 
@@ -119,12 +126,16 @@ export default function ChooseOrganization({
                                             className="text-xs font-medium shrink-0"
                                             style={{ color: 'var(--accent-strong)' }}
                                         >
-                                            Suggested
+                                            {t('oauth.organization.suggested')}
                                         </span>
                                     )}
 
                                     {choosing === organization.id ? (
-                                        <Spinner label={`Continuing with ${organization.name}`} />
+                                        <Spinner
+                                            label={t('oauth.organization.continuing_with', {
+                                                name: organization.name,
+                                            })}
+                                        />
                                     ) : (
                                         <Icon
                                             name="chevron"
@@ -145,7 +156,7 @@ export default function ChooseOrganization({
                     className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-dashed px-3.5 py-3 text-sm font-medium transition"
                     style={{ borderColor: 'var(--border)' }}
                 >
-                    <Icon name="plus" className="w-4 h-4" /> Create an organization
+                    <Icon name="plus" className="w-4 h-4" /> {t('oauth.organization.create')}
                 </Link>
             )}
 
@@ -158,7 +169,7 @@ export default function ChooseOrganization({
                     router.post(denyHref, {}, { onFinish: () => setCancelling(false) });
                 }}
             >
-                Cancel and return to {client.name}
+                {t('oauth.cancel_and_return', { client: client.name })}
             </Button>
         </div>
     );

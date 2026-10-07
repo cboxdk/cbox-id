@@ -44,7 +44,7 @@ final readonly class PortalSetupController extends PageController
     {
         $organizationId = $portal->boundOrgId();
 
-        return $this->page('portal/setup', 'Set up SSO & SCIM', [
+        return $this->page('portal/setup', __('portal.setup.title'), [
             'organizationName' => $organizationId === null
                 ? null
                 : app(Organizations::class)->find($organizationId)?->name,
@@ -99,7 +99,7 @@ final readonly class PortalSetupController extends PageController
             $record = $domains->add($organizationId, $request->domain());
         } catch (DomainAlreadyClaimed) {
             return back()->withInput()->withErrors([
-                'domain' => 'That domain is already claimed by another organization.',
+                'domain' => __('portal.setup.domain.claimed'),
             ]);
         }
 
@@ -126,9 +126,9 @@ final readonly class PortalSetupController extends PageController
          * whole expression announced a SUCCESSFUL verification in red, assertively.
          */
         return $domains->verify($domain)
-            ? back()->with('status', 'Domain verified — users on this domain can now sign in with SSO.')
+            ? back()->with('status', __('portal.setup.domain.verified_status'))
             : back()->withErrors([
-                'domain' => "We couldn't find the TXT record yet — DNS can take a few minutes to propagate.",
+                'domain' => __('portal.setup.domain.not_found'),
             ]);
     }
 
@@ -138,7 +138,7 @@ final readonly class PortalSetupController extends PageController
 
         $domains->remove($domain);
 
-        return back()->with('status', 'Domain removed.');
+        return back()->with('status', __('portal.setup.domain.removed'));
     }
 
     public function createConnection(CreatePortalConnectionRequest $request, Connections $connections): RedirectResponse
@@ -158,7 +158,7 @@ final readonly class PortalSetupController extends PageController
                 $config = array_merge($config, app(OidcDiscovery::class)->fromIssuer($request->issuer())->toConfig());
             } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
                 return back()->withInput()->withErrors([
-                    'issuer' => "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})",
+                    'issuer' => __('portal.setup.connection.discovery_failed', ['reason' => $e->getMessage()]),
                 ]);
             }
         }
@@ -167,7 +167,7 @@ final readonly class PortalSetupController extends PageController
 
         // A DRAFT, said out loud: nothing routes to it until somebody activates it, which
         // is what stops a half-typed connection taking sign-in down while it is being set up.
-        return back()->with('status', 'Connection created as a draft.');
+        return back()->with('status', __('portal.setup.connection.created'));
     }
 
     public function activateConnection(string $connection, Connections $connections): RedirectResponse
@@ -178,7 +178,7 @@ final readonly class PortalSetupController extends PageController
         // one is not found rather than activated.
         $connections->activate($organizationId, $connection);
 
-        return back()->with('status', 'Connection activated.');
+        return back()->with('status', __('portal.setup.connection.activated'));
     }
 
     public function registerDirectory(Request $request, Directories $directories): RedirectResponse
@@ -229,13 +229,13 @@ final readonly class PortalSetupController extends PageController
     /** "All set" — outside the portal session, because finishing ends it. */
     public function done(): Response
     {
-        return $this->page('portal/done', 'All set');
+        return $this->page('portal/done', __('portal.done.title'));
     }
 
     /** The friendly refusal for a link that has expired or was already used. */
     public function expired(): Response
     {
-        return $this->page('portal/expired', 'Link unavailable');
+        return $this->page('portal/expired', __('portal.expired.title'));
     }
 
     /**

@@ -29,7 +29,7 @@ final class ChooseOrganizationRequest extends FormRequest
     /** @return array<string, string> */
     public function messages(): array
     {
-        return ['organization.required' => 'Choose an organization to continue.'];
+        return ['organization.required' => __('oauth.organization.required')];
     }
 
     public function organizationId(): string

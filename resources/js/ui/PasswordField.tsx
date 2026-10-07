@@ -16,6 +16,15 @@ export interface PasswordFieldProps extends Omit<InputProps, 'type'> {
     policy?: boolean;
     /** The floor the tenant's policy enforces. Stated so the person is not guessing. */
     minLength?: number;
+    /**
+     * The words this control speaks, for a page that is not in English. Optional, and
+     * English by default, because the console is English and every console caller would
+     * otherwise have to spell them out. The hosted pages pass their translations.
+     */
+    showLabel?: string;
+    hideLabel?: string;
+    /** The policy line, already filled in — "At least 12 characters". */
+    policyLabel?: string;
 }
 
 /**
@@ -36,7 +45,21 @@ export interface PasswordFieldProps extends Omit<InputProps, 'type'> {
  */
 export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
     function PasswordField(
-        { label, labelAction, error, policy = false, minLength = 12, className, value, onChange, id: statedId, ...props },
+        {
+            label,
+            labelAction,
+            error,
+            policy = false,
+            minLength = 12,
+            showLabel = 'Show password',
+            hideLabel = 'Hide password',
+            policyLabel,
+            className,
+            value,
+            onChange,
+            id: statedId,
+            ...props
+        },
         ref,
     ) {
         const generated = useId();
@@ -95,8 +118,8 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
                         className="cbx-iconbtn"
                         style={{ position: 'absolute', right: '4px', top: '5px' }}
                         aria-pressed={visible}
-                        aria-label={visible ? 'Hide password' : 'Show password'}
-                        title={visible ? 'Hide password' : 'Show password'}
+                        aria-label={visible ? hideLabel : showLabel}
+                        title={visible ? hideLabel : showLabel}
                     >
                         <Icon name={visible ? 'eyeOff' : 'eye'} className="w-4 h-4" />
                     </button>
@@ -109,7 +132,7 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
                         style={{ color: longEnough ? 'var(--success-strong)' : 'var(--faint)' }}
                     >
                         <Icon name="check" className="w-3.5 h-3.5" />
-                        <span>At least {minLength} characters</span>
+                        <span>{policyLabel ?? `At least ${minLength} characters`}</span>
                     </div>
                 )}
 

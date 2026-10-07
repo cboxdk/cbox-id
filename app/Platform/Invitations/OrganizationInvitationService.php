@@ -18,6 +18,7 @@ use App\Platform\Invitations\ValueObjects\NewInvitation;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Invitations\ValueObjects\ReturnTarget;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
+use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -469,7 +470,7 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
 
     private function mail(Invitation $invitation, string $token, Inviter $inviter, ?ReturnTarget $target): void
     {
-        Mail::to($invitation->email)->send(new InvitationMail(
+        Mail::to($invitation->email)->locale(app(MailLocale::class)->forRecipient())->send(new InvitationMail(
             organization: $this->organizations->find($invitation->organization_id)->name ?? 'your team',
             inviter: $inviter->name,
             // MailLinks, not route(): a mailed link's origin comes from the deployment, not

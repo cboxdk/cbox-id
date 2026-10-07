@@ -71,6 +71,26 @@ export interface CurrentEnvironment {
     sandbox: boolean;
 }
 
+/** One language the hosted pages' picker offers, named in itself — "Dansk", not "Danish". */
+export interface LocaleOption {
+    code: string;
+    name: string;
+}
+
+/**
+ * `App\Http\Props\Shared\I18nProps`
+ *
+ * Null on every console page: the console is English and ships no catalogue. On a hosted
+ * page, its own group's strings only, flattened to dot keys. Read through `useTranslator()`
+ * in `@/i18n` rather than directly, so every lookup is checked against the generated key
+ * type.
+ */
+export interface I18n {
+    locale: string;
+    locales: LocaleOption[];
+    messages: Record<string, string>;
+}
+
 /** `App\Http\Props\Shared\FlashProps` */
 export interface Flash {
     status: string | null;
@@ -250,6 +270,7 @@ export interface SharedProps {
     impersonation: ImpersonationSession | null;
     flash: Flash;
     shell: Shell | null;
+    i18n: I18n | null;
     /**
      * The page's name, stated by the controller.
      *

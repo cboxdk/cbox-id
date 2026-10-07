@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -25,18 +26,28 @@ final class AdminAssignedPasswordMail extends Mailable
     public function __construct(
         public string $password,
         public bool $temporary,
-        public ?string $expiresAt = null,
+        /**
+         * A MOMENT, not a sentence: it is written out in the reader's language when the
+         * mail is rendered. Formatted by the caller it was always English — "Wed, Oct 7,
+         * 2026 3:00 PM" in the middle of a Danish paragraph.
+         */
+        public ?CarbonInterface $expiresAt = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        $brand = config('cbox-id.branding.name', 'Cbox ID');
-
-        return new Envelope(subject: 'Your '.(is_string($brand) ? $brand : 'Cbox ID').' password has been reset');
+        // Built inside the send's `withLocale()`, so `__()` here is already in the
+        // recipient's language; the send site states it (see App\Platform\Locale\MailLocale).
+        return new Envelope(subject: __('mail.admin_assigned_password.subject', ['brand' => MailText::brand()]));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.admin-assigned-password');
+        return new Content(view: 'mail.admin-assigned-password', with: [
+            'brand' => MailText::brand(),
+            // `llll` is Carbon's localised "Wed, Oct 7, 2026 3:00 PM" — in English exactly
+            // what `toDayDateTimeString()` produced before, in Danish "ons. 7. okt. 2026 15:00".
+            'expiresOn' => $this->expiresAt?->copy()->locale(app()->getLocale())->isoFormat('llll'),
+        ]);
     }
 }
