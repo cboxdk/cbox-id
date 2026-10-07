@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { NavArea } from '@/types';
 import { Icon } from '@/ui';
 import { cn } from '@/lib/cn';
+import { areaCount } from './NavCount';
 
 export interface RailProps {
     areas: NavArea[];
@@ -60,7 +61,14 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                 <div className="cbx-rail-hd">
                     <Link href={brandHref} className="cbx-rail-brand" aria-label={brandLabel}>
                         <svg viewBox="0 0 64 64" aria-hidden="true">
-                            <rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)" />
+                            <rect
+                                x="2"
+                                y="2"
+                                width="60"
+                                height="60"
+                                rx="14"
+                                fill="var(--primary)"
+                            />
                             <text
                                 x="32"
                                 y="44"
@@ -102,8 +110,16 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                             // overwhelming majority of them.
                             prefetch="hover"
                         >
-                            <Icon name={area.icon} className="w-[18px] h-[18px]" />
+                            <span className="cbx-rail-ico">
+                                <Icon name={area.icon} className="w-[18px] h-[18px]" />
+                                {areaCount(area) > 0 && (
+                                    <span className="cbx-rail-dot" aria-hidden="true" />
+                                )}
+                            </span>
                             <span className="lbl">{area.label}</span>
+                            {areaCount(area) > 0 && (
+                                <span className="sr-only">, {areaCount(area)} waiting for you</span>
+                            )}
                         </Link>
                     ))}
                 </nav>

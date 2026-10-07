@@ -42,6 +42,10 @@ final class ParityAllowlist
             'device.lookup',
             'environment.acting-organization.choose',
             'environment.acting-organization.clear',
+            // A person answering an agent's held action — the same consent their phone
+            // gives. As an action, a credential could approve its own held requests.
+            'environment.approvals.actions.approve',
+            'environment.approvals.actions.deny',
             'environment.sudo.confirm',
             'first-run.claim',
             'frontend.sign-in',

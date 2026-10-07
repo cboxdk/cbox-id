@@ -13,6 +13,10 @@ use App\Http\Props\Prop;
  * capability an organization could buy leaves them unable to discover it exists. A hard
  * gate (the console-kit feature) removes the page from this list entirely and 404s the
  * route, which is a different question with a different answer.
+ *
+ * `count` is something on that page waiting for the person reading the rail — the
+ * approvals an agent is holding for THEM — drawn as a number beside the label, and as a
+ * dot on the area while the rail is collapsed. Null when there is nothing to say.
  */
 final readonly class NavPageProps implements Prop
 {
@@ -22,10 +26,11 @@ final readonly class NavPageProps implements Prop
         public string $label,
         public bool $active,
         public ?string $badge = null,
+        public ?int $count = null,
     ) {}
 
     /**
-     * @return array{route: string, href: string, label: string, active: bool, badge: string|null}
+     * @return array{route: string, href: string, label: string, active: bool, badge: string|null, count: int|null}
      */
     public function toArray(): array
     {
@@ -35,6 +40,7 @@ final readonly class NavPageProps implements Prop
             'label' => $this->label,
             'active' => $this->active,
             'badge' => $this->badge,
+            'count' => $this->count,
         ];
     }
 }

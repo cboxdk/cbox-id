@@ -6,6 +6,7 @@ namespace App\Platform\Actions\Approvals;
 
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use Carbon\CarbonImmutable;
 use Cbox\Id\OAuthServer\Contracts\ActionApprovals;
@@ -80,10 +81,16 @@ final readonly class ActionApprovalGate
             throw new ActionRefused('approval_unavailable', 'This deployment has no platform root to file the approval in.', 403);
         }
 
+        // What it is for, so the approver can read it in the console as well as on their
+        // phone: the environment whose Approvals page lists it, the code, and the input with
+        // its secrets taken out. Reading only — the repeat is what runs, against the digest.
         ActionApprovalRequest::query()->create([
             'id' => $request->requestId,
             'principal' => $principal->kind().':'.$principal->id(),
             'action' => $action->name,
+            'environment_id' => $principal instanceof EnvironmentKeyPrincipal ? $principal->key()->environment_id : null,
+            'binding_code' => $code,
+            'input' => ApprovalInput::redact($action, $input),
         ]);
 
         throw new ApprovalRequired($request->requestId, $code, CarbonImmutable::instance($request->expiresAt), $request->interval);

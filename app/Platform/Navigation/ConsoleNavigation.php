@@ -76,20 +76,24 @@ class ConsoleNavigation
                 new NavPage('environment.clients', 'Applications'),
                 // The resource servers apps get tokens FOR, and the scopes each owns.
                 new NavPage('environment.apis', 'APIs'),
-                // This environment's management keys and its frontend keys, one page with
-                // the type as a tab.
-                new NavPage('environment.keys', 'API keys'),
+                // This environment's frontend keys, with its management keys as the other
+                // tab. The management keys themselves are listed under AI agents › Agents —
+                // one page per credential, so the two cannot disagree — and the tab leads
+                // there, which is where a developer looking under "API keys" is sent.
+                new NavPage('environment.keys.frontend', 'API keys'),
                 new NavPage('environment.webhooks', 'Webhooks'),
                 // Synchronous: they run INSIDE a sign-in or a token issuance and can change
                 // its outcome. Webhooks, one line up, are told after the fact.
                 new NavPage('environment.hooks', 'Hooks'),
             ),
-            // Where software acting for people is governed. One page today — every pending
-            // request in the environment, so an administrator can deny one that looks like
-            // abuse — and the agent inventory and connected accounts land here when they
-            // exist. An area is only drawn for pages that are real.
+            // Where software acting on this environment is handed access and governed: the
+            // agents holding its management keys, what they are waiting for a person to
+            // allow, and how to point one at the environment's MCP server. Connected
+            // accounts land here when they exist.
             new NavArea('AI agents', 'magic',
+                new NavPage('environment.agents', 'Agents'),
                 new NavPage('environment.approvals', 'Approvals'),
+                new NavPage('environment.agent-connect', 'Connect'),
             ),
             new NavArea('Branding', 'palette',
                 new NavPage('environment.appearance', 'Appearance'),

@@ -159,6 +159,11 @@ export interface NavPage {
      * page from `areas` entirely and 404s the route — a different question.
      */
     badge: string | null;
+    /**
+     * Something on the page waiting for the person reading the rail — the agent actions
+     * held for their approval. Null (or absent) when there is nothing to say.
+     */
+    count?: number | null;
 }
 
 /**

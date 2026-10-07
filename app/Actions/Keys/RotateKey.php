@@ -27,6 +27,7 @@ use App\Platform\Keys\ManagementKeys;
     tag: 'Management keys',
     rest: ['POST', '/keys/{id}/rotate'],
     status: 201,
+    consoleRoutes: ['environment.keys.rotate'],
     redact: ['token'],
 )]
 final readonly class RotateKey implements Action

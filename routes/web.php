@@ -21,6 +21,7 @@ use App\Http\Controllers\Console\AccessReviewController;
 use App\Http\Controllers\Console\AccountSettingsController;
 use App\Http\Controllers\Console\ActingOrganizationController;
 use App\Http\Controllers\Console\AgentApprovalController;
+use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
 use App\Http\Controllers\Console\AppearanceController;
@@ -1281,6 +1282,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::put('/keys/frontend/{key}/origins', [FrontendKeyController::class, 'origins'])->name('environment.keys.frontend.origins');
         Route::delete('/keys/frontend/{key}', [FrontendKeyController::class, 'destroy'])->name('environment.keys.frontend.destroy');
         Route::delete('/keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('environment.keys.destroy');
+        // A successor with the same name, scopes and approval policy; the old key keeps
+        // working for a grace period. Behind the step-up inside the controller, like minting.
+        Route::post('/keys/{key}/rotate', [EnvironmentKeyController::class, 'rotate'])->name('environment.keys.rotate');
         // Behind sudo, like the token vault and log-stream creation: the button on this
         // page decides where every un-migrated address and the password typed with it is
         // sent. The design deliberately put a person in the loop, and a person who has
@@ -1422,6 +1426,19 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/usage', [UsageController::class, 'index'])->name('environment.usage');
         Route::get('/approvals', [AgentApprovalController::class, 'index'])->name('environment.approvals');
         Route::post('/approvals/{request}/deny', [AgentApprovalController::class, 'deny'])->name('environment.approvals.deny');
+        // An agent's held ACTION, answered from the console instead of the phone — the same
+        // CIBA request, so the agent's poll and repeat are unchanged. Approve is the
+        // approver's own; deny is any administrator's, because it withholds.
+        Route::post('/approvals/actions/{approval}/approve', [AgentApprovalController::class, 'approveAction'])->name('environment.approvals.actions.approve');
+        Route::post('/approvals/actions/{approval}/deny', [AgentApprovalController::class, 'denyAction'])->name('environment.approvals.actions.deny');
+        // AI agents: this environment's management keys as the agents holding them, the
+        // create flow (behind the step-up — it mints a credential shown once), and how to
+        // point an MCP client here. Every write is a key action, on the routes above.
+        Route::get('/agents', [AgentController::class, 'index'])->name('environment.agents');
+        Route::get('/agents/new', [AgentController::class, 'create'])->middleware('env.sudo')->name('environment.agents.create');
+        // Its own name rather than `environment.agents.connect`: a page on the rail of its
+        // own, and the rail lights a page for every route under its name.
+        Route::get('/agents/connect', [AgentController::class, 'connect'])->name('environment.agent-connect');
         // Settings — the merged component. The route NAME is preserved on both planes;
         // only the component behind it is now shared.
         Route::get('/settings', [SettingsController::class, 'show'])->name('environment.settings');

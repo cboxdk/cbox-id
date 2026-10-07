@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Console;
 
 use App\Actions\Keys\CreateKey;
 use App\Actions\Keys\RevokeKey;
+use App\Actions\Keys\RotateKey;
 use App\Actions\Workspace\Keys\CreateEnvironmentKey;
 use App\Actions\Workspace\Keys\RevokeEnvironmentKey;
 use App\Http\Props\Console\EnvironmentKeyRowProps;
@@ -76,6 +77,16 @@ final readonly class EnvironmentKeyController extends ConsoleController
             return to_route('projects');
         }
 
+        /*
+         * ON THE ENVIRONMENT CONSOLE, THE AGENTS PAGE IS THIS PAGE. Its management keys are
+         * listed — with their approval policy, the keys they minted and a Rotate — under
+         * AI agents › Agents, and two lists of one credential would drift apart the first
+         * time either learned something. The URL is kept, and lands there.
+         */
+        if ($this->onEnvironmentPlane()) {
+            return to_route('environment.agents');
+        }
+
         $reachable = $this->reachable($members);
         $environments = Environment::query()->whereIn('id', $reachable)->orderBy('created_at')->get(['id', 'name']);
 
@@ -92,17 +103,14 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         $now = CarbonImmutable::now();
 
-        // TWO NAMES FOR ONE PAGE, because it sits under two different rails. On the
-        // environment console it is Developers › API keys, beside Applications and APIs —
-        // the word every developer looks for there. On a workspace it is Workspace › Keys,
-        // one line from My account › API keys, which is a person's OWN keys and a
-        // different page; the same word twice in one rail would send people to the wrong one.
-        return $this->page('console/keys/management', $this->onEnvironmentPlane() ? 'API keys' : 'Keys', [
+        // Workspace › Keys — one line from My account › API keys, which is a person's OWN
+        // keys and a different page; the same word twice in one rail would send people to
+        // the wrong one. (The environment console's keys are its Agents page, above.)
+        return $this->page('console/keys/management', 'Keys', [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
-            // The environment console mints for the environment it stands on; a picker with
-            // one entry would only suggest there was a choice.
-            'pickEnvironment' => ! $this->onEnvironmentPlane(),
+            // Any environment of the workspace this person may reach.
+            'pickEnvironment' => true,
             'environments' => $environments->map(fn (Environment $environment): array => [
                 'id' => $environment->id,
                 'name' => $environment->name,
@@ -176,15 +184,30 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // refusals, attribution and audit entry: the environment console through its own
         // plane's `keys.create`, the workspace console through the workspace plane's
         // `keys.environment.create`, for any environment of the workspace it can reach.
-        $fields = ['name' => 'name', 'scopes' => 'scopes', 'expires_at' => 'expiresOn'];
+        $fields = [
+            'name' => 'name',
+            'scopes' => 'scopes',
+            'expires_at' => 'expiresOn',
+            'description' => 'description',
+            'require_approval' => 'approval',
+            'require_approval.min_danger' => 'approval',
+            'require_approval.actions' => 'approvalActions',
+        ];
         $input = [
             'name' => $request->name(),
             'scopes' => $request->scopes(),
             'expires_at' => $request->expiresAt()?->toIso8601String(),
         ];
 
+        // What it is for and which of its actions wait for approval: the agent create flow
+        // on this console. `keys.create` takes both; the workspace plane's action takes
+        // neither, so its form never offers them.
         $result = $this->onEnvironmentPlane()
-            ? $this->act(CreateKey::class, $input, $fields, 'name')
+            ? $this->act(CreateKey::class, [
+                ...$input,
+                'description' => $request->description(),
+                'require_approval' => $request->requireApproval(),
+            ], $fields, 'name')
             : $this->act(CreateEnvironmentKey::class, ['environment_id' => $environmentId, ...$input], $fields, 'name');
 
         if ($result instanceof RedirectResponse) {
@@ -194,6 +217,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         /** @var IssuedEnvironmentApiKey $minted */
         $minted = $result->value;
         $this->inertia->flash('freshKey', $minted->plaintext);
+        $this->inertia->flash('freshKeyName', $minted->key->name);
 
         return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
     }
@@ -247,6 +271,39 @@ final readonly class EnvironmentKeyController extends ConsoleController
             : $this->act(RevokeEnvironmentKey::class, ['environment_id' => $environmentId, 'id' => $key]);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Management key revoked.');
+    }
+
+    /**
+     * Rotate one of this environment's keys: a successor with the same name, scopes and
+     * approval policy, shown once, while the old key keeps working for a day so whatever
+     * holds it can switch without an outage.
+     *
+     * The environment console's alone, through `keys.rotate` — the action the API and MCP
+     * run. Minting a credential, so behind the same step-up as minting one.
+     */
+    public function rotate(string $key): RedirectResponse
+    {
+        $this->assertMayManageEnvironments();
+        abort_unless($this->onEnvironmentPlane(), 404);
+
+        $sudo = $this->stepUp('Rotating a management key mints its successor, whose value is shown once.');
+
+        if ($sudo !== null) {
+            return to_route($sudo);
+        }
+
+        $result = $this->act(RotateKey::class, ['id' => $key]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var IssuedEnvironmentApiKey $minted */
+        $minted = $result->value;
+        $this->inertia->flash('freshKey', $minted->plaintext);
+        $this->inertia->flash('freshKeyName', $minted->key->name);
+
+        return back()->with('status', 'Key rotated — copy the new one now. The old key keeps working for 24 hours.');
     }
 
     /**
@@ -352,7 +409,8 @@ final readonly class EnvironmentKeyController extends ConsoleController
     {
         return app(ConsoleStepUp::class)->challenge(
             'keys',
-            'environment.keys',
+            // Back to where the environment console's keys are now listed.
+            'environment.agents',
             [],
             $reason,
         );
