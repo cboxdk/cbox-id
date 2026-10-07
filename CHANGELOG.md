@@ -18,7 +18,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   hosts and the one environment), `Cache-Control: no-store` and
   `Referrer-Policy: no-referrer`. `/admin/handoff` accepts POST only, reads the token from
   the body only, answers `no-store`/`no-referrer`, and is the one CSRF-exempt path under
-  `admin/` — the signed, single-use token is the proof. A GET to it answers 405.
+  `admin/` — the signed, single-use token is the proof. A GET (an old `?token=` link) is
+  refused to the env-admin gate without the token being read.
 - **Single-use links and passkey ceremonies are rate limited.** `POST /magic/{token}`,
   `POST /setup/{token}`, `/invite/{token}/accept` (both verbs), `POST /verify-email/{token}`,
   `/passkeys/login` and `/passkeys/login/options`, `/passkeys/register/options`, and the

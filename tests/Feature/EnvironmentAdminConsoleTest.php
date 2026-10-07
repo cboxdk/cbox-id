@@ -504,7 +504,11 @@ it('refuses a handoff presented in a URL', function (): void {
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
 
     // The old shape — a GET with the token in the query string — is not a door any more.
-    $this->get('/admin/handoff?token='.urlencode($token))->assertStatus(405);
+    // It is refused to the gate without the token being read, and it says so in headers
+    // that keep the refusal out of every cache and every Referer.
+    $this->get('/admin/handoff?token='.urlencode($token))
+        ->assertRedirect(route('admin.login'))
+        ->assertHeader('Referrer-Policy', 'no-referrer');
     expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 
     // Nor is a POST that carries the token in its URL rather than its body: accepting it

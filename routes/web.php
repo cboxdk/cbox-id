@@ -1048,11 +1048,13 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 | can mint because the root environment belongs to no account.
 */
 Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    // POST, and only POST: the token arrives in the body of the account host's
-    // self-submitting form, never in a URL. A GET answers 405 — an old bookmark or a
-    // pasted link with `?token=` in it is refused rather than redeemed. CSRF-exempt in
+    // The token arrives in the BODY of the account host's self-submitting form, never in
+    // a URL, and only the POST redeems. The GET survives as a refusal, not a door: an old
+    // bookmark or a pasted `?token=` link is sent to the env-admin gate without the token
+    // ever being read — and that gate mints a fresh handoff the proper way, so the person
+    // still lands in the console and the stale credential buys nothing. CSRF-exempt in
     // bootstrap/app.php, where the reasoning lives.
-    Route::post('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
+    Route::match(['get', 'post'], '/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 
     // The ENVIRONMENT control plane — the account-member admin's env-scoped console

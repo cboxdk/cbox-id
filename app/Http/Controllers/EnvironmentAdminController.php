@@ -31,12 +31,12 @@ final class EnvironmentAdminController extends Controller
      * minted for a DIFFERENT environment than this host, or a member without access
      * to this environment all fall through to the admin sign-in.
      *
-     * POST ONLY, and the token is read from the BODY only. It arrives from the account
-     * host's self-submitting form ({@see EnvironmentHandoffController}); a token in a
-     * query string is ignored even on a POST, because accepting it there would keep the
-     * leak this route was moved off GET to close — a URL with a credential in it is in
-     * every access log it passes through. Every response is `no-store` and
-     * `no-referrer` ({@see self::sealed()}).
+     * ONLY A POST REDEEMS, and the token is read from the BODY only. It arrives from the
+     * account host's self-submitting form ({@see EnvironmentHandoffController}); a token
+     * in a query string is ignored on either verb, because accepting it would keep the
+     * leak this redemption was moved off GET to close — a URL with a credential in it is
+     * in every access log it passes through. A GET is refused before the token is looked
+     * at. Every response is `no-store` and `no-referrer` ({@see self::sealed()}).
      */
     public function handoff(
         Request $request,
@@ -48,6 +48,13 @@ final class EnvironmentAdminController extends Controller
         EnvironmentAdminAuth $auth,
         SubjectCredentialGate $gate,
     ): RedirectResponse {
+        // The old shape — a link with `?token=` — is refused without reading it. The
+        // refusal lands on the env-admin gate, which bounces a signed-in member back
+        // through the minting door, so an old bookmark still ends in the console.
+        if (! $request->isMethod('POST')) {
+            return $this->sealed(redirect()->route('admin.login'));
+        }
+
         $token = $request->request->get('token');
         $grant = is_string($token) && $token !== '' ? $handoff->verify($token) : null;
 
