@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Console;
 
 use App\Http\Props\Prop;
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\EnvironmentKeyScopes;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 
@@ -26,7 +27,13 @@ final readonly class EnvironmentScopeProps implements Prop
 
     public static function from(EnvironmentApiScope $scope): self
     {
-        return new self($scope->value, self::label($scope), EnvironmentKeyScopes::writes($scope));
+        return new self($scope->value, self::label($scope), EnvironmentKeyScopes::writes($scope->value));
+    }
+
+    /** An offered scope by its value: the framework's, or one of the app's own actions'. */
+    public static function offered(string $value): self
+    {
+        return self::stored($value);
     }
 
     /**
@@ -57,7 +64,7 @@ final readonly class EnvironmentScopeProps implements Prop
 
         return $scope !== null
             ? self::from($scope)
-            : new self($value, $value, ! str_ends_with($value, ':read'));
+            : new self($value, AppManagementScopes::label($value), AppManagementScopes::writes($value));
     }
 
     /**

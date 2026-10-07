@@ -76,6 +76,7 @@ tags:
   - name: 'Support sessions'
   - name: Devices
   - name: Approvals
+  - name: 'Management keys'
 paths:
   '/api-keys/{id}':
     delete:
@@ -837,6 +838,203 @@ paths:
           $ref: '#/components/responses/BearerForbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /keys:
+    post:
+      tags:
+        - 'Management keys'
+      summary: 'Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.'
+      description: 'Requires scope `keys:write`. Danger: critical.'
+      operationId: keys_create
+      x-action: keys.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 120
+                scopes:
+                  type: array
+                  description: 'The scopes the key carries. From a key: a subset of its own.'
+                  minItems: 1
+                  maxItems: 64
+                  items:
+                    type: string
+                    maxLength: 64
+                expires_at:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'When it stops working. From a key: required to be no later than the parent; defaults to the latest allowed.'
+                  format: date-time
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'What it is for — shown beside it in the console.'
+                  maxLength: 500
+              required:
+                - name
+                - scopes
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Management keys'
+      summary: "List this environment's management keys (names, scopes, parents, expiry, last use — never their values)."
+      description: 'Requires scope `keys:read`. Danger: read.'
+      operationId: keys_list
+      x-action: keys.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/keys/{id}':
+    delete:
+      tags:
+        - 'Management keys'
+      summary: 'Revoke a management key and every key it minted, immediately.'
+      description: 'Requires scope `keys:write`. Danger: destructive.'
+      operationId: keys_revoke
+      x-action: keys.revoke
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The key to revoke.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        204:
+          description: Done.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/keys/{id}/rotate':
+    post:
+      tags:
+        - 'Management keys'
+      summary: 'Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.'
+      description: 'Requires scope `keys:write`. Danger: critical.'
+      operationId: keys_rotate
+      x-action: keys.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The key to rotate.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grace_hours:
+                  type: integer
+                  description: 'How long the old key keeps working. Default 24.'
+                  minimum: 0
+                  maximum: 168
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /oauth/api-keys/verify:

@@ -16,6 +16,7 @@ final readonly class ActionDefinition
     /**
      * @param  class-string<Action>  $class
      * @param  list<string>  $consoleRoutes
+     * @param  list<string>  $redact
      */
     private function __construct(
         public string $class,
@@ -31,6 +32,7 @@ final readonly class ActionDefinition
         public ConsoleGate $consoleGate,
         public ?string $schema = null,
         public ?string $tag = null,
+        public array $redact = [],
     ) {}
 
     /**
@@ -62,6 +64,7 @@ final readonly class ActionDefinition
             consoleGate: $meta->consoleGate,
             schema: $meta->schema,
             tag: $meta->tag,
+            redact: $meta->redact,
         );
     }
 
