@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Platform\WorkspaceApiContext;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Closure;
