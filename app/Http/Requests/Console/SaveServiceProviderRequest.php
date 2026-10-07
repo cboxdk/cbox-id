@@ -42,6 +42,8 @@ final class SaveServiceProviderRequest extends FormRequest
             'attributeMappings.*.value' => ['nullable', 'string', 'max:190'],
             'wantAuthnRequestsSigned' => ['boolean'],
             'certificate' => ['nullable', 'string'],
+            // Existence is the action's to check, against this environment's organizations.
+            'organizationId' => ['nullable', 'string', 'max:64'],
         ];
     }
 
@@ -88,6 +90,14 @@ final class SaveServiceProviderRequest extends FormRequest
     public function wantAuthnRequestsSigned(): bool
     {
         return $this->boolean('wantAuthnRequestsSigned');
+    }
+
+    /** The owning organization, or null for an environment-wide application. */
+    public function organizationId(): ?string
+    {
+        $organizationId = trim((string) $this->string('organizationId'));
+
+        return $organizationId === '' ? null : $organizationId;
     }
 
     /** Null when the field was left blank — which means "keep what is on file". */

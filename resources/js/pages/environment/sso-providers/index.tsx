@@ -20,6 +20,8 @@ interface ProviderRow {
     active: boolean;
     status: string;
     signedRequests: boolean;
+    /** The owning organization's name, or null when every person here may sign in. */
+    organization: string | null;
     href: string;
 }
 
@@ -171,6 +173,12 @@ export default function ServiceProviders({
                                     {provider.id}
                                 </p>
                             </div>
+
+                            {provider.organization !== null ? (
+                                <Pill tone="neutral">{provider.organization}</Pill>
+                            ) : (
+                                <Pill tone="warning">Environment-wide</Pill>
+                            )}
 
                             {provider.signedRequests && <Pill tone="info">Signed requests</Pill>}
 

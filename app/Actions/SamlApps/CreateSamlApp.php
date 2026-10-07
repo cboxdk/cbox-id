@@ -23,6 +23,9 @@ use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
  * mapped here, to the ACS URL given here. Critical, because it decides where people's
  * identities are sent.
  *
+ * Named for one organization, only its active members are ever asserted to it; left
+ * without one, the application is open to every person in the environment.
+ *
  * The other direction from an SSO connection, which lets people sign in HERE with an
  * account elsewhere. The entity id is unique per environment, and a second registration of
  * one is refused rather than left to the database to 500 on.
@@ -80,11 +83,13 @@ final readonly class CreateSamlApp implements Action
             attributeMappings: SamlAppFields::mappings($context->array('attribute_mappings')),
             certificate: $certificate,
             wantAuthnRequestsSigned: $signed,
+            organizationId: SamlAppFields::organization($context),
         ));
 
         $this->audit->record(SignInAudit::SAML_APP_REGISTERED, $context->actor(), null, 'saml_app', $provider->id, [
             'entity_id' => $provider->entity_id,
             'acs_url' => $provider->acs_url,
+            'organization_id' => $provider->organization_id,
         ]);
 
         return ActionResult::item($provider, SamlAppFields::present($provider));

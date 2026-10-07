@@ -26,7 +26,7 @@ use Cbox\Id\SamlIdp\Enums\NameIdFormat;
  */
 #[AsAction(
     name: 'saml_apps.update',
-    summary: 'Change a SAML application\'s entity id, ACS URL, NameID, attribute mappings or signing certificate.',
+    summary: 'Change a SAML application\'s entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization.',
     scope: 'saml_apps:write',
     danger: Danger::Critical,
     schema: 'SamlApp',
@@ -85,6 +85,12 @@ final readonly class UpdateSamlApp implements Action
             $provider->want_authn_requests_signed = $context->boolean('want_authn_requests_signed');
         }
 
+        // Sent as null, the application becomes environment-wide again; left out, it keeps
+        // whichever organization owns it.
+        if ($context->has('organization_id')) {
+            $provider->organization_id = SamlAppFields::organization($context);
+        }
+
         $certificate = trim((string) $context->nullableString('certificate'));
 
         if ($certificate !== '') {
@@ -101,6 +107,7 @@ final readonly class UpdateSamlApp implements Action
                 'entity_id' => $provider->entity_id,
                 // Which fields, never the certificate's value.
                 'changed' => $changed,
+                'organization_id' => $provider->organization_id,
             ]);
         }
 
