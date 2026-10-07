@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\ApiRateLimiters;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
+use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\AuthoritativeDnsResolver;
@@ -100,5 +101,10 @@ class AppServiceProvider extends ServiceProvider
         // The REST management API's named rate limiters. Without these registered,
         // `throttle:api-organization` would be read as a numeric limit of 0.
         ApiRateLimiters::register();
+
+        // The browser doors' named limiters — single-use links and passkey ceremonies.
+        // Same failure mode if one is missing: `throttle:link-token` unregistered is a
+        // numeric limit of zero, and every mailed link would answer 429.
+        WebRateLimiters::register();
     }
 }
