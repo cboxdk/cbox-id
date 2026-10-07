@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
@@ -13,19 +13,19 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Authenticate a request on the organization management plane with a `Bearer cbid_org_…`
+ * Authenticate a request on the organization management plane with a `Bearer cbid_ws_…`
  * organization API key. Resolves the key to its organization and role, then optionally
  * enforces a capability (passed as a route-middleware parameter, e.g.
- * `organization.api:manage-members`) so a read-only key can't perform writes.
+ * `workspace.api:manage-members`) so a read-only key can't perform writes.
  *
  * Never resolves an environment — this plane is global. An environment-scoped credential
  * (OAuth token, M2M) is not accepted here, and vice versa: credentials never cross planes.
  */
-final class AuthenticateOrganizationApi
+final class AuthenticateWorkspaceApi
 {
     public function __construct(
         private readonly OrganizationApiKeys $keys,
-        private readonly OrganizationApiContext $context,
+        private readonly WorkspaceApiContext $context,
     ) {}
 
     /**

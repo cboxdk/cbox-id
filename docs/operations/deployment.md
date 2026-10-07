@@ -231,7 +231,7 @@ environment's host:
   boundary here is the connection's environment scope, which holds on either plane, not
   the host.
 - The management plane itself: `/signup`, `/console/*` and the organization-management API
-  (`/api/v1/organization/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
+  (`/api/v1/workspace/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
   a different thing and is served on an environment's own host.
 - **The console** — `/login`, `/dashboard`, `/account` and every page behind them. The
   apex is a tenant, and its subjects sign in there. What it does *not* serve is the

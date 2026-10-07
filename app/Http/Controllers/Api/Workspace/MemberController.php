@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Organization;
+namespace App\Http\Controllers\Api\Workspace;
 
 use App\Http\Controllers\Controller;
 use App\Platform\Invitations\Contracts\TeamInvitations;
@@ -10,7 +10,7 @@ use App\Platform\Invitations\Enums\InvitationRefusalReason;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -37,7 +37,7 @@ final class MemberController extends Controller
 {
     public function index(
         Request $request,
-        OrganizationApiContext $context,
+        WorkspaceApiContext $context,
         Memberships $members,
         Subjects $subjects,
         PlatformRoot $platformRoot,
@@ -98,7 +98,7 @@ final class MemberController extends Controller
      * service the console's Team page uses, so the mail, the refusals, the activity log and
      * the accept link (set a password, signed in to the console) are the same from both.
      */
-    public function store(Request $request, OrganizationApiContext $context, TeamInvitations $team): JsonResponse
+    public function store(Request $request, WorkspaceApiContext $context, TeamInvitations $team): JsonResponse
     {
         $request->validate([
             'email' => ['required', 'email', 'max:190'],
@@ -133,7 +133,7 @@ final class MemberController extends Controller
     /**
      * The team's pending invitations — what the console lists under Team.
      */
-    public function invitations(OrganizationApiContext $context, TeamInvitations $team): JsonResponse
+    public function invitations(WorkspaceApiContext $context, TeamInvitations $team): JsonResponse
     {
         $organizationId = $context->organizationId();
 
@@ -157,7 +157,7 @@ final class MemberController extends Controller
     /**
      * Send a pending invitation again with a fresh link; the earlier link stops working.
      */
-    public function resendInvitation(string $id, OrganizationApiContext $context, TeamInvitations $team): JsonResponse
+    public function resendInvitation(string $id, WorkspaceApiContext $context, TeamInvitations $team): JsonResponse
     {
         $key = $context->key();
         $organizationId = $context->organizationId();
@@ -183,7 +183,7 @@ final class MemberController extends Controller
     /**
      * Withdraw a pending invitation. Its link stops working.
      */
-    public function revokeInvitation(string $id, OrganizationApiContext $context, TeamInvitations $team): JsonResponse|Response
+    public function revokeInvitation(string $id, WorkspaceApiContext $context, TeamInvitations $team): JsonResponse|Response
     {
         $key = $context->key();
         $organizationId = $context->organizationId();

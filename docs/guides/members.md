@@ -34,8 +34,8 @@ team; Viewer can read the team and billing and change nothing.
 A team invitation is a different kind from an organization's: the mail says "invited you
 to administer", and its link asks the person to **set a password**, then signs them in
 to this console. Your backend can send the same invitation with a workspace key —
-`POST /api/v1/organization/members` — and list, re-send and withdraw it under
-`/api/v1/organization/invitations`. It is the same invitation either way: the same mail
+`POST /api/v1/workspace/members` — and list, re-send and withdraw it under
+`/api/v1/workspace/invitations`. It is the same invitation either way: the same mail
 and link, the same refusals, and the same line on the activity log
 (`organization.member_invited`, `organization.invitation_revoked`), signed by the key's
 name instead of a person's.

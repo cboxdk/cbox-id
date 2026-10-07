@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Organization;
+namespace App\Http\Controllers\Api\Workspace;
 
 use App\Http\Controllers\Controller;
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -27,10 +27,10 @@ use Illuminate\Http\JsonResponse;
  * two classes called the same thing on two planes is exactly the ambiguity the account
  * plane's disappearance was supposed to remove.
  */
-final class CurrentOrganizationController extends Controller
+final class CurrentWorkspaceController extends Controller
 {
     public function show(
-        OrganizationApiContext $context,
+        WorkspaceApiContext $context,
         OrganizationProjects $projects,
         Organizations $organizations,
         PlatformRoot $platformRoot,

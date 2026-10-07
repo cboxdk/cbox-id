@@ -16,7 +16,7 @@ use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
-        $this->app->scoped(OrganizationApiContext::class);
+        $this->app->scoped(WorkspaceApiContext::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
@@ -98,7 +98,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(MessageSending::class, SuppressSandboxMail::class);
 
         // The REST management API's named rate limiters. Without these registered,
-        // `throttle:api-organization` would be read as a numeric limit of 0.
+        // `throttle:api-workspace` would be read as a numeric limit of 0.
         ApiRateLimiters::register();
     }
 }

@@ -16,6 +16,22 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### The workspace API is `/api/v1/workspace`, and its keys start `cbid_ws_` — a clean break
+
+The plane the console calls a workspace was `/api/v1/organization` with `cbid_org_` keys
+on the API. It is now named the same everywhere. **There are no aliases.**
+
+- **Every existing `cbid_org_` key stops working** when you deploy. The migration marks
+  them revoked so the Keys page says so. Mint a `cbid_ws_` replacement under **Workspace
+  settings › Keys** and update whatever used the old one *before* you deploy if you need
+  zero downtime — or straight after, if a short gap is acceptable.
+- **Paths:** `/api/v1/organization/*` → `/api/v1/workspace/*`. The spec moved from
+  `/api/v1/openapi.yaml` to `/api/v1/workspace/openapi.yaml`.
+- **Rate limit:** `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` → `CBOX_ID_API_RATE_LIMIT_WORKSPACE`.
+- **CLI and SDKs:** use a release of `cbox-cli` and the SDKs that knows `cbid_ws_`.
+- The environment API (`/api/v1/*` on an environment's host, `cbid_env_` keys) is unchanged.
+
+
 ### Run the scheduler — and alert on it
 
 `cbox.yaml` now declares a `scheduler` process (`php artisan schedule:work`). Every other

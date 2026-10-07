@@ -212,7 +212,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 
     $flash = session()->get(SessionKey::FLASH_DATA, []);
 
-    expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)->toStartWith('cbid_org_')
+    expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)->toStartWith('cbid_ws_')
         ->and(app(OrganizationApiKeys::class)->forOrganization($account->id))->toHaveCount(1);
 
     // AND NOT AGAIN. The next render of the page carries no key at all — the flash is

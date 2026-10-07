@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Cbox ID — Organization Management API
+  title: Cbox ID — Workspace Management API
   version: "1.0.0"
   description: |
     The **global organization-management plane** — above every environment. Manage the
@@ -10,7 +10,7 @@ info:
     This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
     which is served on each environment's own host and authenticated with
     environment-scoped credentials. Credentials never cross planes: an organization key
-    (`cbid_org_…`) cannot call the environment API, and vice versa.
+    (`cbid_ws_…`) cannot call the environment API, and vice versa.
 
     **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
     a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
@@ -34,7 +34,7 @@ tags:
   - name: Environments
   - name: Members
 paths:
-  /organization:
+  /workspace:
     get:
       tags: [Organization]
       summary: Get the organization
@@ -51,7 +51,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organization/projects:
+  /workspace/projects:
     get:
       tags: [Projects]
       summary: List projects
@@ -96,7 +96,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organization/environments:
+  /workspace/environments:
     get:
       tags: [Environments]
       summary: List environments
@@ -154,7 +154,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
               example: { error: environment_limit_reached, message: "Project [01J…] has reached its plan limit of 2 environment(s)." }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organization/members:
+  /workspace/members:
     get:
       tags: [Members]
       summary: List members
@@ -216,7 +216,7 @@ paths:
               example: { error: email_taken, message: "That person is already on this list." }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/MailFailed" }
-  /organization/invitations:
+  /workspace/invitations:
     get:
       tags: [Members]
       summary: List pending invitations
@@ -233,7 +233,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /organization/invitations/{id}/resend:
+  /workspace/invitations/{id}/resend:
     post:
       tags: [Members]
       summary: Re-send an invitation
@@ -259,7 +259,7 @@ paths:
           description: Sent less than a minute ago (`too_soon`), or the key's rate limit is exhausted
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "503": { $ref: "#/components/responses/MailFailed" }
-  /organization/invitations/{id}:
+  /workspace/invitations/{id}:
     delete:
       tags: [Members]
       summary: Withdraw an invitation
@@ -277,7 +277,7 @@ components:
     OrganizationApiKey:
       type: http
       scheme: bearer
-      description: An organization API key, `cbid_org_…`. Create and revoke keys in the console (Owner/Admin).
+      description: An organization API key, `cbid_ws_…`. Create and revoke keys in the console (Owner/Admin).
   responses:
     Unauthorized:
       description: Missing or invalid organization API key (or its organization is suspended)

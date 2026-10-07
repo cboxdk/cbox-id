@@ -55,16 +55,16 @@ if (! function_exists('issueKey')) {
     }
 }
 
-it('serves the organization-plane OpenAPI spec publicly', function (): void {
-    $this->get('/api/v1/openapi.yaml')
+it('serves the workspace-plane OpenAPI spec publicly', function (): void {
+    $this->get('/api/v1/workspace/openapi.yaml')
         ->assertOk()
         ->assertHeader('content-type', 'application/yaml')
-        ->assertSee('Organization Management API');
+        ->assertSee('Workspace Management API');
 });
 
 it('rejects requests without a valid account key', function (): void {
-    $this->getJson('/api/v1/organization')->assertUnauthorized();
-    $this->withToken('cbid_org_totally-bogus-token')->getJson('/api/v1/organization')->assertUnauthorized();
+    $this->getJson('/api/v1/workspace')->assertUnauthorized();
+    $this->withToken('cbid_ws_totally-bogus-token')->getJson('/api/v1/workspace')->assertUnauthorized();
 });
 
 it('returns the account and per-project plans for a valid key', function (): void {
@@ -73,7 +73,7 @@ it('returns the account and per-project plans for a valid key', function (): voi
 
     // Plans are per PROJECT now — the account block lists projects with each one's own
     // allowance, never a single account-level number.
-    $this->withToken($token)->getJson('/api/v1/organization')
+    $this->withToken($token)->getJson('/api/v1/workspace')
         ->assertOk()
         ->assertJsonPath('data.name', 'Acme')
         ->assertJsonPath('data.projects.0.name', 'Acme')
@@ -87,29 +87,29 @@ it('lists and creates projects (IdP products) through the API', function (): voi
     $viewer = issueKey($account, MembershipRole::Viewer);
 
     // Any key lists projects — the default project is there.
-    $this->withToken($viewer)->getJson('/api/v1/organization/projects')
+    $this->withToken($viewer)->getJson('/api/v1/workspace/projects')
         ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Acme');
 
     // A manage key creates a SECOND, separately-billed product with its own allowance.
-    $this->withToken($admin)->postJson('/api/v1/organization/projects', ['name' => 'Product Two', 'environment_limit' => 1])
+    $this->withToken($admin)->postJson('/api/v1/workspace/projects', ['name' => 'Product Two', 'environment_limit' => 1])
         ->assertCreated()
         ->assertJsonPath('data.name', 'Product Two')
         ->assertJsonPath('data.slug', 'product-two')
         ->assertJsonPath('data.environment_limit', 1);
 
     // A read-only viewer can't create one.
-    $this->withToken($viewer)->postJson('/api/v1/organization/projects', ['name' => 'Nope'])->assertForbidden();
+    $this->withToken($viewer)->postJson('/api/v1/workspace/projects', ['name' => 'Nope'])->assertForbidden();
 });
 
 it('creates an environment under a chosen project and reports its project_id', function (): void {
     $account = apiAccount();
     $admin = issueKey($account, MembershipRole::Admin);
 
-    $project = $this->withToken($admin)->postJson('/api/v1/organization/projects', ['name' => 'Product Two'])
+    $project = $this->withToken($admin)->postJson('/api/v1/workspace/projects', ['name' => 'Product Two'])
         ->assertCreated()->json('data.id');
 
     // Target the second project explicitly; the env comes back tagged with its project.
-    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'Production', 'project_id' => $project])
+    $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Production', 'project_id' => $project])
         ->assertCreated()
         ->assertJsonPath('data.project_id', $project)
         ->assertJsonPath('data.slug', 'product-two');
@@ -117,7 +117,7 @@ it('creates an environment under a chosen project and reports its project_id', f
     // A project_id from another account is refused.
     $other = apiAccount2();
     $otherProject = app(Projects::class)->forOrganization($other->id)->first();
-    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'X', 'project_id' => $otherProject->id])
+    $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'X', 'project_id' => $otherProject->id])
         ->assertNotFound();
 });
 
@@ -127,17 +127,17 @@ it('lists environments for any key but creates only with a manage key', function
     $viewer = issueKey($account, MembershipRole::Viewer);
 
     // Read: both roles.
-    $this->withToken($viewer)->getJson('/api/v1/organization/environments')
+    $this->withToken($viewer)->getJson('/api/v1/workspace/environments')
         ->assertOk()->assertJsonCount(1, 'data');
 
     // Create: admin succeeds, and the type is honoured.
-    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'Sandbox', 'type' => 'sandbox'])
+    $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Sandbox', 'type' => 'sandbox'])
         ->assertCreated()
         ->assertJsonPath('data.type', 'sandbox')
         ->assertJsonPath('data.slug', 'acme-sandbox');
 
     // Create: viewer is forbidden by its role.
-    $this->withToken($viewer)->postJson('/api/v1/organization/environments', ['name' => 'Nope'])
+    $this->withToken($viewer)->postJson('/api/v1/workspace/environments', ['name' => 'Nope'])
         ->assertForbidden();
 });
 
@@ -147,7 +147,7 @@ it('invites members only with a manage-members key', function (): void {
     $admin = issueKey($account, MembershipRole::Admin);
     $developer = issueKey($account, MembershipRole::Developer);
 
-    $this->withToken($admin)->postJson('/api/v1/organization/members', ['email' => 'new@acme.example', 'role' => 'developer'])
+    $this->withToken($admin)->postJson('/api/v1/workspace/members', ['email' => 'new@acme.example', 'role' => 'developer'])
         ->assertCreated()
         ->assertJsonPath('data.status', 'invited')
         ->assertJsonPath('data.role', 'developer');
@@ -155,7 +155,7 @@ it('invites members only with a manage-members key', function (): void {
     Mail::assertSent(OrganizationInviteMail::class);
 
     // A developer key can't manage members.
-    $this->withToken($developer)->postJson('/api/v1/organization/members', ['email' => 'x@acme.example', 'role' => 'viewer'])
+    $this->withToken($developer)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'role' => 'viewer'])
         ->assertForbidden();
 });
 
@@ -165,12 +165,12 @@ it('gates the member roster and billing behind read capability', function (): vo
     $viewer = issueKey($account, MembershipRole::Viewer);
 
     // A developer/CI key cannot enumerate the roster (PII) or read the plans…
-    $this->withToken($developer)->getJson('/api/v1/organization/members')->assertForbidden();
-    $this->withToken($developer)->getJson('/api/v1/organization')->assertOk()->assertJsonMissingPath('data.projects');
+    $this->withToken($developer)->getJson('/api/v1/workspace/members')->assertForbidden();
+    $this->withToken($developer)->getJson('/api/v1/workspace')->assertOk()->assertJsonMissingPath('data.projects');
 
     // …a read-only viewer can read both.
-    $this->withToken($viewer)->getJson('/api/v1/organization/members')->assertOk();
-    $this->withToken($viewer)->getJson('/api/v1/organization')->assertOk()->assertJsonPath('data.projects.0.environment_limit', 2);
+    $this->withToken($viewer)->getJson('/api/v1/workspace/members')->assertOk();
+    $this->withToken($viewer)->getJson('/api/v1/workspace')->assertOk()->assertJsonPath('data.projects.0.environment_limit', 2);
 });
 
 it('enforces the plan limit through the API', function (): void {
@@ -178,8 +178,8 @@ it('enforces the plan limit through the API', function (): void {
     $admin = issueKey($account, MembershipRole::Admin);
 
     // Limit 2, one used → one more allowed, then refused.
-    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'Staging'])->assertCreated();
-    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'Extra'])
+    $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Staging'])->assertCreated();
+    $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Extra'])
         ->assertStatus(422)
         ->assertJsonPath('error', 'environment_limit_reached');
 });
@@ -220,7 +220,7 @@ it('answers a capability question the same way the console does', function (): v
     $account = apiAccount();
 
     $this->withToken(issueKey($account, MembershipRole::Viewer))
-        ->getJson('/api/v1/organization/members')
+        ->getJson('/api/v1/workspace/members')
         ->assertOk();
 })->group('security');
 
@@ -249,7 +249,7 @@ it('pages the member roster, and says how to get the next one', function (): voi
         }
     });
 
-    $first = $this->withToken($admin)->getJson('/api/v1/organization/members?limit=3')->assertOk();
+    $first = $this->withToken($admin)->getJson('/api/v1/workspace/members?limit=3')->assertOk();
 
     expect($first->json('data'))->toHaveCount(3)
         ->and($first->json('meta.total'))->toBe(5)
@@ -258,7 +258,7 @@ it('pages the member roster, and says how to get the next one', function (): voi
         ->and($first->json('meta.next_page'))->toBe(2);
 
     $second = $this->withToken($admin)
-        ->getJson('/api/v1/organization/members?limit=3&page='.$first->json('meta.next_page'))
+        ->getJson('/api/v1/workspace/members?limit=3&page='.$first->json('meta.next_page'))
         ->assertOk();
 
     expect($second->json('data'))->toHaveCount(2)
@@ -280,15 +280,15 @@ it('pages environments the same way, rather than inventing a second idiom', func
     $admin = issueKey($account, MembershipRole::Admin);
 
     // Provisioning made one; add one more so a limit of 1 has a second page.
-    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'Staging'])->assertCreated();
+    $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Staging'])->assertCreated();
 
-    $first = $this->withToken($admin)->getJson('/api/v1/organization/environments?limit=1')->assertOk();
+    $first = $this->withToken($admin)->getJson('/api/v1/workspace/environments?limit=1')->assertOk();
 
     expect($first->json('data'))->toHaveCount(1)
         ->and($first->json('meta.has_more'))->toBeTrue()
         ->and($first->json('meta.next_page'))->toBe(2);
 
-    $second = $this->withToken($admin)->getJson('/api/v1/organization/environments?limit=1&page=2')->assertOk();
+    $second = $this->withToken($admin)->getJson('/api/v1/workspace/environments?limit=1&page=2')->assertOk();
 
     expect($second->json('data'))->toHaveCount(1)
         ->and($second->json('data.0.id'))->not->toBe($first->json('data.0.id'));

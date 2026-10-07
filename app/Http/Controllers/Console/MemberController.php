@@ -175,7 +175,7 @@ final readonly class MemberController extends ConsoleController
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        // The same service the workspace API's `POST /v1/organization/members` uses, so the
+        // The same service the workspace API's `POST /v1/workspace/members` uses, so the
         // two doors refuse, mail and record exactly alike ({@see TeamInvitations}).
         try {
             $team->send($organizationId, $request->email(), $request->role(), $this->inviter($subjects), $this->actor());

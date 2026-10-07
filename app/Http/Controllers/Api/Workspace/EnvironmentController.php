@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Organization;
+namespace App\Http\Controllers\Api\Workspace;
 
 use App\Http\Controllers\Controller;
-use App\Platform\OrganizationApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -23,7 +23,7 @@ use Illuminate\Validation\Rule;
  */
 final class EnvironmentController extends Controller
 {
-    public function index(Request $request, OrganizationApiContext $context): JsonResponse
+    public function index(Request $request, WorkspaceApiContext $context): JsonResponse
     {
         $limit = min(100, max(1, $request->integer('limit', 50)));
         $page = max(1, $request->integer('page', 1));
@@ -56,7 +56,7 @@ final class EnvironmentController extends Controller
         ]);
     }
 
-    public function store(Request $request, OrganizationApiContext $context, TenantProvisioner $provisioner, OrganizationProjects $projects): JsonResponse
+    public function store(Request $request, WorkspaceApiContext $context, TenantProvisioner $provisioner, OrganizationProjects $projects): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:120'],

@@ -115,7 +115,7 @@ function undocumentedByDesign(): array
         'GET /.well-known/openid-configuration',
 
         // The specs themselves.
-        'GET /api/v1/openapi.yaml',
+        'GET /api/v1/workspace/openapi.yaml',
         'GET /api/v1/environment/openapi.yaml',
 
         // OAuth 2.0 / OIDC — RFC-specified. DEBT: no machine-readable contract yet.

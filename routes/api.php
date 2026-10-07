@@ -13,11 +13,11 @@ use App\Http\Controllers\Api\Environment\OrganizationController;
 use App\Http\Controllers\Api\Environment\RoleController;
 use App\Http\Controllers\Api\Environment\SupportSessionController;
 use App\Http\Controllers\Api\Environment\UserController;
-use App\Http\Controllers\Api\Organization\CurrentOrganizationController;
-use App\Http\Controllers\Api\Organization\EnvironmentController;
-use App\Http\Controllers\Api\Organization\MemberController;
-use App\Http\Controllers\Api\Organization\ProjectController;
 use App\Http\Controllers\Api\VaultController;
+use App\Http\Controllers\Api\Workspace\CurrentWorkspaceController;
+use App\Http\Controllers\Api\Workspace\EnvironmentController;
+use App\Http\Controllers\Api\Workspace\MemberController;
+use App\Http\Controllers\Api\Workspace\ProjectController;
 use App\Platform\Actions\ActionRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
@@ -45,42 +45,45 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
     });
 
 /*
- * Organization management plane (GLOBAL). Unlike the environment-scoped routes above,
- * these do NOT resolve an environment (ResolveEnvironment) — an organization operates
- * above every environment it owns. Authenticated by a `Bearer cbid_org_…` organization
- * API key via `organization.api`, with a required capability on write routes so a
- * read-only key can't mutate. Intended to be served on the platform-root host
- * (e.g. api.cboxid.com); an environment-scoped credential is never accepted here.
+ * Workspace management plane (GLOBAL). Unlike the environment-scoped routes above, these
+ * do NOT resolve an environment (ResolveEnvironment) — a workspace operates above every
+ * environment it owns. Authenticated by a `Bearer cbid_ws_…` workspace key via
+ * `workspace.api`, with a required capability on write routes so a read-only key can't
+ * mutate. Intended to be served on the platform-root host (e.g. api.cboxid.com); an
+ * environment-scoped credential is never accepted here.
+ *
+ * It was `/v1/organization` with `cbid_org_` keys until the console's own word for the
+ * thing — a workspace — became the API's too. A clean break, not an alias: see UPGRADING.
  */
-// The organization-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
+// The workspace-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
 // fetch the contract without a key.
-Route::get('v1/openapi.yaml', function () {
-    $spec = @file_get_contents(resource_path('openapi/organization.yaml'));
+Route::get('v1/workspace/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/workspace.yaml'));
     abort_if($spec === false, 404);
 
     return response($spec, 200, ['Content-Type' => 'application/yaml']);
-})->name('api.openapi');
+})->name('api.workspace.openapi');
 
-Route::middleware('throttle:api-organization')
-    ->prefix('v1/organization')
+Route::middleware('throttle:api-workspace')
+    ->prefix('v1/workspace')
     ->group(function (): void {
         // Every route resolves the key exactly once, with the capability its data
         // requires — reads are gated too, so a leaked developer/CI key can't
         // enumerate the member roster (PII) or read billing.
-        Route::get('/', [CurrentOrganizationController::class, 'show'])->middleware('organization.api');
+        Route::get('/', [CurrentWorkspaceController::class, 'show'])->middleware('workspace.api');
 
         // Projects (IdP products) — each its own billing anchor + environment allowance.
-        Route::get('projects', [ProjectController::class, 'index'])->middleware('organization.api');
-        Route::post('projects', [ProjectController::class, 'store'])->middleware('organization.api:manage-environments');
+        Route::get('projects', [ProjectController::class, 'index'])->middleware('workspace.api');
+        Route::post('projects', [ProjectController::class, 'store'])->middleware('workspace.api:manage-environments');
 
-        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('organization.api');
-        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('organization.api:manage-environments');
+        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('workspace.api');
+        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('workspace.api:manage-environments');
 
-        Route::get('members', [MemberController::class, 'index'])->middleware('organization.api:read-members');
-        Route::post('members', [MemberController::class, 'store'])->middleware('organization.api:manage-members');
-        Route::get('invitations', [MemberController::class, 'invitations'])->middleware('organization.api:read-members');
-        Route::post('invitations/{id}/resend', [MemberController::class, 'resendInvitation'])->middleware('organization.api:manage-members');
-        Route::delete('invitations/{id}', [MemberController::class, 'revokeInvitation'])->middleware('organization.api:manage-members');
+        Route::get('members', [MemberController::class, 'index'])->middleware('workspace.api:read-members');
+        Route::post('members', [MemberController::class, 'store'])->middleware('workspace.api:manage-members');
+        Route::get('invitations', [MemberController::class, 'invitations'])->middleware('workspace.api:read-members');
+        Route::post('invitations/{id}/resend', [MemberController::class, 'resendInvitation'])->middleware('workspace.api:manage-members');
+        Route::delete('invitations/{id}', [MemberController::class, 'revokeInvitation'])->middleware('workspace.api:manage-members');
     });
 
 /*

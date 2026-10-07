@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use App\Http\Middleware\AuthenticateOrganizationApi;
+use App\Http\Middleware\AuthenticateWorkspaceApi;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 
@@ -14,9 +14,9 @@ use Cbox\Id\Platform\Models\OrganizationApiKey;
  *
  * Deliberately NOT environment-scoped: the key operates above every environment the
  * organization owns. Bound per-request (scoped) and populated by
- * {@see AuthenticateOrganizationApi}.
+ * {@see AuthenticateWorkspaceApi}.
  */
-final class OrganizationApiContext
+final class WorkspaceApiContext
 {
     private ?OrganizationApiKey $key = null;
 

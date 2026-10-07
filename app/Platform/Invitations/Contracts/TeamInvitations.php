@@ -16,7 +16,7 @@ use Cbox\Id\Organization\Models\Invitation;
 /**
  * INVITING SOMEBODY ONTO A WORKSPACE'S TEAM — the people who run a customer's identity
  * platform (Workspace › Team), from whichever door asks: the console page, or
- * `POST /api/v1/organization/members` with a workspace key.
+ * `POST /api/v1/workspace/members` with a workspace key.
  *
  * NOT {@see OrganizationInvitations}. That one invites somebody to be one of a tenant
  * organization's PEOPLE — an end user of the apps built on an environment, with access
