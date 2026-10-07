@@ -34,6 +34,8 @@ use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
     summary: 'Add a scope to an API, or change the description or tenant access of one it owns.',
     scope: 'apis:write',
     danger: Danger::Write,
+    schema: 'Api',
+    tag: 'APIs',
     rest: ['PUT', '/apis/{id}/scopes/{key}'],
     consoleRoutes: ['environment.apis.scopes.store', 'environment.apis.scopes.update'],
 )]

@@ -29,6 +29,8 @@ final readonly class ActionDefinition
         public int $status,
         public array $consoleRoutes,
         public ConsoleGate $consoleGate,
+        public ?string $schema = null,
+        public ?string $tag = null,
     ) {}
 
     /**
@@ -58,6 +60,8 @@ final readonly class ActionDefinition
             status: $meta->status,
             consoleRoutes: $meta->consoleRoutes,
             consoleGate: $meta->consoleGate,
+            schema: $meta->schema,
+            tag: $meta->tag,
         );
     }
 
