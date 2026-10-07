@@ -150,6 +150,23 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Apps are actions: everything the console does to an app, a management key can do too.**
+  The console's app pages (both consoles) and `/api/v1/apps` now run the same actions, so
+  a change is checked, refused and recorded the same way whichever door made it. New on
+  the API: `GET`, `PATCH` and `DELETE /apps/{id}`; `PUT /apps/{id}/scopes` (the complete
+  set); `GET /apps/{id}/secrets`, `POST /apps/{id}/secrets` (rotate, with
+  `grace_seconds` said explicitly) and `DELETE /apps/{id}/secrets/{secret_id}` (never the
+  last live one); `PUT /apps/{id}/manifest` and `POST /apps/{id}/manifest/sync`;
+  `PUT /apps/{id}/settings/token-lifetime`, `…/token-exchange`, `…/backchannel-logout` and
+  `…/api-key-prefix`; and `POST /apps/{id}/copy`, which only a person on the environment
+  console can use — a key exports the blueprint instead. Every `{id}` takes the app's id
+  or its `client_id`. A minted `client_secret` (create, rotate, copy) is in the first
+  answer only: an idempotent replay returns `null` and the stored replay never held it.
+  The platform scopes reserved for the console (`vault.manage`, `decisions:read`) are
+  refused on the scope endpoint too, unless the app already holds one. The `App` schema
+  gains `manifest_url`, `access_token_ttl`, `backchannel_logout_uri`,
+  `backchannel_logout_session_required` and `api_key_prefix`. The parity count of console
+  writes that are not yet actions drops from 251 to 226.
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,

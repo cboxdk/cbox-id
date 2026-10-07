@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Apps\RevokeAppSecret;
+use App\Actions\Apps\RotateAppSecret;
 use App\Http\Props\Console\ClientSecretProps;
 use App\Http\Requests\Console\RotateClientSecretRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\AppHeader;
 use App\Platform\Console\AppTabs;
 use App\Platform\Console\ConsoleClients;
@@ -14,11 +17,10 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Enums\SecretGrace;
 use Carbon\CarbonImmutable;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientSecretRefusal;
 use Cbox\Id\OAuthServer\Enums\ClientType;
-use Cbox\Id\OAuthServer\Exceptions\ClientSecretRefused;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\ClientSecretSummary;
+use Cbox\Id\OAuthServer\ValueObjects\RotatedClientSecret;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -38,6 +40,11 @@ use Inertia\ResponseFactory;
  * THE PLAINTEXT IS SHOWN ONCE, on the flash channel: only a hash is stored, and page props
  * are written into the browser's history entry, where a live credential is retrievable by
  * pressing Back long after the page that showed it has gone.
+ *
+ * BOTH WRITES ARE ACTIONS (`apps.secrets.rotate`, `apps.secrets.revoke`) — the same ones the
+ * management API runs, so the registry's refusals and the `app.secret_*` trail are one thing
+ * whichever door asked. What stays here is the console's: the refusals said before a
+ * password prompt rather than after it, the step-up, and the reveal on the flash channel.
  *
  * BOTH WRITES ARE BEHIND A STEP-UP, after authorization and after every refusal. Rotation
  * mints a live credential and puts it on screen; revoking is the other half of the same
@@ -96,7 +103,7 @@ final readonly class ClientSecretsController extends ConsoleController
     /**
      * Mint a new secret and retire the current ones after the chosen grace period.
      */
-    public function rotate(RotateClientSecretRequest $request, string $client, ClientRegistry $registry): RedirectResponse
+    public function rotate(RotateClientSecretRequest $request, string $client): RedirectResponse
     {
         // Authorization first: a step-up in front of a 403 hands somebody who may not
         // touch this app a password prompt instead of a refusal.
@@ -138,11 +145,14 @@ final readonly class ClientSecretsController extends ConsoleController
             return to_route($sudo);
         }
 
-        try {
-            $rotated = $registry->rotateSecret($model, $grace->value, $this->scope->auditActor());
-        } catch (ClientSecretRefused $refused) {
-            return back()->with('error', $refused->getMessage());
+        $result = $this->attempt(RotateAppSecret::class, ['id' => $model->id, 'grace_seconds' => $grace->value], ['grace_seconds' => 'grace'], 'grace');
+
+        if ($result instanceof ActionRefused) {
+            return back()->with('error', $result->getMessage());
         }
+
+        /** @var RotatedClientSecret $rotated */
+        $rotated = $result->value;
 
         // The plaintext exists only in this response — see the class comment.
         $this->inertia->flash('revealedSecret', $rotated->secret);
@@ -165,11 +175,11 @@ final readonly class ClientSecretsController extends ConsoleController
 
         // Refused before the step-up, for the same reason rotation's refusals are.
         if ($target === []) {
-            return back()->with('error', 'That secret is no longer live — it has already run out or been revoked.');
+            return back()->with('error', RevokeAppSecret::NOT_LIVE);
         }
 
         if (count($live) <= 1) {
-            return back()->with('error', 'This is the app\'s only live secret. Rotate it to replace it, or delete the app to switch it off.');
+            return back()->with('error', RevokeAppSecret::LAST_LIVE);
         }
 
         $sudo = app(ConsoleStepUp::class)->challenge(
@@ -183,16 +193,13 @@ final readonly class ClientSecretsController extends ConsoleController
             return to_route($sudo);
         }
 
-        try {
-            $registry->revokeSecret($model, $secret, $this->scope->auditActor());
-        } catch (ClientSecretRefused $refused) {
-            // The registry is the guard; the checks above are the explanation. Between the
-            // two, a concurrent rotation can still change the answer.
-            return back()->with('error', match ($refused->reason) {
-                ClientSecretRefusal::LastLiveSecret => 'This is the app\'s only live secret. Rotate it to replace it, or delete the app to switch it off.',
-                ClientSecretRefusal::UnknownSecret => 'That secret is no longer live — it has already run out or been revoked.',
-                default => $refused->getMessage(),
-            });
+        // The action asks both questions again, and the registry once more under its own
+        // lock: the checks above are the explanation before a password prompt, and between
+        // the two a concurrent rotation can still change the answer.
+        $result = $this->attempt(RevokeAppSecret::class, ['id' => $model->id, 'secret_id' => $secret]);
+
+        if ($result instanceof ActionRefused) {
+            return back()->with('error', $result->getMessage());
         }
 
         $hint = $target[0]->hint;

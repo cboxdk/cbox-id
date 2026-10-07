@@ -31,7 +31,6 @@ final readonly class ActionController
     public function __construct(
         private ActionRegistry $registry,
         private ActionRunner $runner,
-        private EnvironmentApiContext $context,
     ) {}
 
     public function __invoke(Request $request): JsonResponse|Response
@@ -39,7 +38,12 @@ final readonly class ActionController
         $route = $request->route();
         $name = $route?->defaults['action'] ?? null;
         $action = $this->registry->named(is_string($name) ? $name : '');
-        $key = $this->context->key() ?? abort(401);
+        // Asked of the container on every request, never held: the router keeps one
+        // controller per route, and the context is SCOPED — once a queued job has run in
+        // this process its scoped instances are forgotten, the middleware authenticates the
+        // next request into a fresh one, and a context held here would still be the old,
+        // cleared one: a valid key answered 401.
+        $key = app(EnvironmentApiContext::class)->key() ?? abort(401);
 
         /** @var array<string, mixed> $body */
         $body = $request->all();

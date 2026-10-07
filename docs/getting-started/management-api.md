@@ -125,7 +125,33 @@ Every grant is checked against the environment's [role conflicts](../guides/role
 `POST /api/v1/apps` registers an app. Send the short form (`name`, `type`: `web`, `spa`,
 `cli`, `service` or `agent`), or a **blueprint**: `GET /api/v1/apps/{id}/blueprint` in
 staging, then `POST /api/v1/apps` with it as `blueprint` — plus production's
-`redirect_uris` — in production. The response carries the new `client_secret` **once**.
+`redirect_uris` — in production. The response carries the new `client_secret` **once**;
+a retry with the same `Idempotency-Key` gets the same app back with `client_secret: null`.
+
+Everything the console does to an app, the API does too — the console runs the same
+actions. `{id}` is the app's id or its `client_id`:
+
+| Endpoint | What it does |
+|---|---|
+| `GET /apps/{id}` | The app, with its settings. Never a secret. |
+| `PATCH /apps/{id}` | Rename it, replace `redirect_uris` or `post_logout_redirect_uris`. What you leave out is unchanged. |
+| `DELETE /apps/{id}` | Delete it and every secret it holds. |
+| `PUT /apps/{id}/scopes` | The complete scope set (`{"scopes": [...]}`; `[]` removes them all), from its next token. |
+| `GET /apps/{id}/secrets` | Its live secrets: ids, last characters, dates. |
+| `POST /apps/{id}/secrets` | Rotate: a new `client_secret`, once. `grace_seconds` is required — how long the current ones keep working; `0` stops them now. |
+| `DELETE /apps/{id}/secrets/{secret_id}` | Revoke one now. Never the last live one (`last_live_secret`) — rotate instead. |
+| `PUT /apps/{id}/manifest` | Set or clear (`null`) `manifest_url`. Does not fetch it. |
+| `POST /apps/{id}/manifest/sync` | Fetch the manifest now and sync its roles (`manifest_sync_failed` says why it could not). |
+| `PUT /apps/{id}/settings/token-lifetime` | `access_token_ttl` in seconds, or `null` for the default. |
+| `PUT /apps/{id}/settings/token-exchange` | `enabled`: RFC 8693 token exchange, confidential apps only. |
+| `PUT /apps/{id}/settings/backchannel-logout` | `uri` (HTTPS) and `session_required`, or `null` to stop. |
+| `PUT /apps/{id}/settings/api-key-prefix` | `prefix` (`tax_live`) lets the app's users create keys; `null` stops new ones. |
+
+A management key cannot give an app `vault.manage` or `decisions:read`
+(`422 scope_not_grantable`) — grant those in the console; an edit that keeps one an
+administrator granted is fine. Copying an app into another environment
+(`POST /apps/{id}/copy`) is the console's: a key belongs to one environment, so it
+exports the blueprint here and registers it with the other environment's key.
 
 `/api/v1/apis` registers an API (resource server): its `identifier` becomes the token's
 `aud`, and its scopes are unique across the environment. `PATCH` takes the complete scope
@@ -173,8 +199,10 @@ Every failure is `{ "error": "<code>", "message": "<sentence>" }`; a validation 
 adds a field-keyed `errors` map. Switch on `error`: `not_found`, `validation_failed`,
 `slug_taken`, `user_not_found`, `already_member`, `last_owner`, `not_a_member`,
 `already_owner`, `role_not_assignable`, `role_conflict`, `not_pending`, `too_soon`,
-`mail_failed`, `invalid_api`, `not_permitted`, and the rest listed per operation in the
-OpenAPI document.
+`mail_failed`, `invalid_api`, `not_permitted`, `invalid_client_metadata`,
+`scope_not_grantable`, `public_client`, `last_live_secret`, `secret_not_live`,
+`api_key_prefix_taken`, `no_manifest_url`, `manifest_sync_failed`, and the rest listed per
+operation in the OpenAPI document.
 
 ## The activity log
 

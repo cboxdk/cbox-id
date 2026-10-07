@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Apps\SetAppScopes;
 use App\Http\Requests\Console\SaveClientScopesRequest;
 use App\Platform\Apps\AppScopes;
 use App\Platform\Console\AppHeader;
@@ -12,9 +13,6 @@ use App\Platform\Console\ConsoleClients;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\ScopeCatalog;
-use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
-use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
 use Cbox\Id\OAuthServer\ValueObjects\ScopeHolder;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
@@ -73,24 +71,22 @@ final readonly class ClientScopesController extends ConsoleController
         ]);
     }
 
-    public function update(SaveClientScopesRequest $request, string $client, ClientRegistry $registry, AppScopes $scopes): RedirectResponse
+    public function update(SaveClientScopesRequest $request, string $client, AppScopes $scopes): RedirectResponse
     {
         $model = $this->clients->manageable($client);
-        $holder = ScopeHolder::of($model);
 
+        // What the page could have offered, out of the boxes sent, plus what was typed —
+        // the set the action makes the app's. Its refusals (a registered scope this app may
+        // not hold, said with the API it belongs to) land on the picker.
         $next = array_values(array_unique([
-            ...$scopes->selectable($holder, $request->chosen()),
+            ...$scopes->selectable(ScopeHolder::of($model), $request->chosen()),
             ...$request->custom(),
         ]));
 
-        try {
-            $registry->update($model, $registry->blueprint($model)->withScopes($next), $this->scope->auditActor());
-        } catch (ScopeNotGrantable $refused) {
-            return back()->withInput()->withErrors(['scopes' => $scopes->explain($refused, $holder)]);
-        } catch (InvalidClientMetadata $refused) {
-            return back()->withInput()->withErrors(['scopes' => $refused->getMessage()]);
-        }
+        $result = $this->act(SetAppScopes::class, ['id' => $model->id, 'scopes' => $next], ['scopes' => 'scopes'], 'scopes');
 
-        return back()->with('status', 'Scopes saved. They apply from the next token this app asks for.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Scopes saved. They apply from the next token this app asks for.');
     }
 }

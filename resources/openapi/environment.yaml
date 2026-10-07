@@ -529,6 +529,8 @@ paths:
         - Apps
       summary: 'List apps'
       description: 'Requires scope `apps:read`. Never a secret.'
+      operationId: apps_list
+      x-action: apps.list
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
@@ -572,7 +574,15 @@ paths:
           "Create app" does. `advanced` takes `client_type` and `grant_types`.
 
         The response carries `client_secret` for an app that authenticates with one —
-        **once**. Only its hash is kept.
+        **once**. Only its hash is kept, and an idempotent replay returns `client_secret: null`.
+
+        A platform scope reserved for the console (`vault.manage`, `decisions:read`) is
+        refused (`scope_not_grantable`), as is a registered API's scope this app's owner may
+        not hold. Danger: critical — it mints a credential.
+      operationId: apps_create
+      x-action: apps.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -584,7 +594,7 @@ paths:
                   $ref: '#/components/schemas/AppBlueprint'
                 name:
                   type: string
-                  maxLength: 120
+                  maxLength: 190
                 type:
                   type: string
                   enum:
@@ -619,6 +629,13 @@ paths:
                 first_party:
                   type: boolean
                   default: false
+                manifest_url:
+                  type:
+                    - string
+                    - 'null'
+                  format: uri
+                  maxLength: 500
+                  description: 'Where the app publishes its roles-and-permissions manifest (short form).'
                 organization_id:
                   type:
                     - string
@@ -649,6 +666,140 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}':
+    delete:
+      tags:
+        - Apps
+      summary: 'Delete an app and every secret it holds. Anything signing in as it stops working immediately.'
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_delete
+      x-action: apps.delete
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        204:
+          description: Done.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Apps
+      summary: 'Get one app (OAuth client) by its id or its client_id: its kind, grants, redirect URIs, scopes and settings. Never a secret.'
+      description: 'Requires scope `apps:read`. Danger: read.'
+      operationId: apps_get
+      x-action: apps.get
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Apps
+      summary: 'Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields left out are unchanged.'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_update
+      x-action: apps.update
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 190
+                redirect_uris:
+                  type: array
+                  description: 'The COMPLETE list afterwards.'
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 2048
+                post_logout_redirect_uris:
+                  type: array
+                  description: 'The COMPLETE list afterwards.'
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 2048
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/apps/{id}/blueprint':
     get:
       tags:
@@ -659,6 +810,8 @@ paths:
         carries the app's settings and none of its identity or credentials: no client id,
         no secret, no key set, no owning organization. `POST /apps` with it as `blueprint`
         creates the same app in another environment.
+      operationId: apps_blueprint
+      x-action: apps.blueprint
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
@@ -679,6 +832,574 @@ paths:
           $ref: '#/components/responses/Forbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/copy':
+    post:
+      tags:
+        - Apps
+      summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_copy
+      x-action: apps.copy
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                environment_id:
+                  type: string
+                  description: 'The environment to copy into: another environment of this project.'
+                  maxLength: 64
+                name:
+                  type: string
+                  description: 'What to call the copy there.'
+                  minLength: 1
+                  maxLength: 190
+                redirect_uris:
+                  type: array
+                  description: "Its redirect URIs there — staging's callback is rarely production's. Left out, none."
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 2048
+              required:
+                - environment_id
+                - name
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/manifest':
+    put:
+      tags:
+        - Apps
+      summary: 'Set or clear the URL an app publishes its roles-and-permissions manifest at. Does not fetch it; apps.manifest.sync does.'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_manifest_set
+      x-action: apps.manifest.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                manifest_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'An absolute URL; null or left out clears it.'
+                  format: uri
+                  maxLength: 500
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/manifest/sync':
+    post:
+      tags:
+        - Apps
+      summary: "Fetch an app's published manifest now and sync the roles and permissions it declares."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_manifest_sync
+      x-action: apps.manifest.sync
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/scopes':
+    put:
+      tags:
+        - Apps
+      summary: "Replace an app's complete scope set — the ceiling of what it may request, applied from its next token."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_scopes_set
+      x-action: apps.scopes.set
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  description: 'Required. The COMPLETE scope set afterwards; an empty list removes every scope.'
+                  maxItems: 200
+                  items:
+                    type: string
+                    maxLength: 128
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/secrets':
+    get:
+      tags:
+        - Apps
+      summary: "List an app's live client secrets"
+      description: |
+        Requires scope `apps:read`. Every live secret, newest first: its id (what
+        `DELETE /apps/{id}/secrets/{secret_id}` names), the characters it ends in, and its
+        dates — never a secret. `expires_at` is set on one a rotation replaced, still working
+        through its overlap. An app holds a handful at most, so there is no page to turn.
+      operationId: apps_secrets_list
+      x-action: apps.secrets.list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppSecret'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Apps
+      summary: 'Mint a new client secret for an app and retire the current ones after grace_seconds (0 = at once). The new secret is returned once.'
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_secrets_rotate
+      x-action: apps.secrets.rotate
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grace_seconds:
+                  type: integer
+                  description: 'How long the current secrets keep working, in seconds. 0 stops them at once.'
+                  minimum: 0
+                  maximum: 2592000
+              required:
+                - grace_seconds
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AppSecret'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/secrets/{secret_id}':
+    delete:
+      tags:
+        - Apps
+      summary: "Revoke one of an app's client secrets immediately. Never its last live secret — rotate that instead."
+      description: 'Requires scope `apps:write`. Danger: critical.'
+      operationId: apps_secrets_revoke
+      x-action: apps.secrets.revoke
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        -
+          name: secret_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The secret's id, from `GET /apps/{id}/secrets`."
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        204:
+          description: Done.
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/api-key-prefix':
+    put:
+      tags:
+        - Apps
+      summary: "Set the prefix of an app's customer API keys (acme_live), which lets its users create keys for it, or null to stop new keys."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_api_key_prefix
+      x-action: apps.settings.api_key_prefix
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prefix:
+                  type:
+                    - string
+                    - 'null'
+                  description: '2–16 lowercase letters or digits starting with a letter, then `_live` or `_test`. Null or left out: no new keys.'
+                  maxLength: 32
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/backchannel-logout':
+    put:
+      tags:
+        - Apps
+      summary: 'Set or clear the URI an app is sent a logout token at when somebody signs out (OIDC Back-Channel Logout).'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_backchannel_logout
+      x-action: apps.settings.backchannel_logout
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uri:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'HTTPS (HTTP on localhost only). Null or left out: the app is not told.'
+                  format: uri
+                  maxLength: 2000
+                session_required:
+                  type: boolean
+                  description: 'Every logout token carries `sid`. Default false.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/token-exchange':
+    put:
+      tags:
+        - Apps
+      summary: 'Turn token exchange (RFC 8693) on or off for a confidential app.'
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_token_exchange
+      x-action: apps.settings.token_exchange
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+              required:
+                - enabled
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/apps/{id}/settings/token-lifetime':
+    put:
+      tags:
+        - Apps
+      summary: "Set how long an app's access tokens live, in seconds, or null for the install's default."
+      description: 'Requires scope `apps:write`. Danger: write.'
+      operationId: apps_settings_token_lifetime
+      x-action: apps.settings.token_lifetime
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The app's id, or its `client_id`."
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_token_ttl:
+                  type:
+                    - integer
+                    - 'null'
+                  description: "Seconds, from 60 to the install's ceiling. Null or left out: the install's default."
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/App'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   /devices:
@@ -2865,14 +3586,77 @@ components:
           type: array
           items:
             type: string
+        manifest_url:
+          type:
+            - string
+            - 'null'
+          description: 'Where it publishes its roles-and-permissions manifest.'
+        access_token_ttl:
+          type:
+            - integer
+            - 'null'
+          description: "Its access-token lifetime in seconds; null for the install's default."
+        backchannel_logout_uri:
+          type:
+            - string
+            - 'null'
+          description: 'Where it is sent a logout token (OIDC Back-Channel Logout); null when it is not told.'
+        backchannel_logout_session_required:
+          type: boolean
+        api_key_prefix:
+          type:
+            - string
+            - 'null'
+          description: 'The prefix of its customer API keys; null when it accepts none.'
         created_at:
           type:
             - string
             - 'null'
           format: date-time
         client_secret:
+          type:
+            - string
+            - 'null'
+          description: 'Only on the response that created (or copied) the app, and only for an app that authenticates with a secret. Never again — null on an idempotent replay.'
+    AppSecret:
+      type: object
+      required:
+        - id
+      properties:
+        id:
           type: string
-          description: 'Only on the response that created the app, and only for an app that authenticates with a secret. Never again.'
+        hint:
+          type:
+            - string
+            - 'null'
+          description: 'The characters the secret ends in; null for one older than per-secret storage.'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'Set on a secret a rotation replaced — it stops working then.'
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        client_secret:
+          type:
+            - string
+            - 'null'
+          description: 'Only on the rotation that minted it. Never again — null on an idempotent replay.'
+        previous_expire_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'On a rotation — when the secrets it replaced stop working.'
     AppBlueprint:
       type: object
       description: |

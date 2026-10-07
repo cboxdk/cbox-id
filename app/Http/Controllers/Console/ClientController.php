@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Apps\CreateApp;
+use App\Actions\Apps\DeleteApp;
+use App\Actions\Apps\SetAppManifest;
+use App\Actions\Apps\SyncAppManifest;
+use App\Actions\Apps\UpdateApp;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveClientRequest;
 use App\Http\Requests\Console\StoreClientRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\AppKind;
-use App\Platform\Apps\AppScopes;
 use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\Snippet;
 use App\Platform\Console\AppHeader;
@@ -21,24 +26,19 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Help\HelpTopic;
 use App\Platform\ScopeCatalog;
 use App\Platform\VerifiedEmailGate;
-use Cbox\Id\AccessControl\AppManifestPuller;
+use Cbox\Id\AccessControl\Manifest\ManifestSyncResult;
 use Cbox\Id\AccessControl\Models\Role;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
-use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
-use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
-use Cbox\Id\OAuthServer\ValueObjects\ScopeHolder;
+use Cbox\Id\OAuthServer\ValueObjects\RegisteredClient;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Response;
 use Inertia\ResponseFactory;
-use Throwable;
 
 /**
  * CONSOLE › APPS & API KEYS — every OAuth client registered here: the apps that sign
@@ -67,12 +67,14 @@ use Throwable;
  * {@see ClientSettingsController} the other three. Which app a URL names, and whether the
  * person acting may change it, is answered for all four by {@see ConsoleClients}.
  *
- * EVERY WRITE GOES THROUGH {@see ClientRegistry}: register, update, rotateSecret, delete.
- * The registry records the app's lifecycle on the audit trail itself (`app.created`,
- * `app.updated`, `app.secret_rotated`, `app.deleted`), attributed to the
- * {@see ConsoleScope::auditActor()} this passes — so a write made
- * here and one made by the management API or RFC 7592 read the same, and none is recorded
- * twice.
+ * EVERY WRITE IS AN ACTION (`App\Actions\Apps\*`): the same class the management API's
+ * `/v1/apps` and MCP run, so a change is checked, refused and recorded the same way
+ * whichever door made it. The actions write through {@see ClientRegistry}, which records the
+ * app's lifecycle on the audit trail itself (`app.created`, `app.updated`, `app.deleted`),
+ * attributed to the person acting — so a write made here and one made by the management
+ * API or RFC 7592 read the same, and none is recorded twice. What stays here is the
+ * console's own: which app the URL names for this person, the step-up, the plane's rules
+ * about whose app it may be, and how a refusal reads on this page.
  */
 final readonly class ClientController extends ConsoleController
 {
@@ -219,12 +221,8 @@ final readonly class ClientController extends ConsoleController
         ]);
     }
 
-    public function store(
-        StoreClientRequest $request,
-        ClientRegistry $clients,
-        ScopeCatalog $catalog,
-        AppScopes $scopes,
-    ): RedirectResponse {
+    public function store(StoreClientRequest $request, ScopeCatalog $catalog): RedirectResponse
+    {
         $this->scope->assertMayAdminister();
 
         /*
@@ -282,35 +280,36 @@ final readonly class ClientController extends ConsoleController
             return to_route($sudo);
         }
 
-        try {
-            $registered = $clients->register(new NewClient(
-                name: $request->name(),
-                // The kind decides where the code runs, and therefore whether it can hold a
-                // secret. Only Advanced lets that be answered by hand — somebody who has
-                // told us they are building a CLI has already told us it is public.
-                type: $kind === AppKind::Advanced ? $request->clientType() : $kind->clientType(),
-                redirectUris: $redirects,
-                grantTypes: $grantTypes,
-                scopes: $request->scopes($catalog),
-                firstParty: $request->firstParty(),
-                organizationId: $organizationId,
-                postLogoutRedirectUris: $request->postLogoutRedirectUris(),
-                // A published manifest URL (the pull transport) — stored on the app so the
-                // scheduled sweep and "Sync now" can fetch its declared roles and permissions.
-                manifestUrl: $request->manifestUrl(),
-            ), $this->scope->auditActor());
-        } catch (InvalidClientMetadata $refused) {
-            // Settings the token endpoint would refuse later (a grant it does not implement)
-            // — refused now, in the framework's words.
-            return back()->withInput()->with('error', $refused->getMessage());
-        } catch (ScopeNotGrantable $refused) {
-            // A registered API's scope this owner may not hold — said with the API it
-            // belongs to and what to do about it, not as the framework's one-line refusal.
-            return back()->withInput()->withErrors(['customScopes' => $scopes->explain(
-                $refused,
-                new ScopeHolder(app(EnvironmentContext::class)->current()?->environmentKey(), $organizationId),
-            )]);
+        $result = $this->attempt(CreateApp::class, [
+            'name' => $request->name(),
+            // The kind decides where the code runs, and therefore whether it can hold a
+            // secret. Only Advanced lets that be answered by hand — somebody who has told us
+            // they are building a CLI has already told us it is public.
+            'type' => $kind->value,
+            'client_type' => $request->clientType()->value,
+            'grant_types' => $grantTypes,
+            'redirect_uris' => $redirects,
+            'post_logout_redirect_uris' => $request->postLogoutRedirectUris(),
+            'scopes' => $request->scopes($catalog),
+            'first_party' => $request->firstParty(),
+            'organization_id' => $organizationId,
+            // A published manifest URL (the pull transport) — stored on the app so the
+            // scheduled sweep and "Sync now" can fetch its declared roles and permissions.
+            'manifest_url' => $request->manifestUrl(),
+        ], ['name' => 'name', 'redirect_uris' => 'redirectUris', 'post_logout_redirect_uris' => 'postLogoutRedirectUris', 'manifest_url' => 'manifestUrl'], 'name');
+
+        if ($result instanceof ActionRefused) {
+            // A registered API's scope this owner may not hold is said on the field that
+            // holds typed scopes, with the API it belongs to and what to do about it.
+            // Anything else the registry refuses (a grant the token endpoint does not
+            // implement) is refused in its own words, across the top.
+            return $result->error === 'scope_not_grantable'
+                ? back()->withInput()->withErrors(['customScopes' => $result->getMessage()])
+                : back()->withInput()->with('error', $result->getMessage());
         }
+
+        /** @var RegisteredClient $registered */
+        $registered = $result->value;
 
         // The plaintext exists only here. On the FLASH CHANNEL, not in props: props are
         // written into the browser's history entry, where a live credential is retrievable
@@ -398,38 +397,30 @@ final readonly class ClientController extends ConsoleController
         ]);
     }
 
-    public function update(
-        SaveClientRequest $request,
-        string $client,
-        ClientRegistry $clients,
-    ): RedirectResponse {
+    public function update(SaveClientRequest $request, string $client): RedirectResponse
+    {
         $model = $this->clients->manageable($client);
 
         /*
-         * The app's whole settings as they are, with the three this form edits replaced —
-         * never a hand-built blueprint, which would clear every setting this page does not
-         * show (the scopes, the logout endpoint, the key prefix, the token lifetime). The
-         * registry writes `app.updated` only when something actually changed, so a Save
-         * pressed on an untouched form is not recorded as an edit.
+         * The three fields this form edits, and nothing else: the action replaces them on the
+         * app's whole settings as they are, so a Save never clears what this page does not
+         * show (the scopes, the logout endpoint, the key prefix, the token lifetime), and the
+         * registry writes `app.updated` only when something actually changed.
          *
          * The scopes are NOT here any more. They have a tab of their own, and a details
          * form that also carried them would write back whatever that tab last loaded.
          */
-        $settings = $clients->blueprint($model)
-            ->withName($request->name())
-            ->withRedirectUris($request->redirectUris())
-            ->withPostLogoutRedirectUris($request->postLogoutRedirectUris());
+        $result = $this->act(UpdateApp::class, [
+            'id' => $model->id,
+            'name' => $request->name(),
+            'redirect_uris' => $request->redirectUris(),
+            'post_logout_redirect_uris' => $request->postLogoutRedirectUris(),
+        ], ['name' => 'name', 'redirect_uris' => 'redirectUris', 'post_logout_redirect_uris' => 'postLogoutRedirectUris'], 'redirectUris');
 
-        try {
-            $clients->update($model, $settings, $this->scope->auditActor());
-        } catch (InvalidClientMetadata $refused) {
-            return back()->withInput()->withErrors(['redirectUris' => $refused->getMessage()]);
-        }
-
-        return back()->with('status', 'App updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'App updated.');
     }
 
-    public function saveManifest(Request $request, string $client, AppManifestPuller $puller, ClientRegistry $clients): RedirectResponse
+    public function saveManifest(Request $request, string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
 
@@ -437,31 +428,33 @@ final readonly class ClientController extends ConsoleController
 
         $url = trim((string) $request->string('manifestUrl')) ?: null;
 
-        // Through the registry like every other setting, so where an app's roles come
-        // from changing is on the trail too — it decides what its tokens carry.
-        try {
-            $clients->update($model, $clients->blueprint($model)->withManifestUrl($url), $this->scope->auditActor());
-        } catch (InvalidClientMetadata $refused) {
-            return back()->withErrors(['manifestUrl' => $refused->getMessage()]);
+        // Through the action like every other setting, so where an app's roles come from
+        // changing is on the trail too — it decides what its tokens carry.
+        $saved = $this->attempt(SetAppManifest::class, ['id' => $model->id, 'manifest_url' => $url], ['manifest_url' => 'manifestUrl'], 'manifestUrl');
+
+        if ($saved instanceof ActionRefused) {
+            return back()->withErrors(['manifestUrl' => $saved->getMessage()]);
         }
 
         if ($url === null) {
             return back()->with('status', 'Manifest URL cleared.');
         }
 
-        // Pull immediately, so the app's roles appear without waiting for the sweep.
-        try {
-            $result = $puller->pull($model->refresh());
-        } catch (Throwable $e) {
-            return back()->withErrors(['manifestUrl' => 'Saved, but the sync failed: '.$e->getMessage()]);
+        // Pull immediately, so the app's roles appear without waiting for the sweep. A
+        // second action: the URL is saved whether or not the manifest can be read yet.
+        $synced = $this->attempt(SyncAppManifest::class, ['id' => $model->id]);
+
+        if ($synced instanceof ActionRefused) {
+            return back()->withErrors(['manifestUrl' => 'Saved, but the sync failed: '.$synced->getMessage()]);
         }
 
-        return back()->with('status', $result !== null
-            ? 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).'
-            : 'Saved.');
+        /** @var ManifestSyncResult $result */
+        $result = $synced->value;
+
+        return back()->with('status', 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).');
     }
 
-    public function sync(string $client, AppManifestPuller $puller): RedirectResponse
+    public function sync(string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
 
@@ -469,13 +462,16 @@ final readonly class ClientController extends ConsoleController
             return back();
         }
 
-        try {
-            $result = $puller->pull($model);
-        } catch (Throwable $e) {
-            return back()->with('error', 'Sync failed: '.$e->getMessage());
+        $synced = $this->attempt(SyncAppManifest::class, ['id' => $model->id]);
+
+        if ($synced instanceof ActionRefused) {
+            return back()->with('error', 'Sync failed: '.$synced->getMessage());
         }
 
-        return back()->with('status', $result !== null && ! $result->unchanged
+        /** @var ManifestSyncResult $result */
+        $result = $synced->value;
+
+        return back()->with('status', ! $result->unchanged
             ? 'Synced — '.$result->rolesDeclared.' role(s).'
             : 'Already up to date.');
     }
@@ -487,13 +483,15 @@ final readonly class ClientController extends ConsoleController
      * `deleteClient` on the environment plane — which is how a test exercising one plane
      * can pass while the other has been broken for a month.
      */
-    public function destroy(string $client, ClientRegistry $clients): RedirectResponse
+    public function destroy(string $client): RedirectResponse
     {
         $model = $this->clients->manageable($client);
 
-        $clients->delete($model, $this->scope->auditActor());
+        $result = $this->act(DeleteApp::class, ['id' => $model->id]);
 
-        return to_route($this->scope->routeName('clients'))->with('status', 'App deleted.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route($this->scope->routeName('clients'))->with('status', 'App deleted.');
     }
 
     /**

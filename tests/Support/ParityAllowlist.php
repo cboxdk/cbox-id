@@ -24,7 +24,7 @@ use Tests\Feature\Actions\ActionParityTest;
 final class ParityAllowlist
 {
     /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 251;
+    public const int BASELINE = 226;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -133,18 +133,6 @@ final class ParityAllowlist
             'audit-streams.toggle',
             'auth-policy.inherit',
             'auth-policy.update',
-            'clients.destroy',
-            'clients.manifest',
-            'clients.rotate',
-            'clients.scopes.update',
-            'clients.secrets.revoke',
-            'clients.settings.api-keys',
-            'clients.settings.exchange',
-            'clients.settings.lifetime',
-            'clients.settings.logout',
-            'clients.store',
-            'clients.sync',
-            'clients.update',
             'compliance.data-exports.download',
             'connections.activate',
             'connections.destroy',
@@ -187,19 +175,6 @@ final class ParityAllowlist
             'environment.auth-policy.inherit',
             'environment.auth-policy.self-service-signup',
             'environment.auth-policy.update',
-            'environment.clients.copy',
-            'environment.clients.destroy',
-            'environment.clients.manifest',
-            'environment.clients.rotate',
-            'environment.clients.scopes.update',
-            'environment.clients.secrets.revoke',
-            'environment.clients.settings.api-keys',
-            'environment.clients.settings.exchange',
-            'environment.clients.settings.lifetime',
-            'environment.clients.settings.logout',
-            'environment.clients.store',
-            'environment.clients.sync',
-            'environment.clients.update',
             'environment.compliance.data-exports.download',
             'environment.connections.activate',
             'environment.connections.destroy',

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\Environment\ApiKeyController;
-use App\Http\Controllers\Api\Environment\AppController;
 use App\Http\Controllers\Api\Environment\EnvironmentRoleController;
 use App\Http\Controllers\Api\Environment\InvitationController;
 use App\Http\Controllers\Api\Environment\MemberController as EnvironmentMemberController;
@@ -140,10 +139,6 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
         Route::delete('users/{id}/environment-roles/{roleId}', [EnvironmentRoleController::class, 'destroy'])->middleware('env.api:roles:write');
 
         Route::get('roles', [RoleController::class, 'index'])->middleware('env.api:roles:read');
-
-        Route::get('apps', [AppController::class, 'index'])->middleware('env.api:apps:read');
-        Route::post('apps', [AppController::class, 'store'])->middleware('env.api:apps:write');
-        Route::get('apps/{id}/blueprint', [AppController::class, 'blueprint'])->middleware('env.api:apps:read');
 
         // Everything that is an ACTION is routed from the action registry — its method,
         // path and scope are declared once, on the action — and run by the one

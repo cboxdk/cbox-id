@@ -122,4 +122,40 @@ abstract readonly class ConsoleController extends PageController
             return back()->withInput()->withErrors($errors);
         }
     }
+
+    /**
+     * Run an action as the person signed in, like {@see self::act()}, and hand a refusal
+     * BACK instead of answering it — for a page whose refusals are not all a message on one
+     * field: a banner across the top, a sentence of the page's own around the action's.
+     *
+     * The page decides what to say; the action has already decided THAT it refuses, so the
+     * rule is the same whichever door asked. Invalid input still lands on the form's fields
+     * (`$fields` maps the action's input names to the form's, the rest on `$fallback`), and a
+     * 404 is a 404.
+     *
+     * @param  class-string<Action>  $action
+     * @param  array<string, mixed>  $input
+     * @param  array<string, string>  $fields
+     *
+     * @throws ValidationException
+     */
+    protected function attempt(string $action, array $input, array $fields = [], string $fallback = 'form'): ActionResult|ActionRefused
+    {
+        try {
+            return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal($this->scope), $input);
+        } catch (ActionRefused $refused) {
+            abort_if($refused->status === 404, 404);
+
+            return $refused;
+        } catch (ValidationException $invalid) {
+            $errors = [];
+
+            foreach ($invalid->errors() as $field => $messages) {
+                $first = is_array($messages) ? ($messages[0] ?? null) : null;
+                $errors[$fields[$field] ?? $fallback] = is_string($first) ? $first : $invalid->getMessage();
+            }
+
+            throw ValidationException::withMessages($errors);
+        }
+    }
 }
