@@ -6,11 +6,9 @@ use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
-use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Navigation\ConsoleNavigation;
 use Carbon\CarbonInterface;
 use Cbox\Id\Compliance\Models\AuditExportRun;
-use Cbox\Id\Console\Enums\HealthStatus;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -43,13 +41,16 @@ uses(RefreshDatabase::class);
  * Every one of them registered under `plane:subject` and none under `env.admin`, so an
  * environment administrator — the person who owns the environment — had no analytics, no
  * compliance exports, no connectors, no trusted devices, no risk events and no branding.
- * The parity health check did not cover them, so the doctor said the console was whole
- * while six of its capabilities were reachable from one door only.
  *
  * Six modules making the same mistake is an API that invites it, so most of what is
  * asserted here is about the registration rather than any one page: that declaring a page
- * gets both planes by default, that a page which genuinely belongs to one says so, and
- * that the doctor now measures the difference.
+ * gets both planes by default, and that a page which genuinely belongs to one says so.
+ * This suite is where a page declared for a plane and not routed there fails — the rail
+ * drops such a page quietly rather than 500 the console, so nothing else would notice.
+ *
+ * "Both planes" is the organization console in full. A customer's environment host narrows
+ * it to an admin portal by the rail's own areas, without the module doing anything — see
+ * CustomerConsoleTest.
  */
 
 /** One enrolled handset for a subject, built the way the module's own tests build them. */
@@ -201,62 +202,20 @@ it('drops a module page from the environment rail when the module is off', funct
     expect((new ConsoleNavigation)->environment()->routes())->not->toContain('environment.devices.index');
 });
 
-/** The doctor measures the modules now, which is the thing that was not watching. */
-it('reports module plane parity in the doctor', function (): void {
-    $bothPlanes = count(array_filter(
-        app(ConsolePages::class)->all(),
-        fn ($page): bool => $page->only === null,
-    ));
-
-    $results = app(ConsoleParityHealthCheck::class)->run();
-
-    expect($results)->toHaveCount(1)
-        ->and($results[0]->status)->toBe(HealthStatus::Ok)
-        // The COUNT, not just the sentence: a check that stopped reading the registry
-        // would still say "module pages reachable on both planes" about none of them,
-        // which is exactly the reassuring silence this replaces.
-        ->and($results[0]->detail)->toContain($bothPlanes.' module pages reachable on both planes')
-        ->and($bothPlanes)->toBeGreaterThan(5);
-});
-
 /**
- * And it FAILS when a module does what all six of them did. Declared here rather than
- * inferred, because a health check nobody has watched fail is a health check nobody knows
- * the failure shape of.
- */
-it('fails the doctor when a module declares both planes and routes one', function (): void {
-    app(ConsolePages::class)->add(
-        area: ConsoleArea::Logs,
-        route: 'never-routed-anywhere',
-        label: 'Never routed',
-        feature: 'risk-plus',
-    );
-
-    $results = app(ConsoleParityHealthCheck::class)->run();
-
-    expect($results[0]->status)->toBe(HealthStatus::Fail)
-        ->and($results[0]->detail)->toContain('Never routed');
-})->group('security');
-
-/**
- * The other half of the same doctor: what must be the DIFFERENCE between the planes.
+ * WHAT MUST NEVER CROSS: the workspace's own pages on the environment plane.
  *
- * An account's projects, keys and billing are what the root holds IN ADDITION — that
- * sentence is in the check's own docblock and until recently nothing measured it, so the
- * difference could have drifted either way in silence. Routed on the environment plane it
- * would offer a tenant administrator somebody else's bill.
+ * A workspace's projects, keys, domains and bill are what the platform root holds IN
+ * ADDITION to an organization's console. Routed under `/admin` they would offer a tenant
+ * environment's administrator somebody else's bill. This was a clause of the console-parity
+ * doctor check, which went when the two consoles stopped having to match; the property it
+ * held did not go with it.
  */
-it('fails the doctor when an Identity platform page appears on the environment plane', function (): void {
-    Route::get('/environment-plane-billing', fn (): string => '')->name('environment.billing');
-    // Named routes are indexed when the table is built; one added mid-request is invisible
-    // to Route::has() until the lookup is rebuilt, and the check would pass for the wrong
-    // reason — which is the failure mode this whole file is about.
-    Route::getRoutes()->refreshNameLookups();
-
-    $results = app(ConsoleParityHealthCheck::class)->run();
-
-    expect($results[0]->status)->toBe(HealthStatus::Fail)
-        ->and($results[0]->detail)->toContain('billing');
+it('never routes a workspace page on the environment plane', function (): void {
+    foreach (['projects', 'members', 'keys.workspace', 'environment-domains', 'activity', 'billing', 'organization-settings'] as $route) {
+        expect(Route::has($route))->toBeTrue("[{$route}] is no longer served by the workspace console")
+            ->and(Route::has('environment.'.$route))->toBeFalse("[{$route}] is routed on the environment plane");
+    }
 })->group('security');
 
 /*

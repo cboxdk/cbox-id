@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
-use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Console\Kit\Facades\Console;
 use LogicException;
@@ -23,12 +22,16 @@ use LogicException;
  * by writing nothing. Here the default is both planes, and one plane is a value you have
  * to pass — {@see ConsolePage::$only} — which puts the decision in the diff.
  *
- * Two consumers read this registry:
- *  - {@see ConsoleNavigation::environment()} merges the environment-plane pages into the
- *    environment rail, which is a written list rather than a registry.
- *  - {@see ConsoleParityHealthCheck} measures that each declared plane actually has a
- *    route, so a module that declares both and routes one is reported rather than
- *    discovered by a customer.
+ * {@see ConsoleNavigation::environment()} reads this registry, merging the
+ * environment-plane pages into the environment rail, which is a written list rather than
+ * a registry. That each declared plane actually has a route is held by the suite
+ * (tests/Feature/ModuleConsolePagesTest.php), so a module that declares both and routes
+ * one fails CI rather than being discovered by a customer.
+ *
+ * "Both planes" is about the ORGANIZATION CONSOLE as a whole, and a customer's environment
+ * host narrows it further without the module doing anything: a page in an area a
+ * customer's console does not keep is withheld there by {@see CustomerConsole}, which reads
+ * the same rail this writes to.
  *
  * The organization plane keeps rendering from the console-kit registry, so this writes
  * there too rather than replacing it: a third-party plugin that never hears of this

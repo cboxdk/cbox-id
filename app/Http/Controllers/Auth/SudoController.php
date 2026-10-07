@@ -79,7 +79,9 @@ final readonly class SudoController extends PageController
         $intended = $request->session()->pull('sudo.intended');
         StepUpReason::forget('sudo');
 
-        return redirect()->to(is_string($intended) ? $intended : route('settings'));
+        // With nothing intended, the person's own account — the one console page every
+        // host serves to everyone, where organization Settings is not.
+        return redirect()->to(is_string($intended) ? $intended : route('account'));
     }
 
     public function showEnvironment(EnvironmentAdminAuth $admin): Response

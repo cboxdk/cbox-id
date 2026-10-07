@@ -21,7 +21,11 @@ enum ConsoleAltitude: string
     /** A workspace's own console, at the platform root — see {@see WorkspaceAltitude}. */
     case Workspace = 'workspace';
 
-    /** An organization's console: a tenant host, or a single-tenant install. */
+    /**
+     * An organization's console: a tenant host, or a single-tenant install. On a
+     * customer's environment host it is an admin portal and the person's own pages — see
+     * {@see CustomerConsole}; the chrome draws it the same way either way.
+     */
     case Organization = 'organization';
 
     /** One environment's console, on that environment's own host. */

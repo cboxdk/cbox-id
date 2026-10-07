@@ -6,6 +6,7 @@ use App\Http\Middleware\PointAtFirstRun;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\CustomerConsole;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
@@ -1611,6 +1612,21 @@ function multiTenantDeployment(string $consoleHost = 'cboxid.com'): void
 {
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', $consoleHost);
+}
+
+/**
+ * Back to the SINGLE-TENANT shape, for the organization-console half of a test whose
+ * environment-console half needed {@see multiTenantDeployment()}.
+ *
+ * On a multi-tenant deployment the organization console on a customer's environment host
+ * is an admin portal ({@see CustomerConsole}): apps, webhooks and inline hooks answer 404
+ * there, by design. The console that still offers them to an
+ * organization administrator is a single-tenant install's, so that is the shape a test
+ * proving the organization half of such a capability has to stand on.
+ */
+function singleTenantDeployment(): void
+{
+    config()->set('cbox-id.tenancy.multi_tenant', false);
 }
 
 /**

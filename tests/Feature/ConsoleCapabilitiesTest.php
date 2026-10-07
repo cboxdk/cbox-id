@@ -76,25 +76,25 @@ use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 /**
- * One component, both planes.
+ * The console's capabilities, one controller each, through every door that offers them.
  *
- * The console was built twice and the copies drifted with nothing watching. A merged
- * capability gets a test here: the same page, through either door, offering the same
- * things. The merge is not the guarantee — this is.
+ * The console was built twice and the copies drifted with nothing watching, so each
+ * capability was merged into one controller and tested here through both doors. The
+ * merge stands; the rule that both doors must offer the same things does not. A customer's
+ * organization console on a multi-tenant deployment is an admin portal now, and the product's
+ * administration is the environment console's alone (see CustomerConsole and
+ * CustomerConsoleTest). What this file holds is what remains true: each capability is one
+ * controller, it scopes every read and write to the organization the scope resolves, and
+ * no organization reaches another's.
  */
 function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
 {
-    // Parity is asserted across two doors, and only ONE of them exists in both deployment
-    // shapes. The organization plane is `plane:subject` — it is the console a self-hosted
-    // install serves, so its half of every pair below stays on the suite's single-tenant
-    // baseline and thereby says the capability survives there. The ENVIRONMENT plane is
-    // `/admin`, which 404s unless the deployment is multi-tenant, so this helper — whose
-    // whole job is "be an environment administrator" — states that shape.
-    //
-    // Which answers the question the merge raises: parity is a multi-tenant-only property,
-    // because a single-tenant install has one door, not two. What single-tenant keeps is
-    // the capability, on the organization plane, and that is what the halves driven through
-    // actingAsRole() go on proving.
+    // Two doors, and only ONE of them exists in both deployment shapes. The organization
+    // plane is the console a self-hosted install serves — the whole of its administration —
+    // so its half of every case below stays on the suite's single-tenant baseline and
+    // thereby says the capability survives there. The ENVIRONMENT plane is `/admin`, which
+    // 404s unless the deployment is multi-tenant, so this helper — whose whole job is "be
+    // an environment administrator" — states that shape.
     multiTenantDeployment();
 
     platformRootEnvironment();
@@ -342,6 +342,9 @@ it('offers every hook point on both planes', function (): void {
             fn (Collection $points): bool => $points->pluck('label')->all() === $expected,
         ));
 
+    // The organization console that offers hooks: a single-tenant install's. A customer's
+    // console on a multi-tenant host does not (see CustomerConsoleTest).
+    singleTenantDeployment();
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
     $this->get(route('hooks.create'))
@@ -845,6 +848,8 @@ it('offers the same event catalogue on both planes', function (): void {
     confirmConsoleStepUp();
     $environment = $this->get(route('environment.webhooks.create'))->assertOk()->inertiaProps('events');
 
+    // The organization console that offers webhooks: a single-tenant install's.
+    singleTenantDeployment();
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
     $organization = $this->get(route('webhooks.create'))->assertOk()->inertiaProps('events');
@@ -1835,6 +1840,8 @@ it('holds an unverified organization admin back from registering an app, and onl
 
     expect(Client::query()->where('organization_id', $orgId)->where('name', 'Env Admin App')->exists())->toBeTrue();
 
+    // The organization console that registers apps: a single-tenant install's.
+    singleTenantDeployment();
     actingAsRole(MembershipRole::Owner, emailVerified: false);
 
     confirmConsoleStepUp();

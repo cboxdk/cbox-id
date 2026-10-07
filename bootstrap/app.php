@@ -5,6 +5,7 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
+use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PointAtFirstRun;
@@ -270,6 +271,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'env.admin' => AuthenticateEnvironmentAdmin::class,
             // A surface that only exists in the multi-tenant shape (see the class).
             'multi.tenant' => RequireMultiTenant::class,
+            // What a customer's own organization console offers, on a customer's
+            // environment host — the rest is the environment console's (see the class).
+            'console.customer' => EnforceCustomerConsole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

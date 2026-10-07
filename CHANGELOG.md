@@ -367,6 +367,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **A customer's organization console is an admin portal now.** On a customer's
+  environment host of a multi-tenant deployment, the organization console offers Members,
+  Roles and Permissions, Single sign-on (with its domains), Sync users in, the Activity
+  log, an Overview without the module cards and setup checklist, and the person's own
+  pages (My account, their API keys, agent and device approvals). The product's
+  administration (apps, webhooks, inline hooks, token vault, access reviews, role
+  conflicts, sync users out, log streaming, social sign-in, sign-in rules, appearance,
+  settings, usage, member API keys, the setup guide, and the analytics, compliance,
+  connectors, trusted-device inventory, risk and branding module pages) answers 404 there,
+  writes included (`CustomerConsole` is the one list the rail and the 404 both read). The
+  environment console at `/admin` keeps all of it. A single-tenant install, an operator
+  and the workspace console at the platform root are unchanged, because there the
+  organization console is the only console.
+- **The rule that the organization and environment consoles offer the same capabilities
+  is dropped**, with the `cbox-id:doctor` check that enforced it
+  (`ConsoleParityHealthCheck`). The property it also held, that no workspace page is routed
+  on the environment plane, is a test now.
+- Linking a social account from My account, and confirming a step-up with nothing to
+  return to, land on My account instead of the organization's Settings.
 - **Requires `cboxdk/laravel-queue-autoscale` ^4.3** (was ^3.0, never started) and
   `cboxdk/laravel-queue-metrics` ^3.4. `cbox.yaml` and `docker-compose.yml` run
   `queue:autoscale` as the queue process.

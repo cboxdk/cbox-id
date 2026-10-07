@@ -62,6 +62,12 @@ final readonly class DashboardController extends ConsoleController
         $organizationId = $me->organizationId();
         $isAdmin = $me->isAdmin();
 
+        // A CUSTOMER'S CONSOLE GETS THE MINIMAL OVERVIEW: who they are, their organization's
+        // numbers and its recent activity. The module cards and the setup checklist are
+        // about configuring the PRODUCT — branding, connectors, apps, webhooks — and every
+        // link in them points at a page that console does not have (see CustomerConsole).
+        $configuresProduct = ! $this->scope->atCustomerAltitude();
+
         /** @var Collection<int, AuditEntry> $recent */
         $recent = $organizationId !== null && $isAdmin
             ? AuditEntry::query()
@@ -78,6 +84,7 @@ final readonly class DashboardController extends ConsoleController
          */
         $shows = $organizationId !== null
             && $isAdmin
+            && $configuresProduct
             && ! $checklist->isDismissed($organizationId, $me->id());
 
         $progress = $shows ? $checklist->for($organizationId) : null;
@@ -113,7 +120,7 @@ final readonly class DashboardController extends ConsoleController
             'memberCount' => $organizationId !== null ? $memberships->countForOrganization($organizationId) : 0,
             'ssoActive' => $organizationId !== null && $connections->forOrganization($organizationId) !== null,
             'recent' => $this->recentProps($recent, $names),
-            'cards' => $isAdmin ? $cards->resolve() : [],
+            'cards' => $isAdmin && $configuresProduct ? $cards->resolve() : [],
             'checklist' => $progress === null ? null : $this->checklistProps($progress),
             'help' => HelpProps::for(HelpTopic::Overview),
             'urls' => [

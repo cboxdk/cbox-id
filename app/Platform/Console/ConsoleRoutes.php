@@ -117,6 +117,10 @@ final class ConsoleRoutes
             // guard's allowlist and nothing else stops them.
             EnforceImpersonationWindow::class,
             'platform.auth',
+            // The same narrowing the host's own console group carries: on a customer's
+            // environment host a module page outside the admin portal is not there. Read
+            // from the rail's own areas, so a module never has to know that console exists.
+            'console.customer',
             'console.feature:'.$feature,
         ])->group(function () use ($uri, $component, $name): void {
             self::get($uri, $component)->name($name);
@@ -182,6 +186,7 @@ final class ConsoleRoutes
             'plane:console',
             EnforceImpersonationWindow::class,
             'platform.auth',
+            'console.customer',
             'console.feature:'.$feature,
         ])->group(function () use ($verb, $uri, $action, $name): void {
             self::verb($verb, $uri, $action)->name($name);
