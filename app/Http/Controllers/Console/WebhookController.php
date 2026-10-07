@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Webhooks\CreateWebhook;
+use App\Actions\Webhooks\DeleteWebhook;
+use App\Actions\Webhooks\PauseWebhook;
+use App\Actions\Webhooks\ResumeWebhook;
+use App\Actions\Webhooks\RotateWebhookSecret;
+use App\Actions\Webhooks\UpdateWebhook;
 use App\Http\Props\Console\WebhookDeliveryProps;
 use App\Http\Props\Console\WebhookRowProps;
 use App\Http\Props\Shared\HelpProps;
@@ -15,14 +21,11 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
-use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
-use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
 use Cbox\Id\Webhooks\Models\WebhookDelivery;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
-use Cbox\Id\Webhooks\Support\SafeWebhookUrl;
+use Cbox\Id\Webhooks\ValueObjects\RegisteredEndpoint;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +50,13 @@ use Inertia\Response;
  * own middleware stack, and the stack runs before the controller does. What remains in
  * the controller is the part route middleware cannot answer: WHICH endpoint, and whether
  * this administrator may change THAT one.
+ *
+ * Every write is an ACTION (`App\Actions\Webhooks\*`): the same class the management API's
+ * `/v1/webhooks` and MCP run, so an endpoint is checked, refused and RECORDED the same way
+ * whichever door changed it. The edit, pause, resume, re-key and delete used to be inline
+ * model writes that left no line on the trail at all. What stays here is the console's
+ * own: the step-up before a secret is minted, the verified-email gate, and resolving the
+ * endpoint within this page's view so a person gets the 404 or 403 page they always did.
  */
 final readonly class WebhookController extends ConsoleController
 {
@@ -136,7 +146,7 @@ final readonly class WebhookController extends ConsoleController
         ]);
     }
 
-    public function store(StoreWebhookRequest $request, WebhookRegistry $webhooks): RedirectResponse
+    public function store(StoreWebhookRequest $request): RedirectResponse
     {
         /*
          * A social sign-in creates the account immediately but proves nothing about the
@@ -168,23 +178,19 @@ final readonly class WebhookController extends ConsoleController
             return $challenge;
         }
 
-        try {
-            /*
-             * Two calls rather than one with a nullable argument. The registry no longer
-             * lets "every tenant's events" be expressed by a variable that happens to be
-             * null, so the environment-wide case is stated at the one call site entitled
-             * to make it.
-             */
-            $registered = $organizationId === null
-                ? $webhooks->registerForEnvironment($request->url(), $request->eventTypes())
-                : $webhooks->register($organizationId, $request->url(), $request->eventTypes());
-        } catch (UnsafeWebhookUrl) {
-            // The registry's SSRF guard refused the target. Surfaced on the field rather
-            // than as a 500: the endpoint must resolve to a public address.
-            return back()->withInput()->withErrors([
-                'url' => 'That URL is not allowed — it must be a public HTTPS endpoint.',
-            ]);
+        $result = $this->act(CreateWebhook::class, [
+            'url' => $request->url(),
+            'event_types' => $request->eventTypes(),
+            'organization_id' => $organizationId,
+            'environment_wide' => $organizationId === null,
+        ], ['url' => 'url', 'event_types' => 'eventTypes'], 'url');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
+
+        /** @var RegisteredEndpoint $registered */
+        $registered = $result->value;
 
         /*
          * The plaintext secret exists only in this response. It is handed to the detail
@@ -260,43 +266,24 @@ final readonly class WebhookController extends ConsoleController
     {
         $endpoint = $this->manageable($webhook);
 
-        // Re-run the SSRF guard on any URL change — a public endpoint can never be
-        // silently repointed at an internal address.
-        if (! SafeWebhookUrl::isSafe($request->url())) {
-            return back()->withInput()->withErrors([
-                'url' => 'That URL is not allowed — it must be a public HTTPS endpoint.',
-            ]);
-        }
+        // The SSRF guard on the new address and which events may be KEPT — which depends
+        // on the endpoint — are the action's, so the API repoints under the same rules.
+        $result = $this->act(UpdateWebhook::class, [
+            'id' => $endpoint->id,
+            'url' => $request->url(),
+            'event_types' => $request->eventTypes(),
+        ], ['url' => 'url', 'event_types' => 'eventTypes'], 'url');
 
-        // Checked here rather than in the request: which events may be KEPT depends on
-        // the endpoint, and the endpoint is only resolved — within what this plane may
-        // see — above.
-        $choosable = WebhookEventCatalogue::forEndpoint(array_values($endpoint->event_types));
-
-        if (array_diff($request->eventTypes(), $choosable) !== []) {
-            return back()->withInput()->withErrors(['eventTypes' => WebhookEventCatalogue::REFUSAL]);
-        }
-
-        $endpoint->url = $request->url();
-        $endpoint->event_types = $request->eventTypes();
-        $endpoint->save();
-
-        return back()->with('status', 'Subscription updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Subscription updated.');
     }
 
-    public function pause(string $webhook, WebhookRegistry $webhooks): RedirectResponse
+    public function pause(string $webhook): RedirectResponse
     {
         $endpoint = $this->manageable($webhook);
 
-        /*
-         * Acted in the endpoint's OWN scope, which is what the registry matches on: an
-         * environment administrator is the operator above the organizations here, so
-         * passing the endpoint's organization — null for the environment's own — is the
-         * only call that resolves for both planes.
-         */
-        $webhooks->pause($endpoint->id, $endpoint->organization_id);
+        $result = $this->act(PauseWebhook::class, ['id' => $endpoint->id]);
 
-        return back()->with('status', 'Endpoint paused — it will stop receiving events.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Endpoint paused — it will stop receiving events.');
     }
 
     /**
@@ -304,17 +291,15 @@ final readonly class WebhookController extends ConsoleController
      *
      * The organization console had no resume at all, so a tenant administrator who paused
      * an endpoint could not start it again from their own console — the one action whose
-     * absence turns a reversible pause into a one-way door. The registry exposes no
-     * resume, so this is a direct status write on the already-scoped model.
+     * absence turns a reversible pause into a one-way door.
      */
     public function resume(string $webhook): RedirectResponse
     {
         $endpoint = $this->manageable($webhook);
 
-        $endpoint->status = EndpointStatus::Active;
-        $endpoint->save();
+        $result = $this->act(ResumeWebhook::class, ['id' => $endpoint->id]);
 
-        return back()->with('status', 'Endpoint resumed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Endpoint resumed.');
     }
 
     /**
@@ -330,7 +315,7 @@ final readonly class WebhookController extends ConsoleController
      * refuses nothing here — a hijacked or unattended session is the whole threat, and a
      * fresh password is the only thing that answers it.
      */
-    public function rotate(string $webhook, SecretBox $secretBox): RedirectResponse
+    public function rotate(string $webhook): RedirectResponse
     {
         // Authorization first: a step-up in front of a 403 would hand somebody who may not
         // touch this endpoint a password prompt instead of a refusal.
@@ -347,21 +332,28 @@ final readonly class WebhookController extends ConsoleController
             return to_route($sudo);
         }
 
-        $secret = bin2hex(random_bytes(32));
-        $endpoint->secret_encrypted = $secretBox->seal($secret, $endpoint->secretContext());
-        $endpoint->save();
+        $result = $this->act(RotateWebhookSecret::class, ['id' => $endpoint->id]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var RegisteredEndpoint $rotated */
+        $rotated = $result->value;
 
         // Shown once on the next render; the sealed form is all that persists.
-        $this->inertia->flash('newSecret', $secret);
+        $this->inertia->flash('newSecret', $rotated->secret);
 
         return back()->with('status', 'Signing secret rotated — update your endpoint now.');
     }
 
     public function destroy(string $webhook): RedirectResponse
     {
-        $this->manageable($webhook)->delete();
+        $endpoint = $this->manageable($webhook);
 
-        return to_route($this->scope->routeName('webhooks'))
+        $result = $this->act(DeleteWebhook::class, ['id' => $endpoint->id]);
+
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('webhooks'))
             ->with('status', 'Webhook endpoint deleted.');
     }
 

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Hooks\CreateHook;
+use App\Actions\Hooks\DeleteHook;
+use App\Actions\Hooks\UpdateHook;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\StoreHookRequest;
@@ -15,6 +18,7 @@ use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
+use Cbox\Id\ExternalActions\ValueObjects\RegisteredActionEndpoint;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -43,6 +47,12 @@ use Inertia\Response;
  * every organization in it — and at most points it can refuse the operation — so a tenant
  * administrator SEES those (a hook that can stop your sign-ins with nothing on screen
  * saying so is worse than one you cannot manage) and may never touch one.
+ *
+ * Every write is an ACTION (`App\Actions\Hooks\*`), the same the management API's
+ * `/v1/hooks` and MCP run, so a hook is registered, paused, activated and removed under one
+ * set of rules and leaves one line on the trail naming who did it — the pause, activation
+ * and removal used to leave none. The step-up and the verified-email gate stay here; they
+ * are about the person at the keyboard, which a management key is not.
  */
 final readonly class HookController extends ConsoleController
 {
@@ -133,7 +143,7 @@ final readonly class HookController extends ConsoleController
         ]);
     }
 
-    public function store(StoreHookRequest $request, ExternalActions $actions): RedirectResponse
+    public function store(StoreHookRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -178,12 +188,19 @@ final readonly class HookController extends ConsoleController
             return to_route($sudo);
         }
 
-        // Two calls rather than one with a nullable argument: "for every tenant here" is
-        // not an organization that happens to be null, and the contract no longer lets it
-        // be expressed as one.
-        $registered = $organizationId === null
-            ? $actions->registerForEnvironment($request->point(), $request->url())
-            : $actions->register($request->point(), $request->url(), $organizationId);
+        $result = $this->act(CreateHook::class, [
+            'hook_point' => $request->point()->value,
+            'url' => $request->url(),
+            'organization_id' => $organizationId,
+            'environment_wide' => $organizationId === null,
+        ], ['url' => 'url', 'hook_point' => 'point'], 'url');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var RegisteredActionEndpoint $registered */
+        $registered = $result->value;
 
         $this->inertia->flash('newSecret', $registered->secret);
 
@@ -230,32 +247,33 @@ final readonly class HookController extends ConsoleController
      * exactly two of them and the record already knows which one it is in — a posted
      * intent would only add a way for the button and the row to disagree.
      */
-    public function toggle(string $hook, ExternalActions $actions): RedirectResponse
+    public function toggle(string $hook): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
         $endpoint = $this->manageable($hook);
+        $activate = $endpoint->status !== ActionEndpointStatus::Active;
 
-        if ($endpoint->status === ActionEndpointStatus::Active) {
-            $actions->pause($endpoint->id, $endpoint->organization_id);
+        $result = $this->act(UpdateHook::class, ['id' => $endpoint->id, 'active' => $activate]);
 
-            return back()->with('status', 'Endpoint paused — it will stop being called at the hook point.');
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $actions->activate($endpoint->id, $endpoint->organization_id);
-
-        return back()->with('status', 'Endpoint activated.');
+        return back()->with('status', $activate
+            ? 'Endpoint activated.'
+            : 'Endpoint paused — it will stop being called at the hook point.');
     }
 
-    public function destroy(string $hook, ExternalActions $actions): RedirectResponse
+    public function destroy(string $hook): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
         $endpoint = $this->manageable($hook);
 
-        $actions->remove($endpoint->id, $endpoint->organization_id);
+        $result = $this->act(DeleteHook::class, ['id' => $endpoint->id]);
 
-        return to_route($this->scope->routeName('hooks'))->with('status', 'Endpoint removed.');
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('hooks'))->with('status', 'Endpoint removed.');
     }
 
     /**

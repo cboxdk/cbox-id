@@ -172,6 +172,20 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   The approval is bound to exactly that request and spent once. A key-minted key is never
   less supervised than its parent; a policy with nobody to approve fails closed.
 
+- **Webhooks, inline hooks and log streams on the management API, and every change to
+  them on the trail.** `/api/v1/webhooks` (list, get, create, update, pause, resume,
+  rotate, delete), `/api/v1/hooks` and `/api/v1/log-streams` (list, get, create, update,
+  delete) run the same actions as the console's pages, behind new `webhooks:*`, `hooks:*`
+  and `log_streams:*` scopes. A new one names its owner (`organization_id`, or
+  `environment_wide: true`). Signing secrets are returned once and never kept for an
+  idempotent replay. The console's webhook edit, pause, resume, re-key and delete, a hook's
+  pause/activate/remove and a stream's disable/resume/delete were model writes that left
+  no audit entry; every one now records `webhook.*`, `inline_hook.*` or `log_stream.*`
+  naming who did it, from either door. 24 console writes are now actions (pending list
+  251 → 227).
+- **`GET /api/v1/events` and `GET /api/v1/audit-log`.** Read this environment's domain
+  events (the facts webhooks deliver) and its audit trail with an `after` cursor, behind
+  `events:read` and `audit:read` — strictly this environment's, never another's.
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,

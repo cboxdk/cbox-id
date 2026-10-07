@@ -32,6 +32,11 @@ environment's host** and nowhere else. Give it the scopes the job needs and no m
 | `apis:read` / `:write` | list APIs / register, change and delete them |
 | `api_keys:read` / `:write` | list member API keys / revoke them |
 | `support:write` | start a support session |
+| `webhooks:read` / `:write` | list webhook endpoints / register, repoint, pause, resume, re-key and delete them |
+| `hooks:read` / `:write` | list inline hooks / register, pause, activate and remove them |
+| `log_streams:read` / `:write` | list audit log streams / create, disable, resume and delete them |
+| `events:read` | read the environment's domain events with a cursor |
+| `audit:read` | read the environment's audit trail with a cursor |
 
 Send it as `Authorization: Bearer cbid_env_…` to `https://{your-environment-host}/api/v1/…`.
 A key without the route's scope gets `403` with the missing scope named.
@@ -167,14 +172,42 @@ once one belongs to a registered API the tokens are for that API, so a scope no 
 registered (`apps.manifest`, say) is not among them. Scopes of two APIs are refused with
 `422 invalid_target` before anything starts.
 
+## Webhooks, hooks, log streams and the trail
+
+`/api/v1/webhooks`, `/api/v1/hooks` and `/api/v1/log-streams` are the console's Webhooks,
+Inline hooks and Log streaming pages. A new one names its owner out loud: an
+`organization_id`, or `"environment_wide": true` for one that carries **every**
+organization's traffic. Sending neither is `422 owner_required`.
+
+```http
+POST /api/v1/webhooks
+Idempotency-Key: 3f0c…
+{ "url": "https://app.example/hooks/cbox", "event_types": ["user.created"], "organization_id": "…" }
+```
+
+The answer carries the signing `secret` **once** — and so does
+`POST /webhooks/{id}/rotate`, which replaces it at once. A retry with the same
+`Idempotency-Key` gets the same answer with `"secret": null`: the secret is never kept for
+replays. Lost it? Rotate. `PATCH /webhooks/{id}` repoints or resubscribes, `POST …/pause`
+and `…/resume` stop and start deliveries, `DELETE` removes it. A hook is paused or
+activated with `PATCH /hooks/{id}` `{"active": false}`, and a stream with
+`PATCH /log-streams/{id}` `{"enabled": false}` — the state you want, so a retry is safe. A
+URL that resolves to a private address is `422 unsafe_url`.
+
+To read instead of being pushed: `GET /api/v1/events` lists the environment's domain
+events — the facts webhooks deliver — oldest first. Keep the last `id` and pass it as
+`after` to get only what is new; `types[]=user.created` narrows it. `GET /api/v1/audit-log`
+reads the audit trail the same way, narrowed by `action`, `actor_type` or
+`organization_id`. Both are strictly this environment's.
+
 ## Errors
 
 Every failure is `{ "error": "<code>", "message": "<sentence>" }`; a validation failure
 adds a field-keyed `errors` map. Switch on `error`: `not_found`, `validation_failed`,
 `slug_taken`, `user_not_found`, `already_member`, `last_owner`, `not_a_member`,
 `already_owner`, `role_not_assignable`, `role_conflict`, `not_pending`, `too_soon`,
-`mail_failed`, `invalid_api`, `not_permitted`, and the rest listed per operation in the
-OpenAPI document.
+`mail_failed`, `invalid_api`, `not_permitted`, `owner_required`, `unsafe_url`, and the rest
+listed per operation in the OpenAPI document.
 
 ## The activity log
 
@@ -186,5 +219,6 @@ outgoing owner of a transferred organization — the key is on the entry beside 
 ## Related
 
 - [Keys](../guides/keys.md) — creating, expiring and revoking the management key.
+- [Webhooks](../guides/webhooks.md) — verifying what a registered endpoint receives.
 - [Members and invitations](../guides/members.md) — the same operations in the console.
 - [Integrate your app](integrate-your-app.md) — the app side: sign-in and tokens.

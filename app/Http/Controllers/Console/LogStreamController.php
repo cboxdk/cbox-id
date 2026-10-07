@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\LogStreams\CreateLogStream;
+use App\Actions\LogStreams\DeleteLogStream;
+use App\Actions\LogStreams\UpdateLogStream;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateLogStreamRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
-use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme;
 use Cbox\LaravelSiem\Enums\Destination;
+use Cbox\LaravelSiem\ValueObjects\RegisteredStream;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,6 +39,11 @@ use Inertia\Response;
  * The signing key is revealed exactly once, on the flash channel: only ciphertext is
  * persisted, so it can never be retrieved again, and props are written into the browser's
  * history entry.
+ *
+ * Every write is an ACTION (`App\Actions\LogStreams\*`), the same the management API's
+ * `/v1/log-streams` and MCP run. Disabling a stream — the first thing somebody covering
+ * their tracks would do — used to leave no line on the trail; now every create, disable,
+ * resume and delete records who did it, from either door.
  */
 final readonly class LogStreamController extends ConsoleController
 {
@@ -121,7 +129,7 @@ final readonly class LogStreamController extends ConsoleController
         ]);
     }
 
-    public function store(CreateLogStreamRequest $request, LogStreams $streams): RedirectResponse
+    public function store(CreateLogStreamRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -131,20 +139,22 @@ final readonly class LogStreamController extends ConsoleController
             ? null
             : $this->scope->requireOrganizationId();
 
-        $registered = $streams->create(
-            $request->name(),
-            $request->destination(),
-            $request->endpointUrl(),
-            $request->secret(),
-            $request->scheme(),
-        );
+        $result = $this->act(CreateLogStream::class, [
+            'name' => $request->name(),
+            'destination' => $request->destination()->value,
+            'endpoint_url' => $request->endpointUrl(),
+            'auth' => $request->scheme()->value,
+            'secret' => $request->secret(),
+            'organization_id' => $organizationId,
+            'environment_wide' => $organizationId === null,
+        ], ['name' => 'name', 'destination' => 'destination', 'endpoint_url' => 'endpointUrl', 'auth' => 'scheme', 'secret' => 'secret'], 'endpointUrl');
 
-        // Stamped after create(), because the underlying package knows nothing about
-        // organizations — the column is ours and so is the boundary.
-        if ($organizationId !== null) {
-            AuditStream::query()->whereKey($registered->stream->id)
-                ->update(['organization_id' => $organizationId]);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
+
+        /** @var RegisteredStream $registered */
+        $registered = $result->value;
 
         // A generated HMAC key — or an echoed token — revealed exactly once. Only
         // ciphertext is persisted, so it can never be retrieved again.
@@ -185,32 +195,33 @@ final readonly class LogStreamController extends ConsoleController
      * Disabling stops deliveries and KEEPS the pending rows, which is the difference
      * between pausing a feed and losing part of an audit trail.
      */
-    public function toggle(string $stream, LogStreams $streams): RedirectResponse
+    public function toggle(string $stream): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
         $model = $this->resolve($stream);
+        $enable = ! $model->enabled;
 
-        if ($model->enabled) {
-            $streams->disable($model->id);
+        $result = $this->act(UpdateLogStream::class, ['id' => $model->id, 'enabled' => $enable]);
 
-            return back()->with('status', 'Stream disabled — entries stop being delivered and are kept.');
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        // The registry exposes no dedicated enable verb, so this flips the attribute
-        // through its update() seam rather than writing the column directly.
-        $streams->update($model->id, ['enabled' => true]);
-
-        return back()->with('status', 'Stream resumed.');
+        return back()->with('status', $enable
+            ? 'Stream resumed.'
+            : 'Stream disabled — entries stop being delivered and are kept.');
     }
 
     public function destroy(string $stream): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $this->resolve($stream)->delete();
+        $model = $this->resolve($stream);
 
-        return to_route($this->scope->routeName('audit-streams'))
+        $result = $this->act(DeleteLogStream::class, ['id' => $model->id]);
+
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('audit-streams'))
             ->with('status', 'Log stream deleted.');
     }
 

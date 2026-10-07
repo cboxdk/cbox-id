@@ -52,6 +52,19 @@ CIBA store). Read the package's
 - **A key carrying a scope nothing recognises can no longer be minted** (the framework
   refuses it). The console only ever offered recognised scopes.
 
+### Integrations on the management API; console integration writes are audited
+
+- **New scopes** `webhooks:read/write`, `hooks:read/write`, `log_streams:read/write`,
+  `events:read` and `audit:read`. An existing key carries none of them, so nothing changes
+  until an administrator mints a key that does.
+- **New audit entries.** Editing, pausing, resuming, re-keying and deleting a webhook,
+  pausing, activating and removing an inline hook, and disabling, resuming and deleting a
+  log stream now each write an entry (`webhook.*`, `inline_hook.*`, `log_stream.*`). A
+  SIEM filter keyed on action names will see them.
+- **Registering an inline hook or a log stream at a private address is now a form error**
+  on the URL field, as it already was for a webhook, rather than an unhandled exception.
+- **`cboxdk/laravel-id` is now `^1.21`** (its `ManagementScopes` contract carries the new
+  scopes). Run `php artisan migrate`; the framework's 1.21 migrations are additive.
 
 ### Run the scheduler — and alert on it
 

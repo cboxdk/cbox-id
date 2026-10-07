@@ -154,7 +154,10 @@ final class ApiContract
             return;
         }
 
-        self::validate($spec, $schema, $body, "{$method} {$specPath} ({$status})");
+        // Decoded afresh as OBJECTS, not from the associative $body: there an empty JSON
+        // object (`"context": {}`) has already become `[]`, and would fail `type: object`
+        // for a body that is exactly what the spec says.
+        self::validate($spec, $schema, json_decode((string) $response->getContent(), false), "{$method} {$specPath} ({$status})");
     }
 
     /**
@@ -222,7 +225,7 @@ final class ApiContract
         $validator = new Validator;
 
         $result = $validator->validate(
-            json_decode((string) json_encode($body), false),
+            $body,
             json_decode((string) json_encode($schema), false),
         );
 

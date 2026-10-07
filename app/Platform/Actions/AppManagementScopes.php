@@ -32,6 +32,38 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage management keys',
             'description' => 'Mint, rotate and revoke management keys, never wider than the key doing it.',
         ],
+        'webhooks:read' => [
+            'label' => 'Read webhooks',
+            'description' => 'List this environment\'s webhook endpoints: where they point, what they subscribe to and whether they are paused — never their signing secrets.',
+        ],
+        'webhooks:write' => [
+            'label' => 'Manage webhooks',
+            'description' => 'Register, repoint, pause, resume, re-key and delete webhook endpoints. A new or rotated signing secret is shown once.',
+        ],
+        'hooks:read' => [
+            'label' => 'Read inline hooks',
+            'description' => 'List the inline hooks called during sign-in and token issuance, and whether each is active.',
+        ],
+        'hooks:write' => [
+            'label' => 'Manage inline hooks',
+            'description' => 'Register, pause, activate and remove inline hooks — endpoints that can add claims to tokens or refuse a sign-in.',
+        ],
+        'log_streams:read' => [
+            'label' => 'Read log streams',
+            'description' => 'List the SIEM destinations this environment\'s audit trail is streamed to, and whether each is enabled.',
+        ],
+        'log_streams:write' => [
+            'label' => 'Manage log streams',
+            'description' => 'Create, disable, resume and delete audit log streams. A generated signing key is shown once.',
+        ],
+        'events:read' => [
+            'label' => 'Read events',
+            'description' => 'Read this environment\'s domain events — the same events webhooks deliver — with a cursor.',
+        ],
+        'audit:read' => [
+            'label' => 'Read the audit log',
+            'description' => 'Read this environment\'s audit trail: who did what, to what, and when.',
+        ],
     ];
 
     public function knows(string $scope): bool
