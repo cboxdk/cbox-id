@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Http\Props\Console\ApiEquivalentProps;
 use App\Http\Props\Shared\AuthProps;
 use App\Http\Props\Shared\EnvironmentProps;
 use App\Http\Props\Shared\FlashProps;
@@ -11,6 +12,7 @@ use App\Http\Props\Shared\I18nProps;
 use App\Http\Props\Shared\ImpersonationProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Appearance\BrandContext;
+use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
@@ -67,6 +69,7 @@ final class HandleInertiaRequests extends Middleware
         'flash',
         'shell',
         'i18n',
+        'apiEquivalents',
         // Inertia's own, from `parent::share()`.
         'errors',
     ];
@@ -143,6 +146,21 @@ final class HandleInertiaRequests extends Middleware
              * {@see HostedTranslations}.
              */
             'i18n' => fn (): ?I18nProps => app(HostedTranslations::class)->toProps(),
+
+            /*
+             * "</> API" — the actions this console page hosts, keyed by name, with what the
+             * browser needs to write each as curl, an MCP call, a CLI command and an SDK call
+             * ({@see ActionSnippets}). Shared rather than per page so no page can forget it:
+             * a form added to the console is answered by its API twin without anyone wiring
+             * it, and `ApiEquivalentCoverageTest` holds every action to that. Empty off the
+             * console, and never built for a page without chrome.
+             */
+            'apiEquivalents' => fn (): array => app(ShellPayload::class)->build() === null
+                ? []
+                : array_map(
+                    static fn (ApiEquivalentProps $props): array => $props->toArray(),
+                    app(ActionSnippets::class)->forRequest($request),
+                ),
         ];
     }
 }

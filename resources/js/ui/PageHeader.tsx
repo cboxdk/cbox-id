@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import type { HelpContent, SharedProps } from '@/types';
+import { PageApiEquivalents } from './ApiEquivalent';
 import { Help } from './Help';
 
 export interface PageHeaderProps {
@@ -51,7 +52,9 @@ export function PageHeader({
     description,
     actions,
 }: PageHeaderProps) {
-    const { shell, title: stated } = usePage<SharedProps>().props;
+    const { shell, title: stated, apiEquivalents } = usePage<SharedProps>().props;
+    // Every page whose forms run actions offers their API twins, wired or not.
+    const hasApi = Object.keys(apiEquivalents ?? {}).length > 0;
 
     const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea)?.label;
     const resolved = eyebrow === undefined ? area : eyebrow;
@@ -67,8 +70,11 @@ export function PageHeader({
                 </div>
                 {description !== undefined && <p className="cbx-page-desc">{description}</p>}
             </div>
-            {actions !== undefined && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>{actions}</div>
+            {(actions !== undefined || hasApi) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {hasApi && <PageApiEquivalents />}
+                    {actions}
+                </div>
             )}
         </header>
     );

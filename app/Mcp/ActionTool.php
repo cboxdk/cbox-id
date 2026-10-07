@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\Principal;
@@ -205,7 +206,7 @@ final class ActionTool extends Tool
         }
 
         try {
-            $result = $runner->run($this->action, $principal, $input, $idempotencyKey, is_string($approvalId) && $approvalId !== '' ? $approvalId : null);
+            $result = $runner->run($this->action, $principal, $input, $idempotencyKey, is_string($approvalId) && $approvalId !== '' ? $approvalId : null, ActionVia::Mcp);
         } catch (ApprovalRequired $held) {
             // Not an error: the call is waiting for a person. Said in a shape an agent can
             // act on without parsing prose.

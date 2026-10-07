@@ -10,6 +10,7 @@
  * page is given without asking — see `App\Http\Middleware\HandleInertiaRequests`.
  */
 
+import type { ApiAction } from '@/lib/apiSnippets';
 import type { IconName } from '@/ui/icons';
 
 /** `Cbox\Id\Organization\Enums\MembershipRole` */
@@ -310,6 +311,12 @@ export interface SharedProps {
     flash: Flash;
     shell: Shell | null;
     i18n: I18n | null;
+    /**
+     * The actions this console page hosts, keyed by name, for "</> API"
+     * (`App\Platform\Connect\ActionSnippets`). Empty off the console. Optional because a
+     * page rendered outside the middleware — a test, an error page — has none.
+     */
+    apiEquivalents?: Record<string, ApiAction>;
     /**
      * The page's name, stated by the controller.
      *

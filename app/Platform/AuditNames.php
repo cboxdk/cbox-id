@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Actions\ActionTrail;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -60,6 +61,12 @@ final readonly class AuditNames
                     'service' => $clientIds[] = $actorId,
                     default => null,
                 };
+            }
+
+            // The person who approved an action an agent was held on, named beside it.
+            $approver = $entry->context[ActionTrail::APPROVED_BY] ?? null;
+            if (is_string($approver) && $approver !== '') {
+                $userIds[] = $approver;
             }
 
             $targetId = $entry->target_id;

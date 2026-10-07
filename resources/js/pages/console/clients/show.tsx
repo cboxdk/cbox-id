@@ -5,14 +5,10 @@ import type { PageProps } from '@/types';
 import {
     Button,
     ConfirmDelete,
-    CopyButton,
     Field,
-    Icon,
     Input,
     Panel,
-    Tab,
-    TabPanel,
-    Tabs,
+    SnippetTabs,
     Textarea,
 } from '@/ui';
 import { AppFrame, type AppHeaderData, CopyableValue } from './frame';
@@ -94,24 +90,12 @@ export default function ClientDetail({
                     pressure. Which SDKs appear follows from the app's kind: a device-flow
                     tab under a service app is a tab that cannot work.
                 */}
-                {snippets.length > 0 && (
-                    <Tabs
-                        value={sdk}
-                        onValueChange={setSdk}
-                        label="SDK examples"
-                        panels={snippets.map((snippet) => (
-                            <TabPanel key={snippet.id} value={snippet.id}>
-                                <SnippetPanel snippet={snippet} />
-                            </TabPanel>
-                        ))}
-                    >
-                        {snippets.map((snippet) => (
-                            <Tab key={snippet.id} value={snippet.id}>
-                                {snippet.label}
-                            </Tab>
-                        ))}
-                    </Tabs>
-                )}
+                <SnippetTabs
+                    snippets={snippets}
+                    value={sdk}
+                    onValueChange={setSdk}
+                    label="SDK examples"
+                />
             </Panel>
 
             <Panel title="Credentials">
@@ -334,62 +318,6 @@ export default function ClientDetail({
                 }}
             />
         </AppFrame>
-    );
-}
-
-function SnippetPanel({ snippet }: { snippet: Snippet }) {
-    return (
-        <div>
-            {snippet.install !== null && (
-                <div className="flex items-center gap-2">
-                    <p
-                        className="mono text-xs rounded-lg px-3 py-2 flex-1 select-all"
-                        style={{
-                            background: 'var(--surface-2)',
-                            border: '1px solid var(--border)',
-                            color: 'var(--muted-foreground)',
-                        }}
-                    >
-                        {snippet.install}
-                    </p>
-                    <CopyButton value={snippet.install} />
-                </div>
-            )}
-
-            <div className="mt-2 flex items-start gap-2">
-                <pre
-                    className="rounded-lg p-3 overflow-x-auto text-xs mono flex-1"
-                    style={{
-                        background: 'var(--surface-2)',
-                        border: '1px solid var(--border)',
-                        lineHeight: 1.6,
-                    }}
-                >
-                    {snippet.code}
-                </pre>
-                <CopyButton value={snippet.code} />
-            </div>
-
-            {snippet.docs !== null && (
-                <p className="mt-2 text-xs">
-                    {/*
-                        A new tab: this is a reference opened WHILE wiring an app up, and on
-                        the one screen that shows a secret exactly once. Navigating away
-                        from it is how the secret is lost.
-                    */}
-                    <a
-                        href={snippet.docs}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                        style={{ color: 'var(--accent-strong)' }}
-                    >
-                        {snippet.label} SDK reference
-                        <Icon name="external" className="w-3 h-3 inline ml-0.5" />
-                    </a>
-                </p>
-            )}
-        </div>
     );
 }
 

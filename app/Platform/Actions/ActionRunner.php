@@ -23,7 +23,10 @@ use Illuminate\Validation\ValidationException;
  *  3b. an action the principal's step-up policy names waits for a person's approval
  *      ({@see ActionApprovalGate}), and runs once that approval is spent;
  *  4. the action runs inside a transaction, so a refusal half-way leaves neither a change
- *     nor an audit line claiming one.
+ *     nor an audit line claiming one;
+ *  5. every audit entry it causes names the door it came through (`via`) and, when it
+ *     waited for one, the approval it spent — said once here, through {@see ActionTrail},
+ *     rather than by each action and each framework service it calls.
  *
  * Doors translate the outcome: an {@see ActionResult}, an {@see ActionRefused}, an
  * {@see AuthorizationException} or a {@see ValidationException}. Nothing here knows about
@@ -46,28 +49,38 @@ final readonly class ActionRunner
      * @throws AuthorizationException
      * @throws ValidationException
      */
-    public function run(string|ActionDefinition $action, Principal $principal, array $input, ?string $idempotencyKey = null, ?string $approvalId = null): ActionResult
+    public function run(string|ActionDefinition $action, Principal $principal, array $input, ?string $idempotencyKey = null, ?string $approvalId = null, ?ActionVia $via = null): ActionResult
     {
         $definition = $action instanceof ActionDefinition ? $action : $this->registry->forClass($action);
+        $via ??= ActionVia::inferredFrom($principal);
 
         $principal->authorize($definition);
 
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($input, $definition->input()->rules())->validate();
 
-        $execute = function () use ($definition, $principal, $validated, $approvalId): ActionResult {
+        // Asked of the container per run, never held: the trail is SCOPED, and a runner held
+        // by a controller the router keeps would push onto a trail the audit log no longer
+        // reads once a queued job has reset the scoped instances.
+        $trail = $this->container->make(ActionTrail::class);
+
+        $execute = fn (): ActionResult => $trail->within($via, function () use ($definition, $principal, $validated, $approvalId, $via, $trail): ActionResult {
             // Inside the idempotent section: a retry of a request that already ran replays its
             // answer without asking the person again, and a held request stores nothing.
-            $this->approvals->enforce($principal, $definition, $validated, $approvalId);
+            $spent = $this->approvals->enforce($principal, $definition, $validated, $approvalId);
+
+            if ($spent !== null) {
+                $trail->approved($spent, $principal->approverSubjectId());
+            }
 
             /** @var Action $handler */
             $handler = $this->container->make($definition->class);
-            $context = new ActionContext($principal, $validated);
+            $context = new ActionContext($principal, $validated, $via);
 
             return $definition->danger->writes()
                 ? DB::transaction(static fn (): ActionResult => $handler->handle($context))
                 : $handler->handle($context);
-        };
+        });
 
         if ($idempotencyKey !== null && $idempotencyKey !== '' && $definition->danger->writes() && $principal->supportsIdempotency()) {
             return $this->idempotency->once($principal, $idempotencyKey, $definition, $validated, $execute);

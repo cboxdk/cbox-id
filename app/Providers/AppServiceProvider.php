@@ -10,6 +10,8 @@ use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
 use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ActionTrail;
+use App\Platform\Connect\ActionSnippets;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Principal\DelegatedTokens;
 use App\Platform\Actions\Principal\NoDelegatedTokens;
@@ -63,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
         // the framework's SystemDnsResolver binding (app providers load last).
         // Discovered once per process: every door reads the same list.
         $this->app->singleton(ActionRegistry::class);
+        // Which console page hosts which action, worked out once per route table.
+        $this->app->singleton(ActionSnippets::class);
 
         // The tables this app adds that name a person, so erasing one reaches them too —
         // in the framework's transaction, after the framework's own steps.
@@ -95,6 +99,9 @@ class AppServiceProvider extends ServiceProvider
         // Who is calling the MCP server on this request — set by AuthenticateMcp, read by
         // every tool. Scoped and cleared after the request, like the key context above.
         $this->app->scoped(McpCaller::class);
+
+        // The door and approval of the action running now, for the audit decorator below.
+        $this->app->scoped(ActionTrail::class);
 
         // …and what it does is recorded as ITS act: the framework services behind the
         // management API write their own audit entries, mostly with no actor at all.
