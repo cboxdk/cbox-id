@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Environment\RoleController;
 use App\Http\Controllers\Api\Environment\SupportSessionController;
 use App\Http\Controllers\Api\Environment\UserController;
 use App\Http\Controllers\Api\VaultController;
+use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
@@ -141,7 +142,8 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
         ActionRoutes::environment();
 
         // Where an action approval this key asked for stands (see ActionApprovalGate).
-        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'show'])->middleware('env.api');
+        // A person's token polls the approvals IT raised, too: no scope, its own only.
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'show'])->middleware('env.api:,'.AuthenticateEnvironmentApi::DELEGATED);
 
         Route::post('support-sessions', [SupportSessionController::class, 'store'])->middleware('env.api:support:write');
     });

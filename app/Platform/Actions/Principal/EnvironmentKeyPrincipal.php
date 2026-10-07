@@ -102,6 +102,18 @@ final readonly class EnvironmentKeyPrincipal implements Principal
         return null;
     }
 
+    /** The minting chain ends in a person of the platform root, where keys are minted from. */
+    public function approverEnvironmentId(): ?string
+    {
+        return null;
+    }
+
+    /** A management key holds the environment's authority, above every organization in it. */
+    public function confinedToOrganization(): ?string
+    {
+        return null;
+    }
+
     public function key(): EnvironmentApiKey
     {
         return $this->key;

@@ -28,9 +28,7 @@ use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
-use Illuminate\Testing\TestResponse;
 use Laravel\Mcp\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,58 +49,6 @@ function mcpIssue(array $scopes = [EnvironmentApiScope::ApisRead, EnvironmentApi
         'Agent',
         array_map(fn (EnvironmentApiScope|string $scope): string => $scope instanceof EnvironmentApiScope ? $scope->value : $scope, $scopes),
     );
-}
-
-/**
- * @param  array<string, mixed>  $params
- */
-function mcpRpc(?string $token, string $method, array $params = []): TestResponse
-{
-    $request = test()->withHeaders(['Accept' => 'application/json, text/event-stream']);
-
-    if ($token !== null) {
-        $request = $request->withToken($token);
-    }
-
-    return $request->postJson('/mcp', [
-        'jsonrpc' => '2.0',
-        'id' => 1,
-        'method' => $method,
-        ...$params === [] ? [] : ['params' => $params],
-    ]);
-}
-
-/**
- * @param  array<string, mixed>  $arguments
- * @return array<string, mixed> The tool result: content, isError, structuredContent.
- */
-function mcpCall(string $token, string $tool, array $arguments = []): array
-{
-    $response = mcpRpc($token, 'tools/call', ['name' => $tool, 'arguments' => (object) $arguments])->assertOk();
-
-    // A tool that answers with several messages (execute_tools) is streamed as SSE; the
-    // result is the last `data:` line. Everything else is one JSON body.
-    if ($response->baseResponse instanceof StreamedResponse) {
-        preg_match_all('/^data: (.+)$/m', $response->streamedContent(), $lines);
-        $message = json_decode((string) end($lines[1]), true);
-        $result = is_array($message) ? ($message['result'] ?? null) : null;
-    } else {
-        $result = $response->json('result');
-    }
-
-    expect($result)->toBeArray();
-
-    return $result;
-}
-
-/**
- * @return array<string, array<string, mixed>> Listed tools, keyed by name.
- */
-function mcpTools(string $token): array
-{
-    $tools = mcpRpc($token, 'tools/list')->assertOk()->json('result.tools');
-
-    return collect($tools)->keyBy('name')->all();
 }
 
 // ── Authentication ──────────────────────────────────────────────────────────────

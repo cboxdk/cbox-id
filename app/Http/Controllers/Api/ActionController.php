@@ -13,7 +13,6 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRoutes;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Approvals\ApprovalRequired;
-use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
@@ -26,9 +25,9 @@ use Illuminate\Http\Response;
  * The REST door to every action: one controller, routed per action from the registry
  * ({@see ActionRoutes}).
  *
- * It does three things and no more: names the principal (the key the plane's middleware
- * authenticated — an environment key on an environment's host, a workspace key on the
- * workspace plane), gathers the input (URL parameters, query and body as one argument
+ * It does three things and no more: names the principal (the credential the plane's
+ * middleware authenticated — an environment key or a person's access token on an
+ * environment's host, a workspace key on the workspace plane), gathers the input (URL parameters, query and body as one argument
  * list — the same list an MCP tool call carries), and renders the outcome in the
  * management API's envelope. Validation and authorization failures are thrown on to
  * {@see ApiErrorRenderer}, which renders them the same as before actions existed.
@@ -94,7 +93,8 @@ final readonly class ActionController
     private function principal(ActionDefinition $action): Principal
     {
         return match ($action->plane) {
-            ActionPlane::Environment => new EnvironmentKeyPrincipal(app(EnvironmentApiContext::class)->key() ?? abort(401)),
+            // A key, or the person whose access token `env.api` admitted on this route.
+            ActionPlane::Environment => app(EnvironmentApiContext::class)->principal() ?? abort(401),
             ActionPlane::Workspace => new WorkspaceKeyPrincipal(app(WorkspaceApiContext::class)->key() ?? abort(401)),
         };
     }

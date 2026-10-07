@@ -8,16 +8,20 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\Principal;
 use Carbon\CarbonImmutable;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ActionApprovals;
 use Cbox\Id\OAuthServer\Enums\ActionApprovalStatus;
 use Cbox\Id\OAuthServer\ValueObjects\ActionApprovalRequest as ApprovalRequest;
+use Closure;
 
 /**
  * Holds an action until a person approves it, when the credential running it says so.
  *
  * The credential's {@see StepUpPolicy} decides whether this action needs approval. If it
  * does, the first attempt files an approval with the person behind the credential — on
- * their device, through the framework's CIBA store in the platform root — and is answered
+ * their device, through the framework's CIBA store where that person is a subject: the
+ * platform root for a key's owner, their own environment for a signed-in person — and is answered
  * {@see ApprovalRequired}. The caller polls, then repeats the request naming the approval;
  * this gate spends it only if it was approved, has not lapsed, has not been spent, and was
  * approved for exactly this request: the digest covers the action, every input and the
@@ -48,7 +52,6 @@ final readonly class ActionApprovalGate
         }
 
         $digest = $this->digest($principal, $action, $input);
-        $root = $this->client->platformRoot();
 
         if ($approvalId !== null && $approvalId !== '') {
             $this->spend($principal, $approvalId, $digest);
@@ -67,7 +70,7 @@ final readonly class ActionApprovalGate
         $code = strtoupper(bin2hex(random_bytes(2)));
         $message = mb_substr($principal->label().' wants to run '.$action->name, 0, 240).' · '.$code;
 
-        $request = $root->run(fn (): ApprovalRequest => $this->approvals->request(
+        $request = $this->inApproverRealm($principal, fn (): ApprovalRequest => $this->approvals->request(
             $this->client->ensure(),
             $approver,
             $message,
@@ -96,7 +99,7 @@ final readonly class ActionApprovalGate
             return null;
         }
 
-        return $this->client->platformRoot()->run(fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId));
+        return $this->inApproverRealm($principal, fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId));
     }
 
     /** @throws ActionRefused */
@@ -106,18 +109,41 @@ final readonly class ActionApprovalGate
             throw new ActionRefused('approval_invalid', 'No approval with that id belongs to this credential.', 403);
         }
 
-        $root = $this->client->platformRoot();
-
-        if ($root->run(fn (): bool => $this->approvals->consume($approvalId, $digest)) === true) {
+        if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $digest)) === true) {
             return;
         }
 
-        throw match ($root->run(fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId))) {
+        throw match ($this->inApproverRealm($principal, fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId))) {
             ActionApprovalStatus::Pending => new ActionRefused('approval_pending', 'The approval has not been given yet. Poll it, then repeat the request.', 409),
             ActionApprovalStatus::Denied => new ActionRefused('approval_denied', 'The person denied this action.', 403),
             ActionApprovalStatus::Expired => new ActionRefused('approval_expired', 'The approval lapsed before it was used. Repeat the request without it to ask again.', 403),
             default => new ActionRefused('approval_mismatch', 'That approval was already used, or was given for a different request. Repeat the request without it to ask again.', 409),
         };
+    }
+
+    /**
+     * Run $callback where this principal's approver is a subject — so where the approval is
+     * filed, answered on their devices and read back.
+     *
+     * The platform root for every key and console session: the people who mint keys live
+     * there. A person who signed an agent in with a token belongs to the ENVIRONMENT that
+     * issued it, and their devices are enrolled there; filing their approval in the root
+     * would ask nobody, and a subject id of one environment means nothing in another.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn|null null when there is no such place — a deployment with no platform root
+     */
+    private function inApproverRealm(Principal $principal, Closure $callback): mixed
+    {
+        $environmentId = $principal->approverEnvironmentId();
+
+        if ($environmentId === null) {
+            return $this->client->platformRoot()->run($callback);
+        }
+
+        return app(EnvironmentContext::class)->runAs(GenericEnvironment::of($environmentId), $callback);
     }
 
     private function owns(Principal $principal, string $approvalId): bool

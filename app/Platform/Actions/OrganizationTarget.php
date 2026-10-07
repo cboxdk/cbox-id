@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions;
 
-use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
-use App\Platform\Console\ConsolePlane;
+use App\Platform\Actions\Principal\Principal;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -17,7 +16,9 @@ use Illuminate\Auth\Access\AuthorizationException;
  * organization's override. A management key acts with the environment's authority, so it
  * may name either, as long as the organization is in THIS environment (the model is
  * environment-scoped, so an id from anywhere else resolves to nothing). A person on the
- * ORGANIZATION console may only ever reach their own organization: the console page passes
+ * ORGANIZATION console — or acting through a token they signed in for, which carries the
+ * same confinement ({@see Principal::confinedToOrganization()})
+ * — may only ever reach their own organization: the console page passes
  * the scope's organization, and an action reached with any other — or with none, meaning
  * the environment's default every tenant inherits — is a forged request, refused here
  * rather than trusted to the page that built it.
@@ -32,10 +33,9 @@ final class OrganizationTarget
      */
     public static function check(ActionContext $context, ?string $organizationId, bool $inPath = false): ?string
     {
-        $principal = $context->principal;
+        $confinedTo = $context->principal->confinedToOrganization();
 
-        if ($principal instanceof ConsoleSessionPrincipal && $principal->scope()->plane() === ConsolePlane::Organization
-            && $organizationId !== $principal->scope()->requireOrganizationId()) {
+        if ($confinedTo !== null && $organizationId !== $confinedTo) {
             throw new AuthorizationException('An organization administrator may only change their own organization.');
         }
 

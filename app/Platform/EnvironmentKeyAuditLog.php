@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditCheckpoint;
@@ -35,6 +36,9 @@ use Cbox\Id\Kernel\Audit\ValueObjects\ChainVerification;
  * Either way `context.environment_api_key` names the key, so an auditor can list
  * everything one credential did without knowing which actions it can reach.
  *
+ * A PERSON'S TOKEN is attributed the same way, to the person: an unclaimed entry becomes
+ * theirs, and `context.oauth_client_id` names the agent or CLI they acted through.
+ *
  * The context is read LAZILY, per entry, for the same reason Impersonation is: it is a
  * `scoped` binding, and this decorator is built once with the audit log.
  */
@@ -42,6 +46,9 @@ final class EnvironmentKeyAuditLog implements AuditLog
 {
     /** Where the key's id is recorded on every entry it causes. */
     public const string CONTEXT_KEY = 'environment_api_key';
+
+    /** Where the OAuth client is recorded on every entry a person's token causes. */
+    public const string CLIENT_CONTEXT_KEY = 'oauth_client_id';
 
     public function __construct(private readonly AuditLog $inner) {}
 
@@ -67,10 +74,13 @@ final class EnvironmentKeyAuditLog implements AuditLog
 
     private function attribute(AuditEvent $event): AuditEvent
     {
-        $key = app(EnvironmentApiContext::class)->key();
+        $context = app(EnvironmentApiContext::class);
+        $key = $context->key();
 
         if ($key === null) {
-            return $event;
+            $delegated = $context->delegated();
+
+            return $delegated === null ? $event : $this->attributeToPerson($event, $delegated);
         }
 
         $theKey = $event->actorId === null || $event->actorId === $key->id;
@@ -83,6 +93,28 @@ final class EnvironmentKeyAuditLog implements AuditLog
             targetType: $event->targetType,
             targetId: $event->targetId,
             context: array_merge($event->context, [self::CONTEXT_KEY => $key->id]),
+            ip: $event->ip,
+        );
+    }
+
+    /**
+     * The same rule for a person acting through a token they signed in: an entry nobody
+     * claimed is theirs — a user of this environment, as their console's acts are — and
+     * every entry records the client they used, because "the person did it" and "the
+     * person's agent did it" are different answers to an auditor.
+     */
+    private function attributeToPerson(AuditEvent $event, DelegatedTokenPrincipal $person): AuditEvent
+    {
+        $unclaimed = $event->actorId === null;
+
+        return new AuditEvent(
+            action: $event->action,
+            actorType: $unclaimed ? ActorType::User : $event->actorType,
+            actorId: $unclaimed ? $person->subjectId() : $event->actorId,
+            organizationId: $event->organizationId,
+            targetType: $event->targetType,
+            targetId: $event->targetId,
+            context: array_merge($event->context, [self::CLIENT_CONTEXT_KEY => $person->clientId()]),
             ip: $event->ip,
         );
     }

@@ -8,6 +8,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\WorkspaceScopes;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -64,6 +65,22 @@ final readonly class ConsoleSessionPrincipal implements Principal
     public function approverSubjectId(): ?string
     {
         return null;
+    }
+
+    public function approverEnvironmentId(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * The organization console's own organization — read from the session, never from input
+     * — and nothing on the environment console, whose administrator holds the environment.
+     */
+    public function confinedToOrganization(): ?string
+    {
+        return $this->scope->plane() === ConsolePlane::Organization
+            ? $this->scope->requireOrganizationId()
+            : null;
     }
 
     public function scope(): ConsoleScope

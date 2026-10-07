@@ -66,7 +66,9 @@ final class EnvironmentKeyScopes
         foreach (Router::getRoutes()->getRoutes() as $route) {
             foreach ($route->middleware() as $middleware) {
                 if (str_starts_with($middleware, self::MIDDLEWARE)) {
-                    $required[substr($middleware, strlen(self::MIDDLEWARE))] = true;
+                    // The scope is the FIRST parameter; an action route names the doors it
+                    // admits after it (`env.api:apis:write,delegated`).
+                    $required[explode(',', substr($middleware, strlen(self::MIDDLEWARE)))[0]] = true;
                 }
             }
         }

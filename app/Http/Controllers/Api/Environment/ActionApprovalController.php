@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api\Environment;
 
 use App\Http\Controllers\Controller;
 use App\Platform\Actions\Approvals\ActionApprovalGate;
-use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
@@ -17,14 +16,15 @@ use Illuminate\Http\JsonResponse;
  * `GET /v1/action-approvals/{id}` — where an approval this key asked for stands, so the
  * caller knows when to repeat its request with `Cbox-Approval: {id}`.
  *
- * No scope: any key may poll the approvals IT raised, and only those — another key's id is
- * a 404, the same answer as an id that never existed.
+ * No scope: any key — or a person, through the token they signed an agent in with — may
+ * poll the approvals IT raised, and only those; another credential's id is a 404, the same
+ * answer as an id that never existed.
  */
 final class ActionApprovalController extends Controller
 {
     public function show(string $id, EnvironmentApiContext $context, ActionApprovalGate $gate): JsonResponse
     {
-        return $this->answer($id, new EnvironmentKeyPrincipal($context->key() ?? abort(401)), $gate);
+        return $this->answer($id, $context->principal() ?? abort(401), $gate);
     }
 
     /** The same question from a workspace key, at `/api/v1/workspace/action-approvals/{id}`. */

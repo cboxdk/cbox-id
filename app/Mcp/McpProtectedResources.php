@@ -6,6 +6,7 @@ namespace App\Mcp;
 
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\OAuth\DelegatedAccess;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
@@ -19,6 +20,10 @@ use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
  * an action added to `app/Actions` is a scope `/mcp` advertises with no second edit. The
  * framework serves the RFC 9728 document for it (`/.well-known/oauth-protected-resource/mcp`)
  * and audiences an RFC 8707 `resource=…/mcp` token to it.
+ *
+ * It is the audience of the whole environment management plane, not only of the MCP
+ * transport: the REST environment API accepts the same token (see
+ * {@see DelegatedAccess} for why one audience rather than two).
  */
 final readonly class McpProtectedResources implements ProtectedResources
 {
@@ -76,6 +81,12 @@ final readonly class McpProtectedResources implements ProtectedResources
         return new ProtectedResource(
             identifier: rtrim($this->issuers->issuer(), '/').self::PATH,
             scopes: $scopes,
+            // An MCP client registers itself — that is the whole MCP authorization model —
+            // so self-registered clients may be audienced here (`api.mcp.dynamic_clients`).
+            // What such a token may DO is still the person's to decide twice: on the
+            // consent screen, which can never be skipped for a client like this, and by
+            // their own rights, which the action layer asks on every call.
+            dynamicClients: config('api.mcp.dynamic_clients', true) === true,
             name: 'Cbox ID MCP server',
         );
     }

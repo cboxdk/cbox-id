@@ -26,7 +26,10 @@ it('still resolves package oauth defaults this app does not restate', function (
         ->and(config('cbox-id.oauth.decisions.max_batch'))->toBe(50)
         ->and(config('cbox-id.oauth.ciba.ttl_seconds'))->toBe(300)
         ->and(config('cbox-id.oauth.ciba.poll_interval'))->toBe(5)
-        ->and(config('cbox-id.oauth.dynamic_registration.mode'))->toBe('disabled')
+        // This app restates `mode` (`mcp`, so MCP clients can register themselves) and
+        // nothing else under dynamic_registration: the allow-lists below still arrive.
+        ->and(config('cbox-id.oauth.dynamic_registration.mode'))->toBe('mcp')
+        ->and(config('cbox-id.oauth.dynamic_registration.max_per_ip_per_hour'))->toBe(20)
         ->and(config('cbox-id.oauth.dynamic_registration.allowed_scopes'))->toContain('openid')
         ->and(config()->has('cbox-id.oauth.authorization_endpoint'))->toBeTrue()
         ->and(config()->has('cbox-id.oauth.dynamic_registration.initial_access_token'))->toBeTrue();

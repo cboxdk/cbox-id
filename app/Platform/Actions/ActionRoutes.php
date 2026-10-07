@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Http\Controllers\Api\ActionController;
+use App\Http\Middleware\AuthenticateEnvironmentApi;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -29,13 +30,17 @@ final class ActionRoutes
         self::register(ActionPlane::Workspace);
     }
 
-    /** The route middleware an action is guarded by on its plane. */
+    /**
+     * The route middleware an action is guarded by on its plane. An environment's actions
+     * take a person's access token as well as a key ({@see AuthenticateEnvironmentApi::DELEGATED}):
+     * the principal it becomes asks what the person may do, the same as on `/mcp`.
+     */
     public static function middleware(ActionDefinition $action): string
     {
         return match ($action->plane) {
-            ActionPlane::Environment => 'env.api',
-            ActionPlane::Workspace => 'workspace.api',
-        }.':'.$action->scope;
+            ActionPlane::Environment => 'env.api:'.$action->scope.','.AuthenticateEnvironmentApi::DELEGATED,
+            ActionPlane::Workspace => 'workspace.api:'.$action->scope,
+        };
     }
 
     private static function register(ActionPlane $plane): void

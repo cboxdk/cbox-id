@@ -10,7 +10,6 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Apps\AppScopes;
 use App\Platform\Console\ConsoleClients;
-use App\Platform\Console\ConsolePlane;
 use App\Platform\ScopeCatalog;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
 use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
@@ -59,8 +58,17 @@ final class AppFields
             return (new ConsoleClients($principal->scope()))->manageable($id);
         }
 
+        // Any other principal confined to an organization — a person acting through a token
+        // they signed in for — reaches that organization's own apps and nothing else: the
+        // rule {@see ConsoleClients::mayManage()} gives the same person on their console,
+        // asked inside the query so another organization's app is never loaded. A 404, not a
+        // 403, for the platform's first-party apps as well: there is no page here to have
+        // shown them on.
+        $confinedTo = $principal->confinedToOrganization();
+
         return Client::query()
             ->where(static fn ($query) => $query->whereKey($id)->orWhere('client_id', $id))
+            ->when($confinedTo !== null, static fn ($query) => $query->where('organization_id', $confinedTo))
             ->first() ?? throw ActionRefused::notFound('app');
     }
 
@@ -77,10 +85,10 @@ final class AppFields
      */
     public static function assertMayOwn(ActionContext $context, ?string $organizationId): void
     {
-        $principal = $context->principal;
+        $confinedTo = $context->principal->confinedToOrganization();
 
-        if ($principal instanceof ConsoleSessionPrincipal && $principal->scope()->plane() === ConsolePlane::Organization) {
-            abort_unless($organizationId !== null && $organizationId === $principal->scope()->organizationId(), 403);
+        if ($confinedTo !== null) {
+            abort_unless($organizationId === $confinedTo, 403);
         }
 
         if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {
