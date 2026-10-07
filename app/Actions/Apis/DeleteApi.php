@@ -24,6 +24,7 @@ use Cbox\Id\OAuthServer\Contracts\Apis;
     summary: 'Delete an API and its scopes. Existing tokens keep their audience until they expire.',
     scope: 'apis:write',
     danger: Danger::Destructive,
+    tag: 'APIs',
     rest: ['DELETE', '/apis/{id}'],
     status: 204,
     consoleRoutes: ['environment.apis.destroy'],

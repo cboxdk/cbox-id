@@ -24,6 +24,8 @@ final readonly class AsAction
      * @param  array{0: string, 1: string}  $rest  Method and path below the plane's base: `['POST', '/apis']`.
      * @param  list<string>  $consoleRoutes  The console route names this action is the API twin of.
      * @param  ConsoleGate  $consoleGate  The console gate a person passes to run it there.
+     * @param  string|null  $schema  The OpenAPI component (`#/components/schemas/…`) its `data` is.
+     * @param  string|null  $tag  The OpenAPI tag it is listed under; derived from its name when null.
      */
     public function __construct(
         public string $name,
@@ -35,5 +37,7 @@ final readonly class AsAction
         public int $status = 200,
         public array $consoleRoutes = [],
         public ConsoleGate $consoleGate = ConsoleGate::EnvironmentAdmin,
+        public ?string $schema = null,
+        public ?string $tag = null,
     ) {}
 }

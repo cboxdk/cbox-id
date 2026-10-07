@@ -31,6 +31,8 @@ use Cbox\Id\OAuthServer\Models\ApiScope;
     summary: 'Rename an API, link or unlink its app, and optionally replace its complete scope set.',
     scope: 'apis:write',
     danger: Danger::Write,
+    schema: 'Api',
+    tag: 'APIs',
     rest: ['PATCH', '/apis/{id}'],
     consoleRoutes: ['environment.apis.update'],
 )]

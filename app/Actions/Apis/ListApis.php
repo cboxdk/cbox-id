@@ -19,6 +19,8 @@ use Cbox\Id\OAuthServer\Models\Api;
     summary: 'List the APIs (resource servers) registered in this environment, with their scopes.',
     scope: 'apis:read',
     danger: Danger::Read,
+    schema: 'Api',
+    tag: 'APIs',
     rest: ['GET', '/apis'],
 )]
 final class ListApis implements Action

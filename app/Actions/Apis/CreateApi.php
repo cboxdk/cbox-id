@@ -31,6 +31,8 @@ use Cbox\Id\Organization\Models\Organization;
     summary: 'Register an API (resource server): its identifier becomes the access token audience, and it owns its scopes.',
     scope: 'apis:write',
     danger: Danger::Write,
+    schema: 'Api',
+    tag: 'APIs',
     rest: ['POST', '/apis'],
     status: 201,
     consoleRoutes: ['environment.apis.store'],

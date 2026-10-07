@@ -20,6 +20,8 @@ use Cbox\Id\OAuthServer\Contracts\Apis;
     summary: 'Get one registered API and its scopes.',
     scope: 'apis:read',
     danger: Danger::Read,
+    schema: 'Api',
+    tag: 'APIs',
     rest: ['GET', '/apis/{id}'],
 )]
 final readonly class ShowApi implements Action

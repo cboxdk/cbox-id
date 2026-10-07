@@ -25,6 +25,7 @@ use Cbox\Id\OAuthServer\Models\ApiScope;
     summary: 'Remove a scope from an API. Apps holding it keep it as a plain scope that no longer reaches the API.',
     scope: 'apis:write',
     danger: Danger::Destructive,
+    tag: 'APIs',
     rest: ['DELETE', '/apis/{id}/scopes/{key}'],
     status: 204,
     consoleRoutes: ['environment.apis.scopes.destroy'],
