@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\RiskDecision;
+use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\FrontendApi\LoginTicket;
 use Cbox\Id\Analytics\Models\AnalyticsEvent;
 use Cbox\Id\Devices\Models\EnrolmentCode;
@@ -34,7 +35,10 @@ Artisan::command('inspire', function () {
 // and a scheduled sweep has no environment in context, so left alone it would delete
 // nothing while appearing to work.
 // ({@see \Cbox\Id\Devices\Models\EnrolmentCode::prunable()})
-Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class, EnrolmentCode::class]])
+// IdempotencyRecord is the fifth: the first answer to an `Idempotency-Key` request, kept a
+// day so a retry gets it back, and useless after that.
+// ({@see \App\Platform\Actions\Idempotency\IdempotencyRecord::prunable()})
+Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class, EnrolmentCode::class, IdempotencyRecord::class]])
     ->daily()
     ->onOneServer();
 

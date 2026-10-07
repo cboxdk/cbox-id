@@ -6,6 +6,7 @@ use App\Http\ApiRateLimiters;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Listeners\SuppressSandboxMail;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -39,6 +40,9 @@ class AppServiceProvider extends ServiceProvider
         // resolver comes from cboxdk/laravel-dns's config-driven Dns front door
         // (transport, timeout, and SSRF posture live in config/dns.php). Overrides
         // the framework's SystemDnsResolver binding (app providers load last).
+        // Discovered once per process: every door reads the same list.
+        $this->app->singleton(ActionRegistry::class);
+
         $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
             return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());
         });

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Apis\CreateApi;
+use App\Actions\Apis\DefineApiScope;
+use App\Actions\Apis\DeleteApi;
+use App\Actions\Apis\RemoveApiScope;
+use App\Actions\Apis\UpdateApi;
 use App\Http\Props\Console\ApiRowProps;
 use App\Http\Props\Console\ApiScopeProps;
 use App\Http\Props\Console\OptionProps;
@@ -11,17 +16,12 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SaveApiScopeRequest;
 use App\Http\Requests\Console\StoreApiRequest;
 use App\Http\Requests\Console\UpdateApiRequest;
-use App\Platform\Apis\ApiAdministration;
 use App\Platform\Apis\ApiAudit;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\OAuthServer\Contracts\Apis;
-use Cbox\Id\OAuthServer\Enums\ProtocolScope;
-use Cbox\Id\OAuthServer\Exceptions\InvalidApiDefinition;
 use Cbox\Id\OAuthServer\Models\Api;
 use Cbox\Id\OAuthServer\Models\ApiScope;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
-use Cbox\Id\OAuthServer\ValueObjects\NewApi;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
@@ -45,9 +45,10 @@ use Inertia\Response;
  * environment itself, meant to use. So the environment's administrators register APIs, and
  * assign one to an organization when it is that organization's.
  *
- * {@see Apis} records nothing on the audit trail, so every write goes through
- * {@see ApiAdministration}, the same service the management API's `/v1/apis` uses: one
- * change, one {@see ApiAudit} entry, the same shape whichever door made it.
+ * Every write is an ACTION (`App\Actions\Apis\*`): the same class the management API's
+ * `/v1/apis` and MCP run, so a change is checked, refused and recorded the same way
+ * whichever door made it — one {@see ApiAudit} entry, the same shape. This controller only
+ * maps a form to the action's input and its refusal back onto the form.
  */
 final readonly class ApiController extends ConsoleController
 {
@@ -110,7 +111,7 @@ final readonly class ApiController extends ConsoleController
         ]);
     }
 
-    public function store(StoreApiRequest $request, Apis $apis, ApiAdministration $admin): RedirectResponse
+    public function store(StoreApiRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdministerEnvironment();
 
@@ -121,35 +122,25 @@ final readonly class ApiController extends ConsoleController
         } elseif ($owner === $this->scope->organizationId()) {
             $organizationId = $owner;
         } else {
-            // Only the environment, or the organization this console is acting on. A crafted
-            // id — another organization's, or one from another environment — is refused
-            // here rather than handed to the registry to find out.
             return back()->withInput()->withErrors(['owner' => 'Choose the environment, or the organization you are acting on.']);
         }
 
-        if ($apis->identifiedBy($request->identifier()) !== null) {
-            return back()->withInput()->withErrors(['identifier' => 'An API with this identifier is already registered in this environment.']);
+        $result = $this->act(CreateApi::class, [
+            'identifier' => $request->identifier(),
+            'name' => $request->name(),
+            'organization_id' => $organizationId,
+            'client_id' => $request->clientId(),
+        ], ['identifier' => 'identifier', 'name' => 'name', 'client_id' => 'clientId', 'organization_id' => 'owner'], 'identifier');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $refusal = $this->linkRefusal($request->clientId(), $organizationId);
+        /** @var Api $created */
+        $created = $result->value;
 
-        if ($refusal !== null) {
-            return back()->withInput()->withErrors(['clientId' => $refusal]);
-        }
-
-        try {
-            $api = $admin->register(new NewApi(
-                identifier: $request->identifier(),
-                name: $request->name(),
-                organizationId: $organizationId,
-                clientId: $request->clientId(),
-            ), $this->scope->auditActor());
-        } catch (InvalidApiDefinition $refused) {
-            return back()->withInput()->withErrors(['identifier' => $refused->getMessage()]);
-        }
-
-        return to_route('environment.apis.show', $api->id)
-            ->with('status', 'API "'.$api->name.'" registered. Add the scopes it owns below.');
+        return to_route('environment.apis.show', $created->id)
+            ->with('status', 'API "'.$created->name.'" registered. Add the scopes it owns below.');
     }
 
     public function show(string $api): Response
@@ -181,95 +172,77 @@ final readonly class ApiController extends ConsoleController
         ]);
     }
 
-    public function update(UpdateApiRequest $request, string $api, ApiAdministration $admin): RedirectResponse
+    public function update(UpdateApiRequest $request, string $api): RedirectResponse
     {
         $model = $this->api($api);
 
-        $refusal = $this->linkRefusal($request->clientId(), $model->organization_id);
+        $result = $this->act(UpdateApi::class, [
+            'id' => $model->id,
+            'name' => $request->name(),
+            'client_id' => $request->clientId(),
+        ], ['name' => 'name', 'client_id' => 'clientId'], 'name');
 
-        if ($refusal !== null) {
-            return back()->withInput()->withErrors(['clientId' => $refusal]);
-        }
-
-        try {
-            $admin->update($model, $request->name(), $request->clientId(), $this->scope->auditActor());
-        } catch (InvalidApiDefinition $refused) {
-            return back()->withInput()->withErrors(['name' => $refused->getMessage()]);
-        }
-
-        return back()->with('status', 'API saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'API saved.');
     }
 
-    public function storeScope(SaveApiScopeRequest $request, string $api, ApiAdministration $admin): RedirectResponse
+    public function storeScope(SaveApiScopeRequest $request, string $api): RedirectResponse
     {
         $model = $this->api($api);
         $key = $request->key();
 
-        if (ProtocolScope::isProtocol($key)) {
-            return back()->withInput()->withErrors(['key' => "\"{$key}\" is a sign-in scope Cbox ID defines itself, so no API can own it."]);
+        // The console ADDS here and edits in the list below, so a key this API already owns
+        // is pointed there rather than silently changed; the action itself would upsert.
+        if (ApiScope::query()->where('api_id', $model->id)->where('key', $key)->exists()) {
+            return back()->withInput()->withErrors(['key' => "This API already owns \"{$key}\". Change it in the list below."]);
         }
 
-        $existing = ApiScope::query()->where('key', $key)->first();
-
-        if ($existing !== null) {
-            return back()->withInput()->withErrors(['key' => $existing->api_id === $model->id
-                ? "This API already owns \"{$key}\". Change it in the list below."
-                : "\"{$key}\" already belongs to another API in this environment. A token request names a scope by its key alone, so each key can belong to one API."]);
-        }
-
-        return $this->define($model, new ApiScopeDefinition($key, $request->description(), $this->requestable($model, $request)), $admin, 'Scope "'.$key.'" added.');
+        return $this->define($model, $key, $request, 'Scope "'.$key.'" added.');
     }
 
-    public function updateScope(SaveApiScopeRequest $request, string $api, string $scope, ApiAdministration $admin): RedirectResponse
+    public function updateScope(SaveApiScopeRequest $request, string $api, string $scope): RedirectResponse
     {
         $model = $this->api($api);
         $row = $this->scopeOf($model, $scope);
 
-        return $this->define($model, new ApiScopeDefinition($row->key, $request->description(), $this->requestable($model, $request)), $admin, 'Scope "'.$row->key.'" saved.');
+        return $this->define($model, $row->key, $request, 'Scope "'.$row->key.'" saved.');
     }
 
-    public function destroyScope(string $api, string $scope, ApiAdministration $admin): RedirectResponse
+    public function destroyScope(string $api, string $scope): RedirectResponse
     {
         $model = $this->api($api);
         $row = $this->scopeOf($model, $scope);
 
-        $admin->removeScope($model, $row->key, $this->scope->auditActor());
+        $result = $this->act(RemoveApiScope::class, ['id' => $model->id, 'key' => $row->key]);
 
-        return back()->with('status', 'Scope "'.$row->key.'" removed. Apps that held it keep it as a typed scope, which no longer reaches this API.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Scope "'.$row->key.'" removed. Apps that held it keep it as a typed scope, which no longer reaches this API.');
     }
 
-    public function destroy(string $api, ApiAdministration $admin): RedirectResponse
+    public function destroy(string $api): RedirectResponse
     {
         $model = $this->api($api);
 
-        $admin->delete($model, $this->scope->auditActor());
+        $result = $this->act(DeleteApi::class, ['id' => $model->id]);
 
-        return to_route('environment.apis')->with('status', 'API "'.$model->name.'" deleted.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route('environment.apis')->with('status', 'API "'.$model->name.'" deleted.');
     }
 
     /**
-     * Define (add or change) one scope; the service records what changed.
+     * Define (add or change) one scope through the action, which records what changed.
      */
-    private function define(Api $model, ApiScopeDefinition $definition, ApiAdministration $admin, string $status): RedirectResponse
+    private function define(Api $model, string $key, SaveApiScopeRequest $request, string $status): RedirectResponse
     {
-        try {
-            $admin->defineScope($model, $definition, $this->scope->auditActor());
-        } catch (InvalidApiDefinition $refused) {
-            return back()->withInput()->withErrors(['key' => $refused->getMessage()]);
-        }
+        $result = $this->act(DefineApiScope::class, [
+            'id' => $model->id,
+            'key' => $key,
+            'description' => $request->description(),
+            'tenant_requestable' => $request->tenantRequestable(),
+        ], ['key' => 'key', 'description' => 'description', 'tenant_requestable' => 'tenantRequestable'], 'key');
 
-        return back()->with('status', $status);
-    }
-
-    /**
-     * "Organizations' apps may request this" means something only on an API the
-     * environment owns. On an organization's own API only that organization's apps may hold
-     * its scopes whatever the flag says, so it is stored as the default rather than as a
-     * choice the page never offered.
-     */
-    private function requestable(Api $api, SaveApiScopeRequest $request): bool
-    {
-        return $api->organization_id !== null || $request->tenantRequestable();
+        return $result instanceof RedirectResponse ? $result : back()->with('status', $status);
     }
 
     /**
@@ -301,32 +274,6 @@ final readonly class ApiController extends ConsoleController
         abort_if($scope === null, 404);
 
         return $scope;
-    }
-
-    /**
-     * Why an app cannot be linked to an API with this owner, or null when it can.
-     *
-     * The registry refuses the same thing; asked here so the refusal lands on the picker
-     * with a sentence. The rule is the framework's: the app must have the API's owner, or
-     * one owner's roles and permissions would be stamped into tokens for another's API.
-     */
-    private function linkRefusal(?string $clientId, ?string $organizationId): ?string
-    {
-        if ($clientId === null) {
-            return null;
-        }
-
-        $client = Client::query()->where('client_id', $clientId)->first();
-
-        if ($client === null) {
-            return 'Choose one of the apps offered.';
-        }
-
-        if ($client->organization_id !== $organizationId || ($organizationId === null && $client->isDynamicallyRegistered())) {
-            return 'Link an app with the same owner as the API. Tokens for this API carry the linked app\'s roles and permissions, so it has to be the owner\'s own app.';
-        }
-
-        return null;
     }
 
     /**

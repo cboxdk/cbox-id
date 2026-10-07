@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
-use App\Http\Controllers\Api\Environment\ApiController;
 use App\Http\Controllers\Api\Environment\ApiKeyController;
 use App\Http\Controllers\Api\Environment\AppController;
 use App\Http\Controllers\Api\Environment\EnvironmentRoleController;
@@ -19,6 +18,7 @@ use App\Http\Controllers\Api\Organization\EnvironmentController;
 use App\Http\Controllers\Api\Organization\MemberController;
 use App\Http\Controllers\Api\Organization\ProjectController;
 use App\Http\Controllers\Api\VaultController;
+use App\Platform\Actions\ActionRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
 
@@ -145,11 +145,11 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
         Route::post('apps', [AppController::class, 'store'])->middleware('env.api:apps:write');
         Route::get('apps/{id}/blueprint', [AppController::class, 'blueprint'])->middleware('env.api:apps:read');
 
-        Route::get('apis', [ApiController::class, 'index'])->middleware('env.api:apis:read');
-        Route::post('apis', [ApiController::class, 'store'])->middleware('env.api:apis:write');
-        Route::get('apis/{id}', [ApiController::class, 'show'])->middleware('env.api:apis:read');
-        Route::patch('apis/{id}', [ApiController::class, 'update'])->middleware('env.api:apis:write');
-        Route::delete('apis/{id}', [ApiController::class, 'destroy'])->middleware('env.api:apis:write');
+        // Everything that is an ACTION is routed from the action registry — its method,
+        // path and scope are declared once, on the action — and run by the one
+        // ActionController, the same way the console and MCP run it. Areas move here as
+        // they become actions; the routes above are the ones still waiting.
+        ActionRoutes::environment();
 
         Route::post('support-sessions', [SupportSessionController::class, 'store'])->middleware('env.api:support:write');
     });
