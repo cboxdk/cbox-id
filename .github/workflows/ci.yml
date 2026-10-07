@@ -7,22 +7,11 @@ on:
 
 jobs:
   test:
-    # UNTRUSTED CODE NEVER REACHES THE SELF-HOSTED RUNNER.
-    #
-    # This job checks out the head of a pull request and then runs `composer install`,
-    # `npm ci` and the whole suite — every one of which executes code from the branch.
-    # On a self-hosted runner that is arbitrary code execution on an internal machine,
-    # from anyone who can open a PR.
-    #
-    # `build-image.yml` already refuses PRs outright for exactly this reason, and says so:
-    # "a self-hosted runner has host access, so untrusted PR code must not reach it." The
-    # risk was known and written down in one workflow and left open in the two that
-    # actually run the foreign code.
-    #
-    # A PR therefore runs on an ephemeral GitHub-hosted runner; a push to `main` — where
-    # the code is already trusted, because it is already deployed — keeps the self-hosted
-    # one and its warm caches.
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
+    # GITHUB-HOSTED, ALWAYS. The repository is public, so GitHub's runners cost nothing
+    # here, and an ephemeral runner is the only safe place for a pull request's code:
+    # `composer install`, `npm ci` and the suite all execute code from the branch. The
+    # org's own runners are for private repositories only.
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -72,8 +61,10 @@ jobs:
       - name: Static analysis (PHPStan/Larastan)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
 
-      # `visual` RUNS HERE NOW, and the baselines it compares against were drawn by this
-      # runner — see `.github/workflows/visual-baselines.yml`. That is the whole trick: a
+      # `visual` RUNS HERE, on the same `ubuntu-latest` image that draws the baselines —
+      # see `.github/workflows/visual-baselines.yml`. (It once ran on a self-hosted runner
+      # for pushes to main while the baselines were drawn on ubuntu-latest, and failed on
+      # every push for that reason alone.) That is the whole trick: a
       # screenshot baseline is a picture of ONE renderer, and pictures drawn on a
       # maintainer's macOS/arm64 laptop fail on Linux/x64 for reasons nobody can act on
       # (text rasterises differently, the pinned font is substituted). This job judges
@@ -85,6 +76,32 @@ jobs:
       # workflow and commit what it uploads.
       - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
         run: vendor/bin/pest
+
+  # ---------------------------------------------------------------------------
+  # SUPPLY CHAIN — its own job so it ALWAYS runs.
+  #
+  # These steps used to sit at the end of `test`, after the suite. When a screenshot
+  # baseline drifted, the suite failed first and the licence gate, the vulnerability
+  # audit and the SBOM drift check were simply skipped — on main, for every push, while
+  # the badge only said "tests failed". A known-vulnerable dependency then sat in the
+  # lock file unreported. Nothing here needs the suite, a browser or built assets, so
+  # nothing about the suite may stop it.
+  # ---------------------------------------------------------------------------
+  supply-chain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium, openssl
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
         run: composer license-check
@@ -120,13 +137,10 @@ jobs:
   # pointing it at a non-existent driver and watching the suite fail to resolve it
   # — worth re-checking if this job ever goes suspiciously green.
   #
-  # RUNS ON GITHUB-HOSTED RUNNERS, unlike every other job here. Service containers
-  # are unreachable on the self-hosted runner: they start and report healthy, but it
-  # mounts the host's Docker socket, so the published port lands on the host while
-  # the job runs in a container that is on neither that loopback nor the service
-  # network. This job failed on `Connection refused` every time it ran — as does the
-  # equivalent job in cboxdk/laravel-id — and a database matrix that has never
-  # connected is worse than none, because the badge says otherwise.
+  # GITHUB-HOSTED, like every job here. Service containers need a runner whose job
+  # shares the host's loopback; on a self-hosted runner that mounted the host's Docker
+  # socket the published port landed on the host while the job ran in a container on
+  # neither network, and this job failed on `Connection refused` every time.
   # ---------------------------------------------------------------------------
   engines:
     runs-on: ubuntu-latest
@@ -139,8 +153,8 @@ jobs:
           # which is the only spelling MySQL accepts for a json default.
           - driver: mysql
             image: mysql:8.4
-            # Host ports differ per engine so two cells can share one self-hosted
-            # runner without fighting over the default port.
+            # Host ports differ per engine so the two cells never fight over a
+            # default port.
             port: 33306
             service_port: 3306
             health: mysqladmin ping -h 127.0.0.1 -u root -proot

@@ -2,6 +2,7 @@
 
 use App\Models\RiskDecision;
 use App\Platform\FrontendApi\LoginTicket;
+use App\Platform\Health\SchedulerHeartbeat;
 use Cbox\Id\Analytics\Models\AnalyticsEvent;
 use Cbox\Id\Devices\Models\EnrolmentCode;
 use Illuminate\Foundation\Inspiring;
@@ -50,3 +51,12 @@ Schedule::command('queue-monitor:prune')
 Schedule::command('queue-monitor:resolve-stuck')
     ->everyFifteenMinutes()
     ->onOneServer();
+
+// The scheduler's own heartbeat, read by `scheduler` on /health/status and by the doctor.
+// Every background duty here is a scheduled command, so a deployment without
+// `schedule:work` does none of them and logs nothing; this beat is what makes that
+// visible. NOT onOneServer(): it proves THIS scheduler is alive, and a second one
+// beating the same key is harmless. ({@see \App\Platform\Health\SchedulerHeartbeat})
+Schedule::call(static fn () => SchedulerHeartbeat::beat())
+    ->name('health:scheduler-heartbeat')
+    ->everyMinute();

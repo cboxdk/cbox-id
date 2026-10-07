@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Platform\Health\EventRelayHealthCheck;
 use App\Platform\Health\QueueWorkersHealthCheck;
+use App\Platform\Health\SchedulerHealthCheck;
 use Cbox\LaravelHealth\Checks\CacheCheck;
 use Cbox\LaravelHealth\Checks\DatabaseCheck;
 use Cbox\LaravelHealth\Checks\QueueCheck;
@@ -101,6 +103,31 @@ return [
         'startup' => [],
         'status' => [
             QueueWorkersHealthCheck::class,
+            SchedulerHealthCheck::class,
+            EventRelayHealthCheck::class,
+        ],
+    ],
+
+    /*
+     * Limits for the `status` checks. The scheduler beats every minute, so five minutes
+     * without a beat is a stopped scheduler, not a slow one. The relay limit is the age of
+     * the oldest undelivered event — the delay a webhook subscriber actually experiences.
+     * The vendor's own entries are restated: a published key replaces the package's whole
+     * block.
+     */
+    'checks_config' => [
+        'database' => ['connection' => null],
+        'cache' => ['store' => null],
+        'queue' => ['connection' => null],
+        'storage' => ['disk' => 'local'],
+        'redis' => ['connection' => 'default'],
+        'environment' => ['required' => []],
+        'schedule' => ['max_age_minutes' => 5],
+        'scheduler' => [
+            'max_age_seconds' => (int) env('HEALTH_SCHEDULER_MAX_AGE_SECONDS', 300),
+        ],
+        'event_relay' => [
+            'max_lag_seconds' => (int) env('HEALTH_EVENT_RELAY_MAX_LAG_SECONDS', 300),
         ],
     ],
 ];

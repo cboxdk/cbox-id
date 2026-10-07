@@ -10,6 +10,23 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **The Token Vault decided whose secrets a token reached from the token's `org` claim
+  alone.** For a user-delegated token that claim is the PERSON's organization, so any
+  member who consented to an app holding `vault.manage` gave it rotate, revoke and grant
+  over their organization's vault — even when the app belonged to another organization.
+  The owner now comes from the app: an organization's app acts in that organization only
+  and a token naming another is refused; the environment's own app acts in the
+  organization its token names, or in the environment's unowned secrets; a token whose app
+  the environment does not know is refused.
+- **A management key that could only register apps could give itself the vault.**
+  `POST /api/v1/apps` accepted `vault.manage` and `decisions:read`, so `apps:write` alone
+  was enough to create an app holding them and ask for a token. The management API now
+  refuses both (`422 scope_not_grantable`); an administrator grants them in the console.
+- **Dependencies:** league/commonmark 2.10.3 (quadratic-time DoS in the GFM extension;
+  `DisallowedRawHtml` bypass), laravel/framework 13.35 (debug-page XSS), league/flysystem
+  3.36 (control characters in paths). Cbox ID renders no user-supplied Markdown; the
+  updates close the advisories `composer audit` reported.
+
 - **The queue monitor is operator-only, on the platform root, and stores no job payloads.**
   `cboxdk/laravel-queue-monitor` would serve its dashboard at `/queue-monitor` on every
   host (customer domains included) behind an `APP_ENV` check, and keep each job's raw
@@ -132,6 +149,16 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   have been in when somebody wired the console page. `clear()` had the same gap.
 
 ### Added
+
+- **`scheduler` and `event_relay` checks on `/health/status`, and doctor checks for both.**
+  The deployment manifest declared no scheduler process, so the event relay behind every
+  webhook, outbound SCIM, the audit-stream pump and pruning never ran, and every health
+  signal stayed green. `cbox.yaml` now runs `schedule:work`; the scheduler writes a heartbeat
+  every minute, and `/health/status` answers 503 when it is older than five minutes or the
+  oldest undelivered event is.
+- **`cbox-id:doctor` names the production defaults that are wrong in production:** mail
+  to `log`, a cache or sessions local to one process, an inline queue, logs written only to
+  the container's disk, and no `HEALTH_TOKEN`.
 
 - **Queue workers that run, and a signal when they do not.** Production had no queue worker:
   webhooks, back-channel logout, app manifest syncs and Postal delivery reports were

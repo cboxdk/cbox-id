@@ -109,16 +109,28 @@ outbox, all of the following silently do nothing:
 ¹ A scheduled closure, not an artisan command — `php artisan cbox-id:webhooks:retry`
 does not exist. It appears in `schedule:list` under that name, which is why it reads
 like one.
-| — | (`cbox-id:keys:rotate` is **not** scheduled: run it yourself, on your own cadence. It is listed here because operators reasonably assume the scheduler covers it, and it does not.) |
 
-The app reports healthy throughout. Verify with:
+`cbox-id:keys:rotate` is **not** scheduled: run it yourself, on your own cadence. It is
+listed here because operators reasonably assume the scheduler covers it, and it does not.
+
+Two checks on `/health/status` turn red when this goes wrong, and `cbox-id:doctor` fails
+on both in production:
+
+| Check | Red when |
+|---|---|
+| `scheduler` | the scheduler has not run for 5 minutes (`HEALTH_SCHEDULER_MAX_AGE_SECONDS`), or never has |
+| `event_relay` | the oldest undelivered domain event is older than 5 minutes (`HEALTH_EVENT_RELAY_MAX_LAG_SECONDS`) |
+
+Neither is on readiness: a stopped scheduler is something to be told about, not a reason
+to take web instances out of rotation. Verify by hand with:
 
 ```bash
 php artisan schedule:list          # cbox-id:events:relay must appear, every minute
 ```
 
-`docker-compose.yml` ships `app`, `queue` and `scheduler` services for exactly this
-reason — mirror all three in any k8s manifest.
+`docker-compose.yml` ships `app`, `queue` and `scheduler` services, and `cbox.yaml` declares
+the `queue` and `scheduler` processes beside the web container. Mirror all three in any
+other manifest.
 
 ## 6. Verify
 

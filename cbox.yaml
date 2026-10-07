@@ -10,6 +10,12 @@ processes:
   # metrics and heartbeat, which the cache binding below provides.
   # See docs/operations/queue-workers.md.
   queue: ["php", "artisan", "queue:autoscale"]
+  # The SCHEDULER, which every background duty depends on: the domain-event relay behind
+  # webhooks, outbound SCIM, the audit-stream pump, token revocation on role change and
+  # pruning are all scheduled commands. Without this process none of them run and nothing
+  # logs an error — /health/status (`scheduler`, `event_relay`) is what turns red.
+  # Exactly one: shared duties are onOneServer(), but one scheduler is the intended shape.
+  scheduler: ["php", "artisan", "schedule:work"]
 
 # This application trusts no proxy unless told to, deliberately — so behind a
 # real gateway it must be told. Without it Laravel builds every URL from the

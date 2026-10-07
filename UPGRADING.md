@@ -16,6 +16,41 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Run the scheduler — and alert on it
+
+`cbox.yaml` now declares a `scheduler` process (`php artisan schedule:work`). Every other
+deployment MUST run one too: the event relay behind webhooks, outbound SCIM, the
+audit-stream pump and pruning are all scheduled, and none of them run without it. Nothing
+errors when it is missing.
+
+- **Alerting:** `/health/status` gains `scheduler` (red when the scheduler has not run for
+  five minutes, or never has) and `event_relay` (red when the oldest undelivered event is
+  older than five minutes). Both are off readiness. Limits:
+  `HEALTH_SCHEDULER_MAX_AGE_SECONDS`, `HEALTH_EVENT_RELAY_MAX_LAG_SECONDS`.
+- **Doctor:** `cbox-id:doctor` fails in production with no scheduler, a lagging relay, mail
+  to `log`/`array`, a cache or session store local to one process, or no `HEALTH_TOKEN`.
+  Run it after deploying.
+
+### Token Vault: whose secrets a token reaches is the app's decision
+
+`/api/v1/vault/*` resolves the owner from the app the token was issued to. Check your
+integrations against the new rules:
+
+- A token issued to an **organization's app** acts in that organization only. A
+  user-delegated token whose `org` names a different organization is refused (`403`);
+  previously it reached that other organization's secrets.
+- A token issued to an **environment-owned app** behaves as before: the organization its
+  `org` claim names, or the environment's unowned secrets when it has none.
+- A token whose app the environment does not know is refused (`403`, or `lease_denied` on
+  the lease endpoint).
+
+### Management API: `vault.manage` and `decisions:read` are granted in the console
+
+`POST /api/v1/apps` answers `422 scope_not_grantable` for an app (short form or blueprint)
+holding `vault.manage` or `decisions:read`. Create the app through the API, then add the
+scope on its **Scopes** page in the console. A blueprint promoted from staging that holds
+either scope needs the same step. `vault.lease` and `apps.manifest` are unaffected.
+
 ### Run the queue manager — without it, webhooks and back-channel logout are never sent
 
 **Operators MUST run `php artisan queue:autoscale`, exactly one per host, as a long-lived

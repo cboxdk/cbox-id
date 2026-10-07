@@ -886,3 +886,32 @@ it('answers key verification in the documented shape, which the contract gate ch
         ->postJson('/oauth/api-keys/verify', ['key' => $issued->plaintext])
         ->assertUnauthorized()->assertJsonPath('error', 'invalid_client');
 });
+
+/*
+ * A key that may only register apps must not be able to give itself the vault.
+ *
+ * `vault.manage` on an environment-owned app reaches the environment's own secrets, and
+ * `decisions:read` every person's permission set. Both used to be grantable through
+ * `POST /v1/apps`, so `apps:write` alone was enough to create an app holding them and ask
+ * for a token.
+ */
+it('refuses to register an app holding a platform scope reserved for the console', function (string $scope): void {
+    [$key] = tenancyKey([EnvironmentApiScope::AppsWrite]);
+
+    $this->withToken($key)->postJson('/api/v1/apps', [
+        'name' => 'Sneaky',
+        'type' => 'service',
+        'scopes' => [$scope],
+    ])->assertStatus(422)->assertJsonPath('error', 'scope_not_grantable');
+
+    $this->withToken($key)->postJson('/api/v1/apps', ['blueprint' => [
+        'kind' => 'cbox-id.client-blueprint',
+        'version' => 1,
+        'name' => 'Sneaky blueprint',
+        'client_type' => 'confidential',
+        'grant_types' => ['client_credentials'],
+        'scopes' => [$scope],
+    ]])->assertStatus(422)->assertJsonPath('error', 'scope_not_grantable');
+
+    expect(Client::query()->where('name', 'like', 'Sneaky%')->exists())->toBeFalse();
+})->with(['vault.manage', 'decisions:read'])->group('security');
