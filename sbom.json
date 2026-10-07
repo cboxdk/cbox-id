@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:f704abfc-6fa5-446d-9abf-9f50077a8f02",
+    "serialNumber": "urn:uuid:92831bcb-77ec-40f3-82d8-8ea97cc23697",
     "version": 1,
     "metadata": {
         "tools": [
@@ -149,11 +149,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.20.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.21.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v1.20.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v1.20.0",
+            "version": "v1.21.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v1.21.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
