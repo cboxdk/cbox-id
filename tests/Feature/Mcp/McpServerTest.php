@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
+use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Danger;
@@ -17,10 +18,13 @@ use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\Api;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
@@ -359,9 +363,27 @@ it('groups the action tools behind search_tools and execute_tools when tool sear
  */
 it('offers every action in the registry as a tool, with its own input schema', function (): void {
     $all = mcpIssue(app(ManagementScopes::class)->offerable())->plaintext;
+
+    // Each plane's key sees its own plane's tools, and only those.
     $tools = mcpTools($all);
+    $workspace = app(OrganizationApiKeys::class)->issue(provisionAccount()['organization']->id, 'Agent', MembershipRole::Admin)->plaintext;
+    $workspaceTools = mcpTools($workspace);
+
+    foreach (app(ActionRegistry::class)->forPlane(ActionPlane::Workspace) as $action) {
+        expect($tools)->not->toHaveKey($action->toolName());
+
+        if ($action->name !== 'team.transfer_ownership') {
+            expect($workspaceTools)->toHaveKey($action->toolName(), message: "Workspace action {$action->name} has no MCP tool.");
+        }
+    }
+
+    $tools = [...$workspaceTools, ...$tools];
 
     foreach (app(ActionRegistry::class)->all() as $action) {
+        if ($action->name === 'team.transfer_ownership') {
+            continue; // Only the owner, in the console: no key holds the Owner role.
+        }
+
         expect($tools)->toHaveKey($action->toolName(), message: "Action {$action->name} has no MCP tool.");
 
         $schema = $tools[$action->toolName()]['inputSchema'];
@@ -418,3 +440,25 @@ it('holds an action for the owner\'s approval and finishes it with approval_id',
     expect($done['isError'] ?? false)->toBeFalse()
         ->and($done['structuredContent']['data']['name'])->toBe('Minted by an agent');
 })->group('security');
+
+it('takes a workspace key too, and runs the workspace plane\'s tools as that key', function (): void {
+    $account = provisionAccount();
+    $key = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Agent', MembershipRole::Admin, null, ['workspace:read', 'projects:write']);
+
+    $me = mcpCall($key->plaintext, 'whoami');
+
+    expect($me['structuredContent']['kind'])->toBe('workspace_key')
+        ->and($me['structuredContent']['workspace'])->toBe($account['organization']->id)
+        ->and($me['structuredContent']['scopes'])->toBe(['workspace:read', 'projects:write']);
+
+    $tools = mcpTools($key->plaintext);
+
+    expect($tools)->toHaveKey('projects_create')
+        ->and($tools)->not->toHaveKey('team_invite')
+        ->and($tools)->not->toHaveKey('apis_create');
+
+    $created = mcpCall($key->plaintext, 'projects_create', ['name' => 'From an agent', 'idempotency_key' => 'mcp-ws-1']);
+
+    expect($created['isError'] ?? false)->toBeFalse()
+        ->and(Project::query()->where('organization_id', $account['organization']->id)->where('name', 'From an agent')->exists())->toBeTrue();
+});

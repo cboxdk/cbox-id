@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Console;
 
 use App\Actions\Keys\CreateKey;
 use App\Actions\Keys\RevokeKey;
+use App\Actions\Workspace\Keys\CreateEnvironmentKey;
+use App\Actions\Workspace\Keys\RevokeEnvironmentKey;
 use App\Http\Props\Console\EnvironmentKeyRowProps;
 use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Http\Props\Shared\HelpProps;
@@ -28,7 +30,6 @@ use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
-use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -166,49 +167,28 @@ final readonly class EnvironmentKeyController extends ConsoleController
             return to_route($sudo);
         }
 
-        // On the environment console a key is minted by the ACTION — the same one the API
-        // and MCP run, with the same audit entry. The workspace console mints for any of the
-        // workspace's environments from the root host, which is a workspace-plane act the
-        // action layer does not serve yet; it keeps its own path below.
-        if ($this->onEnvironmentPlane()) {
-            $result = $this->act(CreateKey::class, [
-                'name' => $request->name(),
-                'scopes' => $request->scopes(),
-                'expires_at' => $request->expiresAt()?->toIso8601String(),
-            ], ['name' => 'name', 'scopes' => 'scopes', 'expires_at' => 'expiresOn'], 'name');
+        // Both consoles mint through an ACTION — the one the API and MCP run, with the same
+        // refusals, attribution and audit entry: the environment console through its own
+        // plane's `keys.create`, the workspace console through the workspace plane's
+        // `keys.environment.create`, for any environment of the workspace it can reach.
+        $fields = ['name' => 'name', 'scopes' => 'scopes', 'expires_at' => 'expiresOn'];
+        $input = [
+            'name' => $request->name(),
+            'scopes' => $request->scopes(),
+            'expires_at' => $request->expiresAt()?->toIso8601String(),
+        ];
 
-            if ($result instanceof RedirectResponse) {
-                return $result;
-            }
+        $result = $this->onEnvironmentPlane()
+            ? $this->act(CreateKey::class, $input, $fields, 'name')
+            : $this->act(CreateEnvironmentKey::class, ['environment_id' => $environmentId, ...$input], $fields, 'name');
 
-            /** @var IssuedEnvironmentApiKey $minted */
-            $minted = $result->value;
-            $this->inertia->flash('freshKey', $minted->plaintext);
-
-            return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $issued = $keys->issue($environmentId, $request->name(), $request->scopes(), $request->expiresAt(), new KeyProvenance(
-            createdByType: 'organization_member',
-            createdById: $this->scope->actorId() !== '' ? $this->scope->actorId() : null,
-        ));
-
-        $activity->record(
-            $auditScope,
-            'organization.environment_key_created',
-            $this->scope->actorId(),
-            targetType: 'environment',
-            targetId: $environmentId,
-            context: [
-                'key_id' => $issued->key->id,
-                'name' => $request->name(),
-                'scopes' => $request->scopes(),
-                'expires_at' => $issued->key->expires_at?->toIso8601String(),
-            ],
-            request: $request,
-        );
-
-        $this->inertia->flash('freshKey', $issued->plaintext);
+        /** @var IssuedEnvironmentApiKey $minted */
+        $minted = $result->value;
+        $this->inertia->flash('freshKey', $minted->plaintext);
 
         return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
     }
@@ -254,26 +234,14 @@ final readonly class EnvironmentKeyController extends ConsoleController
             return back();
         }
 
-        if ($this->onEnvironmentPlane()) {
-            // The action revokes the key AND every key it minted, and records each.
-            $result = $this->act(RevokeKey::class, ['id' => $key]);
+        // The action revokes the key AND every key it minted, and records each — the
+        // environment plane's on the environment console, the workspace plane's from the
+        // workspace console.
+        $result = $this->onEnvironmentPlane()
+            ? $this->act(RevokeKey::class, ['id' => $key])
+            : $this->act(RevokeEnvironmentKey::class, ['environment_id' => $environmentId, 'id' => $key]);
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Management key revoked.');
-        }
-
-        $keys->revoke($environmentId, $key);
-
-        $activity->record(
-            $auditScope,
-            'organization.environment_key_revoked',
-            $this->scope->actorId(),
-            targetType: 'environment',
-            targetId: $environmentId,
-            context: ['key_id' => $key, 'name' => $found->name],
-            request: $request,
-        );
-
-        return back()->with('status', 'Management key revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Management key revoked.');
     }
 
     /**

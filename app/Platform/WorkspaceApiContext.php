@@ -25,6 +25,12 @@ final class WorkspaceApiContext
         $this->key = $key;
     }
 
+    /** Forget the key, once the request it authenticated is answered. */
+    public function clear(): void
+    {
+        $this->key = null;
+    }
+
     public function key(): ?OrganizationApiKey
     {
         return $this->key;

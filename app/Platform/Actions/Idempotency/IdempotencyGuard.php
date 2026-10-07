@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\Principal\Principal;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -96,19 +97,23 @@ final class IdempotencyGuard
     }
 
     /**
+     * The payload with every named secret set to null. A dotted name reaches into a nested
+     * object (`initial_key.token`); a field the payload does not carry is left absent
+     * rather than invented.
+     *
      * @param  array<mixed>|null  $payload
      * @param  list<string>  $fields
      * @return array<mixed>|null
      */
     private function redacted(?array $payload, array $fields): ?array
     {
-        if ($payload === null || $fields === []) {
-            return $payload;
+        if ($payload === null) {
+            return null;
         }
 
         foreach ($fields as $field) {
-            if (array_key_exists($field, $payload)) {
-                $payload[$field] = null;
+            if (Arr::has($payload, $field)) {
+                Arr::set($payload, $field, null);
             }
         }
 

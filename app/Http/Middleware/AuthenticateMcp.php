@@ -8,8 +8,12 @@ use App\Http\Controllers\Mcp\ProtectedResourceMetadataController;
 use App\Mcp\McpCaller;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\WorkspaceApiContext;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
+use Cbox\Id\Platform\DatabaseOrganizationApiKeys;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,12 +21,19 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Authenticate a request to the MCP server at `/mcp` and name its {@see Principal}.
  *
- * Today the one credential is an environment management key (`Bearer cbid_env_…`),
- * resolved exactly as {@see AuthenticateEnvironmentApi} resolves it: within the
- * environment the host already resolved, so a key minted for another environment simply
- * does not resolve here. It also sets {@see EnvironmentApiContext}, because the audit
- * decorator reads the key from there to name it as the actor of whatever the framework
- * records underneath an action — an MCP call must leave the same trail as a REST call.
+ * Two credentials, the two the REST API takes, each resolved exactly as its REST
+ * middleware resolves it:
+ *
+ * - an environment management key (`Bearer cbid_env_…`), as {@see AuthenticateEnvironmentApi}
+ *   does: within the environment the host already resolved, so a key minted for another
+ *   environment simply does not resolve here. It sets {@see EnvironmentApiContext}, because
+ *   the audit decorator reads the key from there to name it as the actor of whatever the
+ *   framework records underneath an action — an MCP call leaves the same trail as REST.
+ * - a workspace key (`Bearer cbid_ws_…`), as {@see AuthenticateWorkspaceApi} does: above
+ *   every environment, so on any host. It sets {@see WorkspaceApiContext}.
+ *
+ * Each sees the tools of its own plane only — the principal refuses the other plane's
+ * actions, so they are never listed to it.
  *
  * Unlike the REST middleware it takes no scope parameter: one endpoint carries every tool,
  * so the scope is a per-tool question. Tools the principal may not run are not listed, and
@@ -37,7 +48,9 @@ final class AuthenticateMcp
 {
     public function __construct(
         private readonly EnvironmentApiKeys $keys,
+        private readonly OrganizationApiKeys $workspaceKeys,
         private readonly EnvironmentApiContext $context,
+        private readonly WorkspaceApiContext $workspace,
         private readonly McpCaller $caller,
     ) {}
 
@@ -61,6 +74,7 @@ final class AuthenticateMcp
             // This request's credential, and nothing after it (see McpCaller).
             $this->caller->clear();
             $this->context->clear();
+            $this->workspace->clear();
         }
     }
 
@@ -75,6 +89,18 @@ final class AuthenticateMcp
      */
     private function principalFor(string $token): ?Principal
     {
+        if (str_starts_with($token, DatabaseOrganizationApiKeys::prefix())) {
+            $workspaceKey = $this->workspaceKeys->resolve($token);
+
+            if ($workspaceKey === null) {
+                return null;
+            }
+
+            $this->workspace->set($workspaceKey);
+
+            return new WorkspaceKeyPrincipal($workspaceKey);
+        }
+
         $key = $this->keys->resolve($token);
 
         if ($key === null) {
@@ -95,7 +121,7 @@ final class AuthenticateMcp
         }
 
         return response()->json(
-            ['error' => 'unauthorized', 'message' => 'A valid environment management key (Bearer cbid_env_…) is required.'],
+            ['error' => 'unauthorized', 'message' => 'A valid management key (Bearer cbid_env_… for an environment, cbid_ws_… for a workspace) is required.'],
             401,
             ['WWW-Authenticate' => $challenge],
         );

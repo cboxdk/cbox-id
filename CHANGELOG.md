@@ -250,6 +250,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   their own actions: the white-label module's lives in the module and is named to the
   registry from its service provider. The parity count of console writes that are not yet
   actions is down from 251 to 229.
+- **The workspace API runs on the action layer, and one workspace key can bootstrap an
+  environment.** Every `/api/v1/workspace` endpoint is now an action, shared with the
+  workspace console's Projects, Team, Keys and Workspace settings pages, so both doors
+  refuse and record alike. Workspace keys can carry **scopes** below their role
+  (`workspace:read`, `projects:write`, `environments:write`, `team:read`, `team:write`,
+  `keys:write`, `settings:write`); a key with none is bounded by its role, as before.
+  `POST /workspace/environments` takes `initial_key` and returns the new environment's
+  first management key once, so an agent with one workspace key can create a project and
+  an environment and then configure it on the environment's own host. New endpoints:
+  `PATCH /workspace` (rename), `PATCH /workspace/projects/{id}`, `POST
+  /workspace/projects/{id}/suspend` and `/reactivate`, `POST
+  /workspace/projects/verification/resend`, `PATCH /workspace/members/{id}/role`, `PUT
+  /workspace/members/{id}/access`, `POST /workspace/members/{id}/transfer-ownership`
+  (owner, console only), `DELETE /workspace/members/{id}`, `POST/DELETE
+  /workspace/environments/{id}/keys`, and `GET/POST/DELETE /workspace/keys` — a key-minted
+  workspace key is never wider than its parent (role, scopes, expiry) and is revoked with
+  it. Writes take `Idempotency-Key`; a replay never carries a key's value. Creating an
+  environment over the API is now on the workspace's activity log, as it was from the
+  console. 18 console writes left the parity allowlist (251 → 233).
 - **The shared action layer, starting with APIs.** A change is now an action
   (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
   and run by one runner for every door, so the console and the management API check,

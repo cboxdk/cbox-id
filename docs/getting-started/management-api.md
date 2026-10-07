@@ -1,7 +1,7 @@
 ---
 title: Run your tenancy from your backend
 weight: 22
-description: The environment management API — create a customer's team with its owner, add members, invite with roles, grant roles (in one organization or everywhere for staff), register apps and APIs, revoke customer API keys and start support sessions, all with one management key.
+description: The environment management API, and the workspace API above it — create a customer's team with its owner, add members, invite with roles, grant roles (in one organization or everywhere for staff), register apps and APIs, revoke customer API keys and start support sessions, all with one management key.
 ---
 
 # Run your tenancy from your backend
@@ -260,6 +260,56 @@ the console runs — the same rules, refusals and activity-log entries.
 - **Custom domain** (`domains:*`): `POST /api/v1/domains` returns the DNS TXT record,
   `POST /domains/verify` promotes the domain once it is visible (`422 dns_not_propagated`
   until then), `DELETE /domains` removes it. Only ever the environment the key belongs to.
+## The workspace API: stand an environment up
+
+Everything above runs inside one environment, with that environment's key on its host.
+**Above** your environments is your workspace — its projects, environments, team and keys —
+and the **workspace API** at `/api/v1/workspace` runs it with a **workspace key**
+(`cbid_ws_…`, Keys › Workspace keys in the console). Its contract is served at
+`/api/v1/workspace/openapi.yaml`.
+
+A workspace key carries a **role** (admin, developer, member or viewer), which bounds it
+exactly as it bounds a person in the console, and optionally **scopes** that narrow it
+further. A key with no scopes is bounded by its role alone.
+
+| Scope | Lets the key | Role must be able to |
+|---|---|---|
+| `workspace:read` | read the workspace, its projects and environments | — |
+| `projects:write` | create, rename, suspend and reactivate projects | manage environments |
+| `environments:write` | create environments, optionally with a first key | manage environments |
+| `team:read` | list members and pending invitations | read members |
+| `team:write` | invite, re-role, scope and remove members | manage members |
+| `keys:write` | mint and revoke environment keys and workspace keys | manage environments (and manage members, for workspace keys) |
+| `settings:write` | rename the workspace | manage members |
+
+This is enough for an agent holding one workspace key to stand a product up end to end:
+
+```http
+POST /api/v1/workspace/projects
+{ "name": "Billing", "environment_limit": 2 }
+
+POST /api/v1/workspace/environments
+{
+  "name": "Production",
+  "project_id": "<the project's id>",
+  "initial_key": { "name": "Bootstrap", "scopes": ["apps:write", "apis:write"] }
+}
+```
+
+The second answer carries the environment — its `issuer` is its host — and its first
+management key **once**, as `initial_key.token`. From there the agent uses that key on the
+environment's host, exactly as this page describes: register apps and APIs, create
+organizations. Retry either call with the same `Idempotency-Key` and you get the first
+answer back; a replay never carries a key's value (`initial_key.token` is `null`), so a
+caller that lost it revokes the key and mints another with
+`POST /api/v1/workspace/environments/{id}/keys`.
+
+A key can mint workspace keys (`POST /api/v1/workspace/keys`), but **never a wider one**:
+its role at most, its scopes at most (inherited when you send none), expiring no later than
+it does. Revoking a key revokes every key it minted. Handing the workspace to someone else
+(`transfer-ownership`) is the owner's act, in the console; a key is refused with
+`403 owner_only`. Everything a workspace key does is on the workspace's activity log with
+the key as the actor.
 
 ## Errors
 

@@ -10,8 +10,9 @@ use Illuminate\Console\Command;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Writes `resources/openapi/<plane>.yaml` from the hand-written base and the action
- * registry ({@see ActionOpenApi}). `--check` writes nothing and fails when the committed
+ * Writes `resources/openapi/<plane>.yaml` — one document per {@see ActionPlane}, the
+ * environment's and the workspace's — from the hand-written base and the action registry
+ * ({@see ActionOpenApi}). `--check` writes nothing and fails when the committed
  * file is not what the build would produce — the CI gate that keeps them from drifting.
  */
 final class BuildOpenApiCommand extends Command
@@ -24,7 +25,7 @@ final class BuildOpenApiCommand extends Command
     {
         $stale = [];
 
-        foreach ([ActionPlane::Environment] as $plane) {
+        foreach (ActionPlane::cases() as $plane) {
             $basePath = resource_path("openapi/base/{$plane->value}.yaml");
             $outPath = resource_path("openapi/{$plane->value}.yaml");
 

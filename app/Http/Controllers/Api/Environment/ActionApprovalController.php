@@ -7,7 +7,10 @@ namespace App\Http\Controllers\Api\Environment;
 use App\Http\Controllers\Controller;
 use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\WorkspaceApiContext;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -21,8 +24,18 @@ final class ActionApprovalController extends Controller
 {
     public function show(string $id, EnvironmentApiContext $context, ActionApprovalGate $gate): JsonResponse
     {
-        $key = $context->key() ?? abort(401);
-        $status = $gate->status(new EnvironmentKeyPrincipal($key), $id);
+        return $this->answer($id, new EnvironmentKeyPrincipal($context->key() ?? abort(401)), $gate);
+    }
+
+    /** The same question from a workspace key, at `/api/v1/workspace/action-approvals/{id}`. */
+    public function showForWorkspace(string $id, WorkspaceApiContext $context, ActionApprovalGate $gate): JsonResponse
+    {
+        return $this->answer($id, new WorkspaceKeyPrincipal($context->key() ?? abort(401)), $gate);
+    }
+
+    private function answer(string $id, Principal $principal, ActionApprovalGate $gate): JsonResponse
+    {
+        $status = $gate->status($principal, $id);
 
         if ($status === null) {
             return response()->json(['error' => 'not_found', 'message' => 'Approval not found.'], 404);

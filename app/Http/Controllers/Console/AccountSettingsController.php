@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Workspace\UpdateWorkspaceSettings;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameOrganizationRequest;
 use App\Platform\Help\HelpTopic;
-use App\Platform\OrganizationActivity;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
@@ -38,54 +38,28 @@ final readonly class AccountSettingsController extends ConsoleController
         ]);
     }
 
-    public function update(
-        RenameOrganizationRequest $request,
-        Organizations $organizations,
-        OrganizationActivity $activity,
-    ): RedirectResponse {
+    public function update(RenameOrganizationRequest $request, Organizations $organizations): RedirectResponse
+    {
         $organization = $this->acting($organizations);
 
         abort_if($organization === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        /*
-         * Renamed on the model rather than through a contract verb: `Organizations` has no
-         * rename(). The account plane's writer did, and it is the one verb of that
-         * interface with no counterpart here — worth naming so a future reader does not
-         * assume it was overlooked.
-         *
-         * IN THE PLATFORM ROOT, because the WRITE is guarded too: `BelongsToEnvironment`
-         * refuses a cross-environment save outright, so a rename issued from any other
-         * host raises rather than silently writing nowhere.
-         */
-        $from = $organization->name;
-        $to = $request->name();
-
-        if ($to === $from) {
+        // Unchanged is not an act: no write, no line on the log, no "saved".
+        if ($request->name() === $organization->name) {
             return back();
         }
 
-        app(PlatformRoot::class)->run(
-            fn () => $organization->forceFill(['name' => $to])->save(),
-        );
-
         /*
-         * ON THE ACCOUNT'S OWN LOG, under the same action the environment console's
-         * Settings page writes — one act, one name, whichever page did it. This page wrote
-         * nothing, so the name on every invoice and in every invitation email could change
-         * with no record of who changed it or what it was before.
+         * Through the action `PATCH /api/v1/workspace` runs ({@see UpdateWorkspaceSettings}):
+         * the rename in the platform root, and the line on the workspace's own log under
+         * `organization.renamed` — the name the environment console's Settings page writes
+         * too. This page once wrote nothing, so the name on every invoice and in every
+         * invitation email could change with no record of who changed it.
          */
-        $activity->record(
-            $organization->id,
-            'organization.renamed',
-            $this->scope->actorId(),
-            targetType: 'organization',
-            targetId: $organization->id,
-            context: ['from' => $from, 'to' => $to],
-            request: $request,
-        );
+        $result = $this->act(UpdateWorkspaceSettings::class, ['name' => $request->name()], ['name' => 'name'], 'name');
 
-        return back()->with('status', 'Workspace settings saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Workspace settings saved.');
     }
 
     /**

@@ -1,0 +1,570 @@
+openapi: 3.1.0
+info:
+  title: Cbox ID — Workspace Management API
+  version: "1.0.0"
+  description: |
+    The **global organization-management plane** — above every environment. Manage the
+    workspace, its **projects** (IdP products, each a billing anchor) and their
+    environments, its team, and its keys with a workspace key.
+
+    **Scopes.** A workspace key carries a ROLE and, optionally, SCOPES. The role bounds
+    everything the key may do — the same capabilities a person holding that role has in
+    the console — and scopes narrow it further: `workspace:read`, `projects:write`,
+    `environments:write`, `team:read`, `team:write`, `keys:write`, `settings:write`. A key
+    minted with no scopes is bounded by its role alone. Each operation names the scope and
+    the capability it needs; a key missing either gets `403`.
+
+    **Bootstrapping an environment.** `POST /workspace/environments` with `initial_key`
+    creates the environment and mints its first management key (`cbid_env_…`) in one call.
+    That key is returned once, as `initial_key.token`, and works on the environment's own
+    host (its `issuer`) against the environment management API.
+
+    **Idempotency.** A write takes an `Idempotency-Key` header: a retry with the same key
+    and body gets the first answer back, marked `Idempotent-Replayed: true`, for 24 hours —
+    with any secret it carried (a key's `token`) replaced by `null`.
+
+    This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
+    which is served on each environment's own host and authenticated with
+    environment-scoped credentials. Credentials never cross planes: an organization key
+    (`cbid_ws_…`) cannot call the environment API, and vice versa.
+
+    **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
+    a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
+    "<human message>" }` — including validation failures, which add a field-keyed
+    `errors` map alongside the pair.
+
+    **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
+    runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
+servers:
+  - url: https://api.cboxid.com/api/v1
+    description: Hosted (global organization plane)
+  - url: https://{host}/api/v1
+    description: Self-hosted
+    variables:
+      host: { default: id.example.com }
+security:
+  - OrganizationApiKey: []
+tags:
+  - name: Organization
+  - name: Projects
+  - name: Environments
+  - name: Members
+  - name: Keys
+    description: Workspace keys, and the management keys of the workspace's environments.
+  - name: Approvals
+    description: Actions a key's policy holds for a person's approval.
+paths:
+  /workspace:
+    get:
+      tags: [Organization]
+      summary: Get the organization
+      operationId: workspace_get
+      x-action: workspace.get
+      description: Requires scope `workspace:read` (any role). Returns the organization's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /workspace/projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      operationId: projects_list
+      x-action: projects.list
+      description: Requires scope `workspace:read` (any role). The organization's projects (IdP products). Each carries its own plan and environment allowance.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Project" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Projects]
+      summary: Create a project
+      description: Stand up another independently-billed IdP product. Requires scope `projects:write` and the `manage-environments` capability (owner/admin/developer).
+      operationId: projects_create
+      x-action: projects.create
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                environment_limit: { type: integer, minimum: 1, maximum: 100, description: "This project's plan environment allowance (default 2)." }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /workspace/environments:
+    get:
+      tags: [Environments]
+      summary: List environments
+      description: Requires scope `workspace:read` (any role).
+      operationId: environments_list
+      x-action: environments.list
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Environment" } }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Environments]
+      summary: Create an environment
+      description: |
+        Requires scope `environments:write` and the `manage-environments` capability
+        (owner/admin/developer). Danger: critical — with `initial_key` it mints a credential.
+
+        With `initial_key`, the environment's first management key is minted in the same
+        call and returned once as `initial_key.token` — enough for an agent holding one
+        workspace key to stand an environment up and start configuring it on the
+        environment's own host. An idempotent replay returns `initial_key.token: null`.
+      operationId: environments_create
+      x-action: environments.create
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                type: { type: string, enum: [production, sandbox], default: production }
+                project_id: { type: string, description: "The project (billing anchor) to create the environment under. Defaults to the organization's first project when omitted." }
+                initial_key:
+                  type: ["object", "null"]
+                  description: Mint the environment's first management key in the same call.
+                  required: [name, scopes]
+                  properties:
+                    name: { type: string, maxLength: 120 }
+                    scopes:
+                      type: array
+                      minItems: 1
+                      items: { type: string }
+                      description: Environment-key scopes, for example `apis:write`.
+                    expires_at: { type: ["string", "null"], format: date-time }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CreatedEnvironment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: No such project on this organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: not_found, message: "Project not found." }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422":
+          description: Validation failed, the project's plan limit is reached, or `initial_key` asks for a scope no management key can carry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: environment_limit_reached, message: "Project [01J…] has reached its plan limit of 2 environment(s)." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /workspace/members:
+    get:
+      tags: [Members]
+      summary: List members
+      operationId: team_list
+      x-action: team.list
+      description: Requires scope `team:read` and the `read-members` capability (owner/admin/viewer). The roster is PII — a developer key is refused.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Member" } }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Members]
+      summary: Invite a member
+      description: |
+        Requires scope `team:write` and the `manage-members` capability (owner/admin). Invites the address onto the
+        organization's team — the same invitation the console's Team page sends: a mail naming
+        this key as the inviter and the role, with a signed link on which the invitee sets a
+        password and is signed in. Owner is never invited; ownership is transferred. An
+        earlier pending invitation for the same address is superseded. List, re-send and
+        withdraw it under `/workspace/invitations`.
+      operationId: team_invite
+      x-action: team.invite
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                name: { type: ["string", "null"] }
+                role: { type: string, enum: [admin, developer, member, viewer] }
+      responses:
+        "201":
+          description: Invited
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed, or the email already belongs to a member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: email_taken, message: "That person is already on this list." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/MailFailed" }
+  /workspace/invitations:
+    get:
+      tags: [Members]
+      summary: List pending invitations
+      operationId: team_invitations_list
+      x-action: team.invitations.list
+      description: Requires scope `team:read` and the `read-members` capability. The team's invitations nobody has accepted yet, newest first (at most 100).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/TeamInvitation" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /workspace/invitations/{id}/resend:
+    post:
+      tags: [Members]
+      summary: Re-send an invitation
+      description: |
+        Requires scope `team:write` and the `manage-members` capability. Mails a fresh link; the earlier link stops
+        working and the invitation gets a new `id`. At most once a minute per address
+        (`429`, `too_soon`). If the mail server refuses, the earlier invitation is kept (`503`).
+      operationId: team_invitations_resend
+      x-action: team.invitations.resend
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Sent again
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Sent less than a minute ago (`too_soon`), or the key's rate limit is exhausted
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "503": { $ref: "#/components/responses/MailFailed" }
+  /workspace/invitations/{id}:
+    delete:
+      tags: [Members]
+      summary: Withdraw an invitation
+      description: Requires scope `team:write` and the `manage-members` capability. The link stops working. An invitation that is not pending on this organization is a `404`.
+      operationId: team_invitations_revoke
+      x-action: team.invitations.revoke
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204": { description: Withdrawn }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /workspace/action-approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Where an approval this key asked for stands
+      description: |
+        Any workspace key may poll the approvals it raised, and only those: another key's id
+        is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [pending, approved, denied, expired, consumed] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+components:
+  securitySchemes:
+    OrganizationApiKey:
+      type: http
+      scheme: bearer
+      description: A workspace key, `cbid_ws_…` — a role, optionally narrowed by scopes. Create and revoke keys in the console (Owner/Admin), or with `POST /workspace/keys`.
+  parameters:
+    CboxApproval:
+      name: Cbox-Approval
+      in: header
+      required: false
+      description: The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Spent by this request, once.
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Any unique string (a UUID). A retry with the same key and request gets the first answer back.
+      schema: { type: string, maxLength: 255 }
+  responses:
+    ApprovalRequired:
+      description: |
+        Held for a person's approval: this key's policy requires the person who minted it to
+        approve this action on their device first. Poll `approval.poll_url`, then repeat the
+        same request (same body, same `Idempotency-Key`) with `Cbox-Approval: <approval.id>`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, message, approval]
+            properties:
+              error: { type: string, enum: [approval_required] }
+              message: { type: string }
+              approval:
+                type: object
+                required: [id, status, binding_code, expires_at, poll_url]
+                properties:
+                  id: { type: string }
+                  status: { type: string }
+                  binding_code: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  poll_url: { type: string, format: uri }
+    Unauthorized:
+      description: Missing or invalid organization API key (or its organization is suspended)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: The key's role lacks the required capability, or the key lacks the required scope
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    MailFailed:
+      description: The mail server refused the invitation (`mail_failed`). A new invitation is withdrawn, so trying again works; a re-sent one is kept.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: No such resource on this organization
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: |
+        A request with this `Idempotency-Key` is still being processed (`idempotency_in_progress`).
+        Retry shortly.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    UnprocessableEntity:
+      description: |
+        Validation failed (`error: validation_failed`, with a field-keyed `errors` map),
+        or the request was well-formed but refused for a domain reason — a taken email,
+        a reached plan limit.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: |
+        The key's rate limit for this plane is exhausted. The bucket is keyed on the API
+        KEY, so this reflects only your own traffic.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer }
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Organization:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        projects:
+          type: array
+          description: The organization's projects with each one's plan/allowance. Present only for billing-readers (plans are per project).
+          items: { $ref: "#/components/schemas/Project" }
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        environment_limit: { type: integer, description: This project's plan environment allowance. }
+        environments_used: { type: integer }
+    Environment:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        type: { type: string, enum: [production, sandbox] }
+        status: { type: string }
+        project_id: { type: string, description: The project (billing anchor) this environment belongs to. }
+        # OpenAPI 3.1 IS JSON Schema 2020-12, which dropped `nullable: true` — a 3.0-ism
+        # that a 3.1 parser ignores, so it silently typed this field as non-nullable
+        # while the API returns null for every environment on the platform domain.
+        domain: { type: ["string", "null"] }
+        issuer:
+          type: string
+          format: uri
+          description: The environment's own host — where its OIDC/environment API lives.
+    Member:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: ["string", "null"] }
+        role: { type: string, enum: [owner, admin, developer, member, viewer] }
+        status: { type: string, enum: [active, invited] }
+        all_environments: { type: boolean }
+    CreatedEnvironment:
+      description: An environment, and — when the request asked for one — its first management key.
+      allOf:
+        - $ref: "#/components/schemas/Environment"
+        - type: object
+          properties:
+            initial_key: { $ref: "#/components/schemas/EnvironmentKey" }
+    EnvironmentKey:
+      type: object
+      description: A management key (`cbid_env_…`) of one of the workspace's environments. `token` is present only in the answer that minted it, and `null` on an idempotent replay.
+      required: [id, environment_id, name, scopes]
+      properties:
+        id: { type: string }
+        environment_id: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        scopes: { type: array, items: { type: string } }
+        expires_at: { type: ["string", "null"], format: date-time }
+        token: { type: ["string", "null"], description: "The key's value. Shown once." }
+    WorkspaceKey:
+      type: object
+      description: A workspace key (`cbid_ws_…`). `token` is present only in the answer that minted it, and `null` on an idempotent replay.
+      required: [id, name, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        role: { type: string, enum: [owner, admin, developer, member, viewer] }
+        scopes:
+          type: ["array", "null"]
+          items: { type: string, enum: ["workspace:read", "projects:write", "environments:write", "team:read", "team:write", "keys:write", "settings:write"] }
+          description: Null when the role alone bounds the key.
+        parent_key_id: { type: ["string", "null"], description: "The key that minted it, if a key did. Revoking the parent revokes it." }
+        created_by_type: { type: ["string", "null"], description: "`organization_member` or `workspace_key`; null for a key minted before this was recorded." }
+        expires_at: { type: ["string", "null"], format: date-time }
+        revoked_at: { type: ["string", "null"], format: date-time }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        token: { type: ["string", "null"], description: "The key's value. Shown once." }
+    TeamInvitation:
+      type: object
+      required: [id, email, role, expires_at]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, developer, member, viewer] }
+        invited_by: { type: ["string", "null"], description: "The person, or the API key, that sent it — by name." }
+        invited_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: string, format: date-time }
+    PageMeta:
+      type: object
+      description: >-
+        Paging for a list response. `has_more` used to be returned with nothing to act on
+        it — no page parameter and no cursor — so a caller told there was more had no way
+        to ask for it. `next_page` is present exactly when `has_more` is true, so a client
+        can loop without computing anything.
+      properties:
+        limit: { type: integer }
+        page: { type: integer, minimum: 1 }
+        total: { type: integer, description: "Present on lists that can count cheaply." }
+        has_more: { type: boolean }
+        next_page: { type: ["integer", "null"], description: "Pass as `page` on the next request; absent on the last page." }
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, description: Stable machine code }
+        message: { type: string, description: Human-readable explanation }
+        errors:
+          type: object
+          description: |
+            Present on `validation_failed` only: the offending request fields, each
+            mapped to its messages.
+          additionalProperties:
+            type: array
+            items: { type: string }

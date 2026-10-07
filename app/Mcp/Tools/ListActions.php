@@ -7,7 +7,6 @@ namespace App\Mcp\Tools;
 use App\Mcp\ActionTool;
 use App\Mcp\IdServer;
 use App\Mcp\McpCaller;
-use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -41,7 +40,7 @@ final class ListActions extends Tool
         $principal = $caller->principal();
         $actions = [];
 
-        foreach ($registry->forPlane(ActionPlane::Environment) as $action) {
+        foreach ($registry->all() as $action) {
             if (! ActionTool::permits($principal, $action)) {
                 continue;
             }

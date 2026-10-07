@@ -8,10 +8,11 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Input\Field;
+use App\Platform\Actions\WorkspaceScopes;
 
 /**
- * The management API's OpenAPI document, with every action's operation generated from the
- * action itself.
+ * A management API's OpenAPI document — one per plane — with every action's operation
+ * generated from the action itself.
  *
  * `resources/openapi/base/<plane>.yaml` is the hand-written part: the description, the
  * components, the endpoints that are not actions, and — where an action deserves more than
@@ -41,12 +42,13 @@ final readonly class ActionOpenApi
 
         foreach ($this->registry->forPlane($plane) as $action) {
             $method = strtolower($action->method);
+            $path = $action->documentedPath();
 
-            if (isset($paths[$action->path][$method])) {
+            if (isset($paths[$path][$method])) {
                 continue;
             }
 
-            $paths[$action->path][$method] = $this->operation($action);
+            $paths[$path][$method] = $this->operation($action);
 
             $tag = $this->tag($action);
 
@@ -93,7 +95,7 @@ final readonly class ActionOpenApi
         $operation = [
             'tags' => [$this->tag($action)],
             'summary' => $action->summary,
-            'description' => "Requires scope `{$action->scope}`. Danger: {$action->danger->value}.",
+            'description' => $this->requirement($action)." Danger: {$action->danger->value}.",
             'operationId' => $action->toolName(),
             'x-action' => $action->name,
         ];
@@ -153,7 +155,10 @@ final readonly class ActionOpenApi
             ? ['type' => 'object']
             : ['$ref' => '#/components/schemas/'.$action->schema];
 
-        $isList = $action->method === 'GET' && in_array('after', array_map(static fn (Field $field): string => $field->name, $action->input()->fields), true);
+        // A paged list — by cursor (`after`) on the environment plane, by number (`page`) on
+        // the workspace plane — answers `data` as an array beside its `meta`.
+        $names = array_map(static fn (Field $field): string => $field->name, $action->input()->fields);
+        $isList = $action->method === 'GET' && array_intersect(['after', 'page'], $names) !== [];
 
         $schema = $isList
             ? [
@@ -170,6 +175,29 @@ final readonly class ActionOpenApi
             'description' => 'OK',
             'content' => ['application/json' => ['schema' => $schema]],
         ];
+    }
+
+    /**
+     * What a key needs to run it. On the workspace plane that is the scope AND a role that
+     * holds the capability the scope and the action ask for ({@see WorkspaceScopes}) — the
+     * part a reader would otherwise find out from a 403.
+     */
+    private function requirement(ActionDefinition $action): string
+    {
+        $sentence = "Requires scope `{$action->scope}`";
+
+        if ($action->plane !== ActionPlane::Workspace) {
+            return $sentence.'.';
+        }
+
+        $capabilities = array_values(array_unique(array_filter(
+            [WorkspaceScopes::capability($action->scope), $action->consoleGate->capability()],
+            'is_string',
+        )));
+
+        return $capabilities === []
+            ? $sentence.' (any role).'
+            : $sentence.' and a role that may '.implode(' and ', array_map(static fn (string $capability): string => "`{$capability}`", $capabilities)).'.';
     }
 
     private function tag(ActionDefinition $action): string

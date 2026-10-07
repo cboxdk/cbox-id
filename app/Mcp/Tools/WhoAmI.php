@@ -6,6 +6,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\McpCaller;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use Cbox\Id\Api\Support\ServerMetadata;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Laravel\Mcp\Response;
@@ -32,7 +33,7 @@ final class WhoAmI extends Tool
 
     protected string $title = 'Who am I';
 
-    protected string $description = 'Who this connection acts as: the credential kind and id, the environment it is bound to, its issuer, and the scopes it holds. Check this first when a tool you expected is not listed.';
+    protected string $description = 'Who this connection acts as: the credential kind and id, the environment or workspace it is bound to, its issuer, and the scopes it holds. Check this first when a tool you expected is not listed.';
 
     public function handle(McpCaller $caller, EnvironmentContext $environments): ResponseFactory
     {
@@ -51,6 +52,16 @@ final class WhoAmI extends Tool
             $key = $principal->key();
             $body['name'] = $key->name;
             $body['scopes'] = $key->scopes;
+            $body['expires_at'] = $key->expires_at?->toIso8601String();
+        }
+
+        if ($principal instanceof WorkspaceKeyPrincipal) {
+            $key = $principal->key();
+            $body['environment'] = null;
+            $body['workspace'] = $key->organization_id;
+            $body['name'] = $key->name;
+            $body['role'] = $key->role->value;
+            $body['scopes'] = $key->scopes ?? [];
             $body['expires_at'] = $key->expires_at?->toIso8601String();
         }
 

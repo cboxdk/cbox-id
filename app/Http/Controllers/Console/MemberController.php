@@ -4,23 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Workspace\Team\ChangeMemberRole;
+use App\Actions\Workspace\Team\InviteMember;
+use App\Actions\Workspace\Team\RemoveMember;
+use App\Actions\Workspace\Team\ResendInvitation;
+use App\Actions\Workspace\Team\RevokeInvitation;
+use App\Actions\Workspace\Team\SetEnvironmentAccess;
+use App\Actions\Workspace\Team\TransferOwnership;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteMemberRequest;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\Contracts\TeamInvitations;
-use App\Platform\Invitations\Enums\InvitationRefusalReason;
-use App\Platform\Invitations\Exceptions\InvitationRefused;
-use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
-use App\Platform\Membership\MembershipLifecycle;
-use App\Platform\Membership\MembershipRefused;
-use App\Platform\OrganizationActivity;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Kernel\Tenancy\GenericTenant;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -50,6 +51,11 @@ use Inertia\Response;
  * the thing that must not be taken on trust, and a comparison after the fact is one
  * refactor away from being dropped — which is the shape that once shipped a
  * cross-organization IDOR on `/governance/{campaign}`.
+ *
+ * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Team`), the one `/api/v1/workspace`
+ * runs for a workspace key; the action fences the target again, so a door that skips this
+ * page's guards does not skip the rule. What stays here is the console's own answer to a
+ * row a person may see but not change — a quiet `back()` — and where they land after.
  */
 final readonly class MemberController extends ConsoleController
 {
@@ -170,45 +176,46 @@ final readonly class MemberController extends ConsoleController
         ]);
     }
 
-    public function invite(InviteMemberRequest $request, TeamInvitations $team, Subjects $subjects): RedirectResponse
+    public function invite(InviteMemberRequest $request): RedirectResponse
     {
-        $organizationId = $this->scope->organizationId();
-
-        abort_if($organizationId === null, 403);
+        abort_if($this->scope->organizationId() === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        // The same service the workspace API's `POST /v1/workspace/members` uses, so the
-        // two doors refuse, mail and record exactly alike ({@see TeamInvitations}).
-        try {
-            $team->send($organizationId, $request->email(), $request->role(), $this->inviter($subjects), $this->actor());
-        } catch (InvitationRefused $refused) {
-            return back()->withInput()->withErrors(['email' => $refused->getMessage()]);
-        }
+        // The same action the workspace API's `POST /v1/workspace/members` runs, so the two
+        // doors refuse, mail and record exactly alike ({@see InviteMember}).
+        $result = $this->act(InviteMember::class, [
+            'email' => $request->email(),
+            'name' => $request->input('name'),
+            'role' => $request->role()->value,
+        ], ['email' => 'email', 'role' => 'role', 'name' => 'name'], 'email');
 
-        return back()->with('status', 'Invitation sent to '.$request->email().'.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Invitation sent to '.$request->email().'.');
     }
 
     /**
      * Send the invitation again, to somebody who never got the first one — a fresh link;
      * the earlier one stops working. At most once a minute per address.
      */
-    public function resendInvite(string $invitation, TeamInvitations $team, Subjects $subjects): RedirectResponse
+    public function resendInvite(string $invitation): RedirectResponse
     {
         $this->scope->assertMayAdminister();
-
-        $organizationId = $this->scope->requireOrganizationId();
+        $this->scope->requireOrganizationId();
 
         try {
-            $sent = $team->resend($organizationId, $invitation, $this->inviter($subjects), $this->actor());
-        } catch (InvitationRefused $refused) {
+            $result = $this->runAction(ResendInvitation::class, ['id' => $invitation]);
+        } catch (ActionRefused $refused) {
             // An id that is not a pending invitation on this team is answered with nothing,
             // as before: it is a row this person was never shown.
-            return $refused->reason === InvitationRefusalReason::NotPending
+            return $refused->status === 404
                 ? back()
                 : back()->with('error', $refused->getMessage());
         }
 
-        return back()->with('status', 'Invitation sent again to '.$sent->email.'.');
+        $email = $result->payload['email'] ?? null;
+
+        return back()->with('status', 'Invitation sent again to '.(is_string($email) ? $email : 'them').'.');
     }
 
     /**
@@ -218,15 +225,14 @@ final readonly class MemberController extends ConsoleController
      * who left before accepting, otherwise held a live link into the organization for a
      * week with nothing in the product to stop it.
      */
-    public function revokeInvite(string $invitation, TeamInvitations $team): RedirectResponse
+    public function revokeInvite(string $invitation): RedirectResponse
     {
         $this->scope->assertMayAdminister();
-
-        $organizationId = $this->scope->requireOrganizationId();
+        $this->scope->requireOrganizationId();
 
         try {
-            $team->revoke($organizationId, $invitation, $this->actor());
-        } catch (InvitationRefused) {
+            $this->runAction(RevokeInvitation::class, ['id' => $invitation]);
+        } catch (ActionRefused) {
             return back();
         }
 
@@ -236,49 +242,36 @@ final readonly class MemberController extends ConsoleController
         return to_route('members')->with('status', 'Invitation withdrawn. That link no longer works.');
     }
 
-    public function changeRole(
-        Request $request,
-        string $member,
-        OrganizationActivity $activity,
-        Memberships $members,
-    ): RedirectResponse {
-        $organizationId = $this->scope->organizationId();
+    public function changeRole(Request $request, string $member): RedirectResponse
+    {
         $target = $this->manageableTarget($member);
         $next = MembershipRole::tryFrom((string) $request->string('role'));
 
-        if ($organizationId === null || $target === null || $next === null
+        if ($this->scope->organizationId() === null || $target === null || $next === null
             || ! in_array($next, MembershipRole::assignable(), true)) {
             return back();
         }
 
         // The organization id comes from the SCOPE and the subject id from the fenced
-        // lookup, so neither is the string off the wire.
-        app(PlatformRoot::class)->run(fn () => $members->changeRole($organizationId, $target->user_id, $next));
+        // lookup, inside the action as here — neither is the string off the wire.
+        $result = $this->act(ChangeMemberRole::class, ['id' => $target->id, 'role' => $next->value], ['role' => 'role'], 'role');
 
-        $activity->record($organizationId, 'organization.member_role_changed', $this->scope->actorId(),
-            targetType: 'membership', targetId: $target->id,
-            context: ['role' => $next->value], request: $request);
-
-        return back()->with('status', 'Role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role updated.');
     }
 
-    public function removeMember(
-        Request $request,
-        string $member,
-        OrganizationActivity $activity,
-        Memberships $members,
-    ): RedirectResponse {
-        $organizationId = $this->scope->organizationId();
+    public function removeMember(string $member): RedirectResponse
+    {
         $target = $this->manageableTarget($member);
 
-        if ($organizationId === null || $target === null) {
+        if ($this->scope->organizationId() === null || $target === null) {
             return back();
         }
 
-        app(PlatformRoot::class)->run(fn () => $members->remove($organizationId, $target->user_id));
+        $result = $this->act(RemoveMember::class, ['id' => $target->id]);
 
-        $activity->record($organizationId, 'organization.member_removed', $this->scope->actorId(),
-            targetType: 'membership', targetId: $target->id, request: $request);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         // Same reason as withdrawing an invitation: removing the last row on a later page
         // leaves the paginator pointed at a page that no longer exists.
@@ -291,12 +284,11 @@ final readonly class MemberController extends ConsoleController
      * PROMOTE FIRST, THEN DEMOTE, and the order is load-bearing rather than stylistic.
      * `Memberships` refuses to demote the last owner, so demoting first would be refused
      * outright; promoting first means the organization briefly has two owners and never
-     * zero.
+     * zero. {@see TransferOwnership} runs it, the same way for every door.
      */
-    public function makeOwner(string $member, MembershipLifecycle $lifecycle, Subjects $subjects): RedirectResponse
+    public function makeOwner(string $member, Subjects $subjects): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
-        $actorId = $this->scope->actorId();
 
         if ($organizationId === null || $this->scope->membershipRole() !== MembershipRole::Owner) {
             return back();
@@ -304,17 +296,13 @@ final readonly class MemberController extends ConsoleController
 
         $target = $this->resolve($member, $organizationId);
 
-        if ($target->user_id === $actorId) {
+        if ($target->user_id === $this->scope->actorId()) {
             return back();
         }
 
-        // THE SAME VERB the organization's own People page uses — promote, then demote, in
-        // one transaction — run in the platform root, where an account's memberships live.
         try {
-            app(PlatformRoot::class)->run(
-                fn () => $lifecycle->transferOwnership($organizationId, $target->user_id, $actorId, $actorId),
-            );
-        } catch (MembershipRefused $refused) {
+            $this->runAction(TransferOwnership::class, ['id' => $target->id]);
+        } catch (ActionRefused $refused) {
             return back()->with('error', $refused->getMessage());
         }
 
@@ -324,26 +312,21 @@ final readonly class MemberController extends ConsoleController
         return back()->with('status', 'Ownership transferred to '.$who.'.');
     }
 
-    public function saveAccess(
-        SetEnvironmentAccessRequest $request,
-        string $member,
-        Memberships $members,
-    ): RedirectResponse {
-        $organizationId = $this->scope->organizationId();
+    public function saveAccess(SetEnvironmentAccessRequest $request, string $member): RedirectResponse
+    {
         $target = $this->manageableTarget($member);
 
-        if ($organizationId === null || $target === null) {
+        if ($this->scope->organizationId() === null || $target === null) {
             return back();
         }
 
-        app(PlatformRoot::class)->run(fn () => $members->setEnvironmentAccess(
-            $organizationId,
-            $target->user_id,
-            $request->allEnvironments(),
-            $request->environmentIds(),
-        ));
+        $result = $this->act(SetEnvironmentAccess::class, [
+            'id' => $target->id,
+            'all_environments' => $request->allEnvironments(),
+            'environment_ids' => $request->environmentIds(),
+        ], ['all_environments' => 'all', 'environment_ids' => 'environmentIds'], 'environmentIds');
 
-        return back()->with('status', 'Environment access updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Environment access updated.');
     }
 
     /**
@@ -487,24 +470,5 @@ final readonly class MemberController extends ConsoleController
             ),
             $team->pending($organizationId, self::INVITATIONS_SHOWN),
         );
-    }
-
-    /**
-     * Who is sending: the acting member, by NAME.
-     *
-     * The mail was once handed `actorId()` — the inviter's subject ULID — so every team
-     * invitation arrived reading "01J9… invited you to help run Acme".
-     */
-    private function inviter(Subjects $subjects): Inviter
-    {
-        $actorId = $this->scope->actorId();
-        $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($actorId));
-
-        return new Inviter($actorId, $subject === null ? 'A teammate' : ($subject->name ?? $subject->email ?? 'A teammate'));
-    }
-
-    private function actor(): AuditActor
-    {
-        return AuditActor::organizationMember($this->scope->actorId());
     }
 }

@@ -528,7 +528,7 @@ it('probes, approves and withdraws the legacy login, recording who', function ()
         ->toContain('The integration works');
 
     $this->withToken($key)->postJson('/api/v1/legacy-login/probe', ['email' => 'not an address'])
-        ->assertUnprocessable()->assertJsonPath('error', 'invalid_email');
+        ->assertUnprocessable()->assertJsonPath('error', 'validation_failed')->assertJsonStructure(['errors' => ['email']]);
 
     $this->withToken($key)->postJson('/api/v1/legacy-login/approve')
         ->assertOk()

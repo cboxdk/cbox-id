@@ -7,7 +7,6 @@ namespace App\Mcp;
 use App\Mcp\Tools\ApprovalStatus;
 use App\Mcp\Tools\ListActions;
 use App\Mcp\Tools\WhoAmI;
-use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Danger;
 use Illuminate\Container\Container;
@@ -16,6 +15,10 @@ use Laravel\Mcp\Server\Tools\ToolSearch;
 
 /**
  * The MCP server, served at `/mcp` on every environment's own host.
+ *
+ * It serves both planes: an environment key sees that environment's tools, a workspace key
+ * the workspace's — each principal refuses the other plane, so neither is listed the
+ * other's.
  *
  * It is a third door to the action layer, beside the console and the REST API: one tool
  * per action in the registry ({@see ActionTool}), built here at start-up, so an action
@@ -40,7 +43,7 @@ final class IdServer extends Server
     protected string $version = '1.0.0';
 
     protected string $instructions = <<<'MARKDOWN'
-        This is the management plane of one Cbox ID environment (an identity provider): its APIs, apps, organizations and users. Each tool is one action, with the same rules, refusals and audit trail as the REST API and the console.
+        This is the management plane of Cbox ID (an identity provider). With an environment key it is one environment: its APIs, apps, organizations and users. With a workspace key it is the workspace above them: projects, environments, the team and keys. Each tool is one action, with the same rules, refusals and audit trail as the REST API and the console.
 
         - You act as the credential this connection was given. `whoami` says which, and the scopes it holds; a tool you do not see is one it may not run.
         - Every tool states its danger. Ask the person before calling a destructive or critical one.
@@ -61,10 +64,10 @@ final class IdServer extends Server
 
     protected function boot(): void
     {
-        $actions = array_map(
+        $actions = array_values(array_map(
             static fn ($action): ActionTool => new ActionTool($action),
-            Container::getInstance()->make(ActionRegistry::class)->forPlane(ActionPlane::Environment),
-        );
+            Container::getInstance()->make(ActionRegistry::class)->all(),
+        ));
 
         if (config('api.mcp.tool_search') === true) {
             $this->tools[ToolSearch::class] = $actions;

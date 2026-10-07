@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Workspace\Keys\CreateWorkspaceKey;
+use App\Actions\Workspace\Keys\RevokeWorkspaceKey;
 use App\Http\Props\Console\ApiKeyRowProps;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\KeyTabs;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
-use App\Platform\OrganizationActivity;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
+use Cbox\Id\Platform\ValueObjects\IssuedOrganizationApiKey;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
@@ -36,6 +38,10 @@ use Inertia\Response;
  * BOTH ARE ON THE ACCOUNT'S ACTIVITY LOG, which neither was: a credential that acts with a
  * role across the whole account could be minted and destroyed without a line anywhere
  * saying who did it. The environment key page beside this one always recorded both.
+ *
+ * Both writes are actions (`keys.workspace.create` / `.revoke`), the ones a workspace key
+ * runs over `/api/v1/workspace/keys`; the step-up stays here, because a password prompt is
+ * the console's ceremony and not part of the act.
  */
 final readonly class ApiKeyController extends ConsoleController
 {
@@ -72,7 +78,7 @@ final readonly class ApiKeyController extends ConsoleController
         ]);
     }
 
-    public function store(IssueApiKeyRequest $request, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
+    public function store(IssueApiKeyRequest $request): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
 
@@ -95,21 +101,20 @@ final readonly class ApiKeyController extends ConsoleController
             return $challenge;
         }
 
-        $issued = $keys->issue($organizationId, $request->name(), $request->role(), $request->expiresAt());
+        // The action `POST /api/v1/workspace/keys` runs: a key minted here and one minted by
+        // another key are recorded alike — and only a key is bounded by its parent.
+        $result = $this->act(CreateWorkspaceKey::class, [
+            'name' => $request->name(),
+            'role' => $request->role()->value,
+            'expires_at' => $request->expiresAt()?->toIso8601String(),
+        ], ['name' => 'name', 'role' => 'role', 'expires_at' => 'expires'], 'name');
 
-        $activity->record(
-            $organizationId,
-            'organization.api_key_created',
-            $this->scope->actorId(),
-            targetType: 'api_key',
-            targetId: $issued->key->id,
-            context: [
-                'name' => $issued->key->name,
-                'role' => $issued->key->role->value,
-                'expires_at' => $issued->key->expires_at?->toIso8601String(),
-            ],
-            request: $request,
-        );
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var IssuedOrganizationApiKey $issued */
+        $issued = $result->value;
 
         /*
          * The plaintext, on the flash channel and nowhere else. Props are written into the
@@ -121,7 +126,7 @@ final readonly class ApiKeyController extends ConsoleController
         return back()->with('status', 'Workspace key created — copy it now, it will not be shown again.');
     }
 
-    public function destroy(Request $request, string $key, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
+    public function destroy(string $key): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
 
@@ -136,13 +141,9 @@ final readonly class ApiKeyController extends ConsoleController
 
         // Only a key that belongs to THIS organization. The id comes from the URL, and a
         // revoke by id alone would let one account's administrator stop another's
-        // automation.
-        //
-        // ONE ROW, ASKED FOR BY BOTH KEYS. This used to load every key the organization
-        // had ever minted and pick the one out in PHP — the same fence, at the cost of
-        // the whole table per click. The organization predicate is in the query, so a
-        // foreign id is not a row this request can see: 404, like every other console
-        // lookup, rather than a silent bounce that looked like success.
+        // automation. The organization predicate is in the query, so a foreign id is not a
+        // row this request can see: 404, like every other console lookup. The action fences
+        // the id by the workspace once more.
         $found = OrganizationApiKey::query()
             ->where('organization_id', $organizationId)
             ->whereKey($key)
@@ -156,17 +157,11 @@ final readonly class ApiKeyController extends ConsoleController
             return back();
         }
 
-        $keys->revoke($key);
-
-        $activity->record(
-            $organizationId,
-            'organization.api_key_revoked',
-            $this->scope->actorId(),
-            targetType: 'api_key',
-            targetId: $found->id,
-            context: ['name' => $found->name],
-            request: $request,
-        );
+        try {
+            $this->runAction(RevokeWorkspaceKey::class, ['id' => $found->id]);
+        } catch (ActionRefused) {
+            return back();
+        }
 
         return back()->with('status', 'Workspace key revoked.');
     }

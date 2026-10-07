@@ -73,6 +73,12 @@ final readonly class ActionDefinition
         return ($this->class)::input();
     }
 
+    /** Where it is served from the API root (`/api/v1`): its plane's mount, then its own path. */
+    public function documentedPath(): string
+    {
+        return $this->plane->documentedPath($this->path);
+    }
+
     /** The MCP tool name: the action name with dots as underscores. */
     public function toolName(): string
     {
