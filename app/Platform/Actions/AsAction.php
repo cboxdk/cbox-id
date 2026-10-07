@@ -26,6 +26,8 @@ final readonly class AsAction
      * @param  ConsoleGate  $consoleGate  The console gate a person passes to run it there.
      * @param  string|null  $schema  The OpenAPI component (`#/components/schemas/…`) its `data` is.
      * @param  string|null  $tag  The OpenAPI tag it is listed under; derived from its name when null.
+     * @param  list<string>  $redact  Top-level `data` fields that are SECRETS (a key's value, a client
+     *                                secret): shown once, and never kept for an idempotent replay.
      */
     public function __construct(
         public string $name,
@@ -39,5 +41,6 @@ final readonly class AsAction
         public ConsoleGate $consoleGate = ConsoleGate::EnvironmentAdmin,
         public ?string $schema = null,
         public ?string $tag = null,
+        public array $redact = [],
     ) {}
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRegistry;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,10 +34,10 @@ it('is routed on REST exactly as it declares, behind its scope', function (Actio
 })->with('actions');
 
 it('requires a scope a key can actually carry', function (ActionDefinition $action): void {
-    $scope = EnvironmentApiScope::tryFrom($action->scope);
+    $scopes = app(ManagementScopes::class);
 
-    expect($scope)->not->toBeNull("{$action->name} requires {$action->scope}, which is no environment key scope")
-        ->and(in_array($scope, EnvironmentApiScope::offerable(), true))->toBeTrue("{$action->scope} is not offered on the key form");
+    expect($scopes->knows($action->scope))->toBeTrue("{$action->name} requires {$action->scope}, which no key can carry — add it to AppManagementScopes::APP_SCOPES")
+        ->and(in_array($action->scope, $scopes->offerable(), true))->toBeTrue("{$action->scope} is not offered on the key form");
 })->with('actions');
 
 it('matches its danger to its method and scope', function (ActionDefinition $action): void {

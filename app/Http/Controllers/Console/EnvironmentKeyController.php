@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Keys\CreateKey;
+use App\Actions\Keys\RevokeKey;
 use App\Http\Props\Console\EnvironmentKeyRowProps;
 use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Http\Props\Shared\HelpProps;
@@ -23,6 +25,8 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
+use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -114,7 +118,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
             // without the reserved scopes no route requires. Writes are marked, because
             // that is the difference that matters when somebody is ticking boxes for a
             // credential that can provision people.
-            'scopes' => array_map(EnvironmentScopeProps::from(...), EnvironmentKeyScopes::offered()),
+            'scopes' => array_map(EnvironmentScopeProps::offered(...), EnvironmentKeyScopes::offered()),
             'lifetimes' => array_map(
                 fn (KeyLifetime $lifetime): array => ['value' => $lifetime->value, 'label' => $lifetime->label()],
                 KeyLifetime::cases(),
@@ -160,7 +164,32 @@ final readonly class EnvironmentKeyController extends ConsoleController
             return to_route($sudo);
         }
 
-        $issued = $keys->issue($environmentId, $request->name(), $request->scopes(), $request->expiresAt());
+        // On the environment console a key is minted by the ACTION — the same one the API
+        // and MCP run, with the same audit entry. The workspace console mints for any of the
+        // workspace's environments from the root host, which is a workspace-plane act the
+        // action layer does not serve yet; it keeps its own path below.
+        if ($this->onEnvironmentPlane()) {
+            $result = $this->act(CreateKey::class, [
+                'name' => $request->name(),
+                'scopes' => $request->scopes(),
+                'expires_at' => $request->expiresAt()?->toIso8601String(),
+            ], ['name' => 'name', 'scopes' => 'scopes', 'expires_at' => 'expiresOn'], 'name');
+
+            if ($result instanceof RedirectResponse) {
+                return $result;
+            }
+
+            /** @var IssuedEnvironmentApiKey $minted */
+            $minted = $result->value;
+            $this->inertia->flash('freshKey', $minted->plaintext);
+
+            return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
+        }
+
+        $issued = $keys->issue($environmentId, $request->name(), $request->scopes(), $request->expiresAt(), new KeyProvenance(
+            createdByType: 'organization_member',
+            createdById: $this->scope->actorId() !== '' ? $this->scope->actorId() : null,
+        ));
 
         $activity->record(
             $auditScope,
@@ -210,6 +239,13 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // that stopped it, not every request naming a row that no longer offers one.
         if ($found === null || $found->revoked_at !== null) {
             return back();
+        }
+
+        if ($this->onEnvironmentPlane()) {
+            // The action revokes the key AND every key it minted, and records each.
+            $result = $this->act(RevokeKey::class, ['id' => $key]);
+
+            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Management key revoked.');
         }
 
         $keys->revoke($environmentId, $key);

@@ -6,7 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Platform\EnvironmentApiContext;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +27,7 @@ final class AuthenticateEnvironmentApi
     public function __construct(
         private readonly EnvironmentApiKeys $keys,
         private readonly EnvironmentApiContext $context,
+        private readonly ManagementScopes $scopes,
     ) {}
 
     /**
@@ -41,9 +42,9 @@ final class AuthenticateEnvironmentApi
             return $this->deny('unauthorized', 'A valid environment API key is required.', 401);
         }
 
-        $required = $scope !== null ? EnvironmentApiScope::tryFrom($scope) : null;
-
-        if ($scope !== null && ($required === null || ! $key->can($required))) {
+        // Deny-by-default twice over: a scope the vocabulary does not know is refused even
+        // if a key somehow carries it, and a known one only if this key carries it.
+        if ($scope !== null && (! $this->scopes->knows($scope) || ! $key->can($scope))) {
             return $this->deny('forbidden', "This key is missing the required scope: {$scope}.", 403);
         }
 

@@ -37,6 +37,22 @@ events, branding).
 - **`cbox-id:doctor` no longer has a "Console parity" check.** If you alert on its output
   by check name, drop that one.
 
+### laravel-id 1.21: run the migrations; management keys can mint keys
+
+`cboxdk/laravel-id` is now `^1.21`. Run `php artisan migrate`: two additive framework
+migrations (who minted each management key and from which key; action approvals on the
+CIBA store). Read the package's
+[1.21 upgrade notes](https://github.com/cboxdk/laravel-id/blob/v1.21.0/UPGRADING.md).
+
+- **New API endpoints:** `GET/POST /api/v1/keys`, `POST /api/v1/keys/{id}/rotate` and
+  `DELETE /api/v1/keys/{id}`, behind the new `keys:read` / `keys:write` scopes. An existing
+  key carries neither, so nothing changes until an administrator mints a key that does.
+- **Revoking a key now revokes every key it minted.** Keys minted before this release have
+  no recorded parent and are unaffected.
+- **A key carrying a scope nothing recognises can no longer be minted** (the framework
+  refuses it). The console only ever offered recognised scopes.
+
+
 ### Run the scheduler — and alert on it
 
 `cbox.yaml` now declares a `scheduler` process (`php artisan schedule:work`). Every other

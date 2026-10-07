@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Route as Router;
 
 /**
  * The environment API scopes this deployment OFFERS on a new key.
  *
- * The framework's {@see EnvironmentApiScope::offerable()} — which already holds back the
- * reserved `directories:*` scopes — narrowed once more, to the scopes some route in
+ * The vocabulary's offerable scopes ({@see ManagementScopes}: the framework's core set,
+ * which already holds back the reserved `directories:*` scopes, plus the app's own) narrowed once more, to the scopes some route in
  * `routes/api.php` actually requires (`env.api:<scope>`). The framework catalogues a scope
  * before every host serves an endpoint for it, and a box that grants nothing is one an
  * administrator ticks to no effect, then reasonably concludes the key can do something
@@ -24,19 +24,19 @@ final class EnvironmentKeyScopes
     private const string MIDDLEWARE = 'env.api:';
 
     /**
-     * In the enum's order, which pairs each resource's read with its write — the pair a
-     * reader compares when deciding how much to hand a credential that can provision
+     * In the vocabulary's order, which pairs each resource's read with its write — the pair
+     * a reader compares when deciding how much to hand a credential that can provision
      * people.
      *
-     * @return list<EnvironmentApiScope>
+     * @return list<string>
      */
     public static function offered(): array
     {
         $required = self::requiredByARoute();
 
         return array_values(array_filter(
-            EnvironmentApiScope::offerable(),
-            static fn (EnvironmentApiScope $scope): bool => isset($required[$scope->value]),
+            app(ManagementScopes::class)->offerable(),
+            static fn (string $scope): bool => isset($required[$scope]),
         ));
     }
 
@@ -45,13 +45,13 @@ final class EnvironmentKeyScopes
      */
     public static function offeredValues(): array
     {
-        return array_map(static fn (EnvironmentApiScope $scope): string => $scope->value, self::offered());
+        return self::offered();
     }
 
     /** True for anything that is not `:read` — a key carrying it can change data. */
-    public static function writes(EnvironmentApiScope $scope): bool
+    public static function writes(string $scope): bool
     {
-        return $scope->writes();
+        return ! str_ends_with($scope, ':read');
     }
 
     /**

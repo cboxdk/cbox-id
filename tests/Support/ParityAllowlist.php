@@ -24,7 +24,7 @@ use Tests\Feature\Actions\ActionParityTest;
 final class ParityAllowlist
 {
     /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 251;
+    public const int BASELINE = 249;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -228,11 +228,9 @@ final class ParityAllowlist
             'environment.hooks.store',
             'environment.hooks.toggle',
             'environment.impersonate',
-            'environment.keys.destroy',
             'environment.keys.frontend.destroy',
             'environment.keys.frontend.origins',
             'environment.keys.frontend.store',
-            'environment.keys.store',
             'environment.legacy-login.approve',
             'environment.legacy-login.probe',
             'environment.legacy-login.revoke',

@@ -7,7 +7,7 @@ namespace App\Platform\Actions\Principal;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionDefinition;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -40,9 +40,7 @@ final readonly class EnvironmentKeyPrincipal implements Principal
 
     public function authorize(ActionDefinition $action): void
     {
-        $scope = EnvironmentApiScope::tryFrom($action->scope);
-
-        if ($scope === null || ! $this->key->isActive() || ! $this->key->can($scope)) {
+        if (! app(ManagementScopes::class)->knows($action->scope) || ! $this->key->isActive() || ! $this->key->can($action->scope)) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
         }
     }
