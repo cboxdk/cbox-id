@@ -183,7 +183,7 @@ it('repoints and resubscribes an endpoint, recording what changed and nothing fo
     $trail = integrationTrail('webhook.updated');
 
     expect($trail)->toHaveCount(1)
-        ->and($trail[0]->context['changes']['url'])->toBe(['from' => 'https://a.acme.example/in', 'to' => 'https://b.acme.example/in']);
+        ->and($trail[0]->context['changes']['url'])->toEqual(['from' => 'https://a.acme.example/in', 'to' => 'https://b.acme.example/in']);
 });
 
 it('refuses repointing at a private address, and an event the endpoint may not hear', function (): void {
