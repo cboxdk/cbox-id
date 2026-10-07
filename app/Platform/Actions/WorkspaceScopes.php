@@ -43,8 +43,8 @@ final class WorkspaceScopes
             'capability' => 'manage-environments',
         ],
         'environments:write' => [
-            'label' => 'Create environments',
-            'description' => 'Create environments, optionally with a first management key.',
+            'label' => 'Manage environments',
+            'description' => 'Create environments, optionally with a first management key, and serve them on custom domains.',
             'capability' => 'manage-environments',
         ],
         'team:read' => [

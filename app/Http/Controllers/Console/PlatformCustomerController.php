@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Platform\Workspaces\CreateWorkspace;
+use App\Actions\Platform\Workspaces\SetWorkspaceStatus;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreateCustomerRequest;
-use App\Mail\PasswordResetMail;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\MailLocale;
-use App\Platform\MailLinks;
 use App\Platform\OperatorEnvironment;
 use Carbon\CarbonInterface;
-use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -27,17 +25,12 @@ use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Contracts\Projects;
-use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
@@ -145,8 +138,8 @@ final readonly class PlatformCustomerController extends ConsoleController
                     'projects' => (int) ($projectCounts[$organization->id] ?? 0),
                     'environments' => (int) ($environmentCounts[$organization->id] ?? 0),
                     'createdAt' => $this->createdAt($organization),
-                    'href' => route('platform.customers.show', $organization->id),
-                    'toggleHref' => route('platform.customers.toggle', $organization->id),
+                    'href' => route('platform.workspaces.show', $organization->id),
+                    'toggleHref' => route('platform.workspaces.toggle', $organization->id),
                 ];
             })->all();
 
@@ -158,7 +151,7 @@ final readonly class PlatformCustomerController extends ConsoleController
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
             'search' => $term,
-            'storeHref' => route('platform.customers.store'),
+            'storeHref' => route('platform.workspaces.store'),
             'environmentsHref' => route('platform.environments'),
             'environmentLimits' => CreateCustomerRequest::LIMITS,
         ]);
@@ -166,63 +159,36 @@ final readonly class PlatformCustomerController extends ConsoleController
 
     /**
      * Stand up a whole customer — the organization, its owner, its first IdP product and
-     * that product's first environment.
-     *
-     * THERE WAS NO WAY TO DO THIS. `TenantProvisioner::provision()` is the package's own
-     * entry point, exercised by the installer, by signup and by tests, and the operator
-     * console — the one surface whose entire job is running the deployment — had no caller
-     * for it. An operator could suspend a customer, walk their estate and impersonate their
-     * people, and could not create one.
-     *
-     * `provision()` is one transaction, so a failure leaves no half-born customer. The mail
-     * is sent AFTER it returns for the same reason: a reset link for an organization that
-     * rolled back is a link to nowhere.
+     * that product's first environment — through {@see CreateWorkspace}, the action the
+     * operator API runs too. The page keeps what is its own: where a refusal lands, and
+     * the sentence that says whether the owner's link went.
      */
-    public function store(
-        CreateCustomerRequest $request,
-        TenantProvisioner $provisioner,
-        PasswordReset $resets,
-        MailLinks $links,
-    ): RedirectResponse {
+    public function store(CreateCustomerRequest $request): RedirectResponse
+    {
         $this->assertOperator();
 
-        $ownerEmail = $request->ownerEmail();
+        $result = $this->act(CreateWorkspace::class, [
+            'name' => $request->name(),
+            'owner_email' => $request->ownerEmail(),
+            'owner_name' => $request->ownerName(),
+            'environment_limit' => $request->environmentLimit(),
+        ], ['name' => 'name', 'owner_email' => 'ownerEmail', 'owner_name' => 'ownerName', 'environment_limit' => 'environmentLimit'], 'name');
 
-        try {
-            $tenant = $provisioner->provision(new TenantBlueprint(
-                organizationName: $request->name(),
-                ownerEmail: $ownerEmail,
-                ownerName: $request->ownerName(),
-                // 64 random characters, discarded on the next line. It exists only because
-                // the blueprint's contract requires a credential; nothing here can read it
-                // back and nobody is ever told it. The owner is sent a reset link and picks
-                // their own — an operator who typed a password for somebody else would be
-                // an operator who knows a customer's credential.
-                ownerPassword: Str::random(64),
-                environmentLimit: $request->environmentLimit(),
-            ));
-        } catch (EnvironmentLimitReached|\InvalidArgumentException $e) {
-            // The two refusals a valid form can still hit: a domain already in use, and a
-            // deployment with no platform root. Both are sentences worth showing rather than
-            // a 500 — the second in particular means "run the installer", which an operator
-            // can act on.
-            return back()->withInput()->withErrors(['name' => $e->getMessage()]);
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        // The owner's way in. `request()` returns null only for an address with no account,
-        // which cannot happen here — provisioning just guaranteed one — so a null means
-        // something changed underneath and the operator should be told the customer exists
-        // but the invitation did not go.
-        $token = $resets->request($ownerEmail);
+        /** @var array{id: string, owner_invited: bool} $workspace */
+        $workspace = $result->payload;
 
-        if ($token === null) {
-            $status = 'Workspace created, but the owner could not be sent a link. Ask them to use "Forgot password".';
-        } else {
-            Mail::to($ownerEmail)->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($links->route('password.reset', $token)));
-            $status = 'Workspace created. '.$ownerEmail.' has been emailed a link to set their password.';
-        }
+        // `owner_invited` is false only when the owner had no account to reset, which
+        // provisioning has just made impossible — so it means something changed underneath,
+        // and the operator should know the workspace exists but the invitation did not go.
+        $status = $workspace['owner_invited']
+            ? 'Workspace created. '.$request->ownerEmail().' has been emailed a link to set their password.'
+            : 'Workspace created, but the owner could not be sent a link. Ask them to use "Forgot password".';
 
-        return redirect()->route('platform.customers.show', $tenant->organization->id)->with('status', $status);
+        return redirect()->route('platform.workspaces.show', $workspace['id'])->with('status', $status);
     }
 
     /** One customer, and everything that hangs off it. */
@@ -287,8 +253,8 @@ final readonly class PlatformCustomerController extends ConsoleController
                 'isTarget' => $environment->id === $activeEnvironmentId,
                 'orgs' => (int) ($orgCounts[$environment->id] ?? 0),
                 'users' => (int) ($userCounts[$environment->id] ?? 0),
-                'targetHref' => route('platform.customers.target', [$customer->id, $environment->id]),
-                'openHref' => route('platform.customers.open', [$customer->id, $environment->id]),
+                'targetHref' => route('platform.workspaces.target', [$customer->id, $environment->id]),
+                'openHref' => route('platform.workspaces.open', [$customer->id, $environment->id]),
             ];
         };
 
@@ -346,8 +312,8 @@ final readonly class PlatformCustomerController extends ConsoleController
             ])->values()->all(),
             'unfiledEnvironments' => $unfiled,
             'environmentTotal' => $environments->count(),
-            'indexHref' => route('platform.customers'),
-            'toggleHref' => route('platform.customers.toggle', $customer->id),
+            'indexHref' => route('platform.workspaces'),
+            'toggleHref' => route('platform.workspaces.toggle', $customer->id),
         ]);
     }
 
@@ -395,36 +361,30 @@ final readonly class PlatformCustomerController extends ConsoleController
     }
 
     /**
-     * Suspend or reactivate a customer. Idempotent on the contract's side, so the current
-     * status decides the direction rather than a separate flag.
+     * Suspend or reactivate a customer: the button flips what it shows, so it asks
+     * {@see SetWorkspaceStatus} for the opposite of the current state — the action itself
+     * takes a state rather than a flip, so an API retry cannot undo itself.
      */
     public function toggle(string $organization, Organizations $organizations, PlatformRoot $platformRoot): RedirectResponse
     {
         $this->assertOperator();
 
-        $actorId = $this->scope->operator()?->id;
-
-        abort_if($actorId === null, 403);
-
-        $suspending = $platformRoot->run(function () use ($organizations, $organization, $actorId): ?bool {
-            $model = $organizations->find($organization);
-
-            if ($model === null) {
-                return null;
-            }
-
-            $suspending = ! $model->status->revokesAccess();
-
-            $suspending
-                ? $organizations->suspend($model->id, $actorId)
-                : $organizations->reactivate($model->id, $actorId);
-
-            return $suspending;
-        });
+        $current = $platformRoot->run(fn (): ?Organization => $organizations->find($organization));
 
         // 404 rather than a silent return: an id that resolves to nothing is not a button
         // this operator is failing to press, and a redirect back reports success.
-        abort_if($suspending === null, 404);
+        abort_if($current === null, 404);
+
+        $suspending = ! $current->status->revokesAccess();
+
+        $result = $this->act(SetWorkspaceStatus::class, [
+            'workspace_id' => $current->id,
+            'status' => $suspending ? 'suspended' : 'active',
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         return back()->with('status', $suspending
             ? 'Workspace suspended — its members can no longer sign in and its environments stop serving auth.'
@@ -442,7 +402,7 @@ final readonly class PlatformCustomerController extends ConsoleController
 
         $environments->pointAt($this->ownedEnvironment($organization, $environment)->slug);
 
-        return redirect()->route('platform.customers.show', $organization);
+        return redirect()->route('platform.workspaces.show', $organization);
     }
 
     /**

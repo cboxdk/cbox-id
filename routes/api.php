@@ -69,6 +69,51 @@ Route::middleware('throttle:api-workspace')
     });
 
 /*
+ * The OPERATOR API (GLOBAL) — the deployment itself, for Cbox staff: standing up customer
+ * workspaces, environments, organizations inside any environment, and the operator roster.
+ * Served on the platform-root host and resolving no environment, like the workspace plane.
+ *
+ * NO KEY OF ANY KIND IS ACCEPTED. Every route is `delegated.api:platform,<scope>`: a token
+ * a platform OPERATOR delegated, carrying the `operator:*` scope the action asks for. Until
+ * such tokens are issued (see DelegatedTokens) every request here answers 401, and the
+ * console's Platform pages — which run the very same actions — are the only way in.
+ */
+Route::get('v1/platform/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/platform.yaml'));
+    abort_if($spec === false, 404);
+
+    return response($spec, 200, ['Content-Type' => 'application/yaml']);
+})->name('api.platform.openapi');
+
+Route::middleware('throttle:api-platform')
+    ->prefix('v1/platform')
+    ->group(function (): void {
+        ActionRoutes::platform();
+    });
+
+/*
+ * A person's OWN ACCOUNT (SCOPED to the environment they belong to, so on its host) — the
+ * profile, sessions, app grants, personal API keys and trusted devices of whoever is
+ * calling. `delegated.api:account,<scope>`: a token the person delegated, never a key — no
+ * management credential acts as a person. Console-only until such tokens are issued.
+ *
+ * Every action here is keyed to the person behind the token; there is no account id in
+ * any path, so there is no other account to name.
+ */
+Route::get('v1/me/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/account.yaml'));
+    abort_if($spec === false, 404);
+
+    return response($spec, 200, ['Content-Type' => 'application/yaml']);
+})->name('api.account.openapi');
+
+Route::middleware([ResolveEnvironment::class, 'throttle:api-account'])
+    ->prefix('v1/me')
+    ->group(function (): void {
+        ActionRoutes::account();
+    });
+
+/*
  * Environment management plane (SCOPED). Served on an environment's OWN host
  * ({slug}.cboxid.com or a custom domain): ResolveEnvironment pins the environment
  * from the host, then a `Bearer cbid_env_…` key is authenticated by `env.api` and

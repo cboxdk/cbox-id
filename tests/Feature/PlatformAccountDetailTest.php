@@ -130,7 +130,7 @@ it('takes its eyebrow and its lit rail entry from the nav registry, without writ
     $props = platformCustomer($estate['organization']->id);
 
     /*
-     * `platform.customers.show` is a CHILD of `platform.customers`, so NavPage::owns() finds
+     * `platform.workspaces.show` is a CHILD of `platform.workspaces`, so NavPage::owns() finds
      * it and both the eyebrow and the lit rail entry resolve with no hand-written label.
      * This is the whole reason the route is not called `platform.account`.
      *
@@ -147,7 +147,7 @@ it('takes its eyebrow and its lit rail entry from the nav registry, without writ
         ->and($area['label'])->toBe('Platform');
 
     // …and the section is in the tab title, which is the server's and not the bundle's.
-    expect((string) test()->get(route('platform.customers.show', $estate['organization']->id))->getContent())
+    expect((string) test()->get(route('platform.workspaces.show', $estate['organization']->id))->getContent())
         ->toContain(' · Platform · ')
         ->not->toContain(' · Workspace · ');
 });
@@ -160,7 +160,7 @@ it('makes every count on the accounts list a link to the account it counts', fun
     // The finding, as the row: this page computed three counts per account and had no
     // route() call in it at all, so all three were dead ends. The destination is carried
     // once and the page hangs every count on it.
-    expect($row['href'])->toBe(route('platform.customers.show', $estate['organization']->id))
+    expect($row['href'])->toBe(route('platform.workspaces.show', $estate['organization']->id))
         ->and($row['projects'])->toBe(2)
         ->and($row['environments'])->toBe(3);
 });
@@ -169,7 +169,7 @@ it('points the console at an environment from the account page and stays on the 
     $estate = acmeEstate();
 
     targetCustomerEnvironment($estate['organization']->id, $estate['portal']->id)
-        ->assertRedirect(route('platform.customers.show', $estate['organization']->id));
+        ->assertRedirect(route('platform.workspaces.show', $estate['organization']->id));
 
     expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBe($estate['portal']->slug);
 });
@@ -232,14 +232,14 @@ it('refuses every write on this page once the operator authority is gone', funct
     $estate = acmeEstate();
     $organizationId = $estate['organization']->id;
 
-    $this->get(route('platform.customers.show', $organizationId))->assertSuccessful();
+    $this->get(route('platform.workspaces.show', $organizationId))->assertSuccessful();
 
     forgetSubjectSession();
     nextRequest();
 
     // `login`, not `workspace.login` — the suite's baseline is a single-host install, so an
     // operator's sign-in is the root one (see AuthenticateOperator::signInRoute()).
-    $this->get(route('platform.customers.show', $organizationId))->assertRedirect(route('login'));
+    $this->get(route('platform.workspaces.show', $organizationId))->assertRedirect(route('login'));
 
     toggleCustomer($organizationId)->assertRedirect(route('login'));
     targetCustomerEnvironment($organizationId, $estate['portal']->id)->assertRedirect(route('login'));
@@ -272,7 +272,7 @@ it('refuses an account owner who is not an operator, on the reads and on the wri
     nextRequest();
     signInAsMember($outsider->user_id);
 
-    $this->get(route('platform.customers.show', $organizationId))->assertNotFound();
+    $this->get(route('platform.workspaces.show', $organizationId))->assertNotFound();
 
     // EVERY WRITE TOO. Under Livewire these shared one endpoint and the page had to re-ask
     // in boot(); each is now its own route, which is what makes asking them one by one the
@@ -305,7 +305,7 @@ it('gives every environment its lineage on the flat list, and names the two that
     // The account name in the column is a link into the account, so the flat list is a way
     // INTO the hierarchy rather than a place it disappears.
     expect($rows->pluck('lineage.organizationHref')->filter()->unique()->values()->all())
-        ->toBe([route('platform.customers.show', $estate['organization']->id)]);
+        ->toBe([route('platform.workspaces.show', $estate['organization']->id)]);
 });
 
 it('names the owner beside every environment the operator can point the console at', function (): void {

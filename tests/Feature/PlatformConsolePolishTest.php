@@ -68,7 +68,7 @@ it('offers an account-less operator no area that needs an account', function ():
         ->and($routes)->not->toContain('billing')
         ->and($routes)->not->toContain('organization-settings')
         // …and the platform section IS there, or the assertions above pass on an empty rail.
-        ->and($routes)->toContain('platform.customers')
+        ->and($routes)->toContain('platform.workspaces')
         ->and($routes)->toContain('platform.operators');
 
     // Their own security page survives, and should: it is the one thing that belongs to
@@ -123,7 +123,7 @@ it('gives every platform page the eyebrow its rail area actually uses', function
     // not highlight, and so did Operators and Security.
     $expected = [
         'platform.environments' => 'Platform',
-        'platform.customers' => 'Platform',
+        'platform.workspaces' => 'Platform',
         'platform.organizations' => 'Platform',
         'platform.usage' => 'Insights',
         'platform.search' => 'Insights',
@@ -184,7 +184,7 @@ it('will not suspend a live tenant or a fellow operator without a confirmed act'
     $lists = [
         'platform.organizations' => ['organizations', 'toggleHref'],
         'platform.operators' => ['operators', 'toggleHref'],
-        'platform.customers' => ['customers', 'toggleHref'],
+        'platform.workspaces' => ['customers', 'toggleHref'],
     ];
 
     $checked = 0;

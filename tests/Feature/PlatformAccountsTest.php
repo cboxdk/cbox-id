@@ -55,7 +55,7 @@ it('suspends and reactivates an account, and the toggle is reversible', function
 
     // Back to the list, not onward: suspending is a two-way switch and the operator's next
     // act is as likely to be undoing it.
-    toggleCustomer($account->id)->assertRedirect(route('platform.customers.show', $account->id));
+    toggleCustomer($account->id)->assertRedirect(route('platform.workspaces.show', $account->id));
     expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
     toggleCustomer($account->id);
@@ -113,7 +113,7 @@ it('refuses the screen, and the toggle, without operator authority', function ()
     // `workspace.login` carries `plane:account` — false when there is no host split, by
     // design — so pointing a self-hosted operator there points them at a 404. The gate
     // asks the deployment shape; see AuthenticateOperator::signInRoute().
-    $this->get(route('platform.customers'))->assertRedirect(route('login'));
+    $this->get(route('platform.workspaces'))->assertRedirect(route('login'));
 
     // AND THE WRITE, asked in its own right. Under Livewire the toggle shared one endpoint
     // with every other action on the console and the page had to re-ask in `boot()`; it is

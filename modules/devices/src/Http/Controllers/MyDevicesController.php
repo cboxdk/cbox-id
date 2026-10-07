@@ -13,17 +13,14 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use Cbox\Id\Devices\Actions\RemoveMyDevice;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Support\AuthenticatorClient;
 use Cbox\Id\Devices\Support\AuthenticatorProvisioner;
 use Cbox\Id\Devices\Support\EnrolmentToken;
-use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Response;
 use Throwable;
 
@@ -93,36 +90,15 @@ final readonly class MyDevicesController extends ConsoleController
     }
 
     /**
-     * Remove one of MY devices.
-     *
-     * Same semantics as the API's destroy: SCOPED TO THE CALLER in the query, so somebody
-     * else's device behaves exactly like a missing one — and the removal is audited.
+     * Remove one of MY devices, through {@see RemoveMyDevice} — the account plane's action.
+     * SCOPED TO THE CALLER in the query, so somebody else's device behaves exactly like a
+     * missing one (404), and the removal is audited.
      */
-    public function destroy(string $device, Request $request): RedirectResponse
+    public function destroy(string $device): RedirectResponse
     {
-        $me = app(CurrentUser::class);
+        $result = $this->act(RemoveMyDevice::class, ['device_id' => $device]);
 
-        $model = Device::query()
-            ->whereKey($device)
-            ->where('subject_id', $me->id())
-            ->first();
-
-        // 404, not 403: another person's handset is not a control this reader is failing
-        // to press, it is a row they have no business learning exists.
-        abort_if($model === null, 404);
-
-        $model->delete();
-
-        app(AuditLog::class)->record(new AuditEvent(
-            action: 'device.removed',
-            actorType: ActorType::User,
-            actorId: $me->id(),
-            targetType: 'device',
-            targetId: $device,
-            ip: $request->ip(),
-        ));
-
-        return back()->with('status', 'Device removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Device removed.');
     }
 
     /**

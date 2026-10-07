@@ -118,7 +118,7 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
     // and the 404 is what proves the rail is not the authorization — a member who types
     // the URL is turned away by AuthenticateOperator whatever the nav says.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
-        ->and(railRoutes())->not->toContain('platform.customers')
+        ->and(railRoutes())->not->toContain('platform.workspaces')
         ->and(railRoutes())->not->toContain('platform.environments')
         ->and(railRoutes())->not->toContain('platform.operators');
 
@@ -166,16 +166,16 @@ it('gives the platform pages to an operator, as a mode of the same console', fun
     $hrefs = collect($shell['areas'])->pluck('href');
 
     expect($hrefs)->toContain(route('dashboard'))
-        ->and($hrefs)->not->toContain(route('platform.customers'))
+        ->and($hrefs)->not->toContain(route('platform.workspaces'))
         ->and($shell['platformMode'])->toBeFalse()
-        ->and($shell['platformHref'])->toBe(route('platform.customers'));
+        ->and($shell['platformHref'])->toBe(route('platform.workspaces'));
 
     // INSIDE it, the rail is platform admin's alone, the mode is said, and there is a way
     // out — the same session, the same shell, no second login.
-    $shell = (array) $this->get(route('platform.customers'))->assertOk()->inertiaProps('shell');
+    $shell = (array) $this->get(route('platform.workspaces'))->assertOk()->inertiaProps('shell');
     $hrefs = collect($shell['areas'])->pluck('href');
 
-    expect($hrefs)->toContain(route('platform.customers'))
+    expect($hrefs)->toContain(route('platform.workspaces'))
         ->and($hrefs)->toContain(route('platform.operators'))
         ->and($hrefs)->not->toContain(route('dashboard'))
         ->and($shell['platformMode'])->toBeTrue()

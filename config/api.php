@@ -16,6 +16,10 @@ return [
     'rate_limits' => [
         'workspace' => (int) env('CBOX_ID_API_RATE_LIMIT_WORKSPACE', 120),
         'environment' => (int) env('CBOX_ID_API_RATE_LIMIT_ENVIRONMENT', 240),
+        // The operator API (`/api/v1/platform`) and a person's own account (`/api/v1/me`):
+        // a person's delegated token, so a person's pace.
+        'platform' => (int) env('CBOX_ID_API_RATE_LIMIT_PLATFORM', 60),
+        'account' => (int) env('CBOX_ID_API_RATE_LIMIT_ACCOUNT', 60),
         'vault' => (int) env('CBOX_ID_API_RATE_LIMIT_VAULT', 120),
         'apps' => (int) env('CBOX_ID_API_RATE_LIMIT_APPS', 60),
         // The MCP server at `/mcp`. Its own bucket rather than the environment plane's:

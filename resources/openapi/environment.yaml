@@ -77,6 +77,7 @@ tags:
   - name: Devices
   - name: Approvals
   - name: Governance
+  - name: 'Agent requests'
   - name: 'Audit log'
   - name: Branding
   - name: 'Directory sync'
@@ -531,6 +532,91 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         404:
           $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /agent-requests:
+    get:
+      tags:
+        - 'Agent requests'
+      summary: "List the pending requests from agents to act as one of this environment's people (CIBA): which app, for whom, and what it asks."
+      description: 'Requires scope `approvals:read`. Danger: read.'
+      operationId: approvals_list
+      x-action: approvals.list
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AgentRequest'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/agent-requests/{request_id}/deny':
+    post:
+      tags:
+        - 'Agent requests'
+      summary: 'Deny a pending agent request (CIBA) for the person it was raised for: the agent gets access_denied and no token.'
+      description: 'Requires scope `approvals:write`. Danger: destructive.'
+      operationId: approvals_deny
+      x-action: approvals.deny
+      parameters:
+        -
+          name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   '/api-keys/{id}':
@@ -13221,6 +13307,57 @@ components:
           items:
             type: string
           description: 'The OAuth client ids that may lease it. Not on lists.'
+    AgentRequest:
+      type: object
+      description: "A pending request from an agent to act as one of this environment's people (OIDC CIBA)."
+      required:
+        - id
+        - client_id
+        - app
+        - subject
+        - scopes
+        - expires_at
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        app:
+          type: string
+          description: "The app's name, or its client id when it has none."
+        subject:
+          type: object
+          description: 'Whom the agent asks to act as.'
+          required:
+            - id
+            - email
+          properties:
+            id:
+              type: string
+            email:
+              type:
+                - string
+                - 'null'
+              description: 'Null when that person no longer exists — the request can still be denied.'
+        binding_message:
+          type:
+            - string
+            - 'null'
+          description: 'The message the person sees on their device, to recognise the request.'
+        scopes:
+          type: array
+          items:
+            type: string
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
     PageMeta:
       type: object
       properties:

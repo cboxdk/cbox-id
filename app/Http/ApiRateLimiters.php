@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * tenant throttled all the others. That is exactly wrong for the Terraform/CLI/SDK
  * workloads this API is about to carry, whose traffic is bursty and machine-driven.
  *
- * Each plane gets its own named limiter (`api-workspace`, `api-environment`, `api-vault`,
- * `api-apps`, and `api-mcp` for the MCP server at `/mcp`) because the planes have
- * genuinely different budgets, but they all key the same way.
+ * Each plane gets its own named limiter (`api-workspace`, `api-environment`, `api-platform`,
+ * `api-account`, `api-vault`, `api-apps`, and `api-mcp` for the MCP server at `/mcp`)
+ * because the planes have genuinely different budgets, but they all key the same way.
  *
  * ── On WHERE the key comes from ──────────────────────────────────────────────────
  * `throttle` runs BEFORE the authentication middleware in the route's stack, so the
@@ -42,7 +42,7 @@ use Illuminate\Support\Facades\RateLimiter;
 final class ApiRateLimiters
 {
     /** The planes, and the config key holding each one's per-minute budget. */
-    private const PLANES = ['workspace', 'environment', 'vault', 'apps', 'mcp'];
+    private const PLANES = ['workspace', 'environment', 'platform', 'account', 'vault', 'apps', 'mcp'];
 
     public static function register(): void
     {

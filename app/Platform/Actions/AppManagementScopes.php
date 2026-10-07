@@ -161,6 +161,14 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Create Admin Portal links',
             'description' => 'Mint a one-time Admin Portal link that lets an organization\'s IT administrator set up its SSO, domains or directory sync without an account. The link is shown once.',
         ],
+        'approvals:read' => [
+            'label' => 'Read agent requests',
+            'description' => 'List the pending requests from agents to act as one of this environment\'s people (OIDC CIBA): which app, for whom, and what it asks.',
+        ],
+        'approvals:write' => [
+            'label' => 'Deny agent requests',
+            'description' => 'Deny a pending agent request. Denying grants nothing; approving is only ever the person\'s own act.',
+        ],
     ];
 
     public function knows(string $scope): bool

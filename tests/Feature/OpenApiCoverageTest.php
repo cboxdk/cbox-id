@@ -119,6 +119,8 @@ function undocumentedByDesign(): array
         // The specs themselves.
         'GET /api/v1/workspace/openapi.yaml',
         'GET /api/v1/environment/openapi.yaml',
+        'GET /api/v1/platform/openapi.yaml',
+        'GET /api/v1/me/openapi.yaml',
 
         // OAuth 2.0 / OIDC — RFC-specified. DEBT: no machine-readable contract yet.
         'GET /oauth/authorize',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Http\Controllers\Api\ActionController;
+use App\Http\Middleware\AuthenticateDelegatedApi;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use Illuminate\Support\Facades\Route;
 
@@ -31,15 +32,32 @@ final class ActionRoutes
     }
 
     /**
+     * The operator API: only a platform operator's delegated token, never a key
+     * ({@see AuthenticateDelegatedApi}).
+     */
+    public static function platform(): void
+    {
+        self::register(ActionPlane::Platform);
+    }
+
+    /** A person's own account: only a token that person delegated, never a key. */
+    public static function account(): void
+    {
+        self::register(ActionPlane::Account);
+    }
+
+    /**
      * The route middleware an action is guarded by on its plane. An environment's actions
      * take a person's access token as well as a key ({@see AuthenticateEnvironmentApi::DELEGATED}):
-     * the principal it becomes asks what the person may do, the same as on `/mcp`.
+     * the principal it becomes asks what the person may do, the same as on `/mcp`. The
+     * platform and account planes take only a delegated token ({@see AuthenticateDelegatedApi}).
      */
     public static function middleware(ActionDefinition $action): string
     {
         return match ($action->plane) {
             ActionPlane::Environment => 'env.api:'.$action->scope.','.AuthenticateEnvironmentApi::DELEGATED,
             ActionPlane::Workspace => 'workspace.api:'.$action->scope,
+            ActionPlane::Platform, ActionPlane::Account => 'delegated.api:'.$action->plane->value.','.$action->scope,
         };
     }
 

@@ -2806,6 +2806,25 @@ components:
         rotated_at: { type: ["string", "null"], format: date-time }
         created_at: { type: ["string", "null"], format: date-time }
         grants: { type: array, items: { type: string }, description: "The OAuth client ids that may lease it. Not on lists." }
+    AgentRequest:
+      type: object
+      description: A pending request from an agent to act as one of this environment's people (OIDC CIBA).
+      required: [id, client_id, app, subject, scopes, expires_at]
+      properties:
+        id: { type: string }
+        client_id: { type: string }
+        app: { type: string, description: "The app's name, or its client id when it has none." }
+        subject:
+          type: object
+          description: Whom the agent asks to act as.
+          required: [id, email]
+          properties:
+            id: { type: string }
+            email: { type: ["string", "null"], description: "Null when that person no longer exists — the request can still be denied." }
+        binding_message: { type: ["string", "null"], description: "The message the person sees on their device, to recognise the request." }
+        scopes: { type: array, items: { type: string } }
+        expires_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
     PageMeta:
       type: object
       properties:

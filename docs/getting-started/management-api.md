@@ -339,7 +339,7 @@ further. A key with no scopes is bounded by its role alone.
 |---|---|---|
 | `workspace:read` | read the workspace, its projects and environments | — |
 | `projects:write` | create, rename, suspend and reactivate projects | manage environments |
-| `environments:write` | create environments, optionally with a first key | manage environments |
+| `environments:write` | create environments, optionally with a first key, and serve them on a custom domain (`/environments/{id}/domain`) | manage environments |
 | `team:read` | list members and pending invitations | read members |
 | `team:write` | invite, re-role, scope and remove members | manage members |
 | `keys:write` | mint and revoke environment keys and workspace keys | manage environments (and manage members, for workspace keys) |
@@ -373,6 +373,23 @@ it does. Revoking a key revokes every key it minted. Handing the workspace to so
 (`transfer-ownership`) is the owner's act, in the console; a key is refused with
 `403 owner_only`. Everything a workspace key does is on the workspace's activity log with
 the key as the actor.
+
+## Your own account, and the operator API
+
+Two more planes are served, and **no key of any kind reaches either**:
+
+- `/api/v1/me` is **your own account** — profile, sessions, the applications that may act
+  as you, your own API keys, passkeys and social links, trusted devices — on the host of
+  the environment you belong to. Changing a password, turning on a second factor or
+  registering a passkey are not in it: those are ceremonies in the browser.
+- `/api/v1/platform` is the **operator API**, for the staff who run a deployment: customer
+  workspaces, environments, organizations inside any environment, and the operator roster.
+  Every write there is critical.
+
+Both take only an access token a **person** delegated — you, or a platform operator with
+`operator:*` scopes — and until delegated management tokens are issued they answer `401`
+to every request; the console runs the same actions meanwhile. Their contracts are at
+`/api/v1/me/openapi.yaml` and `/api/v1/platform/openapi.yaml`.
 
 ## Errors
 

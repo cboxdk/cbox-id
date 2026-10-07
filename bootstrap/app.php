@@ -2,6 +2,7 @@
 
 use App\Http\ApiErrorRenderer;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateDelegatedApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateWorkspaceApi;
@@ -295,6 +296,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'scope' => RequireScope::class,
             'workspace.api' => AuthenticateWorkspaceApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,
+            // The planes only a person reaches (platform, account): a delegated token, never a key.
+            'delegated.api' => AuthenticateDelegatedApi::class,
             // Host-plane bulkheads + the environment-admin (account-layer) console gate.
             'plane' => EnforcePlane::class,
             'env.admin' => AuthenticateEnvironmentAdmin::class,

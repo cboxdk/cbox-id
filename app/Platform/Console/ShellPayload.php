@@ -241,7 +241,7 @@ final readonly class ShellPayload
             // environment, which is not what clicking the brand mark in its own console
             // means. In platform admin the brand mark stays in platform admin.
             brandHref: route(match (true) {
-                $platformMode => 'platform.customers',
+                $platformMode => 'platform.workspaces',
                 $workspace => 'projects',
                 default => 'dashboard',
             }),
@@ -254,7 +254,7 @@ final readonly class ShellPayload
                 && Route::has('organization-settings')
                     ? route('organization-settings')
                     : null,
-            platformHref: $isOperator ? route('platform.customers') : null,
+            platformHref: $isOperator ? route('platform.workspaces') : null,
             exitPlatformHref: $platformMode ? route('dashboard') : null,
             notice: $offRail ? new ShellNoticeProps(
                 message: 'This page manages your workspace’s own record in Cbox — the team that signs in to this console — not your product. Your apps, users and roles live in each environment’s console.',
