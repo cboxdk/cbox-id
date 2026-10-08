@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Queues\DispatchedQueues;
+use App\Platform\Queues\WorkerBounds;
 use App\Platform\Queues\WorkerProfile;
 use Cbox\LaravelQueueAutoscale\Fuse\ConfigurableFailureClassifier;
 use Cbox\LaravelQueueAutoscale\Pickup\SortBasedPercentileCalculator;
@@ -50,6 +51,24 @@ $dispatched = DispatchedQueues::resolve(
     ],
 );
 
+// The host-wide hard cap (see `limits` below), read once: the per-group bounds are
+// checked against it.
+$maxTotalWorkers = (int) env('QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS', 2);
+
+/*
+ * How few and how many workers each group runs. Defaults to the profile's own 1 and 2;
+ * on a host where the workers have memory of their own (the queue pod on Kubernetes)
+ * raise QUEUE_AUTOSCALE_WORKERS_MAX together with QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS —
+ * one group serves every queue, so the group maximum is the number that actually moves.
+ * An incoherent pair (max below min, or above the total cap) stops the configuration
+ * from loading, with the variable to fix named. See {@see WorkerBounds}.
+ */
+$workerBounds = WorkerBounds::fromEnvironment(
+    min: env('QUEUE_AUTOSCALE_WORKERS_MIN'),
+    max: env('QUEUE_AUTOSCALE_WORKERS_MAX'),
+    totalCap: $maxTotalWorkers,
+);
+
 return [
     'enabled' => env('QUEUE_AUTOSCALE_ENABLED', true),
     'manager_id' => env('QUEUE_AUTOSCALE_MANAGER_ID'),
@@ -76,7 +95,7 @@ return [
      * dispatches to on it, the default queue first. Derived — see {@see DispatchedQueues}
      * — so moving webhooks to their own queue moves their worker with them.
      */
-    'groups' => $dispatched->autoscaleGroups(WorkerProfile::class),
+    'groups' => $dispatched->autoscaleGroups(WorkerProfile::class, $workerBounds->overrides()),
 
     // Single host: no Redis-backed pickup store needed. `auto` switches to Redis only
     // when cluster mode is turned on.
@@ -131,7 +150,8 @@ return [
      *    node's memory instead of its own limit would make the percentage ceiling below
      *    meaningless). Raise it only with more memory to spend: on Kubernetes the manager
      *    has a pod of its own (the `queue` process in cbox.yaml) and shares it with no web
-     *    traffic, so the cap follows that pod's memory limit.
+     *    traffic, so the cap follows that pod's memory limit — and raise
+     *    QUEUE_AUTOSCALE_WORKERS_MAX with it, or the single group still stops at two.
      *  - max_memory_percent 70 — stop spawning while the instance is above 70 %, leaving
      *    headroom for a burst of web requests rather than racing them to the OOM killer.
      *  - worker_memory_mb_estimate 96 — the cold-start estimate before a measurement
@@ -144,7 +164,7 @@ return [
         'worker_memory_mb_estimate' => 96,
         'worker_cpu_core_estimate' => 0.25,
         'reserve_cpu_cores' => 0.25,
-        'max_total_workers' => (int) env('QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS', 2),
+        'max_total_workers' => $maxTotalWorkers,
     ],
 
     'manager' => [

@@ -64,3 +64,14 @@ it('supervises nothing on a connection that runs jobs inline', function (): void
         ->and(DispatchedQueues::resolve('redis', productionDefaults(), [['null', 'x'], ['deferred', 'y']])->autoscaleGroups(WorkerProfile::class))
         ->toBe(['cbox-id-redis' => ['connection' => 'redis', 'queues' => ['default'], 'mode' => 'priority', 'profile' => WorkerProfile::class]]);
 });
+
+it('carries the configured worker bounds on every group, the package\'s own way', function (): void {
+    // `overrides` is deep-merged over the profile by the package, so the bounds reach each
+    // group without a second profile class to keep in step with the first.
+    $overrides = ['workers' => ['min' => 1, 'max' => 4]];
+
+    $groups = DispatchedQueues::resolve('redis', productionDefaults(), [['database', null]])
+        ->autoscaleGroups(WorkerProfile::class, $overrides);
+
+    expect(array_column($groups, 'overrides'))->toBe([$overrides, $overrides]);
+});

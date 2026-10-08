@@ -51,7 +51,7 @@ changes the first row (below):
 | Setting | Value | Why |
 |---|---|---|
 | Mode | single host (`QUEUE_AUTOSCALE_CLUSTER_ENABLED=false`); **cluster** on Kubernetes | One host, one manager. Cluster mode elects a leader over Redis/Valkey, for when managers overlap. |
-| Workers per group | min 1, max 2 | Never scale to zero: a cold start on every sign-out is latency for nothing. |
+| Workers per group | min 1, max 2 (`QUEUE_AUTOSCALE_WORKERS_MIN` / `QUEUE_AUTOSCALE_WORKERS_MAX`) | Never scale to zero: a cold start on every sign-out is latency for nothing. Raise the max with the total cap. |
 | `limits.max_total_workers` | 2 (`QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`) | The hard cap that keeps PHP-FPM alive. A worker of this app is about 75 MB resident, the manager about the same. |
 | `limits.max_memory_percent` | 70 | Stop spawning while the instance is above 70 % memory. |
 | Pickup SLA | 30 s | Also the line the `queue_workers` health check turns red at. |
@@ -104,12 +104,30 @@ What `cbox.yaml` sets, and why:
 - The `scheduler` process beside it (it also runs the monitor's retention, below).
 
 **Sizing.** Two workers is a ceiling chosen for a 512 MB host shared with the web tier,
-and the queue pod shares with nobody — but it is two ceilings, and raising one alone does
-nothing: `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` (the hard cap) and the per-group `max` in
-`App\Platform\Queues\WorkerProfile`, which is not a variable today. Budget about 96 MB per
-worker plus the manager's own 75 MB against the pod's memory limit. Keep a hard cap even
-then: it holds when a container reports the node's memory rather than its own limit, which
-makes `max_memory_percent` meaningless.
+and the queue pod shares with nobody. There are two ceilings, and you raise them together:
+
+- `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`, the hard cap for the whole host (pod).
+- `QUEUE_AUTOSCALE_WORKERS_MAX`, the most workers one group runs. Every queue this app
+  dispatches to on one connection shares one group, so this is the number that actually
+  decides how many workers run. Raising the total cap alone changes nothing.
+
+`QUEUE_AUTOSCALE_WORKERS_MIN` sets the floor (default 1, never below 1). For example, a
+queue pod with a 1 GiB limit:
+
+```yaml
+env:
+  QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS: "6"
+  QUEUE_AUTOSCALE_WORKERS_MAX: "6"
+```
+
+The app checks the pair when its configuration loads and refuses to start, naming the
+variable, if `WORKERS_MAX` is below `WORKERS_MIN` or above the total cap (a group maximum
+the cap would silently clamp). The web pods read the same configuration, so a bad pair stops
+the rollout at its readiness probe instead of shipping a setting that does nothing.
+
+Budget about 96 MB per worker plus the manager's own 75 MB against the pod's memory limit.
+Keep a hard cap even then: it holds when a container reports the node's memory rather than
+its own limit, which makes `max_memory_percent` meaningless.
 
 ## On a PaaS
 

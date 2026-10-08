@@ -75,17 +75,24 @@ readonly class DispatchedQueues
      * would idle two workers on a 512 MB host where one polling both is plenty; a group
      * shares one scaled worker set across all of them, strict priority left to right.
      *
+     * `$overrides` is the package's own per-group override block, deep-merged over the
+     * profile — how the configured worker bounds ({@see WorkerBounds}) reach every group
+     * without forking the profile. Omitted when empty, so a group without overrides is
+     * the same entry it always was.
+     *
      * @param  class-string  $profile
-     * @return array<string, array{connection: string, queues: list<string>, mode: string, profile: class-string}>
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, array{connection: string, queues: list<string>, mode: string, profile: class-string, overrides?: array<string, mixed>}>
      */
-    public function autoscaleGroups(string $profile): array
+    public function autoscaleGroups(string $profile, array $overrides = []): array
     {
         $groups = [];
 
         foreach ($this->queues as $queue) {
             $name = 'cbox-id-'.$queue->connection;
 
-            $groups[$name] ??= ['connection' => $queue->connection, 'queues' => [], 'mode' => 'priority', 'profile' => $profile];
+            $groups[$name] ??= ['connection' => $queue->connection, 'queues' => [], 'mode' => 'priority', 'profile' => $profile]
+                + ($overrides === [] ? [] : ['overrides' => $overrides]);
             $groups[$name]['queues'][] = $queue->queue;
         }
 
