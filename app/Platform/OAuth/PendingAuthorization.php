@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\OAuth;
 
 use App\Platform\OAuth\Enums\AuthorizationPrompt;
+use Cbox\Id\OAuthServer\ValueObjects\AuthenticationRequirement;
 
 /**
  * ONE VALIDATED AUTHORIZATION REQUEST, as the consent screen needs it.
@@ -82,6 +83,23 @@ final readonly class PendingAuthorization
     public function asks(AuthorizationPrompt $prompt): bool
     {
         return in_array($prompt, $this->prompts, true);
+    }
+
+    /**
+     * The RFC 9470 requirement this request carries — `max_age` and `acr_values` — as the
+     * framework evaluates it: the same rule a resource server applies to the token this
+     * request ends in, so the two can never disagree about what is fresh or strong enough.
+     *
+     * Rebuilt from the stored values, which {@see AuthenticationRequirement::fromAuthorizationRequest()}
+     * already accepted when the request arrived.
+     */
+    public function authenticationRequirement(): AuthenticationRequirement
+    {
+        $acrValues = $this->acrValues === null
+            ? []
+            : array_values(array_filter(preg_split('/\s+/', trim($this->acrValues)) ?: [], static fn (string $value): bool => $value !== ''));
+
+        return new AuthenticationRequirement($acrValues, $this->maxAge);
     }
 
     /** The same request, bound to an organization — what the picker and the create step produce. */

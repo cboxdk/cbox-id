@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
+use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -248,6 +250,47 @@ it('steps up when acr_values asks for aal2 and the session used one factor', fun
         ->assertRedirect(route('accounts.add'));
 });
 
+it('sends a person with an authenticator to the second-factor screen, not a whole new sign-in', function () {
+    [$subjectId, $org] = stepUpUser(['pwd']);
+    $clientId = stepUpClient($org->id);
+    $enrollment = app(Mfa::class)->enrollTotp($subjectId, 'member@acme.test');
+    app(Mfa::class)->confirmTotp($subjectId, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+
+    authorizeRequest(stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
+        ->assertRedirect(route('mfa'));
+
+    // Held for the factor exactly as a password sign-in holds them, with the request to
+    // resume once it is given.
+    expect(app(PlatformAuth::class)->pendingMfaSubject(request()))->toBe($subjectId)
+        ->and(urldecode((string) session()->get('url.intended')))->toContain('acr_values=urn:cbox-id:aal2');
+
+    // Completing it is a fresh aal2 session, and the resumed request reaches consent.
+    $this->post(route('mfa.verify'), ['code' => app(TotpAuthenticator::class)->codeAt($enrollment->secret, time())])
+        ->assertRedirectContains('/oauth/authorize');
+
+    authorizeRequest(stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2', 'reauthed' => '1']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('client'));
+});
+
+it('sends a stale AND weak session to sign in again: the age wins', function () {
+    [$subjectId, $org] = stepUpUser(['pwd'], sessionAgeSeconds: 86_400);
+    $clientId = stepUpClient($org->id);
+    $enrollment = app(Mfa::class)->enrollTotp($subjectId, 'member@acme.test');
+    app(Mfa::class)->confirmTotp($subjectId, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '300', 'acr_values' => 'urn:cbox-id:aal2']))
+        ->assertRedirect(route('accounts.add'));
+});
+
+it('refuses a malformed max_age as invalid_request instead of ignoring it', function (string $maxAge) {
+    [, $org] = stepUpUser(['pwd']);
+    $clientId = stepUpClient($org->id);
+
+    authorizeRequest(stepUpParams($clientId, ['max_age' => $maxAge]))
+        ->assertRedirect(stepUpErrorUrl('invalid_request', 'max_age must be a non-negative integer number of seconds.'));
+})->with(['-1', 'soon', '1.5', '99999999999999999999']);
+
 it('authorizes without interruption when the session already meets aal2', function () {
     [, $org] = stepUpUser(['pwd', 'mfa']);
     $clientId = stepUpClient($org->id);
@@ -273,7 +316,7 @@ it('never issues an aal1 token to a client that demanded aal2', function () {
         // `insufficient_user_authentication` is the protected-resource challenge and
         // an RP following the OIDF step-up pattern does not branch on it here.
         'unmet_authentication_requirements',
-        'The requested authentication context (urn:cbox-id:aal2) was not met by this session.',
+        'The requested authentication context (urn:cbox-id:aal2) was not met.',
     ));
 });
 

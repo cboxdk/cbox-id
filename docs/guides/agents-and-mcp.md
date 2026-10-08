@@ -155,6 +155,44 @@ It cannot be spent on anything else, and it lapses after five minutes by default
 (`CBOX_ID_CIBA_TTL_SECONDS`). The whole flow, for REST too, is in
 [step-up approvals](step-up-approvals.md).
 
+### Requiring a recent second factor (optional)
+
+An operator can also demand that the **sign-in behind the token** was recent and strong
+before any critical action runs. This is [RFC 9470](https://www.rfc-editor.org/rfc/rfc9470)
+step-up, and it is off unless you set it:
+
+| Variable | Value |
+|---|---|
+| `CBOX_ID_MCP_STEP_UP_ACR` | `aal2` (or `mfa`): the person signed in with a second factor. `aal1`: any sign-in. The full class (`urn:cbox-id:aal2`) works too. |
+| `CBOX_ID_MCP_STEP_UP_MAX_AGE` | Seconds since that sign-in, for example `900`. |
+
+Either can be set alone. With a requirement set, a critical action from a token that falls
+short is answered `401`:
+
+```
+WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource/mcp",
+  error="insufficient_user_authentication", acr_values="urn:cbox-id:aal2", max_age="900"
+```
+
+On `/mcp` the `401` is the HTTP answer to the `tools/call`, not a tool error, so the client
+can act on it. The client signs you in again with those `acr_values` and `max_age`. If you
+have an authenticator, the sign-in page asks only for the second factor. Then the client
+repeats the call. The token's `acr` and `auth_time` are what is checked. A token minted
+before Cbox ID 1.23 carries neither, so it is refused until the client signs in again.
+
+**How it works with approvals.** The two answer different questions, in this order:
+
+1. **Step-up:** is the token behind this call from a recent, strong sign-in? It is checked
+   first, so you are never asked to approve a call the token would then be refused for.
+2. **Approval:** do you, on your own device, want this exact call to run? Every critical
+   action from a signed-in agent still waits for it, step-up or not.
+
+Approvals already put a person in front of every critical action, so step-up is off by
+default. Turn it on when a long-lived agent session should not be enough on its own: for
+example, when an approval on your phone should only count if the agent's session itself
+was signed in with a second factor in the last fifteen minutes. Management keys are never
+asked. A key is not a sign-in; its own approval policy governs it.
+
 ## Option 2: a management key
 
 A **management key** (`cbid_env_…`) for the environment works without anybody signing in.
@@ -472,6 +510,11 @@ At the platform root the issuer is the root's, and its
 with S256 PKCE, public clients (`none`), registration, client ID metadata documents, the
 device grant for the `cbox` CLI, and the scopes of the root's `/mcp` plus `offline_access`.
 There is no `/.well-known/openid-configuration` there.
+
+A critical `tools/call` can also be answered `401` with
+`error="insufficient_user_authentication"` and the `acr_values` / `max_age` the deployment
+requires ([requiring a recent second factor](#requiring-a-recent-second-factor-optional)).
+Send the person through `/oauth/authorize` again with those parameters and retry.
 
 A token is accepted when it is live, its `aud` names `https://<environment-host>/mcp`, its
 `iss` is this environment's issuer, it stands for a person (not a client-credentials or a

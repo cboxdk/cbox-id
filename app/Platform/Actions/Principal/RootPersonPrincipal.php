@@ -20,6 +20,7 @@ use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\Project;
@@ -58,12 +59,18 @@ use Illuminate\Auth\Access\AuthorizationException;
  * on a prompt nobody read. The approval is filed with the person in the platform root,
  * where their devices are enrolled.
  */
-readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson
+readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, TokenAuthenticated
 {
     public function __construct(
         protected RootSignIn $signIn,
         protected ?RootWorkspace $workspace,
     ) {}
+
+    /** The root-issued token this person signed in with ({@see TokenAuthenticated}). */
+    public function token(): ?Introspection
+    {
+        return $this->signIn->token;
+    }
 
     /**
      * One kind for the person's every principal — this one and the environment-bound one

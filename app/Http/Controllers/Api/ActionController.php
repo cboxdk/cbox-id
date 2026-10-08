@@ -18,6 +18,8 @@ use App\Platform\Actions\Principal\OperatorPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
+use App\Platform\OAuth\ManagementStepUp;
 use App\Platform\WorkspaceApiContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,6 +79,14 @@ final readonly class ActionController
                     'poll_url' => url('/api/v1'.$action->plane->mount().'/action-approvals/'.$held->approvalId),
                 ],
             ], 202, ['Retry-After' => (string) $held->interval]);
+        } catch (StepUpAuthenticationRequired $stepUp) {
+            // RFC 9470 §3: 401 with the requirement in the challenge, so the client signs the
+            // person in again for exactly it and repeats the request.
+            return response()->json(
+                ['error' => 'insufficient_user_authentication', 'message' => $stepUp->getMessage()],
+                401,
+                app(ManagementStepUp::class)->challenge($stepUp->assessment)->headers(),
+            );
         } catch (ActionRefused $refused) {
             return response()->json(['error' => $refused->error, 'message' => $refused->getMessage()], $refused->status);
         }

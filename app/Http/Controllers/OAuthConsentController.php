@@ -17,24 +17,26 @@ use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
+use App\Platform\PlatformAuth;
 use App\Platform\SignupPolicy;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
-use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationClients;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
-use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
 use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
+use Cbox\Id\OAuthServer\Exceptions\InvalidAuthenticationRequirement;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadataDocument;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Support\ResourceParameter;
+use Cbox\Id\OAuthServer\ValueObjects\AuthenticationRequirement;
 use Cbox\Id\OAuthServer\ValueObjects\AuthorizationClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Http\RedirectResponse;
@@ -66,17 +68,6 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  */
 final readonly class OAuthConsentController extends PageController
 {
-    /**
-     * Slack on the `max_age` comparison, in seconds.
-     *
-     * Covers the one redirect between a re-authentication being recorded and the resumed
-     * authorization request reading it, plus modest skew between the database clock that
-     * stamps `sessions.created_at` and the PHP clock that compares it. See
-     * {@see unmetAuthenticationRequirement()} for why a strict comparison made `max_age=0`
-     * unsatisfiable.
-     */
-    private const MAX_AGE_SKEW_SECONDS = 60;
-
     public function show(
         Request $request,
         ClientRegistry $clients,
@@ -234,8 +225,24 @@ final readonly class OAuthConsentController extends PageController
             return $this->redirectError($redirectUri, $refused->error, $state, $refused->getMessage());
         }
 
-        $acrParam = $from('acr_values');
         $nonceParam = $from('nonce');
+
+        /*
+         * RFC 9470 / OIDC Core §3.1.2.1: `max_age` and `acr_values`, read by the framework
+         * — the same reader the PAR endpoint refuses a malformed value with, and the same
+         * requirement a resource server evaluates the resulting token against. From the
+         * pushed request alone when there is one (RFC 9126 §4: the pushed parameters ARE
+         * the request).
+         *
+         * A malformed `max_age` is REFUSED, where it used to be ignored: it is a demand
+         * about how recent the sign-in must be, and dropping it would hand the client a
+         * code minted from a sign-in it explicitly asked not to accept.
+         */
+        try {
+            $requirement = AuthenticationRequirement::fromAuthorizationRequest($pushed ?? $request);
+        } catch (InvalidAuthenticationRequirement $invalid) {
+            return $this->redirectError($redirectUri, $invalid->error, $state, $invalid->getMessage());
+        }
 
         /*
          * OIDC `prompt`, parsed once into the values this endpoint honours. See
@@ -290,8 +297,8 @@ final readonly class OAuthConsentController extends PageController
              * Captured here and bound to the code, the two can no longer disagree.
              */
             resource: $resource,
-            maxAge: $this->parseMaxAge($from('max_age')),
-            acrValues: is_string($acrParam) && trim($acrParam) !== '' ? trim($acrParam) : null,
+            maxAge: $requirement->maxAge,
+            acrValues: $requirement->acrValues === [] ? null : implode(' ', $requirement->acrValues),
             /*
              * The consumed PAR payload, kept because the request may still need to be
              * RESUMED after sign-in or an account switch. Without it a resume rebuilt a
@@ -436,20 +443,30 @@ final readonly class OAuthConsentController extends PageController
         /*
          * STEP-UP. `max_age` and `acr_values` are the two controls OIDC gives a relying
          * party to demand a FRESH or a STRONGER authentication before a sensitive operation
-         * — a payment, an admin grant. Both were accepted and ignored: a client calling
+         * — a payment, an admin grant. Both were accepted and ignored once: a client calling
          * `login({maxAge: 0})` got a code minted from a day-old session carrying the
          * ORIGINAL auth_time, and one asking for aal2 got a password-only user authorized
          * and an aal1 id_token, with no way to tell either had happened.
+         *
+         * Assessed by the framework ({@see AuthenticationRequirement::assessSession()}), the
+         * rule a resource server applies to the token at the other end, and answered by
+         * what fell short: too OLD means sign in again; not STRONG enough means a second
+         * factor — the one screen that adds it, when the person has an authenticator, and a
+         * fresh sign-in (where a passkey reaches aal2) when they do not.
          *
          * Coming back still unsatisfied means the requirement is genuinely unmeetable here,
          * and the honest answer is an error to the client rather than a token quietly
          * asserting less than was demanded — so `reauthed` is never trusted as satisfaction.
          */
-        $unmet = $this->unmetAuthenticationRequirement($authorization, $me->session());
+        $assessment = $authorization->authenticationRequirement()->assessSession($me->session());
 
-        if ($unmet !== null) {
+        if (! $assessment->isSatisfied()) {
             if ($reauthed || $silent) {
-                return $this->redirectError($redirectUri, $unmet[0], $state, $unmet[1]);
+                return $this->redirectError($redirectUri, (string) $assessment->authorizationError(), $state, (string) $assessment->errorDescription());
+            }
+
+            if (! $assessment->requiresReauthentication() && $assessment->requiresStepUp()) {
+                return $this->stepUp($request, $authorization, $me);
             }
 
             return $this->interrupt($request, $authorization, route('accounts.add'));
@@ -968,7 +985,7 @@ final readonly class OAuthConsentController extends PageController
          */
         $session = $me->session();
 
-        if ($this->unmetAuthenticationRequirement($authorization, $session) !== null) {
+        if (! $authorization->authenticationRequirement()->assessSession($session)->isSatisfied()) {
             return $this->failure(__('oauth.failure.step_up'));
         }
 
@@ -1211,54 +1228,27 @@ final readonly class OAuthConsentController extends PageController
     }
 
     /**
-     * The OIDC error to return when this session cannot satisfy the request's
-     * authentication requirements, or null when it can.
+     * Send a signed-in person to add a second factor, and come back.
      *
-     * @return array{0: string, 1: string}|null [error code, description]
+     * With an authenticator enrolled that is the second-factor screen itself: the person
+     * is held for it exactly as a password sign-in holds them ({@see PlatformAuth::holdForMfa()}),
+     * which grants nothing on its own — the code still has to be right — and completing
+     * it starts a session whose `amr` carries the second factor. Without one there is no
+     * factor to ask for here, and a fresh sign-in is the way to reach aal2 (a passkey
+     * does); if that comes back short too, the resumed request answers the client
+     * `unmet_authentication_requirements`.
      */
-    private function unmetAuthenticationRequirement(PendingAuthorization $authorization, ?Session $session): ?array
+    private function stepUp(Request $request, PendingAuthorization $authorization, CurrentUser $me): RedirectResponse
     {
-        /*
-         * `max_age`: compare the session's own AGE against the ceiling the client set. A
-         * session we cannot date is treated as too old — fail closed.
-         *
-         * The comparison is `age > maxAge`, not `authTime < now - maxAge`, and it carries a
-         * small skew allowance. With `max_age=0` the strict form reduces to "authenticated
-         * strictly before this instant", which is true of EVERY session that exists —
-         * including the one just created — so the round trip came back still unsatisfied and
-         * the request died with `login_required`. `login({maxAge: 0})`, the case the
-         * parameter exists for, could therefore never succeed.
-         */
-        if ($authorization->maxAge !== null) {
-            $authTime = $session?->created_at?->getTimestamp();
+        $subjectId = $me->subject()?->id;
 
-            // now(), not time(): one clock for the whole application, and the only one a
-            // test can move.
-            if (! is_int($authTime) || (now()->getTimestamp() - $authTime) > ($authorization->maxAge + self::MAX_AGE_SKEW_SECONDS)) {
-                return ['login_required', 'The existing authentication is older than the requested max_age.'];
-            }
+        if ($subjectId !== null && app(Mfa::class)->hasConfirmedTotp($subjectId)) {
+            app(PlatformAuth::class)->holdForMfa($request, $subjectId);
+
+            return $this->interrupt($request, $authorization, route('mfa'));
         }
 
-        /*
-         * `acr_values`: the strongest class named that this server asserts. Anything it does
-         * not assert is ignored — the parameter is an ordered list of ACCEPTABLE classes, so
-         * a client may legitimately name another IdP's.
-         */
-        $required = AuthenticationContextClass::fromRequest($authorization->acrValues);
-
-        if ($required !== null && ! $required->isSatisfiedBy($session !== null ? array_values($session->amr) : [])) {
-            /*
-             * RFC 9470 §5: when it is the AUTHORIZATION request that cannot be satisfied,
-             * the error is `unmet_authentication_requirements`.
-             * `insufficient_user_authentication` is the RFC 9470 §3 `WWW-Authenticate`
-             * challenge a PROTECTED RESOURCE returns, so an RP implementing the OIDF step-up
-             * pattern branches on the former and falls through to a generic error page on
-             * the latter.
-             */
-            return ['unmet_authentication_requirements', 'The requested authentication context ('.$required->value.') was not met by this session.'];
-        }
-
-        return null;
+        return $this->interrupt($request, $authorization, route('accounts.add'));
     }
 
     /**
@@ -1406,25 +1396,6 @@ final readonly class OAuthConsentController extends PageController
         $url = $base.'?'.http_build_query(array_merge($existing, $params));
 
         return $fragment === null ? $url : $url.'#'.$fragment;
-    }
-
-    /**
-     * OIDC Core §3.1.2.1 `max_age`: a non-negative number of seconds. A malformed value is
-     * ignored rather than refused — it is a request, not a credential.
-     */
-    private function parseMaxAge(mixed $value): ?int
-    {
-        if (is_int($value)) {
-            return $value >= 0 ? $value : null;
-        }
-
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $raw = trim($value);
-
-        return $raw !== '' && ctype_digit($raw) ? (int) $raw : null;
     }
 
     /**

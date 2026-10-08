@@ -86,6 +86,29 @@ return [
          * every surface listed above answers 404 there.
          */
         'root_oauth' => (bool) env('CBOX_ID_ROOT_MCP_OAUTH', true),
+
+        /*
+         * RFC 9470 step-up for a PERSON'S TOKEN on the management plane — `/mcp` and the
+         * REST doors a signed-in agent or CLI uses. When set, a Critical action is refused
+         * with `401 insufficient_user_authentication` (naming these `acr_values` and
+         * `max_age`) unless the token's own `acr` / `auth_time` meet it: the client signs
+         * the person in again with a second factor, recently, and retries.
+         *
+         * `acr`: `aal2` (or `mfa`) for a second factor, `aal1` for any sign-in, or the full
+         * class (`urn:cbox-id:aal2`). `max_age`: seconds since the person signed in. Either
+         * may be left out. Management keys are never asked: they are not a sign-in.
+         *
+         * OFF BY DEFAULT, and that is a judgement rather than an omission: every Critical
+         * action from a token is ALREADY held for the person's approval on their device
+         * (see App\Platform\Actions\Principal\DelegatedTokenPrincipal::stepUpPolicy()), and
+         * a token issued before 1.23 carries no `acr` or `auth_time` at all, so turning it
+         * on refuses every one of those until the client signs in again. See
+         * docs/guides/agents-and-mcp.md and App\Platform\OAuth\ManagementStepUp.
+         */
+        'step_up' => [
+            'acr' => env('CBOX_ID_MCP_STEP_UP_ACR'),
+            'max_age' => env('CBOX_ID_MCP_STEP_UP_MAX_AGE'),
+        ],
     ],
 
 ];
