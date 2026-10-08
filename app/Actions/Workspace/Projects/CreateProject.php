@@ -74,6 +74,13 @@ final readonly class CreateProject implements Action
 
         $project = $this->provisioner->addProject($organization, trim($context->string('name')), $limit);
 
+        // On the workspace's log, like the environments created under it: a project is a
+        // billing anchor, and adding one recorded nothing at all.
+        InWorkspace::record($context->principal, $workspaceId, 'organization.project_created', 'project', $project->id, [
+            'name' => $project->name,
+            'environment_limit' => $project->environment_limit,
+        ]);
+
         return ActionResult::item($project, ProjectResource::from($project));
     }
 }

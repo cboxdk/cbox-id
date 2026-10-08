@@ -722,6 +722,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -754,6 +755,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -777,6 +779,8 @@ paths:
                       $ref: '#/components/schemas/Api'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -793,6 +797,7 @@ paths:
       summary: 'Register an API and its scopes'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -847,6 +852,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -869,6 +876,7 @@ paths:
       description: 'Requires scope `apis:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -887,6 +895,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -908,6 +918,7 @@ paths:
         register a new API instead.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -944,6 +955,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -965,6 +978,7 @@ paths:
         expire; apps holding its scope keys keep them as plain scopes.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -972,6 +986,8 @@ paths:
         -
           WorkspaceAccessToken: []
       responses:
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         204:
           description: Deleted.
         400:
@@ -1250,6 +1266,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1273,6 +1290,8 @@ paths:
                       $ref: '#/components/schemas/App'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1309,6 +1328,7 @@ paths:
       x-action: apps.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1392,6 +1412,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1595,6 +1617,7 @@ paths:
       x-action: apps.blueprint
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1613,6 +1636,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/AppBlueprint'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1913,6 +1938,7 @@ paths:
       x-action: apps.secrets.list
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1936,6 +1962,8 @@ paths:
                       $ref: '#/components/schemas/AppSecret'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -6371,6 +6399,7 @@ paths:
               - active
               - suspended
               - deleted
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6414,6 +6443,7 @@ paths:
       description: 'Requires scope `organizations:write`.'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6505,6 +6535,7 @@ paths:
       description: 'Requires scope `organizations:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6547,6 +6578,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6622,6 +6654,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6782,6 +6815,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6849,6 +6883,7 @@ paths:
           required: false
           schema:
             type: string
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6896,6 +6931,7 @@ paths:
         that proves it (`record_name`, `record_value`). A handful at most; not paged.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7199,6 +7235,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7263,6 +7300,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7350,6 +7388,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/InvitationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7394,6 +7433,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/InvitationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7442,6 +7482,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7502,6 +7543,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7586,6 +7628,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7646,6 +7689,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7685,6 +7729,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7742,6 +7787,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7791,6 +7837,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7831,6 +7878,7 @@ paths:
         minted, and only its hash is kept. Not paged.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -8702,6 +8750,7 @@ paths:
           required: false
           schema:
             type: string
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -11696,6 +11745,7 @@ paths:
         one token and are refused before the session starts (`422 invalid_target`).
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12360,6 +12410,7 @@ paths:
               - active
               - disabled
               - locked
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12403,6 +12454,7 @@ paths:
       description: 'Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link.'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12472,6 +12524,7 @@ paths:
       description: 'Requires scope `users:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12514,6 +12567,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12623,6 +12677,7 @@ paths:
       description: 'Requires scope `roles:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12667,6 +12722,7 @@ paths:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12715,6 +12771,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12761,6 +12818,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -13087,6 +13145,7 @@ paths:
         `impersonation` marks a session somebody else opened as this person.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -

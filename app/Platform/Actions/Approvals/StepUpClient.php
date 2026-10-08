@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions\Approvals;
 
+use App\Platform\Actions\ActionTrail;
+use App\Platform\EnvironmentApiContext;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Platform\PlatformRoot;
+use Closure;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -41,15 +44,46 @@ final readonly class StepUpClient
 
         $client = Cache::lock('step-up-client:register', 10)->block(5, function (): Client {
             return Client::query()->where('name', self::NAME)->whereNull('organization_id')->first()
-                ?? $this->clients->register(new NewClient(
+                ?? $this->asThePlatform(fn (): Client => $this->clients->register(new NewClient(
                     self::NAME,
                     ClientType::Confidential,
                     grantTypes: ['urn:openid:params:grant-type:ciba'],
                     firstParty: true,
-                ))->client;
+                ))->client);
         });
 
         return $client instanceof Client ? $client : throw new \RuntimeException('Could not register the step-up client.');
+    }
+
+    /**
+     * Register it as the platform, not as the caller whose action first needed an approval.
+     *
+     * It is registered on first use — which is in the middle of somebody's action, with their
+     * key on the API context and their door on the trail — so the registry's `app.created`
+     * was attributed to them: the audit log said an agent's key had created a first-party
+     * confidential client in the platform root, over REST. Neither half is true.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $register
+     * @return T
+     */
+    private function asThePlatform(Closure $register): mixed
+    {
+        $context = app(EnvironmentApiContext::class);
+        $key = $context->key();
+        $person = $context->delegated();
+        $context->clear();
+
+        try {
+            return app(ActionTrail::class)->outside($register);
+        } finally {
+            if ($key !== null) {
+                $context->set($key);
+            } elseif ($person !== null) {
+                $context->setDelegated($person);
+            }
+        }
     }
 
     public function platformRoot(): PlatformRoot

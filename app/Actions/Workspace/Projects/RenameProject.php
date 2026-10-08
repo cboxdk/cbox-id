@@ -56,9 +56,12 @@ final readonly class RenameProject implements Action
 
         InWorkspace::assertUnscoped($context->principal, $workspaceId);
 
+        $from = $project->name;
         $this->projects->renameForOrganization($workspaceId, $project->id, trim($context->string('name')));
 
         $project->refresh();
+
+        InWorkspace::record($context->principal, $workspaceId, 'organization.project_renamed', 'project', $project->id, ['from' => $from, 'name' => $project->name]);
 
         return ActionResult::item($project, ProjectResource::from($project));
     }

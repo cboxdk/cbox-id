@@ -78,6 +78,8 @@ paths:
       operationId: workspace_get
       x-action: workspace.get
       description: "Requires scope `workspace:read` (any role). Returns the workspace's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer)."
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -88,6 +90,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Organization'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -215,6 +219,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -229,6 +234,8 @@ paths:
                       $ref: '#/components/schemas/Environment'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -253,6 +260,7 @@ paths:
       x-action: environments.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -307,6 +315,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/CreatedEnvironment'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -593,6 +603,8 @@ paths:
       operationId: team_invitations_list
       x-action: team.invitations.list
       description: "Requires scope `team:read` and the `read-members` capability. The team's invitations nobody has accepted yet, newest first (at most 100)."
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -605,6 +617,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/TeamInvitation'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -627,7 +641,10 @@ paths:
           schema:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         204:
           description: Withdrawn
         401:
@@ -657,6 +674,7 @@ paths:
           schema:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: 'Sent again'
@@ -667,6 +685,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Member'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -872,6 +892,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -886,6 +907,8 @@ paths:
                       $ref: '#/components/schemas/Member'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -909,6 +932,7 @@ paths:
       x-action: team.invite
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -943,6 +967,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Member'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1166,6 +1192,8 @@ paths:
       operationId: projects_list
       x-action: projects.list
       description: "Requires scope `workspace:read` (any role). The workspace's projects (IdP products). Each carries its own plan and environment allowance."
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -1178,6 +1206,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Project'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1195,6 +1225,7 @@ paths:
       x-action: projects.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1222,6 +1253,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Project'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
