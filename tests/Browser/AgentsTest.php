@@ -44,7 +44,7 @@ it('creates an agent key from a preset and shows the key once, with the command 
 
     expect($key->scopes)->toContain('users:write')
         ->and($key->scopes)->not->toContain('apps:write')
-        ->and($key->step_up_policy)->toBe(['min_danger' => 'destructive', 'actions' => []]);
+        ->and($key->step_up_policy)->toEqual(['min_danger' => 'destructive', 'actions' => []]);
 
     $value = (string) $page->script('document.querySelector("code.select-all")?.textContent ?? ""');
 
