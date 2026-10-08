@@ -25,9 +25,13 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Support\SessionKey;
 
@@ -374,6 +378,40 @@ function entPortalLink(string $key, string $org, array $body = ['intents' => ['s
 
     return [(string) $data['id'], (string) $data['url']];
 }
+
+it('says what happened to the portal link mail: sent, or suppressed by a sandbox', function (): void {
+    Mail::fake();
+    [$key] = entKey(['portal_links:read', 'portal_links:write']);
+    $org = entOrg();
+    $body = ['intents' => ['sso'], 'email' => 'it@customer.example'];
+
+    $this->withToken($key)->postJson("/api/v1/organizations/{$org}/portal-links", $body)
+        ->assertCreated()
+        ->assertJsonPath('data.emailed_to', 'it@customer.example')
+        ->assertJsonPath('data.email_suppressed', false);
+    $this->flushHeaders();
+
+    $this->withToken($key)->postJson("/api/v1/organizations/{$org}/portal-links", ['intents' => ['sso']])
+        ->assertCreated()
+        ->assertJsonPath('data.emailed_to', null)
+        ->assertJsonPath('data.email_suppressed', false);
+    $this->flushHeaders();
+
+    // The same request in a sandbox: the mail is dropped, and the answer says so rather than
+    // naming an inbox the link never reached.
+    (new Environment)->forceFill([
+        'id' => 'env_test', 'name' => 'Test', 'slug' => 'env-test', 'type' => EnvironmentType::Sandbox,
+        'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],
+    ])->save();
+
+    $id = $this->withToken($key)->postJson("/api/v1/organizations/{$org}/portal-links", $body)
+        ->assertCreated()
+        ->assertJsonPath('data.emailed_to', null)
+        ->assertJsonPath('data.email_suppressed', true)
+        ->json('data.id');
+
+    expect(AdminPortalLink::query()->whereKey($id)->value('emailed_to'))->toBeNull();
+});
 
 it('lists an organization\'s portal links with where each stands, and never the link itself', function (): void {
     [$key] = entKey(['portal_links:read', 'portal_links:write']);

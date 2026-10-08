@@ -81,9 +81,14 @@ Things to know:
 ## What the person sees
 
 The request reaches the approver's Cbox Authenticator as "Approve an action", with a
-sentence such as `Key "Release bot" wants to run apps.delete · K7Q2`. The last four
-characters are the **binding code**: the same code the agent was given, so the person can
-check they are approving the request in front of them.
+sentence such as `Key "Release bot" in Production wants to run apps.delete · K7Q2`: the
+key, the environment it acts in, and the action. The last four characters are the
+**binding code**: the same code the agent was given, so the person can check they are
+approving the request in front of them.
+
+A request that would be refused anyway is refused **before** it is held: a webhook, hook,
+log stream or SCIM URL the SSRF guard blocks, an id from another environment, a missing
+owner, incomplete SSO settings. Nobody is asked to approve something that cannot run.
 
 They can also approve on **AI agents › Approvals** in the environment console, which shows
 the action, its danger, its arguments (secrets hidden) and the code. Approving a critical

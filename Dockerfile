@@ -57,3 +57,8 @@ ENV APP_ENV=production \
     NGINX_HEADER_X_CONTENT_TYPE_OPTIONS="" \
     NGINX_HEADER_REFERRER_POLICY="" \
     NGINX_HEADER_PERMISSIONS_POLICY=""
+
+# The release this image is (config `app.version`): passed by build-image.yml from
+# `git describe --tags`. Last, so a new version re-uses every layer above it.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}

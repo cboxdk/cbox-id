@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Console\WebhookEventCatalogue;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
@@ -11,6 +13,7 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
+use Cbox\Ssrf\Contracts\Resolver;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +75,8 @@ it('holds a critical action for the owner\'s approval, then runs it once', funct
 
     expect($approval['binding_code'])->toMatch('/^[0-9A-F]{4}$/')
         ->and(app(PlatformRoot::class)->run(fn () => BackchannelAuthRequest::query()->whereKey($approval['id'])->value('binding_message')))
-        ->toContain('Deploy agent')->toContain($approval['binding_code']);
+        // The environment is named, so an owner with keys in several knows which one is asking.
+        ->toContain('Key "Deploy agent" in Test wants to run keys.')->toContain($approval['binding_code']);
 
     $this->withToken($key)->getJson("/api/v1/action-approvals/{$approval['id']}")->assertOk()->assertJsonPath('data.status', 'pending');
 
@@ -174,4 +178,75 @@ it('makes a key-minted key at least as supervised as its parent, and asks the pa
     $held = $this->withToken($child['token'])->deleteJson("/api/v1/keys/{$child['id']}")->assertStatus(202)->json('approval');
 
     expect(approveAsOwner($held['id'], $owner))->toBeTrue();
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| A refusal the input already decides is answered BEFORE anyone is asked to approve.
+|--------------------------------------------------------------------------
+|
+| The live run: a key whose policy named webhooks.create had its owner approve on their
+| phone, and the repeat was then refused `unsafe_url` — an approval spent on a request that
+| could never run. Validation and the action's own preflight come first; the gate after.
+*/
+
+const PREFLIGHT_SCOPES = ['webhooks:read', 'webhooks:write', 'hooks:write', 'log_streams:write'];
+
+/** Nothing was filed for anyone to approve. */
+function nothingHeldForApproval(): void
+{
+    expect(ActionApprovalRequest::query()->count())->toBe(0)
+        ->and(app(PlatformRoot::class)->run(fn () => BackchannelAuthRequest::query()->count()))->toBe(0);
+}
+
+it('refuses an unsafe webhook URL before holding it for approval', function (): void {
+    $owner = keyOwner();
+    [$key] = supervisedKey($owner, ['min_danger' => null, 'actions' => ['webhooks.create']], PREFLIGHT_SCOPES);
+    app(Resolver::class)->set('internal.acme.example', ['10.0.0.5']);
+    $body = ['event_types' => [WebhookEventCatalogue::offered()[0]], 'environment_wide' => true];
+
+    $this->withToken($key)->postJson('/api/v1/webhooks', [...$body, 'url' => 'https://internal.acme.example/in'])
+        ->assertUnprocessable()->assertJsonPath('error', 'unsafe_url');
+    $this->withToken($key)->postJson('/api/v1/webhooks', [...$body, 'url' => 'http://hooks.acme.example/in'])
+        ->assertUnprocessable()->assertJsonPath('error', 'unsafe_url');
+    $this->withToken($key)->postJson('/api/v1/webhooks', ['url' => 'https://hooks.acme.example/in', 'event_types' => $body['event_types']])
+        ->assertUnprocessable()->assertJsonPath('error', 'owner_required');
+
+    nothingHeldForApproval();
+
+    // A request that can run is still held.
+    $this->withToken($key)->postJson('/api/v1/webhooks', [...$body, 'url' => 'https://hooks.acme.example/in'])
+        ->assertStatus(202)->assertJsonPath('error', 'approval_required');
+})->group('security');
+
+it('refuses repointing a webhook at a private address, or a foreign one, before holding it', function (): void {
+    $owner = keyOwner();
+    [$key] = supervisedKey($owner, ['min_danger' => null, 'actions' => ['webhooks.update']], PREFLIGHT_SCOPES);
+    app(Resolver::class)->set('internal.acme.example', ['10.0.0.5']);
+    $id = $this->withToken($key)->postJson('/api/v1/webhooks', ['url' => 'https://a.acme.example/in', 'event_types' => [WebhookEventCatalogue::offered()[0]], 'environment_wide' => true])
+        ->assertCreated()->json('data.id');
+
+    $this->withToken($key)->patchJson("/api/v1/webhooks/{$id}", ['url' => 'https://internal.acme.example/in'])
+        ->assertUnprocessable()->assertJsonPath('error', 'unsafe_url');
+    $this->withToken($key)->patchJson('/api/v1/webhooks/whe_nope', ['url' => 'https://b.acme.example/in'])
+        ->assertNotFound();
+
+    nothingHeldForApproval();
+
+    $this->withToken($key)->patchJson("/api/v1/webhooks/{$id}", ['url' => 'https://b.acme.example/in'])->assertStatus(202);
+})->group('security');
+
+it('refuses an unsafe hook or log stream endpoint before holding a critical action', function (): void {
+    $owner = keyOwner();
+    [$key] = supervisedKey($owner, ['min_danger' => 'critical', 'actions' => []], PREFLIGHT_SCOPES);
+    app(Resolver::class)->set('internal.acme.example', ['10.0.0.5']);
+
+    $this->withToken($key)->postJson('/api/v1/hooks', ['hook_point' => 'post_login', 'url' => 'https://internal.acme.example/login', 'environment_wide' => true])
+        ->assertUnprocessable()->assertJsonPath('error', 'unsafe_url');
+    $this->withToken($key)->postJson('/api/v1/log-streams', ['name' => 'S', 'destination' => 'generic_json', 'endpoint_url' => 'https://internal.acme.example/c', 'environment_wide' => true])
+        ->assertUnprocessable()->assertJsonPath('error', 'unsafe_url');
+    $this->withToken($key)->postJson('/api/v1/log-streams', ['name' => 'S', 'destination' => 'generic_json', 'environment_wide' => true])
+        ->assertUnprocessable();
+
+    nothingHeldForApproval();
 })->group('security');

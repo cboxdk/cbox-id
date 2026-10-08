@@ -9,10 +9,12 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Str;
 
 /**
  * An environment management key (`cbid_env_…`). It acts with the environment's authority,
@@ -55,9 +57,18 @@ final readonly class EnvironmentKeyPrincipal implements Principal
         return true;
     }
 
+    /**
+     * The key AND the environment it acts in — `Key "Deploy agent" in Production` — because
+     * the person approving a held action on their phone may own keys in several
+     * environments, and a message naming only the key does not say whose webhooks, users
+     * or settings it is about to change.
+     */
     public function label(): string
     {
-        return 'Key "'.$this->key->name.'"';
+        $environment = Environment::query()->whereKey($this->key->environment_id)->value('name');
+        $label = 'Key "'.Str::limit($this->key->name, 80).'"';
+
+        return is_string($environment) && $environment !== '' ? $label.' in '.Str::limit($environment, 80) : $label;
     }
 
     public function stepUpPolicy(): ?StepUpPolicy

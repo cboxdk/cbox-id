@@ -14,8 +14,10 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\IntegrationReach;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Exceptions\UnsafeActionUrl;
@@ -46,7 +48,7 @@ use Cbox\Id\ExternalActions\Exceptions\UnsafeActionUrl;
     consoleGate: ConsoleGate::Administer,
     redact: ['secret'],
 )]
-final readonly class CreateHook implements Action
+final readonly class CreateHook implements Action, Preflight
 {
     public function __construct(
         private ExternalActions $hooks,
@@ -60,6 +62,13 @@ final readonly class CreateHook implements Action
             Field::string('url')->required()->max(500)->format('uri')->describe('A public HTTPS URL, called in the middle of the operation.'),
             ...IntegrationReach::ownerFields(),
         ]);
+    }
+
+    /** Whose it is and whether the URL may be called — before anyone approves it. */
+    public function preflight(ActionContext $context): void
+    {
+        IntegrationReach::owner($context);
+        OutboundUrl::assertHook(trim($context->string('url')));
     }
 
     public function handle(ActionContext $context): ActionResult

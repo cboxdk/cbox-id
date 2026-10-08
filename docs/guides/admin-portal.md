@@ -81,9 +81,13 @@ curl -X POST https://<environment-host>/api/v1/organizations/$ORG/portal-links \
 | `email` | Mail the link to this address. Left out, nothing is sent. |
 | `locale` | The mail's language: `en`, `da`, `de`, `sv`, `nb` or `fr`. Left out, the environment's default language. |
 
-The answer (`201`) carries `id`, `organization_id`, `intents`, `url`, `expires_at` and
-`emailed_to`. The `url` is in that answer only: only a hash of the link is stored, and an
-idempotent replay returns everything but the URL. Because creating a link is critical, a
+The answer (`201`) carries `id`, `organization_id`, `intents`, `url`, `expires_at`,
+`emailed_to` and `email_suppressed`. The `url` is in that answer only: only a hash of the
+link is stored, and an idempotent replay returns everything but the URL.
+
+`emailed_to` is the address the mail went to. A sandbox environment sends no mail, so
+there an `email` is not sent: the answer says `emailed_to: null` and
+`email_suppressed: true`, and the link records no address. Share the `url` yourself. Because creating a link is critical, a
 key with an approval policy may wait for a person first
 ([step-up approvals](step-up-approvals.md)).
 

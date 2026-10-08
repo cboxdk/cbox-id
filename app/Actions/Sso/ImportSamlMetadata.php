@@ -13,6 +13,8 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\Federation\Exceptions\SamlMetadataImportFailed;
 use Cbox\Id\Federation\Exceptions\UnsafeFederationUrl;
 use Cbox\Id\Federation\Saml\SamlMetadataImporter;
@@ -41,7 +43,7 @@ use Cbox\Id\Federation\Saml\SamlMetadataImporter;
     consoleRoutes: ['connections.import', 'environment.connections.import'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class ImportSamlMetadata implements Action
+final readonly class ImportSamlMetadata implements Action, Preflight
 {
     public function __construct(private SamlMetadataImporter $importer) {}
 
@@ -52,16 +54,25 @@ final readonly class ImportSamlMetadata implements Action
         ]);
     }
 
+    /**
+     * Something to read, and — for a URL — an address the SSRF guard lets out: the guard
+     * only, never the fetch, which is the action itself and waits for any approval.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        $input = self::metadata($context);
+
+        if (self::isUrl($input)) {
+            OutboundUrl::assertFederation($input, 'invalid_metadata', 'metadata');
+        }
+    }
+
     public function handle(ActionContext $context): ActionResult
     {
-        $input = trim($context->string('metadata'));
-
-        if ($input === '') {
-            throw ActionRefused::because('metadata_required', 'Paste the IdP metadata XML, or a metadata URL.', 'metadata');
-        }
+        $input = self::metadata($context);
 
         try {
-            $metadata = str_starts_with($input, 'http://') || str_starts_with($input, 'https://')
+            $metadata = self::isUrl($input)
                 ? $this->importer->fromUrl($input)
                 : $this->importer->fromXml($input);
         } catch (SamlMetadataImportFailed|UnsafeFederationUrl $e) {
@@ -73,5 +84,22 @@ final readonly class ImportSamlMetadata implements Action
             'idp_sso_url' => $metadata->ssoUrl,
             'idp_x509cert' => $metadata->x509cert,
         ]);
+    }
+
+    /** @throws ActionRefused */
+    private static function metadata(ActionContext $context): string
+    {
+        $input = trim($context->string('metadata'));
+
+        if ($input === '') {
+            throw ActionRefused::because('metadata_required', 'Paste the IdP metadata XML, or a metadata URL.', 'metadata');
+        }
+
+        return $input;
+    }
+
+    private static function isUrl(string $input): bool
+    {
+        return str_starts_with($input, 'http://') || str_starts_with($input, 'https://');
     }
 }

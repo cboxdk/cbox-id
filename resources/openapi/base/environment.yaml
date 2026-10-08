@@ -2921,7 +2921,7 @@ components:
         idp_x509cert: { type: string, description: "The IdP's public signing certificate, from its own metadata." }
     PortalLink:
       type: object
-      required: [id, organization_id, intents, url, expires_at, emailed_to]
+      required: [id, organization_id, intents, url, expires_at, emailed_to, email_suppressed]
       properties:
         id: { type: string }
         organization_id: { type: string }
@@ -2929,7 +2929,13 @@ components:
           type: array
           description: "What the link may set up."
           items: { type: string, enum: [sso, dsync, domain_verification, log_streams, certificate_renewal, audit_logs] }
-        emailed_to: { type: ["string", "null"], description: "The address the link was mailed to, or null when it was not sent." }
+        emailed_to: { type: ["string", "null"], description: "The address the link was mailed to, or null when it was not sent — none was asked for, or the mail was suppressed (see email_suppressed)." }
+        email_suppressed:
+          type: boolean
+          description: |
+            True when an `email` was asked for and NOT sent because this is a sandbox
+            environment, which sends no mail. `emailed_to` is then null, and the `url` in this
+            answer is the only way to the link — share it yourself.
         url:
           type: ["string", "null"]
           description: |

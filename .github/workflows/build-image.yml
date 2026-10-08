@@ -50,6 +50,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The tags, so `git describe` below can name the release this commit is.
+          fetch-depth: 0
+
+      # The application's version (config `app.version`, APP_VERSION in the image): the
+      # tag itself on a tag push (`2.0.0`), and the nearest tag plus how far past it on
+      # main (`2.0.0-3-gabc1234`).
+      - name: Version
+        id: version
+        run: echo "version=$(git describe --tags --always | sed 's/^v//')" >> "$GITHUB_OUTPUT"
 
       - name: Docker metadata
         id: meta
@@ -81,6 +91,8 @@ jobs:
           context: .
           platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=cbox-id-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=cbox-id-${{ matrix.arch }}

@@ -6,14 +6,17 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 
@@ -37,7 +40,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
     consoleRoutes: ['connections.update', 'environment.connections.update'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class UpdateSsoConnection implements Action
+final readonly class UpdateSsoConnection implements Action, Preflight
 {
     public function __construct(
         private SecretBox $secretBox,
@@ -54,27 +57,28 @@ final readonly class UpdateSsoConnection implements Action
         ]);
     }
 
+    /**
+     * A connection that is not this principal's, settings left incomplete, and an OIDC
+     * issuer the SSRF guard refuses — before anyone approves the change. Re-discovery is a
+     * fetch of the provider's server, and waits for the approval.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        $connection = SsoFields::changeable($context);
+
+        [$config] = self::merged($context, $connection->type, SsoFields::config($connection));
+
+        if ($connection->type === ConnectionType::Oidc) {
+            OutboundUrl::assertFederation($config['issuer'] ?? '', 'discovery_failed', 'issuer', SsoFields::DISCOVERY_FAILED);
+        }
+    }
+
     public function handle(ActionContext $context): ActionResult
     {
         $connection = SsoFields::changeable($context);
         $current = SsoFields::config($connection);
 
-        // Only this type's keys: an OIDC field sent to a SAML connection is not a change.
-        $keys = $connection->type === ConnectionType::Saml ? SsoFields::SAML : SsoFields::OIDC;
-        $config = [];
-        $changed = [];
-
-        foreach ($keys as $key) {
-            $sent = trim($context->string($key));
-            $stored = $current[$key] ?? null;
-            $config[$key] = $sent !== '' ? $sent : (is_string($stored) ? $stored : '');
-
-            if ($sent !== '' && $sent !== $stored) {
-                $changed[] = $key;
-            }
-        }
-
-        SsoFields::assertComplete($config);
+        [$config, $changed] = self::merged($context, $connection->type, $current);
 
         // An optional value neither sent nor on file is not on file as blank.
         $config = array_filter(
@@ -117,5 +121,36 @@ final readonly class UpdateSsoConnection implements Action
         ]);
 
         return ActionResult::item($connection, SsoFields::present($connection));
+    }
+
+    /**
+     * This type's settings once the change is made — what was sent over what is on file —
+     * and which of them it changes; refused when one left blank is required.
+     *
+     * Only this type's keys: an OIDC field sent to a SAML connection is not a change.
+     *
+     * @param  array<string, mixed>  $current
+     * @return array{array<string, string>, list<string>}
+     *
+     * @throws ActionRefused
+     */
+    private static function merged(ActionContext $context, ConnectionType $type, array $current): array
+    {
+        $config = [];
+        $changed = [];
+
+        foreach ($type === ConnectionType::Saml ? SsoFields::SAML : SsoFields::OIDC as $key) {
+            $sent = trim($context->string($key));
+            $stored = $current[$key] ?? null;
+            $config[$key] = $sent !== '' ? $sent : (is_string($stored) ? $stored : '');
+
+            if ($sent !== '' && $sent !== $stored) {
+                $changed[] = $key;
+            }
+        }
+
+        SsoFields::assertComplete($config);
+
+        return [$config, $changed];
     }
 }

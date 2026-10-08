@@ -14,15 +14,18 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\IntegrationReach;
 use App\Platform\Integrations\LogStreamDestinations;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme;
 use Cbox\LaravelSiem\Enums\Destination;
 use Cbox\LaravelSiem\Exceptions\InvalidStreamConfiguration;
 use Cbox\LaravelSiem\Exceptions\UnsafeStreamUrl;
+use Cbox\LaravelSiem\Support\DestinationSettings;
 
 /**
  * Start mirroring the audit trail to a SIEM — an HTTP collector (Splunk, Elastic, Graylog,
@@ -61,7 +64,7 @@ use Cbox\LaravelSiem\Exceptions\UnsafeStreamUrl;
     consoleGate: ConsoleGate::Administer,
     redact: ['secret'],
 )]
-final readonly class CreateLogStream implements Action
+final readonly class CreateLogStream implements Action, Preflight
 {
     public function __construct(
         private LogStreams $streams,
@@ -79,6 +82,34 @@ final readonly class CreateLogStream implements Action
             LogStreamDestinations::optionsField(),
             ...IntegrationReach::ownerFields(),
         ]);
+    }
+
+    /**
+     * Whose it is, whether the settings are complete, and whether the endpoint they come
+     * to — given, or derived from the destination's options — may be dialled: the package's
+     * own checks, asked before anyone approves a stream it would refuse to store.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        IntegrationReach::owner($context);
+
+        $destination = Destination::from($context->string('destination'));
+        $endpointUrl = trim($context->string('endpoint_url'));
+        $options = LogStreamDestinations::given($context->array('options'));
+
+        if ($endpointUrl !== '') {
+            IntegrationReach::assertUrl($endpointUrl, 'endpoint_url');
+        }
+
+        LogStreamDestinations::assertRoleAssumable($destination, $options);
+
+        try {
+            $config = app(DestinationSettings::class)->normalize($destination, $endpointUrl, $options, $context->nullableString('secret'));
+        } catch (InvalidStreamConfiguration $invalid) {
+            throw LogStreamDestinations::refusal($invalid);
+        }
+
+        OutboundUrl::assertLogStream($config->endpoint);
     }
 
     public function handle(ActionContext $context): ActionResult
