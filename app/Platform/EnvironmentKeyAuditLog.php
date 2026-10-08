@@ -6,7 +6,6 @@ namespace App\Platform;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionTrail;
-use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\SignedInPerson;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
