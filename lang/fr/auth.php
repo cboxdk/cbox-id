@@ -225,7 +225,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Où se trouve le jeton de configuration ?',
-            'body' => 'Dans :path sur le serveur, et dans le journal de l’application (:logs pour un conteneur). Il n’est jamais affiché sur cette page.',
+            'body' => 'Exécutez :command sur le serveur — sur n’importe quelle instance de ce déploiement — et collez ce qu’elle affiche. Chaque exécution affiche un nouveau jeton, valable une heure. Il n’est jamais affiché sur cette page.',
         ],
         'cli_hint' => 'Vous préférez la ligne de commande ? :install fait la même chose, et c’est la seule méthode qui permet aussi de choisir et d’enregistrer la topologie du déploiement.',
         'token_label' => 'Jeton de configuration',
@@ -240,7 +240,7 @@ return [
         'organization_hint' => 'Ce déploiement est configuré en mode multilocataire ; l’installation crée donc aussi le premier espace de travail — l’organisation propriétaire des environnements et de la facturation.',
         'organization_placeholder' => 'Votre entreprise',
         'submit' => 'Installer ce déploiement',
-        'token_mismatch' => 'Ce jeton de configuration ne correspond pas à celui publié par ce déploiement.',
+        'token_mismatch' => 'Ce jeton de configuration ne correspond pas à celui de ce déploiement, ou il a expiré. Affichez-en un nouveau avec php artisan cbox-id:setup-token.',
     ],
 
     'join_organization' => [

@@ -7,7 +7,7 @@ use App\Platform\Install\Contracts\SetupTokens;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
@@ -15,35 +15,48 @@ uses(RefreshDatabase::class);
 /**
  * The first-run screen — the lazy path, made safe.
  *
- * The setup token lives on the local disk, so the disk is faked: a real run would write
- * the repository's `storage/app/private`, and two tests sharing one token file would be
- * testing each other.
+ * The setup token lives in the database every replica shares, hashed, so these tests need
+ * no faked disk — and the multi-replica ones below prove a replica's own disk plays no part.
  */
-beforeEach(function (): void {
-    Storage::fake('local');
-});
-
 it('serves the first-run screen while the platform is empty', function (): void {
     $this->get('/first-run')
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->component('auth/first-run'));
 });
 
-it('publishes the setup token to the server, and never to the page', function (): void {
+it('arms a setup token on the first look, and never shows it on the page', function (): void {
+    expect(app(SetupTokens::class)->armed())->toBeFalse();
+
     $this->get('/first-run')->assertOk();
 
-    $token = app(SetupTokens::class)->current();
+    expect(app(SetupTokens::class)->armed())->toBeTrue();
 
-    expect($token)->not->toBeNull()
-        ->and($token)->toHaveLength(64);
+    // Only a hash is stored: the database holds nothing that claims the platform.
+    $hash = DB::table('setup_tokens')->value('token_hash');
+
+    expect($hash)->toBeString()->toHaveLength(64);
 
     /*
      * The whole point of the token is that reaching the page is not enough to have it.
      * Asserted over the whole DOCUMENT rather than over the props: on a ported page the
      * props are serialised into it, so the document is the superset — a value absent from
-     * the body is absent from both.
+     * the body is absent from both. The value printed by the command is checked the same
+     * way: neither it nor its stored hash reaches the page.
      */
-    $this->get('/first-run')->assertDontSee((string) $token);
+    $token = app(SetupTokens::class)->rotate();
+
+    $this->get('/first-run')->assertDontSee($token)->assertDontSee((string) DB::table('setup_tokens')->value('token_hash'));
+});
+
+it('keeps the token the operator holds when the page is looked at again', function (): void {
+    $token = app(SetupTokens::class)->rotate();
+
+    // A second visitor — or a second replica serving its first look — must not re-arm over
+    // the value the operator is already holding.
+    $this->get('/first-run')->assertOk();
+    $this->get('/first-run')->assertOk();
+
+    expect(app(SetupTokens::class)->matches($token))->toBeTrue();
 });
 
 it('404s once anything has claimed the platform', function (): void {
@@ -78,7 +91,7 @@ it('refuses a wrong setup token, and provisions nothing', function (): void {
 });
 
 it('refuses an absent setup token — no token issued is not a wildcard', function (): void {
-    // The token file is gone (spent, or never written because the disk is read-only).
+    // No token was ever armed, or it was spent.
     app(SetupTokens::class)->forget();
 
     claimDeployment(['token' => ''])->assertSessionHasErrors('token');
@@ -87,7 +100,7 @@ it('refuses an absent setup token — no token issued is not a wildcard', functi
 });
 
 it('installs the platform, spends the token, and hands over to the sign-in door', function (): void {
-    $token = app(SetupTokens::class)->issue();
+    $token = app(SetupTokens::class)->rotate();
 
     // Handed on to a real door either way: straight into the console when the credential
     // it just created authenticates, and to the sign-in page when it cannot yet. What it
@@ -96,15 +109,16 @@ it('installs the platform, spends the token, and hands over to the sign-in door'
 
     expect(app(PlatformOperators::class)->findByEmail('root@acme.example'))->not->toBeNull()
         ->and(Environment::query()->where('is_default', true)->count())->toBe(1)
-        // Spent: a token left on disk is a live secret for a door that no longer exists.
-        ->and(app(SetupTokens::class)->current())->toBeNull();
+        // Spent: a token left behind is a live secret for a door that no longer exists.
+        ->and(app(SetupTokens::class)->armed())->toBeFalse()
+        ->and(DB::table('setup_tokens')->count())->toBe(0);
 
     // …and the door is gone for good.
     $this->get('/first-run')->assertNotFound();
 });
 
 it('refuses to claim a platform that was installed while the form was open', function (): void {
-    $token = app(SetupTokens::class)->issue();
+    $token = app(SetupTokens::class)->rotate();
 
     $this->get('/first-run')->assertOk();
 

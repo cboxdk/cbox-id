@@ -14,7 +14,7 @@ There are two supported paths, and they provision exactly the same thing:
 | | [`php artisan cbox-id:install`](#the-install-command) | [The first-run screen](#the-first-run-screen) |
 |---|---|---|
 | Where | A shell on the server (or your CI/Docker build) | A browser, at `/first-run` |
-| Gate | You already have shell access to the server | The **setup token**, published to the server |
+| Gate | You already have shell access to the server | The **setup token**, printed by `cbox-id:setup-token` |
 | Chooses the deployment shape | **Yes** — and writes it to `.env` | No — installs the shape already configured |
 | Non-interactive | Yes, fully | No |
 
@@ -107,11 +107,19 @@ satisfy. The moment the platform is claimed, the route 404s permanently.
 
 It is gated by a **setup token**, because "the platform is empty" is not a gate on a
 public identity provider — the first visitor to an internet-exposed box is a scanner,
-not you. When an empty deployment first serves that page it mints a token and
-publishes it in two places only console or filesystem access can read:
+not you. Get one from a shell on the deployment:
 
-- `storage/app/private/cbox-id-first-run.token` on the server, and
-- the application log, at warning level — `docker logs <container>` for a container.
+```bash
+php artisan cbox-id:setup-token
+```
+
+It prints a fresh token each time and retires the one before. The token is stored only
+as a hash, in the database, so every instance of a multi-replica deployment accepts it
+whichever one you ran the command on. It expires after an hour
+(`CBOX_ID_SETUP_TOKEN_TTL`, in minutes); run the command again if it does. A single
+container whose only console is `docker logs` can set `CBOX_ID_LOG_SETUP_TOKEN=true`, and
+the token armed on the first look at `/first-run` is then also written to the application
+log at warning level.
 
 The token is never rendered into the page and never appears in a URL. Paste it into
 the form together with the operator's details; completing the form provisions the

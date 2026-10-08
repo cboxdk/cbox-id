@@ -225,7 +225,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Var finns installationstoken?',
-            'body' => 'I :path på servern, och i applikationsloggen (:logs för en container). Den visas aldrig på den här sidan.',
+            'body' => 'Kör :command på servern — på valfri instans av den här installationen — och klistra in det som skrivs ut. Varje körning skriver ut en ny token som gäller i en timme. Den visas aldrig på den här sidan.',
         ],
         'cli_hint' => 'Föredrar du kommandoraden? :install gör samma sak, och är det enda sättet som också kan välja och registrera installationens upplägg.',
         'token_label' => 'Installationstoken',
@@ -240,7 +240,7 @@ return [
         'organization_hint' => 'Den här installationen är konfigurerad som multi-tenant, så installationen skapar också den första arbetsytan — organisationen som äger miljöer och fakturering.',
         'organization_placeholder' => 'Ditt företag',
         'submit' => 'Installera',
-        'token_mismatch' => 'Installationstoken matchar inte den som den här installationen publicerade.',
+        'token_mismatch' => 'Installationstoken matchar inte den här installationens, eller så har den gått ut. Skriv ut en ny med php artisan cbox-id:setup-token.',
     ],
 
     'join_organization' => [

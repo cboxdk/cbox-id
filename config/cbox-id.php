@@ -242,14 +242,24 @@ return [
      * OFF, because that token is the whole of the authority to claim an unclaimed
      * deployment and the log is the one place a secret reliably escapes the box it was
      * written on: shipped to a central aggregator, it hands everyone with log access the
-     * ability to claim the platform first. The file is 0600 on the server and
-     * `php artisan cbox-id:setup-token` prints it.
+     * ability to claim the platform first. `php artisan cbox-id:setup-token` mints one and
+     * prints it, on any instance of the deployment.
      *
      * A single-container deploy where `docker logs` genuinely is the operator's only view
      * of the box can turn it back on — an explicit choice by whoever knows where those
      * logs end up.
      */
     'log_setup_token' => (bool) env('CBOX_ID_LOG_SETUP_TOKEN', false),
+
+    /*
+     * How long a first-run setup token stays valid, in minutes.
+     *
+     * The token is kept (hashed) in the database, so every replica accepts it; bounding
+     * it means a copy that escaped — a terminal scrollback, an opted-in log line — stops
+     * mattering on its own. Nothing is lost by a short one: the next look at `/first-run`
+     * re-arms an expired token, and `cbox-id:setup-token` always mints a fresh one.
+     */
+    'setup_token_ttl_minutes' => (int) env('CBOX_ID_SETUP_TOKEN_TTL', 60),
 
     /*
      * Passkeys / WebAuthn. `rp_id` is the Relying Party ID (the domain credentials are

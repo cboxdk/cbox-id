@@ -30,6 +30,10 @@ use Cbox\LaravelQueueAutoscale\Scaling\Forecasting\Policies\ModerateForecastPoli
  *    The hard stop is `limits.max_total_workers` in config/queue-autoscale.php; this is
  *    the per-group ceiling beneath it. Raise both together when the workers have memory of
  *    their own — in production they do: the queue manager runs in the worker pod.
+ *    Both bounds are DEFAULTS: `QUEUE_AUTOSCALE_WORKERS_MIN` / `QUEUE_AUTOSCALE_WORKERS_MAX`
+ *    override them on every group this application runs ({@see WorkerBounds}). They stay
+ *    here as well because a queue the autoscaler discovers on its own (`sla_defaults`) is
+ *    sized by this profile alone.
  *  - timeout 75 s, BELOW the Redis `retry_after` of 90 s. A job allowed to run past
  *    `retry_after` is handed to a second worker while the first is still sending it —
  *    a webhook or a logout token delivered twice. The package default is 300 s, which
@@ -51,6 +55,12 @@ readonly class WorkerProfile implements ProfileContract
     /** Per-job timeout. Must stay below the queue connection's `retry_after` (90 s). */
     public const JOB_TIMEOUT_SECONDS = 75;
 
+    /** Default per-group worker floor — `QUEUE_AUTOSCALE_WORKERS_MIN` when unset. */
+    public const MIN_WORKERS = 1;
+
+    /** Default per-group worker ceiling — `QUEUE_AUTOSCALE_WORKERS_MAX` when unset. */
+    public const MAX_WORKERS = 2;
+
     public function resolve(): array
     {
         return [
@@ -67,8 +77,8 @@ readonly class WorkerProfile implements ProfileContract
                 'history_seconds' => 300,
             ],
             'workers' => [
-                'min' => 1,
-                'max' => 2,
+                'min' => self::MIN_WORKERS,
+                'max' => self::MAX_WORKERS,
                 'tries' => 3,
                 'max_time_seconds' => 3600,
                 'timeout_seconds' => self::JOB_TIMEOUT_SECONDS,
