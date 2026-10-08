@@ -82,13 +82,10 @@ CBOX_ID_ANALYTICS_CLICKHOUSE_PASSWORD=…
 The target table is a `ReplacingMergeTree` keyed on `event_id`, so duplicate delivery
 collapses on merge and retention is a table TTL rather than a scheduled sweep.
 
-ClickHouse is not a managed resource on every platform. On the production cluster the
-Cbox platform manages PostgreSQL and Valkey (`resources:` in `cbox.yaml`) but not
-ClickHouse — a container started beside the app gets no volume and no backup, which is
-not where analytics belong. So either point these variables at an externally managed
-ClickHouse, with the password in a platform Secret referenced under `secrets:` like every
-other credential, or use the `database` store. The same choice applies on any host that
-offers no ClickHouse of its own.
+Not every host offers ClickHouse, and a container started beside the app with no volume
+and no backup is not where analytics belong. Where there is none, either point these
+variables at an externally managed ClickHouse, with its password in your secrets store
+like every other credential, or use the `database` store.
 
 ## Tenancy
 

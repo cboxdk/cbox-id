@@ -24,8 +24,8 @@ use Cbox\LaravelQueueAutoscale\Scaling\Strategies\HybridStrategy;
 |
 | Every value below is chosen for the smallest shape this runs on: ONE 512 MB
 | host that also serves the web traffic. Where a value differs from the
-| package default, the comment says why. Production (Kubernetes, cbox.yaml) runs
-| the manager in a pod of its own and changes one value: cluster mode, below.
+| package default, the comment says why. Production (Kubernetes) runs the
+| manager in a worker pod of its own and changes one value: cluster mode, below.
 |
 */
 
@@ -129,9 +129,9 @@ return [
      *  - max_total_workers 2 — a HARD cap, applied after everything else, and the one
      *    that holds even if the host's memory reading is wrong (a container reporting the
      *    node's memory instead of its own limit would make the percentage ceiling below
-     *    meaningless). Raise it only with more memory to spend: on Kubernetes the manager
-     *    has a pod of its own (the `queue` process in cbox.yaml) and shares it with no web
-     *    traffic, so the cap follows that pod's memory limit.
+     *    meaningless). Raise it only with more memory to spend: in production the
+     *    manager runs in a worker pod that serves no web traffic, so the cap follows that
+     *    pod's memory limit.
      *  - max_memory_percent 70 — stop spawning while the instance is above 70 %, leaving
      *    headroom for a burst of web requests rather than racing them to the OOM killer.
      *  - worker_memory_mb_estimate 96 — the cold-start estimate before a measurement
@@ -161,10 +161,11 @@ return [
     /*
      * SINGLE-HOST MODE BY DEFAULT: one host, exactly one manager on it. Cluster mode is for
      * more than one manager sharing one set of queues; it needs Redis or Valkey, and
-     * without it two managers each size the pool as if alone. The Kubernetes deployment
-     * turns it ON (QUEUE_AUTOSCALE_CLUSTER_ENABLED in cbox.yaml): on every rollout the
-     * outgoing and incoming queue pods overlap. Turn it on anywhere else the day the
-     * manager runs on more than one host — see docs/operations/queue-workers.md.
+     * without it two managers each size the pool as if alone. Production turns it ON
+     * (QUEUE_AUTOSCALE_CLUSTER_ENABLED): one manager runs in the worker pod, and a second
+     * — a replica added later, one started by hand — joins it instead of doubling the
+     * workers. Turn it on anywhere else the day the manager can run on more than one
+     * host — see docs/operations/queue-workers.md.
      */
     'cluster' => [
         'enabled' => env('QUEUE_AUTOSCALE_CLUSTER_ENABLED', false),

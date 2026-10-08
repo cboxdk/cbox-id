@@ -44,9 +44,9 @@ opened.
 2. **Swap and deploy.** Make the new key `CBOX_ID_CRYPTO_KEY` and move the old one into
    `CBOX_ID_CRYPTO_PREVIOUS_KEYS` (comma-separated if you already keep one there).
    Deploy everywhere — web, queue workers and the scheduler all seal and open secrets. On
-   the cluster both keys are entries in the `cbox-id-app` Secret: add
-   `CBOX_ID_CRYPTO_PREVIOUS_KEYS` there, reference it under `secrets:` in `cbox.yaml`, and
-   roll every pod.
+   cboxid.com both are entries in the `cbox-id-env` Secret, which the operator changes in
+   the private infrastructure repository; re-applying it and restarting the web and
+   worker Deployments puts them in every pod.
    From this moment new secrets are sealed under the new key and old ones still open.
    Store the new key in your secrets manager **before** the deploy, and keep the old one
    there too.
@@ -115,8 +115,8 @@ should exceed your access-token TTL.
 php artisan cbox-id:doctor
 ```
 
-Run it after every deploy and as a periodic probe — on the cluster, in a web pod, which
-has the same environment as the queue and scheduler pods. It verifies extensions, the
+Run it after every deploy and as a periodic probe — on Kubernetes in a web pod, which
+has the same environment as the worker. It verifies extensions, the
 crypto key, migrations, active signing keys, issuer, passkey config, and — in
 production — the hardening posture (`APP_DEBUG` off, secure + encrypted sessions), real
 mail, a shared cache and session store when `CBOX_ID_REPLICAS` is above one, the
@@ -168,11 +168,14 @@ Read [`UPGRADING.md`](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md) 
 release between the one you run and the one you deploy, and roll forward one release at a
 time.
 
-**On the cluster** the order is: back up the database, create or update the platform
-Secrets the release needs, run `php artisan migrate --force` once as a one-off command
-from the new release, deploy, run the doctor. A deploy does not migrate by itself; the
-reasons and the details are in
-[Rolling out a release on Kubernetes](deployment.md#rolling-out-a-release-on-kubernetes).
+**On cboxid.com** there is nothing to run: every commit on `main` whose checks pass is
+released automatically — the migrate Job first, then the web and worker pods — and a
+failed rollout returns to the previous images. Configuration a release needs goes into
+production before it merges. See [Releases from main](deployment.md#releases-from-main).
+
+**On your own Kubernetes**, the order is: back up the database, put new configuration in
+place, run `php artisan migrate --force` once as a Job on the new image, roll, run the
+doctor — see [Rolling out a release](deployment.md#rolling-out-a-release).
 
 **On a VM:**
 
@@ -197,7 +200,7 @@ new migrations arrive — check its changelog before bumping it.
 If normal admin access is lost (MFA device gone, admin locked out), recover through
 an **out-of-band, audited** path — never by weakening the running config:
 
-1. Access the server directly — a shell in a running web pod on the cluster, SSH on a VM —
+1. Access the server directly — a shell in a running web pod on Kubernetes, SSH on a VM —
    and use artisan, not the public UI.
 2. Provision or re-enroll a break-glass admin via a seeding/artisan path; the action
    is written to the audit trail like any other.

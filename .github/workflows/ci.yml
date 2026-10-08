@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ONE PHP, the one that ships: the image (Dockerfile), the manifest (cbox.yaml),
+        # ONE PHP, the one that ships: the image (Dockerfile), the local manifest (cbox.yaml),
         # composer.json's `require.php` and `config.platform.php` are all 8.5. This is a
         # deployed application, not a library; a cell for a version it never runs on
         # tests a deployment nobody has.
@@ -151,11 +151,12 @@ jobs:
             image: mysql:8.4
             port: 3306
             health: mysqladmin ping -h 127.0.0.1 -u root -proot
-          # The deployment target: cbox.yaml binds a PostgreSQL 17 (`resources.database`,
-          # a CloudNativePG cluster on the Kubernetes deployment). The major is pinned
-          # there and matched here — DeploymentManifestTest fails if the two drift.
+          # The deployment target: production (cboxid.com, on Cbox's Kubernetes cluster)
+          # runs PostgreSQL 18, with the en_US.UTF-8 locale this image defaults to. The
+          # local manifest (cbox.yaml, `resources.database`) states the same major, and
+          # DeploymentManifestTest fails if it, this image and docs/requirements.md drift.
           - driver: pgsql
-            image: postgres:17
+            image: postgres:18
             port: 5432
             health: pg_isready -U cbox_id -d cbox_id
     name: ${{ matrix.image }}

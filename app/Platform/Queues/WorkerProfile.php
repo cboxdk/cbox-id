@@ -29,7 +29,7 @@ use Cbox\LaravelQueueAutoscale\Scaling\Forecasting\Policies\ModerateForecastPoli
  *  - max 2. Sized for the smallest shape, a 512 MB host that also serves the web traffic.
  *    The hard stop is `limits.max_total_workers` in config/queue-autoscale.php; this is
  *    the per-group ceiling beneath it. Raise both together when the workers have memory of
- *    their own — on Kubernetes they do: the queue manager is its own pod (cbox.yaml).
+ *    their own — in production they do: the queue manager runs in the worker pod.
  *  - timeout 75 s, BELOW the Redis `retry_after` of 90 s. A job allowed to run past
  *    `retry_after` is handed to a second worker while the first is still sending it —
  *    a webhook or a logout token delivered twice. The package default is 300 s, which

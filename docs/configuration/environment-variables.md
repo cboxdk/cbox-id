@@ -194,8 +194,8 @@ stream's external ID, and the platform calls `sts:AssumeRole` with the identity 
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `SIEM_AWS_ACCESS_KEY_ID` | Access key ID of the platform's own IAM user, used only to sign `sts:AssumeRole`. A secret reference in `cbox.yaml`. | *(none)* | Set to offer **Assume an IAM role** on S3 streams. Without it the option is shown as unavailable and the API refuses `role_arn` (`assumed_role_unavailable`). |
-| `SIEM_AWS_SECRET_ACCESS_KEY` | That user's secret access key. A secret reference in `cbox.yaml`, never a value. | *(none)* | With the key ID. Rotate it in IAM and here; streams are unaffected. |
+| `SIEM_AWS_ACCESS_KEY_ID` | Access key ID of the platform's own IAM user, used only to sign `sts:AssumeRole`. A secret: keep it in your secrets store, never in a committed file. | *(none)* | Set to offer **Assume an IAM role** on S3 streams. Without it the option is shown as unavailable and the API refuses `role_arn` (`assumed_role_unavailable`). |
+| `SIEM_AWS_SECRET_ACCESS_KEY` | That user's secret access key. A secret, like the key ID. | *(none)* | With the key ID. Rotate it in IAM and here; streams are unaffected. |
 | `SIEM_AWS_PRINCIPAL_ARN` | The ARN of that IAM user (`arn:aws:iam::<account>:user/<name>`). Not a secret: it is the `Principal` in the trust policy the console and the Admin Portal hand your customers. | *(none — the policy shows a placeholder)* | Set together with the key, or every customer has to ask you for it. |
 
 The IAM user needs exactly one permission and nothing else, because it can do nothing on
@@ -468,7 +468,7 @@ variables; these are the ones a deployment sets. See
 |---|---|---|---|
 | `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` | Hard cap on `queue:work` processes per host. | `2` | The workers get more memory than a 512 MB instance shared with the web tier. |
 | `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. `cbox-id:doctor` then fails a per-process cache or session store. |
-| `CBOX_ID_REPLICAS` | How many web replicas the deployment runs — the number its manifest gives the platform (`replicas:` in `cbox.yaml`), told to the app, which cannot count its siblings. Changes nothing at runtime. | `1` | Always, beside `replicas:`. Above 1, `cbox-id:doctor` **fails** a `file`, `array` or `apc` cache or session store instead of warning: every replica would hold its own rate limits, single-use tokens, replay guards and sessions. |
+| `CBOX_ID_REPLICAS` | How many web replicas the deployment runs — the number its manifest gives the orchestrator (`replicas:` on the web Deployment; `replicas:` in the local `cbox.yaml`), told to the app, which cannot count its siblings. Changes nothing at runtime. | `1` | Always, beside the replica count. Above 1, `cbox-id:doctor` **fails** a `file`, `array` or `apc` cache or session store instead of warning: every replica would hold its own rate limits, single-use tokens, replay guards and sessions. |
 | `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The `queue_workers` health check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |
 | `QUEUE_METRICS_STORAGE` | Where the metrics the manager scales on are kept. | `redis` | Leave it. |
 | `QUEUE_MONITOR_MAX_ROWS` | Most job rows the monitor keeps, on top of its 7-day window. | `100000` | A very busy install. |

@@ -6,11 +6,13 @@ description: Deploying and running a live Cbox ID instance — deployment on Kub
 
 # Operations
 
-Deploying and running a live identity provider. Production runs on Kubernetes, deployed
-from `cbox.yaml` through the Cbox platform; every page also covers a VM or a PaaS.
+Deploying and running a live identity provider. `cboxid.com` runs on Cbox's own
+Kubernetes cluster and is released automatically from `main`; every page also covers
+running it yourself on a VM, a PaaS or any Kubernetes cluster.
 
-- [Deployment](deployment.md) — from a fresh server or cluster to a running, hardened
-  instance, and how a release rolls out.
+- [Deployment](deployment.md) — how production runs and how a merge to `main` reaches it,
+  what the application expects from its environment, and, for self-hosters, from a fresh
+  server or cluster to a running, hardened instance.
 - [Day-2 operations](operations.md) — **backing up the crypto key**, signing-key
   rotation, health checks, audit/monitoring, upgrades, and the break-glass runbook.
 - [Queue workers](queue-workers.md) — running the queue manager on Kubernetes, a VM or a
