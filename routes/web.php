@@ -996,6 +996,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/log-streaming/new', [LogStreamController::class, 'create'])->middleware('sudo')->name('audit-streams.create');
     Route::post('/log-streaming', [LogStreamController::class, 'store'])->middleware('sudo')->name('audit-streams.store');
     Route::get('/log-streaming/{stream}', [LogStreamController::class, 'show'])->name('audit-streams.show');
+    // Editing behind the same step-up as creating: repointing a stream or swapping its
+    // credential sends the trail somewhere new just as surely.
+    Route::get('/log-streaming/{stream}/edit', [LogStreamController::class, 'edit'])->middleware('sudo')->name('audit-streams.edit');
+    Route::patch('/log-streaming/{stream}', [LogStreamController::class, 'update'])->middleware('sudo')->name('audit-streams.update');
+    Route::post('/log-streaming/{stream}/test', [LogStreamController::class, 'test'])->name('audit-streams.test');
     Route::post('/log-streaming/{stream}/toggle', [LogStreamController::class, 'toggle'])->name('audit-streams.toggle');
     Route::delete('/log-streaming/{stream}', [LogStreamController::class, 'destroy'])->name('audit-streams.destroy');
     // Settings: the SAME component the environment plane serves. The organization's own
@@ -1591,6 +1596,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/log-streaming/new', [LogStreamController::class, 'create'])->middleware('env.sudo')->name('environment.audit-streams.create');
         Route::post('/log-streaming', [LogStreamController::class, 'store'])->middleware('env.sudo')->name('environment.audit-streams.store');
         Route::get('/log-streaming/{stream}', [LogStreamController::class, 'show'])->name('environment.audit-streams.show');
+        Route::get('/log-streaming/{stream}/edit', [LogStreamController::class, 'edit'])->middleware('env.sudo')->name('environment.audit-streams.edit');
+        Route::patch('/log-streaming/{stream}', [LogStreamController::class, 'update'])->middleware('env.sudo')->name('environment.audit-streams.update');
+        Route::post('/log-streaming/{stream}/test', [LogStreamController::class, 'test'])->name('environment.audit-streams.test');
         Route::post('/log-streaming/{stream}/toggle', [LogStreamController::class, 'toggle'])->name('environment.audit-streams.toggle');
         Route::delete('/log-streaming/{stream}', [LogStreamController::class, 'destroy'])->name('environment.audit-streams.destroy');
         // The SHARED usage page, under the slug the organization console uses. It was

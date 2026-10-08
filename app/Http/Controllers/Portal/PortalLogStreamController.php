@@ -9,7 +9,9 @@ use App\Actions\LogStreams\DeleteLogStream;
 use App\Actions\LogStreams\OwnedStreams;
 use App\Actions\LogStreams\TestLogStream;
 use App\Platform\Enums\PortalIntent;
+use App\Platform\Integrations\LogStreamDestinations;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
+use Cbox\LaravelSiem\Enums\DatadogSite;
 use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +19,8 @@ use Inertia\Response;
 
 /**
  * LOG STREAMS IN THE ADMIN PORTAL — the organization's own audit trail, shipped to the
- * organization's own SIEM: Splunk, Elastic, Graylog, a CEF collector, or any JSON endpoint.
+ * organization's own SIEM: Splunk, Elastic, Graylog, a CEF collector, any JSON endpoint,
+ * Datadog, or their own Amazon S3 or Google Cloud Storage bucket.
  *
  * ONLY THEIR OWN. The portal session is confined to its organization, so the streams it
  * lists, creates, tests and deletes are that organization's — never the environment's own
@@ -25,7 +28,11 @@ use Inertia\Response;
  * ({@see OwnedStreams}). A stream created here carries this
  * organization's entries and nobody else's.
  *
- * A generated HMAC key, like a SCIM token, is shown once on the flash channel. "Send test
+ * A generated HMAC key, like a SCIM token, is shown once on the flash channel; a credential
+ * the IT admin typed — a token, an API key, a secret access key, a service-account key — is
+ * never sent back to the browser. An S3 bucket reached through an assumed role holds no
+ * credential at all: its row shows the external ID, the trust policy and the write-only
+ * permissions policy to paste into AWS, opened as soon as the stream is added. "Send test
  * entry" runs `log_streams.test` and says whether their SIEM took it, in their language.
  */
 final readonly class PortalLogStreamController extends PortalController
@@ -47,15 +54,26 @@ final readonly class PortalLogStreamController extends PortalController
                 'endpointUrl' => $stream->endpoint_url,
                 'auth' => $stream->auth->value,
                 'enabled' => $stream->enabled,
+                'health' => $stream->health()->value,
+                'lastError' => $stream->last_error,
                 'lastSuccessAt' => $stream->last_success_at?->toIso8601String(),
-                'failing' => $stream->consecutive_failures > 0,
+                'aws' => $stream->destination === Destination::S3 ? [
+                    'externalId' => LogStreamDestinations::externalId($stream),
+                    'trustPolicy' => LogStreamDestinations::trustPolicy($stream),
+                    'permissionsPolicy' => LogStreamDestinations::permissionsPolicy($stream),
+                ] : null,
                 'testHref' => route('portal.log-streams.test', $stream->id),
                 'removeHref' => route('portal.log-streams.destroy', $stream->id),
             ])->values()->all(),
             'destinations' => array_map(static fn (Destination $destination): array => [
                 'value' => $destination->value,
                 'defaultAuth' => $destination->defaultAuth()->value,
-            ], Destination::httpCollectors()),
+            ], Destination::cases()),
+            'datadogSites' => array_map(
+                static fn (DatadogSite $site): array => ['value' => $site->value, 'label' => LogStreamDestinations::SITE_LABELS[$site->value]],
+                DatadogSite::cases(),
+            ),
+            'assumedRoleAvailable' => LogStreamDestinations::assumedRoleAvailable(),
             'urls' => ['create' => route('portal.log-streams.store')],
         ]);
     }
@@ -66,21 +84,37 @@ final readonly class PortalLogStreamController extends PortalController
 
         $secret = trim($request->string('secret')->toString());
         $auth = $request->string('auth')->toString();
+        $endpointUrl = trim($request->string('endpoint_url')->toString());
+        $destination = Destination::tryFrom($request->string('destination')->toString());
 
-        $result = $this->act(CreateLogStream::class, [
+        $input = [
             'organization_id' => $this->organizationId(),
             'name' => trim($request->string('name')->toString()),
             'destination' => $request->string('destination')->toString(),
-            'endpoint_url' => trim($request->string('endpoint_url')->toString()),
-            'auth' => $auth === '' ? null : $auth,
+            'endpoint_url' => $endpointUrl === '' ? null : $endpointUrl,
             'secret' => $secret === '' ? null : $secret,
-        ], [
+        ];
+
+        if ($destination?->requiresOptions() === true) {
+            $input['options'] = LogStreamDestinations::given(LogStreamDestinations::fromForm($destination, $request->input('options')));
+        } else {
+            $input['auth'] = $auth === '' ? null : $auth;
+        }
+
+        $fields = [
             'name' => 'name',
             'destination' => 'destination',
             'endpoint_url' => 'endpoint_url',
             'auth' => 'auth',
             'secret' => 'secret',
-        ], 'name');
+            'options' => 'options',
+        ];
+
+        foreach (LogStreamDestinations::OPTIONS[$destination->value ?? ''] ?? [] as $key) {
+            $fields['options.'.$key] = 'options.'.$key;
+        }
+
+        $result = $this->act(CreateLogStream::class, $input, $fields, 'name');
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -90,6 +124,12 @@ final readonly class PortalLogStreamController extends PortalController
 
         if (is_string($generated)) {
             $this->inertia->flash('newSecret', $generated);
+        }
+
+        // An assumed-role bucket receives nothing until its trust policy names the stream's
+        // external ID: open that stream's AWS steps rather than leave them for later.
+        if (is_string($result->payload['external_id'] ?? null) && is_string($result->payload['id'] ?? null)) {
+            $this->inertia->flash('awsSetup', $result->payload['id']);
         }
 
         return back()->with('status', __('portal.log_streams.created'));

@@ -346,6 +346,19 @@ return [
     ],
 
     /*
+     * LOG STREAMS to an Amazon S3 bucket through an ASSUMED ROLE: the customer's role trusts
+     * this platform's own AWS principal — the IAM user whose key is `SIEM_AWS_ACCESS_KEY_ID`
+     * (laravel-siem's `siem.aws.*`, allowed nothing but `sts:AssumeRole`) — and requires the
+     * stream's external ID. The key does not say which user it belongs to, so its ARN is
+     * stated here, and the trust policy the console and the Admin Portal hand the customer
+     * names it. Unset, the policy shows a placeholder. Not a secret. See
+     * docs/guides/log-streams.md.
+     */
+    'log_streams' => [
+        'aws_principal_arn' => env('SIEM_AWS_PRINCIPAL_ARN'),
+    ],
+
+    /*
      * The adaptive-risk decision trail (`risk_decisions`) — the durable record of
      * every score the risk engine produced, and the evidence a `RISK_MODE=enforce`
      * threshold is set from. See docs/security/adaptive-risk.md.

@@ -1987,7 +1987,7 @@ Takes no input.
 
 ### log_streams.create
 
-Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON). A generated HMAC key is returned once.
+Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog, or an S3 or GCS bucket. A generated HMAC key is returned once.
 
 | | |
 |---|---|
@@ -2001,10 +2001,25 @@ Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON). A genera
 | Input | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes | At most 190 characters. |
-| `destination` | string | yes | One of `splunk_hec`, `elastic_ecs`, `graylog_gelf`, `cef_http`, `generic_json`. |
-| `endpoint_url` | string (uri) | yes | A public URL the entries are POSTed to. At most 2048 characters. |
-| `auth` | string | no | How the endpoint is authenticated. Left out, the destination's default. One of `none`, `bearer`, `splunk`, `hmac`. |
-| `secret` | string, nullable | no | The bearer or Splunk token the endpoint expects. Left out with `hmac`, a key is generated and returned once. At most 4096 characters. |
+| `destination` | string | yes | One of `splunk_hec`, `elastic_ecs`, `graylog_gelf`, `cef_http`, `generic_json`, `datadog`, `s3`, `gcs`. |
+| `endpoint_url` | string (uri), nullable | no | An HTTP collector: the public URL entries are POSTed to (required). Datadog, S3 and GCS: leave out for the destination's own endpoint, or an https URL of an S3-compatible store (MinIO, R2). At most 2048 characters. |
+| `auth` | string | no | An HTTP collector: how the endpoint is authenticated. Left out, the destination's default. The cloud destinations authenticate their own way. One of `none`, `bearer`, `splunk`, `hmac`. |
+| `secret` | string, nullable | no | The credential, never echoed: the bearer or Splunk token (HTTP collectors; left out with `hmac`, a key is generated and returned once), the Datadog API key, the S3 secret access key (none with `role_arn`), or the GCS service-account JSON key. At most 8192 characters. |
+| `options` | object | no | Datadog, S3 and GCS only: the destination's settings. An HTTP collector takes none. |
+| `options.site` | string, nullable | no | Datadog: the site your account lives on — the domain you sign in at, e.g. `datadoghq.eu` for EU1. Default `datadoghq.com` (US1). An API key only works on its own site. One of `datadoghq.com`, `us3.datadoghq.com`, `us5.datadoghq.com`, `datadoghq.eu`, `ap1.datadoghq.com`, `ap2.datadoghq.com`, `ddog-gov.com`. |
+| `options.service` | string, nullable | no | Datadog: the `service` attribute on every entry. Default: this platform's name. At most 100 characters. |
+| `options.source` | string, nullable | no | Datadog: the `ddsource` attribute. Default `cbox`. At most 100 characters. |
+| `options.tags` | list of string, nullable | no | Datadog: `key:value` tags (`ddtags`) on every entry, e.g. `env:prod`. At most 100 items. |
+| `options.hostname` | string, nullable | no | Datadog: the `hostname` attribute. Default: this platform's host. At most 255 characters. |
+| `options.bucket` | string, nullable | no | S3 and GCS: the bucket objects are written to. At most 222 characters. |
+| `options.region` | string, nullable | no | S3: the bucket's AWS Region, e.g. `eu-west-1` (`auto` for Cloudflare R2). At most 32 characters. |
+| `options.prefix` | string, nullable | no | S3 and GCS: the object key prefix, e.g. `cbox/audit`. Objects are written to `{prefix}/{yyyy}/{mm}/{dd}/{hh}/{batch}.ndjson.gz`. At most 512 characters. |
+| `options.access_key_id` | string, nullable | no | S3 with an access key: the IAM access key ID. Its secret access key is the stream's `secret`. At most 128 characters. |
+| `options.role_arn` | string, nullable | no | S3 with an assumed role: the IAM role the platform assumes. No secret is stored; the role's trust policy must require the stream's `external_id`. At most 2048 characters. |
+| `options.sse` | string, nullable | no | S3: server-side encryption requested on every object. Left out, the bucket's default. One of `AES256`, `aws:kms`. |
+| `options.kms_key_id` | string, nullable | no | S3 with `aws:kms`: the KMS key ID, alias or ARN. At most 2048 characters. |
+| `options.path_style` | boolean, nullable | no | S3: path-style addressing. Default: virtual-hosted on AWS, path-style on a custom endpoint (MinIO, R2). |
+| `options.gzip` | boolean, nullable | no | S3 and GCS: gzip each object (`.ndjson.gz`). Default true. |
 | `organization_id` | string, nullable | no | The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide. At most 64 characters. |
 | `environment_wide` | boolean | no | True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id. |
 
@@ -2059,7 +2074,7 @@ List the SIEM destinations this environment's audit trail is streamed to, and wh
 
 ### log_streams.test
 
-Send one test entry to a log stream now and report whether the SIEM accepted it.
+Send one test event to a log stream now and report whether the destination accepted it, and if not, why.
 
 | | |
 |---|---|
@@ -2075,7 +2090,7 @@ Send one test entry to a log stream now and report whether the SIEM accepted it.
 
 ### log_streams.update
 
-Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.
+Change an audit log stream's name, destination, endpoint, options or credential (re-validated; resets its circuit breaker), or disable (enabled: false) / resume (enabled: true) it.
 
 | | |
 |---|---|
@@ -2084,11 +2099,32 @@ Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled
 | Danger | `critical` |
 | MCP tool | `log_streams_update` |
 | CLI | `cbox id log_streams update <id>` |
+| Secret | `data.secret` — shown once, never kept for an idempotent replay |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
 | `id` | string (path) | yes | The log stream id. |
-| `enabled` | boolean | yes | True to deliver; false to stop, keeping what is pending. |
+| `name` | string | no | At most 190 characters. |
+| `destination` | string | no | Changing it starts the stream's options and credential afresh. One of `splunk_hec`, `elastic_ecs`, `graylog_gelf`, `cef_http`, `generic_json`, `datadog`, `s3`, `gcs`. |
+| `endpoint_url` | string (uri), nullable | no | An HTTP collector's URL; for Datadog, S3 and GCS empty means the destination's own endpoint. At most 2048 characters. |
+| `auth` | string | no | An HTTP collector only. One of `none`, `bearer`, `splunk`, `hmac`. |
+| `secret` | string, nullable | no | A new credential (token, API key, secret access key or service-account JSON key). Left out, the current one is kept. Never echoed. At most 8192 characters. |
+| `options` | object | no | Datadog, S3 and GCS only: the destination's settings. An HTTP collector takes none. |
+| `options.site` | string, nullable | no | Datadog: the site your account lives on — the domain you sign in at, e.g. `datadoghq.eu` for EU1. Default `datadoghq.com` (US1). An API key only works on its own site. One of `datadoghq.com`, `us3.datadoghq.com`, `us5.datadoghq.com`, `datadoghq.eu`, `ap1.datadoghq.com`, `ap2.datadoghq.com`, `ddog-gov.com`. |
+| `options.service` | string, nullable | no | Datadog: the `service` attribute on every entry. Default: this platform's name. At most 100 characters. |
+| `options.source` | string, nullable | no | Datadog: the `ddsource` attribute. Default `cbox`. At most 100 characters. |
+| `options.tags` | list of string, nullable | no | Datadog: `key:value` tags (`ddtags`) on every entry, e.g. `env:prod`. At most 100 items. |
+| `options.hostname` | string, nullable | no | Datadog: the `hostname` attribute. Default: this platform's host. At most 255 characters. |
+| `options.bucket` | string, nullable | no | S3 and GCS: the bucket objects are written to. At most 222 characters. |
+| `options.region` | string, nullable | no | S3: the bucket's AWS Region, e.g. `eu-west-1` (`auto` for Cloudflare R2). At most 32 characters. |
+| `options.prefix` | string, nullable | no | S3 and GCS: the object key prefix, e.g. `cbox/audit`. Objects are written to `{prefix}/{yyyy}/{mm}/{dd}/{hh}/{batch}.ndjson.gz`. At most 512 characters. |
+| `options.access_key_id` | string, nullable | no | S3 with an access key: the IAM access key ID. Its secret access key is the stream's `secret`. At most 128 characters. |
+| `options.role_arn` | string, nullable | no | S3 with an assumed role: the IAM role the platform assumes. No secret is stored; the role's trust policy must require the stream's `external_id`. At most 2048 characters. |
+| `options.sse` | string, nullable | no | S3: server-side encryption requested on every object. Left out, the bucket's default. One of `AES256`, `aws:kms`. |
+| `options.kms_key_id` | string, nullable | no | S3 with `aws:kms`: the KMS key ID, alias or ARN. At most 2048 characters. |
+| `options.path_style` | boolean, nullable | no | S3: path-style addressing. Default: virtual-hosted on AWS, path-style on a custom endpoint (MinIO, R2). |
+| `options.gzip` | boolean, nullable | no | S3 and GCS: gzip each object (`.ndjson.gz`). Default true. |
+| `enabled` | boolean | no | True to deliver; false to stop, keeping what is pending. |
 
 ## Members
 

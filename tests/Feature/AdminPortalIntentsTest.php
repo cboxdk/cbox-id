@@ -515,7 +515,7 @@ it('walks log streams: add their own destination, test it, see a failure, remove
 
     portalWrite('post', route('portal.log-streams'), $row['testHref'])->assertSessionHasNoErrors();
     expect(flashed('streamTest'))->toBe(['id' => $stream->id, 'delivered' => true, 'error' => null])
-        ->and($sink->batches()[0]['records'][0] ?? '')->toContain('log_stream.test');
+        ->and($sink->batches()[0]['records'][0] ?? '')->toContain('siem.stream.test');
 
     $sink->failEverything();
     portalWrite('post', route('portal.log-streams'), $row['testHref'])->assertSessionHasNoErrors();
@@ -567,6 +567,80 @@ it('never shows or touches the environment\'s own streams, or another organizati
     portalWrite('delete', route('portal.log-streams'), route('portal.log-streams.destroy', $environmentWide))->assertNotFound();
 
     expect(AuditStream::query()->whereKey($environmentWide)->exists())->toBeTrue();
+})->group('security');
+
+it('adds an S3 bucket through an assumed role, and hands the IT admin the trust policy with its external ID', function (): void {
+    config([
+        'siem.aws.access_key_id' => 'AKIAPLATFORMEXAMPLE',
+        'siem.aws.secret_access_key' => 'platform-secret',
+        'cbox-id.log_streams.aws_principal_arn' => 'arn:aws:iam::111122223333:user/cbox-siem',
+    ]);
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::LogStreams]);
+
+    $props = $this->get(route('portal.log-streams'))->assertOk()->inertiaProps();
+
+    expect(array_column($props['destinations'], 'value'))->toContain('datadog', 's3', 'gcs')
+        ->and($props['assumedRoleAvailable'])->toBeTrue();
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Audit bucket',
+        'destination' => 's3',
+        'options' => [
+            'bucket' => 'acme-audit',
+            'region' => 'eu-west-1',
+            'prefix' => 'cbox',
+            'role_arn' => 'arn:aws:iam::444455556666:role/cbox-writer',
+            'access_key_id' => '',
+            'gzip' => true,
+        ],
+    ])->assertSessionHasNoErrors();
+
+    $stream = AuditStream::query()->ownedByOrganization($org)->sole();
+    $externalId = $stream->destinationOptions()['external_id'] ?? null;
+
+    expect($externalId)->toBeString()->toMatch('/^[0-9a-f]{32}$/')
+        ->and($stream->secret)->toBeNull()
+        ->and(flashed('awsSetup'))->toBe($stream->id)
+        ->and(flashed('newSecret'))->toBeNull();
+
+    $row = $this->get(route('portal.log-streams'))->inertiaProps('streams')[0];
+
+    expect($row['aws']['externalId'])->toBe($externalId)
+        ->and(json_decode((string) $row['aws']['trustPolicy'], true)['Statement'][0])->toBe([
+            'Effect' => 'Allow',
+            'Principal' => ['AWS' => 'arn:aws:iam::111122223333:user/cbox-siem'],
+            'Action' => 'sts:AssumeRole',
+            'Condition' => ['StringEquals' => ['sts:ExternalId' => $externalId]],
+        ])
+        ->and(json_decode((string) $row['aws']['permissionsPolicy'], true)['Statement'][0]['Resource'])->toBe('arn:aws:s3:::acme-audit/cbox/*');
+});
+
+it('adds a Datadog destination from the portal without ever showing the API key again', function (): void {
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::LogStreams]);
+
+    // A refused setting lands on its own field, in the IT admin's language.
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Datadog',
+        'destination' => 'datadog',
+        'secret' => 'dd-api-key-typed-by-them',
+        'options' => ['site' => 'datadoghq.eu', 'tags' => 'env:prod, 9bad'],
+    ])->assertSessionHasErrors(['options.tags' => __('portal.errors.invalid_stream_configuration')]);
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Datadog',
+        'destination' => 'datadog',
+        'secret' => 'dd-api-key-typed-by-them',
+        'options' => ['site' => 'datadoghq.eu', 'service' => 'acme', 'tags' => 'env:prod, team:sec'],
+    ])->assertSessionHasNoErrors();
+
+    $stream = AuditStream::query()->ownedByOrganization($org)->sole();
+
+    expect($stream->endpoint_url)->toBe('https://http-intake.logs.datadoghq.eu/api/v2/logs')
+        ->and($stream->destinationOptions())->toBe(['site' => 'datadoghq.eu', 'service' => 'acme', 'tags' => 'env:prod,team:sec'])
+        ->and(flashed('newSecret'))->toBeNull()
+        ->and((string) $this->get(route('portal.log-streams'))->assertOk()->getContent())->not->toContain('dd-api-key-typed-by-them');
 })->group('security');
 
 // ── SAML certificate renewal ────────────────────────────────────────────────

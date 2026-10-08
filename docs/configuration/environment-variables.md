@@ -182,6 +182,36 @@ delivered and nothing errors.
 | `CBOX_ID_WEBHOOKS_CB_FAILURE_THRESHOLD` | Consecutive failures against one endpoint before its circuit breaker opens. | `5` | Raise for flaky-but-recovering endpoints. |
 | `CBOX_ID_WEBHOOKS_CB_COOLDOWN_SECONDS` | How long an open breaker stays open before a trial delivery. | `300` | Raise to back off harder from a dead endpoint. |
 
+## Log streams (SIEM)
+
+[Log streams](../guides/log-streams.md) need nothing configured to ship to an HTTP
+collector, Datadog, Google Cloud Storage, or an Amazon S3 bucket with the customer's own
+access key. These three are only for **S3 through an assumed role**, where the customer
+stores no secret with you: their IAM role trusts *your* AWS principal and requires the
+stream's external ID, and the platform calls `sts:AssumeRole` with the identity below.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `SIEM_AWS_ACCESS_KEY_ID` | Access key ID of the platform's own IAM user, used only to sign `sts:AssumeRole`. A secret reference in `cbox.yaml`. | *(none)* | Set to offer **Assume an IAM role** on S3 streams. Without it the option is shown as unavailable and the API refuses `role_arn` (`assumed_role_unavailable`). |
+| `SIEM_AWS_SECRET_ACCESS_KEY` | That user's secret access key. A secret reference in `cbox.yaml`, never a value. | *(none)* | With the key ID. Rotate it in IAM and here; streams are unaffected. |
+| `SIEM_AWS_PRINCIPAL_ARN` | The ARN of that IAM user (`arn:aws:iam::<account>:user/<name>`). Not a secret: it is the `Principal` in the trust policy the console and the Admin Portal hand your customers. | *(none — the policy shows a placeholder)* | Set together with the key, or every customer has to ask you for it. |
+
+The IAM user needs exactly one permission and nothing else, because it can do nothing on
+its own — every write happens as the customer's role:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{ "Effect": "Allow", "Action": "sts:AssumeRole", "Resource": "*" }]
+}
+```
+
+Narrow `Resource` to `arn:aws:iam::*:role/<a naming convention>` if you ask customers to
+name their roles one way. The SIEM package's other settings (`SIEM_AWS_STS_ENDPOINT`,
+`SIEM_AWS_STS_REGION`, `SIEM_AWS_ROLE_DURATION`, `SIEM_GCS_TOKEN_URI`,
+`SIEM_DATADOG_SOURCE`, `SIEM_DATADOG_SERVICE`) default correctly for AWS, Google and
+Datadog; see [laravel-siem's configuration](https://github.com/cboxdk/laravel-siem/blob/main/config/siem.php).
+
 ## Domain-event outbox
 
 Every subscriber in the platform hangs off the outbox relay — webhooks, usage metering,

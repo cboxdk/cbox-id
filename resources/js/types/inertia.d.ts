@@ -166,7 +166,18 @@ declare module '@inertiajs/core' {
              * The Admin Portal's "Send test entry" answer, for the one stream it was about —
              * true for one render, like every other outcome on this channel.
              */
-            streamTest?: { id: string; delivered: boolean; error: string | null };
+            streamTest?: {
+                id: string;
+                delivered: boolean;
+                /** Why not: `transient`, or `authentication`/`configuration` — somebody has to fix it. */
+                failure?: string | null;
+                error: string | null;
+            };
+            /**
+             * The id of an assumed-role S3 stream just created: its AWS steps (external ID,
+             * trust policy) open first, because the bucket receives nothing until they are done.
+             */
+            awsSetup?: string;
             /** What a newly uploaded SAML certificate was checked for, beside its connection. */
             certificateChecks?: {
                 connectionId: string;

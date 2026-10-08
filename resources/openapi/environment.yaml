@@ -5928,7 +5928,7 @@ paths:
     post:
       tags:
         - 'Log streams'
-      summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON). A generated HMAC key is returned once.'
+      summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog, or an S3 or GCS bucket. A generated HMAC key is returned once.'
       description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_create
       x-action: log_streams.create
@@ -5963,14 +5963,19 @@ paths:
                     - graylog_gelf
                     - cef_http
                     - generic_json
+                    - datadog
+                    - s3
+                    - gcs
                 endpoint_url:
-                  type: string
-                  description: 'A public URL the entries are POSTed to.'
+                  type:
+                    - string
+                    - 'null'
+                  description: "An HTTP collector: the public URL entries are POSTed to (required). Datadog, S3 and GCS: leave out for the destination's own endpoint, or an https URL of an S3-compatible store (MinIO, R2)."
                   format: uri
                   maxLength: 2048
                 auth:
                   type: string
-                  description: "How the endpoint is authenticated. Left out, the destination's default."
+                  description: "An HTTP collector: how the endpoint is authenticated. Left out, the destination's default. The cloud destinations authenticate their own way."
                   enum:
                     - none
                     - bearer
@@ -5980,8 +5985,106 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'The bearer or Splunk token the endpoint expects. Left out with `hmac`, a key is generated and returned once.'
-                  maxLength: 4096
+                  description: 'The credential, never echoed: the bearer or Splunk token (HTTP collectors; left out with `hmac`, a key is generated and returned once), the Datadog API key, the S3 secret access key (none with `role_arn`), or the GCS service-account JSON key.'
+                  maxLength: 8192
+                options:
+                  type: object
+                  description: "Datadog, S3 and GCS only: the destination's settings. An HTTP collector takes none."
+                  properties:
+                    site:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the site your account lives on — the domain you sign in at, e.g. `datadoghq.eu` for EU1. Default `datadoghq.com` (US1). An API key only works on its own site.'
+                      enum:
+                        - datadoghq.com
+                        - us3.datadoghq.com
+                        - us5.datadoghq.com
+                        - datadoghq.eu
+                        - ap1.datadoghq.com
+                        - ap2.datadoghq.com
+                        - ddog-gov.com
+                    service:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `service` attribute on every entry. Default: this platform's name."
+                      maxLength: 100
+                    source:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the `ddsource` attribute. Default `cbox`.'
+                      maxLength: 100
+                    tags:
+                      type:
+                        - array
+                        - 'null'
+                      description: 'Datadog: `key:value` tags (`ddtags`) on every entry, e.g. `env:prod`.'
+                      maxItems: 100
+                      items:
+                        type: string
+                        maxLength: 200
+                    hostname:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `hostname` attribute. Default: this platform's host."
+                      maxLength: 255
+                    bucket:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the bucket objects are written to.'
+                      maxLength: 222
+                    region:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: the bucket's AWS Region, e.g. `eu-west-1` (`auto` for Cloudflare R2)."
+                      maxLength: 32
+                    prefix:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the object key prefix, e.g. `cbox/audit`. Objects are written to `{prefix}/{yyyy}/{mm}/{dd}/{hh}/{batch}.ndjson.gz`.'
+                      maxLength: 512
+                    access_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an access key: the IAM access key ID. Its secret access key is the stream's `secret`."
+                      maxLength: 128
+                    role_arn:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an assumed role: the IAM role the platform assumes. No secret is stored; the role's trust policy must require the stream's `external_id`."
+                      maxLength: 2048
+                    sse:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: server-side encryption requested on every object. Left out, the bucket's default."
+                      enum:
+                        - AES256
+                        - 'aws:kms'
+                    kms_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 with `aws:kms`: the KMS key ID, alias or ARN.'
+                      maxLength: 2048
+                    path_style:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3: path-style addressing. Default: virtual-hosted on AWS, path-style on a custom endpoint (MinIO, R2).'
+                    gzip:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3 and GCS: gzip each object (`.ndjson.gz`). Default true.'
                 organization_id:
                   type:
                     - string
@@ -5994,7 +6097,6 @@ paths:
               required:
                 - name
                 - destination
-                - endpoint_url
       responses:
         201:
           description: OK
@@ -6189,7 +6291,7 @@ paths:
     patch:
       tags:
         - 'Log streams'
-      summary: 'Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.'
+      summary: "Change an audit log stream's name, destination, endpoint, options or credential (re-validated; resets its circuit breaker), or disable (enabled: false) / resume (enabled: true) it."
       description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_update
       x-action: log_streams.update
@@ -6214,17 +6316,149 @@ paths:
         -
           WorkspaceAccessToken: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
               type: object
               properties:
+                name:
+                  type: string
+                  maxLength: 190
+                destination:
+                  type: string
+                  description: "Changing it starts the stream's options and credential afresh."
+                  enum:
+                    - splunk_hec
+                    - elastic_ecs
+                    - graylog_gelf
+                    - cef_http
+                    - generic_json
+                    - datadog
+                    - s3
+                    - gcs
+                endpoint_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: "An HTTP collector's URL; for Datadog, S3 and GCS empty means the destination's own endpoint."
+                  format: uri
+                  maxLength: 2048
+                auth:
+                  type: string
+                  description: 'An HTTP collector only.'
+                  enum:
+                    - none
+                    - bearer
+                    - splunk
+                    - hmac
+                secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'A new credential (token, API key, secret access key or service-account JSON key). Left out, the current one is kept. Never echoed.'
+                  maxLength: 8192
+                options:
+                  type: object
+                  description: "Datadog, S3 and GCS only: the destination's settings. An HTTP collector takes none."
+                  properties:
+                    site:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the site your account lives on — the domain you sign in at, e.g. `datadoghq.eu` for EU1. Default `datadoghq.com` (US1). An API key only works on its own site.'
+                      enum:
+                        - datadoghq.com
+                        - us3.datadoghq.com
+                        - us5.datadoghq.com
+                        - datadoghq.eu
+                        - ap1.datadoghq.com
+                        - ap2.datadoghq.com
+                        - ddog-gov.com
+                    service:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `service` attribute on every entry. Default: this platform's name."
+                      maxLength: 100
+                    source:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the `ddsource` attribute. Default `cbox`.'
+                      maxLength: 100
+                    tags:
+                      type:
+                        - array
+                        - 'null'
+                      description: 'Datadog: `key:value` tags (`ddtags`) on every entry, e.g. `env:prod`.'
+                      maxItems: 100
+                      items:
+                        type: string
+                        maxLength: 200
+                    hostname:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `hostname` attribute. Default: this platform's host."
+                      maxLength: 255
+                    bucket:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the bucket objects are written to.'
+                      maxLength: 222
+                    region:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: the bucket's AWS Region, e.g. `eu-west-1` (`auto` for Cloudflare R2)."
+                      maxLength: 32
+                    prefix:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the object key prefix, e.g. `cbox/audit`. Objects are written to `{prefix}/{yyyy}/{mm}/{dd}/{hh}/{batch}.ndjson.gz`.'
+                      maxLength: 512
+                    access_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an access key: the IAM access key ID. Its secret access key is the stream's `secret`."
+                      maxLength: 128
+                    role_arn:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an assumed role: the IAM role the platform assumes. No secret is stored; the role's trust policy must require the stream's `external_id`."
+                      maxLength: 2048
+                    sse:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: server-side encryption requested on every object. Left out, the bucket's default."
+                      enum:
+                        - AES256
+                        - 'aws:kms'
+                    kms_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 with `aws:kms`: the KMS key ID, alias or ARN.'
+                      maxLength: 2048
+                    path_style:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3: path-style addressing. Default: virtual-hosted on AWS, path-style on a custom endpoint (MinIO, R2).'
+                    gzip:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3 and GCS: gzip each object (`.ndjson.gz`). Default true.'
                 enabled:
                   type: boolean
                   description: 'True to deliver; false to stop, keeping what is pending.'
-              required:
-                - enabled
       responses:
         200:
           description: OK
@@ -6257,7 +6491,7 @@ paths:
     post:
       tags:
         - 'Log streams'
-      summary: 'Send one test entry to a log stream now and report whether the SIEM accepted it.'
+      summary: 'Send one test event to a log stream now and report whether the destination accepted it, and if not, why.'
       description: 'Requires scope `log_streams:write`. Danger: write.'
       operationId: log_streams_test
       x-action: log_streams.test
@@ -15246,8 +15480,11 @@ components:
         - destination
         - endpoint_url
         - auth
+        - options
+        - external_id
         - organization_id
         - enabled
+        - health
       properties:
         id:
           type: string
@@ -15261,8 +15498,12 @@ components:
             - graylog_gelf
             - cef_http
             - generic_json
+            - datadog
+            - s3
+            - gcs
         endpoint_url:
           type: string
+          description: 'Where entries go. For Datadog, S3 and GCS, derived from the site or region unless a custom endpoint was given.'
         auth:
           type: string
           enum:
@@ -15270,6 +15511,60 @@ components:
             - bearer
             - splunk
             - hmac
+          description: "An HTTP collector's scheme; `none` for the cloud destinations, which authenticate their own way."
+        options:
+          type:
+            - object
+            - 'null'
+          description: "Datadog, S3 and GCS: the destination's settings, as stored. Never a credential — the API key, secret access key or service-account key is the encrypted secret. null for an HTTP collector."
+          properties:
+            site:
+              type: string
+              enum:
+                - datadoghq.com
+                - us3.datadoghq.com
+                - us5.datadoghq.com
+                - datadoghq.eu
+                - ap1.datadoghq.com
+                - ap2.datadoghq.com
+                - ddog-gov.com
+            service:
+              type: string
+            source:
+              type: string
+            hostname:
+              type: string
+            tags:
+              type: string
+              description: 'Comma-separated `key:value` tags (`ddtags`).'
+            bucket:
+              type: string
+            region:
+              type: string
+            prefix:
+              type: string
+            access_key_id:
+              type: string
+            role_arn:
+              type: string
+            external_id:
+              type: string
+            sse:
+              type: string
+              enum:
+                - AES256
+                - 'aws:kms'
+            kms_key_id:
+              type: string
+            path_style:
+              type: boolean
+            gzip:
+              type: boolean
+        external_id:
+          type:
+            - string
+            - 'null'
+          description: "An assumed-role S3 stream's external ID, generated for it: the role's trust policy must require it (`sts:ExternalId`). null otherwise."
         organization_id:
           type:
             - string
@@ -15277,9 +15572,36 @@ components:
           description: "null when the environment owns it: it carries EVERY organization's entries."
         enabled:
           type: boolean
+        health:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - paused
+            - action_required
+          description: '`degraded`: recent transient failures, still retrying. `paused`: the circuit is open after repeated failures and resumes on its own. `action_required`: the destination refused the credential or the settings — update the stream, or run a successful test.'
         consecutive_failures:
           type: integer
         last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_error:
+          type:
+            - string
+            - 'null'
+          description: "The latest failure, scrubbed of the stream's secret."
+        last_failure_kind:
+          type:
+            - string
+            - 'null'
+          enum:
+            - transient
+            - authentication
+            - configuration
+            - null
+        last_failure_at:
           type:
             - string
             - 'null'
@@ -15293,7 +15615,7 @@ components:
           type:
             - string
             - 'null'
-          description: 'A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.'
+          description: 'A generated HMAC key, on the answer that generated it only — shown once. `null` on an idempotent replay. A credential the caller supplied is never echoed.'
     DomainEvent:
       type: object
       required:
@@ -16253,6 +16575,7 @@ components:
       required:
         - id
         - delivered
+        - failure
         - error
         - tested_at
       properties:
@@ -16260,7 +16583,17 @@ components:
           type: string
         delivered:
           type: boolean
-          description: 'Whether the destination accepted the test entry.'
+          description: 'Whether the destination accepted the test event (action `siem.stream.test`).'
+        failure:
+          type:
+            - string
+            - 'null'
+          enum:
+            - transient
+            - authentication
+            - configuration
+            - null
+          description: 'Why not: `transient` (unreachable, busy — retrying can help) or `authentication` / `configuration` (somebody has to fix the stream). null when delivered.'
         error:
           type:
             - string
