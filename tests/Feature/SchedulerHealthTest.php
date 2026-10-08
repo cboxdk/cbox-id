@@ -50,7 +50,7 @@ function relayBehindBy(int $ageSeconds, int $waiting = 3): void
     });
 }
 
-it('declares a scheduler process in the deployment manifest', function (): void {
+it('declares a scheduler process in the local manifest, as production runs one', function (): void {
     $manifest = (string) file_get_contents(base_path('cbox.yaml'));
 
     expect($manifest)->toMatch('/^\s+scheduler:\s*\["php",\s*"artisan",\s*"schedule:work"\]/m');

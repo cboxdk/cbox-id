@@ -1,7 +1,7 @@
 ---
 title: Queue workers
 weight: 5
-description: Running the queue manager on Laravel Cloud and self-hosted, the operator-only job monitor, and the health signal that goes red when nothing is processing the queue.
+description: Running the queue manager on Kubernetes, on a VM or on a PaaS, the operator-only job monitor, and the health signal that goes red when nothing is processing the queue.
 ---
 
 # Queue workers
@@ -44,12 +44,13 @@ You never run `queue:work` yourself, and you do not configure a separate queue-w
 process next to it: two supervisors fight over the same jobs.
 
 The settings are in `config/queue-autoscale.php` and `App\Platform\Queues\WorkerProfile`,
-with the reason for each value beside it. In short, for a 512 MB instance that also serves
-the web traffic:
+with the reason for each value beside it. The defaults are sized for the smallest shape
+this runs on, a 512 MB host that also serves the web traffic; the production cluster
+changes the first row (below):
 
 | Setting | Value | Why |
 |---|---|---|
-| Mode | single host | One App instance, one manager. |
+| Mode | single host (`QUEUE_AUTOSCALE_CLUSTER_ENABLED=false`); **cluster** in production | One host, one manager. Cluster mode elects a leader over Redis/Valkey, for when more than one manager can run. |
 | Workers per group | min 1, max 2 | Never scale to zero: a cold start on every sign-out is latency for nothing. |
 | `limits.max_total_workers` | 2 (`QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`) | The hard cap that keeps PHP-FPM alive. A worker of this app is about 75 MB resident, the manager about the same. |
 | `limits.max_memory_percent` | 70 | Stop spawning while the instance is above 70 % memory. |
@@ -70,39 +71,77 @@ anything has been dispatched it says there is nothing to check yet, which is exp
 them; `php artisan cbox-id:doctor` checks them again in the CLI the manager runs under and
 says so in words if either is missing.
 
-## Laravel Cloud
+## Kubernetes
 
-**Background process** (App cluster → Background processes → New background process →
-Custom worker):
+Production (`cboxid.com`) runs the manager in a **worker** Deployment of its own: one pod,
+the web pods' image and environment, with nginx and PHP-FPM switched off and `cbox-init`
+running two processes in it — `php artisan queue:autoscale` and the scheduler
+(`php artisan schedule:work`, which also runs the monitor's retention, below):
 
-```bash
-php artisan queue:autoscale
+```yaml
+env:
+  - {name: CBOX_INIT_PROCESS_PHP_FPM_ENABLED, value: "false"}
+  - {name: CBOX_INIT_PROCESS_NGINX_ENABLED, value: "false"}
+  - {name: CBOX_INIT_PROCESS_SCHEDULER_ENABLED, value: "true"}
+  - {name: CBOX_INIT_PROCESS_AUTOSCALER_ENABLED, value: "true"}
+  - {name: CBOX_INIT_PROCESS_AUTOSCALER_USER, value: www-data}
+  - {name: CBOX_INIT_PROCESS_SCHEDULER_USER, value: www-data}
+  - {name: CBOX_INIT_PROCESS_AUTOSCALER_SHUTDOWN_TIMEOUT, value: "80"}
+  - {name: CBOX_INIT_GLOBAL_SHUTDOWN_TIMEOUT, value: "80"}
 ```
 
-Processes: **1**. Cloud restarts it if it exits.
+`cbox-init` restarts either process if it exits. The workers the manager starts live
+inside that pod, so the web pods' memory is not what they compete for.
 
-**Deploy commands: no change.** Cloud replaces the instance on every deploy and stops the
-old one gracefully; the manager catches the SIGTERM, drains its workers and exits, and the
-new instance starts a new manager on the new code. `php artisan queue:autoscale:restart`
-in a deploy command would only restart the outgoing manager on the outgoing release.
+**Deploys: nothing to add.** A rollout replaces the pod — `Recreate`, not overlapped, so
+there is one scheduler at a time: Kubernetes sends the outgoing pod SIGTERM, the manager
+lets its workers finish their current job within the 80-second shutdown timeout (inside a
+90-second termination grace), and the new pod starts a manager on the new code.
+`php artisan queue:autoscale:restart` would only restart the outgoing manager on the
+outgoing release.
 
-Also required on Cloud:
+What the environment sets, and why:
 
-- `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis` (the manager and the web tier meet in
-  the cache: the heartbeat, the failure fuse and the restart signal all live there).
+- `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis`, both on the namespace's Valkey. The
+  manager and the web tier meet in the cache: the heartbeat, the failure fuse and the
+  restart signal all live there.
+- `QUEUE_AUTOSCALE_CLUSTER_ENABLED=true`. One manager runs, but in cluster mode a second —
+  a replica added later, or one started by hand in a pod — elects a leader over Valkey
+  with it instead of each sizing workers as if alone.
+- The Valkey runs **`maxmemory-policy noeviction`**. A queued job is data: under an
+  evicting policy a full instance silently deletes webhooks and mail.
 - Queue metrics use Redis by default (`QUEUE_METRICS_STORAGE=redis`); leave it.
-- The scheduler turned on (it also runs the monitor's retention, below).
-- Do not also add Cloud's own "Queue worker" process type. The manager is the worker.
 
-**Growing past one instance.** Cloud runs a background process on every instance of its
-cluster. If the App cluster autoscales to several replicas, each one runs a manager, and
-each sizes its workers as if it were alone. Before allowing more than one replica, either
-move the manager to a Worker cluster with exactly one instance, or set
-`QUEUE_AUTOSCALE_CLUSTER_ENABLED=true` so the managers elect a leader over Redis and share
-the work. On a Worker cluster with memory to spare, raise
-`QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`.
+On another cluster, run the same thing: either this one worker pod, or the manager and the
+scheduler as two Deployments of one replica each (the local `cbox.yaml` does the latter,
+as `queue` and `scheduler` processes).
 
-## Self-hosted
+**Sizing.** Two workers is a ceiling chosen for a 512 MB host shared with the web tier,
+and the worker pod shares with nobody — but it is two ceilings, and raising one alone does
+nothing: `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` (the hard cap) and the per-group `max` in
+`App\Platform\Queues\WorkerProfile`, which is not a variable today. Budget about 96 MB per
+worker plus the manager's own 75 MB against the pod's memory limit. Keep a hard cap even
+then: it holds when a container reports the node's memory rather than its own limit, which
+makes `max_memory_percent` meaningless.
+
+## On a PaaS
+
+A platform that runs long-lived processes beside the web ("background process", "worker
+process", a Procfile `worker:` line) runs the manager the same way: one process,
+`php artisan queue:autoscale`, restarted if it exits. Two things to check:
+
+- **Do not also add the platform's own queue-worker type.** The manager is the worker; two
+  supervisors fight over the same jobs.
+- **Find out whether it runs one per instance.** Many platforms start a background process
+  on every instance of the app. If the app scales past one, either move the manager to a
+  worker group with exactly one instance, or set `QUEUE_AUTOSCALE_CLUSTER_ENABLED=true` so
+  the managers elect a leader and share the work.
+
+If the platform replaces instances on deploy and sends SIGTERM first, there is no deploy
+step to add; if it restarts processes in place, keep `php artisan queue:restart` in the
+deploy, as below.
+
+## On a VM (systemd or Supervisor)
 
 Run the manager under your process supervisor, one per host. systemd:
 
@@ -223,7 +262,8 @@ run on SQLite, PostgreSQL and MySQL.
 
 **`/health/status` says no manager has ever reported in.** The manager is not running, or it
 runs against a different cache than the web tier (check `CACHE_STORE` on both). On
-Cloud, check the background process exists and its log.
+Kubernetes, check the worker pod is running and read its log; on a PaaS, the background
+process.
 
 **The manager runs, but jobs still wait.** `php artisan queue:autoscale:debug
 --queue=default --connection=redis` shows the metrics it sees and the fuse state. An open

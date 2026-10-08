@@ -1,18 +1,22 @@
 ---
 title: Operations
 weight: 30
-description: Deploying and running a live Cbox ID instance — deployment, key custody, rotation, upgrades, and break-glass.
+description: Deploying and running a live Cbox ID instance — deployment on Kubernetes or any other platform, key custody, rotation, upgrades, and break-glass.
 ---
 
 # Operations
 
-Deploying and running a live identity provider.
+Deploying and running a live identity provider. `cboxid.com` runs on Cbox's own
+Kubernetes cluster and is released automatically from `main`; every page also covers
+running it yourself on a VM, a PaaS or any Kubernetes cluster.
 
-- [Deployment](deployment.md) — from a fresh server to a running, hardened instance.
+- [Deployment](deployment.md) — how production runs and how a merge to `main` reaches it,
+  what the application expects from its environment, and, for self-hosters, from a fresh
+  server or cluster to a running, hardened instance.
 - [Day-2 operations](operations.md) — **backing up the crypto key**, signing-key
   rotation, health checks, audit/monitoring, upgrades, and the break-glass runbook.
-- [Queue workers](queue-workers.md) — running the queue manager on Laravel Cloud and
-  self-hosted, the operator-only job monitor, and the readiness signal for both.
+- [Queue workers](queue-workers.md) — running the queue manager on Kubernetes, a VM or a
+  PaaS, the operator-only job monitor, and the health signal that says it is running.
 - [Live smoke test](live-smoke-test.md) — a reproducible end-to-end run with the real
   clients (cbox CLI, an MCP client, both SDKs) against a live deployment.
 - [Analytics storage](analytics.md) — where authentication analytics are stored

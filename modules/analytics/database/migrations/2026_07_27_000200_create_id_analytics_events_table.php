@@ -8,8 +8,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * The relational event store for analytics — the alternative to ClickHouse for a
- * deployment that has no column store, which now includes the hosted one (Laravel
- * Cloud offers no ClickHouse service).
+ * deployment that has no column store.
  *
  * `event_id` is the PRIMARY KEY, not a surrogate id with a unique index beside it.
  * Outbox delivery is at-least-once, so the same event can arrive twice; making the

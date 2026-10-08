@@ -47,7 +47,8 @@ class QueueWorkersDoctorCheck implements HealthCheck
             ),
             ManagerState::Missing => HealthResult::fail(
                 'No queue manager running',
-                'Run `php artisan queue:autoscale` as a long-lived process (Laravel Cloud: a background process). '
+                'Run `php artisan queue:autoscale` as a long-lived process (on Kubernetes in a worker pod, under cbox-init '
+                .'with CBOX_INIT_PROCESS_AUTOSCALER_ENABLED=true; on a VM a systemd or Supervisor program). '
                 .'Until one runs, webhooks and back-channel logout are queued and never delivered.',
             ),
         };

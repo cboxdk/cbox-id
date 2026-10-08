@@ -82,9 +82,10 @@ CBOX_ID_ANALYTICS_CLICKHOUSE_PASSWORD=…
 The target table is a `ReplacingMergeTree` keyed on `event_id`, so duplicate delivery
 collapses on merge and retention is a table TTL rather than a scheduled sweep.
 
-Note that ClickHouse is not offered by every hosting platform — Laravel Cloud has no
-ClickHouse service — so on those you either point at an externally managed instance
-or use the `database` store.
+Not every host offers ClickHouse, and a container started beside the app with no volume
+and no backup is not where analytics belong. Where there is none, either point these
+variables at an externally managed ClickHouse, with its password in your secrets store
+like every other credential, or use the `database` store.
 
 ## Tenancy
 
