@@ -221,21 +221,21 @@ it('draws no staff-only role on the environment console\'s invite form, and does
     $page = visit('/admin/organizations/'.$org->id.'/members');
 
     $page->assertSee('Vendor support')
-        ->assertSee('Staff-only')
+        ->assertSee('Admins & support only')
         ->assertSee('this organization\'s admins can\'t see or grant it')
         ->screenshot(filename: 'environment-organization-staff-roles');
 
     // Never tagged onto an ordinary role.
     $approver = (string) $page->script('Array.from(document.querySelectorAll(".cbx-check-label")).find((l) => l.textContent === "Approver")?.parentElement?.innerText');
 
-    expect($approver)->not->toContain('Staff-only');
+    expect($approver)->not->toContain('Admins & support only');
 
     visit('/admin/organizations/'.$org->id.'/members')->inDarkMode()
-        ->assertSee('Staff-only')
+        ->assertSee('Admins & support only')
         ->screenshot(filename: 'environment-organization-staff-roles-dark');
 
     visit('/admin/organizations/'.$org->id.'/members')->resize(375, 812)
-        ->assertSee('Staff-only')
+        ->assertSee('Admins & support only')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->screenshot(filename: 'environment-organization-staff-roles-mobile');
 })->group('a11y');

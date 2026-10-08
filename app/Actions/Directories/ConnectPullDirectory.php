@@ -40,7 +40,7 @@ use Throwable;
     scope: 'directory_sync:write',
     danger: Danger::Critical,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['POST', '/directories/connect'],
     status: 201,
     consoleRoutes: ['directories.connect', 'environment.directories.connect'],

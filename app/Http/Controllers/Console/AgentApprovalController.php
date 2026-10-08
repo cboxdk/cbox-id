@@ -15,6 +15,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Agents\ActionApprovalEntry;
 use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\Help\HelpTopic;
@@ -134,7 +135,7 @@ final readonly class AgentApprovalController extends ConsoleController
 
         $actions = $this->actionRows($inbox, $registry);
 
-        return $this->page('environment/approvals', 'Approvals', [
+        return $this->page('environment/approvals', Vocabulary::APPROVALS, [
             'help' => HelpProps::for(HelpTopic::ReviewAgentRequests),
             'waiting' => array_values(array_filter($actions, static fn (array $row): bool => $row['status'] === ActionApprovalStatus::Pending->value)),
             'decided' => array_slice(array_values(array_filter($actions, static fn (array $row): bool => $row['status'] !== ActionApprovalStatus::Pending->value)), 0, 20),

@@ -17,7 +17,7 @@ use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 
 /**
- * Change a SAML application. A field left out keeps its value; `attribute_mappings`, when
+ * Change a SAML app. A field left out keeps its value; `attribute_mappings`, when
  * sent, is the complete list afterwards.
  *
  * The certificate is only ever REPLACED: a blank or absent one keeps what is on file rather
@@ -26,7 +26,7 @@ use Cbox\Id\SamlIdp\Enums\NameIdFormat;
  */
 #[AsAction(
     name: 'saml_apps.update',
-    summary: 'Change a SAML application\'s entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization.',
+    summary: 'Change a SAML app\'s entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization.',
     scope: 'saml_apps:write',
     danger: Danger::Critical,
     schema: 'SamlApp',
@@ -44,7 +44,7 @@ final readonly class UpdateSamlApp implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('id')->inPath()->describe('The SAML application\'s id.'),
+            Field::string('id')->inPath()->describe('The SAML app\'s id.'),
             Field::string('entity_id')->max(500)->describe('The application\'s SAML EntityID, unique in this environment.'),
             ...SamlAppFields::fields(),
         ]);
@@ -52,14 +52,14 @@ final readonly class UpdateSamlApp implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
-        $provider = $this->providers->findById($context->string('id')) ?? throw ActionRefused::notFound('SAML application');
+        $provider = $this->providers->findById($context->string('id')) ?? throw ActionRefused::notFound('SAML app');
 
         if ($context->has('entity_id')) {
             $entityId = trim($context->string('entity_id'));
             $holder = $entityId === '' ? null : $this->providers->findByEntityId($entityId);
 
             if ($entityId === '' || ($holder !== null && $holder->id !== $provider->id)) {
-                throw ActionRefused::because('entity_id_taken', 'A SAML application with this entity id is already registered in this environment.', 'entity_id');
+                throw ActionRefused::because('entity_id_taken', 'A SAML app with this entity id is already registered in this environment.', 'entity_id');
             }
 
             $provider->entity_id = $entityId;

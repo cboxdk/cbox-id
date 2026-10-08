@@ -35,7 +35,11 @@ enum ConsoleArea: string
 
     case Connectors = 'connectors';
 
-    /** Keyed 'audit' in the registry, labelled "Logs" on both rails. */
+    /**
+     * Keyed 'audit' in the registry, labelled "Audit log" on the organization rail and filed
+     * under Monitoring on the environment's. The case keeps its old name because modules
+     * name it; a person never reads it.
+     */
     case Logs = 'audit';
 
     case Settings = 'settings';
@@ -54,12 +58,12 @@ enum ConsoleArea: string
     {
         return match ($this) {
             self::Overview => 'Overview',
-            self::Directory => 'People',
+            self::Directory => Vocabulary::MEMBERS_AND_ROLES,
             self::Authentication => 'Sign-in',
             self::Governance => 'Access control',
             self::Developers => 'Developers',
             self::Connectors => 'Connectors',
-            self::Logs => 'Logs',
+            self::Logs => Vocabulary::AUDIT_LOG,
             self::Settings => 'Settings',
             self::Account => 'My account',
         };

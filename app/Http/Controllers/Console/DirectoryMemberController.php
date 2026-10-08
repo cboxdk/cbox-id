@@ -21,6 +21,7 @@ use App\Http\Props\Shared\ReturnAppProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\AppReturnTargets;
@@ -127,7 +128,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             ];
         }
 
-        return $this->page('console/directory-members', 'Members', [
+        return $this->page('console/directory-members', Vocabulary::MEMBERS, [
             'isAdmin' => $isAdmin,
             'members' => $rows,
             'pagination' => PaginationProps::from($page),

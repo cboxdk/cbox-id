@@ -68,7 +68,7 @@ export default function GetStarted({
                             className="underline"
                             style={{ color: 'var(--accent-strong)' }}
                         >
-                            activity log
+                            audit log
                         </Link>{' '}
                         and{' '}
                         <Link

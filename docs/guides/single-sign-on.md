@@ -6,7 +6,8 @@ description: Connect Microsoft Entra ID, Okta or Google Workspace so your people
 
 # Single sign-on
 
-**Console page:** Sign-in › Enterprise SSO (Authentication › Enterprise SSO in an environment console)
+**Console page:** Sign-in › Enterprise SSO (Authentication › Enterprise SSO in an environment console),
+and Sign-in › Domains for the verified email domains that route people to it
 
 Single sign-on lets your people authenticate against the identity provider your
 company already runs, instead of holding a second set of credentials here. You
@@ -104,6 +105,6 @@ does not match the connection exactly, character for character.
 
 ## Related
 
-- [Sync users in](sync-users-in.md) — SSO authenticates people; syncing creates and
+- [Directory Sync](sync-users-in.md) — SSO authenticates people; syncing creates and
   deactivates them. Most organizations want both.
 - [Roles](roles.md) — what those people can do once they are in.

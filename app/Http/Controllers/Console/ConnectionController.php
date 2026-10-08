@@ -22,6 +22,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveConnectionRequest;
 use App\Http\Requests\Console\StoreConnectionRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
@@ -92,7 +93,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $owners = $this->scope->organizationNames($connections->pluck('organization_id'));
 
-        return $this->page('console/connections/index', 'Enterprise SSO', [
+        return $this->page('console/connections/index', Vocabulary::ENTERPRISE_SSO, [
             'help' => HelpProps::for(HelpTopic::SingleSignOn),
             'connections' => $connections->getCollection()->map(fn (Connection $connection): array => [
                 'id' => $connection->id,
@@ -144,6 +145,44 @@ final readonly class ConnectionController extends ConsoleController
                 'invite' => $this->url('connections.invite'),
                 'addDomain' => $this->url('connections.domains.store'),
             ],
+        ]);
+    }
+
+    /**
+     * CONSOLE › DOMAINS — the email domains this organization claims, on a page of its own.
+     *
+     * The same domains the Enterprise SSO list carries beside its connections, and the same
+     * writes (`connections.domains.*`, the `sso.domains.*` actions): a verified domain is
+     * the ORGANIZATION's, not one connection's, and a customer's IT department looks for it
+     * by name. The organization console only — an environment administrator reaches one
+     * organization's domains on that organization's own page, under Domains.
+     */
+    public function domains(DomainVerification $domains): Response
+    {
+        $this->scope->assertMayAdminister();
+
+        $organizationId = $this->scope->requireOrganizationId();
+
+        return $this->page('console/domains', Vocabulary::DOMAINS, [
+            'help' => HelpProps::for(HelpTopic::Domains),
+            'mayAdminister' => $this->scope->mayAdminister(),
+            // The writes are Enterprise SSO's, gated on the same plan feature.
+            'entitled' => $this->scope->entitled('sso'),
+            'domains' => collect($domains->forOrganization($organizationId))
+                ->map(fn (VerifiedDomain $domain): array => [
+                    'id' => $domain->id,
+                    'domain' => $domain->domain,
+                    'verified' => $domain->isVerified(),
+                    'capture' => $domain->capture,
+                    // The DNS TXT value to publish, for as long as there is one to publish.
+                    'token' => $domain->isVerified() ? '' : (string) $domain->verification_token,
+                    'urls' => [
+                        'verify' => $this->url('connections.domains.verify', $domain->id),
+                        'capture' => $this->url('connections.domains.capture', $domain->id),
+                        'remove' => $this->url('connections.domains.destroy', $domain->id),
+                    ],
+                ])->values()->all(),
+            'addDomainHref' => $this->url('connections.domains.store'),
         ]);
     }
 
@@ -533,7 +572,7 @@ final readonly class ConnectionController extends ConsoleController
         // page — writing them from here would let a control labelled "require SSO for this
         // organization" quietly change the rule for every tenant too.
         if ($model->organization_id === null) {
-            return back()->with('error', 'This connection belongs to the environment, not to one organization. Set the requirement under Sign-in rules.');
+            return back()->with('error', 'This connection belongs to the environment, not to one organization. Set the requirement in the Authentication policy.');
         }
 
         $result = $this->act(RequireSso::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);

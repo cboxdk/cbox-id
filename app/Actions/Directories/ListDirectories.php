@@ -26,7 +26,7 @@ use Illuminate\Database\Eloquent\Builder;
     scope: 'directory_sync:read',
     danger: Danger::Read,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['GET', '/directories'],
 )]
 final class ListDirectories implements Action

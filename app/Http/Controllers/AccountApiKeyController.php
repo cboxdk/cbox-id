@@ -16,6 +16,7 @@ use App\Platform\ApiKeys\KeyApps;
 use App\Platform\ApiKeys\ValueObjects\KeyApp;
 use App\Platform\ApiKeys\ValueObjects\KeyOrganization;
 use App\Platform\ApiKeys\ValueObjects\KeyPermission;
+use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
@@ -81,7 +82,7 @@ final readonly class AccountApiKeyController extends PageController
             ]),
         );
 
-        return $this->page('account/api-keys', 'API keys', [
+        return $this->page('account/api-keys', Vocabulary::MY_API_KEYS, [
             'help' => HelpProps::for(HelpTopic::ApiKeys),
             'organizations' => array_map(fn (KeyOrganization $candidate): array => [
                 'id' => $candidate->id,

@@ -124,7 +124,7 @@ seconds is reasonable. Never cache `active: false` for longer than `active: true
 ## Who can see and revoke keys
 
 - **The holder**, on My account › API keys.
-- **The organization's owners and admins**, on People › Member API keys: every key in the
+- **The organization's owners and admins**, on Members & roles › Member API keys: every key in the
   organization, with its holder, app, permissions, last use and expiry.
 - **Your environment's administrators**, on the organization's page in the environment
   console.
@@ -134,7 +134,7 @@ somebody else: a key acts as its holder, so each person creates their own.
 
 ## What you get told
 
-Creating and revoking a key each write an entry in the organization's activity log
+Creating and revoking a key each write an entry in the organization's audit log
 (`api_key.created`, `api_key.revoked`) and send the webhook event of the same name. The
 payload carries the key's id, holder, app and organization, never the key itself. See
 [Webhooks](../guides/webhooks.md).

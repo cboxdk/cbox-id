@@ -26,7 +26,7 @@ use Illuminate\Database\Eloquent\Builder;
     scope: 'sso:read',
     danger: Danger::Read,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['GET', '/sso/connections'],
 )]
 final class ListSsoConnections implements Action

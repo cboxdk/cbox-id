@@ -6,7 +6,7 @@ description: Inviting people into an organization, sending them back to your app
 
 # Members and invitations
 
-**Console page:** People › Members
+**Console page:** Members & roles › Members
 
 Everyone who can sign in to this organization, what they may administer here, and the
 invitations nobody has accepted yet. The same invite form and the same pending list
@@ -36,7 +36,7 @@ to administer", and its link asks the person to **set a password**, then signs t
 to this console. Your backend can send the same invitation with a workspace key —
 `POST /api/v1/workspace/members` — and list, re-send and withdraw it under
 `/api/v1/workspace/invitations`. It is the same invitation either way: the same mail
-and link, the same refusals, and the same line on the activity log
+and link, the same refusals, and the same line on the audit log
 (`organization.member_invited`, `organization.invitation_revoked`), signed by the key's
 name instead of a person's.
 

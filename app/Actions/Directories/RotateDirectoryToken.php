@@ -32,7 +32,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     scope: 'directory_sync:write',
     danger: Danger::Critical,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['POST', '/directories/{id}/rotate'],
     consoleRoutes: ['directories.rotate', 'environment.directories.rotate'],
     consoleGate: ConsoleGate::Administer,

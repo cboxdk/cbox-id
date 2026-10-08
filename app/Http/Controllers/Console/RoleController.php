@@ -15,6 +15,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveRoleRequest;
 use App\Http\Requests\Console\StoreRoleRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -123,7 +124,7 @@ final readonly class RoleController extends ConsoleController
             : [];
         $people = $this->scope->peopleRoute();
 
-        return $this->page('console/roles/index', 'Roles', [
+        return $this->page('console/roles/index', Vocabulary::ROLES, [
             'help' => HelpProps::for(HelpTopic::Roles),
             'roles' => array_map(fn (Role $role): array => [
                 'id' => $role->id,

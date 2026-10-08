@@ -10,7 +10,7 @@ description: Run a round of certification over who holds which role and membersh
 
 An access review is a round where you go through who holds which role and
 membership, and confirm each one is still needed. A review covers one organization, or,
-on the environment console, every [staff role](#staff-roles). Access accumulates quietly —
+on the environment console, every [admin & support role](#admin-and-support-roles). Access accumulates quietly —
 people change teams, cover for someone, join a project that ended — and nobody
 ever files a ticket to have their own permissions reduced. A review is the
 scheduled moment when that gets cleaned up.
@@ -27,16 +27,16 @@ claim; a closed review with names, decisions and dates is evidence.
    which means you can change your mind mid-review without having already broken
    somebody's access.
 
-## Staff roles
+## Admin and support roles
 
-**Environment console only.** A [staff role](roles.md#staff-roles) is held across the
+**Environment console only.** A [admin & support role](roles.md#admin-and-support-roles) is held across the
 whole environment, so no organization's review includes it. On the environment console,
 **New review** asks what to review: the organization chosen in the bar above, or **Staff
 roles**. The Staff page's **Review staff access** button opens the second directly.
 
 A staff review lists every staff role and who holds it. Revoking an item takes the role
 back **in every organization at once** when the review closes. A staff review stays on the
-environment console's list whichever organization is chosen, marked *Staff roles*.
+environment console's list whichever organization is chosen, marked *Admin & support roles*.
 
 An organization's administrators never see a staff review or the grants in it, and cannot
 open one.
@@ -51,10 +51,10 @@ open one.
   the end of a big project — not only on the calendar.
 - **Fix the cause, not the instance.** If the same unnecessary grants keep coming
   back, the group mapping that creates them is the real finding — see
-  [Sync users in](sync-users-in.md).
+  [Directory Sync](sync-users-in.md).
 
 ## Related
 
 - [Role conflicts](role-conflicts.md) — the rules that should have prevented the
   worst combinations in the first place.
-- [Activity log](activity-log.md) — where the review's decisions are recorded.
+- [Audit log](activity-log.md) — where the review's decisions are recorded.

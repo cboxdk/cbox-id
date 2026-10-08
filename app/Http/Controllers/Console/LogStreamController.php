@@ -10,6 +10,7 @@ use App\Actions\LogStreams\UpdateLogStream;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateLogStreamRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Enums\AuthScheme;
@@ -84,7 +85,7 @@ final readonly class LogStreamController extends ConsoleController
 
         $streams = $query->get();
 
-        return $this->page('console/log-streams/index', 'Log streams', [
+        return $this->page('console/log-streams/index', Vocabulary::LOG_STREAMS, [
             'help' => HelpProps::for(HelpTopic::LogStreaming),
             'streams' => $streams->map(fn (AuditStream $stream): array => [
                 'id' => $stream->id,

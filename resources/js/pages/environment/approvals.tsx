@@ -160,7 +160,7 @@ export default function AgentApprovals({
                     <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
                         Apps asking to act on one of your users' behalf. Each user approves their
                         own; deny one here only if it looks like abuse — the denial is recorded in
-                        the activity log.
+                        the audit log.
                     </p>
                 </div>
 
@@ -268,7 +268,7 @@ export default function AgentApprovals({
                 onOpenChange={(open) => !open && setDenyingAction(null)}
                 name={denyingAction?.agent ?? ''}
                 verb="Deny the action from"
-                consequence="The agent is told no when it asks again, and has to start over. The denial is recorded in the activity log."
+                consequence="The agent is told no when it asks again, and has to start over. The denial is recorded in the audit log."
                 onConfirm={() => {
                     const approval = denyingAction;
                     setDenyingAction(null);
@@ -284,7 +284,7 @@ export default function AgentApprovals({
                 onOpenChange={(open) => !open && setDenying(null)}
                 name={denying?.app ?? ''}
                 verb="Deny the request from"
-                consequence="The agent is refused and cannot act on this person's behalf. The denial is recorded in the activity log. It cannot be undone — the agent would have to ask again."
+                consequence="The agent is refused and cannot act on this person's behalf. The denial is recorded in the audit log. It cannot be undone — the agent would have to ask again."
                 onConfirm={() => {
                     const request = denying;
                     setDenying(null);

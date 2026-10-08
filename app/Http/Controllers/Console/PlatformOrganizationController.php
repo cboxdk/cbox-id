@@ -11,6 +11,7 @@ use App\Http\Middleware\TargetEnvironment;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateTenantOrganizationRequest;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Carbon\CarbonInterface;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
@@ -105,7 +106,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 ->whereIn('organization_id', $listedIds)
                 ->groupBy('organization_id')->pluck('c', 'organization_id');
 
-        return $this->page('console/platform/organizations', 'Organizations', [
+        return $this->page('console/platform/organizations', Vocabulary::ORGANIZATIONS, [
             'help' => HelpProps::for(HelpTopic::PlatformOrganizations),
             'organizations' => $this->tree($organizations, $memberCounts),
             // The flat list the two parent selectors are built from.

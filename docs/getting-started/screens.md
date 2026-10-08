@@ -140,22 +140,23 @@ environment's console; everyone else lands on **Projects**, where each environme
 ## The organization console, area by area
 
 The full organization console, as a single-tenant install (and an operator) sees it. On a
-customer's environment host it keeps Overview and Approve agent requests, People (Members,
-Roles, Permissions), Enterprise SSO and Directory Sync, the Audit log, and My account;
-every other page below is on the environment console instead.
+customer's environment host it keeps the admin portal — Members, Roles, Enterprise SSO,
+Domains, Directory Sync, the Audit log, and App audit logs where the organization's plan
+includes them — beside the person's own Overview, Approvals and My account; every other
+page below is on the environment console instead.
 
 ### Overview
 
-*Overview · Usage · Approve agent requests.* The home page: member count, enterprise-SSO
+*Overview · Usage · Approvals.* The home page: member count, enterprise-SSO
 status, your role, a live **recent activity** feed from the tamper-evident audit log, and
-an onboarding checklist. **Approve agent requests** is where you approve or deny a
-request from an app or agent to act as you.
+an onboarding checklist. **Approvals** is where you approve or deny a request from an app
+or agent to act as you.
 
 ![Dashboard / overview](../screenshots/dashboard.png)
 
-### People
+### Members & roles
 
-*Members · Roles · Permissions.* The people in this organization and what they may do:
+*Members · Roles · Permissions · Member API keys.* The people in this organization and what they may do:
 invite, change roles, remove, every change audited. Each person's **Roles** control holds
 exactly one built-in role (what they may administer in the console) and any number of
 roles your apps understand. The role and permission model itself is org-scoped and
@@ -166,9 +167,10 @@ hierarchy-aware.
 
 ### Sign-in
 
-*Enterprise SSO · Social login · Authentication policy · Directory Sync · Outbound
-provisioning.* Everything about how people get in and how their accounts arrive.
-Enterprise SSO connects an organization's own IdP (SAML / OIDC); social login is picked
+*Enterprise SSO · Domains · Social login · Authentication policy · Directory Sync ·
+Outbound provisioning.* Everything about how people get in and how their accounts arrive.
+Enterprise SSO connects an organization's own IdP (SAML / OIDC), and **Domains** proves
+the email domains that route people to it; social login is picked
 from a catalogue rather than described from memory; **Authentication policy** is the
 password, MFA and session policy; **Directory Sync** is inbound SCIM provisioning
 (deprovision revokes sessions immediately) and **Outbound provisioning** pushes the same
@@ -194,8 +196,8 @@ No screenshot.
 instance (including MCP clients self-registering through Dynamic Client Registration);
 HMAC-signed event delivery with retries and delivery history; synchronous hooks that run
 *during* a flow rather than after it; and the vault holding third-party tokens.
-Machine keys are on the [Keys](../guides/keys.md) page of the workspace and environment
-consoles.
+Machine keys are on the [API keys](../guides/keys.md) page of the workspace and
+environment consoles.
 
 The screenshots below are from when this area was "API clients" and "Webhooks" as two
 separate top-level pages.
@@ -208,9 +210,9 @@ separate top-level pages.
 Third-party integrations, contributed by the connectors module rather than written into
 the console. No screenshot.
 
-### Logs
+### Audit log
 
-*Audit log · Log streams.* The append-only, hash-chained audit trail, filterable and
+*Audit log · App audit logs · Log streams.* The append-only, hash-chained audit trail, filterable and
 exportable to your SIEM. The compliance and risk modules append their pages here rather
 than minting areas of their own.
 
@@ -225,7 +227,7 @@ sign-in page inherits.
 
 ### My account
 
-*Security · Sessions & activity.* The signed-in person's own credentials: two-factor
+*Security · Sessions & activity · My API keys.* The signed-in person's own credentials: two-factor
 authentication, **passkey** enrolment, and sessions (auth methods, expiry,
 sign-out-everywhere). Shown to members and admins alike; every area above is role-gated,
 this one is not.
@@ -240,7 +242,7 @@ a whole environment, filed by task in the words the market uses:
 
 - **Home:** Overview.
 - **Users & orgs:** Users, Organizations (your customers), Roles, Permissions. A user's
-  page has **Staff roles**: roles granted across the whole environment. An organization
+  page has **Admin & support roles**: roles granted across the whole environment. An organization
   opens on its own page, `/admin/organizations/{id}`, with a tab for each thing that is
   its: Overview (is SSO connected, a domain verified, a directory syncing — and its latest
   audit entries), Members, Invitations, SSO, Directory Sync, Domains, Roles, API keys,
@@ -251,8 +253,8 @@ a whole environment, filed by task in the words the market uses:
 - **Authentication:** Authentication policy, Social login, Enterprise SSO, Directory Sync:
   every way people come in.
 - **Developers:** Applications, APIs, API keys, Webhooks, Hooks.
-- **AI agents:** Approvals (every pending agent request in the environment, so an
-  administrator can deny one that looks like abuse).
+- **AI agents:** Agents, Approvals (every pending approval request in the environment,
+  so an administrator can deny one that looks like abuse), Connect.
 - **Branding:** Appearance, and Branding when the white-label module is on.
 - **Monitoring:** Audit log, Log streams, Usage, and the analytics, compliance and risk
   modules' pages.

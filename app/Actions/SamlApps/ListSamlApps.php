@@ -15,7 +15,7 @@ use Cbox\Id\SamlIdp\Models\ServiceProvider;
 
 #[AsAction(
     name: 'saml_apps.list',
-    summary: 'List the SAML applications that trust this environment as their identity provider.',
+    summary: 'List the SAML apps that trust this environment as their identity provider.',
     scope: 'saml_apps:read',
     danger: Danger::Read,
     schema: 'SamlApp',

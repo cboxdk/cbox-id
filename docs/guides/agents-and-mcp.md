@@ -14,7 +14,7 @@ Every environment serves an [MCP](https://modelcontextprotocol.io) server on its
 host, next to its management API. The platform root serves one too, for the people who
 run a workspace. An AI agent connected to it can run the same actions the
 API offers: register APIs, manage webhooks, read the audit log, and so on. It goes through
-the same checks, gets the same refusals and leaves the same activity log entries as the
+the same checks, gets the same refusals and leaves the same audit log entries as the
 API and the console. There is no separate permission model to learn.
 
 This page is for the developer wiring an agent up. What each action does is in the guide
@@ -116,7 +116,7 @@ Two limits apply, and the agent gets only what both allow:
 2. **What you may do yourself, here.** The agent acts as you in the organization you
    signed in to, with your role there:
    - An organization owner or admin can run the actions their own console offers for that
-     organization: its apps, webhooks, inline hooks, log streams, branding, sign-in rules and
+     organization: its apps, webhooks, hooks, log streams, branding, authentication policy and
      audit log. Only that organization's, never another's, and never the environment's own
      (an environment-wide webhook, a first-party app).
    - On a customer's environment of the hosted platform, a customer's console is a smaller
@@ -153,8 +153,8 @@ after five minutes.
 ## Option 2: a management key
 
 A **management key** (`cbid_env_…`) for the environment works without anybody signing in.
-Create one on **Developers › Keys** in the environment console, or on **Keys** in the
-workspace console ([Keys](keys.md#management-keys)).
+Create one on **AI agents › Agents** in the environment console, or on **API keys** in the
+workspace console ([API keys](keys.md#secret-keys)).
 
 Give it only the scopes the agent needs. The scopes decide which tools the agent sees, so
 an agent that only needs to read APIs should get `apis:read` and nothing else. Set an
@@ -164,7 +164,7 @@ confirm its dangerous calls.
 ### Creating a key in the console
 
 Create a management key on **AI agents › Agents** in the environment console (**New
-agent**), or on **Keys** in the workspace console ([Keys](keys.md#management-keys)).
+agent**), or on **API keys** in the workspace console ([API keys](keys.md#secret-keys)).
 **AI agents › Connect** shows this environment's MCP address and a ready-to-paste setup
 for Claude Code, Claude Desktop, Cursor and VS Code, with a shortcut to create a key.
 
@@ -260,7 +260,7 @@ same way with that URL. Underneath it is the flow in
   is told so on the sign-in page.
 - The token is for the root's `/mcp` and nothing else. A client that asks for another
   `resource`, or for `openid`, is refused. There is no ID token.
-- The consent is recorded in your workspace's activity log as `mcp.client_authorized`.
+- The consent is recorded in your workspace's audit log as `mcp.client_authorized`.
 
 Or sign the `cbox` CLI in at the root:
 
@@ -282,7 +282,7 @@ curl https://<platform-root>/api/v1/apis \
 ```
 
 Without the header the answer is `400 environment_required`. Everything is recorded in that
-environment's own activity log, as you (`actor_type: organization_member`), with the
+environment's own audit log, as you (`actor_type: organization_member`), with the
 client you used.
 
 The root is not an identity provider for other apps. It signs in the platform's own
@@ -414,7 +414,7 @@ The codes are the API's: `validation_failed` (with `errors`, by field), `not_fou
 
 ## What is recorded
 
-What an agent does is recorded on the [activity log](activity-log.md):
+What an agent does is recorded on the [audit log](activity-log.md):
 
 - with a key, as the key's act, the same entries the API writes;
 - signed in, as **your** act, with the client you used recorded on every entry

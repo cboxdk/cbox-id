@@ -9,6 +9,7 @@ use App\Actions\Platform\Operators\SetOperatorStatus;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateOperatorRequest;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Contracts\Database\Query\Builder;
@@ -52,7 +53,7 @@ final readonly class OperatorRosterController extends ConsoleController
 
         $currentId = $this->scope->operator()?->id;
 
-        return $this->page('console/platform/operators', 'Operators', [
+        return $this->page('console/platform/operators', Vocabulary::OPERATORS, [
             'help' => HelpProps::for(HelpTopic::Operators),
             'operators' => $operators->map(fn (PlatformOperator $operator): array => [
                 'id' => $operator->id,

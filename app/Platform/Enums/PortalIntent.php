@@ -101,8 +101,8 @@ enum PortalIntent: string
     public function label(): string
     {
         return match ($this) {
-            self::Sso => 'Single sign-on',
-            self::Dsync => 'Directory sync',
+            self::Sso => 'Enterprise SSO',
+            self::Dsync => 'Directory Sync',
             self::DomainVerification => 'Domain verification',
             self::LogStreams => 'Log streams',
             self::CertificateRenewal => 'SAML certificate renewal',

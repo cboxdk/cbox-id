@@ -38,7 +38,7 @@ use Cbox\Id\Directory\Models\DirectoryGroup;
     scope: 'directory_sync:write',
     danger: Danger::Write,
     schema: 'DirectoryGroup',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['POST', '/directories/{id}/group-roles'],
     consoleRoutes: ['directories.map', 'environment.directories.map'],
     consoleGate: ConsoleGate::Administer,

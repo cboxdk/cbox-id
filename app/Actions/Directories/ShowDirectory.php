@@ -23,7 +23,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     scope: 'directory_sync:read',
     danger: Danger::Read,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['GET', '/directories/{id}'],
 )]
 final class ShowDirectory implements Action

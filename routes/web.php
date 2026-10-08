@@ -836,6 +836,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // gains the edit, disable and delete it never had, while domain verification and the
     // Admin Portal invite come with it onto the environment plane.
     Route::get('/single-sign-on', [ConnectionController::class, 'index'])->name('connections');
+    // The organization's verified domains on a page of their own; the writes are the SSO
+    // page's, below. See ConnectionController::domains().
+    Route::get('/domains', [ConnectionController::class, 'domains'])->name('domains');
     Route::post('/single-sign-on/invite', [ConnectionController::class, 'invite'])->name('connections.invite');
     Route::post('/single-sign-on/domains', [ConnectionController::class, 'addDomain'])->name('connections.domains.store');
     Route::post('/single-sign-on/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('connections.domains.verify');

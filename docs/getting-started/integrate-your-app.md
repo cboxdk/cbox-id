@@ -115,7 +115,7 @@ A **publishable key** removes that middle step. It is public on purpose — it g
 JS bundle, it is visible in devtools, and it is safe there because it only works from the
 origins you register.
 
-Create one under **Developers → Keys**, on the **Frontend keys** tab
+Create one under **Developers → API keys**, on the **Publishable keys** tab
 (`/admin/keys/frontend`). See [Keys](../guides/keys.md). Add every origin your app is served
 from, one per line:
 

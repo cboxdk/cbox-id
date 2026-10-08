@@ -158,7 +158,7 @@ it('has no accessibility issues on the ported console pages', function (string $
 })->with([
     'projects' => ['/projects', 'Projects'],
     'members' => ['/team', 'Team'],
-    'keys.workspace' => ['/keys/workspace', 'Keys'],
+    'keys.workspace' => ['/keys/workspace', 'API keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Audit log'],
     'settings' => ['/settings', 'Settings'],
@@ -178,7 +178,7 @@ it('has no accessibility issues on the ported console pages', function (string $
     'usage' => ['/usage', 'Usage'],
     'social-providers' => ['/social-sign-in', 'Social login'],
     'get-started' => ['/get-started', 'Set up Acme'],
-    'approvals' => ['/approvals', 'Approve agent requests'],
+    'approvals' => ['/approvals', 'Approvals'],
     'dashboard' => ['/dashboard', 'Welcome back'],
 ])->group('a11y');
 

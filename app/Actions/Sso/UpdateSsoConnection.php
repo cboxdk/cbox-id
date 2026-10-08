@@ -32,7 +32,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['PATCH', '/sso/connections/{id}'],
     consoleRoutes: ['connections.update', 'environment.connections.update'],
     consoleGate: ConsoleGate::Administer,

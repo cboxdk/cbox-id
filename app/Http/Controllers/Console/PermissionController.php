@@ -12,6 +12,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SavePermissionRequest;
 use App\Http\Requests\Console\StorePermissionRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
@@ -133,7 +134,7 @@ final readonly class PermissionController extends ConsoleController
 
         $usage = $this->usageFor($manual->merge($declared), $owner, $environmentId);
 
-        return $this->page('console/permissions', 'Permissions', [
+        return $this->page('console/permissions', Vocabulary::PERMISSIONS, [
             'help' => HelpProps::for(HelpTopic::Permissions),
             'mine' => $this->rows($mine, $appNames, $usage),
             'inherited' => $this->rows($inherited, $appNames, $usage),

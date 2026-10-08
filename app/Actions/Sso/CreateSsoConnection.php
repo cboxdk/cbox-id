@@ -46,7 +46,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
     scope: 'sso:write',
     danger: Danger::Write,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections'],
     status: 201,
     consoleRoutes: ['connections.store', 'environment.connections.store'],

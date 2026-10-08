@@ -28,7 +28,7 @@ export function AccessRoleHint({ role }: { role: AccessRoleOption }) {
         <>
             <span className="inline-flex items-center gap-1.5">
                 {role.app ?? 'All apps'}
-                <Badge tone="info">Staff-only</Badge>
+                <Badge tone="info">Admins & support only</Badge>
             </span>
             <span className="block">
                 For your own people — this organization's admins can't see or grant it.

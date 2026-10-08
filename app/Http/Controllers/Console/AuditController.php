@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\ActionVia;
 use App\Platform\Audit\AuditActorKind;
 use App\Platform\AuditNames;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -113,7 +114,7 @@ final readonly class AuditController extends ConsoleController
         // for the names this page shows.
         $owners = $filter->active() ? [] : $this->scope->organizationNames($entries->getCollection()->pluck('organization_id'));
 
-        return $this->page('console/audit', 'Audit log', [
+        return $this->page('console/audit', Vocabulary::AUDIT_LOG, [
             'help' => HelpProps::for(HelpTopic::ActivityLog),
             'entries' => $entries->getCollection()->map(fn (AuditEntry $entry): array => [
                 'id' => $entry->id,

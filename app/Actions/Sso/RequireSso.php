@@ -40,7 +40,7 @@ use Cbox\Id\Identity\ValueObjects\AuthPolicy;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SignInPolicy',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections/{id}/require-sso'],
     consoleRoutes: ['connections.require-sso', 'environment.connections.require-sso'],
     consoleGate: ConsoleGate::Administer,
@@ -66,7 +66,7 @@ final readonly class RequireSso implements Action
         $organizationId = $connection->organization_id;
 
         if ($organizationId === null) {
-            throw ActionRefused::because('environment_connection', 'This connection belongs to the environment, not to one organization. Set the requirement under Sign-in rules.');
+            throw ActionRefused::because('environment_connection', 'This connection belongs to the environment, not to one organization. Set the requirement in the Authentication policy.');
         }
 
         $current = $this->policies->overrideFor($organizationId) ?? $this->policies->forEnvironment();

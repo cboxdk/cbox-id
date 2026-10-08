@@ -63,9 +63,9 @@ Its rail holds the workspace and nothing else:
 
 | Area | Pages |
 |---|---|
-| **Workspace** | Projects, Team, Keys, Environment domains, Billing, Workspace settings |
+| **Workspace** | Projects, Team, API keys, Environment domains, Billing, Workspace settings |
 | **Team sign-in** | Enterprise SSO, Authentication policy: how your own team signs in to Cbox |
-| **Logs** | Audit log |
+| **Audit log** | Audit log |
 | **My account** | Security, Sessions & activity |
 
 The pages that administer end users (roles, permissions, applications, webhooks, hooks,
@@ -96,21 +96,24 @@ keep the full organization console. Your customers get the narrower one below.
 
 On your environment's own host, signed in as one of your customers' administrators: a
 person who signs in to your product and administers their company's organization in it.
-This console is an admin portal for their IT department, plus their own pages:
+This console is an admin portal for their IT department, exactly Members, Enterprise
+SSO, Domains, Directory Sync, Roles and the Audit log, plus their own pages:
 
 | Area | Pages |
 |---|---|
-| **Overview** | Overview (their organization's numbers and recent activity), Approve agent requests |
-| **People** | Members, Roles, Permissions |
-| **Sign-in** | Enterprise SSO (with its verified domains), Directory Sync |
-| **Logs** | Audit log |
-| **My account** | Security, Sessions & activity, API keys (when one of your apps offers them), Trusted devices (when the devices module is on) |
+| **Overview** | Overview (their organization's numbers and recent activity), Approvals (requests to act as them) |
+| **Members & roles** | Members, Roles |
+| **Sign-in** | Enterprise SSO, Domains, Directory Sync |
+| **Audit log** | Audit log, and App audit logs when the organization's plan includes them |
+| **My account** | Security, Sessions & activity, My API keys (when one of your apps offers them), Trusted devices (when the devices module is on) |
 
 Everything else is your product's administration and lives in the environment console:
 applications and APIs, webhooks, hooks, the token vault, access reviews, role conflicts,
 outbound provisioning, log streams, social login, authentication policy, appearance and branding,
-usage, settings, member API keys, the setup guide and the module pages (sign-in activity,
-compliance, connectors, trusted-device inventory, risk events).
+usage, settings, permissions, member API keys, the setup guide and the module pages
+(sign-in activity, compliance, connectors, trusted-device inventory, risk events).
+Permissions are what your apps enforce, so writing new ones is yours; your customer still
+builds roles out of the permissions that exist, on the Roles page.
 
 Those pages are **not there** on this console, not just hidden from the rail: their URLs
 answer 404, writes included. Unlike the workspace console there is nothing to strand, since

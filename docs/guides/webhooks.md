@@ -13,7 +13,7 @@ happens: a member was added, a user signed in, a directory deactivated somebody.
 Your systems find out as it happens instead of polling, and — importantly — a
 webhook is a notification, not a vote. Your endpoint is told; it cannot hold
 anything up or refuse. If you need a say in the outcome, you want an
-[inline hook](inline-hooks.md) instead.
+[hook](inline-hooks.md) instead.
 
 ## Events you can subscribe to
 
@@ -50,7 +50,7 @@ From your backend or an agent, the same lifecycle is on the management API
 (`webhooks:write`): `POST /api/v1/webhooks` with `url`, `event_types` and an
 `organization_id` (or `"environment_wide": true`). The answer carries the signing secret
 once; `POST /api/v1/webhooks/{id}/rotate` issues a new one the same way. Every change —
-from the console or the API — is on the [activity log](activity-log.md) as `webhook.*`,
+from the console or the API — is on the [audit log](activity-log.md) as `webhook.*`,
 naming who made it. See [the management API](../getting-started/management-api.md#webhooks-hooks-log-streams-and-the-trail).
 
 Can't accept inbound requests? Poll `GET /api/v1/events?after=<last id>` (`events:read`)
@@ -87,6 +87,6 @@ with your endpoint's signing secret. To verify:
 
 ## Related
 
-- [Inline hooks](inline-hooks.md) — when you need to influence the outcome.
-- [Activity log](activity-log.md) — the authoritative record, whatever your
+- [Hooks](inline-hooks.md) — when you need to influence the outcome.
+- [Audit log](activity-log.md) — the authoritative record, whatever your
   endpoint did or did not receive.

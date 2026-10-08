@@ -30,6 +30,7 @@ export { ConfirmDelete } from './ConfirmDelete';
 export { CopyButton } from './CopyButton';
 export { Dialog, DialogClose } from './Dialog';
 export { Divider } from './Divider';
+export { type DomainClaim, DomainClaims } from './DomainClaims';
 export {
     DropdownMenu,
     DropdownMenuContent,

@@ -35,7 +35,7 @@ use Cbox\Id\Platform\PlatformRoot;
  */
 #[AsAction(
     name: 'platform.workspaces.set_status',
-    summary: 'Suspend a customer workspace (its people can no longer sign in, its environments stop serving) or reactivate it.',
+    summary: 'Suspend a workspace (its people can no longer sign in, its environments stop serving) or reactivate it.',
     scope: 'operator:workspaces:write',
     danger: Danger::Critical,
     plane: ActionPlane::Platform,

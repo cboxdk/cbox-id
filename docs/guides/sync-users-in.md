@@ -1,10 +1,10 @@
 ---
-title: Sync users in
+title: Directory Sync
 weight: 40
 description: Let Microsoft Entra ID, Okta or Google Workspace create, update and deactivate people in Cbox ID automatically over SCIM, and map their groups onto your roles.
 ---
 
-# Sync users in
+# Directory Sync
 
 **Console page:** Sign-in › Directory Sync (Authentication › Directory Sync in an environment console)
 
@@ -70,5 +70,5 @@ anything. Map their group onto a role, or assign one on the Members page.
 
 ## Related
 
-- [Sync users out](sync-users-out.md) — the same idea in the other direction.
+- [Outbound provisioning](sync-users-out.md) — the same idea in the other direction.
 - [Roles](roles.md) — what group mappings actually grant.

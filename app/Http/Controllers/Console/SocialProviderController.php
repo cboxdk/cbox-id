@@ -11,6 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\EnableSocialProviderRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -90,7 +91,7 @@ final readonly class SocialProviderController extends ConsoleController
          */
         $template = SocialProviderFields::loginTemplate($request->string('provider')->toString());
 
-        return $this->page('console/social-providers', 'Social login', [
+        return $this->page('console/social-providers', Vocabulary::SOCIAL_LOGIN, [
             'enabled' => array_map(fn (Connection $connection): array => [
                 'id' => $connection->id,
                 'name' => $connection->name,

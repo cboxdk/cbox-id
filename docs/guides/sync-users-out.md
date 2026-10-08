@@ -1,10 +1,10 @@
 ---
-title: Sync users out
+title: Outbound provisioning
 weight: 50
 description: Push your people into the other SaaS products your company uses over their SCIM endpoints, so onboarding and offboarding happen once instead of once per vendor.
 ---
 
-# Sync users out
+# Outbound provisioning
 
 **Console page:** Sign-in › Outbound provisioning (Advanced › Outbound provisioning in an environment console)
 
@@ -42,5 +42,5 @@ connection registered here is one more tool that finds out automatically.
 
 ## Related
 
-- [Activity log](activity-log.md) — every push is recorded there.
-- [Sync users in](sync-users-in.md).
+- [Audit log](activity-log.md) — every push is recorded there.
+- [Directory Sync](sync-users-in.md).

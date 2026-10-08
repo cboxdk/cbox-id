@@ -31,6 +31,7 @@ use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
@@ -94,7 +95,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/organizations/index', 'Organizations', [
+        return $this->page('environment/organizations/index', Vocabulary::ORGANIZATIONS, [
             'help' => HelpProps::for(HelpTopic::Organizations),
             'organizations' => array_map(static fn (Organization $organization): array => [
                 'id' => $organization->id,

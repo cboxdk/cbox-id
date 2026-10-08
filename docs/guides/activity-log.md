@@ -1,12 +1,12 @@
 ---
-title: Activity log
+title: Audit log
 weight: 110
 description: The tamper-evident record of every administrative change in your organization — what it captures, why it is hash-chained, and what it is not.
 ---
 
-# Activity log
+# Audit log
 
-**Console page:** Logs › Audit log (Monitoring › Audit log in an environment console)
+**Console page:** Audit log › Audit log (Monitoring › Audit log in an environment console)
 
 Every administrative change in your organization lands here: who did it, what they
 did it to, and when. Members added and removed, roles granted, connections created

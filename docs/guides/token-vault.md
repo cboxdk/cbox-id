@@ -43,7 +43,7 @@ ticket, a screen share, a laptop that left.
   that can act as that app can use the credential. Keep grants narrow.
 - **This is not a password manager for people.** It is for apps and agents. Human
   credentials belong in your own password manager.
-- **Every store, grant and rotation is recorded** in the [activity log](activity-log.md).
+- **Every store, grant and rotation is recorded** in the [audit log](activity-log.md).
 
 ## Related
 

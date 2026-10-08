@@ -19,6 +19,7 @@ use App\Platform\AuditLogs\AuditLogFilters;
 use App\Platform\AuditLogs\AuditLogPolicy;
 use App\Platform\AuditLogs\AuditLogQuery;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
@@ -82,7 +83,7 @@ final readonly class AuditLogController extends ConsoleController
             ->limit(5)
             ->get();
 
-        return $this->page('console/audit-logs/index', 'App audit logs', [
+        return $this->page('console/audit-logs/index', Vocabulary::APP_AUDIT_LOGS, [
             'help' => HelpProps::for(HelpTopic::AuditLogs),
             'events' => array_map(fn (AuditLogEvent $event): array => $this->row($event, $names), $page['events']),
             'filters' => [

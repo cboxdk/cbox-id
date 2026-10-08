@@ -89,15 +89,14 @@ tags:
   - name: Devices
   - name: Approvals
   - name: Governance
-  - name: 'Agent requests'
   - name: 'Audit log'
   - name: 'Audit Logs'
   - name: Branding
-  - name: 'Directory sync'
+  - name: 'Directory Sync'
   - name: Domains
   - name: Events
   - name: 'Frontend keys'
-  - name: 'Inline hooks'
+  - name: Hooks
   - name: 'Management keys'
   - name: 'Legacy login'
   - name: 'Log streams'
@@ -105,7 +104,7 @@ tags:
   - name: Provisioning
   - name: 'SAML apps'
   - name: Sign-in
-  - name: 'Single sign-on'
+  - name: 'Enterprise SSO'
   - name: 'Token vault'
   - name: Webhooks
 paths:
@@ -605,7 +604,7 @@ paths:
   /agent-requests:
     get:
       tags:
-        - 'Agent requests'
+        - Approvals
       summary: "List the pending requests from agents to act as one of this environment's people (CIBA): which app, for whom, and what it asks."
       description: 'Requires scope `approvals:read`. Danger: read.'
       operationId: approvals_list
@@ -668,8 +667,8 @@ paths:
   '/agent-requests/{request_id}/deny':
     post:
       tags:
-        - 'Agent requests'
-      summary: 'Deny a pending agent request (CIBA) for the person it was raised for: the agent gets access_denied and no token.'
+        - Approvals
+      summary: 'Deny a pending approval request (CIBA) for the person it was raised for: the agent gets access_denied and no token.'
       description: 'Requires scope `approvals:write`. Danger: destructive.'
       operationId: approvals_deny
       x-action: approvals.deny
@@ -3856,7 +3855,7 @@ paths:
   /directories:
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Register a SCIM directory for an organization. Answers the SCIM base URL and a bearer token, shown once.'
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_create
@@ -3922,7 +3921,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in, optionally for one organization, with their last sync error.'
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_list
@@ -3995,7 +3994,7 @@ paths:
   /directories/connect:
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: "Connect a Google Workspace or Microsoft Entra directory to sync an organization's people from, verifying the credentials first. Runs the first sync."
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_connect
@@ -4089,7 +4088,7 @@ paths:
   '/directories/{id}':
     delete:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Delete an inbound directory. Its token stops working; the people it provisioned keep their accounts.'
       description: 'Requires scope `directory_sync:write`. Danger: destructive.'
       operationId: directories_delete
@@ -4148,7 +4147,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Read one inbound directory: its provider, status, SCIM base URL and last sync error. Never its token or credentials.'
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_get
@@ -4208,7 +4207,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Rename an inbound directory.'
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_update
@@ -4283,7 +4282,7 @@ paths:
   '/directories/{id}/group-roles':
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Map a directory group onto a role (everyone in the group holds it as membership syncs), or unmap it.'
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_groups_map
@@ -4367,7 +4366,7 @@ paths:
   '/directories/{id}/groups':
     get:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'List the groups a directory has synced, with the role ids each group is mapped onto.'
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_groups_list
@@ -4447,7 +4446,7 @@ paths:
   '/directories/{id}/rotate':
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Issue a new bearer token for a SCIM directory, returned once. The old token stops working immediately.'
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_token_rotate
@@ -4516,7 +4515,7 @@ paths:
   '/directories/{id}/status':
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: "Pause or resume an inbound directory's provisioning."
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_status_set
@@ -5115,8 +5114,8 @@ paths:
   /hooks:
     post:
       tags:
-        - 'Inline hooks'
-      summary: 'Register an inline hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
+        - Hooks
+      summary: 'Register a hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
       description: 'Requires scope `hooks:write`. Danger: critical.'
       operationId: hooks_create
       x-action: hooks.create
@@ -5197,8 +5196,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Inline hooks'
-      summary: 'List the inline hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
+        - Hooks
+      summary: 'List the hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
       description: 'Requires scope `hooks:read`. Danger: read.'
       operationId: hooks_list
       x-action: hooks.list
@@ -5262,8 +5261,8 @@ paths:
   '/hooks/{id}':
     delete:
       tags:
-        - 'Inline hooks'
-      summary: 'Remove an inline hook. It is no longer called at its hook point.'
+        - Hooks
+      summary: 'Remove a hook. It is no longer called at its hook point.'
       description: 'Requires scope `hooks:write`. Danger: destructive.'
       operationId: hooks_delete
       x-action: hooks.delete
@@ -5276,7 +5275,7 @@ paths:
           required: true
           schema:
             type: string
-            description: 'The inline hook id.'
+            description: 'The hook id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -5308,8 +5307,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Inline hooks'
-      summary: 'Get one inline hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
+        - Hooks
+      summary: 'Get one hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
       description: 'Requires scope `hooks:read`. Danger: read.'
       operationId: hooks_get
       x-action: hooks.get
@@ -5322,7 +5321,7 @@ paths:
           required: true
           schema:
             type: string
-            description: 'The inline hook id.'
+            description: 'The hook id.'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
@@ -5360,8 +5359,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Inline hooks'
-      summary: 'Pause (active: false) or activate (active: true) an inline hook.'
+        - Hooks
+      summary: 'Pause (active: false) or activate (active: true) a hook.'
       description: 'Requires scope `hooks:write`. Danger: critical.'
       operationId: hooks_update
       x-action: hooks.update
@@ -5374,7 +5373,7 @@ paths:
           required: true
           schema:
             type: string
-            description: 'The inline hook id.'
+            description: 'The hook id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -9027,7 +9026,7 @@ paths:
     post:
       tags:
         - 'SAML apps'
-      summary: 'Register a SAML application that signs people in with their account here. Decides where assertions — and their attributes — are sent.'
+      summary: 'Register a SAML app that signs people in with their account here. Decides where assertions — and their attributes — are sent.'
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_create
       x-action: saml_apps.create
@@ -9137,7 +9136,7 @@ paths:
     get:
       tags:
         - 'SAML apps'
-      summary: 'List the SAML applications that trust this environment as their identity provider.'
+      summary: 'List the SAML apps that trust this environment as their identity provider.'
       description: 'Requires scope `saml_apps:read`. Danger: read.'
       operationId: saml_apps_list
       x-action: saml_apps.list
@@ -9200,7 +9199,7 @@ paths:
     delete:
       tags:
         - 'SAML apps'
-      summary: 'Remove a SAML application. People can no longer sign in to it with their account here.'
+      summary: 'Remove a SAML app. People can no longer sign in to it with their account here.'
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_delete
       x-action: saml_apps.delete
@@ -9213,7 +9212,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The SAML application's id."
+            description: "The SAML app's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -9244,7 +9243,7 @@ paths:
     get:
       tags:
         - 'SAML apps'
-      summary: 'Read one SAML application: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.'
+      summary: 'Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.'
       description: 'Requires scope `saml_apps:read`. Danger: read.'
       operationId: saml_apps_get
       x-action: saml_apps.get
@@ -9257,7 +9256,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The SAML application's id."
+            description: "The SAML app's id."
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
@@ -9294,7 +9293,7 @@ paths:
     patch:
       tags:
         - 'SAML apps'
-      summary: "Change a SAML application's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization."
+      summary: "Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization."
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_update
       x-action: saml_apps.update
@@ -9307,7 +9306,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The SAML application's id."
+            description: "The SAML app's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -9409,7 +9408,7 @@ paths:
     get:
       tags:
         - Sign-in
-      summary: "Read the sign-in rules (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override."
+      summary: "Read the authentication policy (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override."
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_policy_get
       x-action: signin.policy.get
@@ -9460,7 +9459,7 @@ paths:
     patch:
       tags:
         - Sign-in
-      summary: "Change the sign-in rules of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions."
+      summary: "Change the authentication policy of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions."
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_update
       x-action: signin.policy.update
@@ -9563,7 +9562,7 @@ paths:
     delete:
       tags:
         - Sign-in
-      summary: "Drop one organization's sign-in rules override, so it inherits the environment baseline again."
+      summary: "Drop one organization's authentication policy override, so it inherits the environment baseline again."
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_inherit
       x-action: signin.policy.inherit
@@ -9670,7 +9669,7 @@ paths:
     get:
       tags:
         - Sign-in
-      summary: 'List the social sign-in providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.'
+      summary: 'List the social login providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.'
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_social_list
       x-action: signin.social.list
@@ -9740,7 +9739,7 @@ paths:
     post:
       tags:
         - Sign-in
-      summary: 'Enable a social sign-in provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.'
+      summary: 'Enable a social login provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.'
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_set
       x-action: signin.social.set
@@ -9864,7 +9863,7 @@ paths:
     delete:
       tags:
         - Sign-in
-      summary: 'Stop offering a social sign-in provider. People who used it keep their accounts.'
+      summary: 'Stop offering a social login provider. People who used it keep their accounts.'
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_delete
       x-action: signin.social.delete
@@ -10275,7 +10274,7 @@ paths:
   /sso/connections:
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Connect an organization's SAML or OIDC identity provider as a draft. Activate it to start signing people in through it."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_connections_create
@@ -10412,7 +10411,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'List the SAML and OIDC connections organizations sign in through, optionally for one organization. Never a certificate or secret.'
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_list
@@ -10485,7 +10484,7 @@ paths:
   '/sso/connections/{id}':
     delete:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Delete an SSO connection and its settings. Where SSO is required, its people cannot sign in until another is activated.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_delete
@@ -10544,7 +10543,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Read one SSO connection: its type, status, entity ids, URLs, issuer and client id. Never a certificate or secret.'
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_get
@@ -10604,7 +10603,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Change an SSO connection's name or identity-provider settings. Secrets left out keep the ones on file."
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_update
@@ -10734,7 +10733,7 @@ paths:
   '/sso/connections/{id}/activate':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Activate an SSO connection: people whose email domain routes to it start signing in through it.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_activate
@@ -10803,7 +10802,7 @@ paths:
   '/sso/connections/{id}/certificates':
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "List a SAML connection's signing certificates — primary and staged — with each one's fingerprint and expiry."
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_certificates_list
@@ -10865,7 +10864,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) beside the current one, so a renewal has no outage. Activate it once the IdP signs with it."
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_certificates_stage
@@ -10946,7 +10945,7 @@ paths:
   '/sso/connections/{id}/certificates/activate':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Make a staged SAML signing certificate the connection's primary. The certificate it replaces stops being trusted."
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_certificates_activate
@@ -11021,7 +11020,7 @@ paths:
   '/sso/connections/{id}/disable':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Disable an SSO connection without deleting it. Where SSO is required, its people cannot sign in until it is re-activated.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_disable
@@ -11090,7 +11089,7 @@ paths:
   '/sso/connections/{id}/require-sso':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Require single sign-on for the organization an SSO connection belongs to. Ends every password session there.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_require_sso
@@ -11159,7 +11158,7 @@ paths:
   /sso/domains:
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Claim an email domain for an organization's single sign-on, and get the DNS TXT record to publish to prove it."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_domains_create
@@ -11225,7 +11224,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'List the email domains organizations claimed for single sign-on, whether each is verified and captured, and the DNS record that proves an unverified one.'
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_domains_list
@@ -11298,7 +11297,7 @@ paths:
   '/sso/domains/{id}':
     delete:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Remove a claimed email domain. Its people stop being routed to the organization's SSO connection."
       description: 'Requires scope `sso:write`. Danger: destructive.'
       operationId: sso_domains_delete
@@ -11358,7 +11357,7 @@ paths:
   '/sso/domains/{id}/capture':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Turn capture on or off for a verified domain: captured, everyone with an address at it must sign in through the organization's SSO."
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_domains_capture
@@ -11432,7 +11431,7 @@ paths:
   '/sso/domains/{id}/verify':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Check a claimed domain's DNS TXT record now. Answers the domain, with verified true once the record is found."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_domains_verify
@@ -11501,7 +11500,7 @@ paths:
   /sso/saml-metadata:
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Parse an identity provider's SAML metadata (XML or a metadata URL) into the entity id, SSO URL and certificate a SAML connection needs. Stores nothing."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_saml_metadata_import
