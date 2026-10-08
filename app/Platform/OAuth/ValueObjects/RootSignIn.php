@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\OAuth\ValueObjects;
 
 use App\Platform\OAuth\RootDelegatedAccess;
+use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 
 /**
  * What a valid root-host access token says, once {@see RootDelegatedAccess} has vouched for
@@ -18,6 +19,7 @@ final readonly class RootSignIn
     /**
      * @param  list<string>  $scopes  every scope the token carries, protocol ones included
      * @param  string|null  $organizationId  the token's `org` claim: the workspace it was bound to, if any
+     * @param  Introspection|null  $token  the token itself, for its RFC 9470 `acr` / `auth_time`
      */
     public function __construct(
         public string $subjectId,
@@ -27,6 +29,7 @@ final readonly class RootSignIn
         public array $scopes,
         public ?string $organizationId = null,
         public ?int $expiresAt = null,
+        public ?Introspection $token = null,
     ) {}
 
     public function grants(string $scope): bool

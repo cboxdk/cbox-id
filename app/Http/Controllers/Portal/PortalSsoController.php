@@ -14,6 +14,7 @@ use App\Platform\Portal\PortalGuides;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\ValueObjects\ServiceProviderValues;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -158,9 +159,36 @@ final readonly class PortalSsoController extends PortalController
     }
 
     /**
-     * A connection as the page draws it: its state, OUR values to paste (with OneLogin's
-     * validator spelled out, and the SP metadata URL that carries them all), and the
-     * identity provider's non-secret values once known.
+     * OUR half of a connection, as the framework's guides ask for it: the ACS URL and
+     * entity ID (the configured ones when set), the SP metadata URL that carries them
+     * all, Single Logout and the IdP-initiated login URL for a SAML connection; the
+     * redirect URI for an OIDC one.
+     *
+     * @param  array<string, mixed>  $config
+     * @param  array<string, string>  $ours
+     */
+    private static function ours(Connection $connection, array $config, array $ours): ServiceProviderValues
+    {
+        if ($connection->type !== ConnectionType::Saml) {
+            return new ServiceProviderValues(redirectUri: $ours['redirect_uri'] ?? null);
+        }
+
+        $acs = $config['sp_acs_url'] ?? null;
+        $entityId = $config['sp_entity_id'] ?? null;
+
+        return new ServiceProviderValues(
+            acsUrl: is_string($acs) && $acs !== '' ? $acs : ($ours['sp_acs_url'] ?? null),
+            entityId: is_string($entityId) && $entityId !== '' ? $entityId : ($ours['sp_entity_id'] ?? null),
+            sloUrl: url('/sso/saml/'.$connection->id.'/slo'),
+            spMetadataUrl: $ours['sp_metadata_url'] ?? null,
+            loginUrl: url('/sso/saml/'.$connection->id.'/login'),
+        );
+    }
+
+    /**
+     * A connection as the page draws it: its state, OUR values to paste (keyed the way the
+     * guides name them, {@see PortalGuides::values()}), and the identity provider's
+     * non-secret values once known.
      *
      * @return array<string, mixed>
      */
@@ -168,7 +196,6 @@ final readonly class PortalSsoController extends PortalController
     {
         $config = SsoFields::config($connection);
         $ours = SsoFields::serviceProvider($connection);
-        $acs = $config['sp_acs_url'] ?? ($ours['sp_acs_url'] ?? null);
 
         return [
             'id' => $connection->id,
@@ -177,14 +204,7 @@ final readonly class PortalSsoController extends PortalController
             'status' => $connection->status->value,
             'active' => $connection->isActive(),
             'complete' => SsoFields::isComplete($connection->type, $config),
-            'values' => array_filter([
-                'acs_url' => is_string($acs) ? $acs : null,
-                'acs_regex' => is_string($acs) ? '^'.preg_quote($acs, '/').'$' : null,
-                'entity_id' => is_string($config['sp_entity_id'] ?? null) ? $config['sp_entity_id'] : ($ours['sp_entity_id'] ?? null),
-                'redirect_uri' => $ours['redirect_uri'] ?? null,
-                // Our half as one document, for an identity provider that imports it.
-                'metadata_url' => $ours['sp_metadata_url'] ?? null,
-            ], static fn (?string $value): bool => $value !== null),
+            'values' => PortalGuides::values(self::ours($connection, $config, $ours)),
             'idp' => array_filter([
                 'idp_entity_id' => $config['idp_entity_id'] ?? null,
                 'idp_sso_url' => $config['idp_sso_url'] ?? null,

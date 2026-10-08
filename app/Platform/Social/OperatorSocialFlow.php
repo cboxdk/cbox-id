@@ -8,12 +8,14 @@ use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\OidcRelyingParty;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Enums\TokenEndpointAuthMethod;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\OAuth2Client;
 use Cbox\Id\Federation\OidcDiscovery;
 use Cbox\Id\Federation\ValueObjects\OAuth2ConnectionConfig;
 use Cbox\Id\Federation\ValueObjects\OidcConnectionConfig;
+use Cbox\Id\Federation\ValueObjects\ProviderTemplate;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Illuminate\Support\Facades\Cache;
@@ -155,7 +157,7 @@ class OperatorSocialFlow
         $issuer = $provider->issuer()
             ?? throw InvalidAssertion::make($provider->key().' has no resolvable issuer');
 
-        $discovered = $this->discovered($issuer);
+        $discovered = $this->discovered($issuer, $provider->template->discoveryUrlFor($provider->parameters));
 
         $config = new OidcConnectionConfig(
             issuer: $issuer,
@@ -166,6 +168,8 @@ class OperatorSocialFlow
             // Preferred over pasted keys: a signing-key rotation is picked up on its own.
             jwksUri: $discovered['jwks_uri'] ?? null,
             scopes: $provider->template->scopes,
+            userinfoEndpoint: $discovered['userinfo_endpoint'] ?? null,
+            tokenEndpointAuthMethod: TokenEndpointAuthMethod::tryFrom($discovered['token_endpoint_auth_method'] ?? '') ?? TokenEndpointAuthMethod::ClientSecretPost,
         );
 
         $connection = new Connection;
@@ -200,16 +204,17 @@ class OperatorSocialFlow
      * hostile document cannot move the endpoints while still claiming a trusted issuer.
      *
      * Cached as primitives, not as an object: a cache that has to deserialize a class is
-     * a cache that breaks on the day that class gains a property.
+     * a cache that breaks on the day that class gains a property. Read at the catalogue's
+     * own discovery URL when it names one ({@see ProviderTemplate::discoveryUrlFor()}).
      *
      * @return array<string, string>
      */
-    private function discovered(string $issuer): array
+    private function discovered(string $issuer, ?string $discoveryUrl): array
     {
         return Cache::remember(
-            'operator-oidc-discovery:'.hash('sha256', $issuer),
+            'operator-oidc-discovery:'.hash('sha256', $issuer.'|'.$discoveryUrl),
             self::DISCOVERY_TTL_SECONDS,
-            fn (): array => $this->discovery->fromIssuer($issuer)->toConfig(),
+            fn (): array => $this->discovery->fromIssuer($issuer, $discoveryUrl)->toConfig(),
         );
     }
 

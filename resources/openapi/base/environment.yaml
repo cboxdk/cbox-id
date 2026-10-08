@@ -2444,13 +2444,22 @@ components:
         created_at: { type: ["string", "null"], format: date-time }
     Webhook:
       type: object
-      required: [id, url, organization_id, event_types, active]
+      required: [id, url, organization_id, event_types, active, signature_scheme]
       properties:
         id: { type: string }
         url: { type: string }
         organization_id: { type: ["string", "null"], description: "null when the environment owns it: it receives EVERY organization's events." }
         event_types: { type: array, items: { type: string } }
         active: { type: boolean, description: "false while paused." }
+        signature_scheme:
+          type: string
+          enum: [cbox, standard_webhooks]
+          description: |
+            How deliveries are signed. `cbox`: `X-Cbox-Timestamp` and
+            `X-Cbox-Signature: t=<ts>,v1=<hex HMAC-SHA256 of "<ts>.<body>">`.
+            `standard_webhooks`: `webhook-id`, `webhook-timestamp` and
+            `webhook-signature: v1,<base64 HMAC-SHA256 of "<id>.<ts>.<body>">`, verifiable
+            with any Standard Webhooks library. Only the chosen scheme's headers are sent.
         consecutive_failures: { type: integer }
         last_success_at: { type: ["string", "null"], format: date-time }
         created_at: { type: ["string", "null"], format: date-time }
@@ -2458,7 +2467,8 @@ components:
           type: ["string", "null"]
           description: |
             The signing secret, on the create and rotate answers only — shown once, never
-            retrievable again. `null` on an idempotent replay of that answer.
+            retrievable again. `null` on an idempotent replay of that answer. 64 hex
+            characters under `cbox`; a `whsec_` secret under `standard_webhooks`.
     InlineHook:
       type: object
       required: [id, url, hook_point, organization_id, active]

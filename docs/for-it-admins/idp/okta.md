@@ -21,11 +21,12 @@ Okta Admin Console:
    | Single sign-on URL | The portal's ACS URL (`https://…/sso/saml/…/acs`). Leave **Use this for Recipient URL and Destination URL** ticked. |
    | Audience URI (SP Entity ID) | The portal's entity ID (`https://…/sso/saml/…`) |
    | Name ID format | `EmailAddress` |
-   | Application username | `Email` |
+   | Application username format | `Email` |
 
-4. Under **Attribute Statements**, add `email` → `user.email`. The portal's steps also add
-   `firstName` → `user.firstName` and `lastName` → `user.lastName`; they do no harm. The
-   `email` statement is the one that matters. Choose **Next**, then **Finish**.
+4. Under **Attribute Statements**, the portal's steps add `email` → `user.email`,
+   `firstName` → `user.firstName` and `lastName` → `user.lastName`. They are optional: with
+   Name ID format `EmailAddress` the NameID already carries the address, and it is read from
+   there when no `email` attribute is sent. Choose **Next**, then **Finish**.
 5. On the app's **Sign On** tab, copy the **Metadata URL** and paste it into the portal's
    **Metadata URL or XML**.
 6. On the **Assignments** tab, assign the people or groups who should sign in this way.

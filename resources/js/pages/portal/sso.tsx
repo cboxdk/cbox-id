@@ -212,9 +212,9 @@ function StartForm({ guide, href }: { guide: Guide; href: string }) {
  */
 function MetadataUrl({ guide, connection }: { guide: Guide; connection: ConnectionRow }) {
     const { t } = useTranslator();
-    const url = connection.values.metadata_url;
+    const url = connection.values.sp_metadata_url;
 
-    if (url === undefined || guide.fields.some((field) => field.ours === 'metadata_url')) {
+    if (url === undefined || guide.fields.some((field) => field.ours === 'sp_metadata_url')) {
         return null;
     }
 

@@ -302,9 +302,14 @@ it('shows the SP metadata URL in the Admin Portal\'s step 2 and on the console\'
     $this->get(route('portal.sso', ['provider' => 'pingfederate']))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('connections.0.values.metadata_url', $metadata)
-            // PingFederate takes it by URL, under its own name for the field.
-            ->where('guides', fn ($guides): bool => collect($guides)->firstWhere('key', 'pingfederate')['fields'][1] === ['ours' => 'metadata_url', 'theirs' => 'Import Metadata — URL']));
+            ->where('connections.0.values.sp_metadata_url', $metadata)
+            // PingFederate takes it by URL, under its own name for the field and where it sits.
+            ->where('guides', fn ($guides): bool => collect($guides)->toArray()[array_search('pingfederate', array_column(collect($guides)->toArray(), 'key'), true)]['fields'][0] === [
+                'ours' => 'sp_metadata_url',
+                'theirs' => 'Metadata URL',
+                'optional' => true,
+                'location' => 'Import Metadata → URL (add it under Manage Partner Metadata URLs)',
+            ]));
 
     crudSetup();
     $mine = app(Connections::class)->create(null, ConnectionType::Saml, 'Env SAML', []);

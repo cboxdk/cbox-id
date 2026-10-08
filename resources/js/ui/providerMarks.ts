@@ -12,6 +12,11 @@
  *
  * Colours are each provider's own published brand guidance. `currentColor` where the
  * guidance is a black mark on light and white on dark (Apple, GitHub).
+ *
+ * LinkedIn, Bitbucket, Xero and Intuit are NEUTRAL GLYPHS drawn here, not the companies'
+ * logos: monochrome (`currentColor`, so they follow the button in either theme) and simple
+ * — an "in", a bucket, a crossed circle, an "i" — enough to tell the buttons apart without
+ * shipping artwork nobody licensed to us. The button's text names the provider either way.
  */
 export interface ProviderMark {
     viewBox: string;
@@ -19,7 +24,8 @@ export interface ProviderMark {
     currentColor?: true;
     /** Optical correction: a square mark reads larger than a round one at the same box. */
     shrink?: number;
-    shapes: { fill?: string; d: string }[];
+    /** `evenodd` on a shape cuts its inner subpaths out of the outer one — a glyph with a window. */
+    shapes: { fill?: string; d: string; rule?: 'evenodd' }[];
 }
 
 export const providerMarks: Record<string, ProviderMark> = {
@@ -30,6 +36,10 @@ export const providerMarks: Record<string, ProviderMark> = {
     facebook: { viewBox: "0 0 24 24", shapes: [{ fill: "#1877F2", d: "M24 12a12 12 0 10-13.87 11.85v-8.38H7.08V12h3.05V9.36c0-3.01 1.79-4.67 4.53-4.67 1.31 0 2.69.23 2.69.23v2.96h-1.52c-1.49 0-1.96.93-1.96 1.88V12h3.33l-.53 3.47h-2.8v8.38A12 12 0 0024 12z" }] },
     discord: { viewBox: "0 0 24 24", shapes: [{ fill: "#5865F2", d: "M20.32 4.94A19.8 19.8 0 0015.43 3.4l-.25.45c-.86.16-1.7.4-2.5.72a17 17 0 00-1.36 0c-.8-.32-1.64-.56-2.5-.72L8.57 3.4a19.8 19.8 0 00-4.89 1.54C1.05 8.85.34 12.66.7 16.42a19.9 19.9 0 006.02 3.05l.48-.68c.06-.09.03-.2-.06-.24a13 13 0 01-1.86-.89c-.1-.06-.11-.2-.02-.27l.37-.29c.06-.05.14-.06.2-.03a14.14 14.14 0 0012.03 0c.07-.03.15-.02.21.03l.37.29c.09.07.08.21-.02.27-.6.35-1.22.65-1.87.89-.09.04-.12.15-.06.24l.48.68a19.9 19.9 0 006.02-3.05c.42-4.35-.71-8.13-2.98-11.48zM8.68 14.35c-1.17 0-2.13-1.08-2.13-2.4 0-1.31.94-2.39 2.13-2.39 1.2 0 2.16 1.09 2.14 2.4 0 1.31-.95 2.39-2.14 2.39zm6.66 0c-1.17 0-2.13-1.08-2.13-2.4 0-1.31.94-2.39 2.13-2.39 1.2 0 2.15 1.09 2.13 2.4 0 1.31-.94 2.39-2.13 2.39z" }] },
     slack: { viewBox: "0 0 24 24", shapes: [{ fill: "#E01E5A", d: "M5.04 15.17a2.53 2.53 0 11-2.52-2.53h2.52v2.53zm1.27 0a2.53 2.53 0 015.05 0v6.31a2.53 2.53 0 01-5.05 0v-6.31z" }, { fill: "#36C5F0", d: "M8.83 5.05a2.53 2.53 0 112.53-2.53v2.53H8.83zm0 1.28a2.53 2.53 0 010 5.05H2.52a2.53 2.53 0 010-5.05h6.31z" }, { fill: "#2EB67D", d: "M18.95 8.83a2.53 2.53 0 112.53 2.53h-2.53V8.83zm-1.27 0a2.53 2.53 0 01-5.05 0V2.52a2.53 2.53 0 015.05 0v6.31z" }, { fill: "#ECB22E", d: "M15.17 18.95a2.53 2.53 0 11-2.53 2.53v-2.53h2.53zm0-1.27a2.53 2.53 0 010-5.05h6.31a2.53 2.53 0 010 5.05h-6.31z" }] },
+    linkedin: { viewBox: "0 0 24 24", currentColor: true, shapes: [{ d: "M3 5a2 2 0 104 0 2 2 0 00-4 0zM3.25 8.5h3.5V21h-3.5zM9.25 8.5h3.35v1.7c.6-1.05 1.95-2 3.9-2 3.6 0 4.25 2.35 4.25 5.4V21h-3.5v-6.6c0-1.6-.05-3.3-2.1-3.3-2.05 0-2.4 1.6-2.4 3.2V21h-3.5z" }] },
+    bitbucket: { viewBox: "0 0 24 24", currentColor: true, shapes: [{ rule: "evenodd", d: "M2.5 3.5h19l-2.75 16.6a1.2 1.2 0 01-1.18 1H6.43a1.2 1.2 0 01-1.18-1zM9.6 9.5l.85 5h3.1l.85-5z" }] },
+    xero: { viewBox: "0 0 24 24", currentColor: true, shapes: [{ rule: "evenodd", d: "M12 1a11 11 0 100 22 11 11 0 000-22zM8.2 7.1L12 10.9l3.8-3.8 1.1 1.1-3.8 3.8 3.8 3.8-1.1 1.1-3.8-3.8-3.8 3.8-1.1-1.1 3.8-3.8-3.8-3.8z" }] },
+    intuit: { viewBox: "0 0 24 24", currentColor: true, shrink: 2, shapes: [{ rule: "evenodd", d: "M4 2h16a2 2 0 012 2v16a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2zM10.5 6.5a1.5 1.5 0 103 0 1.5 1.5 0 00-3 0zM10.6 10h2.8v8h-2.8z" }] },
 };
 
 /** Brand colours for the monogram fallback, so it still looks like the product it names. */

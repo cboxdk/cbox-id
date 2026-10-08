@@ -976,6 +976,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::post('/webhooks/{webhook}/pause', [WebhookController::class, 'pause'])->name('webhooks.pause');
         Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('webhooks.resume');
         Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('webhooks.rotate');
+        Route::post('/webhooks/{webhook}/signature-scheme', [WebhookController::class, 'scheme'])->name('webhooks.scheme');
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('webhooks.destroy');
     });
     // Activity log: the SAME component the environment plane serves. The row scoping is
@@ -1518,6 +1519,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::post('/webhooks/{webhook}/pause', [WebhookController::class, 'pause'])->name('environment.webhooks.pause');
             Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('environment.webhooks.resume');
             Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('environment.webhooks.rotate');
+            Route::post('/webhooks/{webhook}/signature-scheme', [WebhookController::class, 'scheme'])->name('environment.webhooks.scheme');
             Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('environment.webhooks.destroy');
         });
         // Inline hooks — routable list → create → detail, on the merged component. The

@@ -17,7 +17,8 @@ use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\IntegrationReach;
-use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
+use Cbox\Id\Webhooks\Contracts\WebhookSigningSchemes;
+use Cbox\Id\Webhooks\Enums\SignatureScheme;
 use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
 
 /**
@@ -34,6 +35,13 @@ use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
  * Its owner is said out loud ({@see IntegrationReach::owner()}): an organization, or
  * `environment_wide` — an endpoint that receives every organization's events — which an
  * organization's administrator may never create.
+ *
+ * `signature_scheme` picks how its deliveries are signed ({@see SignatureScheme}): `cbox`,
+ * the default and the only scheme there was before it could be chosen, or
+ * `standard_webhooks`, which any Standard Webhooks library verifies — and whose secret is
+ * minted as a `whsec_` secret so that library takes it as is. Registered through
+ * {@see WebhookSigningSchemes}, the framework's contract for choosing it; the plain
+ * registry would always mean `cbox`.
  */
 #[AsAction(
     name: 'webhooks.create',
@@ -51,7 +59,7 @@ use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
 final readonly class CreateWebhook implements Action
 {
     public function __construct(
-        private WebhookRegistry $webhooks,
+        private WebhookSigningSchemes $webhooks,
         private IntegrationAudit $audit,
     ) {}
 
@@ -60,14 +68,26 @@ final readonly class CreateWebhook implements Action
         return InputSchema::of([
             Field::string('url')->required()->max(500)->format('uri')->describe('A public HTTPS URL. Signed deliveries are POSTed here.'),
             Field::list('event_types', Field::string('event_type')->oneOf(WebhookEventCatalogue::offered()))->required()->min(1)->describe('The events it receives.'),
+            Field::string('signature_scheme')->oneOf(self::schemes())->describe('How deliveries are signed: `cbox` (X-Cbox-Signature, the default) or `standard_webhooks` (webhook-id / webhook-timestamp / webhook-signature, verifiable with any Standard Webhooks library; the secret is a `whsec_` secret).'),
             ...IntegrationReach::ownerFields(),
         ]);
+    }
+
+    /**
+     * The schemes an endpoint may be registered with, as the wire names them.
+     *
+     * @return list<string>
+     */
+    public static function schemes(): array
+    {
+        return array_map(static fn (SignatureScheme $scheme): string => $scheme->value, SignatureScheme::cases());
     }
 
     public function handle(ActionContext $context): ActionResult
     {
         $organizationId = IntegrationReach::owner($context);
         $url = trim($context->string('url'));
+        $scheme = SignatureScheme::from($context->nullableString('signature_scheme') ?? SignatureScheme::Cbox->value);
 
         IntegrationReach::assertUrl($url);
 
@@ -78,8 +98,8 @@ final readonly class CreateWebhook implements Action
             // Two calls, never one with a nullable argument: "every tenant's events" is
             // stated at the one call site entitled to make it.
             $registered = $organizationId === null
-                ? $this->webhooks->registerForEnvironment($url, $eventTypes)
-                : $this->webhooks->register($organizationId, $url, $eventTypes);
+                ? $this->webhooks->registerForEnvironmentWithScheme($url, $eventTypes, $scheme)
+                : $this->webhooks->registerWithScheme($organizationId, $url, $eventTypes, $scheme);
         } catch (UnsafeWebhookUrl) {
             throw ActionRefused::because('unsafe_url', 'That URL is not allowed — it must be a public HTTPS endpoint.', 'url');
         }
@@ -90,6 +110,7 @@ final readonly class CreateWebhook implements Action
         $this->audit->record(IntegrationAudit::WEBHOOK_CREATED, 'webhook_endpoint', $endpoint->id, $endpoint->organization_id, $context->actor(), [
             'url' => $endpoint->url,
             'event_types' => array_values($endpoint->event_types),
+            'signature_scheme' => $endpoint->signature_scheme->value,
         ]);
 
         return ActionResult::item($registered, WebhookResource::from($endpoint, $registered->secret));

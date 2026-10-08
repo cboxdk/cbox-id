@@ -6,8 +6,9 @@ description: Connect any SAML 2.0 identity provider through the setup portal —
 
 # Any SAML 2.0 provider
 
-Use this for an identity provider the portal does not list by name, such as ADFS,
-Keycloak, Shibboleth or Auth0. In the portal, choose **SAML 2.0** under Enterprise SSO and
+Use this for an identity provider the portal does not list by name. The portal has its own
+guide for twenty providers, AD FS, Auth0, Keycloak and Shibboleth among them
+([the list](_index.md)). In the portal, choose **SAML 2.0** under Enterprise SSO and
 **Start with SAML 2.0**.
 
 ## What to create
@@ -21,19 +22,25 @@ a relying party trust or an application. Enter:
 | ACS URL / Reply URL | The portal's ACS URL (`https://…/sso/saml/…/acs`), binding HTTP-POST |
 | NameID format | `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` |
 
-The portal does not offer a service-provider metadata file to import, so enter these by
-hand.
+If your provider imports service-provider metadata, give it the portal's **SP metadata
+URL** (`https://…/sso/saml/…/metadata`) instead: it carries the entity ID and the ACS URL
+in one document.
 
 The response must:
 
 - **have a signed assertion.** Sign the assertion itself, or both the assertion and the
   response. A response that is signed while its assertion is not is refused.
-- **carry a NameID**, ideally the person's email address. It identifies the person, so it
-  must not change.
-- **send the email address as an attribute**, named `email`, `mail`, `emailAddress`,
-  `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` or
-  `urn:oid:0.9.2342.19200300.100.1.3`. The NameID is not read as the email address, even
-  in the `emailAddress` format, so send it in both places.
+- **carry a NameID.** It identifies the person, so it must not change.
+- **carry the person's email address**, in either of two places:
+  - an attribute named `email`, `mail`, `emailAddress`,
+    `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` or
+    `urn:oid:0.9.2342.19200300.100.1.3`, or
+  - the NameID, in the `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` format.
+    That is the default for Okta and Google Workspace, so they need no attribute.
+
+  When both are sent, the attribute wins. A NameID in any other format (persistent,
+  transient, unspecified) is never read as an email address, so with one of those you must
+  send the attribute.
 - optionally send a display name as `name` or `displayName`. First and last name are
   accepted and ignored.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Webhooks\ChangeWebhookSignatureScheme;
 use App\Actions\Webhooks\CreateWebhook;
 use App\Actions\Webhooks\DeleteWebhook;
 use App\Actions\Webhooks\PauseWebhook;
@@ -182,9 +183,10 @@ final readonly class WebhookController extends ConsoleController
         $result = $this->act(CreateWebhook::class, [
             'url' => $request->url(),
             'event_types' => $request->eventTypes(),
+            'signature_scheme' => $request->signatureScheme(),
             'organization_id' => $organizationId,
             'environment_wide' => $organizationId === null,
-        ], ['url' => 'url', 'event_types' => 'eventTypes'], 'url');
+        ], ['url' => 'url', 'event_types' => 'eventTypes', 'signature_scheme' => 'signatureScheme'], 'url');
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -214,6 +216,7 @@ final readonly class WebhookController extends ConsoleController
                 'url' => $endpoint->url,
                 'active' => $endpoint->status === EndpointStatus::Active,
                 'eventTypes' => array_values($endpoint->event_types),
+                'signatureScheme' => $endpoint->signature_scheme->value,
                 'owner' => $endpoint->organization_id !== null
                     ? (Organization::query()->whereKey($endpoint->organization_id)->value('name')
                         ?? $endpoint->organization_id)
@@ -258,6 +261,7 @@ final readonly class WebhookController extends ConsoleController
                 'pause' => $this->url('webhooks.pause', $endpoint->id),
                 'resume' => $this->url('webhooks.resume', $endpoint->id),
                 'rotate' => $this->url('webhooks.rotate', $endpoint->id),
+                'scheme' => $this->url('webhooks.scheme', $endpoint->id),
                 'destroy' => $this->url('webhooks.destroy', $endpoint->id),
             ],
         ]);
@@ -346,6 +350,26 @@ final readonly class WebhookController extends ConsoleController
         $this->inertia->flash('newSecret', $rotated->secret);
 
         return back()->with('status', 'Signing secret rotated — update your endpoint now.');
+    }
+
+    /**
+     * Move the endpoint to the other signature scheme, keeping its secret.
+     *
+     * No step-up, unlike the re-key: nothing is minted and nothing is shown, so there is
+     * no credential for a hijacked session to walk away with. What it CAN do is make the
+     * receiver reject deliveries until it is updated — the weight of a delete, and the
+     * page asks for the same typed confirmation a delete does.
+     */
+    public function scheme(Request $request, string $webhook): RedirectResponse
+    {
+        $endpoint = $this->manageable($webhook);
+
+        $result = $this->act(ChangeWebhookSignatureScheme::class, [
+            'id' => $endpoint->id,
+            'signature_scheme' => (string) $request->string('signatureScheme'),
+        ], ['signature_scheme' => 'signatureScheme']);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Signature scheme changed — deliveries are signed the new way from the next attempt.');
     }
 
     public function destroy(string $webhook): RedirectResponse

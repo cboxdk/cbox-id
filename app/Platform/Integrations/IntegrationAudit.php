@@ -40,6 +40,8 @@ final readonly class IntegrationAudit
 
     public const string WEBHOOK_SECRET_ROTATED = 'webhook.secret_rotated';
 
+    public const string WEBHOOK_SIGNATURE_SCHEME_CHANGED = 'webhook.signature_scheme_changed';
+
     public const string WEBHOOK_DELETED = 'webhook.deleted';
 
     public const string HOOK_CREATED = 'inline_hook.created';

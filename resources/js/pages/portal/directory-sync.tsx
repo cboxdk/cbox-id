@@ -38,6 +38,8 @@ type Props = PageProps<{
     guides: Guide[];
     provider: string | null;
     scimBaseUrl: string;
+    /** Our SCIM base URL in every form a guide asks for — whole, or as host and path. */
+    scimValues: Record<string, string>;
     directories: DirectoryRow[];
     urls: { self: string; create: string };
 }>;
@@ -51,7 +53,7 @@ export default function PortalDirectorySync({
     portal,
     guides,
     provider,
-    scimBaseUrl,
+    scimValues,
     directories,
     urls,
 }: Props) {
@@ -119,7 +121,7 @@ export default function PortalDirectorySync({
                     )}
                     <GuideValues
                         fields={guide.fields}
-                        values={{ scim_base_url: scimBaseUrl, scim_token: token ?? undefined }}
+                        values={{ ...scimValues, scim_token: token ?? undefined }}
                         lead={t('portal.directory.values_lead', { provider: guide.name })}
                     />
                     {token === null && (
