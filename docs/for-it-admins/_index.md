@@ -12,6 +12,8 @@ a colleague. The link lets you set up a few things for your company's account in
 product, such as single sign-on with your identity provider, without creating an account
 there.
 
+![The setup portal checklist](../screenshots/admin-portal.png)
+
 The product runs its sign-in on an identity service. The pages the link opens are that
 service's **Admin setup portal**, shown under the product's name. You do not need to know
 anything about it beyond what is on this page.

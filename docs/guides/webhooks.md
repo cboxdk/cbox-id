@@ -8,6 +8,8 @@ description: Receive signed notifications when something happens in your organiz
 
 **Console page:** Developers › Webhooks, in an organization's console and in an environment console
 
+![Webhooks in an environment console](../screenshots/webhooks.png)
+
 A webhook endpoint is a URL of yours that Cbox ID posts to **after** something
 happens: a member was added, a user signed in, a directory deactivated somebody.
 Your systems find out as it happens instead of polling, and — importantly — a

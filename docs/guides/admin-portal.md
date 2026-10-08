@@ -10,6 +10,8 @@ description: Hand Enterprise SSO, Directory Sync, domain verification, Log strea
 link**), and **Invite your IT admin** on Enterprise SSO and Directory Sync in an
 organization's console
 
+![The Admin Portal checklist a customer's IT admin sees](../screenshots/admin-portal.png)
+
 The person who can connect a company's identity provider is rarely the person who signed
 the company up for your product. The Admin Portal lets you hand that part to them: you
 create a **portal link**, send it to their IT admin, and they set up what the link covers

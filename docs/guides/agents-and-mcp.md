@@ -10,6 +10,8 @@ description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to 
 `https://<platform-root>/mcp` (`https://cboxid.com/mcp` on the hosted platform) for your
 whole workspace.
 
+![AI agents, Agents, in an environment console](../screenshots/agents.png)
+
 Every environment serves an [MCP](https://modelcontextprotocol.io) server on its own
 host, next to its management API. The platform root serves one too, for the people who
 run a workspace. An AI agent connected to it can run the same actions the

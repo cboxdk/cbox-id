@@ -8,6 +8,8 @@ description: Let Microsoft Entra ID, Okta or Google Workspace create, update and
 
 **Console page:** Sign-in › Directory Sync (Authentication › Directory Sync in an environment console)
 
+![An organization's Directory Sync tab](../screenshots/organization-directory-sync.png)
+
 With Directory Sync, your identity provider — not you — decides who exists here.
 It creates people when they join, updates them when their details change, and
 deactivates them when they leave, over a standard called **SCIM 2.0**.

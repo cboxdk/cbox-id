@@ -9,6 +9,8 @@ description: What it means when an app or AI agent asks to act on your behalf, h
 **Console page:** Overview › Approvals (`/approvals`), and AI agents › Approvals in an
 environment console (`/admin/approvals`)
 
+![AI agents, Approvals, in an environment console](../screenshots/approvals.png)
+
 The two pages are named for what each does:
 
 - **Approvals** in the organization console is yours: the requests to act as *you*, which only you can

@@ -8,6 +8,8 @@ description: The three kinds of key Cbox ID issues (secret keys, workspace keys 
 
 **Console page:** Workspace › API keys, and Developers › API keys in an environment console
 
+![API keys, the Publishable keys tab](../screenshots/api-keys.png)
+
 Each console has one API keys page. The kind of key is a tab, and the tab is in the URL, so
 a link to one tab opens that tab.
 

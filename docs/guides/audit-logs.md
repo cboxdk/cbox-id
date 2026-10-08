@@ -10,6 +10,8 @@ description: Send your app's own audit events to Cbox ID, per customer organizat
 **Schemas & retention**), an organization's **App audit logs** tab, and Audit log › App audit
 logs on an organization's own console.
 
+![App audit logs in an environment console](../screenshots/app-audit-logs.png)
+
 Your customers' security teams will ask what happened in your product: who exported the
 invoices, who changed the billing contact, who removed that user. App audit logs are
 where your app records those events, per customer, and where those customers read them.

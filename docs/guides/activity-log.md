@@ -9,6 +9,8 @@ description: The tamper-evident, hash-chained record of every administrative cha
 **Console page:** Audit log › Audit log in an organization's console, and Monitoring › Audit
 log in an environment console
 
+![The Audit log in an environment console](../screenshots/audit-log.png)
+
 Every administrative change lands here: who did it, what they did it to, and when.
 Members added and removed, roles granted, connections created and activated, apps
 registered, secrets stored and rotated, reviews closed, keys minted, approvals given.

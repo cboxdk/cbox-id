@@ -10,6 +10,8 @@ Each page takes one framework from an empty project to a person signed in throug
 ID: register the app, install the SDK, set the environment, add the sign-in and callback
 routes, protect a page, sign out. Expect about ten minutes.
 
+![An environment console's Get started page](../screenshots/get-started.png)
+
 ## Pick your framework
 
 | You are building | App kind to register | SDK | Quickstart |

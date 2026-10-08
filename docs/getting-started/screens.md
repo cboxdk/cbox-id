@@ -1,7 +1,7 @@
 ---
 title: Screens
 weight: 3
-description: A tour of the three consoles (workspace, organization and environment), their areas and topbar, and the sign-in surface, with screenshots dated 2026-07-13.
+description: A tour of the three consoles (workspace, organization and environment), their areas and topbar, and the sign-in surface, with screenshots of a seeded demo environment.
 ---
 
 # Screens
@@ -11,12 +11,11 @@ console's own structure, with areas declared once in
 [`ConsoleArea`](https://github.com/cboxdk/cbox-id/blob/main/app/Platform/Console/ConsoleArea.php)
 and rendered by the same components on every console.
 
-> **The screenshots below are dated 2026-07-13 and are stale.** They were taken against a
-> flat page list (Members / SSO connections / Directory sync / Roles / API clients /
-> Webhooks / Audit / Settings) that the console no longer has, and most pages have since
-> been renamed and moved. The prose is current; the images are not, and nothing here has
-> been re-shot. There is also **no screenshot of the Platform areas** at all, which is
-> the part of the console the person who runs the deployment spends their time in.
+The screenshots are of a seeded demo environment (the "Lovelace Labs" workspace and its
+"Ledger" product), taken in the light theme at 1440×900 by
+`vendor/bin/pest --group=docs-screenshots`; see [Screenshots](../screenshots/_index.md) to
+regenerate them. Most of them show an **environment** console, where the organization
+pages appear as tabs of each organization. There is no screenshot of the Platform areas.
 
 ## Three consoles, one shell
 
@@ -88,7 +87,7 @@ Password sign-in, plus **passwordless options**: email magic link and **passkey*
 (WebAuthn) sign-in. Social buttons appear when a provider is configured. Organizations
 get a branded variant at `/o/{slug}/login`.
 
-![Login screen](../screenshots/login.png)
+![Login screen](../screenshots/hosted-sign-in.png)
 
 ### Signup
 
@@ -96,7 +95,7 @@ Create a new organization and its first owner. Risk scoring runs on submit
 (monitor mode by default). Availability depends on `CBOX_ID_SIGNUP_MODE` — see
 [Security](../security/_index.md#self-service-signup-modes).
 
-![Signup screen](../screenshots/signup.png)
+![Signup screen](../screenshots/workspace-sign-up.png)
 
 ### Whose name is on the door
 
@@ -152,7 +151,8 @@ status, your role, a live **recent activity** feed from the tamper-evident audit
 an onboarding checklist. **Approvals** is where you approve or deny a request from an app
 or agent to act as you.
 
-![Dashboard / overview](../screenshots/dashboard.png)
+![Environment overview](../screenshots/environment-overview.png)
+![An organization's overview](../screenshots/organization-overview.png)
 
 ### Members & roles
 
@@ -162,7 +162,7 @@ exactly one built-in role (what they may administer in the console) and any numb
 roles your apps understand. The role and permission model itself is org-scoped and
 hierarchy-aware.
 
-![Members](../screenshots/members.png)
+![Members](../screenshots/organization-members.png)
 ![Roles](../screenshots/roles.png)
 
 ### Sign-in
@@ -177,11 +177,12 @@ password, MFA and session policy; **Directory Sync** is inbound SCIM provisionin
 directory to downstream apps.
 
 These are the names other identity platforms use for the same pages, so somebody who has
-used one finds them by the word they already know. The screenshots below predate the
-rename.
+used one finds them by the word they already know. In an environment console the same
+pages are tabs of each organization.
 
-![Enterprise SSO](../screenshots/connections.png)
-![Directory Sync](../screenshots/directories.png)
+![Enterprise SSO](../screenshots/organization-enterprise-sso.png)
+![Domains](../screenshots/organization-domains.png)
+![Directory Sync](../screenshots/organization-directory-sync.png)
 
 ### Access control
 
@@ -199,10 +200,8 @@ HMAC-signed event delivery with retries and delivery history; synchronous hooks 
 Machine keys are on the [API keys](../guides/keys.md) page of the workspace and
 environment consoles.
 
-The screenshots below are from when this area was "API clients" and "Webhooks" as two
-separate top-level pages.
-
-![Applications](../screenshots/clients.png)
+![Applications](../screenshots/applications.png)
+![An application](../screenshots/application-detail.png)
 ![Webhooks](../screenshots/webhooks.png)
 
 ### Connectors
@@ -216,14 +215,14 @@ the console. No screenshot.
 exportable to your SIEM. The compliance and risk modules append their pages here rather
 than minting areas of their own.
 
-![Audit log](../screenshots/audit.png)
+![Audit log](../screenshots/audit-log.png)
 
 ### Settings
 
 *Settings · Appearance.* Organization details, and the branding an organization's own
 sign-in page inherits.
 
-![Settings](../screenshots/settings.png)
+![Settings](../screenshots/environment-settings.png)
 
 ### My account
 
@@ -293,7 +292,7 @@ the top says **Platform admin** with **Exit platform admin** beside it. The topb
 "target environment" menu is gone; re-point the platform pages from **Platform ›
 Environments**.
 
-![Organization switcher](../screenshots/org-switcher.png)
+![The context switcher](../screenshots/context-switcher.png)
 
 ### Switch user
 
@@ -308,7 +307,7 @@ toggle and sign-out; content stacks to a single column and wide tables scroll wi
 The sign-in split-screen collapses to a centered form. Verified at phone (390px) and
 tablet (768px) widths.
 
-![Console on mobile](../screenshots/mobile-dashboard.png)
+![Console on mobile](../screenshots/mobile-overview.png)
 
 ## Notes
 
@@ -318,5 +317,6 @@ tablet (768px) widths.
 - **Accessibility:** the auth and console pages pass an automated axe-core
   WCAG 2.1 A/AA audit (guarded by a regression test); keyboard-navigable with a
   skip link, labelled landmarks and controls.
-- To reproduce these locally: `php artisan migrate`, seed a demo org
-  (`php artisan db:seed --class=DemoSeeder`), then sign in.
+- To reproduce these locally: `php artisan migrate`, seed the demo environment
+  (`php artisan db:seed --class=DemoEnvironmentSeeder`), then sign in as
+  `ada@lovelace-labs.example`. The password is in the seeder.

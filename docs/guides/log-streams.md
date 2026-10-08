@@ -9,6 +9,8 @@ description: Mirror the Audit log into a SIEM as it is written — the destinati
 **Console page:** Monitoring › Log streams in an environment console, and Audit log › Log
 streams in an organization's console
 
+![Log streams in an environment console](../screenshots/log-streams.png)
+
 A log stream sends a copy of every [Audit log](activity-log.md) entry to your security
 team's own tools, such as Splunk or Elastic, as it is written. An investigation then
 starts in the SIEM your team already uses, not with a request for an export.

@@ -9,6 +9,8 @@ description: Connect Microsoft Entra ID, Okta, Google Workspace or any SAML or O
 **Console page:** Sign-in › Enterprise SSO (Authentication › Enterprise SSO in an environment console),
 and Sign-in › Domains for the verified email domains that route people to it
 
+![An organization's Enterprise SSO tab, with an active Okta connection and a verified domain](../screenshots/organization-enterprise-sso.png)
+
 Enterprise SSO lets your people authenticate against the identity provider your
 company already runs, instead of holding a second set of credentials here. You
 connect the provider once and claim the email domains you own; from then on, anyone

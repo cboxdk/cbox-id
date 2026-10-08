@@ -8,6 +8,8 @@ description: Inviting people into an organization, sending them back to your app
 
 **Console page:** Members & roles › Members
 
+![An organization's Members tab](../screenshots/organization-members.png)
+
 Everyone who can sign in to this organization, what they may administer here, and the
 invitations nobody has accepted yet. The same invite form and the same pending list
 appear on the environment console's view of an organization (Organizations › *name*),
