@@ -8,6 +8,8 @@ description: Inviting people into an organization, sending them back to your app
 
 **Console page:** Members & roles › Members
 
+![An organization's Members tab](../screenshots/organization-members.png)
+
 Everyone who can sign in to this organization, what they may administer here, and the
 invitations nobody has accepted yet. The same invite form and the same pending list
 appear on the environment console's view of an organization (Organizations › *name*),
@@ -104,3 +106,10 @@ members in to it can no longer refresh their tokens. Apps registered for back-ch
 logout are told to sign those members out. A workspace (an
 organization that owns projects) cannot be deleted this way: close its projects under
 Workspace › Projects first.
+
+## Related
+
+- [Roles](roles.md) — what to give people once they are in.
+- [Enterprise SSO](single-sign-on.md) — people arriving with the company account they already have.
+- [Directory Sync](sync-users-in.md) — let the company's directory add and remove members for you.
+- [Audit log](activity-log.md) — every invitation, removal and ownership transfer, recorded.

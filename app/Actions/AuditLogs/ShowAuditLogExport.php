@@ -29,7 +29,7 @@ use App\Platform\AuditLogs\AuditLogExports;
     scope: 'audit_logs:read',
     danger: Danger::Read,
     schema: 'AuditLogExport',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['GET', '/audit-logs/exports/{id}'],
     consoleGate: ConsoleGate::Administer,
 )]

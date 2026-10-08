@@ -49,7 +49,7 @@ use Cbox\Id\OAuthServer\ValueObjects\RegisteredClient;
     scope: 'apps:write',
     danger: Danger::Critical,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['POST', '/apps/{id}/copy'],
     status: 201,
     consoleRoutes: ['environment.clients.copy'],

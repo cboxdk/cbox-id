@@ -23,7 +23,7 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
     summary: 'Delete an app and every secret it holds. Anything signing in as it stops working immediately.',
     scope: 'apps:write',
     danger: Danger::Critical,
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['DELETE', '/apps/{id}'],
     status: 204,
     consoleRoutes: ['clients.destroy', 'environment.clients.destroy'],

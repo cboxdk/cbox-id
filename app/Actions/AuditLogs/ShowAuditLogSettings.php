@@ -20,7 +20,7 @@ use App\Platform\AuditLogs\AuditLogPolicy;
     scope: 'audit_logs:read',
     danger: Danger::Read,
     schema: 'AuditLogSettings',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['GET', '/audit-logs/settings'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]

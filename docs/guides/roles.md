@@ -8,6 +8,8 @@ description: How roles work in Cbox ID — you assign them, each app decides wha
 
 **Console page:** Members & roles › Roles
 
+![Roles in an environment console](../screenshots/roles.png)
+
 A role is a job title your apps understand: `Editor`, `Support agent`,
 `Read-only`. You assign roles to people here; **each app decides for itself what
 its roles are allowed to do**. That split is the whole design, and it is worth

@@ -82,8 +82,10 @@ A link carries a set of **intents**, chosen when it is minted:
 | `audit_logs` | Read their organization's app audit events and export them (read-only) | `audit_logs` |
 
 Mint one from an organization's page (**Admin Portal link** in the header: tick the
-intents, choose how long it may wait — 30 minutes to 7 days — and optionally email it to
-their IT contact in their language), or with `organizations.portal_links.create`:
+intents, choose how long it may wait — 30 minutes, 4 hours, 24 hours, 3 days or 7 days —
+and optionally email it to their IT contact in their language), or with
+`organizations.portal_links.create`, where `expires_in_minutes` may be anything from 5 to
+10080 (a week) and defaults to `CBOX_ID_PORTAL_TTL_MINUTES` (30):
 
 ```bash
 curl -X POST https://<env-host>/api/v1/organizations/$ORG/portal-links \
@@ -92,7 +94,11 @@ curl -X POST https://<env-host>/api/v1/organizations/$ORG/portal-links \
 ```
 
 The answer's `url` is shown once. A link covering an intent the organization's plan lacks
-is refused (`403 not_entitled`).
+is refused (`403 not_entitled`). `organizations.portal_links.list` shows where each recent
+link stands and `organizations.portal_links.revoke` withdraws one before it is used or
+expires (see below). The full walkthrough,
+from both sides, is the [Admin Portal guide](../guides/admin-portal.md) and
+[For your customers' IT admins](../for-it-admins/_index.md).
 
 ### How it holds together
 

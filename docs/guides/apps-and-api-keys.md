@@ -8,6 +8,8 @@ description: Register an app so people can sign in to it with their Cbox ID acco
 
 **Console page:** Developers › Applications (`/apps`, or `/admin/apps` in an environment console)
 
+![Applications in an environment console](../screenshots/applications.png)
+
 Every app that signs people in through Cbox ID, or calls its API, is registered
 here and gets its own credentials. Registering an app is what turns Cbox ID from a
 directory into something your colleagues actually use — it is the step that gives
@@ -28,7 +30,7 @@ keys) are on the [API keys](keys.md) page.
    | **Single-page or mobile app** | Runs on the device: React, Vue, iOS, Android. | No secret (it could not keep one), sign-in with PKCE, redirect URIs. |
    | **CLI or device** | No browser of its own: a terminal, a CI job, a TV. | No secret, no redirect URI, the device grant. See [Sign in from a CLI](../getting-started/sign-in-from-a-cli.md). |
    | **Service or background job** | Calls the API as itself, no person involved. | A secret, client credentials, no redirect URI. |
-   | **AI agent** | Acts on somebody's behalf, and asks them first. | A secret, and the approval flow behind [agent approvals](agent-approvals.md). |
+   | **AI agent** | Acts on somebody's behalf, and asks them first. | A secret, and the approval flow behind [Approvals](agent-approvals.md). |
    | **Something else** | A combination none of the above describes. | You pick the grants and whether it holds a secret. |
 
 3. Copy the **client ID**, and the **client secret** if the kind you chose has one.

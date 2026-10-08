@@ -27,7 +27,7 @@ use App\Platform\AuditLogs\AuditLogTrail;
     summary: 'Delete an audit-log action\'s schema. Its events are then accepted unchecked — or refused, if the environment is in strict mode.',
     scope: 'audit_logs:manage',
     danger: Danger::Destructive,
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['DELETE', '/audit-logs/schemas/{action}'],
     status: 204,
     consoleRoutes: ['environment.audit-logs.schemas.destroy'],

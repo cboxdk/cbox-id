@@ -31,7 +31,7 @@ use Cbox\Id\FrontendApi\Exceptions\UnusableOrigin;
     scope: 'frontend_keys:write',
     danger: Danger::Write,
     schema: 'FrontendKey',
-    tag: 'Frontend keys',
+    tag: 'Publishable keys',
     rest: ['POST', '/frontend-keys'],
     status: 201,
     consoleRoutes: ['environment.keys.frontend.store'],

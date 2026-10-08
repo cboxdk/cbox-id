@@ -69,8 +69,14 @@ jobs:
       # baseline because a test failed, without looking, is how a visual suite becomes a
       # rubber stamp. If the new picture is the one you meant, run the Visual baselines
       # workflow and commit what it uploads.
+      #
+      # `docs-screenshots` IS EXCLUDED. It is not a test — it rewrites docs/screenshots/*.png
+      # (tests/Browser/DocsScreenshotsTest.php). phpunit.xml excludes it too, but a
+      # `--exclude-group` on the command line REPLACES the XML's list rather than adding to
+      # it, so naming it here keeps it out if a flag is ever added. One flag per group: Pest
+      # reads `--exclude-group=a,b` as a single group with a comma in its name.
       - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
-        run: vendor/bin/pest
+        run: vendor/bin/pest --exclude-group=docs-screenshots
 
   # ---------------------------------------------------------------------------
   # SUPPLY CHAIN — its own job so it ALWAYS runs.

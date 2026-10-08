@@ -1,24 +1,37 @@
 ---
-title: Audit logs
+title: App audit logs
 weight: 115
 description: Send your app's own audit events to Cbox ID, per customer organization; validate them with schemas, keep them for a retention you choose, export them, and let each customer's admins read their own.
 ---
 
-# Audit logs
+# App audit logs
 
 **Console pages:** Monitoring › App audit logs in an environment console (with
 **Schemas & retention**), an organization's **App audit logs** tab, and Audit log › App audit
 logs on an organization's own console.
 
-Your customers' security teams will ask what happened in your product: who exported the
-invoices, who changed the billing contact, who removed that user. Audit logs are where
-your app records those events, per customer, and where those customers read them.
+![App audit logs in an environment console](../screenshots/app-audit-logs.png)
 
-This is not the [audit log](activity-log.md). The audit log is Cbox ID's own record
-of changes to identities and settings, and it is kept forever. Audit logs are records your
-app sends about what happens inside your app. Cbox ID stores them for each customer
-organization, checks them against schemas you define, keeps them for a retention you set,
-and shows each organization its own events and nobody else's.
+Your customers' security teams will ask what happened in your product: who exported the
+invoices, who changed the billing contact, who removed that user. App audit logs are
+where your app records those events, per customer, and where those customers read them.
+
+## App audit logs or the Audit log?
+
+They are two different products, and it matters which one you mean.
+
+| | App audit logs (this page) | [Audit log](activity-log.md) |
+|---|---|---|
+| What is in it | What happened **inside your app**, as your app reports it | What happened **in Cbox ID**: identities, roles, connections, keys, settings |
+| Who writes it | Your app, with `POST /api/v1/audit-logs/events` | Cbox ID itself, on every change |
+| Shape | Your actions, actors, targets and metadata, checked against schemas you define | Cbox ID's own actions (`member.removed`, `webhook.created` …) |
+| Kept for | A retention you choose, 365 days by default | Forever; it cannot be pruned |
+| Chain | One hash chain per organization | A hash chain, with signed checkpoints where the deployment signs them |
+| Who reads it | Your app, and each organization's own admins, in their console or the Admin Portal | Administrators in the console |
+
+Cbox ID stores app audit events for each customer organization, checks them against
+schemas you define, keeps them for a retention you set, and shows each organization its
+own events and nobody else's.
 
 ## For developers: sending events
 
@@ -204,7 +217,7 @@ need a retention period, so they use the lighter chain described here.
 
 ## Log streams
 
-When an organization owns a [log stream](activity-log.md), it receives that
+When an organization owns a [log stream](log-streams.md), it receives that
 organization's audit events as well as its audit log entries. Organization admins can
 create a stream on their own console's Log streams page. Each event is delivered with
 `source: app` and its chain fields, so a SIEM can tell your `user.created` apart from
@@ -222,15 +235,16 @@ Your customers' admins can read their organization's events in two places:
 - **Their own console**, under Audit log › App audit logs, if they have an account and
   administer the organization. They see only their organization's events, can filter
   them, and can export a CSV.
-- **The Admin Portal**, without an account. On the organization's page in the
-  environment console, choose **Admin Portal link** and **Audit logs (read-only)**, or
-  call `POST /api/v1/organizations/{id}/portal-links` with `"covers": "audit_logs"`.
-  Send the single-use link to the customer's IT or security admin. It opens a read-only
-  view of that organization's events, in the admin's language, with filters and a
-  **Export CSV** button. The download contains the newest matching events, up to 50,000
-  (`CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT`), and is recorded in the audit log as
-  `audit_log_export.downloaded`. The portal session ends when they click **Done**, or
-  after 30 minutes.
+- **The [Admin Portal](admin-portal.md)**, without an account. On the organization's
+  page in the environment console, choose **Admin Portal link** and tick **Audit logs
+  (read-only)**, or call `POST /api/v1/organizations/{id}/portal-links` with
+  `"intents": ["audit_logs"]`. Send the single-use link to the customer's IT or security
+  admin. It opens a read-only view of that organization's events, in the admin's language,
+  with filters and an **Export CSV** button. The download contains the newest matching
+  events, up to 50,000 (`CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT`), and is recorded in the
+  audit log as `audit_log_export.downloaded`. The portal session ends when they click
+  **Done**, or after 120 minutes (`CBOX_ID_PORTAL_SESSION_MINUTES`). What they see is in
+  [Audit logs, for IT admins](../for-it-admins/audit-logs.md).
 
 The organization comes from the portal session, never from the request, so a portal link
 can never show another organization's events. Like SSO and directory sync, portal access
@@ -249,3 +263,10 @@ On a self-hosted deployment in the default `open` mode, every organization has a
 Every endpoint is also an MCP tool (`audit_logs_events_create`, `audit_logs_events_list`,
 …). A token one of your customer's admins signed in with can only read and write that
 admin's own organization.
+
+## Related
+
+- [Audit log](activity-log.md) — Cbox ID's own record, which is a different thing.
+- [Log streams](log-streams.md) — deliver an organization's events to its SIEM as they arrive.
+- [Admin Portal](admin-portal.md) — let a customer's admin read and export their own events.
+- [Step-up approvals](step-up-approvals.md) — changing retention is destructive, so a key with an approval policy may wait for a person.

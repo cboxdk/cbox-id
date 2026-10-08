@@ -36,7 +36,7 @@ use Cbox\Id\Organization\ValueObjects\ApiKeyPrefix;
     scope: 'apps:write',
     danger: Danger::Write,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['PUT', '/apps/{id}/settings/api-key-prefix'],
     consoleRoutes: ['clients.settings.api-keys', 'environment.clients.settings.api-keys'],
     consoleGate: ConsoleGate::Administer,

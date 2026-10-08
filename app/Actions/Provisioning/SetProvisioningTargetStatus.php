@@ -32,7 +32,7 @@ use Cbox\Id\Provisioning\Enums\ConnectionStatus;
     scope: 'provisioning:write',
     danger: Danger::Write,
     schema: 'ProvisioningTarget',
-    tag: 'Provisioning',
+    tag: 'Outbound provisioning',
     rest: ['POST', '/provisioning-targets/{id}/status'],
     consoleRoutes: ['provisioning.toggle', 'environment.provisioning.toggle'],
     consoleGate: ConsoleGate::Administer,

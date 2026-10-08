@@ -30,7 +30,7 @@ use App\Platform\AuditLogs\AuditLogQuery;
     scope: 'audit_logs:read',
     danger: Danger::Read,
     schema: 'AuditLogEvent',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['GET', '/audit-logs/events'],
     consoleGate: ConsoleGate::Administer,
 )]

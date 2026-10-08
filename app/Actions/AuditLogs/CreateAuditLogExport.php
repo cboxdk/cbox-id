@@ -33,7 +33,7 @@ use App\Platform\AuditLogs\AuditLogTrail;
     scope: 'audit_logs:export',
     danger: Danger::Write,
     schema: 'AuditLogExport',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['POST', '/audit-logs/exports'],
     status: 201,
     consoleRoutes: ['audit-logs.exports.store', 'environment.audit-logs.exports.store'],

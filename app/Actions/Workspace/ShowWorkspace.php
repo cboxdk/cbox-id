@@ -39,7 +39,7 @@ use Cbox\Id\Platform\PlatformRoot;
     rest: ['GET', '/'],
     consoleGate: ConsoleGate::WorkspaceMember,
     schema: 'Organization',
-    tag: 'Organization',
+    tag: 'Workspace',
 )]
 final readonly class ShowWorkspace implements Action
 {

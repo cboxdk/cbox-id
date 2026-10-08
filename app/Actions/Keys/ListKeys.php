@@ -19,7 +19,7 @@ use Cbox\Id\Platform\Models\EnvironmentApiKey;
     summary: 'List this environment\'s management keys (names, scopes, parents, expiry, last use — never their values).',
     scope: 'keys:read',
     danger: Danger::Read,
-    tag: 'Management keys',
+    tag: 'Secret keys',
     rest: ['GET', '/keys'],
     schema: 'ManagementKey',
 )]

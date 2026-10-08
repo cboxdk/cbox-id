@@ -10,6 +10,8 @@ description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to 
 `https://<platform-root>/mcp` (`https://cboxid.com/mcp` on the hosted platform) for your
 whole workspace.
 
+![AI agents, Agents, in an environment console](../screenshots/agents.png)
+
 Every environment serves an [MCP](https://modelcontextprotocol.io) server on its own
 host, next to its management API. The platform root serves one too, for the people who
 run a workspace. An AI agent connected to it can run the same actions the
@@ -26,9 +28,9 @@ for its area, for example [APIs](apis.md).
 |---|---|---|
 | Address | `https://<environment-host>/mcp` | `https://<platform-root>/mcp` |
 | Who signs in there | The environment's own people: an organization's administrators | The workspace's team, and the platform's operators |
-| What it reaches | That environment | The workspace, every environment of it you administer, your own account and, for an operator, the deployment |
-| Signing in | An MCP client signs you in by itself, or a key | An MCP client signs you in by itself, the `cbox` CLI, or a workspace key |
-| Keys it takes | `cbid_env_…` for that environment | `cbid_ws_…` for the workspace |
+| What it reaches | That environment, and your own account there | The workspace, every environment of it you administer, your own account and, for an operator, the deployment |
+| Signing in | An MCP client signs you in by itself, the `cbox` CLI, or a key | An MCP client signs you in by itself, the `cbox` CLI, or a workspace key |
+| Keys it takes | `cbid_env_…` for that environment; a `cbid_ws_…` workspace key also works, with the workspace's tools only | `cbid_ws_…` for the workspace |
 
 Running a workspace, you are a person of the platform root: you reach an environment's
 console through the workspace console, and you have no account in the environment itself.
@@ -121,7 +123,9 @@ Two limits apply, and the agent gets only what both allow:
      (an environment-wide webhook, a first-party app).
    - On a customer's environment of the hosted platform, a customer's console is a smaller
      admin portal, and a signed-in agent gets only what it offers.
-   - A member who is not an admin gets no tools.
+   - A member who is not an admin gets no environment tools. They still see `whoami`,
+     `list_actions` and `approval_status`, and their own account's tools if they granted
+     the `account:*` scopes.
    - Actions that belong to the **environment console** (registering APIs, minting
      management keys, custom domains, frontend keys) are not available to a signed-in
      person at all. Use a management key for those.
@@ -144,22 +148,16 @@ Every **critical** action a signed-in agent tries is held. The agent gets back:
 }
 ```
 
-You get a request on your devices that shows the same code, and on **Approvals** in your
-console. Approve it there. The agent polls `approval_status`, then repeats the call with
-`approval_id` and runs it once. An approval is for exactly that call: the same tool, the
-same arguments and the same client. It cannot be spent on anything else, and it lapses
-after five minutes.
+You get a request on your devices that shows the same code. Approve it there. The agent
+polls `approval_status`, then repeats the call with `approval_id` and runs it once. An
+approval is for exactly that call: the same tool, the same arguments and the same client.
+It cannot be spent on anything else, and it lapses after five minutes by default
+(`CBOX_ID_CIBA_TTL_SECONDS`). The whole flow, for REST too, is in
+[step-up approvals](step-up-approvals.md).
 
 ## Option 2: a management key
 
 A **management key** (`cbid_env_…`) for the environment works without anybody signing in.
-Create one on **AI agents › Agents** in the environment console, or on **API keys** in the
-workspace console ([API keys](keys.md#secret-keys)).
-
-Give it only the scopes the agent needs. The scopes decide which tools the agent sees, so
-an agent that only needs to read APIs should get `apis:read` and nothing else. Set an
-expiry if the agent is for one piece of work, and set an approval policy if a person should
-confirm its dangerous calls.
 
 ### Creating a key in the console
 
@@ -174,10 +172,12 @@ page starts from a preset (**Read-only**, **Support agent**, **Full admin**) and
 each scope with the most harmful thing it allows. Set an expiry if the agent is for one
 piece of work; the create page defaults to 90 days.
 
-You can also choose which of the agent's actions wait for your approval: every critical
-action, everything destructive and above, every change, and any actions you name. The
-agent then gets a `202` with a short code, you approve on your phone or on **AI agents ›
-Approvals**, and it repeats the request once.
+On **AI agents › Agents** (not on the workspace console's API keys page) you can also
+choose which of the agent's actions wait for your approval: every critical action,
+everything destructive and above, every change, and any actions you name. A held call
+answers `approval_pending` over MCP (`202 approval_required` over REST) with a short
+code; you approve on your phone or on **AI agents › Approvals**, and the agent repeats the
+call once. See [step-up approvals](step-up-approvals.md).
 
 
 A key in an agent's config file is a long-lived secret on a laptop. Keep it out of
@@ -205,8 +205,9 @@ To share the setup with your team without sharing the key, put it in the project
 }
 ```
 
-A workspace key (`cbid_ws_…`) works the same way and sees the workspace's tools: projects,
-environments, the team and keys.
+A [workspace key](keys.md#workspace-keys) (`cbid_ws_…`) works the same way and sees the
+workspace's tools: projects, environments, the team and keys. It is accepted on any host's
+`/mcp`, but never acts inside an environment.
 
 ## One connection for your whole workspace
 
@@ -324,7 +325,7 @@ above. Otherwise give it the header `Authorization: Bearer cbid_env_…`. In Cur
 ```
 
 The server is stateless: no session, no cookies, and no server-to-client stream. Each
-request is answered on its own.
+request is a `POST`, answered on its own; `GET` and `DELETE` on `/mcp` answer `405`.
 
 ## The `cbox` CLI
 
@@ -353,11 +354,16 @@ Poll it, then repeat the call with the header `Cbox-Approval: <id>`.
 | `whoami` | Who this connection acts as: a key (its id, name and scopes) or a person (who, which client, which organization and role, the token's scopes), plus the environment and issuer. At the root: your workspace and role, whether you are an operator, and the environments you can act in. Check this first when a tool you expected is missing. |
 | `list_actions` | A short list of every action this connection may run: tool name, summary, scope and danger. Cheaper to read than the full tool list. |
 | `approval_status` | Where a held call's approval stands. |
-| One tool per action | Named after the action, with dots as underscores: `apis.create` is `apis_create`. |
+| One tool per action | Named after the action, with dots and hyphens as underscores: `apis.create` is `apis_create`. The tool's title is the dotted action name. |
 
 Each tool's input is the same as the matching API endpoint's, with values from the URL as
 ordinary arguments. `PUT /apis/{id}/scopes/{key}` is `apis_scopes_define` with `id` and
-`key`.
+`key`. Every tool also takes an optional `approval_id`, and every write tool an optional
+`idempotency_key`.
+
+The server offers tools only: no MCP resources and no prompts. `whoami` reports the
+connection's `kind`: `environment_key`, `workspace_key`, `delegated` (a person on an
+environment's host) or `person` (a person at the platform root).
 
 ### Scopes decide what is listed
 
@@ -378,7 +384,8 @@ description, and in the MCP annotations clients use to decide when to ask you fi
 | critical | destructive | `keys_create`, `keys_rotate`, `apps_secrets_rotate` |
 
 A tool is also marked idempotent when calling it twice has the same effect as once
-(the API verb is `GET`, `PUT` or `DELETE`).
+(the API verb is `GET`, `PUT` or `DELETE`). Every tool is marked closed-world
+(`openWorldHint: false`).
 
 ## Retries: `idempotency_key`
 
@@ -422,13 +429,19 @@ What an agent does is recorded on the [audit log](activity-log.md):
   in at the root, an environment action is recorded in that environment's log as you, a
   member of the workspace, and a workspace action in the workspace's log.
 
-The log does not say whether the call came through MCP or the API.
+Every entry also records the door it came through (`via`: `mcp`, `rest`, `cli`, `console`
+or `portal`), so the [Audit log](activity-log.md) can be filtered to **Via: MCP**. An
+entry for a call that waited for approval also names the approval and who gave it.
 
 ## Limits
 
 - **Rate limit:** 240 requests a minute per credential, in a bucket of its own so an agent
   does not use up the allowance of a sync job on the same key. Operators change it with
-  `CBOX_ID_API_RATE_LIMIT_MCP`.
+  `CBOX_ID_API_RATE_LIMIT_MCP`. A per-address backstop allows ten times that
+  (`CBOX_ID_API_RATE_LIMIT_IP_MULTIPLIER`).
+- **Tokens** from signing in last 15 minutes and are refreshed for you; the refresh token
+  lasts 30 days, is used once and is replaced each time. Refreshing needs
+  `offline_access`.
 - **Tool search** (operators): `CBOX_ID_MCP_TOOL_SEARCH=true` replaces the per-action
   tools with laravel/mcp's `search_tools` and `execute_tools`, for clients that load
   every tool into the context. It is off by default because behind `execute_tools` a
@@ -482,9 +495,12 @@ profile takes a public client only:
 
 Redirect URIs must be https or loopback http. A client secret, another grant or a
 back-channel logout URI is refused with `invalid_client_metadata`. Leave `scope` out to be
-registered for every `/mcp` scope plus `offline_access`.
+registered for every `/mcp` scope, plus `offline_access` when you registered the
+`refresh_token` grant.
 
-At the platform root registration is offered only while the deployment's mode is `mcp`, and
+At the platform root registration is offered only while the deployment's mode is `mcp`
+(otherwise it answers `403 access_denied` and the metadata lists no
+`registration_endpoint`), and
 the response carries no `registration_access_token` or `registration_client_uri`: the root
 serves no [RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) management. Protocol scopes
 other than `offline_access` are dropped from what you are registered for.
@@ -494,3 +510,14 @@ other than `offline_access` are dropped from what you are registered for.
 When the issuer's metadata says `client_id_metadata_document_supported: true`, use the
 https URL of your client's metadata document as `client_id` and skip registration. The
 document's `redirect_uris` are matched exactly, port included.
+
+## Related
+
+- [Step-up approvals](step-up-approvals.md) — a key's approval policy, and handling a held call.
+- [Approvals](agent-approvals.md) — what the person approving sees.
+- [Trusted devices](trusted-devices.md) — the phone the approvals go to.
+- [API keys](keys.md) — creating, expiring and revoking the keys agents use.
+- [Keys and tokens](../core-concepts/keys-and-tokens.md) — which credential acts as whom.
+- [Actions](../core-concepts/actions.md) — the one catalogue behind REST, MCP and the CLI.
+- [Planes and hosts](../core-concepts/planes-and-hosts.md) — why there are two `/mcp` addresses.
+- [Audit log](activity-log.md) — where everything an agent does is recorded.

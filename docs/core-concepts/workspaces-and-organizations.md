@@ -9,6 +9,8 @@ description: The five layers, the difference between your workspace and the orga
 Read this before the rest. Two things in Cbox ID are organizations underneath, and the
 console gives them different names so you can tell them apart:
 
+![Projects in the workspace console](../screenshots/workspace-projects.png)
+
 - your **workspace** is your own Cbox account: it owns projects, environments, a team
   and a bill;
 - an **organization** is a team of *your* customers, inside one of your environments.

@@ -26,7 +26,7 @@ use Illuminate\Database\Eloquent\Builder;
     scope: 'provisioning:read',
     danger: Danger::Read,
     schema: 'ProvisioningTarget',
-    tag: 'Provisioning',
+    tag: 'Outbound provisioning',
     rest: ['GET', '/provisioning-targets'],
 )]
 final class ListProvisioningTargets implements Action

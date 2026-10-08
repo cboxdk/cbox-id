@@ -26,7 +26,7 @@ use Carbon\CarbonImmutable;
     summary: 'Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.',
     scope: 'keys:write',
     danger: Danger::Critical,
-    tag: 'Management keys',
+    tag: 'Secret keys',
     rest: ['POST', '/keys'],
     status: 201,
     consoleRoutes: ['environment.keys.store'],

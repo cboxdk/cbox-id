@@ -25,7 +25,7 @@ use Cbox\Id\FrontendApi\Models\PublishableKey;
     summary: 'Revoke a publishable frontend key. Pages still holding it stop working immediately.',
     scope: 'frontend_keys:write',
     danger: Danger::Destructive,
-    tag: 'Frontend keys',
+    tag: 'Publishable keys',
     rest: ['DELETE', '/frontend-keys/{id}'],
     status: 204,
     consoleRoutes: ['environment.keys.frontend.destroy'],

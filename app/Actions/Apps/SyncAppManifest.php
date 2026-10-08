@@ -29,7 +29,7 @@ use Throwable;
     summary: 'Fetch an app\'s published manifest now and sync the roles and permissions it declares.',
     scope: 'apps:write',
     danger: Danger::Write,
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['POST', '/apps/{id}/manifest/sync'],
     consoleRoutes: ['clients.sync', 'environment.clients.sync'],
     consoleGate: ConsoleGate::Administer,

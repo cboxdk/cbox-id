@@ -21,7 +21,7 @@ use App\Platform\Actions\Paginates;
     scope: 'audit_logs:read',
     danger: Danger::Read,
     schema: 'AuditLogSchema',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['GET', '/audit-logs/schemas'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]
