@@ -439,7 +439,7 @@ it('builds the console chrome once per request', function (): void {
 
     foreach (['environment.roles', 'environment.home'] as $route) {
         $builds = collect(consoleRequest($route)['queries'])
-            ->filter(fn (string $sql): bool => (bool) preg_match('/from "environments" where "project_id" in .* and "id" in/', $sql))
+            ->filter(fn (string $sql): bool => (bool) preg_match('/from ["`]environments["`] where ["`]project_id["`] in .* and ["`]id["`] in/', $sql))
             ->count();
 
         expect($builds)->toBe(1, "{$route} built the shell {$builds} times");

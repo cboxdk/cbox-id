@@ -203,7 +203,7 @@ it('mints an agent key with its purpose and approval policy through keys.create,
     $key = EnvironmentApiKey::query()->where('name', 'Claude Code')->sole();
 
     expect($key->description)->toBe('Triage support tickets')
-        ->and($key->step_up_policy)->toBe(['min_danger' => 'destructive', 'actions' => ['apps.update']])
+        ->and($key->step_up_policy)->toEqual(['min_danger' => 'destructive', 'actions' => ['apps.update']])
         ->and($key->created_by_type)->toBe('organization_member')
         ->and($key->created_by_id)->toBe($owner)
         ->and($key->expires_at?->isAfter(CarbonImmutable::now()->addDays(29)))->toBeTrue()
@@ -249,7 +249,7 @@ it('rotates an agent through keys.rotate: a successor shown once, the old key on
     $successor = EnvironmentApiKey::query()->where('rotated_from_id', $old->id)->sole();
 
     expect($successor->name)->toBe('Claude Code')
-        ->and($successor->step_up_policy)->toBe(['min_danger' => 'critical', 'actions' => []])
+        ->and($successor->step_up_policy)->toEqual(['min_danger' => 'critical', 'actions' => []])
         ->and(flashed('freshKey'))->toStartWith('cbid_env_')
         ->and($old->fresh()?->expires_at?->isBefore(CarbonImmutable::now()->addHours(25)))->toBeTrue();
 });
