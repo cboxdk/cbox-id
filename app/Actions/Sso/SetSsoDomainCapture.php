@@ -30,7 +30,7 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SsoDomain',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/domains/{id}/capture'],
     consoleRoutes: ['connections.domains.capture', 'environment.connections.domains.capture'],
     consoleGate: ConsoleGate::Administer,

@@ -37,13 +37,13 @@ environment's host** and nowhere else. Give it the scopes the job needs and no m
 | `api_keys:read` / `:write` | list member API keys / revoke them |
 | `support:write` | start and end support sessions |
 | `webhooks:read` / `:write` | list webhook endpoints / register, repoint, pause, resume, re-key and delete them |
-| `hooks:read` / `:write` | list inline hooks / register, pause, activate and remove them |
+| `hooks:read` / `:write` | list hooks / register, pause, activate and remove them |
 | `log_streams:read` / `:write` | list audit log streams / create, disable, resume and delete them |
 | `events:read` | read the environment's domain events with a cursor |
 | `audit:read` | read the environment's audit trail with a cursor |
-| `signin:read` / `:write` | read / change sign-in rules, self-service sign-up, social providers and the legacy login |
+| `signin:read` / `:write` | read / change the authentication policy, self-service sign-up, social providers and the legacy login |
 | `frontend_keys:read` / `:write` | list publishable keys / create them, change their origins, revoke them |
-| `saml_apps:read` / `:write` | list SAML applications / register, change and remove them |
+| `saml_apps:read` / `:write` | list SAML apps / register, change and remove them |
 | `branding:read` / `:write` | read / change the sign-in theme and white-label branding |
 | `domains:read` / `:write` | read / add, verify and remove this environment's custom domain |
 
@@ -250,7 +250,7 @@ Your agent must hold your app's `support:impersonate` permission **everywhere** 
 role granted with `environment-roles`). The response carries the first authorization
 `code`; your app redeems it at `/oauth/token` with the PKCE verifier. Every token names the
 agent in `act`, there is never a refresh token, and nothing lives past the session (at
-most an hour). The customer's activity log and webhooks (`support_session.started`) say
+most an hour). The customer's audit log and webhooks (`support_session.started`) say
 who acted and why. The response's `scopes` are exactly what the session's tokens carry:
 once one belongs to a registered API the tokens are for that API, so a scope no API
 registered (`apps.manifest`, say) is not among them. Scopes of two APIs are refused with
@@ -260,7 +260,7 @@ one early: every token it issued is revoked.
 ## Webhooks, hooks, log streams and the trail
 
 `/api/v1/webhooks`, `/api/v1/hooks` and `/api/v1/log-streams` are the console's Webhooks,
-Inline hooks and Log streaming pages. A new one names its owner out loud: an
+Hooks and Log streams pages. A new one names its owner out loud: an
 `organization_id`, or `"environment_wide": true` for one that carries **every**
 organization's traffic. Sending neither is `422 owner_required`.
 
@@ -289,7 +289,7 @@ reads the audit trail the same way, narrowed by `action`, `actor_type` or
 How people sign in is on the API too, each behind its own scope, and each the same action
 the console runs — the same rules, refusals and activity-log entries.
 
-- **Sign-in rules** (`signin:read` / `signin:write`): `GET /api/v1/sign-in/policy` reads the
+- **Authentication policy** (`signin:read` / `signin:write`): `GET /api/v1/sign-in/policy` reads the
   environment baseline, or with `?organization_id=` what governs one organization and
   whether it inherits. `PATCH` changes only the rules you send (`min_length`, `mfa`,
   `sso`, …) — at the baseline, or as an organization's override, which may only tighten
@@ -297,14 +297,14 @@ the console runs — the same rules, refusals and activity-log entries.
   `DELETE /sign-in/policy/organizations/{id}` drops an override. Requiring SSO signs out
   every password session it governs.
 - **Self-service sign-up**: `PUT /api/v1/sign-in/self-service-signup` with `enabled`.
-- **Social sign-in**: `POST /api/v1/sign-in/social-providers` with `organization_id`,
+- **Social login**: `POST /api/v1/sign-in/social-providers` with `organization_id`,
   `provider` (`google`, `github`, `apple`, …), `client_id`, `client_secret` and the
   provider's `parameters`. The response gives the `callback_uri` to register with the
   provider; the secret is never returned. `DELETE /sign-in/social-providers/{id}` removes one.
 - **Legacy login** (`signin:*`): `GET /api/v1/legacy-login`, then
   `POST /legacy-login/probe` with your own address, then `/approve` (or `/revoke`).
   Approving sends every not-yet-migrated person's password to the declared URL.
-- **Frontend keys** (`frontend_keys:*`): `/api/v1/frontend-keys` creates publishable keys
+- **Publishable keys** (`frontend_keys:*`): `/api/v1/frontend-keys` creates publishable keys
   with their allowed `origins`; `PUT /frontend-keys/{id}/origins` replaces the list.
 - **SAML apps** (`saml_apps:*`): `/api/v1/saml-apps` registers the applications people
   sign in to with their account here. The `certificate` is write-only (`has_certificate`).
@@ -371,7 +371,7 @@ A key can mint workspace keys (`POST /api/v1/workspace/keys`), but **never a wid
 its role at most, its scopes at most (inherited when you send none), expiring no later than
 it does. Revoking a key revokes every key it minted. Handing the workspace to someone else
 (`transfer-ownership`) is the owner's act, in the console; a key is refused with
-`403 owner_only`. Everything a workspace key does is on the workspace's activity log with
+`403 owner_only`. Everything a workspace key does is on the workspace's audit log with
 the key as the actor.
 
 ## Your own account, and the operator API
@@ -406,7 +406,7 @@ listed per operation in the OpenAPI document.
 `api_key_prefix_taken`, `no_manifest_url`, `manifest_sync_failed`, and the rest listed per
 operation in the OpenAPI document.
 
-## The activity log
+## The audit log
 
 Everything the key does is recorded with the key as the actor (`actor_type: service`),
 shown as *Management key "…"* in the console, and every entry it caused carries

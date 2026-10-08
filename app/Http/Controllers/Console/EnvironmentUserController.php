@@ -34,6 +34,7 @@ use App\Http\Requests\Console\SaveEnvironmentUserRequest;
 use App\Http\Requests\Console\SetUserPasswordRequest;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\OrgAccessRoles;
@@ -124,7 +125,7 @@ final readonly class EnvironmentUserController extends ConsoleController
          */
         $page = $query->simplePaginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/users/index', 'Users', [
+        return $this->page('environment/users/index', Vocabulary::USERS, [
             'help' => HelpProps::for(HelpTopic::Users),
             'users' => array_map(static fn (User $user): array => [
                 'id' => $user->id,
@@ -520,7 +521,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return to_route('environment.users')->with(
             'status',
-            'User erased. Their account is pseudonymised and the erasure is recorded as user.erased in the activity log.',
+            'User erased. Their account is pseudonymised and the erasure is recorded as user.erased in the audit log.',
         );
     }
 
@@ -657,12 +658,12 @@ final readonly class EnvironmentUserController extends ConsoleController
         if (! $request->boolean('granted')) {
             $result = $this->act(RevokeStaffRole::class, $input, ['role_id' => 'staffRole'], 'staffRole');
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Staff role taken back.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Admin & support role taken back.');
         }
 
         $result = $this->act(GrantStaffRole::class, $input, ['role_id' => 'staffRole'], 'staffRole');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Staff role granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Admin & support role granted.');
     }
 
     public function removeMembership(string $user, string $organization): RedirectResponse

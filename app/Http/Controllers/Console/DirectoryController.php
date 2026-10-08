@@ -17,6 +17,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\ConnectDirectoryRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
@@ -86,7 +87,7 @@ final readonly class DirectoryController extends ConsoleController
             ->whereIn('id', $directories->pluck('organization_id')->filter()->unique())
             ->pluck('name', 'id');
 
-        return $this->page('console/directories/index', 'Directory Sync', [
+        return $this->page('console/directories/index', Vocabulary::DIRECTORY_SYNC, [
             'help' => HelpProps::for(HelpTopic::SyncUsersIn),
             'directories' => $directories->getCollection()->map(fn (Directory $directory): array => [
                 'id' => $directory->id,

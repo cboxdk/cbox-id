@@ -80,7 +80,7 @@ export default function AuditTrail({ entries, filters, verification, help }: Pro
             */}
             <PageHeader
                 help={help}
-                description="The same append-only, hash-chained trail as the activity log, with the chain verified end to end."
+                description="The same append-only, hash-chained trail as the audit log, with the chain verified end to end."
             />
 
             <Chain

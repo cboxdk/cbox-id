@@ -24,7 +24,7 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
     summary: 'Remove a claimed email domain. Its people stop being routed to the organization\'s SSO connection.',
     scope: 'sso:write',
     danger: Danger::Destructive,
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['DELETE', '/sso/domains/{id}'],
     status: 204,
     consoleRoutes: ['connections.domains.destroy', 'environment.connections.domains.destroy'],

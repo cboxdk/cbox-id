@@ -21,7 +21,7 @@ use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Exceptions\UnsafeActionUrl;
 
 /**
- * Register an inline hook — an endpoint this platform calls SYNCHRONOUSLY at a hook point,
+ * Register a hook — an endpoint this platform calls SYNCHRONOUSLY at a hook point,
  * while somebody waits at a sign-in screen, and whose answer can add claims or refuse the
  * operation — and hand over its signing secret, once.
  *
@@ -35,11 +35,11 @@ use Cbox\Id\ExternalActions\Exceptions\UnsafeActionUrl;
  */
 #[AsAction(
     name: 'hooks.create',
-    summary: 'Register an inline hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.',
+    summary: 'Register a hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.',
     scope: 'hooks:write',
     danger: Danger::Critical,
     schema: 'InlineHook',
-    tag: 'Inline hooks',
+    tag: 'Hooks',
     rest: ['POST', '/hooks'],
     status: 201,
     consoleRoutes: ['hooks.store', 'environment.hooks.store'],

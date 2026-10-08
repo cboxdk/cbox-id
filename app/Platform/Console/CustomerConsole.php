@@ -6,6 +6,7 @@ namespace App\Platform\Console;
 
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\RequireMultiTenant;
+use App\Platform\Entitlements;
 use Cbox\Console\Kit\Facades\Console;
 
 /**
@@ -20,11 +21,16 @@ use Cbox\Console\Kit\Facades\Console;
  * `/admin` — so a customer's IT admin was handed the vendor's control panel scoped to one
  * tenant, and the vendor had no way to hand them less.
  *
- * So this console is an ADMIN PORTAL, PLUS: the things a customer's IT department actually
- * owns — its members, its single sign-on and the domains that route to it, its directory
- * sync, its roles and the permissions they are made of, its audit log — and the person's
- * own pages beside them. Everything else stays where it already was, on the environment
- * console.
+ * So this console is an ADMIN PORTAL, PLUS: exactly the things a customer's IT department
+ * owns — Members, Enterprise SSO, Domains, Directory Sync, Roles and the Audit log, and App
+ * audit logs where the organization's plan includes them — and the person's own pages
+ * beside them (a landing page, the Approvals waiting on THEM, My account). Everything else
+ * stays where it already was, on the environment console.
+ *
+ * PERMISSIONS ARE NOT IN THE LIST, and that is the product decision rather than an
+ * omission: a permission is something an app enforces, so writing new ones is the app's
+ * vendor's job. A customer still composes roles out of the permissions that exist — that
+ * is a write on a role (`roles.permissions`), and Roles is kept.
  *
  * WITHHELD, NOT DELETED, and the reason is that these routes are shared. The same
  * organization-plane routes are the whole console on a single-tenant install (no
@@ -50,14 +56,29 @@ final class CustomerConsole
      * @var array<string, list<string>|null>
      */
     private const AREAS = [
-        // A landing page, and the requests to act as YOU that wait on your answer.
+        // A landing page, and the Approvals that wait on YOUR answer — the person's own,
+        // like My account, rather than the organization's administration.
         'overview' => ['dashboard', 'approvals'],
-        'directory' => ['directory.members', 'roles', 'permissions'],
-        // Single sign-on carries its verified domains on the same page; directory sync is
-        // "Sync users in". Social sign-in, sign-in rules and outbound sync are the product's.
-        'authentication' => ['connections', 'directories'],
-        'audit' => ['audit'],
+        'directory' => ['directory.members', 'roles'],
+        // Inbound only. Social login, the authentication policy and outbound provisioning
+        // are the product's, decided once for every organization by the vendor.
+        'authentication' => ['connections', 'domains', 'directories'],
+        'audit' => ['audit', 'audit-logs'],
         'account' => null,
+    ];
+
+    /**
+     * Pages kept only where the organization's plan includes them, by the feature
+     * {@see Entitlements} names. Withheld otherwise — off the rail and 404 at the door,
+     * by the same list — rather than shown with an upsell: the plan is the vendor's
+     * decision, and a customer's IT department cannot act on an "upgrade" badge.
+     *
+     * @var array<string, string>
+     */
+    private const ENTITLED = [
+        // The events the vendor's app sends about this organization — the Audit Logs
+        // product, sold per organization.
+        'audit-logs' => 'audit_logs',
     ];
 
     /**
@@ -90,7 +111,13 @@ final class CustomerConsole
 
         $pages = self::AREAS[$area];
 
-        return $pages === null || in_array($route, $pages, true);
+        if ($pages !== null && ! in_array($route, $pages, true)) {
+            return false;
+        }
+
+        $feature = self::ENTITLED[$route] ?? null;
+
+        return $feature === null || app(ConsoleScope::class)->entitled($feature);
     }
 
     /**
@@ -112,6 +139,20 @@ final class CustomerConsole
             return false;
         }
 
+        $owner = self::pageOf($route);
+
+        return $owner === null || self::keepsPage($owner[0], $owner[1]);
+    }
+
+    /**
+     * The rail page a route belongs to, as `[area key, page route]`, or null for a route
+     * that belongs to no page — the most specific page winning, as {@see servesRoute()}
+     * describes.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function pageOf(string $route): ?array
+    {
         $owner = null;
 
         foreach (Console::nav()->areas() as $area) {
@@ -124,6 +165,6 @@ final class CustomerConsole
             }
         }
 
-        return $owner === null || self::keepsPage($owner[0], $owner[1]);
+        return $owner;
     }
 }

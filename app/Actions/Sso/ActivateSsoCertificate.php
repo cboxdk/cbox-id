@@ -32,7 +32,7 @@ use App\Platform\Sso\ConnectionCertificates;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SsoCertificates',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections/{id}/certificates/activate'],
     consoleGate: ConsoleGate::Administer,
 )]

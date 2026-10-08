@@ -9,6 +9,7 @@ use App\Actions\Users\RevokeStaffRole;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\StaffRoleProps;
 use App\Http\Requests\Console\GrantStaffRoleRequest;
+use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Staff\Contracts\StaffRoles;
@@ -35,7 +36,7 @@ final readonly class StaffController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/staff/index', 'Admins & support', [
+        return $this->page('environment/staff/index', Vocabulary::ADMINS_AND_SUPPORT, [
             'help' => HelpProps::for(HelpTopic::Staff),
             'grants' => array_map(static fn (StaffGrant $grant): array => [
                 'userId' => $grant->userId,
@@ -77,7 +78,7 @@ final readonly class StaffController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Staff role granted to '.$user->email.'.');
+            : back()->with('status', 'Admin & support role granted to '.$user->email.'.');
     }
 
     public function destroy(string $user, string $role): RedirectResponse
@@ -86,7 +87,7 @@ final readonly class StaffController extends ConsoleController
 
         $result = $this->act(RevokeStaffRole::class, ['id' => $user, 'role_id' => $role], ['role_id' => 'role'], 'role');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Staff role taken back.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Admin & support role taken back.');
     }
 
     private function assertEnvironmentAdmin(): void

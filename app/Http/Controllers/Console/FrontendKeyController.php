@@ -11,6 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueFrontendKeyRequest;
 use App\Http\Requests\Console\SaveFrontendKeyOriginsRequest;
 use App\Platform\Console\KeyTabs;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
@@ -41,7 +42,7 @@ final readonly class FrontendKeyController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/keys/frontend', 'API keys', [
+        return $this->page('console/keys/frontend', Vocabulary::API_KEYS, [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::FRONTEND),
             'keys' => PublishableKey::query()

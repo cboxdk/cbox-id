@@ -26,7 +26,7 @@ final class PlatformScopes
     public const array SCOPES = [
         'operator:workspaces:write' => [
             'label' => 'Manage workspaces',
-            'description' => 'Create a customer workspace with its owner, first project and first environment; suspend and reactivate workspaces.',
+            'description' => 'Create a workspace with its owner, first project and first environment; suspend and reactivate workspaces.',
         ],
         'operator:environments:write' => [
             'label' => 'Manage environments',

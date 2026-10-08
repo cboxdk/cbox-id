@@ -17,16 +17,16 @@ use App\Platform\Integrations\IntegrationReach;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 
 /**
- * Every inline hook in this environment — or, for an organization's administrator, their
+ * Every hook in this environment — or, for an organization's administrator, their
  * own and the environment's, which fire on their sign-ins. Never a signing secret.
  */
 #[AsAction(
     name: 'hooks.list',
-    summary: 'List the inline hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.',
+    summary: 'List the hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.',
     scope: 'hooks:read',
     danger: Danger::Read,
     schema: 'InlineHook',
-    tag: 'Inline hooks',
+    tag: 'Hooks',
     rest: ['GET', '/hooks'],
     consoleGate: ConsoleGate::Administer,
 )]

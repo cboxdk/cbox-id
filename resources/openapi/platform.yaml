@@ -547,7 +547,7 @@ paths:
     post:
       tags:
         - Workspaces
-      summary: 'Create a customer workspace with its owner, first project and first environment; the owner is emailed a link to set their password.'
+      summary: 'Create a workspace with its owner, first project and first environment; the owner is emailed a link to set their password.'
       description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_workspaces_create
       x-action: platform.workspaces.create
@@ -565,7 +565,7 @@ paths:
               properties:
                 name:
                   type: string
-                  description: "The workspace's name — the customer company."
+                  description: "The workspace's name — usually the company it belongs to."
                   minLength: 2
                   maxLength: 120
                 owner_email:
@@ -615,7 +615,7 @@ paths:
     put:
       tags:
         - Workspaces
-      summary: 'Suspend a customer workspace (its people can no longer sign in, its environments stop serving) or reactivate it.'
+      summary: 'Suspend a workspace (its people can no longer sign in, its environments stop serving) or reactivate it.'
       description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: platform_workspaces_set_status
       x-action: platform.workspaces.set_status

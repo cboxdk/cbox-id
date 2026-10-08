@@ -16,15 +16,15 @@ use App\Platform\Integrations\IntegrationAudit;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 
 /**
- * Remove an inline hook: it is no longer called at its hook point. Undoing it means
+ * Remove a hook: it is no longer called at its hook point. Undoing it means
  * registering a new one, with a new secret.
  */
 #[AsAction(
     name: 'hooks.delete',
-    summary: 'Remove an inline hook. It is no longer called at its hook point.',
+    summary: 'Remove a hook. It is no longer called at its hook point.',
     scope: 'hooks:write',
     danger: Danger::Destructive,
-    tag: 'Inline hooks',
+    tag: 'Hooks',
     rest: ['DELETE', '/hooks/{id}'],
     status: 204,
     consoleRoutes: ['hooks.destroy', 'environment.hooks.destroy'],
@@ -40,7 +40,7 @@ final readonly class DeleteHook implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('id')->inPath()->describe('The inline hook id.'),
+            Field::string('id')->inPath()->describe('The hook id.'),
         ]);
     }
 

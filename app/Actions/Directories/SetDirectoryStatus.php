@@ -27,7 +27,7 @@ use Cbox\Id\Directory\Enums\DirectoryStatus;
     scope: 'directory_sync:write',
     danger: Danger::Write,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['POST', '/directories/{id}/status'],
     consoleRoutes: ['directories.toggle', 'environment.directories.toggle'],
     consoleGate: ConsoleGate::Administer,

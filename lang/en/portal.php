@@ -42,11 +42,11 @@ return [
     // What each thing a link can cover is called, on the checklist and on its own page.
     'intents' => [
         'sso' => [
-            'title' => 'Single sign-on',
+            'title' => 'Enterprise SSO',
             'description' => 'Connect your identity provider so your people sign in with their work account.',
         ],
         'dsync' => [
-            'title' => 'Directory sync',
+            'title' => 'Directory Sync',
             'description' => 'Add, update and remove your people automatically from your directory over SCIM.',
         ],
         'domain_verification' => [
@@ -128,7 +128,7 @@ return [
     ],
 
     'sso' => [
-        'title' => 'Single sign-on',
+        'title' => 'Enterprise SSO',
         'lead' => 'Connect your identity provider in five steps. Your people keep signing in as they do today until you turn it on in the last step.',
         'step_provider' => 'Choose your identity provider',
         'step_configure' => 'Create the app in :provider',

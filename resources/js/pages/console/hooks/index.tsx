@@ -94,7 +94,7 @@ export default function HooksIndex({
                     type="search"
                     style={{ maxWidth: '24rem' }}
                     placeholder="Search by URL"
-                    aria-label="Search inline hooks"
+                    aria-label="Search hooks"
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -123,9 +123,9 @@ export default function HooksIndex({
                         <EmptyState
                             icon="webhooks"
                             equivalent="hooks.create"
-                            title="No inline hooks registered"
+                            title="No hooks registered"
                             help={help}
-                            description="Most integrations want Webhooks instead — those run after the fact and cannot hold anything up. Reach for an inline hook only when your own system must have a say while a sign-in or token is being issued."
+                            description="Most integrations want Webhooks instead — those run after the fact and cannot hold anything up. Reach for a hook only when your own system must have a say while a sign-in or token is being issued."
                             steps={[
                                 'Register the endpoint and choose the hook point it answers at.',
                                 'Verify the signature on every call, and answer within the timeout — this runs while someone waits at the sign-in screen.',

@@ -32,7 +32,7 @@ export function StaffRolePicker({
 }) {
     return (
         <Combobox
-            aria-label="Staff role"
+            aria-label="Admin & support role"
             value={value === '' ? undefined : value}
             onValueChange={onValueChange}
             placeholder="Choose a role…"
@@ -45,7 +45,7 @@ export function StaffRolePicker({
                 hint: (
                     <span className="inline-flex items-center gap-1.5">
                         {staffRoleScope(role)}
-                        {role.staffOnly && <Badge>Staff-only</Badge>}
+                        {role.staffOnly && <Badge>Admins & support only</Badge>}
                     </span>
                 ),
             }))}

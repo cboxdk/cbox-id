@@ -12,6 +12,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\StoreHookRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
@@ -32,7 +33,7 @@ use Inertia\Response;
  * outright.
  *
  * NOT WEBHOOKS, which sit one entry away in the same nav area and run after the fact.
- * The capability was called "Inline hooks" on one plane and "Event hooks" on the other,
+ * The capability was called "Hooks" on one plane and "Event hooks" on the other,
  * which put it one word from the thing it is most dangerous to confuse it with. It gets
  * the name that says what it does.
  *
@@ -94,7 +95,7 @@ final readonly class HookController extends ConsoleController
         // enumerate the environment's other tenants.
         $owners = $this->scope->organizationNames($page->getCollection()->pluck('organization_id'));
 
-        return $this->page('console/hooks/index', 'Hooks', [
+        return $this->page('console/hooks/index', Vocabulary::HOOKS, [
             'help' => HelpProps::for(HelpTopic::InlineHooks),
             'hooks' => array_map(fn (ExternalActionEndpoint $endpoint): array => [
                 'id' => $endpoint->id,
@@ -204,7 +205,7 @@ final readonly class HookController extends ConsoleController
         $this->inertia->flash('newSecret', $registered->secret);
 
         return to_route($this->scope->routeName('hooks.show'), $registered->endpoint->id)
-            ->with('status', 'Inline hook endpoint registered.');
+            ->with('status', 'Hook endpoint registered.');
     }
 
     public function show(string $hook): Response
@@ -343,7 +344,7 @@ final readonly class HookController extends ConsoleController
             'hooks.create',
             'environment.hooks.create',
             [],
-            'Registering an inline hook issues a signing secret and puts your endpoint inside the sign-in path.',
+            'Registering a hook issues a signing secret and puts your endpoint inside the sign-in path.',
         );
     }
 }

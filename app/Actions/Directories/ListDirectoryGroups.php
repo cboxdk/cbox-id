@@ -27,7 +27,7 @@ use Cbox\Id\Directory\Models\DirectoryGroup;
     scope: 'directory_sync:read',
     danger: Danger::Read,
     schema: 'DirectoryGroup',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['GET', '/directories/{id}/groups'],
 )]
 final class ListDirectoryGroups implements Action

@@ -52,12 +52,12 @@ it('gives the workspace console both of its kinds of key as tabs of one page', f
 
     $this->get(route('keys'))->assertInertia(fn (AssertableInertia $page) => $page
         ->component('console/keys/management')
-        ->where('title', 'Keys')
+        ->where('title', 'API keys')
         ->where('pickEnvironment', true));
 
     $this->get(route('keys.workspace'))->assertInertia(fn (AssertableInertia $page) => $page
         ->component('console/keys/workspace')
-        ->where('title', 'Keys'));
+        ->where('title', 'API keys'));
 });
 
 it('draws only the tabs a person may open', function (): void {

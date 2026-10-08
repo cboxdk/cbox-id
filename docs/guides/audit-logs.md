@@ -7,14 +7,14 @@ description: Send your app's own audit events to Cbox ID, per customer organizat
 # Audit logs
 
 **Console pages:** Monitoring › App audit logs in an environment console (with
-**Schemas & retention**), an organization's **App audit logs** tab, and Logs › App audit
+**Schemas & retention**), an organization's **App audit logs** tab, and Audit log › App audit
 logs on an organization's own console.
 
 Your customers' security teams will ask what happened in your product: who exported the
 invoices, who changed the billing contact, who removed that user. Audit logs are where
 your app records those events, per customer, and where those customers read them.
 
-This is not the [activity log](activity-log.md). The activity log is Cbox ID's own record
+This is not the [audit log](activity-log.md). The audit log is Cbox ID's own record
 of changes to identities and settings, and it is kept forever. Audit logs are records your
 app sends about what happens inside your app. Cbox ID stores them for each customer
 organization, checks them against schemas you define, keeps them for a retention you set,
@@ -161,7 +161,7 @@ is `ready`. The answer then includes a `url` you can download from.
 - Any cell that starts with `=`, `+`, `-` or `@` is written with a leading `'`, so a
   spreadsheet treats it as text instead of a formula.
 
-Creating an export is recorded in the activity log (`audit_log_export.created`), because
+Creating an export is recorded in the audit log (`audit_log_export.created`), because
 it is how a customer's records leave in one file.
 
 The **Export CSV** button on every console page runs the same export.
@@ -198,14 +198,14 @@ What it does **not** prove:
   oldest event that was kept, and checks that it still points to the last event that was
   removed. Pruned events can no longer be verified.
 
-Cbox ID's own activity log uses a stronger mechanism (`cboxdk/laravel-audit-chain`, with
+Cbox ID's own audit log uses a stronger mechanism (`cboxdk/laravel-audit-chain`, with
 signed checkpoints), but that chain is append-only and cannot be pruned. Customer events
 need a retention period, so they use the lighter chain described here.
 
 ## Log streams
 
 When an organization owns a [log stream](activity-log.md), it receives that
-organization's audit events as well as its activity log entries. Organization admins can
+organization's audit events as well as its audit log entries. Organization admins can
 create a stream on their own console's Log streams page. Each event is delivered with
 `source: app` and its chain fields, so a SIEM can tell your `user.created` apart from
 Cbox ID's. The stream's action filter applies as usual. **Environment-wide** streams do
@@ -219,7 +219,7 @@ copy of everything it just sent.
 
 Your customers' admins can read their organization's events in two places:
 
-- **Their own console**, under Logs › App audit logs, if they have an account and
+- **Their own console**, under Audit log › App audit logs, if they have an account and
   administer the organization. They see only their organization's events, can filter
   them, and can export a CSV.
 - **The Admin Portal**, without an account. On the organization's page in the
@@ -228,7 +228,7 @@ Your customers' admins can read their organization's events in two places:
   Send the single-use link to the customer's IT or security admin. It opens a read-only
   view of that organization's events, in the admin's language, with filters and a
   **Export CSV** button. The download contains the newest matching events, up to 50,000
-  (`CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT`), and is recorded in the activity log as
+  (`CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT`), and is recorded in the audit log as
   `audit_log_export.downloaded`. The portal session ends when they click **Done**, or
   after 30 minutes.
 

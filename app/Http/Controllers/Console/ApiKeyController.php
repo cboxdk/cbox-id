@@ -11,6 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\KeyTabs;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
 use App\Platform\StepUpReason;
@@ -56,7 +57,7 @@ final readonly class ApiKeyController extends ConsoleController
         $organizationId = $this->scope->organizationId();
         $now = CarbonImmutable::now();
 
-        return $this->page('console/keys/workspace', 'Keys', [
+        return $this->page('console/keys/workspace', Vocabulary::API_KEYS, [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::WORKSPACE),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)

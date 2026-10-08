@@ -102,7 +102,7 @@ in its own settings. See the [languages guide](../guides/languages.md).
 On by default since laravel-id 1.22: a person whose password is guessed wrong too often
 inside the window is locked out for a while, then unlocked on their own — never until an
 administrator intervenes, which would hand anyone who knows an address a way to lock its
-owner out. A threshold set in the console's **Sign-in rules** (`lockoutThreshold` on the
+owner out. A threshold set in the console's **Authentication policy** (`lockoutThreshold` on the
 environment or an organization) wins over the default; the window and duration are
 deployment-wide only.
 
@@ -212,7 +212,7 @@ outbound provisioning, token revocation on role change. The relay itself is sche
 |---|---|---|---|
 | `CBOX_ID_FEDERATION_VERIFY_URL` | SSRF-guard + verify the URLs on an SSO connection (issuer, endpoints, JWKS) before they are fetched. Connections are tenant-supplied, so this is the guard against a customer pointing the server at your internal network. | `true` | Keep on. Relax only in an isolated test network. |
 
-## External actions (inline hooks)
+## External actions (hooks)
 
 Synchronous HTTP callouts during a flow — a host-owned decision point inside token
 issuance and login.

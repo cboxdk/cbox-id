@@ -18,7 +18,7 @@ use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 
 /**
- * Register a SAML application: somebody ELSE'S system that trusts this environment to say
+ * Register a SAML app: somebody ELSE'S system that trusts this environment to say
  * who a person is, and is then sent an assertion naming them, carrying the attributes
  * mapped here, to the ACS URL given here. Critical, because it decides where people's
  * identities are sent.
@@ -32,7 +32,7 @@ use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
  */
 #[AsAction(
     name: 'saml_apps.create',
-    summary: 'Register a SAML application that signs people in with their account here. Decides where assertions — and their attributes — are sent.',
+    summary: 'Register a SAML app that signs people in with their account here. Decides where assertions — and their attributes — are sent.',
     scope: 'saml_apps:write',
     danger: Danger::Critical,
     schema: 'SamlApp',
@@ -68,7 +68,7 @@ final readonly class CreateSamlApp implements Action
         $signed = $context->boolean('want_authn_requests_signed');
 
         if ($entityId === '' || $this->providers->findByEntityId($entityId) !== null) {
-            throw ActionRefused::because('entity_id_taken', 'A SAML application with this entity id is already registered in this environment.', 'entity_id');
+            throw ActionRefused::because('entity_id_taken', 'A SAML app with this entity id is already registered in this environment.', 'entity_id');
         }
 
         SamlAppFields::assertVerifiable($signed, $certificate);

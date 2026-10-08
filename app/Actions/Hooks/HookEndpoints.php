@@ -11,7 +11,7 @@ use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 
 /**
- * The inline hook an action names, resolved within what its principal may see — shared
+ * The hook an action names, resolved within what its principal may see — shared
  * by every hook action, and not one itself.
  *
  * {@see ExternalActions} answers a mismatched owner with a silent no-op, which is right
@@ -28,7 +28,7 @@ final class HookEndpoints
             ->whereKey($context->string('id'))
             ->first();
 
-        return $endpoint ?? throw ActionRefused::notFound('inline hook');
+        return $endpoint ?? throw ActionRefused::notFound('hook');
     }
 
     /**
@@ -42,7 +42,7 @@ final class HookEndpoints
     {
         $endpoint = self::visible($context);
 
-        IntegrationReach::assertManageable($endpoint->organization_id, IntegrationReach::confinedTo($context->principal), 'this inline hook');
+        IntegrationReach::assertManageable($endpoint->organization_id, IntegrationReach::confinedTo($context->principal), 'this hook');
 
         return $endpoint;
     }

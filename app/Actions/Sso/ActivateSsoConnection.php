@@ -32,7 +32,7 @@ use Cbox\Id\Federation\Enums\ConnectionType;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections/{id}/activate'],
     consoleRoutes: ['connections.activate', 'environment.connections.activate'],
     consoleGate: ConsoleGate::Administer,

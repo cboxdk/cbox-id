@@ -6,14 +6,14 @@ description: What it means when an app or AI agent asks to act on your behalf, h
 
 # Agent approvals
 
-**Console page:** Overview › Approve agent requests (`/approvals`), and Overview ›
-Review agent requests in an environment console (`/admin/approvals`)
+**Console page:** Overview › Approvals (`/approvals`), and AI agents › Approvals in an
+environment console (`/admin/approvals`)
 
 The two pages are named for what each does:
 
-- **Approve agent requests** is yours: the requests to act as *you*, which only you can
+- **Approvals** in the organization console is yours: the requests to act as *you*, which only you can
   approve or deny. Most of this guide is about it.
-- **Review agent requests** is for an environment administrator: every pending request in
+- **Approvals** in an environment console is for an environment administrator: every pending request in
   the environment, so one that looks like abuse can be denied. See
   [Reviewing requests across an environment](#reviewing-requests-across-an-environment).
 
@@ -44,7 +44,7 @@ were doing needs an explanation before it gets an approval.
   belong to you is refused rather than silently approved.
 - **Requests expire.** If one has been sitting here a while, deny it and start over
   rather than approving something stale.
-- **Every decision is recorded** in the [activity log](activity-log.md), including
+- **Every decision is recorded** in the [audit log](activity-log.md), including
   denials.
 
 ## Reviewing requests across an environment

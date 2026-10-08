@@ -18,7 +18,7 @@ use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
 
 /**
- * Pause or activate an inline hook, by the state it should END in.
+ * Pause or activate a hook, by the state it should END in.
  *
  * The console's button is a toggle — the record knows which of two states it is in — but
  * a toggle is the wrong verb for a machine: a retried "toggle" undoes itself. `active` says
@@ -31,11 +31,11 @@ use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
  */
 #[AsAction(
     name: 'hooks.update',
-    summary: 'Pause (active: false) or activate (active: true) an inline hook.',
+    summary: 'Pause (active: false) or activate (active: true) a hook.',
     scope: 'hooks:write',
     danger: Danger::Critical,
     schema: 'InlineHook',
-    tag: 'Inline hooks',
+    tag: 'Hooks',
     rest: ['PATCH', '/hooks/{id}'],
     consoleRoutes: ['hooks.toggle', 'environment.hooks.toggle'],
     consoleGate: ConsoleGate::Administer,
@@ -50,7 +50,7 @@ final readonly class UpdateHook implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('id')->inPath()->describe('The inline hook id.'),
+            Field::string('id')->inPath()->describe('The hook id.'),
             Field::boolean('active')->required()->describe('True to call it at its hook point; false to pause it.'),
         ]);
     }

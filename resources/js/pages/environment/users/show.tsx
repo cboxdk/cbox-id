@@ -726,7 +726,7 @@ function Organizations({
                         <EmptyState
                             icon="layers"
                             title="Not a member of any organization"
-                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them a staff role, which applies everywhere in this environment."
+                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them an admin & support role, which applies everywhere in this environment."
                         />
                     ) : (
                         memberships.map((membership) => (
@@ -888,7 +888,7 @@ function StaffRolesPanel({
 
     return (
         <Panel
-            title="Staff roles"
+            title="Admin & support roles"
             description={
                 <>
                     Roles held across the whole environment — in every organization, and even when
@@ -898,7 +898,7 @@ function StaffRolesPanel({
                         className="underline underline-offset-2"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Everyone with a staff role
+                        Everyone with an admin & support role
                     </Link>
                 </>
             }
@@ -906,7 +906,7 @@ function StaffRolesPanel({
             <div className="space-y-3">
                 {holding.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        No staff roles.
+                        No admin & support roles.
                     </p>
                 ) : (
                     <ul className="space-y-2">
@@ -957,7 +957,7 @@ function StaffRolesPanel({
                             );
                         }}
                     >
-                        <Field label="Grant a staff role" error={errors.staffRole}>
+                        <Field label="Grant an admin & support role" error={errors.staffRole}>
                             <StaffRolePicker roles={offered} value={role} onValueChange={setRole} />
                         </Field>
                         <Button
@@ -975,7 +975,7 @@ function StaffRolesPanel({
                 open={takingBack !== null}
                 onOpenChange={(open) => !open && setTakingBack(null)}
                 name={takingBack?.name ?? ''}
-                title={`Take back the staff role “${takingBack?.name ?? ''}”?`}
+                title={`Take back the admin & support role “${takingBack?.name ?? ''}”?`}
                 actionLabel="Take back"
                 consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh this person's tokens; nobody is signed out."
                 onConfirm={() => {
@@ -1152,7 +1152,7 @@ function SupportAccess({
                     Support access <Help help={support.help} />
                 </span>
             }
-            description={`Sign in to one of your apps as ${label} to see what they see. The app is told it is you, and the organization's activity log records who, when and why.`}
+            description={`Sign in to one of your apps as ${label} to see what they see. The app is told it is you, and the organization's audit log records who, when and why.`}
         >
             <div className="space-y-4">
                 <SupportSessions sessions={support.sessions} lead="organization" />
@@ -1189,7 +1189,7 @@ function SupportAccess({
 
                         <Field
                             label="Reason"
-                            hint="The organization sees this on its activity log."
+                            hint="The organization sees this on its audit log."
                             error={form.errors.reason}
                         >
                             <Input
@@ -1350,7 +1350,7 @@ function EraseUser({ email, href }: { email: string; href: string }) {
                     memberships, role grants, API tokens, vault secrets, devices and every stored
                     copy of their details are deleted, and the account is kept only as a
                     pseudonymised, disabled row. Apps that sync people from here are told to delete
-                    them. The activity log keeps their opaque id, not their name or address.
+                    them. The audit log keeps their opaque id, not their name or address.
                 </p>
 
                 {errors.erase !== undefined && (

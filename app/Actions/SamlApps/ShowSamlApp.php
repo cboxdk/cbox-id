@@ -15,12 +15,12 @@ use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 
 /**
- * One SAML application. The registry is environment-scoped, so an id from another
+ * One SAML app. The registry is environment-scoped, so an id from another
  * environment resolves to nothing — a 404, never a cross-tenant read.
  */
 #[AsAction(
     name: 'saml_apps.get',
-    summary: 'Read one SAML application: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.',
+    summary: 'Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.',
     scope: 'saml_apps:read',
     danger: Danger::Read,
     schema: 'SamlApp',
@@ -34,13 +34,13 @@ final readonly class ShowSamlApp implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('id')->inPath()->describe('The SAML application\'s id.'),
+            Field::string('id')->inPath()->describe('The SAML app\'s id.'),
         ]);
     }
 
     public function handle(ActionContext $context): ActionResult
     {
-        $provider = $this->providers->findById($context->string('id')) ?? throw ActionRefused::notFound('SAML application');
+        $provider = $this->providers->findById($context->string('id')) ?? throw ActionRefused::notFound('SAML app');
 
         return ActionResult::item($provider, SamlAppFields::present($provider));
     }

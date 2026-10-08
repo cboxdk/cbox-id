@@ -62,7 +62,7 @@ export default function CreateAccessReview({
                 <PageHeader
                     description={
                         reviewingStaff
-                            ? 'Snapshots every staff role — each role held across the whole environment — as items to certify or revoke. A revoke takes the role back in every organization at once.'
+                            ? 'Snapshots every admin & support role — each role held across the whole environment — as items to certify or revoke. A revoke takes the role back in every organization at once.'
                             : 'Snapshots every current role assignment and membership in one organization as items to certify or revoke.'
                     }
                 />
@@ -91,7 +91,7 @@ export default function CreateAccessReview({
                                 },
                                 {
                                     value: 'staff',
-                                    label: 'Staff roles',
+                                    label: 'Admin & support roles',
                                     hint: 'Everyone holding a role across the whole environment. Organizations never see this review.',
                                 },
                             ]}
@@ -123,7 +123,7 @@ export default function CreateAccessReview({
                             <Input
                                 name="name"
                                 placeholder={
-                                    reviewingStaff ? 'Q3 staff access' : 'Q3 access review'
+                                    reviewingStaff ? 'Q3 admin & support access' : 'Q3 access review'
                                 }
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}

@@ -30,7 +30,7 @@ use Cbox\Id\Federation\Enums\ConnectionStatus;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections/{id}/disable'],
     consoleRoutes: ['connections.disable', 'environment.connections.disable'],
     consoleGate: ConsoleGate::Administer,

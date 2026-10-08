@@ -23,7 +23,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     scope: 'sso:read',
     danger: Danger::Read,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['GET', '/sso/connections/{id}'],
 )]
 final class ShowSsoConnection implements Action

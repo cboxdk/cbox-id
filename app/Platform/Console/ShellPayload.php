@@ -80,6 +80,7 @@ final readonly class ShellPayload
      */
     private const ENTITLEMENT_FEATURE = [
         'connections' => 'sso',
+        'domains' => 'sso',
         'directories' => 'scim',
         'provisioning' => 'scim',
     ];

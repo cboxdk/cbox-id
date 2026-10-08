@@ -54,7 +54,7 @@ tokens too.
    Cbox ID's own and cannot belong to an API.
 
 Every change — registering, renaming, linking an app, adding, changing or removing a
-scope, deleting — is recorded on the activity log: on the owning organization's trail for
+scope, deleting — is recorded on the audit log: on the owning organization's trail for
 an organization's API, and on the environment's for its own. Each change is one entry
 (`api.created`, `api.updated`, `api.scope_defined`, `api.scope_removed`, `api.deleted`),
 the same whether it was made here or by your backend through the

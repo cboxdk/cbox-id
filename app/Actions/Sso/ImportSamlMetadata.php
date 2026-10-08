@@ -36,7 +36,7 @@ use Cbox\Id\Federation\Saml\SamlMetadataImporter;
     scope: 'sso:write',
     danger: Danger::Write,
     schema: 'SamlMetadata',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/saml-metadata'],
     consoleRoutes: ['connections.import', 'environment.connections.import'],
     consoleGate: ConsoleGate::Administer,

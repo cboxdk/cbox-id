@@ -13,6 +13,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
 use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
 use App\Platform\LockoutDefaults;
@@ -92,7 +93,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $edited = $onEnvironmentPlane ? $baseline : $policies->resolve($this->organizationId());
         $override = $onEnvironmentPlane ? null : $policies->overrideFor($this->organizationId());
 
-        return $this->page('console/auth-policy', 'Authentication policy', [
+        return $this->page('console/auth-policy', Vocabulary::AUTHENTICATION_POLICY, [
             'help' => HelpProps::for(HelpTopic::SignInRules),
             'onEnvironmentPlane' => $onEnvironmentPlane,
             'policy' => self::toProps($edited),
@@ -196,7 +197,7 @@ final readonly class AuthPolicyController extends ConsoleController
             ...AuthPolicyFields::toArray($policy),
         ], self::FIELDS);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sign-in rules saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Authentication policy saved.');
     }
 
     /**

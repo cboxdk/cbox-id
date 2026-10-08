@@ -13,6 +13,7 @@ use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Agents\AgentRoster;
 use App\Platform\Agents\AgentScope;
 use App\Platform\Agents\AgentScopes;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
@@ -60,7 +61,7 @@ final readonly class AgentController extends ConsoleController
 
         $me = $auth->subjectId();
 
-        return $this->page('environment/agents/index', 'Agents', [
+        return $this->page('environment/agents/index', Vocabulary::AGENTS, [
             'help' => HelpProps::for(HelpTopic::Agents),
             'agents' => array_map(static fn (AgentRowProps $row): array => $row->toArray(), $roster['rows']),
             'inactiveCount' => $roster['inactive'],

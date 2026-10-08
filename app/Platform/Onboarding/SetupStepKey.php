@@ -35,7 +35,7 @@ enum SetupStepKey: string
             self::DefineRoles => 'Decide who can do what',
             self::BrandSignIn => 'Make sign-in look like you',
             self::SingleSignOn => 'Sign in with your own provider',
-            self::SyncUsersIn => 'Sync users in automatically',
+            self::SyncUsersIn => 'Keep your people in sync automatically',
         };
     }
 

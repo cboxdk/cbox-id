@@ -36,7 +36,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
  */
 #[AsAction(
     name: 'signin.policy.update',
-    summary: 'Change the sign-in rules of the environment baseline, or tighten one organization\'s override. Requiring SSO signs out password sessions.',
+    summary: 'Change the authentication policy of the environment baseline, or tighten one organization\'s override. Requiring SSO signs out password sessions.',
     scope: 'signin:write',
     danger: Danger::Critical,
     schema: 'SignInPolicy',

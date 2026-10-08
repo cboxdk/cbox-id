@@ -28,7 +28,7 @@ use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
     scope: 'approvals:read',
     danger: Danger::Read,
     schema: 'AgentRequest',
-    tag: 'Agent requests',
+    tag: 'Approvals',
     rest: ['GET', '/agent-requests'],
 )]
 final readonly class ListAgentRequests implements Action

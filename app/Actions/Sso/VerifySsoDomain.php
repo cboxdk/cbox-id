@@ -27,7 +27,7 @@ use Cbox\Id\Federation\Models\VerifiedDomain;
     scope: 'sso:write',
     danger: Danger::Write,
     schema: 'SsoDomain',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/domains/{id}/verify'],
     consoleRoutes: ['connections.domains.verify', 'environment.connections.domains.verify'],
     consoleGate: ConsoleGate::Administer,

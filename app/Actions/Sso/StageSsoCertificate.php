@@ -46,7 +46,7 @@ use Cbox\Id\Federation\ValueObjects\ImportedIdpMetadata;
     scope: 'sso:write',
     danger: Danger::Critical,
     schema: 'SsoCertificates',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections/{id}/certificates'],
     consoleGate: ConsoleGate::Administer,
 )]

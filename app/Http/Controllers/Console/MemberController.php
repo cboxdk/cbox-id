@@ -18,6 +18,7 @@ use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteMemberRequest;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
@@ -129,7 +130,7 @@ final readonly class MemberController extends ConsoleController
         $actorId = $this->scope->actorId();
         $environmentCount = $organizationId === null ? 0 : $this->environmentQuery($organizationId)->count();
 
-        return $this->page('console/members', 'Team', [
+        return $this->page('console/members', Vocabulary::TEAM, [
             'help' => HelpProps::for(HelpTopic::Team),
             'members' => collect($roster->items())->map(function (Membership $membership) use ($people, $accessByUser, $actorId, $canManage): array {
                 $person = $people[$membership->user_id] ?? null;

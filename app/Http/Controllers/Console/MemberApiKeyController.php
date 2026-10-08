@@ -9,6 +9,7 @@ use App\Http\Props\Shared\AppApiKeyRows;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\ApiKeys\MemberApiKeys;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +37,7 @@ final readonly class MemberApiKeyController extends ConsoleController
 
         $organizationId = $this->scope->requireOrganizationId();
 
-        return $this->page('console/member-api-keys', 'Member API keys', [
+        return $this->page('console/member-api-keys', Vocabulary::MEMBER_API_KEYS, [
             'help' => HelpProps::for(HelpTopic::MemberApiKeys),
             'keys' => $rows->for(
                 $keys->inOrganization($organizationId),

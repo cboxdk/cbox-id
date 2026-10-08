@@ -186,7 +186,7 @@ export default function Audit({
                     type="search"
                     style={{ maxWidth: '24rem' }}
                     placeholder="Search action or target"
-                    aria-label="Search the activity log"
+                    aria-label="Search the audit log"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                 />

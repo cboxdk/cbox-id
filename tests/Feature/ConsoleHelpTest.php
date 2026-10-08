@@ -62,7 +62,7 @@ it('never links a topic that has no guide behind it', function (): void {
 it('resolves a page eyebrow to the nav area that owns it', function (): void {
     expect(app(ConsoleLocation::class)->areaLabel('connections'))->toBe('Sign-in')
         ->and(app(ConsoleLocation::class)->areaLabel('clients'))->toBe('Developers')
-        ->and(app(ConsoleLocation::class)->areaLabel('audit'))->toBe('Logs')
+        ->and(app(ConsoleLocation::class)->areaLabel('audit'))->toBe('Audit log')
         // Sub-pages hang off their page's route name.
         ->and(app(ConsoleLocation::class)->areaLabel('connections.edit'))->toBe('Sign-in')
         ->and(app(ConsoleLocation::class)->areaLabel('not-a-console-route'))->toBeNull();

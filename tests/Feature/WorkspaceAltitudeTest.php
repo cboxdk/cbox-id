@@ -101,7 +101,7 @@ it('shrinks a workspace console to the workspace, its team\'s sign-in, its log a
     $shell = (array) $this->get('https://cboxid.com/projects')->inertiaProps('shell');
     $labels = array_column($shell['areas'], 'label');
 
-    expect($labels)->toBe(['Workspace', 'Team sign-in', 'Logs', 'My account'])
+    expect($labels)->toBe(['Workspace', 'Team sign-in', 'Audit log', 'My account'])
         ->and($shell['altitude'])->toBe('workspace')
         ->and($shell['brandHref'])->toBe(route('projects'))
         ->and($shell['notice'])->toBeNull();

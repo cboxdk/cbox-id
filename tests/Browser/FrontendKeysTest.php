@@ -27,7 +27,7 @@ it('keeps the key list outside the create form', function (): void {
 
     $page = visit('/admin/keys/frontend');
 
-    $page->assertSee('Frontend keys')
+    $page->assertSee('Publishable keys')
         ->assertSee('Site')
         ->press('New key')
         ->assertSee('Create key');

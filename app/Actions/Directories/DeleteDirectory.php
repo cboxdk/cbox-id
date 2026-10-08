@@ -24,7 +24,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     summary: 'Delete an inbound directory. Its token stops working; the people it provisioned keep their accounts.',
     scope: 'directory_sync:write',
     danger: Danger::Destructive,
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['DELETE', '/directories/{id}'],
     status: 204,
     consoleRoutes: ['directories.destroy', 'environment.directories.destroy'],

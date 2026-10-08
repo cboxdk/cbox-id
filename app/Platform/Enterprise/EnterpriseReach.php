@@ -135,8 +135,8 @@ final class EnterpriseReach
     private static function featureName(string $feature): string
     {
         return match ($feature) {
-            'sso' => 'single sign-on',
-            'scim' => 'directory sync',
+            'sso' => 'Enterprise SSO',
+            'scim' => 'Directory Sync',
             'audit_logs' => 'audit logs',
             default => $feature,
         };

@@ -30,10 +30,10 @@ use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
  */
 #[AsAction(
     name: 'approvals.deny',
-    summary: 'Deny a pending agent request (CIBA) for the person it was raised for: the agent gets access_denied and no token.',
+    summary: 'Deny a pending approval request (CIBA) for the person it was raised for: the agent gets access_denied and no token.',
     scope: 'approvals:write',
     danger: Danger::Destructive,
-    tag: 'Agent requests',
+    tag: 'Approvals',
     rest: ['POST', '/agent-requests/{request_id}/deny'],
     status: 204,
     consoleRoutes: ['environment.approvals.deny'],
@@ -52,7 +52,7 @@ final readonly class DenyAgentRequest implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $request = AgentRequestFields::pending()->whereKey($context->string('request_id'))->first()
-            ?? throw ActionRefused::notFound('agent request');
+            ?? throw ActionRefused::notFound('approval request');
 
         // As the request's own subject: the service binds a decision to the person the
         // request names, and a denial is the one decision that is safe to take for them.

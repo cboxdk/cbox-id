@@ -29,7 +29,7 @@ use App\Platform\Sso\ConnectionCertificates;
     scope: 'sso:read',
     danger: Danger::Read,
     schema: 'SsoCertificates',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['GET', '/sso/connections/{id}/certificates'],
     consoleGate: ConsoleGate::Administer,
 )]

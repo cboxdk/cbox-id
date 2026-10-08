@@ -76,7 +76,7 @@ export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Pro
                         <EmptyState
                             icon="key"
                             equivalent="frontend_keys.create"
-                            title="No frontend keys yet"
+                            title="No publishable keys yet"
                             description="A publishable key lets a page sign people in without a backend of your own. It is public on purpose — what stops anybody else using it is the list of origins you allow it from."
                             steps={[
                                 'Name the key and choose test or live.',

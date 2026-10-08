@@ -43,8 +43,8 @@ final readonly class PaletteActions
         'apps.secrets.rotate' => 'Rotate app secret',
         'webhooks.secret.rotate' => 'Rotate webhook signing secret',
         'directories.token.rotate' => 'Rotate directory token',
-        'hooks.create' => 'Create inline hook',
-        'signin.social.set' => 'Add social sign-in',
+        'hooks.create' => 'Create hook',
+        'signin.social.set' => 'Add social login',
     ];
 
     /** @var array<string, string> */
