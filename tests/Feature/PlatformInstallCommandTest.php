@@ -272,9 +272,10 @@ it('leaves a single-tenant deployment able to sign the cbox CLI in', function ()
         ->and($client?->scopes)->toContain('offline_access');
 });
 
-it('mints the CLI client in the tenant, never in the platform root', function (): void {
-    // The root serves no discovery document — it is an issuer for nobody — so a client
-    // minted there could never be used to sign in.
+it('mints the CLI client in the tenant and in the platform root', function (): void {
+    // The tenant's own people sign in on its host. The root is an issuer for nobody's app,
+    // but its own people — a workspace's team, the operators — sign the CLI in there, with
+    // the device grant the root serves to a platform-owned first-party client alone.
     [$exit] = runInstall([
         '--email' => 'root@acme.example',
         '--name' => 'Root Operator',
@@ -296,5 +297,8 @@ it('mints the CLI client in the tenant, never in the platform root', function ()
     );
 
     expect($in($tenant))->not->toBeNull()
-        ->and($in($root))->toBeNull();
+        ->and($in($root))->not->toBeNull()
+        // Platform-owned and first-party: the only client the root's token endpoints admit.
+        ->and($in($root)?->first_party)->toBeTrue()
+        ->and($in($root)?->organization_id)->toBeNull();
 });

@@ -7,7 +7,9 @@ namespace App\Platform\Actions\Approvals;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\RootPersonPrincipal;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -91,7 +93,11 @@ final readonly class ActionApprovalGate
             'id' => $request->requestId,
             'principal' => $principal->kind().':'.$principal->id(),
             'action' => $action->name,
-            'environment_id' => $principal instanceof EnvironmentKeyPrincipal ? $principal->key()->environment_id : null,
+            'environment_id' => match (true) {
+                $principal instanceof EnvironmentKeyPrincipal => $principal->key()->environment_id,
+                $principal instanceof EnvironmentMemberPrincipal => $principal->environmentId(),
+                default => null,
+            },
             'binding_code' => $code,
             'input' => ApprovalInput::redact($action, $input),
         ]);
@@ -153,12 +159,23 @@ final readonly class ActionApprovalGate
         return app(EnvironmentContext::class)->runAs(GenericEnvironment::of($environmentId), $callback);
     }
 
+    /**
+     * Whether $approvalId was raised by this principal. A person signed in at the platform
+     * root also owns the approvals they raised while bound to one of their environments
+     * ({@see RootPersonPrincipal::owns()}) — `approval_status` and the poll are asked
+     * unbound, and must find them.
+     */
     private function owns(Principal $principal, string $approvalId): bool
     {
-        return ActionApprovalRequest::query()
-            ->whereKey($approvalId)
-            ->where('principal', $principal->kind().':'.$principal->id())
-            ->exists();
+        $owner = ActionApprovalRequest::query()->whereKey($approvalId)->value('principal');
+
+        if (! is_string($owner)) {
+            return false;
+        }
+
+        return $principal instanceof RootPersonPrincipal
+            ? $principal->owns($owner)
+            : hash_equals($principal->kind().':'.$principal->id(), $owner);
     }
 
     /**

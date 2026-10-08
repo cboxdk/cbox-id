@@ -81,7 +81,7 @@ final readonly class CreateWorkspaceKey implements Action
 
         $issued = $this->keys->issue($workspaceId, $name, $role, $expiresAt, $scopes, new KeyProvenance(
             createdByType: InWorkspace::creatorType($context->principal),
-            createdById: $context->principal->id() !== '' ? $context->principal->id() : null,
+            createdById: InWorkspace::creatorId($context->principal),
             parentKeyId: $parent?->id,
             // Never weaker supervision than the key doing the minting: an agent cannot shed
             // the approvals its owner required by minting itself a fresh key.

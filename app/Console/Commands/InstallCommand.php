@@ -354,10 +354,14 @@ class InstallCommand extends Command
      * command nobody knows exists — the same gap the sign-in URL above was added
      * to close.
      *
-     * IN THE ENVIRONMENT THAT IS AN ISSUER. On the multi-tenant shape that is the
-     * first tenant, never the platform root: the root serves no discovery document
-     * and is an issuer for nobody, so a client minted there could never be used.
-     * On the single-tenant shape the root IS the issuer and gets it.
+     * WHERE PEOPLE SIGN IN. On the single-tenant shape the root IS the issuer and
+     * gets it. On the multi-tenant shape, the first tenant — whose own subjects sign
+     * in there — AND the platform root: the root is an issuer for nobody's app, but
+     * its own people (a workspace's team, the operators) sign the CLI in there for
+     * the workspace, its environments and the deployment, through the device grant
+     * the root serves to a platform-owned first-party client and to nothing else
+     * (`plane:first-party`, routes/mcp.php). The tenant's issuer is the one printed;
+     * the root's is the console host's.
      *
      * IT DOES NOT FAIL THE INSTALL. The platform is installed by this point, and
      * refusing to finish over a convenience would leave an operator with a
@@ -366,27 +370,34 @@ class InstallCommand extends Command
      */
     private function provisionCliClient(InstalledPlatform $installed): void
     {
-        $environment = $installed->tenant ?? $installed->root;
-        $key = $environment->getKey();
+        $environments = $installed->tenant === null ? [$installed->root] : [$installed->tenant, $installed->root];
 
-        if (! is_string($key) || $key === '') {
-            return;
-        }
+        foreach ($environments as $environment) {
+            $key = $environment->getKey();
 
-        try {
-            $this->cliClientIssuer = $this->laravel->make(EnvironmentContext::class)->runAs(
-                GenericEnvironment::of($key),
-                function () use ($key): string {
-                    CliClient::provision($this->laravel->make(ClientRegistry::class));
+            if (! is_string($key) || $key === '') {
+                continue;
+            }
 
-                    return $this->laravel->make(IssuerResolver::class)->forEnvironment($key);
-                },
-            );
-        } catch (Throwable $e) {
-            $this->components->warn(
-                'The cbox CLI client was not provisioned ('.$e->getMessage().'). '
-                ."Run `php artisan cbox-id:cli:client --environment={$key}`."
-            );
+            try {
+                $issuer = $this->laravel->make(EnvironmentContext::class)->runAs(
+                    GenericEnvironment::of($key),
+                    function () use ($key): string {
+                        CliClient::provision($this->laravel->make(ClientRegistry::class));
+
+                        return $this->laravel->make(IssuerResolver::class)->forEnvironment($key);
+                    },
+                );
+
+                // The first environment's: the tenant's on the SaaS shape, where its own
+                // people sign in; the root's when it is the only one.
+                $this->cliClientIssuer ??= $issuer;
+            } catch (Throwable $e) {
+                $this->components->warn(
+                    'The cbox CLI client was not provisioned ('.$e->getMessage().'). '
+                    ."Run `php artisan cbox-id:cli:client --environment={$key}`."
+                );
+            }
         }
     }
 

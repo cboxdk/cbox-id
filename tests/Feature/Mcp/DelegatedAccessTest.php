@@ -360,3 +360,33 @@ it('holds a critical REST call for the person and lets them poll it', function (
     [$other, $theirs] = delegatedPerson(MembershipRole::Owner, 'eve@acme.test');
     $this->withToken(delegatedToken($other, $theirs))->getJson("/api/v1/action-approvals/{$approvalId}")->assertNotFound();
 })->group('security');
+
+// ── The person's own account, on their environment's host ───────────────────────
+
+it('serves the person\'s own account at /api/v1/me on their environment\'s host, with the same token', function (): void {
+    [$subject, $organization] = delegatedPerson();
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Cbox CLI',
+        type: ClientType::Public,
+        redirectUris: ['http://127.0.0.1:33418/callback'],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        scopes: ['openid', 'offline_access', 'account:profile:write', ...DELEGATED_SCOPES],
+    ))->client;
+
+    $this->withToken(delegatedToken($subject, $organization, ['account:profile:write'], client: $client))
+        ->patchJson('/api/v1/me/profile', ['name' => 'Ada Lovelace'])
+        ->assertOk();
+
+    expect(app(Subjects::class)->find($subject)?->name)->toBe('Ada Lovelace');
+
+    // Their account, within what they handed the client: no scope, no change.
+    $this->withToken(delegatedToken($subject, $organization, ['webhooks:read'], client: $client))
+        ->patchJson('/api/v1/me/profile', ['name' => 'Mallory'])
+        ->assertForbidden();
+
+    // The deployment is not theirs: an environment's token never speaks for an operator.
+    $this->withToken(delegatedToken($subject, $organization, ['account:profile:write'], client: $client))
+        ->postJson('/api/v1/platform/operators', [])
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Only a platform operator can use this API.');
+});

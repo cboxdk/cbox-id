@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use App\Http\Middleware\AuthenticateMcp;
 use App\Mcp\IdServer;
+use App\Platform\PlaneResolver;
+use App\Support\CliClient;
+use Cbox\Id\Api\Http\Controllers\DeviceAuthorizationController;
+use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Facades\Mcp;
@@ -29,3 +33,26 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-mcp', AuthenticateMc
         ->withoutMiddleware(AddWwwAuthenticateHeader::class)
         ->name('mcp');
 });
+
+/*
+ * RFC 8628 device authorization — re-registered here, over the framework's own route, with
+ * ONE change: the first-party wall instead of the issuer wall.
+ *
+ * The `cbox` CLI signs in with the device grant, and a person of the platform root — a
+ * workspace's team, an operator — signs in AT THE ROOT, whose `/mcp` is their one
+ * connection to the workspace, its environments, their account and the deployment
+ * (`App\Platform\OAuth\RootDelegatedAccess`). The root serves the token endpoint for a
+ * platform-owned first-party client already (`plane:first-party`,
+ * {@see PlaneResolver::servesFirstPartyIssuer()}); this is the one endpoint of the grant
+ * that was still behind `plane:issuer`, so `cbox login` against the root stopped at its
+ * first request. The root's CLI client ({@see CliClient}) is exactly such a client, and no
+ * other is admitted there: the wall that keeps the root from being anybody's identity
+ * provider — discovery, registration, the other grants — stays where it is.
+ *
+ * Everywhere else the answer is the framework's: on a tenant host, and on a single-tenant
+ * install, `plane:first-party` admits every client `plane:issuer` did. Registered here, in
+ * the file loaded after every other, so this definition is the one the router keeps; the
+ * throttle and `no-store` are the framework's own.
+ */
+Route::middleware([ResolveEnvironment::class, 'plane:first-party', 'throttle:30,1', NoStore::class])
+    ->post('/oauth/device_authorization', DeviceAuthorizationController::class);

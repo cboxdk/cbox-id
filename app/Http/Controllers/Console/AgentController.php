@@ -16,6 +16,7 @@ use App\Platform\Agents\AgentScopes;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\OAuth\RootDelegatedAccess;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
@@ -137,13 +138,22 @@ final readonly class AgentController extends ConsoleController
             'restBaseUrl' => $origin.'/api/v1',
             'openApiUrl' => $origin.'/api/v1/environment/openapi.yaml',
             /*
-             * SIGNING IN WITH YOUR ACCOUNT, rather than pasting a key, is what an MCP client
+             * SIGNING IN WITH AN ACCOUNT, rather than pasting a key, is what an MCP client
              * does when the resource lets a self-registered client be issued a token for
-             * it. The `/mcp` resource does not today ({@see McpProtectedResources::mcp()}
-             * declares no dynamic clients, and the door accepts management keys only), so
-             * the console offers it as coming soon rather than a command that fails.
+             * it ({@see McpProtectedResources::mcp()}, `api.mcp.dynamic_clients`). Here it
+             * signs in a person of THIS environment — one of its organizations' own
+             * administrators — so the page says so; the people who run the workspace sign
+             * in at the platform root instead (below).
              */
             'oauthAvailable' => $mcp !== null && $mcp->dynamicClients,
+            /*
+             * ONE CONNECTION FOR THE WHOLE WORKSPACE: the platform root's `/mcp`, where the
+             * workspace's own people sign in — the workspace, every environment of it they
+             * administer (named per call), their account and, for an operator, the
+             * deployment ({@see RootDelegatedAccess}). Null where there is no root apart
+             * from this host to point at.
+             */
+            'workspace' => $this->workspaceConnection(),
             'urls' => [
                 'createAgent' => route('environment.agents.create', ['preset' => 'read-only', 'name' => 'Claude Code']),
                 'agents' => route('environment.agents'),
@@ -162,6 +172,29 @@ final readonly class AgentController extends ConsoleController
         abort_if($auth->membership() === null || $auth->environmentId() === null, 403);
 
         return $auth;
+    }
+
+    /**
+     * The platform root's `/mcp` and its issuer — what `cbox login` and an agent holding a
+     * workspace key point at — or null when no root resource can be named.
+     *
+     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string}|null
+     */
+    private function workspaceConnection(): ?array
+    {
+        $resource = app(RootDelegatedAccess::class)->resource();
+
+        if ($resource === null) {
+            return null;
+        }
+
+        $origin = self::origin($resource->identifier);
+
+        return [
+            'mcpUrl' => $resource->identifier,
+            'issuer' => $origin,
+            'restBaseUrl' => $origin.'/api/v1',
+        ];
     }
 
     /** This environment's `/mcp` resource, as the RFC 9728 document describes it. */

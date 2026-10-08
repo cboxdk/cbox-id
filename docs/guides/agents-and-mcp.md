@@ -1,21 +1,57 @@
 ---
 title: Agents and MCP
 weight: 23
-description: Connect Claude Code, Cursor or another MCP client to one environment's management plane, with a management key or by signing yourself in, and what an agent can and cannot do there.
+description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to one environment's management plane, or to your whole workspace at the platform root, with a key or by signing yourself in, and what an agent can and cannot do there.
 ---
 
 # Agents and MCP
 
-**Endpoint:** `https://<environment-host>/mcp`
+**Endpoints:** `https://<environment-host>/mcp` for one environment, and
+`https://<platform-root>/mcp` (`https://cboxid.com/mcp` on the hosted platform) for your
+whole workspace.
 
 Every environment serves an [MCP](https://modelcontextprotocol.io) server on its own
-host, next to its management API. An AI agent connected to it can run the same actions the
+host, next to its management API. The platform root serves one too, for the people who
+run a workspace. An AI agent connected to it can run the same actions the
 API offers: register APIs, manage webhooks, read the audit log, and so on. It goes through
 the same checks, gets the same refusals and leaves the same activity log entries as the
 API and the console. There is no separate permission model to learn.
 
 This page is for the developer wiring an agent up. What each action does is in the guide
 for its area, for example [APIs](apis.md).
+
+## Where to connect
+
+| | One environment | Your whole workspace |
+|---|---|---|
+| Address | `https://<environment-host>/mcp` | `https://<platform-root>/mcp` |
+| Who signs in there | The environment's own people: an organization's administrators | The workspace's team, and the platform's operators |
+| What it reaches | That environment | The workspace, every environment of it you administer, your own account and, for an operator, the deployment |
+| Keys it takes | `cbid_env_…` for that environment | `cbid_ws_…` for the workspace |
+
+Running a workspace, you are a person of the platform root: you reach an environment's
+console through the workspace console, and you have no account in the environment itself.
+So you sign in **at the root**, once, and name the environment each time you act in one.
+The rest of this page covers both; the root is described in
+[One connection for your whole workspace](#one-connection-for-your-whole-workspace).
+
+The exact commands:
+
+```bash
+# One environment, signing in as one of its own people
+claude mcp add --transport http cbox-id https://<environment-host>/mcp
+
+# One environment, with an environment key
+claude mcp add --transport http cbox-id https://<environment-host>/mcp \
+  --header "Authorization: Bearer cbid_env_…"
+
+# Your whole workspace, signed in as yourself (the cbox CLI)
+cbox login --issuer https://<platform-root>
+
+# Your whole workspace, as an agent holding a workspace key
+claude mcp add --transport http cbox-workspace https://<platform-root>/mcp \
+  --header "Authorization: Bearer cbid_ws_…"
+```
 
 ## Two ways in
 
@@ -168,6 +204,82 @@ To share the setup with your team without sharing the key, put it in the project
 A workspace key (`cbid_ws_…`) works the same way and sees the workspace's tools: projects,
 environments, the team and keys.
 
+## One connection for your whole workspace
+
+The platform root's `/mcp` is for the people who run a workspace. Signed in there as
+yourself, one connection reaches:
+
+- **The workspace**, as you, a member of its team: projects, environments, the team,
+  keys and settings. Your role in the workspace bounds it exactly as it bounds you in the
+  workspace console: a Developer manages environments but does not see the team, a Viewer
+  reads but changes nothing.
+- **Every environment of the workspace you administer**, with the rights of that
+  environment's console, the console the workspace console opens for you. Your role must
+  manage environments (Owner, Admin or Developer) and your membership must reach that
+  environment. Every environment tool takes a required `environment` argument, the
+  environment's id or slug, and runs inside that environment only:
+
+  ```json
+  { "name": "apis_create", "arguments": { "environment": "acme-production", "identifier": "https://api.acme.example", "name": "Acme API" } }
+  ```
+
+  An environment you cannot reach, or another workspace's, is `not_found`.
+- **Your own account** at the root: your profile, sessions, applications, API keys,
+  sign-in methods and devices (`account:*` scopes, `/api/v1/me` on the root).
+- **The deployment**, if you are a platform operator: the operator tools and
+  `/api/v1/platform` (`operator:*` scopes).
+
+The same two limits apply as everywhere: the token's scopes **and** what you may do
+yourself. A scope never gives you more than your role does. Every critical action waits for
+your approval on your device, and `approval_status` at the root finds every approval you
+raised, in whichever environment.
+
+`whoami` at the root reports who you are, your workspace and your role there, whether you
+are an operator, the scopes the token carries and the environments you can act in, which
+are the values the `environment` argument takes.
+
+### Signing in at the root
+
+Sign the `cbox` CLI in at the root:
+
+```bash
+cbox login --issuer https://<platform-root>
+```
+
+The CLI reads `/.well-known/cbox-cli` on the root, runs the device flow and asks for the
+root's `/mcp` as its `resource`. The token it holds works at the root's `/mcp`, on the
+workspace API, on `/api/v1/me` and, for an operator, on `/api/v1/platform`.
+
+On the REST environment API, call the usual paths on the **root's** host and name the
+environment in a header:
+
+```bash
+curl https://<platform-root>/api/v1/apis \
+  -H "Authorization: Bearer <token>" \
+  -H "Cbox-Environment: acme-production"
+```
+
+Without the header the answer is `400 environment_required`. Everything is recorded in that
+environment's own activity log, as you (`actor_type: organization_member`), with the
+client you used.
+
+The root is not an identity provider for other apps, so it signs in the platform's own
+clients only: today that is the `cbox` CLI. MCP clients that sign you in themselves, such
+as Claude Code without a header, can sign in on an environment's host but not yet at the
+root. To give such an agent the workspace, use a workspace key:
+
+```bash
+claude mcp add --transport http cbox-workspace https://<platform-root>/mcp \
+  --header "Authorization: Bearer cbid_ws_…"
+```
+
+A workspace key acts as the key, bounded by its role and scopes, and reaches the
+workspace's own tools only: projects, environments, the team and keys. It does not act
+inside an environment; mint that environment a key for that.
+
+An operator provisions the root's CLI client the same way as an environment's,
+`php artisan cbox-id:cli:client --environment=<root>`. A new install does it for you.
+
 ## Connect Cursor or another client
 
 Any client that speaks MCP's Streamable HTTP transport works. A client that supports MCP
@@ -191,12 +303,16 @@ request is answered on its own.
 
 ## The `cbox` CLI
 
-`cbox login` signs you in with the device flow against the environment's own issuer. It
+`cbox login` signs you in with the device flow against the issuer you point it at: an
+environment's own, as one of its people, or the platform root's, as one of a workspace's
+team ([see above](#signing-in-at-the-root)). Against an environment's issuer: It
 reads `/.well-known/cbox-cli`, which names the CLI's client, the scopes to ask for (the
 sign-in ones and every management scope) and the `resource` to name: the same `/mcp`
 audience. You approve the code on the device page, which lists what the CLI may do as you
-and flags the critical scopes. The token it gets works at `/mcp` and on the REST
-environment API, as you, with the same two limits and the same approvals.
+and flags the critical scopes. The token it gets works at `/mcp`, on the REST
+environment API and on `/api/v1/me` for your own account there, as you, with the same
+two limits and the same approvals. `/.well-known/cbox-cli` also names the device
+authorization and token endpoints, so the CLI never needs a discovery document.
 
 An operator provisions the CLI client once per environment with
 `php artisan cbox-id:cli:client`. Run it again after an upgrade: it adds any new management
@@ -209,7 +325,7 @@ Poll it, then repeat the call with the header `Cbox-Approval: <id>`.
 
 | Tool | What it is |
 |---|---|
-| `whoami` | Who this connection acts as: a key (its id, name and scopes) or a person (who, which client, which organization and role, the token's scopes), plus the environment and issuer. Check this first when a tool you expected is missing. |
+| `whoami` | Who this connection acts as: a key (its id, name and scopes) or a person (who, which client, which organization and role, the token's scopes), plus the environment and issuer. At the root: your workspace and role, whether you are an operator, and the environments you can act in. Check this first when a tool you expected is missing. |
 | `list_actions` | A short list of every action this connection may run: tool name, summary, scope and danger. Cheaper to read than the full tool list. |
 | `approval_status` | Where a held call's approval stands. |
 | One tool per action | Named after the action, with dots as underscores: `apis.create` is `apis_create`. |
@@ -277,7 +393,9 @@ What an agent does is recorded on the [activity log](activity-log.md):
 
 - with a key, as the key's act, the same entries the API writes;
 - signed in, as **your** act, with the client you used recorded on every entry
-  (`oauth_client_id`), so "you did it" and "your agent did it" can be told apart.
+  (`oauth_client_id`), so "you did it" and "your agent did it" can be told apart. Signed
+  in at the root, an environment action is recorded in that environment's log as you, a
+  member of the workspace, and a workspace action in the workspace's log.
 
 The log does not say whether the call came through MCP or the API.
 

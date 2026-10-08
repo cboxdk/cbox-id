@@ -10,6 +10,7 @@ use App\Models\InvitationRoleGrant;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
+use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Invitations\Enums\InvitationRefusalReason;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
@@ -58,6 +59,12 @@ final class InvitationFields
                 $subjectId === '' ? null : $subjectId,
                 $subject === null ? 'An administrator' : ($subject->name ?? $subject->email ?? 'An administrator'),
             );
+        }
+
+        // A workspace member acting through a token they signed in at the root: the same
+        // person the console would have named, by their own name.
+        if ($context->principal instanceof EnvironmentMemberPrincipal) {
+            return new Inviter($context->principal->subjectId(), $context->principal->personName());
         }
 
         return new Inviter(null, $name ?? self::appName($clientId) ?? app(CurrentEnvironment::class)->name() ?? 'Your team');

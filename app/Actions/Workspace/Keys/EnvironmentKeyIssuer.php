@@ -64,7 +64,7 @@ final readonly class EnvironmentKeyIssuer
         try {
             $issued = $this->keys->issue($environment->id, $name, $scopes, $expiresAt, new KeyProvenance(
                 createdByType: InWorkspace::creatorType($principal),
-                createdById: $principal->id() !== '' ? $principal->id() : null,
+                createdById: InWorkspace::creatorId($principal),
                 // A key minted by a key answers to that key's approvals too — moving down a
                 // plane is no way to shed them.
                 stepUpPolicy: $principal instanceof WorkspaceKeyPrincipal ? $principal->key()->step_up_policy : null,

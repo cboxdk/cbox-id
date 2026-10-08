@@ -6,12 +6,16 @@ namespace App\Mcp;
 
 use App\Http\Controllers\Api\ActionController;
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\EnvironmentApiContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -55,11 +59,23 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
  * Outcomes are a tool result in the REST envelope's terms: `{data, meta?}` on success,
  * and `{error, message, field?}` — the codes the API documents — as a tool error the agent
  * can read and correct, never a protocol error it cannot.
+ *
+ * ONE ENVIRONMENT PER CALL, FROM THE ROOT. A workspace member signed in at the platform
+ * root ({@see RootPersonPrincipal}) may act in any environment of their workspace they
+ * could open the console of, so an environment action's tool takes a required
+ * `environment` argument (an id or a slug) for them. The call binds the person to that
+ * environment ({@see RootPersonPrincipal::inEnvironment()} — a 404 for one they cannot
+ * reach) and runs the action INSIDE its tenancy ({@see EnvironmentMemberPrincipal::within()}),
+ * so the action's lookups, writes and audit entries are that environment's alone. Every
+ * other principal is bound to one environment by its host, and never sees the argument.
  */
 final class ActionTool extends Tool
 {
     /** The argument that carries the REST door's `Idempotency-Key` header. */
     public const string IDEMPOTENCY_KEY = 'idempotency_key';
+
+    /** The argument naming the environment an environment action runs in, from the root. */
+    public const string ENVIRONMENT = 'environment';
 
     public const string APPROVAL_ID = 'approval_id';
 
@@ -106,6 +122,12 @@ final class ActionTool extends Tool
             return false;
         }
 
+        // From the root, an environment action is runnable when the person could run it in
+        // SOME environment of their workspace; which one is the call's question.
+        if ($principal instanceof RootPersonPrincipal && $action->plane === ActionPlane::Environment) {
+            return $principal->reachesEnvironmentAction($action);
+        }
+
         try {
             $principal->authorize($action);
         } catch (AuthorizationException) {
@@ -146,6 +168,17 @@ final class ActionTool extends Tool
     {
         $schema = $this->action->input()->jsonSchema();
         $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
+
+        if ($this->namesEnvironment()) {
+            $properties = [self::ENVIRONMENT => [
+                'type' => 'string',
+                'minLength' => 1,
+                'description' => 'The environment of your workspace to act in: its id or its slug. `whoami` lists the ones you can act in.',
+            ], ...$properties];
+
+            $required = is_array($schema['required'] ?? null) ? array_values($schema['required']) : [];
+            $schema['required'] = [self::ENVIRONMENT, ...$required];
+        }
 
         // Any action can be held for a person's approval when the key's policy says so.
         $properties[self::APPROVAL_ID] = [
@@ -198,14 +231,37 @@ final class ActionTool extends Tool
         $approvalId = $input[self::APPROVAL_ID] ?? null;
         unset($input[self::IDEMPOTENCY_KEY], $input[self::APPROVAL_ID]);
 
+        if ($principal instanceof RootPersonPrincipal && $this->action->plane === ActionPlane::Environment) {
+            $environment = $input[self::ENVIRONMENT] ?? null;
+            unset($input[self::ENVIRONMENT]);
+
+            if (! is_string($environment) || trim($environment) === '') {
+                return self::refusal('validation_failed', 'Name the environment to act in: pass `environment` (an id or a slug from `whoami`).', self::ENVIRONMENT, [
+                    'errors' => [self::ENVIRONMENT => ['The environment field is required.']],
+                ]);
+            }
+
+            try {
+                $principal = $principal->inEnvironment($environment);
+            } catch (ActionRefused $refused) {
+                return self::refusal($refused->error, $refused->getMessage(), self::ENVIRONMENT);
+            } catch (AuthorizationException $forbidden) {
+                return self::refusal('forbidden', $forbidden->getMessage());
+            }
+        }
+
         if ($idempotencyKey !== null && (! is_string($idempotencyKey) || $idempotencyKey === '' || strlen($idempotencyKey) > 255)) {
             return self::refusal('validation_failed', 'The idempotency_key must be a string of 1 to 255 characters.', self::IDEMPOTENCY_KEY, [
                 'errors' => [self::IDEMPOTENCY_KEY => ['The idempotency_key must be a string of 1 to 255 characters.']],
             ]);
         }
 
+        $approval = is_string($approvalId) && $approvalId !== '' ? $approvalId : null;
+
         try {
-            $result = $runner->run($this->action, $principal, $input, $idempotencyKey, is_string($approvalId) && $approvalId !== '' ? $approvalId : null);
+            $result = $principal instanceof EnvironmentMemberPrincipal
+                ? $this->runIn($principal, $runner, $input, $idempotencyKey, $approval)
+                : $runner->run($this->action, $principal, $input, $idempotencyKey, $approval);
         } catch (ApprovalRequired $held) {
             // Not an error: the call is waiting for a person. Said in a shape an agent can
             // act on without parsing prose.
@@ -232,6 +288,33 @@ final class ActionTool extends Tool
         }
 
         return $this->success($result);
+    }
+
+    /**
+     * Run the action as a workspace member bound to one environment, inside that
+     * environment's tenancy, with the person on the environment's API context so whatever
+     * the framework records underneath is theirs and names their client — the trail a call
+     * on that environment's own host would leave.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private function runIn(EnvironmentMemberPrincipal $member, ActionRunner $runner, array $input, mixed $idempotencyKey, ?string $approvalId): ActionResult
+    {
+        $context = app(EnvironmentApiContext::class);
+        $context->setDelegated($member);
+
+        try {
+            return $member->within(fn (): ActionResult => $runner->run($this->action, $member, $input, is_string($idempotencyKey) ? $idempotencyKey : null, $approvalId));
+        } finally {
+            $context->clear();
+        }
+    }
+
+    /** Whether this tool, listed to this caller, takes the `environment` argument. */
+    private function namesEnvironment(): bool
+    {
+        return $this->action->plane === ActionPlane::Environment
+            && app(McpCaller::class)->principal() instanceof RootPersonPrincipal;
     }
 
     /**

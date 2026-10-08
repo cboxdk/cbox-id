@@ -67,8 +67,8 @@ enum ActionPlane: string
 
     /**
      * Whether only a PERSON reaches this plane — never a management key. Its REST door
-     * takes a token the person delegated ({@see AuthenticateDelegatedApi}); until such
-     * tokens are issued, the console is the only way in.
+     * takes a token the person delegated ({@see AuthenticateDelegatedApi}), and the
+     * console the person's own session.
      */
     public function personal(): bool
     {

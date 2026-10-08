@@ -46,6 +46,12 @@ final readonly class ActionOpenApi
             $path = $action->documentedPath();
 
             if (isset($paths[$path][$method])) {
+                // Hand-written, and it wins — but every environment action is reached from
+                // the platform root as well, whoever wrote its operation.
+                if (is_array($paths[$path][$method]) && $plane === ActionPlane::Environment) {
+                    $paths[$path][$method] = $this->fromTheRoot($paths[$path][$method], $action);
+                }
+
                 continue;
             }
 
@@ -106,12 +112,6 @@ final readonly class ActionOpenApi
 
         $operation['parameters'] = $parameters;
 
-        // A person's access token runs the actions their own console offers — and the
-        // document says so where it is true, rather than on every operation of the plane.
-        if ($action->plane === ActionPlane::Environment && $action->consoleGate === ConsoleGate::Administer) {
-            $operation['security'] = [['EnvironmentApiKey' => []], ['ManagementAccessToken' => []]];
-        }
-
         if (! $reads && $rest !== []) {
             $required = array_values(array_map(static fn (Field $field): string => $field->name, array_filter($rest, static fn (Field $field): bool => $field->isRequired())));
             $schema = ['type' => 'object', 'properties' => []];
@@ -149,7 +149,99 @@ final readonly class ActionOpenApi
         $operation['responses']['422'] = ['$ref' => '#/components/responses/UnprocessableEntity'];
         $operation['responses']['429'] = ['$ref' => '#/components/responses/TooManyRequests'];
 
+        return $action->plane === ActionPlane::Environment ? $this->fromTheRoot($operation, $action) : $operation;
+    }
+
+    /**
+     * What an environment action's operation says about the credentials beside a key.
+     *
+     * A person's access token from the ENVIRONMENT's issuer runs the actions their own
+     * organization console offers — and the document says so where it is true, rather than
+     * on every operation of the plane. A workspace member's token from the PLATFORM ROOT
+     * runs every action the environment console runs, on the root's host, in the
+     * environment the `Cbox-Environment` header names: so every operation takes the header,
+     * and may answer `400 environment_required` without it and `404` for an environment
+     * the person cannot reach.
+     *
+     * @param  array<mixed>  $operation  an operation object — its keys are field names
+     * @return array<string, mixed>
+     */
+    private function fromTheRoot(array $operation, ActionDefinition $action): array
+    {
+        $security = [['EnvironmentApiKey' => []]];
+
+        if ($action->consoleGate === ConsoleGate::Administer) {
+            $security[] = ['ManagementAccessToken' => []];
+        }
+
+        if ($action->consoleGate === ConsoleGate::Administer || $action->consoleGate === ConsoleGate::EnvironmentAdmin) {
+            $security[] = ['WorkspaceAccessToken' => []];
+        }
+
+        $parameters = is_array($operation['parameters'] ?? null) ? array_values($operation['parameters']) : [];
+        $environment = ['$ref' => '#/components/parameters/CboxEnvironment'];
+
+        if (! in_array($environment, $parameters, true)) {
+            $parameters[] = $environment;
+        }
+
+        // The security right after the parameters, where an operation states it — so the
+        // document reads in the order it always has.
+        $ordered = [];
+
+        foreach ($operation as $key => $value) {
+            if (! is_string($key) || $key === 'security') {
+                continue;
+            }
+
+            $ordered[$key] = $key === 'parameters' ? $parameters : $value;
+
+            if ($key === 'parameters') {
+                $ordered['security'] = $security;
+            }
+        }
+
+        $ordered['parameters'] ??= $parameters;
+        $ordered['security'] ??= $security;
+        $operation = $ordered;
+
+        $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
+        $responses = self::withResponse($responses, 400, ['$ref' => '#/components/responses/EnvironmentRequired']);
+        $operation['responses'] = self::withResponse($responses, 404, ['$ref' => '#/components/responses/NotFound']);
+
         return $operation;
+    }
+
+    /**
+     * $responses with $status added before the first status above it, unless it is there
+     * already — so a hand-written operation keeps its own order and its own wording.
+     *
+     * @param  array<array-key, mixed>  $responses
+     * @return array<array-key, mixed>
+     */
+    private static function withResponse(array $responses, int $status, mixed $response): array
+    {
+        if (array_key_exists($status, $responses)) {
+            return $responses;
+        }
+
+        $merged = [];
+        $placed = false;
+
+        foreach ($responses as $key => $value) {
+            if (! $placed && is_numeric($key) && (int) $key > $status) {
+                $merged[$status] = $response;
+                $placed = true;
+            }
+
+            $merged[$key] = $value;
+        }
+
+        if (! $placed) {
+            $merged[$status] = $response;
+        }
+
+        return $merged;
     }
 
     /**
