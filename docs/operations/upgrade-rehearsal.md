@@ -29,7 +29,7 @@ scripts/upgrade-path-check.sh --from v1.1.1 --engine mysql
 scripts/upgrade-path-check.sh --from v1.1.1 --engine pgsql
 ```
 
-It needs PHP, Composer, git and Docker, starts its own `mysql:8.4` or `postgres:17`
+It needs PHP, Composer, git and Docker, starts its own `mysql:8.4` or `postgres:18`
 container on a free port, and removes everything when it is done (`--keep` leaves the
 container and the scratch directory for a look). In order:
 
