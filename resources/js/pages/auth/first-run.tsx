@@ -52,8 +52,7 @@ export default function FirstRun({ multiTenant, misconfigured, unmigrated, claim
                 <>
                     <Notice title={t('auth.first_run.token_notice.title')}>
                         {rich('auth.first_run.token_notice.body', {
-                            path: <code>storage/app/private/cbox-id-first-run.token</code>,
-                            logs: <code>docker logs</code>,
+                            command: <code>php artisan cbox-id:setup-token</code>,
                         })}
                     </Notice>
 

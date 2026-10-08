@@ -21,6 +21,8 @@ the security-critical ones checked for you.
 | `CBOX_ID_ISSUER` | The public HTTPS URL of this IdP — the token `iss` and OIDC discovery base. | falls back to `APP_URL` | Set to the exact public URL clients discover, e.g. `https://id.acme.com`. |
 | `CBOX_ID_WEBAUTHN_RP_ID` | Passkey Relying-Party ID — usually the registrable domain. | `localhost` (in `.env.example`) | Set to your bare domain in production, e.g. `id.acme.com`. |
 | `CBOX_ID_WEBAUTHN_ORIGIN` | Passkey origin — the exact scheme+host+port the browser reports. | `${APP_URL}` | Set to the full origin, e.g. `https://id.acme.com`. A mismatch is rejected. |
+| `CBOX_ID_SETUP_TOKEN_TTL` | Minutes a first-run setup token stays valid. The token is kept hashed in the database, so every replica accepts it. | `60` | Rarely. An expired token is re-armed on the next look at `/first-run`, and `cbox-id:setup-token` always mints a fresh one. |
+| `CBOX_ID_LOG_SETUP_TOKEN` | Also write the first-run setup token into the application log when it is armed. | `false` | Only for a single container where `docker logs` is your only view of the box. A log shipped to an aggregator hands the token to everyone who can read it. |
 
 ## Environments (multi-plane hosting)
 
@@ -467,6 +469,8 @@ variables; these are the ones a deployment sets. See
 | Variable | Purpose | Default | Set it when |
 |---|---|---|---|
 | `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` | Hard cap on `queue:work` processes per host. | `2` | The workers get more memory than a 512 MB instance shared with the web tier. |
+| `QUEUE_AUTOSCALE_WORKERS_MAX` | Most workers one worker group runs. Every queue on a connection shares one group, so this is the number that moves the worker count. Must not exceed `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`; the app refuses to start otherwise. | `2` | Together with `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`, whenever you raise it. |
+| `QUEUE_AUTOSCALE_WORKERS_MIN` | Fewest workers a group keeps running. At least 1, at most `QUEUE_AUTOSCALE_WORKERS_MAX`. | `1` | A steady load that should not wait for the manager to scale up. |
 | `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. `cbox-id:doctor` then fails a per-process cache or session store. |
 | `CBOX_ID_REPLICAS` | How many web replicas the deployment runs — the number its manifest gives the platform (`replicas:` in `cbox.yaml`), told to the app, which cannot count its siblings. Changes nothing at runtime. | `1` | Always, beside `replicas:`. Above 1, `cbox-id:doctor` **fails** a `file`, `array` or `apc` cache or session store instead of warning: every replica would hold its own rate limits, single-use tokens, replay guards and sessions. |
 | `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The `queue_workers` health check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |

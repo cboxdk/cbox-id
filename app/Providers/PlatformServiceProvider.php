@@ -16,8 +16,8 @@ use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\Install\Contracts\SetupTokens;
 use App\Platform\Install\DatabasePlatformInstaller;
+use App\Platform\Install\DatabaseSetupTokens;
 use App\Platform\Install\EnvFile;
-use App\Platform\Install\FileSetupTokens;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\OrganizationInvitationService;
@@ -49,7 +49,6 @@ use Cbox\Id\Migration\Contracts\LegacyCredentialSource;
 use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
-use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
@@ -198,16 +197,16 @@ final class PlatformServiceProvider extends ServiceProvider
         // service. Scoped for the same reason: it reads the request's environment.
         $this->app->scoped(AuthorizationOrganizations::class, AuthorizationOrganizationService::class);
 
-        // The setup token lives on the LOCAL disk explicitly, not on the default one: a
-        // deployment that points `FILESYSTEM_DISK` at S3 would otherwise publish its
-        // first-run secret to object storage, where "only console access can read it"
-        // stops being true.
-        $this->app->singleton(SetupTokens::class, fn (Application $app): SetupTokens => new FileSetupTokens(
-            $app->make(FilesystemFactory::class)->disk('local'),
+        // The setup token lives in the DATABASE, which every replica of a horizontally
+        // scaled deployment shares — never on one replica's disk, where the look at
+        // `/first-run` and the submit could land on different pods and disagree. Hashed at
+        // rest and bounded by an expiry; see DatabaseSetupTokens.
+        $this->app->singleton(SetupTokens::class, fn (Application $app): SetupTokens => new DatabaseSetupTokens(
             $app->make(LoggerInterface::class),
+            max(1, $app->make('config')->integer('cbox-id.setup_token_ttl_minutes', 60)),
             // Opt-in, because the token is the entire authority to claim an unclaimed
             // platform and a centralised log aggregator is not a secret store. See
-            // FileSetupTokens::issue().
+            // DatabaseSetupTokens::arm().
             (bool) config('cbox-id.log_setup_token'),
         ));
 

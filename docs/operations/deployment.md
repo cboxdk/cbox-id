@@ -78,10 +78,11 @@ platform Secret first — `APP_KEY`, and `CBOX_ID_CRYPTO_KEY` from
 `php -r "echo base64_encode(random_bytes(32)).PHP_EOL;"`; the installer only mints a crypto
 key when none is set — put the issuer and the deployment shape's variables under `env` in
 `cbox.yaml`, deploy, and then run the non-interactive install once as a one-off command in
-a web pod. The `/first-run` screen works too, but its setup token lives on one pod's disk:
-with two replicas the request can land on the other pod, so read the token with
-`php artisan cbox-id:setup-token` in the pod that answers, or claim it while the deployment
-runs one replica.
+a web pod. The `/first-run` screen works too, with any number of replicas: run
+`php artisan cbox-id:setup-token` in any pod and paste what it prints. The token is kept,
+hashed, in the database every replica shares, so whichever pod answers the browser accepts
+it. It is single use and expires after an hour (`CBOX_ID_SETUP_TOKEN_TTL`); running the
+command again mints a fresh one and retires the last.
 
 ## 3. Optimize for production
 
@@ -104,10 +105,9 @@ factor; this is the most sensitive account on the system.
 
 If the deployment was stood up without a shell (an image started by someone else),
 claim it in the browser at `/first-run` instead. That page exists only while the
-platform is empty and requires the setup token the deployment writes to
-`storage/app/private/cbox-id-first-run.token` and to the application log — so an
-internet-exposed box cannot be claimed by whoever finds it first. See
-[Installation](../getting-started/installation.md).
+platform is empty and requires a setup token, which `php artisan cbox-id:setup-token`
+prints on any instance of the deployment — so an internet-exposed box cannot be claimed by
+whoever finds it first. See [Installation](../getting-started/installation.md).
 
 Sign in at **`/workspace/login`** — the install command prints the URL — and open the
 **`/platform`** section, the deployment pages in that console's rail. From there

@@ -225,7 +225,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Hvor er opsætningstokenet?',
-            'body' => 'I :path på serveren og i applikationsloggen (:logs for en container). Det vises aldrig på denne side.',
+            'body' => 'Kør :command på serveren — på en hvilken som helst instans af installationen — og indsæt det, der bliver skrevet ud. Hver kørsel skriver et nyt token ud, som gælder i en time. Det vises aldrig på denne side.',
         ],
         'cli_hint' => 'Foretrækker du kommandolinjen? :install gør det samme og er den eneste vej der også kan vælge og gemme installationens opbygning.',
         'token_label' => 'Opsætningstoken',
@@ -240,7 +240,7 @@ return [
         'organization_hint' => 'Installationen er konfigureret som multi-tenant, så den opretter også det første arbejdsområde: den organisation der ejer miljøer og fakturering.',
         'organization_placeholder' => 'Din virksomhed',
         'submit' => 'Start installationen',
-        'token_mismatch' => 'Opsætningstokenet passer ikke til det token installationen har udstedt.',
+        'token_mismatch' => 'Opsætningstokenet passer ikke til installationens, eller det er udløbet. Skriv et nyt ud med php artisan cbox-id:setup-token.',
     ],
 
     'join_organization' => [
