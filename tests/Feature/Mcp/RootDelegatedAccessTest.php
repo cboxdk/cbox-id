@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Mail\InvitationMail;
 use App\Mcp\ActionTool;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\EnvironmentOrigin;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OrganizationActivity;
 use App\Support\CliClient;
@@ -348,6 +350,84 @@ it('takes the environment in a header over REST, on the environment API\'s own r
 
     $this->withToken($token)->getJson('/api/v1/apis', ['Cbox-Environment' => $other['environment']->id])
         ->assertNotFound();
+})->group('security');
+
+// ── URLs it mints are the environment's ─────────────────────────────────────────
+
+it('mints the URLs of an environment action taken at the root on that environment\'s own host', function (): void {
+    // Found live: `cbox id sso connections create` signed in at the root answered a SAML
+    // ACS URL on the root, which serves no SAML, and the Admin Portal link it minted said
+    // "expired" there while the same token opened on the environment's host.
+    config()->set('cbox-id.environments.base_domains', ['id.example']);
+    $staging = rootSecondEnvironment($this->account);
+    $token = rootToken($this->account['subjectId']);
+    $headers = ['Cbox-Environment' => $staging->slug];
+
+    $organization = (string) $this->withToken($token)
+        ->postJson('/api/v1/organizations', ['name' => 'Globex'], $headers)
+        ->assertCreated()
+        ->json('data.id');
+
+    $saml = $this->withToken($token)->postJson('/api/v1/sso/connections', [
+        'organization_id' => $organization, 'name' => 'Okta', 'type' => 'saml', 'pending_idp' => true,
+    ], $headers)->assertCreated();
+
+    expect($saml->json('data.service_provider.sp_acs_url'))->toStartWith('https://acme-staging.id.example/sso/saml/')
+        ->and($saml->json('data.service_provider.sp_metadata_url'))->toStartWith('https://acme-staging.id.example/sso/saml/');
+
+    $oidc = mcpCall($token, 'sso_connections_create', [
+        'environment' => $staging->slug, 'organization_id' => $organization, 'name' => 'Entra', 'type' => 'oidc', 'pending_idp' => true,
+    ]);
+
+    expect($oidc['isError'] ?? false)->toBeFalse()
+        ->and($oidc['structuredContent']['data']['service_provider']['redirect_uri'])->toStartWith('https://acme-staging.id.example/sso/oidc/');
+
+    // Pinned for the action only: the generator is the request's own again afterwards.
+    expect(url('/after'))->toBe(rtrim((string) config('app.url'), '/').'/after');
+})->group('security');
+
+it('mails the links of an environment action taken at the root on that environment\'s own host', function (): void {
+    // Found live: an invitation sent with `cbox id invitations send --env=…` signed in at the
+    // root mailed an accept link on the root, which bounced the invitee to its sign-in. The
+    // root resolves to no environment, so MailLinks fell back to `app.url`.
+    config()->set('cbox-id.environments.base_domains', ['id.example']);
+    $staging = rootSecondEnvironment($this->account);
+    $token = rootToken($this->account['subjectId']);
+    $headers = ['Cbox-Environment' => $staging->slug];
+
+    $organization = (string) $this->withToken($token)
+        ->postJson('/api/v1/organizations', ['name' => 'Initech'], $headers)
+        ->assertCreated()
+        ->json('data.id');
+
+    $this->withToken($token)
+        ->postJson("/api/v1/organizations/{$organization}/invitations", ['email' => 'new.admin@initech.example', 'role' => 'admin'], $headers)
+        ->assertCreated();
+
+    Mail::assertSent(InvitationMail::class, static fn (InvitationMail $mail): bool => str_starts_with($mail->url, 'https://acme-staging.id.example/invitations/'));
+
+    expect(EnvironmentOrigin::pinned())->toBeNull()
+        ->and(url('/after'))->toBe(rtrim((string) config('app.url'), '/').'/after');
+})->group('security');
+
+it('keeps a held environment action\'s poll on the root, where its token is taken', function (): void {
+    config()->set('cbox-id.environments.base_domains', ['id.example']);
+    $token = rootToken($this->account['subjectId']);
+    $root = rtrim((string) config('app.url'), '/');
+
+    $held = $this->withToken($token)
+        ->postJson('/api/v1/keys', ['name' => 'Deploy bot', 'scopes' => ['apis:read']], ['Cbox-Environment' => $this->account['environment']->slug])
+        ->assertStatus(202)
+        ->assertJsonPath('error', 'approval_required');
+
+    $poll = (string) $held->json('approval.poll_url');
+
+    // The SDKs refuse a poll on another origin rather than hand it the credential.
+    expect($poll)->toStartWith($root.'/api/v1/action-approvals/');
+
+    $this->withToken($token)->getJson((string) parse_url($poll, PHP_URL_PATH))
+        ->assertOk()
+        ->assertJsonPath('data.status', 'pending');
 })->group('security');
 
 // ── Critical waits for the person ───────────────────────────────────────────────

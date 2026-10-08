@@ -103,9 +103,15 @@ final class ActionTool extends Tool
         $description = $this->action->summary
             ."\n\nAction `{$this->action->name}` · scope `{$this->action->scope}` · danger: {$this->action->danger->value}.";
 
-        if ($this->action->danger->destructive()) {
-            $description .= ' It removes or revokes something; confirm with the person before calling it.';
-        }
+        // Said as what it IS. Critical counts as destructive for the annotation below, but a
+        // critical action mints a credential or changes how people sign in far more often
+        // than it removes anything — `apps_create` was described to agents as removing
+        // something.
+        $description .= match ($this->action->danger) {
+            Danger::Destructive => ' It removes or revokes something; confirm with the person before calling it.',
+            Danger::Critical => ' It hands out a credential, changes who can sign in or how, or removes something hard to undo; confirm with the person before calling it.',
+            default => '',
+        };
 
         if ($this->action->danger->writes()) {
             $description .= ' Pass `'.self::IDEMPOTENCY_KEY.'` (any unique string) to make a retry safe: the same key and arguments return the first answer for 24 hours instead of running again.';

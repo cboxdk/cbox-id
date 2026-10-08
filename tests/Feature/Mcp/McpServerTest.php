@@ -145,6 +145,20 @@ it('describes each tool from its action: schema, scope, danger and annotations',
         ->and($tools['whoami']['annotations'])->toMatchArray(['readOnlyHint' => true]);
 });
 
+it('tells an agent what a critical tool does, rather than that it removes something', function (): void {
+    // Found live with the MCP Inspector: `apps_create` and `keys_create` — both minting a
+    // credential — were described as removing or revoking something.
+    $registry = app(ActionRegistry::class);
+    $create = (new ActionTool($registry->named('apps.create')))->description();
+    $delete = (new ActionTool($registry->named('apis.delete')))->description();
+
+    expect($registry->named('apps.create')->danger)->toBe(Danger::Critical)
+        ->and($create)->toContain('danger: critical', 'hands out a credential', 'confirm with the person')
+        ->and($create)->not->toContain('removes or revokes something')
+        ->and($registry->named('apis.delete')->danger)->toBe(Danger::Destructive)
+        ->and($delete)->toContain('removes or revokes something; confirm with the person');
+});
+
 it('says who the connection acts as', function (): void {
     $key = mcpIssue([EnvironmentApiScope::ApisRead]);
 

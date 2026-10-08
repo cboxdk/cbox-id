@@ -8,6 +8,15 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Fixed
+
+- **An environment action taken from the platform root minted its URLs on the root.** With a workspace member's root token — `cbox id …` after `cbox login`, the root's `/mcp` with `environment`, or an SDK with `environment=` — a SAML connection's `service_provider` entity ID, ACS URL and metadata URL, an OIDC connection's `redirect_uri`, an Admin Portal link and a mailed invitation's accept link all named the root, which serves none of them (a 404, "This link has expired", a bounce to the root's sign-in). The action now runs with URLs pinned to the environment's issuer (`App\Platform\EnvironmentOrigin`), and `MailLinks` follows the pin. An approval's `poll_url` stays on the host the request came to, where the root's token is valid. A SAML connection created from the root before this keeps the root-host `sp_entity_id` / `sp_acs_url` it stored; set them again with `sso.connections.update` or recreate the draft. Found by the live smoke test.
+- **MCP tool descriptions** no longer tell an agent that a critical action (`apps_create`, `keys_create`, …) "removes or revokes something"; a critical tool says it hands out a credential, changes sign-in, or removes something hard to undo.
+
+### Added
+
+- `docs/operations/live-smoke-test.md`: a reproducible end-to-end run with the released `cbox` CLI, the MCP Inspector and both SDKs against a production-shaped local deployment (Postgres, Valkey, Mailpit, TLS through Caddy), with every command and its result, to rerun against staging.
+
 ## [2.0.0] - 2026-10-08
 
 ### Security
