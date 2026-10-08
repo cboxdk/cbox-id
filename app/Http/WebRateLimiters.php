@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Platform\PlaneResolver;
 use App\Platform\ThrottleScope;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -61,6 +62,15 @@ final class WebRateLimiters
     /** Passkey ceremonies (challenge + assertion) per minute from one address. */
     public const PASSKEY_PER_IP = 30;
 
+    /**
+     * `/oauth/authorize` and its consent steps at the PLATFORM ROOT, per minute from one
+     * address. A person signing an MCP client in makes a handful of these; an MCP client
+     * registered by anyone can send anyone there, so the root meters it. Everywhere else the
+     * endpoint is a tenant's identity provider and unmetered as before — its relying parties
+     * run silent renew through it and a NAT of their users is not an attacker.
+     */
+    public const ROOT_AUTHORIZE_PER_IP = 60;
+
     public static function register(): void
     {
         RateLimiter::for(
@@ -72,6 +82,13 @@ final class WebRateLimiters
         RateLimiter::for(
             'passkey',
             fn (Request $request): Limit => self::passkeyLimit($request),
+        );
+
+        RateLimiter::for(
+            'oauth-authorize',
+            fn (Request $request): Limit => app(PlaneResolver::class)->onAccountPlane()
+                ? Limit::perMinute(self::ROOT_AUTHORIZE_PER_IP)->by('oauth-authorize|'.ThrottleScope::key().'|ip:'.($request->ip() ?? 'unknown'))
+                : Limit::none(),
         );
     }
 

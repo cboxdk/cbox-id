@@ -27,6 +27,7 @@ for its area, for example [APIs](apis.md).
 | Address | `https://<environment-host>/mcp` | `https://<platform-root>/mcp` |
 | Who signs in there | The environment's own people: an organization's administrators | The workspace's team, and the platform's operators |
 | What it reaches | That environment | The workspace, every environment of it you administer, your own account and, for an operator, the deployment |
+| Signing in | An MCP client signs you in by itself, or a key | An MCP client signs you in by itself, the `cbox` CLI, or a workspace key |
 | Keys it takes | `cbid_env_…` for that environment | `cbid_ws_…` for the workspace |
 
 Running a workspace, you are a person of the platform root: you reach an environment's
@@ -38,6 +39,9 @@ The rest of this page covers both; the root is described in
 The exact commands:
 
 ```bash
+# Your whole workspace, signed in as yourself: the one most people want
+claude mcp add --transport http cbox-id https://<platform-root>/mcp
+
 # One environment, signing in as one of its own people
 claude mcp add --transport http cbox-id https://<environment-host>/mcp
 
@@ -45,7 +49,7 @@ claude mcp add --transport http cbox-id https://<environment-host>/mcp
 claude mcp add --transport http cbox-id https://<environment-host>/mcp \
   --header "Authorization: Bearer cbid_env_…"
 
-# Your whole workspace, signed in as yourself (the cbox CLI)
+# Your whole workspace, signed in as yourself through the cbox CLI
 cbox login --issuer https://<platform-root>
 
 # Your whole workspace, as an agent holding a workspace key
@@ -240,7 +244,25 @@ are the values the `environment` argument takes.
 
 ### Signing in at the root
 
-Sign the `cbox` CLI in at the root:
+Add the root's server to Claude Code by its URL alone, the same way as an environment's:
+
+```bash
+claude mcp add --transport http cbox-id https://<platform-root>/mcp
+```
+
+Run `/mcp` in Claude Code and choose **Authenticate**. Your browser opens the root's
+sign-in page, the one the workspace console uses. Sign in, check what the consent screen
+lists, and choose **Authorize**. Any MCP client that signs people in with OAuth works the
+same way with that URL. Underneath it is the flow in
+[Option 1](#option-1-sign-in-with-oauth), with three differences at the root:
+
+- Only someone on a workspace's team, or an operator, can finish signing in. Anyone else
+  is told so on the sign-in page.
+- The token is for the root's `/mcp` and nothing else. A client that asks for another
+  `resource`, or for `openid`, is refused. There is no ID token.
+- The consent is recorded in your workspace's activity log as `mcp.client_authorized`.
+
+Or sign the `cbox` CLI in at the root:
 
 ```bash
 cbox login --issuer https://<platform-root>
@@ -263,10 +285,13 @@ Without the header the answer is `400 environment_required`. Everything is recor
 environment's own activity log, as you (`actor_type: organization_member`), with the
 client you used.
 
-The root is not an identity provider for other apps, so it signs in the platform's own
-clients only: today that is the `cbox` CLI. MCP clients that sign you in themselves, such
-as Claude Code without a header, can sign in on an environment's host but not yet at the
-root. To give such an agent the workspace, use a workspace key:
+The root is not an identity provider for other apps. It signs in the platform's own
+clients (the `cbox` CLI) and MCP clients for its own `/mcp`, and nothing else: no OpenID
+Connect discovery, no UserInfo, no client an administrator created there. An operator can
+turn MCP sign-in at the root off with `CBOX_ID_ROOT_MCP_OAUTH=false`; see
+[environment variables](../configuration/environment-variables.md#oauth--oidc-endpoint-policy).
+
+To give an agent the workspace without a person behind it, use a workspace key:
 
 ```bash
 claude mcp add --transport http cbox-workspace https://<platform-root>/mcp \
@@ -429,6 +454,12 @@ plus `error="invalid_token"` when a token was presented. That document
 (`https://<environment-host>/mcp`), the environment's issuer as its authorization server,
 and the scopes the tools use.
 
+At the platform root the issuer is the root's, and its
+`/.well-known/oauth-authorization-server` is written for MCP clients only: the code flow
+with S256 PKCE, public clients (`none`), registration, client ID metadata documents, the
+device grant for the `cbox` CLI, and the scopes of the root's `/mcp` plus `offline_access`.
+There is no `/.well-known/openid-configuration` there.
+
 A token is accepted when it is live, its `aud` names `https://<environment-host>/mcp`, its
 `iss` is this environment's issuer, it stands for a person (not a client-credentials or a
 support-session token) and, when it is DPoP-bound, the request carries a valid proof
@@ -452,6 +483,11 @@ profile takes a public client only:
 Redirect URIs must be https or loopback http. A client secret, another grant or a
 back-channel logout URI is refused with `invalid_client_metadata`. Leave `scope` out to be
 registered for every `/mcp` scope plus `offline_access`.
+
+At the platform root registration is offered only while the deployment's mode is `mcp`, and
+the response carries no `registration_access_token` or `registration_client_uri`: the root
+serves no [RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) management. Protocol scopes
+other than `offline_access` are dropped from what you are registered for.
 
 ### Client ID metadata documents
 

@@ -25,6 +25,8 @@ use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\OAuth\RootMcpAudiences;
+use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\WorkspaceApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
@@ -34,7 +36,9 @@ use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
+use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
@@ -55,6 +59,14 @@ class AppServiceProvider extends ServiceProvider
             $app->make(IssuerResolver::class),
             $app->make(ActionRegistry::class),
         ));
+
+        // MCP clients signing a person in at the PLATFORM ROOT are held to its `/mcp`: every
+        // token a self-registered client is issued there is audienced to it, and such a
+        // client may hold its scopes and `offline_access` alone — no `openid`, because the
+        // root is nobody's identity provider. Both inert everywhere but the root of a
+        // multi-tenant deployment. See App\Platform\OAuth\RootMcpOAuth.
+        $this->app->extend(AudienceResolver::class, fn (AudienceResolver $inner): AudienceResolver => new RootMcpAudiences($inner));
+        $this->app->bind(SelfRegisteredScopes::class, RootMcpSelfRegisteredScopes::class);
 
         // Domain-ownership verification reads the challenge TXT from the domain's
         // authoritative nameservers, not the framework's default recursive

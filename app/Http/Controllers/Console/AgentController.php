@@ -17,6 +17,7 @@ use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\OAuth\RootMcpOAuth;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
@@ -178,7 +179,10 @@ final readonly class AgentController extends ConsoleController
      * The platform root's `/mcp` and its issuer — what `cbox login` and an agent holding a
      * workspace key point at — or null when no root resource can be named.
      *
-     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string}|null
+     * `oauth` says whether an MCP client may sign the person in there itself — the command
+     * that needs nothing but the URL, offered first when it works ({@see RootMcpOAuth}).
+     *
+     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool}|null
      */
     private function workspaceConnection(): ?array
     {
@@ -194,6 +198,7 @@ final readonly class AgentController extends ConsoleController
             'mcpUrl' => $resource->identifier,
             'issuer' => $origin,
             'restBaseUrl' => $origin.'/api/v1',
+            'oauth' => RootMcpOAuth::enabled() && $resource->dynamicClients,
         ];
     }
 

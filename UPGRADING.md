@@ -16,6 +16,20 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### The platform root signs MCP clients in
+
+Multi-tenant deployments only. The platform root now answers an MCP client the way an
+environment's host does, for the root's own `/mcp` and nothing else: the resource and
+authorization-server metadata, `/oauth/register` (`mcp` profile only), client ID metadata
+documents, and `/oauth/authorize` and the token endpoints for those clients. Before, all of
+these answered `404` on the root. Every token such a client gets is audienced to the root's
+`/mcp`, `openid` is refused, and only someone on a workspace's team or an operator can
+finish signing in. OpenID Connect discovery, UserInfo, SAML and SCIM stay `404` there.
+
+Nothing to run. To keep the root as it was, set `CBOX_ID_ROOT_MCP_OAUTH=false`. If you set
+`CBOX_ID_DCR_MODE` to anything but `mcp`, the root registers no clients (metadata documents
+still work).
+
 ### MCP clients can register themselves, and the `cbox` CLI needs its scopes
 
 People can now sign an MCP client or the `cbox` CLI in and act on the management plane as

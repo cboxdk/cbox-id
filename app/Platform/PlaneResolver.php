@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\SetEnvironment;
+use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\OAuth\RootMcpOAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
+use Cbox\Id\OAuthServer\Contracts\ClientIdMetadataDocuments;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Platform\PlatformRoot;
 
@@ -134,6 +137,10 @@ final class PlaneResolver
      * and half an IdP is worse than none, because a conformant client can discover it and
      * follow it into a dead end.
      *
+     * An MCP client signing a person in for the root's own `/mcp` is the one exception, and
+     * it is asked separately ({@see servesRootMcpOAuth()}) so this answer stays exactly what
+     * it says: the root is nobody's identity provider.
+     *
      * INBOUND federation is deliberately not part of this. Answering as an issuer and
      * consuming somebody else's assertion are opposite roles, and the account plane
      * genuinely does the second — see the SSO callbacks in `routes/web.php`.
@@ -231,6 +238,69 @@ final class PlaneResolver
                 ->whereNull('organization_id')
                 ->exists(),
         ) === true;
+    }
+
+    /**
+     * Whether the platform root serves an MCP client here — the RFC 9728 and RFC 8414
+     * documents, registration in the `mcp` profile, and (for such a client,
+     * {@see admitsRootMcpClient()}) `/oauth/authorize` and the token endpoints.
+     *
+     * THE ROOT'S `/mcp` IS ONE CONNECTION FOR A WHOLE WORKSPACE ({@see RootDelegatedAccess}),
+     * and an MCP client knows nothing but its URL: it is answered `401` with a pointer to the
+     * resource's metadata, reads the authorization server from there, registers itself and
+     * sends the person to sign in. Every step of that is a surface {@see servesIssuer()}
+     * keeps off the root, so without this the only way in was the `cbox` CLI.
+     *
+     * NARROWER THAN THE ISSUER WALL IT OPENS, and the narrowness is the point: no discovery
+     * document, no `openid`, no UserInfo, SAML or SCIM, no client an administrator created,
+     * and no audience but the root's `/mcp` ({@see RootMcpOAuth}). The root is still an
+     * identity provider for nobody's app.
+     *
+     * A HOST question as well as a context one, like {@see servesConsole()}: an unmapped name
+     * resolves to the root, and registering clients under `anything.cboxid.com` is a
+     * surface nobody asked for. Off with `api.mcp.root_oauth`, or with self-registered
+     * clients closed out of `/mcp` (`api.mcp.dynamic_clients`), and the root is back to its
+     * first-party clients alone.
+     */
+    public function servesRootMcpOAuth(string $host): bool
+    {
+        return $this->onAccountPlane()
+            && RootMcpOAuth::enabled()
+            && $this->isPlatformRootHost($host);
+    }
+
+    /**
+     * Whether `/oauth/authorize` and the token endpoints admit `$clientId` at the platform
+     * root as an MCP CLIENT — one that registered itself there in the `mcp` profile, or a
+     * client ID metadata document — on top of the platform-owned first-party clients
+     * {@see servesFirstPartyIssuer()} admits.
+     *
+     * Never a client an administrator created: an organization admin signed in at the root
+     * can create OAuth clients there from Developers › Apps, and those are exactly the ones
+     * the first-party wall keeps out. A self-registered client is told apart by its
+     * registration access token — only `/oauth/register` writes one — and a document client
+     * by its id being an https URL the registry does not hold (registered first, always).
+     */
+    public function admitsRootMcpClient(string $clientId, string $host): bool
+    {
+        $root = $this->platformRootKey();
+
+        if ($clientId === '' || $root === null || ! $this->servesRootMcpOAuth($host)) {
+            return false;
+        }
+
+        $registered = $this->environments->withoutScope(
+            fn (): ?Client => Client::query()
+                ->where('environment_id', $root)
+                ->where('client_id', $clientId)
+                ->first(),
+        );
+
+        if ($registered instanceof Client) {
+            return $registered->isDynamicallyRegistered() && $registered->organization_id === null;
+        }
+
+        return app(ClientIdMetadataDocuments::class)->supports($clientId);
     }
 
     /**

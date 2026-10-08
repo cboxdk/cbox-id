@@ -51,6 +51,7 @@ return [
         'stale' => 'Anmodningen om godkendelse kan ikke længere gennemføres. Start forfra.',
         'account_attention' => 'Din konto kræver opmærksomhed før du kan fortsætte. Log ind igen.',
         'step_up' => 'Applikationen kræver et nyere eller stærkere login. Start forfra.',
+        'no_workspace' => 'Dette login forbinder en agent med et workspace på Cbox ID, og din konto er ikke med i et workspaces team. Bed en ejer af workspacet om at invitere dig, eller forbind agenten på dit miljøs egen adresse i stedet.',
     ],
 
     'organization' => [
