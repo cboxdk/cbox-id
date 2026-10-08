@@ -191,9 +191,15 @@ php artisan cbox-id:doctor
 
 The three cache commands are separate artisan invocations (or use
 `php artisan optimize` to run them together); restart the scheduler too if it runs as
-`schedule:work`. Run `doctor` before returning traffic. The framework,
-`cboxdk/laravel-id`, is a 1.x package under semantic versioning, and a minor is where its
-new migrations arrive — check its changelog before bumping it.
+`schedule:work`. Roll forward one release at a time; run `doctor` before returning traffic.
+Read [UPGRADING](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md) for the release
+first: it says what the operator has to do, including the framework's (`cboxdk/laravel-id`)
+migrations.
+
+**Rehearse the migration before production runs it**, against a restored copy of your
+database, and take a backup you have restored before: a backup is the only complete way
+back. [Rehearsing an upgrade](upgrade-rehearsal.md) has the steps and the seeded check
+that runs on every release.
 
 ## Break-glass (emergency admin access)
 

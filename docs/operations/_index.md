@@ -19,6 +19,9 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
   PaaS, the operator-only job monitor, and the health signal that says it is running.
 - [Live smoke test](live-smoke-test.md) — a reproducible end-to-end run with the real
   clients (cbox CLI, an MCP client, both SDKs) against a live deployment.
+- [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your
+  database: the seeded check on MySQL and PostgreSQL, and a rehearsal on a copy of your
+  own data.
 - [Analytics storage](analytics.md) — where authentication analytics are stored
   (nothing, the app's own database, or ClickHouse) and the retention each needs.
 

@@ -27,6 +27,13 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 ### Changed
 
 - **Danish hosted pages and mail, reviewed by a native speaker's standard.** `lang/da` now uses one term per concept — "log ind" / "login", "loginlink", "adgangskode", "adgangsnøgle", "totrinsbekræftelse", "arbejdsområde" (was also "workspace"), "revisionslog" (was also "audit-log"), "logstreaming", "API-nøgle" — with "access key" kept in English on the AWS form so it is never confused with a passkey. Sentence case, du-form, “ ” quotation marks (no more » «), spaced en dashes, no comma before restrictive subclauses, "den" before dates in mail, and the Admin Portal addressing the IT admin's organization as "jeres". Wording that read as translated is rewritten (the forgot-password lead no longer offers to reset the email address; "tamper-evident" is now "der ikke kan ændres ubemærket"). Identity providers' own field and button names are unchanged. The chosen terms are listed in `docs/guides/languages.md` under **Danish terminology**.
+### Added
+
+- **Upgrade rehearsal.** `scripts/upgrade-path-check.sh --from v1.1.1 --engine mysql|pgsql` builds a database with the previous release's own code (install, then `scripts/upgrade-path/seed-v1.php`: people with passwords, TOTP and a passkey, apps with secrets, sessions, webhooks, SSO connections, a SCIM directory, vault and management keys, portal links, audit entries), upgrades it with this checkout, compares row counts, checks every old credential with the new code (`scripts/upgrade-path/verify.php`), runs `audit-chain:verify`, `cbox-id:doctor` and an HTTP smoke test, then rolls the new migrations back and requires the previous release's schema exactly. The *Upgrade path* workflow (`.github/workflows/upgrade-path.yml`) runs it on MySQL 8.4 and PostgreSQL 17 for every release tag and on demand. `docs/operations/upgrade-rehearsal.md` covers it and the rehearsal against a restored copy of an operator's own data.
+
+### Fixed
+
+- **Rolling 2.0.0's migrations back now restores 1.1.x's schema exactly.** `onboarding_dismissals.organization_id` is `NOT NULL` again (the environment checklist's dismissals, which name no organization, are removed), and `admin_portal_links.scope` comes back without the `default 'sso'` it never had. An Admin Portal link whose intents the old `scope` cannot name (domain verification, log streams, certificate renewal) is expired on the way down instead of coming back as an SSO link.
 
 ## [2.0.0] - 2026-10-08
 
