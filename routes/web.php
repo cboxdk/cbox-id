@@ -449,8 +449,13 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
      * issues the longest-lived credential of the set: a refresh token that outlives both
      * the impersonation window and the operator's session, attributed to the person being
      * impersonated.
+     *
+     * `plane:mcp-client`, not `plane:first-party`: at the platform root this also serves an
+     * MCP client signing a person in for the root's `/mcp` (App\Platform\OAuth\RootMcpOAuth)
+     * — the root is still nobody's identity provider. `throttle:oauth-authorize` meters that
+     * per address there and nothing anywhere else ({@see \App\Http\WebRateLimiters}).
      */
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize');
 
 /*
@@ -464,11 +469,11 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
  * cannot influence any of them.
  */
 Route::post('/oauth/authorize/{authorization}/approve', [OAuthConsentController::class, 'approve'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.approve');
 
 Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::class, 'deny'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.deny');
 
 /*
@@ -484,7 +489,7 @@ Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::cl
  * the page would leave the browser on the step's URL, where a reload re-submits a choice
  * that was already spent.
  */
-Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->group(function (): void {
         Route::get('/oauth/authorize/{authorization}', [OAuthConsentController::class, 'review'])
             ->name('oauth.authorize.review');

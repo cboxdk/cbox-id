@@ -300,7 +300,13 @@ it('gives the MCP address of this environment and the snippets\' inputs, and off
         ->and($props['urls']['createAgent'])->toContain('preset=read-only')
         // …and the other way in: the platform root's, one connection for the whole workspace.
         ->and($props['workspace']['mcpUrl'] ?? null)->toEndWith('/mcp')
-        ->and($props['workspace']['restBaseUrl'] ?? null)->toEndWith('/api/v1');
+        ->and($props['workspace']['restBaseUrl'] ?? null)->toEndWith('/api/v1')
+        // …where an MCP client signs the person in itself, unless the deployment says not.
+        ->and($props['workspace']['oauth'] ?? null)->toBeTrue();
+
+    config(['api.mcp.root_oauth' => false]);
+
+    expect($this->get(route('environment.agent-connect'))->assertOk()->inertiaProps('workspace.oauth'))->toBeFalse();
 
     // The metadata it points at is real.
     $this->get(parse_url($props['metadataUrl'], PHP_URL_PATH))->assertOk()

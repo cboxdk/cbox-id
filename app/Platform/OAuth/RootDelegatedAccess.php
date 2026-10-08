@@ -120,10 +120,10 @@ final readonly class RootDelegatedAccess
             return null;
         }
 
-        $workspace = $this->workspace($signIn);
-        $operatorId = $this->root->run(fn (): ?string => $this->operators->findBySubject($signIn->subjectId)?->id);
+        $workspace = $this->workspaceOf($signIn->subjectId, $signIn->organizationId);
+        $operatorId = $this->operatorIdOf($signIn->subjectId);
 
-        return is_string($operatorId) && $operatorId !== ''
+        return $operatorId !== null
             ? new RootOperatorPrincipal($signIn, $workspace, $operatorId)
             : new RootPersonPrincipal($signIn, $workspace);
     }
@@ -182,17 +182,40 @@ final readonly class RootDelegatedAccess
     }
 
     /**
+     * Whether a subject of the platform root holds anything a root token could reach — a
+     * workspace's team or an operator — asked NOW.
+     *
+     * The device grant never asked: a CLI token for somebody who holds nothing is still a
+     * valid credential, answered with an empty tool list and a `whoami` that says why. An
+     * MCP client signing a person in through `/oauth/authorize` is asked here instead, before
+     * the person is shown a consent screen for a connection that could do nothing
+     * ({@see RootMcpOAuth::admits()}): the root is nobody else's sign-in.
+     */
+    public function holdsStanding(string $subjectId): bool
+    {
+        return $this->workspaceOf($subjectId) !== null || $this->operatorIdOf($subjectId) !== null;
+    }
+
+    /** The operator record behind a root subject — refused by the lookup once suspended. */
+    private function operatorIdOf(string $subjectId): ?string
+    {
+        $operatorId = $this->root->run(fn (): ?string => $this->operators->findBySubject($subjectId)?->id);
+
+        return is_string($operatorId) && $operatorId !== '' ? $operatorId : null;
+    }
+
+    /**
      * The workspace the person is on the team of, asked now: the one the token was bound
      * to when that membership still stands, else their first — always an ACTIVE membership
      * of a LIVE organization that owns products, which is what makes an organization a
      * workspace rather than somebody's tenant ({@see ConsoleScope::membershipRole()}).
      */
-    private function workspace(RootSignIn $signIn): ?RootWorkspace
+    public function workspaceOf(string $subjectId, ?string $preferred = null): ?RootWorkspace
     {
-        return $this->root->run(function () use ($signIn): ?RootWorkspace {
-            $memberships = $this->memberships->forUser($signIn->subjectId)
+        return $this->root->run(function () use ($subjectId, $preferred): ?RootWorkspace {
+            $memberships = $this->memberships->forUser($subjectId)
                 ->filter(static fn (Membership $membership): bool => $membership->status === MembershipStatus::Active)
-                ->sortBy(static fn (Membership $membership): int => $membership->organization_id === $signIn->organizationId ? 0 : 1)
+                ->sortBy(static fn (Membership $membership): int => $membership->organization_id === $preferred ? 0 : 1)
                 ->values();
 
             foreach ($memberships as $membership) {
@@ -208,7 +231,7 @@ final readonly class RootDelegatedAccess
                     name: $organization->name,
                     role: $membership->role,
                     allEnvironments: $membership->all_environments,
-                    environmentIds: $this->memberships->accessibleEnvironmentIds($organization->id, $signIn->subjectId),
+                    environmentIds: $this->memberships->accessibleEnvironmentIds($organization->id, $subjectId),
                 );
             }
 

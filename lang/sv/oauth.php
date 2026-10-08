@@ -51,6 +51,7 @@ return [
         'stale' => 'Den här auktoriseringsbegäran kan inte längre slutföras. Börja om.',
         'account_attention' => 'Ditt konto behöver åtgärdas innan du kan fortsätta. Logga in igen.',
         'step_up' => 'Den här applikationen kräver en nyare eller starkare inloggning. Börja om.',
+        'no_workspace' => 'Den här inloggningen ansluter en agent till en arbetsyta på Cbox ID, och ditt konto ingår inte i någon arbetsytas team. Be en ägare av arbetsytan att bjuda in dig, eller anslut agenten på din miljös egen adress i stället.',
     ],
 
     'organization' => [

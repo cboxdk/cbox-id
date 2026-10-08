@@ -117,6 +117,13 @@ return [
      *
      * `GET /up` is registered outside this group by the framework — a liveness probe
      * must answer on every host, including a kubelet hitting the pod directly.
+     *
+     * Three routes of the group are registered again in routes/mcp.php behind
+     * `plane:mcp-discovery` instead: `/.well-known/oauth-protected-resource/{path}`,
+     * `/.well-known/oauth-authorization-server` and `POST /oauth/register`. That plane is
+     * this one everywhere except the platform root, where it serves the MCP slice of each
+     * — for the root's own `/mcp` — while `api.mcp.root_oauth` is on. Discovery and the
+     * rest of this surface stay here.
      */
     'api' => [
         'middleware' => ['plane:issuer'],
@@ -142,8 +149,15 @@ return [
          * `issuer: https://cboxid.com` with a real client_id while every endpoint that
          * document implies was absent on that host — so scanning the enrolment QR worked
          * on a tenant subdomain and failed on the root.
+         *
+         * `plane:mcp-client` is `plane:first-party` plus MCP clients at the root: one that
+         * registered itself there in the `mcp` profile, or a client ID metadata document,
+         * while `api.mcp.root_oauth` is on — every token such a client is issued audienced
+         * to the root's `/mcp` and nothing else (App\Platform\OAuth\RootMcpOAuth). An
+         * administrator's client is still refused; the device grant stays `plane:first-party`
+         * (routes/mcp.php).
          */
-        'first_party_middleware' => ['plane:first-party'],
+        'first_party_middleware' => ['plane:mcp-client'],
 
         /*
          * The PUBLIC VERIFICATION KEYS (`/.well-known/jwks.json`), on their own plane —

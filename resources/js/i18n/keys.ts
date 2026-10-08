@@ -244,6 +244,7 @@ export type MessageKey =
     | 'oauth.failure.expired'
     | 'oauth.failure.generic'
     | 'oauth.failure.heading'
+    | 'oauth.failure.no_workspace'
     | 'oauth.failure.par_required'
     | 'oauth.failure.redirect_mismatch'
     | 'oauth.failure.stale'
