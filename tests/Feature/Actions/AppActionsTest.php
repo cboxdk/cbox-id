@@ -227,8 +227,9 @@ it('revokes one secret, never the last live one, and says when one already stopp
 
     expect(appActionsAudit('app.secret_revoked')?->actor_id)->toBe($row->id);
 
+    // Revoked is gone: a second revocation finds nothing, the 404 any unknown id gets.
     $this->withToken($key)->deleteJson("/api/v1/apps/{$app['id']}/secrets/{$only}")
-        ->assertUnprocessable()->assertJsonPath('error', 'secret_not_live');
+        ->assertNotFound();
 });
 
 /*

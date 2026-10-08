@@ -11,7 +11,7 @@ provider — the guidance here is deliberately security-first.
 
 ## Requirements
 
-- **PHP 8.4+** with `ext-sodium` and `ext-openssl` (the crypto layer needs both;
+- **PHP 8.5** with `ext-sodium` and `ext-openssl` (the crypto layer needs both;
   `cbox-id:doctor` fails loudly if either is missing).
 - A database — **PostgreSQL or MySQL** in production (not SQLite).
 - A cache/queue backend — **Redis** recommended (sessions, rate limits, queues).
@@ -132,6 +132,30 @@ php artisan schedule:list          # cbox-id:events:relay must appear, every min
 `docker-compose.yml` ships `app`, `queue` and `scheduler` services, and `cbox.yaml` declares
 the `queue` and `scheduler` processes beside the web container. Mirror all three in any
 other manifest.
+
+### `cbox.yaml` is the production shape
+
+The manifest in this repository is a production deployment, held to it by
+`tests/Feature/DeploymentManifestTest.php`, which boots its environment and runs the
+doctor's production checks against it:
+
+- `APP_ENV=production`, `APP_DEBUG=false`, `LOG_CHANNEL=stderr`;
+- two web replicas (`replicas: 2`, told to the app as `CBOX_ID_REPLICAS`), so cache,
+  sessions and the queue are all in the bound Valkey — whose host and port arrive in
+  `REDIS_HOST`/`REDIS_PORT` from the binding, never as a name written in the file — and the
+  queue manager runs as a cluster (`QUEUE_AUTOSCALE_CLUSTER_ENABLED=true`);
+- the Valkey that holds the queue runs **`maxmemory-policy noeviction`**: a queued job is
+  data, and an evicting policy silently deletes webhooks and mail when memory runs out;
+- `MAIL_MAILER=smtp`, with the host, port, user, password and from-address all referenced
+  from a platform Secret — the provider is the operator's choice;
+- every secret (`APP_KEY`, `CBOX_ID_CRYPTO_KEY`, `HEALTH_TOKEN`, `MAIL_*`) under `secrets:`
+  as a reference to a platform Secret, never a value; the database password is the
+  resource binding's, which resolves to the platform's own Secret. The platform's Valkey
+  runs without a password inside the project network, so there is none to bind; a Redis
+  that has one takes `REDIS_PASSWORD` under `secrets:` like the rest.
+
+Create the referenced Secrets (`cbox-id-app`, `cbox-id-mail`) on the platform before the
+first deploy.
 
 ## 6. Verify
 
@@ -342,7 +366,20 @@ Verify after a deploy — each header must appear exactly **once**:
 curl -sI https://<your-host>/ | grep -iE 'frame-options|referrer-policy|permissions-policy|content-type-options'
 ```
 
-## Health probe
+## Health probes
+
+Two probes, and they answer different questions:
+
+| Probe | Path | Asks | Auth |
+|---|---|---|---|
+| **Liveness** | `/up` | Is this process running? Asserts nothing else, so a slow database never restarts a healthy pod. | none |
+| **Readiness** | `/health/ready` | Can this instance serve? Runs the database, cache, queue and storage checks (`config/health.php`). | `HEALTH_TOKEN`, as `Authorization: Bearer …` or `?token=` |
+
+Route on both; **alert** on `/health/status` (scheduler, event relay, queue workers),
+which must never route — a stopped scheduler is not a reason to take web pods out of
+rotation. Without `HEALTH_TOKEN` readiness answers 403 to everything, the platform's own
+probe included, and `cbox-id:doctor` fails it in production. `cbox.yaml` declares both
+probes and references the token from a platform Secret.
 
 `GET /up` is a JSON liveness probe served by the framework package:
 
@@ -353,8 +390,9 @@ curl -sI https://<your-host>/ | grep -iE 'frame-options|referrer-policy|permissi
 It is registered **outside** environment resolution and outside
 [the IdP-surface gate](#the-idp-surface-gate-the-apex-host-404s-the-protocol-surface),
 so it answers on any host — including a kubelet probing the pod IP directly — and
-without touching the database. Point k8s `livenessProbe`/`readinessProbe` `httpGet` at
-`/up`; any 2xx passes, and the probe does not parse the body.
+without touching the database. Point k8s `livenessProbe` `httpGet` at `/up`; any 2xx
+passes, and the probe does not parse the body. Point `readinessProbe` at `/health/ready`
+with the token header.
 
 Laravel's built-in HTML health page is deliberately **not** enabled (no `health:` entry
 in `bootstrap/app.php`): it shadowed this route, and the page loads Tailwind from a CDN

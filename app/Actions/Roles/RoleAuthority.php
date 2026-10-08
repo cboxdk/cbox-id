@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Roles;
 
 use App\Platform\Actions\ActionRefused;
-use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\Principal;
-use App\Platform\Console\ConsolePlane;
 use Cbox\Id\AccessControl\Enums\RoleSource;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
@@ -25,7 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
  *  - THE ENVIRONMENT's (a management key, or a person on the environment console): every
  *    role in the environment may be changed, an environment-wide role may be defined, and
  *    every permission an app declared may be composed into a role.
- *  - ONE TENANT's (a person on an organization's own console): only that organization's
+ *  - ONE TENANT's (a person on an organization's own console, or a token one signed in
+ *    for — whoever {@see Principal::confinedToOrganization()} confines): only that organization's
  *    own roles may be changed — an environment-owned role is assignable inside every
  *    tenant, so re-permissioning it would grant access in organizations that are not
  *    theirs — and only what an app in their reach marked `tenant_assignable` may be
@@ -41,13 +40,34 @@ final readonly class RoleAuthority
      */
     private function __construct(public ?string $tenant) {}
 
+    /**
+     * The principal's own confinement, asked of the principal rather than inferred from its
+     * class. This used to ask "is it the organization console?", which left a person's
+     * signed-in token — confined to their organization everywhere else — holding the
+     * ENVIRONMENT's authority here: it could re-permission and delete every organization's
+     * roles. The cross-tenant sweep found it; a new confined principal is now confined here
+     * the day it says so.
+     *
+     * @throws AuthorizationException
+     */
     public static function of(Principal $principal): self
     {
-        if ($principal instanceof ConsoleSessionPrincipal && $principal->scope()->plane() === ConsolePlane::Organization) {
-            return new self($principal->scope()->requireOrganizationId());
-        }
+        return new self($principal->confinedToOrganization());
+    }
 
-        return new self(null);
+    /**
+     * The permissions this authority can SEE — to take one off a role, which must work for
+     * one that has since been orphaned or left the catalogue. For a tenant, its own and the
+     * shared tier ({@see Permission::scopeVisibleToOrganization()}), never a peer's private
+     * key: a peer's permission id answers as an unknown one.
+     *
+     * @return Builder<Permission>
+     */
+    public function visiblePermissions(): Builder
+    {
+        return $this->tenant === null
+            ? Permission::query()
+            : Permission::query()->visibleToOrganization($this->tenant);
     }
 
     /**

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Branding\SetAppearance;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
@@ -621,10 +622,13 @@ it('keeps an organization administrator on their own organization, whichever doo
     $other = app(Organizations::class)->create(new NewOrganization('Other', 'other-forged'));
     $principal = new ConsoleSessionPrincipal(app(ConsoleScope::class));
 
-    foreach ([$other->id, null] as $target) {
-        expect(fn () => app(ActionRunner::class)->run(SetAppearance::class, $principal, ['organization_id' => $target, 'theme' => ['preset' => 'cbox']]))
-            ->toThrow(AuthorizationException::class);
-    }
+    // Another organization answers as an unknown one would — nothing confirms it exists.
+    expect(fn () => app(ActionRunner::class)->run(SetAppearance::class, $principal, ['organization_id' => $other->id, 'theme' => ['preset' => 'cbox']]))
+        ->toThrow(ActionRefused::class, 'No organization with that organization_id exists in this environment.');
+
+    // None at all is the environment's default every tenant inherits: refused outright.
+    expect(fn () => app(ActionRunner::class)->run(SetAppearance::class, $principal, ['organization_id' => null, 'theme' => ['preset' => 'cbox']]))
+        ->toThrow(AuthorizationException::class);
 
     app(ActionRunner::class)->run(SetAppearance::class, $principal, ['organization_id' => $org->id, 'theme' => ['preset' => 'cbox']]);
 

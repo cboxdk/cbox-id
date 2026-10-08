@@ -10,7 +10,7 @@ adds the admin console + hosted-cloud concerns (UI, onboarding, billing).
 
 ## Stack
 
-- **Laravel 13**, PHP 8.4+ (argon2id password hashing is the configured default).
+- **Laravel 13**, PHP 8.5 (argon2id password hashing is the configured default).
 - **Inertia + React + Tailwind v4** — server-routed UI: every page and every write is
   a Laravel route with its own middleware, and React renders what the controller hands
   it. Chosen for security: session-cookie auth (no tokens in the browser), one
@@ -96,9 +96,9 @@ auth, strict CSP, rate limiting, and argon2id throughout.
 
 ## License
 
-Cbox ID (this application) is licensed under the **Elastic License 2.0** — see
-[LICENSE](LICENSE). In short, you may use, copy, modify and redistribute it, with
-three limitations:
+Cbox ID (this application) is **source-available**, not open source: it is licensed
+under the **Elastic License 2.0** — see [LICENSE](LICENSE). In short, you may use, copy,
+modify and redistribute it, with three limitations:
 
 - you may **not provide it to third parties as a hosted or managed service** that
   gives them substantial access to its features;

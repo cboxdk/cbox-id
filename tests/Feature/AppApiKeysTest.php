@@ -241,8 +241,9 @@ it('refuses an organization the person is not a member of', function (): void {
 
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
+    // Not theirs to name: answered as an organization that does not exist.
     createAppKey($fixture, ['organization_id' => $stranger->id, 'permissions' => []])
-        ->assertSessionHasErrors(['organization_id' => 'You are not an active member of that organization.']);
+        ->assertNotFound();
 
     expect(CustomerApiKey::query()->withoutGlobalScopes()->count())->toBe(0);
 });

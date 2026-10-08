@@ -6,6 +6,7 @@ use App\Actions\Organizations\AddOrganizationDomain;
 use App\Actions\Organizations\DeleteOrganization;
 use App\Mail\PortalLinkMail;
 use App\Models\AdminPortalLink;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\ActionVia;
@@ -231,9 +232,9 @@ it('confines a portal principal to its intents and to its organization, whatever
     expect(fn () => $runner->run(DeleteOrganization::class, $domains, ['organization_id' => $mine]))
         ->toThrow(AuthorizationException::class);
 
-    // The right intent, the wrong organization.
+    // The right intent, the wrong organization: not found, as an unknown one would be.
     expect(fn () => $runner->run(AddOrganizationDomain::class, $domains, ['organization_id' => $theirs, 'domain' => 'acme.com']))
-        ->toThrow(AuthorizationException::class);
+        ->toThrow(ActionRefused::class, 'Organization not found.');
 
     expect(VerifiedDomain::query()->count())->toBe(0);
 

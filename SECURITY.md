@@ -7,9 +7,11 @@ belong in the `cboxdk/laravel-id` repository instead.
 ## Reporting a vulnerability
 
 Please report suspected vulnerabilities through **GitHub's Private Vulnerability
-Reporting**:
+Reporting** — it is the one reporting channel this project has; there is no security
+mailbox:
 
-1. Go to the repository's **Security** tab.
+1. Go to the repository's **Security** tab, or straight to
+   <https://github.com/cboxdk/cbox-id/security/advisories/new>.
 2. Choose **Report a vulnerability** to open a private advisory.
 
 This keeps the report confidential between you and the maintainers until a fix is
