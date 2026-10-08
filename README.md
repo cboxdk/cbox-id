@@ -101,6 +101,28 @@ php artisan docs:actions --check                  # so is docs/reference
 Adding an action: write the class in `app/Actions/<Area>/`, then run
 `php artisan openapi:build` and `php artisan docs:actions` and commit what they write.
 
+`cbox.yaml` runs it locally in production's shape (two web replicas sharing Valkey, the
+queue manager and the scheduler, PostgreSQL 18) with
+[cbox-engine](docs/operations/deployment.md#cboxyaml-is-the-local-manifest): `cbox deploy`.
+
+## Contributing and releasing
+
+> **Merging to `main` releases to production.** [cboxid.com](https://cboxid.com) runs every
+> commit on `main` whose checks have all passed — automatically, within minutes of the last
+> check going green and its arm64 image existing, with its migrations run first. There is no separate deploy and no
+> second approval. [How the release works](docs/operations/deployment.md#releases-from-main).
+
+So:
+
+- **Work on a branch and open a pull request.** Never push to `main` directly.
+- **The gate is green before you merge**: the commands under [Develop](#develop), and CI on
+  the pull request. A red check on `main` holds every release until a newer commit passes.
+- **Migrations must work with the release before them.** They run while the old code is
+  still serving, and a failed rollout returns to the old code on the new schema.
+- **New configuration goes into production before the merge that needs it.** Ask the
+  operator; a release does not wait for an environment variable.
+- Changes only to Markdown or `docs/` build no image and ship with the next release.
+
 ## Status
 
 Actively developed and dogfooded on [cboxid.com](https://cboxid.com). It composes

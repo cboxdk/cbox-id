@@ -225,7 +225,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Hvor finner jeg oppsettstokenet?',
-            'body' => 'I :path på serveren, og i applikasjonsloggen (:logs for en container). Det vises aldri på denne siden.',
+            'body' => 'Kjør :command på serveren — på hvilken som helst instans av installasjonen — og lim inn det som skrives ut. Hver kjøring skriver ut et nytt token som gjelder i én time. Det vises aldri på denne siden.',
         ],
         'cli_hint' => 'Foretrekker du kommandolinjen? :install gjør det samme, og er den eneste måten som også kan velge og registrere installasjonstypen.',
         'token_label' => 'Oppsettstoken',
@@ -240,7 +240,7 @@ return [
         'organization_hint' => 'Denne installasjonen er konfigurert for flere leietakere, så installasjonen oppretter også det første arbeidsområdet – organisasjonen som eier miljøer og fakturering.',
         'organization_placeholder' => 'Bedriften din',
         'submit' => 'Fullfør installasjonen',
-        'token_mismatch' => 'Oppsettstokenet samsvarer ikke med det denne installasjonen publiserte.',
+        'token_mismatch' => 'Oppsettstokenet samsvarer ikke med installasjonens, eller det har utløpt. Skriv ut et nytt med php artisan cbox-id:setup-token.',
     ],
 
     'join_organization' => [

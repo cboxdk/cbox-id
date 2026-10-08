@@ -106,6 +106,68 @@ In React, use `useTranslator()` from `@/i18n`. It gives you `t(key, params)` for
 `rich(key, { name: <b>…</b> })` when a placeholder is a React element, and
 `choice(key, count)` for two-form plurals. A page receives only its own group's text.
 
+## Danish terminology
+
+The Danish text (`lang/da`) is written the way a Danish SaaS product would write it, not
+word for word from English. Use these terms, so the same thing has the same name on every
+page and in every email:
+
+| English | Danish | Note |
+|---|---|---|
+| sign in (verb) | log ind | "Log ind", "Log ind med adgangsnøgle", "logge ind" |
+| sign-in (noun) | login | "Tilbage til login", "Gennemfør login" |
+| sign-in link, magic link | loginlink | One word |
+| sign out | log ud | |
+| password | adgangskode | Never "password" |
+| passkey | adgangsnøgle | As Apple and Google say it |
+| access key (AWS) | access key | Kept in English, so it is not confused with a passkey |
+| two-factor verification | totrinsbekræftelse | The form Google and Microsoft use in Danish |
+| authenticator app | godkendelsesapp | |
+| recovery code | gendannelseskode | |
+| verify, confirm | bekræft | |
+| check (running text) | tjek | "Tjek din indbakke" |
+| check (a button that runs a check) | kontroller | "Kontroller DNS", "Kontroller og upload" |
+| email | e-mail, e-mailadresse | "Arbejdsmail" for a work email field |
+| account | konto | |
+| organization | organisation | |
+| workspace | arbejdsområde | Never "workspace" |
+| environment | miljø | |
+| identity provider | identitetsudbyder | |
+| single sign-on, SSO | single sign-on, SSO | Kept in English |
+| directory sync | katalogsynkronisering | |
+| directory | katalog | |
+| log streams | logstreaming | The feature; the targets are "destinationer" |
+| audit log | revisionslog | Never "audit-log" |
+| tamper-evident | der ikke kan ændres ubemærket | |
+| API key | API-nøgle | |
+| token, bearer token | token, bearer-token | "et token", "tokenet" |
+| app (the one being authorized) | app | "applikation" only where the identity provider's own screen says application |
+| authorize (consent) | giv adgang | Permission lines are verbs after "Dette giver … lov til at": "Se dit navn" |
+| Cancel | Annuller | |
+| Optional | Valgfrit | "(valgfri)" after a common-gender noun, as in "Signeringsnøgle (valgfri)" |
+
+**Address and tone.** Always "du". In the Admin Portal and the mails to a customer's IT
+contact, the reader is "du" and the organization's things are "jeres" ("jeres
+identitetsudbyder"). On the sign-in pages the person's employer is "din organisation".
+
+**Protocol words and identity provider labels stay as they are.** "Entity ID", "ACS URL",
+"Client secret", "Single sign-on URL", "Trust policy" and every button or field name in
+an identity provider's own admin screens are written exactly as that screen shows them.
+Only the sentences around them are translated.
+
+**Writing conventions.**
+
+- Sentence case in headings and on buttons: "Sæt jeres organisation op", "Opret arbejdsområde".
+- Imperatives without an accent: "Eksporter", "Filtrer", "Kontroller".
+- No comma before a restrictive subclause ("den enhed der venter", "en URL der starter med
+  https://"). A comma after a subclause that opens a sentence is kept ("Hvis du ikke har
+  bedt om det, kan du …"), as is the comma between two main clauses ("Vent lidt, og prøv igen").
+- Quotation marks are “ ”, never « » or » «. The dash between clauses is a spaced en dash
+  ( – ).
+- "én" with an accent when it means the number one ("kan kun bruges én gang").
+- Plurals use both forms: "om :count sekund|om :count sekunder", "om :count dag|om :count dage".
+- A date in running text takes "den": "udløber den :date".
+
 ## Related
 
 - [Admin Portal](admin-portal.md) — the hosted pages an IT admin opens in their own language.

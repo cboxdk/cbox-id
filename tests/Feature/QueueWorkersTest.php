@@ -15,6 +15,7 @@ use App\Platform\Queues\WorkerProfile;
 use Cbox\Id\Console\ValueObjects\HealthResult;
 use Cbox\LaravelQueueAutoscale\Configuration\AutoscaleConfiguration;
 use Cbox\LaravelQueueAutoscale\Configuration\GroupConfiguration;
+use Cbox\LaravelQueueAutoscale\Configuration\InvalidConfigurationException;
 use Cbox\LaravelQueueAutoscale\Events\AutoscaleManagerStarted;
 use Cbox\LaravelQueueAutoscale\Events\ScalingDecisionMade;
 use Cbox\LaravelQueueAutoscale\Scaling\ScalingDecision;
@@ -31,19 +32,37 @@ use Illuminate\Support\Facades\Queue;
 | none of them looked at the queue. These are the tests that would have been red.
 */
 
-/** Evaluate config/queue-autoscale.php the way production does: QUEUE_CONNECTION=redis. */
-function productionAutoscaleConfig(): array
+/**
+ * Evaluate config/queue-autoscale.php the way production does: QUEUE_CONNECTION=redis,
+ * plus whatever else the test sets. Every variable is put back the way it was — unset
+ * where it was unset — so one test's environment never leaks into the next.
+ *
+ * @param  array<string, string>  $env
+ */
+function productionAutoscaleConfig(array $env = []): array
 {
-    $previous = getenv('QUEUE_CONNECTION');
+    $env = ['QUEUE_CONNECTION' => 'redis'] + $env;
+    $previous = [];
 
-    putenv('QUEUE_CONNECTION=redis');
-    $_SERVER['QUEUE_CONNECTION'] = $_ENV['QUEUE_CONNECTION'] = 'redis';
+    foreach ($env as $name => $value) {
+        $previous[$name] = getenv($name);
+
+        putenv($name.'='.$value);
+        $_SERVER[$name] = $_ENV[$name] = $value;
+    }
 
     try {
         return require config_path('queue-autoscale.php');
     } finally {
-        putenv('QUEUE_CONNECTION='.$previous);
-        $_SERVER['QUEUE_CONNECTION'] = $_ENV['QUEUE_CONNECTION'] = (string) $previous;
+        foreach ($previous as $name => $value) {
+            if ($value === false) {
+                putenv($name);
+                unset($_SERVER[$name], $_ENV[$name]);
+            } else {
+                putenv($name.'='.$value);
+                $_SERVER[$name] = $_ENV[$name] = $value;
+            }
+        }
     }
 }
 
@@ -115,6 +134,54 @@ it('cannot outgrow a 512 MB instance or hand a running job to a second worker', 
         // One App instance, one manager.
         ->and(AutoscaleConfiguration::clusterEnabled())->toBeFalse()
         ->and($group->sla->targetSeconds)->toBe(WorkerProfile::SLA_SECONDS);
+});
+
+/*
+ * THE WORKER COUNT IS A SETTING, AND RAISING IT DOES SOMETHING.
+ *
+ * Every queue sits in one group, so the group's `max` decides how many workers run — the
+ * host-wide cap only clamps it. When that `max` was a literal in the profile, raising
+ * QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS on a queue pod with memory to spare changed nothing.
+ */
+it('keeps today\'s bounds when no worker setting is given', function (): void {
+    config(['queue-autoscale' => productionAutoscaleConfig()]);
+
+    $group = GroupConfiguration::allFromConfig()['cbox-id-redis'];
+
+    expect($group->workers->min)->toBe(WorkerProfile::MIN_WORKERS)
+        ->and($group->workers->max)->toBe(WorkerProfile::MAX_WORKERS)
+        ->and(AutoscaleConfiguration::maxTotalWorkers())->toBe(2);
+});
+
+it('runs as many workers as the environment allows, raising both ceilings together', function (): void {
+    config(['queue-autoscale' => productionAutoscaleConfig([
+        'QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS' => '6',
+        'QUEUE_AUTOSCALE_WORKERS_MIN' => '2',
+        'QUEUE_AUTOSCALE_WORKERS_MAX' => '6',
+    ])]);
+
+    $group = GroupConfiguration::allFromConfig()['cbox-id-redis'];
+
+    expect($group->workers->min)->toBe(2)
+        ->and($group->workers->max)->toBe(6)
+        ->and(AutoscaleConfiguration::maxTotalWorkers())->toBe(6)
+        // Only the bounds move: every other number is still the profile's.
+        ->and($group->workers->timeoutSeconds)->toBe(WorkerProfile::JOB_TIMEOUT_SECONDS)
+        ->and($group->sla->targetSeconds)->toBe(WorkerProfile::SLA_SECONDS)
+        ->and($group->fuse->enabled)->toBeTrue();
+});
+
+it('refuses to load a group maximum the total cap would silently clamp', function (): void {
+    expect(fn (): array => productionAutoscaleConfig(['QUEUE_AUTOSCALE_WORKERS_MAX' => '4']))
+        ->toThrow(InvalidConfigurationException::class, 'QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS (2)');
+});
+
+it('refuses to load a group maximum below its minimum', function (): void {
+    expect(fn (): array => productionAutoscaleConfig([
+        'QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS' => '6',
+        'QUEUE_AUTOSCALE_WORKERS_MIN' => '3',
+        'QUEUE_AUTOSCALE_WORKERS_MAX' => '2',
+    ]))->toThrow(InvalidConfigurationException::class, 'must be at least QUEUE_AUTOSCALE_WORKERS_MIN (3)');
 });
 
 it('records a heartbeat from the manager\'s own events', function (): void {

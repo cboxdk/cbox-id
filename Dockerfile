@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
 # Image for cboxdk/cbox-id — the Laravel 13 + Inertia/React/Tailwind v4 identity app on
 # PHP 8.5, built FROM the public cbox php-fpm-nginx base image (8.5-bookworm-v1, the same
-# tag cbox.yaml runs and CI tests in). Built and pushed to ghcr.io/cboxdk/cbox-id by
-# .github/workflows/build-image.yml on GitHub-hosted runners (linux/amd64 and linux/arm64,
-# each native), for pushes to main and `v*` tags.
+# tag the local cbox.yaml runs and CI tests in). Built and pushed to ghcr.io/cboxdk/cbox-id
+# by .github/workflows/build-image.yml on GitHub-hosted runners (linux/amd64 and
+# linux/arm64, each native), for pushes to main and `v*` tags. Production (cboxid.com, on
+# arm64) runs this image: each main commit whose checks pass is released there.
 #
 # No build secrets: every composer dependency — the cboxdk/* packages included — is
 # public on Packagist, every npm dependency is public on the npm registry, and the base

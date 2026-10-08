@@ -16,6 +16,49 @@ package changes that need action here rather than in a client.
 
 ## 2.0.0
 
+### The operator checklist
+
+**cboxid.com took 2.0.0 continuously.** Each change in it reached production as it merged
+to `main` — on the Kubernetes cluster through the
+[release from main](docs/operations/deployment.md#releases-from-main), and before that
+move through the previous host's deploy on every push. The `v2.0.0` tag marks a commit on
+`main`, not a deployment, so nothing below is run again for cboxid.com. The list is what
+production needed, and what any other deployment crossing to 2.0.0 needs.
+
+For cboxid.com (Kubernetes, defined in the private infrastructure repository):
+
+1. **Have a restore point.** PostgreSQL is backed up continuously (WAL archive, nightly
+   backups); take a fresh full backup before a release whose migrations write data — here
+   portal-link intents and the revoked `cbid_org_` keys — and confirm `APP_KEY` and
+   `CBOX_ID_CRYPTO_KEY` are in the recovery bundle kept apart from the database.
+2. **The environment lives in `cbox-id-env`**, the ConfigMap and Secret the infrastructure
+   repository assembles: `APP_KEY` and `CBOX_ID_CRYPTO_KEY` carried over unchanged (a new
+   crypto key cannot open anything sealed under the old one), `HEALTH_TOKEN`,
+   `CBOX_ID_REPLICAS=2`, cache, sessions and queue on Valkey, and queue-manager cluster
+   mode. A variable a release needs goes in there **before** the merge, because the
+   release does not wait.
+3. **Replace every `cbid_org_` key first.** They stop working on deploy, with no alias.
+   Mint `cbid_ws_` keys under **Workspace settings › Keys** and move every integration and
+   CLI to `/api/v1/workspace` (below).
+4. **Decide on the root's MCP sign-in.** `CBOX_ID_ROOT_MCP_OAUTH` is on by default. To keep
+   the platform root answering `404` to MCP clients, the operator sets
+   `CBOX_ID_ROOT_MCP_OAUTH=false` in `cbox-id-env` before the release (below).
+5. **Migrations run by themselves.** The release CronJob runs `php artisan migrate --force`
+   as a Job on the new image before the web and worker pods roll; a failed migration holds
+   the release on the running one.
+6. **Nothing to add for the workers.** The scheduler and the queue manager run in the
+   worker pod under `cbox-init` and roll with the release.
+7. **Check:** `php artisan cbox-id:doctor` in a web pod (no ✗), then `/health/status` with
+   the `HEALTH_TOKEN` green once the scheduler and queue manager have reported in, then
+   `php artisan cbox-id:cli:client --environment=<id>` for each environment with a CLI
+   client.
+
+**Anywhere else**, the same steps with your own secrets store and process supervisor:
+back up, put `HEALTH_TOKEN` and any new variable in place, replace the `cbid_org_` keys,
+run `php artisan migrate --force` once from the new release before the web tier rolls, run
+the queue manager and the scheduler, and check. The order and the reasons are in
+[Rolling out a release](docs/operations/deployment.md#rolling-out-a-release).
+
 ### Admin Portal links take `intents`
 
 `POST /api/v1/organizations/{id}/portal-links` (`organizations.portal_links.create`, and
@@ -140,10 +183,10 @@ on the API. It is now named the same everywhere. **There are no aliases.**
 
 ### Run the scheduler — and alert on it
 
-`cbox.yaml` now declares a `scheduler` process (`php artisan schedule:work`). Every other
-deployment MUST run one too: the event relay behind webhooks, outbound SCIM, the
-audit-stream pump and pruning are all scheduled, and none of them run without it. Nothing
-errors when it is missing.
+Production runs a scheduler (`php artisan schedule:work`) in its worker pod, and the local
+`cbox.yaml` declares one as a `scheduler` process. Every other deployment MUST run one too:
+the event relay behind webhooks, outbound SCIM, the audit-stream pump and pruning are all
+scheduled, and none of them run without it. Nothing errors when it is missing.
 
 - **Alerting:** `/health/status` gains `scheduler` (red when the scheduler has not run for
   five minutes, or never has) and `event_relay` (red when the oldest undelivered event is
@@ -181,11 +224,15 @@ processes itself. Until it runs, every queued job — webhook deliveries, back-c
 tokens, app manifest syncs, Postal delivery reports, queued mail — sits in the queue and is
 never delivered. Nothing else errors.
 
-- **Laravel Cloud:** add a background process (Custom worker) running
-  `php artisan queue:autoscale`, 1 process. No deploy-command change: Cloud replaces the
-  instance on deploy and the manager drains on SIGTERM. Do not also add a Cloud queue
-  worker. Keep `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis`.
-- **Self-hosted:** run it under systemd or Supervisor (a unit is in
+- **Kubernetes:** run it in a worker pod (production: `cbox-init` with
+  `CBOX_INIT_PROCESS_AUTOSCALER_ENABLED=true`, nginx and PHP-FPM off), with
+  `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis` and cluster mode on. A rollout replaces
+  the pod and the manager drains on SIGTERM.
+- **A PaaS:** add one long-lived background process running `php artisan queue:autoscale`.
+  Do not also add the platform's own queue-worker type; if it runs the process on every
+  instance and the app scales past one, set `QUEUE_AUTOSCALE_CLUSTER_ENABLED=true`. Keep
+  `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis`.
+- **A VM:** run it under systemd or Supervisor (a unit is in
   `docs/operations/queue-workers.md`) and keep `php artisan queue:restart` in the deploy
   script; the manager honours it. Remove any `queue:work` program you ran before — two
   supervisors fight over the same jobs.

@@ -226,7 +226,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Wo finden Sie das Einrichtungstoken?',
-            'body' => 'In :path auf dem Server und im Anwendungsprotokoll (:logs bei einem Container). Es wird auf dieser Seite niemals angezeigt.',
+            'body' => 'Führen Sie :command auf dem Server aus — auf einer beliebigen Instanz dieser Bereitstellung — und fügen Sie die Ausgabe ein. Jeder Aufruf gibt ein neues Token aus, das eine Stunde gültig ist. Es wird auf dieser Seite niemals angezeigt.',
         ],
         'cli_hint' => 'Lieber über die Befehlszeile? :install macht dasselbe und ist der einzige Weg, auf dem auch die Art der Bereitstellung gewählt und gespeichert werden kann.',
         'token_label' => 'Einrichtungstoken',
@@ -241,7 +241,7 @@ return [
         'organization_hint' => 'Diese Bereitstellung ist als mandantenfähig konfiguriert, daher erstellt die Installation auch den ersten Arbeitsbereich – die Organisation, der die Umgebungen und die Abrechnung gehören.',
         'organization_placeholder' => 'Ihr Unternehmen',
         'submit' => 'Bereitstellung installieren',
-        'token_mismatch' => 'Dieses Einrichtungstoken stimmt nicht mit dem Token überein, das diese Bereitstellung veröffentlicht hat.',
+        'token_mismatch' => 'Dieses Einrichtungstoken passt nicht zu dieser Bereitstellung oder ist abgelaufen. Geben Sie mit php artisan cbox-id:setup-token ein neues aus.',
     ],
 
     'join_organization' => [

@@ -28,8 +28,9 @@ use Inertia\Response;
  * lazy-create hands a public identity provider to whoever reaches it first, and on the open
  * internet that is a scanner rather than the operator. So the screen exists ONLY while the
  * platform is empty ({@see PointAtFirstRun} 404s it the moment it is
- * not), and it demands the setup token, which is published where only filesystem or console
- * access can read it — never rendered here, never in the URL.
+ * not), and it demands the setup token, which is handed out where only console access can
+ * read it — never rendered here, never in the URL — and kept, hashed, in the database every
+ * replica shares, so the look and the submit may land on different instances.
  *
  * IT DOES NOT CHOOSE THE DEPLOYMENT SHAPE. A web request cannot durably write `.env` — the
  * file may be read-only, the config may be cached, and a horizontally-scaled deployment
@@ -55,8 +56,12 @@ final readonly class FirstRunController extends PageController
 
         // Arming happens on the first LOOK, not on the first submission: the operator needs
         // the token before they can fill anything in. A scanner triggers the same mint and
-        // learns nothing — the value goes to the log and the private disk.
-        $tokens->issue();
+        // learns nothing — only a hash is stored, and the value goes to the log only where
+        // the deployment opted in. Not on an un-migrated database: the token lives in a
+        // table, and the page below tells the operator to migrate first.
+        if ($installer->ready()) {
+            $tokens->arm();
+        }
 
         return $this->page('auth/first-run', __('auth.first_run.title'), [
             // The configured shape, shown so the operator sees what they are about to create.
@@ -127,7 +132,7 @@ final readonly class FirstRunController extends PageController
         }
 
         // SPENT, not merely superseded. The route dies with the emptiness check above, but a
-        // token left on disk is a live secret for a door that no longer exists.
+        // token left behind is a live secret for a door that no longer exists.
         $tokens->forget();
 
         /*

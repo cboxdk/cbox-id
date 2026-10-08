@@ -37,10 +37,10 @@ php artisan cbox-id:install --no-interaction --email=root@acme.example
 
 Did not install from a shell — a container someone else started, say? An empty
 deployment serves exactly one page, at **`/first-run`**, and points every other page
-at it. It requires the **setup token** that the deployment publishes to
-`storage/app/private/cbox-id-first-run.token` and to the application log
-(`docker logs`), so reaching the URL is not enough to claim the platform. Completing
-it does what the install command does, then the route 404s for good.
+at it. It requires a **setup token**, so reaching the URL is not enough to claim the
+platform. Print one with `php artisan cbox-id:setup-token` (`docker exec <container> php
+artisan cbox-id:setup-token` for a container). Completing the form does what the install
+command does, then the route 404s for good.
 
 The **platform operator** it creates is the identity above every environment — it
 administers workspaces, environments, organizations, and other operators. Enroll a

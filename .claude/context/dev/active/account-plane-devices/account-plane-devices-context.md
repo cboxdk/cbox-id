@@ -62,7 +62,7 @@ three native doors emit nothing, two inherited ones emit into a void.
 - **Needs no change to `cboxdk/laravel-id`** — the member signs in on the issuer host
   as an ordinary platform-root subject, with the password they already have. This is
   what makes A cheaper than it looks.
-- Cost: `PlaneResolver` + host mapping in the app; DNS record, TLS cert and a Cloud
+- Cost: `PlaneResolver` + host mapping in the app; DNS record, TLS cert and a tunnel
   host binding in infra.
 
 ### B — Serve a narrow OAuth carve-out on the apex
@@ -92,7 +92,7 @@ the account level, so the real value is sign-in alerts alone.
 1. `PlaneResolver` — decide plane by host role; keep one implementation (its docblock
    is explicit that two would drift).
 2. Host mapping so the root environment resolves on its issuer alias.
-3. Infra: DNS, cert, Cloud host binding.
+3. Infra: DNS, cert, tunnel host route.
 4. Emit a domain event on account-plane sign-in so `SendSecurityAlert` has something to
    listen to (blocker 2) — a new `account.signed_in` outbox type rather than reusing
    `user.session_started`, since no `id_sessions` row exists.

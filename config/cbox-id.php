@@ -242,14 +242,24 @@ return [
      * OFF, because that token is the whole of the authority to claim an unclaimed
      * deployment and the log is the one place a secret reliably escapes the box it was
      * written on: shipped to a central aggregator, it hands everyone with log access the
-     * ability to claim the platform first. The file is 0600 on the server and
-     * `php artisan cbox-id:setup-token` prints it.
+     * ability to claim the platform first. `php artisan cbox-id:setup-token` mints one and
+     * prints it, on any instance of the deployment.
      *
      * A single-container deploy where `docker logs` genuinely is the operator's only view
      * of the box can turn it back on — an explicit choice by whoever knows where those
      * logs end up.
      */
     'log_setup_token' => (bool) env('CBOX_ID_LOG_SETUP_TOKEN', false),
+
+    /*
+     * How long a first-run setup token stays valid, in minutes.
+     *
+     * The token is kept (hashed) in the database, so every replica accepts it; bounding
+     * it means a copy that escaped — a terminal scrollback, an opted-in log line — stops
+     * mattering on its own. Nothing is lost by a short one: the next look at `/first-run`
+     * re-arms an expired token, and `cbox-id:setup-token` always mints a fresh one.
+     */
+    'setup_token_ttl_minutes' => (int) env('CBOX_ID_SETUP_TOKEN_TTL', 60),
 
     /*
      * Passkeys / WebAuthn. `rp_id` is the Relying Party ID (the domain credentials are
@@ -425,9 +435,10 @@ return [
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
      *
      * How many copies of the web process run. The application cannot count its siblings,
-     * so the manifest that decides it says it here too (cbox.yaml sets `replicas:` and
-     * `CBOX_ID_REPLICAS` together). It changes nothing at runtime; it is what the doctor
-     * asks before it calls a per-process cache or session store a fault: on one replica
+     * so the manifest that decides it says it here too (production's web Deployment and
+     * the local cbox.yaml each set the replica count and `CBOX_ID_REPLICAS` together). It
+     * changes nothing at runtime; it is what the doctor asks before it calls a
+     * per-process cache or session store a fault: on one replica
      * a file cache is a smell, on two it splits every rate limit, single-use token and
      * replay guard in half. The queue manager's cluster mode
      * (`QUEUE_AUTOSCALE_CLUSTER_ENABLED`) says the same thing about the workers.

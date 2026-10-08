@@ -1,151 +1,127 @@
+# THE LOCAL MANIFEST — NOT THE PRODUCTION DEPLOYMENT.
+#
+# cbox-engine (the `cbox` CLI and the Cbox Local desktop app) reads this file to run Cbox ID
+# on a developer's machine the way production runs it: a Kubernetes cluster in Docker, the
+# working copy mounted into the pods (`source: true`), behind a gateway that terminates TLS
+# one hop earlier, as the real one does. Run `cbox deploy` from this directory and open the
+# address it prints (https://cbox-id.cbox.test:…); point CBOX_ID_ISSUER and the WebAuthn
+# origin in `.env` at that address first.
+#
+# Production is NOT deployed from this file. cboxid.com runs on Cbox's own Kubernetes
+# cluster, from manifests in the private infrastructure repository, and every commit on
+# main whose checks pass is released there automatically: docs/operations/deployment.md.
+# What this file mirrors is production's SHAPE, so a fault in that shape shows up here
+# first: two web replicas that share every piece of state through Valkey, a queue manager
+# and a scheduler beside them (production runs both in one worker pod, under cbox-init),
+# PostgreSQL of the same major, and the proxy and cookie settings a gateway in front needs.
+#
+# Every key is one cbox-engine's ProjectManifestReader knows — it refuses any other — and
+# tests/Feature/DeploymentManifestTest.php holds the file to that reader and to that shape.
+# No secret is written here: APP_KEY, CBOX_ID_CRYPTO_KEY and the rest come from the working
+# copy's own `.env`, which the mount brings along.
 name: cbox-id
+# The base image the production image (Dockerfile) is built FROM, so the PHP, extensions,
+# nginx and cbox-init are production's; the code is the working copy rather than a build.
 image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
 port: 80
 source: true
 url: APP_URL
 
-# Two web replicas, so a rolling deploy never takes the sign-in page down. EVERYTHING
-# below that holds state is shared because of this line: rate limits, single-use handoff
-# and magic-link tokens, replay guards and sessions all live in the Valkey under
-# `resources`, never in a pod. CBOX_ID_REPLICAS (env) says the same number to the
-# application, which cannot count its siblings — `cbox-id:doctor` fails a per-process
-# cache or session store when it is more than one. Change the two together.
+# Two web replicas, as production runs, so anything that only works on one pod fails here
+# too. EVERYTHING below that holds state is shared because of this line: rate limits,
+# single-use handoff and magic-link tokens, replay guards and sessions all live in Valkey,
+# never in a pod. CBOX_ID_REPLICAS (env) says the same number to the application, which
+# cannot count its siblings — `cbox-id:doctor` fails a per-process cache or session store
+# when it is more than one. Change the two together.
 replicas: 2
 
 processes:
   # The queue MANAGER, not a worker: it starts, sizes and stops the `queue:work`
-  # processes itself (cboxdk/laravel-queue-autoscale). In cluster mode
-  # (QUEUE_AUTOSCALE_CLUSTER_ENABLED below) every manager coordinates through Valkey and
-  # one leader decides the sizing, so the process may run on more than one pod.
-  # See docs/operations/queue-workers.md.
+  # processes itself (cboxdk/laravel-queue-autoscale). Production runs it under cbox-init
+  # in the worker pod (CBOX_INIT_PROCESS_AUTOSCALER_ENABLED). See
+  # docs/operations/queue-workers.md.
   queue: ["php", "artisan", "queue:autoscale"]
   # The SCHEDULER, which every background duty depends on: the domain-event relay behind
   # webhooks, outbound SCIM, the audit-stream pump, token revocation on role change and
   # pruning are all scheduled commands. Without this process none of them run and nothing
   # logs an error — /health/status (`scheduler`, `event_relay`) is what turns red.
-  # Exactly one: shared duties are onOneServer(), but one scheduler is the intended shape.
+  # Production runs it in the same worker pod (CBOX_INIT_PROCESS_SCHEDULER_ENABLED). One.
   scheduler: ["php", "artisan", "schedule:work"]
 
-# Plain values only. Nothing secret is ever written in this file — see `secrets` below.
+# Plain values only, and only the ones that make this the production shape. APP_ENV,
+# APP_DEBUG, mail and the keys are the working copy's `.env` — a variable set here would
+# override it.
 env:
-  APP_ENV: production
-  APP_DEBUG: "false"
-  # The pod's disk disappears with the pod; stderr is collected by the platform.
+  # The pod's disk disappears with the pod; stderr is what the cluster collects.
   LOG_CHANNEL: stderr
-  LOG_LEVEL: info
 
-  # This application trusts no proxy unless told to, deliberately — so behind a real
-  # gateway it must be told. Without it Laravel builds every URL from the request as the
-  # POD saw it: `http`, because Envoy terminated the TLS one hop earlier, and every
-  # redirect and mailed link goes out as http. Named here rather than injected: which
-  # variable an application reads is the application's business.
+  # This application trusts no proxy unless told to, deliberately — so behind a gateway it
+  # must be told. Without it Laravel builds every URL from the request as the POD saw it:
+  # `http`, because the gateway terminated the TLS one hop earlier, and every redirect and
+  # mailed link goes out as http. The pod network, as in production.
   TRUSTED_PROXIES: "10.244.0.0/16"
   SESSION_SECURE_COOKIE: "true"
 
-  # Said to the application as well as to the platform (`replicas` above).
+  # Said to the application as well as to the cluster (`replicas` above).
   CBOX_ID_REPLICAS: "2"
 
   # Cache, sessions and the queue in Valkey (wire-compatible with Redis). Its host and
   # port are the binding's variables under `resources.cache` — the service's NAME is the
-  # platform's to choose and arrives in REDIS_HOST, never written here.
+  # engine's to choose and arrives in REDIS_HOST, never written here.
   #
   # THE QUEUE STORE MUST RUN `maxmemory-policy noeviction`. A queued job is data, not a
   # cache entry: under an evicting policy a full Valkey silently deletes jobs, and a
-  # webhook, a back-channel logout or an invitation mail is simply never sent. Cache and
-  # queue share one instance here, so the instance runs noeviction and is sized so the
-  # cache's TTL'd keys never fill it; give the cache its own instance (and `allkeys-lru`)
-  # before sizing that becomes a problem. With noeviction a full instance REFUSES writes,
-  # which surfaces as an error instead of a lost job.
+  # webhook, a back-channel logout or an invitation mail is simply never sent. Production's
+  # Valkey runs noeviction; cache and queue share it, sized so the cache's TTL'd keys never
+  # fill it. With noeviction a full instance REFUSES writes, which surfaces as an error
+  # instead of a lost job.
   CACHE_STORE: redis
   SESSION_DRIVER: redis
   QUEUE_CONNECTION: redis
   REDIS_CLIENT: phpredis
-  # Every queue manager coordinates through Valkey and one leader sizes the workers, so
-  # a second pod does not double the worker count (config/queue-autoscale.php).
+  # Every queue manager coordinates through Valkey and one leader sizes the workers, so a
+  # second manager does not double the worker count (config/queue-autoscale.php).
   QUEUE_AUTOSCALE_CLUSTER_ENABLED: "true"
 
   DB_CONNECTION: pgsql
-
-  # Real mail. The transport is SMTP; WHICH provider is the operator's choice, so the
-  # host, port and credentials are all secrets (below) rather than a hostname guessed
-  # here. `log` would mean no magic link, invitation, reset or verification mail ever
-  # leaves the server — `cbox-id:doctor` fails it in production.
-  MAIL_MAILER: smtp
 
   # The application, not nginx, owns the security response headers
   # (App\Http\Middleware\SecurityHeaders: CSP, HSTS, X-Frame-Options,
   # X-Content-Type-Options, Referrer-Policy, Permissions-Policy). The base image's nginx
   # adds its own copy of the four below by default, which sent each header TWICE with
   # conflicting values — and a browser takes the LAST Referrer-Policy, nginx's looser one.
-  # Blank is the base image's off switch; the image's init script strips the four
-  # directives as well while its entrypoint still re-fills empty values
-  # (docs/operations/deployment.md, "Security headers"). There is deliberately NO
-  # NGINX_HEADER_CONTENT_SECURITY_POLICY: nginx sends no CSP by default, and the app's
-  # middleware is the one and only source of it — a second CSP would be enforced
-  # alongside the first, and the stricter of every directive would win.
+  # Blank is the base image's off switch; the production image (Dockerfile) sets the same
+  # four and also strips the directives in an init script, because the base entrypoint
+  # still re-fills empty values (docs/operations/deployment.md, "Security headers"). There
+  # is deliberately NO NGINX_HEADER_CONTENT_SECURITY_POLICY: nginx sends no CSP by default,
+  # and the app's middleware is the one and only source of it.
   NGINX_HEADER_X_FRAME_OPTIONS: ""
   NGINX_HEADER_X_CONTENT_TYPE_OPTIONS: ""
   NGINX_HEADER_REFERRER_POLICY: ""
   NGINX_HEADER_PERMISSIONS_POLICY: ""
 
-# EVERY SECRET BY REFERENCE: variable name => the platform Secret and key that hold it.
-# Never a value in this file — it is committed. The Secrets are created on the platform
-# before the first deploy; the names on the right are this deployment's convention and the
-# operator's to keep. A missing one fails the pod at start rather than booting without it.
-secrets:
-  # Laravel's own key: cookies, signed URLs, encrypted casts. `php artisan key:generate --show`.
-  APP_KEY: { secret: cbox-id-app, key: APP_KEY }
-  # The master key every stored secret is sealed under — signing keys, client secrets,
-  # vault entries. RAW base64 of 32 bytes, no `base64:` prefix. Back it up apart from the
-  # database: lose it and every sealed secret is gone. Rotation: docs/operations/operations.md.
-  CBOX_ID_CRYPTO_KEY: { secret: cbox-id-app, key: CBOX_ID_CRYPTO_KEY }
-  # What /health/ready and /health/status require (as `Authorization: Bearer …` or
-  # `?token=`). Without it both answer 403 to the platform's own probe.
-  HEALTH_TOKEN: { secret: cbox-id-app, key: HEALTH_TOKEN }
-  # The SMTP provider — the operator's choice, all four from the Secret.
-  MAIL_HOST: { secret: cbox-id-mail, key: MAIL_HOST }
-  MAIL_PORT: { secret: cbox-id-mail, key: MAIL_PORT }
-  MAIL_USERNAME: { secret: cbox-id-mail, key: MAIL_USERNAME }
-  MAIL_PASSWORD: { secret: cbox-id-mail, key: MAIL_PASSWORD }
-  MAIL_FROM_ADDRESS: { secret: cbox-id-mail, key: MAIL_FROM_ADDRESS }
-  # OPTIONAL — log streams to a customer's Amazon S3 bucket through an ASSUMED ROLE, where
-  # the customer stores no secret with us: this platform's own AWS identity, an IAM user
-  # allowed nothing but `sts:AssumeRole`. Uncomment both once the Secret exists (a missing
-  # one fails the pod at start); left out, S3 streams use the customer's access key only.
-  # The user's ARN is not a secret — set SIEM_AWS_PRINCIPAL_ARN under `env` so the trust
-  # policy the console hands the customer names it. docs/guides/log-streams.md.
-  # SIEM_AWS_ACCESS_KEY_ID: { secret: cbox-id-siem, key: SIEM_AWS_ACCESS_KEY_ID }
-  # SIEM_AWS_SECRET_ACCESS_KEY: { secret: cbox-id-siem, key: SIEM_AWS_SECRET_ACCESS_KEY }
-
-# Managed data. A binding names the variables this application reads; the platform
-# resolves each to its own Secret (the database password is a `secretKeyRef`, never a
-# copied value), so no credential for either appears anywhere above.
+# Managed data. A binding names the variables this application reads; the engine resolves
+# each to its own Secret, so no credential appears anywhere above. The binding's fields are
+# the engine's (host, port, database, user, password, url — `user`, not `username`; the
+# reader refuses any other spelling) and the variables on the right are this application's.
 resources:
   database:
     engine: postgres
+    # Production's major, stated so an engine release cannot move it. CI's `engines` job
+    # runs the suite on the same major (.github/workflows/ci.yml); DeploymentManifestTest
+    # fails if the two drift. Change them together, with production.
+    version: "18"
     bind:
       host: DB_HOST
       port: DB_PORT
       database: DB_DATABASE
-      username: DB_USERNAME
+      user: DB_USERNAME
       password: DB_PASSWORD
-  # The platform deploys Valkey without a password, reachable only inside the project's
-  # own network — so there is no REDIS_PASSWORD to bind, and the platform refuses a
-  # `password` binding for it. On a Redis that has one, put REDIS_PASSWORD under
-  # `secrets` like every other credential.
+  # The engine's Valkey has no password and is reachable only inside the project's own
+  # network, so there is no REDIS_PASSWORD to bind — the reader refuses a `password`
+  # binding for it. Production's Valkey has one, from its Secret.
   cache:
     engine: valkey
     bind:
       host: REDIS_HOST
       port: REDIS_PORT
-
-# Readiness, not liveness: /health/ready runs the database, cache, queue and storage
-# checks (config/health.php) and is what decides whether a pod takes traffic. It needs
-# HEALTH_TOKEN, presented as a bearer token. Liveness is /up — a static answer outside
-# environment resolution and the rate limiter, so a slow database never restarts a
-# healthy pod. /health/status (scheduler, event relay, queue workers) is for ALERTING and
-# must never route: a stopped scheduler is not a reason to take web pods out of rotation.
-health:
-  path: /health/ready
-  liveness: /up
-  token: HEALTH_TOKEN

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Queues\DispatchedQueues;
+use App\Platform\Queues\WorkerBounds;
 use App\Platform\Queues\WorkerProfile;
 use Cbox\LaravelQueueAutoscale\Fuse\ConfigurableFailureClassifier;
 use Cbox\LaravelQueueAutoscale\Pickup\SortBasedPercentileCalculator;
@@ -23,8 +24,9 @@ use Cbox\LaravelQueueAutoscale\Scaling\Strategies\HybridStrategy;
 | docs/operations/queue-workers.md.
 |
 | Every value below is chosen for the smallest shape this runs on: ONE 512 MB
-| instance that also serves the web traffic. Where a value differs from the
-| package default, the comment says why.
+| host that also serves the web traffic. Where a value differs from the
+| package default, the comment says why. Production (Kubernetes) runs the
+| manager in a worker pod of its own and changes one value: cluster mode, below.
 |
 */
 
@@ -47,6 +49,24 @@ $dispatched = DispatchedQueues::resolve(
         [env('POSTAL_INBOUND_CONNECTION'), env('POSTAL_INBOUND_QUEUE')],
         [env('SIEM_QUEUE_CONNECTION'), env('SIEM_QUEUE', 'default')],
     ],
+);
+
+// The host-wide hard cap (see `limits` below), read once: the per-group bounds are
+// checked against it.
+$maxTotalWorkers = (int) env('QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS', 2);
+
+/*
+ * How few and how many workers each group runs. Defaults to the profile's own 1 and 2;
+ * on a host where the workers have memory of their own (the queue pod on Kubernetes)
+ * raise QUEUE_AUTOSCALE_WORKERS_MAX together with QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS —
+ * one group serves every queue, so the group maximum is the number that actually moves.
+ * An incoherent pair (max below min, or above the total cap) stops the configuration
+ * from loading, with the variable to fix named. See {@see WorkerBounds}.
+ */
+$workerBounds = WorkerBounds::fromEnvironment(
+    min: env('QUEUE_AUTOSCALE_WORKERS_MIN'),
+    max: env('QUEUE_AUTOSCALE_WORKERS_MAX'),
+    totalCap: $maxTotalWorkers,
 );
 
 return [
@@ -75,7 +95,7 @@ return [
      * dispatches to on it, the default queue first. Derived — see {@see DispatchedQueues}
      * — so moving webhooks to their own queue moves their worker with them.
      */
-    'groups' => $dispatched->autoscaleGroups(WorkerProfile::class),
+    'groups' => $dispatched->autoscaleGroups(WorkerProfile::class, $workerBounds->overrides()),
 
     // Single host: no Redis-backed pickup store needed. `auto` switches to Redis only
     // when cluster mode is turned on.
@@ -128,7 +148,10 @@ return [
      *  - max_total_workers 2 — a HARD cap, applied after everything else, and the one
      *    that holds even if the host's memory reading is wrong (a container reporting the
      *    node's memory instead of its own limit would make the percentage ceiling below
-     *    meaningless). Raise it only with a larger instance or a Worker cluster.
+     *    meaningless). Raise it only with more memory to spend: in production the
+     *    manager runs in a worker pod that serves no web traffic, so the cap follows that
+     *    pod's memory limit — and raise QUEUE_AUTOSCALE_WORKERS_MAX with it, or the single
+     *    group still stops at two.
      *  - max_memory_percent 70 — stop spawning while the instance is above 70 %, leaving
      *    headroom for a burst of web requests rather than racing them to the OOM killer.
      *  - worker_memory_mb_estimate 96 — the cold-start estimate before a measurement
@@ -141,7 +164,7 @@ return [
         'worker_memory_mb_estimate' => 96,
         'worker_cpu_core_estimate' => 0.25,
         'reserve_cpu_cores' => 0.25,
-        'max_total_workers' => (int) env('QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS', 2),
+        'max_total_workers' => $maxTotalWorkers,
     ],
 
     'manager' => [
@@ -149,17 +172,20 @@ return [
         'shutdown_grace_seconds' => 30,
         'log_channel' => env('QUEUE_AUTOSCALE_LOG_CHANNEL', 'stack'),
         'restart_scope' => env('QUEUE_AUTOSCALE_RESTART_SCOPE'),
-        // `php artisan queue:restart` in a self-hosted deploy script restarts the manager
-        // too. On Laravel Cloud the deploy replaces the instance, so nothing has to.
+        // `php artisan queue:restart` in a VM's deploy script restarts the manager too. On
+        // Kubernetes a rollout replaces the pod (SIGTERM, drain, exit), so nothing has to.
         'honor_queue_restart' => env('QUEUE_AUTOSCALE_HONOR_QUEUE_RESTART', true),
         'reap_orphans_on_start' => env('QUEUE_AUTOSCALE_REAP_ORPHANS_ON_START', true),
     ],
 
     /*
-     * SINGLE-HOST MODE. There is one App instance and exactly one manager on it. Cluster
-     * mode is for several hosts sharing one set of queues; turn it on (it needs Redis)
-     * the day the App cluster autoscales past one replica, or two managers will each
-     * size the pool as if alone — see docs/operations/queue-workers.md.
+     * SINGLE-HOST MODE BY DEFAULT: one host, exactly one manager on it. Cluster mode is for
+     * more than one manager sharing one set of queues; it needs Redis or Valkey, and
+     * without it two managers each size the pool as if alone. Production turns it ON
+     * (QUEUE_AUTOSCALE_CLUSTER_ENABLED): one manager runs in the worker pod, and a second
+     * — a replica added later, one started by hand — joins it instead of doubling the
+     * workers. Turn it on anywhere else the day the manager can run on more than one
+     * host — see docs/operations/queue-workers.md.
      */
     'cluster' => [
         'enabled' => env('QUEUE_AUTOSCALE_CLUSTER_ENABLED', false),

@@ -251,7 +251,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Where is the setup token?',
-            'body' => 'In :path on the server, and in the application log (:logs for a container). It is never shown on this page.',
+            'body' => 'Run :command on the server — on any instance of this deployment — and paste what it prints. Each run prints a fresh token, valid for an hour. It is never shown on this page.',
         ],
         'cli_hint' => 'Prefer the command line? :install does the same thing, and is the only path that can also choose and record the deployment shape.',
         'token_label' => 'Setup token',
@@ -267,7 +267,7 @@ return [
         'organization_hint' => 'This deployment is configured as multi-tenant, so the install also creates the first workspace — the organization that owns environments and billing.',
         'organization_placeholder' => 'Your company',
         'submit' => 'Install this deployment',
-        'token_mismatch' => 'That setup token does not match the one this deployment published.',
+        'token_mismatch' => 'That setup token does not match this deployment’s, or it has expired. Print a fresh one with php artisan cbox-id:setup-token.',
     ],
 
     'join_organization' => [
