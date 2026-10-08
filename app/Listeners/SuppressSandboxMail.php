@@ -26,24 +26,30 @@ final class SuppressSandboxMail
 
     public function handle(MessageSending $event): bool
     {
-        $key = $this->context->current()?->environmentKey();
-
-        if ($key === null) {
-            return true;
-        }
-
-        $isSandbox = Environment::query()->whereKey($key)->where('type', 'sandbox')->exists();
-
-        if (! $isSandbox) {
+        if (! $this->suppresses()) {
             return true;
         }
 
         Log::info('Suppressed outbound email from sandbox environment.', [
-            'environment' => $key,
+            'environment' => $this->context->current()?->environmentKey(),
             'to' => array_map(static fn ($address) => $address->getAddress(), $event->message->getTo()),
             'subject' => $event->message->getSubject(),
         ]);
 
         return false;
+    }
+
+    /**
+     * Whether mail sent now would be dropped here — the current environment is a sandbox.
+     *
+     * Asked by whatever reports a send, so it can say what happened rather than what it
+     * asked for: an answer of `emailed_to: "it@acme.com"` for a mail this listener then
+     * dropped told the caller somebody had the link when nobody did.
+     */
+    public function suppresses(): bool
+    {
+        $key = $this->context->current()?->environmentKey();
+
+        return $key !== null && Environment::query()->whereKey($key)->where('type', 'sandbox')->exists();
     }
 }

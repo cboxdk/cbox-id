@@ -14,9 +14,11 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\IntegrationReach;
 use App\Platform\Integrations\LogStreamDestinations;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme;
@@ -59,7 +61,7 @@ use Cbox\LaravelSiem\Exceptions\UnsafeStreamUrl;
     consoleGate: ConsoleGate::Administer,
     redact: ['secret'],
 )]
-final readonly class UpdateLogStream implements Action
+final readonly class UpdateLogStream implements Action, Preflight
 {
     /** The inputs that are a stream's destination settings, re-validated as a set. */
     private const array SETTINGS = ['destination', 'endpoint_url', 'auth', 'secret', 'options'];
@@ -81,6 +83,25 @@ final readonly class UpdateLogStream implements Action
             LogStreamDestinations::optionsField(),
             Field::boolean('enabled')->describe('True to deliver; false to stop, keeping what is pending.'),
         ]);
+    }
+
+    /**
+     * A stream that is not this principal's, settings that cannot apply, and an endpoint
+     * the SSRF guard refuses — answered before anyone approves the change. The whole set is
+     * re-validated by the package once it runs; a URL sent is what is knowable now.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        $stream = OwnedStreams::find($context);
+        $generated = null;
+
+        $this->changes($context, $stream, $generated);
+
+        $endpointUrl = trim($context->string('endpoint_url'));
+
+        if ($context->has('endpoint_url') && $endpointUrl !== '') {
+            OutboundUrl::assertLogStream($endpointUrl);
+        }
     }
 
     public function handle(ActionContext $context): ActionResult

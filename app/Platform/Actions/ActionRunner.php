@@ -26,6 +26,9 @@ use Illuminate\Validation\ValidationException;
  *  2. the input is valid against the action's own schema — the same rules for a form, a
  *     JSON body and a tool call, so a refusal is the same `validation_failed` everywhere;
  *  3. a write with an `Idempotency-Key` from a machine principal runs at most once;
+ *  3a. an action that can refuse from its input alone says so now ({@see Preflight}) —
+ *      an unsafe URL, a foreign id, a missing owner — so nobody approves a request that
+ *      could never run;
  *  3b. an action the principal's step-up policy names waits for a person's approval
  *      ({@see ActionApprovalGate}), and runs once that approval is spent;
  *  4. the action runs inside a transaction, so a refusal half-way leaves neither a change
@@ -76,6 +79,18 @@ final readonly class ActionRunner
         $trail = $this->container->make(ActionTrail::class);
 
         $execute = fn (): ActionResult => $trail->within($via, function () use ($definition, $principal, $validated, $approvalId, $via, $trail): ActionResult {
+            /** @var Action $handler */
+            $handler = $this->container->make($definition->class);
+            $context = new ActionContext($principal, $validated, $via);
+
+            // Before the approval gate, so a refusal the input already decides is answered
+            // instead of held for a person who would approve a request that cannot run.
+            // Inside the idempotent section, like the gate: a replay of a request that ran
+            // answers what it answered, whatever a fresh check would say now.
+            if ($handler instanceof Preflight) {
+                $handler->preflight($context);
+            }
+
             // Inside the idempotent section: a retry of a request that already ran replays its
             // answer without asking the person again, and a held request stores nothing.
             $spent = $this->approvals->enforce($principal, $definition, $validated, $approvalId);
@@ -87,10 +102,6 @@ final readonly class ActionRunner
             if ($principal instanceof AnnotatesTrail) {
                 $trail->annotate($principal->trailContext());
             }
-
-            /** @var Action $handler */
-            $handler = $this->container->make($definition->class);
-            $context = new ActionContext($principal, $validated, $via);
 
             return $definition->danger->writes()
                 ? DB::transaction(static fn (): ActionResult => $handler->handle($context))

@@ -13,9 +13,11 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
 use App\Platform\Integrations\IntegrationReach;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\Provisioning\Exceptions\UnsafeScimUrl;
@@ -42,7 +44,7 @@ use Cbox\Id\Provisioning\Exceptions\UnsafeScimUrl;
     consoleRoutes: ['provisioning.store', 'environment.provisioning.store'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class RegisterProvisioningTarget implements Action
+final readonly class RegisterProvisioningTarget implements Action, Preflight
 {
     public function __construct(
         private ProvisioningConnections $connections,
@@ -64,6 +66,19 @@ final readonly class RegisterProvisioningTarget implements Action
         ]);
     }
 
+    /**
+     * Whose it is, whether the client credentials are complete, and whether the SCIM base
+     * URL is public — before anyone approves a target the registry would refuse.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        EnterpriseReach::owner($context, 'a provisioning target');
+
+        $this->authConfig($context, AuthScheme::from($context->string('auth_scheme')));
+
+        OutboundUrl::assertScim(trim($context->string('base_url')));
+    }
+
     public function handle(ActionContext $context): ActionResult
     {
         $organizationId = EnterpriseReach::owner($context, 'a provisioning target');
@@ -72,29 +87,7 @@ final readonly class RegisterProvisioningTarget implements Action
 
         IntegrationReach::assertUrl($baseUrl, 'base_url');
 
-        $authConfig = [];
-
-        if ($scheme === AuthScheme::OAuth2ClientCredentials) {
-            $missing = [];
-
-            foreach (['token_url' => 'The token URL is required.', 'client_id' => 'The client ID is required.'] as $field => $message) {
-                if (trim($context->string($field)) === '') {
-                    $missing[$field] = $message;
-                }
-            }
-
-            if ($missing !== []) {
-                throw ActionRefused::onFields('incomplete_client_credentials', $missing);
-            }
-
-            IntegrationReach::assertUrl(trim($context->string('token_url')), 'token_url');
-
-            $authConfig = array_filter([
-                'token_url' => trim($context->string('token_url')),
-                'client_id' => trim($context->string('client_id')),
-                'scope' => trim($context->string('scope')),
-            ], static fn (string $value): bool => $value !== '');
-        }
+        $authConfig = $this->authConfig($context, $scheme);
 
         try {
             $connection = $this->connections->register(
@@ -120,5 +113,40 @@ final readonly class RegisterProvisioningTarget implements Action
         $connection->refresh();
 
         return ActionResult::item($connection, ProvisioningFields::present($connection));
+    }
+
+    /**
+     * What the target authenticates with besides its secret: the token URL, client id and
+     * scope of an OAuth 2.0 client-credentials target, every missing one named at once.
+     *
+     * @return array<string, string>
+     *
+     * @throws ActionRefused
+     */
+    private function authConfig(ActionContext $context, AuthScheme $scheme): array
+    {
+        if ($scheme !== AuthScheme::OAuth2ClientCredentials) {
+            return [];
+        }
+
+        $missing = [];
+
+        foreach (['token_url' => 'The token URL is required.', 'client_id' => 'The client ID is required.'] as $field => $message) {
+            if (trim($context->string($field)) === '') {
+                $missing[$field] = $message;
+            }
+        }
+
+        if ($missing !== []) {
+            throw ActionRefused::onFields('incomplete_client_credentials', $missing);
+        }
+
+        IntegrationReach::assertUrl(trim($context->string('token_url')), 'token_url');
+
+        return array_filter([
+            'token_url' => trim($context->string('token_url')),
+            'client_id' => trim($context->string('client_id')),
+            'scope' => trim($context->string('scope')),
+        ], static fn (string $value): bool => $value !== '');
     }
 }

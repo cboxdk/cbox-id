@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
+use App\Mcp\PortableSchema;
 use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
@@ -93,6 +94,17 @@ it('completes the initialize handshake a client opens with', function (): void {
         ->assertJsonPath('result.protocolVersion', '2025-11-25')
         ->assertJsonPath('result.serverInfo.name', 'Cbox ID')
         ->assertJsonPath('result.capabilities.tools.listChanged', false);
+});
+
+it('reports the application\'s own version, not a number of its own', function (): void {
+    config(['app.version' => '2.0.0-3-gabc1234']);
+    $body = ['protocolVersion' => '2025-11-25', 'capabilities' => (object) [], 'clientInfo' => ['name' => 'test', 'version' => '1.0']];
+
+    mcpRpc(mcpIssue()->plaintext, 'initialize', $body)->assertOk()->assertJsonPath('result.serverInfo.version', '2.0.0-3-gabc1234');
+
+    config(['app.version' => null]);
+
+    mcpRpc(mcpIssue()->plaintext, 'initialize', $body)->assertOk()->assertJsonPath('result.serverInfo.version', 'dev');
 });
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
@@ -307,6 +319,78 @@ it('pages a list the way REST does', function (): void {
         ->and($page['content'][0]['text'])->toContain('1 item(s)', 'next_cursor');
 });
 
+/**
+ * Where a tool schema uses a form some clients' dialects refuse — a `type` that is a
+ * list (OpenAPI 3.0-style dialects have no type arrays) — by JSON path. Empty when every
+ * client can take it.
+ *
+ * @param  array<mixed>  $schema
+ * @return list<string>
+ */
+function mcpUnportable(array $schema, string $path = '$'): array
+{
+    $found = is_array($schema['type'] ?? null) ? [$path.'.type'] : [];
+    $children = [];
+
+    // The keywords that hold schemas — never `properties` itself, whose keys are field
+    // names (a field may well be called `type`).
+    foreach (is_array($schema['properties'] ?? null) ? $schema['properties'] : [] as $name => $property) {
+        $children[$path.'.properties.'.$name] = $property;
+    }
+
+    foreach (is_array($schema['anyOf'] ?? null) ? $schema['anyOf'] : [] as $index => $branch) {
+        $children[$path.'.anyOf.'.$index] = $branch;
+    }
+
+    if (isset($schema['items'])) {
+        $children[$path.'.items'] = $schema['items'];
+    }
+
+    foreach ($children as $at => $child) {
+        if (is_array($child)) {
+            $found = [...$found, ...mcpUnportable($child, $at)];
+        }
+    }
+
+    return $found;
+}
+
+// ── Schema portability ──────────────────────────────────────────────────────────
+
+it('writes a nullable field as anyOf the field and null, keeping its description outside', function (): void {
+    $portable = PortableSchema::of([
+        'type' => 'object',
+        'properties' => [
+            'organization_id' => ['type' => ['string', 'null'], 'description' => 'The owner.', 'maxLength' => 64],
+            'name' => ['type' => 'string'],
+            'tags' => ['type' => ['array', 'null'], 'items' => ['type' => ['string', 'null'], 'enum' => ['a', 'b']]],
+        ],
+        'required' => ['name'],
+    ]);
+
+    expect($portable['properties']['organization_id'])->toBe([
+        'description' => 'The owner.',
+        'anyOf' => [['type' => 'string', 'maxLength' => 64], ['type' => 'null']],
+    ])
+        ->and($portable['properties']['name'])->toBe(['type' => 'string'])
+        ->and($portable['properties']['tags']['anyOf'][0]['items'])->toBe(['anyOf' => [['type' => 'string', 'enum' => ['a', 'b']], ['type' => 'null']]])
+        ->and($portable['required'])->toBe(['name'])
+        ->and(mcpUnportable($portable))->toBe([]);
+});
+
+it('lists no tool whose schema a client dialect without type arrays would refuse', function (): void {
+    $key = mcpIssue(array_map(static fn (EnvironmentApiScope $scope): string => $scope->value, EnvironmentApiScope::cases()))->plaintext;
+    $unportable = [];
+
+    foreach (mcpTools($key) as $name => $tool) {
+        foreach (mcpUnportable($tool['inputSchema']) as $path) {
+            $unportable[] = $name.' '.$path;
+        }
+    }
+
+    expect($unportable)->toBe([]);
+});
+
 // ── Tool search ─────────────────────────────────────────────────────────────────
 
 it('groups the action tools behind search_tools and execute_tools when tool search is on', function (): void {
@@ -364,7 +448,9 @@ it('offers every action in the registry as a tool, with its own input schema', f
         expect($tools)->toHaveKey($action->toolName(), message: "Action {$action->name} has no MCP tool.");
 
         $schema = $tools[$action->toolName()]['inputSchema'];
-        $declared = json_decode(json_encode($action->input()->jsonSchema(), JSON_THROW_ON_ERROR), true);
+        $declared = json_decode(json_encode(PortableSchema::of($action->input()->jsonSchema()), JSON_THROW_ON_ERROR), true);
+
+        expect(mcpUnportable($schema))->toBe([], "{$action->name}'s tool schema uses a form some clients refuse.");
 
         expect(array_diff_key($schema['properties'], [ActionTool::IDEMPOTENCY_KEY => true, ActionTool::APPROVAL_ID => true]))->toBe($declared['properties'] ?? [])
             ->and(array_key_exists(ActionTool::APPROVAL_ID, $schema['properties']))->toBeTrue("{$action->name} cannot be finished after an approval")

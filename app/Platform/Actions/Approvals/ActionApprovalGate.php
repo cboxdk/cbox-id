@@ -43,6 +43,9 @@ final readonly class ActionApprovalGate
     /** The framework's default, when `CBOX_ID_CIBA_TTL_SECONDS` says nothing usable. */
     private const int DEFAULT_TTL_SECONDS = 300;
 
+    /** The framework's ceiling on a binding message ({@see ActionApprovals::request()}). */
+    private const int BINDING_MESSAGE_MAX = 255;
+
     public function __construct(
         private ActionApprovals $approvals,
         private StepUpClient $client,
@@ -80,7 +83,10 @@ final readonly class ActionApprovalGate
         // A short code the person sees beside Approve and the caller shows its user, so the
         // two can be matched by eye — the CIBA binding-message convention.
         $code = strtoupper(bin2hex(random_bytes(2)));
-        $message = mb_substr($principal->label().' wants to run '.$action->name, 0, 240).' · '.$code;
+        // The framework holds a binding message to 255 characters. What is cut, when anything
+        // is, is the principal's label — never the action, nor the code the two sides compare.
+        $suffix = ' wants to run '.$action->name.' · '.$code;
+        $message = mb_substr($principal->label(), 0, self::BINDING_MESSAGE_MAX - mb_strlen($suffix)).$suffix;
 
         $request = $this->inApproverRealm($principal, fn (): ApprovalRequest => $this->approvals->request(
             $this->client->ensure(),

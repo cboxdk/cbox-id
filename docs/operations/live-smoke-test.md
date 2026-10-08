@@ -174,7 +174,7 @@ checksum before running it. To keep the run away from your own CLI profile, run 
 | 3.9 | `cbox id sso connections create --organization-id=<org> --name="Globex Okta" --type=saml --pending-idp` | A draft and its `service_provider` block (entity ID, ACS URL, metadata URL) for the IT admin to paste into their IdP, on `https://acme-workspace-acme.id.localhost/sso/saml/{id}/…`. **The first run answered them on the root**, which 404s there ([found](#6-what-this-run-found)) |
 | 3.10 | `cbox id sso domains create --organization-id=<org> --domain=globex.example` | The TXT record `_cbox-id-challenge.globex.example` to publish |
 | 3.11 | `cbox id sso domains verify <domain>` | `verified: false`. Expected: nobody published the record. On staging, use a domain you can publish TXT records for |
-| 3.12 | `cbox id organizations portal_links create <org> --intents=sso --intents=domain_verification --email=it@globex.example --yes` | Held, approved; a one-time link on `https://acme-workspace-acme.id.localhost/setup/…` (on the root in the first run, where it said "expired"). Opening it and pressing **Open setup** lands on the portal for *Globex Corporation*. The mail was not sent: a sandbox environment suppresses outbound mail (logged as `Suppressed outbound email from sandbox environment`), although the answer still says `emailed_to` |
+| 3.12 | `cbox id organizations portal_links create <org> --intents=sso --intents=domain_verification --email=it@globex.example --yes` | Held, approved; a one-time link on `https://acme-workspace-acme.id.localhost/setup/…` (on the root in the first run, where it said "expired"). Opening it and pressing **Open setup** lands on the portal for *Globex Corporation*. The mail was not sent: a sandbox environment suppresses outbound mail (logged as `Suppressed outbound email from sandbox environment`). The answer says so: `emailed_to: null`, `email_suppressed: true` |
 | 3.13 | `cbox id webhooks create --url=https://example.com/cbox-webhook --event-types=organization.updated --organization-id=<org> --yes` | Held, approved; the endpoint and its signing secret (once) |
 | 3.14 | `cbox id webhooks pause <webhook>` | `active: false`. Paused so nothing is delivered to a host we do not own |
 | 3.15 | `cbox id invitations send <org> --env=acme-workspace --email=new.admin@initech.example --role=admin` | In the production environment, so the mail is sent: Mailpit shows "Live Operator invited you to join Initech" with an accept link on `https://acme-workspace.id.localhost/invitations/…` (on the root in the first run, which redirected the invitee to the root's sign-in) |
@@ -289,6 +289,19 @@ Fixed in this application:
 - **MCP tool descriptions called every critical action destructive.** `apps_create` and
   `keys_create` told the agent they "remove or revoke something". A critical tool now says
   what critical means.
+- **A refusal knowable from the input came after the approval.** A webhook URL that does
+  not resolve publicly was checked once the person had approved, so the repeat failed with
+  `unsafe_url`. Actions now refuse what they can before the approval gate: an unsafe
+  webhook, hook, log stream or SCIM URL, an unsafe SAML metadata URL or OIDC issuer, a
+  foreign id, a missing owner, an incomplete SSO config, a malformed SSO domain.
+- **The portal link said `emailed_to` for a mail a sandbox dropped.** The answer is now
+  `emailed_to: null` with `email_suppressed: true`.
+- **The MCP server said version `1.0.0`.** It now reports the application's version.
+- **A key's approval request did not name its environment.** The binding message now says
+  `Key "…" in <environment> wants to run …`.
+- **MCP tool schemas wrote nullable fields as `type: ["string", "null"]`**, which the
+  Inspector flagged 185 times and some clients refuse. Tool input schemas now use
+  `anyOf`; the REST OpenAPI (3.1) is unchanged.
 
 Reported elsewhere, not fixed here:
 
@@ -296,9 +309,6 @@ Reported elsewhere, not fixed here:
   (framework: the count runs outside any environment).
 - `cbox id environments` (CLI 0.1.0) prints an empty `host` column: the API answers
   `issuer` and `domain`.
-- Validation that needs the outside world (a webhook URL that does not resolve publicly) is
-  checked after the approval, so the person approves a request that then fails with
-  `unsafe_url`.
 
 Not possible locally, and replaced:
 

@@ -55,9 +55,11 @@ final readonly class OrganizationPortalLinkController extends OrganizationTabCon
 
         $sentTo = $result->payload['emailed_to'] ?? null;
 
-        return is_string($sentTo)
-            ? back()->with('status', "Setup link sent to {$sentTo}.")
-            : back();
+        return match (true) {
+            is_string($sentTo) => back()->with('status', "Setup link sent to {$sentTo}."),
+            ($result->payload['email_suppressed'] ?? false) === true => back()->with('status', 'Sandbox environments send no email — copy the setup link below and share it yourself.'),
+            default => back(),
+        };
     }
 
     /**

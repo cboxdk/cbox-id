@@ -54,6 +54,9 @@ final class SsoFields
     /** The SAML keys this environment knows for itself — derived from the connection when left blank. */
     public const array SERVICE_PROVIDER = ['sp_entity_id', 'sp_acs_url'];
 
+    /** The refusal when an issuer cannot be discovered — or may not be dialled at all; `%s` is why. */
+    public const string DISCOVERY_FAILED = "Couldn't read the provider's OpenID configuration — check the issuer URL. (%s)";
+
     /**
      * The config inputs of both types. Which set applies is the connection's type.
      *
@@ -220,7 +223,7 @@ final class SsoFields
         try {
             return array_merge($config, app(OidcDiscovery::class)->fromIssuer($config['issuer'] ?? '')->toConfig());
         } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
-            throw ActionRefused::because('discovery_failed', "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})", 'issuer');
+            throw ActionRefused::because('discovery_failed', sprintf(self::DISCOVERY_FAILED, $e->getMessage()), 'issuer');
         }
     }
 

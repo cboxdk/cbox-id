@@ -13,6 +13,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Enterprise\EnterpriseReach;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
@@ -37,7 +38,7 @@ use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
     consoleRoutes: ['connections.domains.store', 'environment.connections.domains.store'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class AddSsoDomain implements Action
+final readonly class AddSsoDomain implements Action, Preflight
 {
     /** A real, dotted hostname — no scheme, no path, no '@'. */
     private const string HOSTNAME = '/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/';
@@ -52,7 +53,35 @@ final readonly class AddSsoDomain implements Action
         ]);
     }
 
+    /** Whose it is, whether they have SSO, and whether the domain is one — before any approval. */
+    public function preflight(ActionContext $context): void
+    {
+        self::checked($context);
+    }
+
     public function handle(ActionContext $context): ActionResult
+    {
+        [$organizationId, $domain] = self::checked($context);
+
+        try {
+            $record = $this->domains->add($organizationId, $domain);
+        } catch (DomainAlreadyClaimed) {
+            throw ActionRefused::because('domain_claimed', 'That domain is already claimed by another organization.', 'domain');
+        }
+
+        $record->refresh();
+
+        return ActionResult::item($record, SsoFields::presentDomain($record));
+    }
+
+    /**
+     * The organization and the domain, normalized — refused when either cannot be claimed.
+     *
+     * @return array{string, string}
+     *
+     * @throws ActionRefused
+     */
+    private static function checked(ActionContext $context): array
     {
         $organizationId = EnterpriseReach::requiredOrganization($context);
 
@@ -64,14 +93,6 @@ final readonly class AddSsoDomain implements Action
             throw ActionRefused::because('invalid_domain', 'Enter a valid domain, e.g. acme.com.', 'domain');
         }
 
-        try {
-            $record = $this->domains->add($organizationId, $domain);
-        } catch (DomainAlreadyClaimed) {
-            throw ActionRefused::because('domain_claimed', 'That domain is already claimed by another organization.', 'domain');
-        }
-
-        $record->refresh();
-
-        return ActionResult::item($record, SsoFields::presentDomain($record));
+        return [$organizationId, $domain];
     }
 }

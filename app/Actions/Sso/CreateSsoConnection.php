@@ -6,14 +6,17 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
@@ -54,7 +57,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
     consoleRoutes: ['connections.store', 'environment.connections.store'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class CreateSsoConnection implements Action
+final readonly class CreateSsoConnection implements Action, Preflight
 {
     public function __construct(
         private Connections $connections,
@@ -73,29 +76,23 @@ final readonly class CreateSsoConnection implements Action
         ]);
     }
 
+    /**
+     * Whose it is, whether its plan has SSO, whether the settings are complete, and — for
+     * an OIDC provider — whether its issuer is an address the SSRF guard lets out. The
+     * discovery itself is a fetch of the provider's server, and waits for any approval.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        [, $type, $pending, $config] = self::drafted($context);
+
+        if ($type === ConnectionType::Oidc && ! $pending) {
+            OutboundUrl::assertFederation($config['issuer'] ?? '', 'discovery_failed', 'issuer', SsoFields::DISCOVERY_FAILED);
+        }
+    }
+
     public function handle(ActionContext $context): ActionResult
     {
-        $organizationId = EnterpriseReach::owner($context, 'a connection');
-
-        EnterpriseReach::assertEntitled($organizationId, 'sso');
-
-        $type = ConnectionType::from($context->string('type'));
-        $pending = $context->boolean('pending_idp');
-
-        // Ours, when left out: filled in from the connection once it has an id, below. And
-        // an optional value left out is not on file at all, rather than on file as blank.
-        $config = array_filter(
-            SsoFields::configFrom($context, $type),
-            static fn (string $value, string $key): bool => $value !== '' || ! in_array($key, [...SsoFields::SERVICE_PROVIDER, ...SsoFields::OPTIONAL], true),
-            ARRAY_FILTER_USE_BOTH,
-        );
-
-        if ($pending) {
-            // Nothing of the identity provider's yet — only what was sent, and nothing blank.
-            $config = array_filter($config, static fn (string $value): bool => $value !== '');
-        } else {
-            SsoFields::assertComplete($config);
-        }
+        [$organizationId, $type, $pending, $config] = self::drafted($context);
 
         $stored = $config;
 
@@ -151,5 +148,40 @@ final readonly class CreateSsoConnection implements Action
 
         $connection->config_encrypted = $this->secretBox->seal(json_encode([...$config, ...$missing], JSON_THROW_ON_ERROR), $connection->secretContext());
         $connection->save();
+    }
+
+    /**
+     * The owner, the type, whether the IdP's half is still to come, and the config as sent —
+     * refused when the owner may not have it or a draft that is not pending is incomplete.
+     *
+     * @return array{?string, ConnectionType, bool, array<string, string>}
+     *
+     * @throws ActionRefused
+     */
+    private static function drafted(ActionContext $context): array
+    {
+        $organizationId = EnterpriseReach::owner($context, 'a connection');
+
+        EnterpriseReach::assertEntitled($organizationId, 'sso');
+
+        $type = ConnectionType::from($context->string('type'));
+        $pending = $context->boolean('pending_idp');
+
+        // Ours, when left out: filled in from the connection once it has an id. And an
+        // optional value left out is not on file at all, rather than on file as blank.
+        $config = array_filter(
+            SsoFields::configFrom($context, $type),
+            static fn (string $value, string $key): bool => $value !== '' || ! in_array($key, [...SsoFields::SERVICE_PROVIDER, ...SsoFields::OPTIONAL], true),
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        if ($pending) {
+            // Nothing of the identity provider's yet — only what was sent, and nothing blank.
+            $config = array_filter($config, static fn (string $value): bool => $value !== '');
+        } else {
+            SsoFields::assertComplete($config);
+        }
+
+        return [$organizationId, $type, $pending, $config];
     }
 }

@@ -44,7 +44,8 @@ final class IdServer extends Server
 {
     protected string $name = 'Cbox ID';
 
-    protected string $version = '1.0.0';
+    /** Replaced at boot by the application's own version (`app.version`); never a number of its own. */
+    protected string $version = 'dev';
 
     protected string $instructions = <<<'MARKDOWN'
         This is the management plane of Cbox ID (an identity provider). With an environment key it is one environment: its APIs, apps, organizations and users. With a workspace key it is the workspace above them: projects, environments, the team and keys. Signed in as a person, it is what that person may do in their organization here, within the scopes they granted you. Signed in at the platform root as one of a workspace's team, it is the workspace, every environment of it the person administers, their own account and — for a platform operator — the deployment; an environment tool then takes an `environment` argument (an id or slug from `whoami`) naming where to act. Each tool is one action, with the same rules, refusals and audit trail as the REST API and the console.
@@ -75,6 +76,11 @@ final class IdServer extends Server
 
     protected function boot(): void
     {
+        // What `initialize` answers as serverInfo.version: the release this deployment runs,
+        // so a client's logs say which Cbox ID it talked to. It said `1.0.0` whatever ran.
+        $version = config('app.version');
+        $this->version = is_string($version) && $version !== '' ? $version : 'dev';
+
         $actions = array_values(array_map(
             static fn ($action): ActionTool => new ActionTool($action),
             Container::getInstance()->make(ActionRegistry::class)->all(),

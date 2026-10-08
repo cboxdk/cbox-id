@@ -174,7 +174,9 @@ final class ActionTool extends Tool
      */
     public function inputSchema(): array
     {
-        $schema = $this->action->input()->jsonSchema();
+        // In the form every client's schema dialect takes ({@see PortableSchema}); the REST
+        // API's OpenAPI 3.1 keeps the 2020-12 type arrays.
+        $schema = PortableSchema::of($this->action->input()->jsonSchema());
         $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
 
         if ($this->namesEnvironment()) {
