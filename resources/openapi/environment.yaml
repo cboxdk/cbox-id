@@ -82,7 +82,7 @@ tags:
   - name: Invitations
   - name: Roles
   - name: Users
-  - name: Apps
+  - name: Applications
   - name: APIs
   - name: 'API keys'
   - name: 'Support sessions'
@@ -90,18 +90,18 @@ tags:
   - name: Approvals
   - name: Governance
   - name: 'Audit log'
-  - name: 'Audit Logs'
+  - name: 'App audit logs'
   - name: Branding
   - name: 'Directory Sync'
   - name: Domains
   - name: Events
-  - name: 'Frontend keys'
+  - name: 'Publishable keys'
   - name: Hooks
-  - name: 'Management keys'
+  - name: 'Secret keys'
   - name: 'Legacy login'
   - name: 'Log streams'
   - name: 'Admin Portal'
-  - name: Provisioning
+  - name: 'Outbound provisioning'
   - name: 'SAML apps'
   - name: Sign-in
   - name: 'Enterprise SSO'
@@ -1242,7 +1242,7 @@ paths:
   /apps:
     get:
       tags:
-        - Apps
+        - Applications
       summary: 'List apps'
       description: 'Requires scope `apps:read`. Never a secret.'
       operationId: apps_list
@@ -1285,7 +1285,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
-        - Apps
+        - Applications
       summary: 'Register an app'
       description: |
         Requires scope `apps:write`. Two ways to describe it:
@@ -1407,7 +1407,7 @@ paths:
   '/apps/{id}':
     delete:
       tags:
-        - Apps
+        - Applications
       summary: 'Delete an app and every secret it holds. Anything signing in as it stops working immediately.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_delete
@@ -1453,7 +1453,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - Apps
+        - Applications
       summary: 'Get one app (OAuth client) by its id or its client_id: its kind, grants, redirect URIs, scopes and settings. Never a secret.'
       description: 'Requires scope `apps:read`. Danger: read.'
       operationId: apps_get
@@ -1503,7 +1503,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - Apps
+        - Applications
       summary: 'Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields left out are unchanged.'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_update
@@ -1584,7 +1584,7 @@ paths:
   '/apps/{id}/blueprint':
     get:
       tags:
-        - Apps
+        - Applications
       summary: "Export an app's configuration as a blueprint"
       description: |
         Requires scope `apps:read`. `{id}` is the app's id or its `client_id`. The document
@@ -1626,7 +1626,7 @@ paths:
   '/apps/{id}/copy':
     post:
       tags:
-        - Apps
+        - Applications
       summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_copy
@@ -1706,7 +1706,7 @@ paths:
   '/apps/{id}/manifest':
     put:
       tags:
-        - Apps
+        - Applications
       summary: 'Set or clear the URL an app publishes its roles-and-permissions manifest at. Does not fetch it; apps.manifest.sync does.'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_manifest_set
@@ -1776,7 +1776,7 @@ paths:
   '/apps/{id}/manifest/sync':
     post:
       tags:
-        - Apps
+        - Applications
       summary: "Fetch an app's published manifest now and sync the roles and permissions it declares."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_manifest_sync
@@ -1832,7 +1832,7 @@ paths:
   '/apps/{id}/scopes':
     put:
       tags:
-        - Apps
+        - Applications
       summary: "Replace an app's complete scope set — the ceiling of what it may request, applied from its next token."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_scopes_set
@@ -1902,7 +1902,7 @@ paths:
   '/apps/{id}/secrets':
     get:
       tags:
-        - Apps
+        - Applications
       summary: "List an app's live client secrets"
       description: |
         Requires scope `apps:read`. Every live secret, newest first: its id (what
@@ -1948,7 +1948,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
-        - Apps
+        - Applications
       summary: 'Mint a new client secret for an app and retire the current ones after grace_seconds (0 = at once). The new secret is returned once.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_secrets_rotate
@@ -2018,7 +2018,7 @@ paths:
   '/apps/{id}/secrets/{secret_id}':
     delete:
       tags:
-        - Apps
+        - Applications
       summary: "Revoke one of an app's client secrets immediately. Never its last live secret — rotate that instead."
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_secrets_revoke
@@ -2073,7 +2073,7 @@ paths:
   '/apps/{id}/settings/api-key-prefix':
     put:
       tags:
-        - Apps
+        - Applications
       summary: "Set the prefix of an app's customer API keys (acme_live), which lets its users create keys for it, or null to stop new keys."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_api_key_prefix
@@ -2142,7 +2142,7 @@ paths:
   '/apps/{id}/settings/backchannel-logout':
     put:
       tags:
-        - Apps
+        - Applications
       summary: 'Set or clear the URI an app is sent a logout token at when somebody signs out (OIDC Back-Channel Logout).'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_backchannel_logout
@@ -2215,7 +2215,7 @@ paths:
   '/apps/{id}/settings/token-exchange':
     put:
       tags:
-        - Apps
+        - Applications
       summary: 'Turn token exchange (RFC 8693) on or off for a confidential app.'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_token_exchange
@@ -2282,7 +2282,7 @@ paths:
   '/apps/{id}/settings/token-lifetime':
     put:
       tags:
-        - Apps
+        - Applications
       summary: "Set how long an app's access tokens live, in seconds, or null for the install's default."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_token_lifetime
@@ -2444,7 +2444,7 @@ paths:
   /audit-logs/events:
     post:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Record 1–100 audit events your app's users caused, each for one of your organizations (customers); checked against the action's schema when it has one and appended to that organization's tamper-evident chain. Send an Idempotency-Key."
       description: 'Requires scope `audit_logs:write`. Danger: write.'
       operationId: audit_logs_events_create
@@ -2593,7 +2593,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: 'Read audit events newest first, for one organization or the whole environment, filtered by action, actor, target and time range; pass `next_cursor` as `after` to page.'
       description: 'Requires scope `audit_logs:read`. Danger: read.'
       operationId: audit_logs_events_list
@@ -2720,7 +2720,7 @@ paths:
   /audit-logs/exports:
     post:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: 'Start a CSV export of audit events (same filters as the list). It is written on the queue: poll audit_logs.exports.get until state is ready, then download from its short-lived url.'
       description: 'Requires scope `audit_logs:export`. Danger: write.'
       operationId: audit_logs_exports_create
@@ -2803,7 +2803,7 @@ paths:
   '/audit-logs/exports/{id}':
     get:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Read an audit-log export's state; once ready it carries a signed download url valid for a few minutes (read it again for a fresh one)."
       description: 'Requires scope `audit_logs:read`. Danger: read.'
       operationId: audit_logs_exports_get
@@ -2857,7 +2857,7 @@ paths:
   /audit-logs/schemas:
     post:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Define the schema one audit-log action's events must match — allowed target types and metadata schemas (a subset of JSON Schema). Events of that action are then validated on arrival."
       description: 'Requires scope `audit_logs:manage`. Danger: write.'
       operationId: audit_logs_schemas_create
@@ -2943,7 +2943,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: 'List the audit-log schemas this environment validates events against, one per action.'
       description: 'Requires scope `audit_logs:read`. Danger: read.'
       operationId: audit_logs_schemas_list
@@ -3006,7 +3006,7 @@ paths:
   '/audit-logs/schemas/{action}':
     delete:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Delete an audit-log action's schema. Its events are then accepted unchecked — or refused, if the environment is in strict mode."
       description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
       operationId: audit_logs_schemas_delete
@@ -3051,7 +3051,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Read the schema one audit-log action's events are validated against."
       description: 'Requires scope `audit_logs:read`. Danger: read.'
       operationId: audit_logs_schemas_get
@@ -3102,7 +3102,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     put:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Replace an audit-log action's schema with a new version (omitted parts are removed). Recorded events keep the version they were checked against."
       description: 'Requires scope `audit_logs:manage`. Danger: write.'
       operationId: audit_logs_schemas_update
@@ -3191,7 +3191,7 @@ paths:
   /audit-logs/settings:
     get:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Read this environment's audit-log settings: retention in days and whether strict schemas are on."
       description: 'Requires scope `audit_logs:read`. Danger: read.'
       operationId: audit_logs_settings_get
@@ -3234,7 +3234,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Change this environment's audit-log retention (days, 1–3650) and strict mode. Shortening retention deletes older events at the next daily prune — irreversibly."
       description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
       operationId: audit_logs_settings_update
@@ -3296,7 +3296,7 @@ paths:
   /audit-logs/verify:
     get:
       tags:
-        - 'Audit Logs'
+        - 'App audit logs'
       summary: "Re-hash one organization's audit-event chain (from the oldest event retention kept, or from_sequence) and report whether every event is unchanged and in place."
       description: 'Requires scope `audit_logs:read`. Danger: read.'
       operationId: audit_logs_verify
@@ -4860,7 +4860,7 @@ paths:
   /frontend-keys:
     post:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'Create a publishable frontend key for a browser app, usable only from the origins listed. The key is public by design.'
       description: 'Requires scope `frontend_keys:write`. Danger: write.'
       operationId: frontend_keys_create
@@ -4935,7 +4935,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'List the publishable frontend keys browser apps present to the Frontend API, in full, with their allowed origins.'
       description: 'Requires scope `frontend_keys:read`. Danger: read.'
       operationId: frontend_keys_list
@@ -4998,7 +4998,7 @@ paths:
   '/frontend-keys/{id}':
     delete:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'Revoke a publishable frontend key. Pages still holding it stop working immediately.'
       description: 'Requires scope `frontend_keys:write`. Danger: destructive.'
       operationId: frontend_keys_revoke
@@ -5043,7 +5043,7 @@ paths:
   '/frontend-keys/{id}/origins':
     put:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'Replace the exact list of origins allowed to present a publishable frontend key. Live on the next request.'
       description: 'Requires scope `frontend_keys:write`. Danger: write.'
       operationId: frontend_keys_set_origins
@@ -5427,7 +5427,7 @@ paths:
   /keys:
     post:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: 'Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.'
       description: 'Requires scope `keys:write`. Danger: critical.'
       operationId: keys_create
@@ -5526,7 +5526,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: "List this environment's management keys (names, scopes, parents, expiry, last use — never their values)."
       description: 'Requires scope `keys:read`. Danger: read.'
       operationId: keys_list
@@ -5589,7 +5589,7 @@ paths:
   '/keys/{id}':
     delete:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: 'Revoke a management key and every key it minted, immediately.'
       description: 'Requires scope `keys:write`. Danger: destructive.'
       operationId: keys_revoke
@@ -5634,7 +5634,7 @@ paths:
   '/keys/{id}/rotate':
     post:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: 'Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.'
       description: 'Requires scope `keys:write`. Danger: critical.'
       operationId: keys_rotate
@@ -8203,7 +8203,7 @@ paths:
   /provisioning-targets:
     post:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: "Register a downstream app this platform pushes an organization's people to over SCIM, or every organization's with environment_wide."
       description: 'Requires scope `provisioning:write`. Danger: critical.'
       operationId: provisioning_targets_create
@@ -8310,7 +8310,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'List the downstream SCIM targets people are provisioned to, optionally for one organization, with their failures. Never their credentials.'
       description: 'Requires scope `provisioning:read`. Danger: read.'
       operationId: provisioning_targets_list
@@ -8383,7 +8383,7 @@ paths:
   '/provisioning-targets/{id}':
     delete:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'Delete a downstream SCIM target. Nothing more is pushed to it.'
       description: 'Requires scope `provisioning:write`. Danger: destructive.'
       operationId: provisioning_targets_delete
@@ -8442,7 +8442,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'Read one downstream SCIM target: its URL, auth scheme, status and last error. Never its credential.'
       description: 'Requires scope `provisioning:read`. Danger: read.'
       operationId: provisioning_targets_get
@@ -8503,7 +8503,7 @@ paths:
   '/provisioning-targets/{id}/status':
     post:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'Pause or resume pushing people to a downstream SCIM target.'
       description: 'Requires scope `provisioning:write`. Danger: write.'
       operationId: provisioning_targets_status_set

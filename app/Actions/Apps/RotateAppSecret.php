@@ -39,7 +39,7 @@ use Cbox\Id\OAuthServer\Exceptions\ClientSecretRefused;
     scope: 'apps:write',
     danger: Danger::Critical,
     schema: 'AppSecret',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['POST', '/apps/{id}/secrets'],
     status: 201,
     consoleRoutes: ['clients.rotate', 'environment.clients.rotate'],

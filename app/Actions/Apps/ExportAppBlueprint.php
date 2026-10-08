@@ -24,7 +24,7 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
     scope: 'apps:read',
     danger: Danger::Read,
     schema: 'AppBlueprint',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['GET', '/apps/{id}/blueprint'],
 )]
 final readonly class ExportAppBlueprint implements Action

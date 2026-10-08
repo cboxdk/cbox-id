@@ -34,7 +34,7 @@ use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
     scope: 'apps:write',
     danger: Danger::Write,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['PUT', '/apps/{id}/settings/token-exchange'],
     consoleRoutes: ['clients.settings.exchange', 'environment.clients.settings.exchange'],
     consoleGate: ConsoleGate::Administer,

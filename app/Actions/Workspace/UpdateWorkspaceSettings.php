@@ -40,7 +40,7 @@ use Cbox\Id\Platform\PlatformRoot;
     consoleRoutes: ['organization-settings.update'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Organization',
-    tag: 'Organization',
+    tag: 'Workspace',
 )]
 final readonly class UpdateWorkspaceSettings implements Action
 {

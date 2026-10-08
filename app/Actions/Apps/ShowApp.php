@@ -18,7 +18,7 @@ use App\Platform\Actions\Input\InputSchema;
     scope: 'apps:read',
     danger: Danger::Read,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['GET', '/apps/{id}'],
 )]
 final class ShowApp implements Action

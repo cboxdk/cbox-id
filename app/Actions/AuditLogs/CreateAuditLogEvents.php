@@ -36,7 +36,7 @@ use App\Platform\AuditLogs\EventShape;
     scope: 'audit_logs:write',
     danger: Danger::Write,
     schema: 'AuditLogEventBatch',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['POST', '/audit-logs/events'],
     status: 201,
     consoleGate: ConsoleGate::Administer,

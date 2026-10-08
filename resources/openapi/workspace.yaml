@@ -5,7 +5,7 @@ info:
   title: 'Cbox ID — Workspace Management API'
   version: 1.0.0
   description: |
-    The **global organization-management plane** — above every environment. Manage the
+    The **workspace plane** — the customer's own Cbox account, above every environment it owns. Manage the
     workspace, its **projects** (IdP products, each a billing anchor) and their
     environments, its team, and its keys with a workspace key.
 
@@ -36,7 +36,7 @@ info:
 
     This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
     which is served on each environment's own host and authenticated with
-    environment-scoped credentials. Credentials never cross planes: an organization key
+    environment-scoped credentials. Credentials never cross planes: a workspace key
     (`cbid_ws_…`) cannot call the environment API, and vice versa.
 
     **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
@@ -48,7 +48,7 @@ info:
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
 servers:
   - url: 'https://api.cboxid.com/api/v1'
-    description: 'Hosted (global organization plane)'
+    description: 'Hosted (the platform root)'
   -
     url: 'https://{host}/api/v1'
     description: Self-hosted
@@ -61,10 +61,10 @@ security:
   -
     WorkspaceAccessToken: []
 tags:
-  - name: Organization
+  - name: Workspace
   - name: Projects
   - name: Environments
-  - name: Members
+  - name: Team
   - name: Keys
     description: "Workspace keys, and the management keys of the workspace's environments."
   - name: Approvals
@@ -73,11 +73,11 @@ paths:
   /workspace:
     get:
       tags:
-        - Organization
-      summary: 'Get the organization'
+        - Workspace
+      summary: 'Get the workspace'
       operationId: workspace_get
       x-action: workspace.get
-      description: "Requires scope `workspace:read` (any role). Returns the organization's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer)."
+      description: "Requires scope `workspace:read` (any role). Returns the workspace's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer)."
       responses:
         200:
           description: OK
@@ -98,7 +98,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - Organization
+        - Workspace
       summary: 'Rename the workspace.'
       description: 'Requires scope `settings:write` and a role that may `manage-members`. Danger: write.'
       operationId: workspace_settings_update
@@ -273,7 +273,7 @@ paths:
                   default: production
                 project_id:
                   type: string
-                  description: "The project (billing anchor) to create the environment under. Defaults to the organization's first project when omitted."
+                  description: "The project (billing anchor) to create the environment under. Defaults to the workspace's first project when omitted."
                 initial_key:
                   type:
                     - object
@@ -312,7 +312,7 @@ paths:
         403:
           $ref: '#/components/responses/Forbidden'
         404:
-          description: 'No such project on this organization'
+          description: 'No such project in this workspace'
           content:
             application/json:
               schema:
@@ -588,7 +588,7 @@ paths:
   /workspace/invitations:
     get:
       tags:
-        - Members
+        - Team
       summary: 'List pending invitations'
       operationId: team_invitations_list
       x-action: team.invitations.list
@@ -614,9 +614,9 @@ paths:
   '/workspace/invitations/{id}':
     delete:
       tags:
-        - Members
+        - Team
       summary: 'Withdraw an invitation'
-      description: 'Requires scope `team:write` and the `manage-members` capability. The link stops working. An invitation that is not pending on this organization is a `404`.'
+      description: 'Requires scope `team:write` and the `manage-members` capability. The link stops working. An invitation that is not pending in this workspace is a `404`.'
       operationId: team_invitations_revoke
       x-action: team.invitations.revoke
       parameters:
@@ -641,7 +641,7 @@ paths:
   '/workspace/invitations/{id}/resend':
     post:
       tags:
-        - Members
+        - Team
       summary: 'Re-send an invitation'
       description: |
         Requires scope `team:write` and the `manage-members` capability. Mails a fresh link; the earlier link stops
@@ -851,7 +851,7 @@ paths:
   /workspace/members:
     get:
       tags:
-        - Members
+        - Team
       summary: 'List members'
       operationId: team_list
       x-action: team.list
@@ -896,11 +896,11 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
-        - Members
+        - Team
       summary: 'Invite a member'
       description: |
         Requires scope `team:write` and the `manage-members` capability (owner/admin). Invites the address onto the
-        organization's team — the same invitation the console's Team page sends: a mail naming
+        workspace's team — the same invitation the console's Team page sends: a mail naming
         this key as the inviter and the role, with a signed link on which the invitee sets a
         password and is signed in. Owner is never invited; ownership is transferred. An
         earlier pending invitation for the same address is superseded. List, re-send and
@@ -965,7 +965,7 @@ paths:
   '/workspace/members/{id}':
     delete:
       tags:
-        - Members
+        - Team
       summary: "Remove a member from the workspace's team. The owner is never removed; transfer ownership first."
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: destructive.'
       operationId: team_remove
@@ -1001,7 +1001,7 @@ paths:
   '/workspace/members/{id}/access':
     put:
       tags:
-        - Members
+        - Team
       summary: "Set which of the workspace's environments a team member reaches: all of them, or the listed ones."
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: write.'
       operationId: team_environment_access
@@ -1064,7 +1064,7 @@ paths:
   '/workspace/members/{id}/role':
     patch:
       tags:
-        - Members
+        - Team
       summary: "Change a team member's role (admin, developer, member or viewer). The owner's role changes only by transferring ownership."
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: write.'
       operationId: team_role
@@ -1125,7 +1125,7 @@ paths:
   '/workspace/members/{id}/transfer-ownership':
     post:
       tags:
-        - Members
+        - Team
       summary: "Make another member the workspace's owner; the current owner stays on as an admin. Only the owner, signed in, may do this."
       description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: critical.'
       operationId: team_transfer_ownership
@@ -1165,7 +1165,7 @@ paths:
       summary: 'List projects'
       operationId: projects_list
       x-action: projects.list
-      description: "Requires scope `workspace:read` (any role). The organization's projects (IdP products). Each carries its own plan and environment allowance."
+      description: "Requires scope `workspace:read` (any role). The workspace's projects (IdP products). Each carries its own plan and environment allowance."
       responses:
         200:
           description: OK
@@ -1489,7 +1489,7 @@ components:
                     type: string
                     format: uri
     Unauthorized:
-      description: 'Missing or invalid organization API key (or its organization is suspended)'
+      description: 'Missing or invalid workspace key (or its workspace is suspended)'
       content:
         application/json:
           schema:
@@ -1507,7 +1507,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     NotFound:
-      description: 'No such resource on this organization'
+      description: 'No such resource in this workspace'
       content:
         application/json:
           schema:
@@ -1557,7 +1557,7 @@ components:
             - suspended
         projects:
           type: array
-          description: "The organization's projects with each one's plan/allowance. Present only for billing-readers (plans are per project)."
+          description: "The workspace's projects with each one's plan/allowance. Present only for billing-readers (plans are per project)."
           items:
             $ref: '#/components/schemas/Project'
     Project:

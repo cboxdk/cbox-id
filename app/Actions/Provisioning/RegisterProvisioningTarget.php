@@ -36,7 +36,7 @@ use Cbox\Id\Provisioning\Exceptions\UnsafeScimUrl;
     scope: 'provisioning:write',
     danger: Danger::Critical,
     schema: 'ProvisioningTarget',
-    tag: 'Provisioning',
+    tag: 'Outbound provisioning',
     rest: ['POST', '/provisioning-targets'],
     status: 201,
     consoleRoutes: ['provisioning.store', 'environment.provisioning.store'],

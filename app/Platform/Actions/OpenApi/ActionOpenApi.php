@@ -283,8 +283,11 @@ final readonly class ActionOpenApi
      * What a key needs to run it. On the workspace plane that is the scope AND a role that
      * holds the capability the scope and the action ask for ({@see WorkspaceScopes}) — the
      * part a reader would otherwise find out from a 403.
+     *
+     * Public because the generated actions reference (`php artisan docs:actions`) prints
+     * the same sentence: one wording of a requirement, wherever it is read.
      */
-    private function requirement(ActionDefinition $action): string
+    public function requirement(ActionDefinition $action): string
     {
         $sentence = "Requires scope `{$action->scope}`";
 
@@ -310,7 +313,8 @@ final readonly class ActionOpenApi
             : $sentence.' and a role that may '.implode(' and ', array_map(static fn (string $capability): string => "`{$capability}`", $capabilities)).'.';
     }
 
-    private function tag(ActionDefinition $action): string
+    /** The tag an action is listed under — in its document, and in the actions reference. */
+    public function tag(ActionDefinition $action): string
     {
         return $action->tag ?? ucfirst(str_replace('_', ' ', explode('.', $action->name)[0]));
     }

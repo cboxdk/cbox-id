@@ -35,7 +35,7 @@ use Cbox\Id\OAuthServer\ValueObjects\ClientSecretSummary;
     summary: 'Revoke one of an app\'s client secrets immediately. Never its last live secret — rotate that instead.',
     scope: 'apps:write',
     danger: Danger::Critical,
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['DELETE', '/apps/{id}/secrets/{secret_id}'],
     status: 204,
     consoleRoutes: ['clients.secrets.revoke', 'environment.clients.secrets.revoke'],

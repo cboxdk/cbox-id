@@ -19,7 +19,7 @@ use Cbox\Id\FrontendApi\Models\PublishableKey;
     scope: 'frontend_keys:read',
     danger: Danger::Read,
     schema: 'FrontendKey',
-    tag: 'Frontend keys',
+    tag: 'Publishable keys',
     rest: ['GET', '/frontend-keys'],
 )]
 final class ListFrontendKeys implements Action

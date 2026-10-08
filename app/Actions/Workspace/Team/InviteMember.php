@@ -34,7 +34,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
     consoleRoutes: ['members.invite'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Member',
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class InviteMember implements Action
 {

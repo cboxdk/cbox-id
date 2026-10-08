@@ -28,7 +28,7 @@ use Cbox\Id\OAuthServer\ValueObjects\ClientSecretSummary;
     scope: 'apps:read',
     danger: Danger::Read,
     schema: 'AppSecret',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['GET', '/apps/{id}/secrets'],
 )]
 final readonly class ListAppSecrets implements Action

@@ -41,7 +41,7 @@ use Cbox\Id\Platform\PlatformRoot;
     status: 204,
     consoleRoutes: ['members.transfer-ownership'],
     consoleGate: ConsoleGate::ManageMembers,
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class TransferOwnership implements Action
 {

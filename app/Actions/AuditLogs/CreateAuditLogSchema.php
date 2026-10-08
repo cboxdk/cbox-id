@@ -31,7 +31,7 @@ use App\Platform\AuditLogs\AuditLogTrail;
     scope: 'audit_logs:manage',
     danger: Danger::Write,
     schema: 'AuditLogSchema',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['POST', '/audit-logs/schemas'],
     status: 201,
     consoleRoutes: ['environment.audit-logs.schemas.store'],

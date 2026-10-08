@@ -77,7 +77,7 @@ tags:
   - name: Invitations
   - name: Roles
   - name: Users
-  - name: Apps
+  - name: Applications
   - name: APIs
   - name: API keys
   - name: Support sessions
@@ -1114,7 +1114,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apps:
     get:
-      tags: [Apps]
+      tags: [Applications]
       summary: List apps
       description: "Requires scope `apps:read`. Never a secret."
       operationId: apps_list
@@ -1139,7 +1139,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
-      tags: [Apps]
+      tags: [Applications]
       summary: Register an app
       description: |
         Requires scope `apps:write`. Two ways to describe it:
@@ -1198,7 +1198,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apps/{id}/blueprint:
     get:
-      tags: [Apps]
+      tags: [Applications]
       summary: Export an app's configuration as a blueprint
       description: |
         Requires scope `apps:read`. `{id}` is the app's id or its `client_id`. The document
@@ -1225,7 +1225,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apps/{id}/secrets:
     get:
-      tags: [Apps]
+      tags: [Applications]
       summary: List an app's live client secrets
       description: |
         Requires scope `apps:read`. Every live secret, newest first: its id (what

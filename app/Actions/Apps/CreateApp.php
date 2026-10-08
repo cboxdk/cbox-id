@@ -50,7 +50,7 @@ use Illuminate\Validation\ValidationException;
     scope: 'apps:write',
     danger: Danger::Critical,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['POST', '/apps'],
     status: 201,
     consoleRoutes: ['clients.store', 'environment.clients.store', 'environment.get-started.app'],

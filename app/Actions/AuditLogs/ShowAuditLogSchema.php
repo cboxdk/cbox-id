@@ -22,7 +22,7 @@ use App\Platform\Actions\Input\InputSchema;
     scope: 'audit_logs:read',
     danger: Danger::Read,
     schema: 'AuditLogSchema',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['GET', '/audit-logs/schemas/{action}'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]

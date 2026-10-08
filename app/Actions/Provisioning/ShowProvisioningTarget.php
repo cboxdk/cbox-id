@@ -23,7 +23,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     scope: 'provisioning:read',
     danger: Danger::Read,
     schema: 'ProvisioningTarget',
-    tag: 'Provisioning',
+    tag: 'Outbound provisioning',
     rest: ['GET', '/provisioning-targets/{id}'],
 )]
 final class ShowProvisioningTarget implements Action

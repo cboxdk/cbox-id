@@ -38,7 +38,7 @@ use Illuminate\Validation\ValidationException;
     scope: 'apps:write',
     danger: Danger::Write,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['PUT', '/apps/{id}/scopes'],
     consoleRoutes: ['clients.scopes.update', 'environment.clients.scopes.update'],
     consoleGate: ConsoleGate::Administer,

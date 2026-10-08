@@ -30,7 +30,7 @@ use Cbox\Id\FrontendApi\Models\PublishableKey;
     scope: 'frontend_keys:write',
     danger: Danger::Write,
     schema: 'FrontendKey',
-    tag: 'Frontend keys',
+    tag: 'Publishable keys',
     rest: ['PUT', '/frontend-keys/{id}/origins'],
     consoleRoutes: ['environment.keys.frontend.origins'],
 )]

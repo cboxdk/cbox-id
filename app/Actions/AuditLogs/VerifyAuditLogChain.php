@@ -29,7 +29,7 @@ use App\Platform\AuditLogs\AuditLogChains;
     scope: 'audit_logs:read',
     danger: Danger::Read,
     schema: 'AuditLogVerification',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['GET', '/audit-logs/verify'],
     consoleGate: ConsoleGate::Administer,
 )]

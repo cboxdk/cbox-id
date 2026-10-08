@@ -24,7 +24,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     summary: 'Delete a downstream SCIM target. Nothing more is pushed to it.',
     scope: 'provisioning:write',
     danger: Danger::Destructive,
-    tag: 'Provisioning',
+    tag: 'Outbound provisioning',
     rest: ['DELETE', '/provisioning-targets/{id}'],
     status: 204,
     consoleRoutes: ['provisioning.destroy', 'environment.provisioning.destroy'],

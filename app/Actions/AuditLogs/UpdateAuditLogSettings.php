@@ -31,7 +31,7 @@ use App\Platform\AuditLogs\AuditLogTrail;
     scope: 'audit_logs:manage',
     danger: Danger::Destructive,
     schema: 'AuditLogSettings',
-    tag: 'Audit Logs',
+    tag: 'App audit logs',
     rest: ['PATCH', '/audit-logs/settings'],
     consoleRoutes: ['environment.audit-logs.settings.update'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
