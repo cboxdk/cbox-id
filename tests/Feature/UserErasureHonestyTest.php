@@ -24,6 +24,10 @@ uses(RefreshDatabase::class);
  * deleted." An administrator told an erasure happened stops chasing it.
  *
  * These tests hold the button gone and the copy honest. They fail against the old page.
+ *
+ * The page offers an ERASURE now — `users.erase`, the framework's real one — and that is
+ * proved in tests/Feature/Actions/UserErasureTest.php. What stays true here is that no
+ * DELETE reaches a person, and that deactivation still keeps everything.
  */
 if (! function_exists('erasureConsoleSetup')) {
     /** Provision an account + environment and pin an env-admin session on it. */
@@ -68,22 +72,22 @@ it('exposes no hard-delete route for a user', function (): void {
     expect(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
 
-it('offers deactivation as the only off-switch and says what it does not do', function (): void {
+it('offers deactivation and a real erasure, and nothing called delete', function (): void {
     erasureConsoleSetup();
     $user = app(Subjects::class)->create('honest@acme.example', 'Honest');
 
     /*
-     * WHAT THE PAGE OFFERS, read off the props it is built from. The copy that states the
-     * limit is in the component and is held by the browser suite, which is the only place
-     * that can see whether a sentence is drawn; what the SERVER decides is which lifecycle
-     * URLs this person gets — and there is no erasure among them.
+     * WHAT THE PAGE OFFERS, read off the props it is built from. Two off-switches: the
+     * reversible one, and the erasure — a POST to `users.erase`, behind a fresh credential
+     * and the typed address. Never a route named for a delete, which is what the old button
+     * pretended to be.
      */
     $urls = (array) $this->get("/admin/users/{$user->id}")->assertOk()->inertiaProps('urls');
 
     expect($urls)->toHaveKey('deactivate')
+        ->and($urls)->toHaveKey('erase')
         ->and($urls)->not->toHaveKey('delete')
-        ->and($urls)->not->toHaveKey('destroy')
-        ->and($urls)->not->toHaveKey('erase');
+        ->and($urls)->not->toHaveKey('destroy');
 });
 
 it('keeps the person and their whole data trail when they are deactivated', function (): void {

@@ -35,94 +35,92 @@ class ConsoleNavigation
      */
     public function environment(): ConsoleNav
     {
+        // THE MARKET'S WORDS, in the order a team sets an IdP up. The rail used to be
+        // grouped by how this codebase is organized — "Sign-in" holding both directions
+        // of SAML and both directions of SCIM, "Developers" holding the token vault and
+        // the legacy password import — so a person who had used another identity
+        // platform looked for "Enterprise SSO" and "Directory Sync" and found neither
+        // word. The pages and their URLs are unchanged; this is only where they are filed
+        // and what they are called. What is rarely touched after setup is under Advanced,
+        // so the areas above it are the ones a team opens every week.
         return new ConsoleNav(...$this->withModulePages([
-            new NavArea('Overview', 'dashboard',
+            // "Get started" joins this area when the environment console has a guided
+            // first run of its own; today that page is the organization console's only.
+            new NavArea('Home', 'home',
                 new NavPage('environment.home', 'Overview'),
-                new NavPage('environment.usage', 'Usage'),
-                // Named for what it does HERE: every pending request in the environment,
-                // so an administrator can deny one that looks like abuse. The organization
-                // console's page of a similar name is where a person approves their own.
-                new NavPage('environment.approvals', 'Review agent requests'),
             ),
-            // Named for its page, not above it. The rail said TENANTS, the eyebrow
-            // repeated it above an <h1> reading "Organizations", and the subtitle opened
-            // "Your customers" — three words for one thing, stacked. "Tenant" is also the
-            // word Auth0 uses for what we call an environment, so it pointed the wrong way
-            // for exactly the readers most likely to need it.
-            new NavArea('Organizations', 'building',
-                new NavPage('environment.organizations', 'Organizations'),
-            ),
-            new NavArea('People', 'members',
+            new NavArea('Users & orgs', 'members',
                 new NavPage('environment.users', 'Users'),
-                // Roles held across the whole environment by its own people. Beside Users
-                // because it is a question about people — "who has support access?" —
-                // and only this console has it: organizations never grant one.
-                new NavPage('environment.staff', 'Staff'),
+                // Not "Tenants": that is the word other platforms use for what we call an
+                // environment, so it pointed the wrong way for exactly the readers most
+                // likely to need it.
+                new NavPage('environment.organizations', 'Organizations'),
                 new NavPage('environment.roles', 'Roles'),
+                // Roles are made OF permissions, so a console that offers one and hides
+                // the other asks an administrator to assign a thing they cannot inspect.
                 new NavPage('environment.permissions', 'Permissions'),
             ),
-            new NavArea('Sign-in', 'fingerprint',
-                new NavPage('environment.connections', 'Single sign-on'),
-                new NavPage('environment.social-providers', 'Social sign-in'),
-                // Beside the other sign-in pages rather than under Settings, on both
-                // consoles — it is the password, MFA and session policy.
-                new NavPage('environment.auth-policy', 'Sign-in rules'),
-                // "Login methods" described the OPPOSITE direction. This page registers the
-                // applications that trust this environment as their SAML identity provider —
-                // outbound, us as the IdP — while Sign-in › Single sign-on is inbound: letting
-                // people arrive with a company account they already have. One name suggested
-                // the other, on the same rail, two entries apart.
-                new NavPage('environment.sso-providers', 'SAML applications'),
-                // One component serves both planes now, so it has one title — and the
-                // organization plane's "Sync users in" is the name the help topic and the
-                // published guide already use. "Directories" also said nothing about
-                // which direction people move, one line above Outbound sync.
-                new NavPage('environment.directories', 'Sync users in'),
-                // …and its pair keeps the pair's other half. The page, its detail view,
-                // its help topic and the organization plane's registry entry all say
-                // "Sync users out"; only this line said "Outbound sync", which is the
-                // name the line above was renamed AWAY from. Found by the extended
-                // ConsoleAreasTest, not by reading — which is the point of that test.
-                new NavPage('environment.provisioning', 'Sync users out'),
-            ),
-            new NavArea('Access control', 'scale',
-                new NavPage('environment.governance', 'Access reviews'),
-                // One component serves both planes now, so it has one title — and the
-                // organization plane's "Role conflicts" is the name the help topic and
-                // the published guide already use.
-                new NavPage('environment.sod-policies', 'Role conflicts'),
+            // How people arrive — every page here is a way IN. The outbound halves (SAML
+            // apps that trust this environment, provisioning out to other systems) are
+            // under Advanced, so "SSO" and "sync" each mean one direction on this rail.
+            new NavArea('Authentication', 'fingerprint',
+                // The password, MFA and session policy.
+                new NavPage('environment.auth-policy', 'Authentication policy'),
+                new NavPage('environment.social-providers', 'Social login'),
+                new NavPage('environment.connections', 'Enterprise SSO'),
+                new NavPage('environment.directories', 'Directory Sync'),
+                // "Admin Portal" joins this area when the environment console can mint a
+                // portal link of its own; today a link is minted from an organization.
             ),
             new NavArea('Developers', 'code',
-                // One component serves both consoles, so it has one title: "Apps". It was
-                // "Apps & API keys", and the keys half of that promise lived on other pages.
-                new NavPage('environment.clients', 'Apps'),
-                // The resource servers apps get tokens FOR, and the scopes each owns — beside
-                // Apps, because a scope an app may ask for is either free text or one of these.
+                new NavPage('environment.clients', 'Applications'),
+                // The resource servers apps get tokens FOR, and the scopes each owns.
                 new NavPage('environment.apis', 'APIs'),
-                // KEYS — this environment's management keys and its frontend keys, one page
-                // with the type as a tab. The management keys were minted only from the
-                // workspace, on another host; the frontend keys were a page of their own.
-                new NavPage('environment.keys', 'Keys'),
-                new NavPage('environment.legacy-login', 'Legacy login'),
+                // This environment's frontend keys, with its management keys as the other
+                // tab. The management keys themselves are listed under AI agents › Agents —
+                // one page per credential, so the two cannot disagree — and the tab leads
+                // there, which is where a developer looking under "API keys" is sent.
+                new NavPage('environment.keys.frontend', 'API keys'),
                 new NavPage('environment.webhooks', 'Webhooks'),
-                // "Inline hooks" on both planes now. Called "Event hooks" here, it sat
-                // one line under Webhooks — a different capability that runs after the
-                // fact — and named the synchronous one after the asynchronous one.
-                new NavPage('environment.hooks', 'Inline hooks'),
-                // "Token vault" on both planes now. One component serves them, so it has
-                // one title — and clicking "Stored tokens" to land on a page headed
-                // "Token vault" is the same broken promise the merged pairs above fixed.
-                new NavPage('environment.vault', 'Token vault'),
+                // Synchronous: they run INSIDE a sign-in or a token issuance and can change
+                // its outcome. Webhooks, one line up, are told after the fact.
+                new NavPage('environment.hooks', 'Hooks'),
             ),
-            new NavArea('Logs', 'audit',
-                // "Activity log" — what the page, its help topic and the organization
-                // plane's registry entry all call it. Same drift as Sync users out.
-                new NavPage('environment.audit', 'Activity log'),
-                new NavPage('environment.audit-streams', 'Log streaming'),
+            // Where software acting on this environment is handed access and governed: the
+            // agents holding its management keys, what they are waiting for a person to
+            // allow, and how to point one at the environment's MCP server. Connected
+            // accounts land here when they exist.
+            new NavArea('AI agents', 'magic',
+                new NavPage('environment.agents', 'Agents'),
+                new NavPage('environment.approvals', 'Approvals'),
+                new NavPage('environment.agent-connect', 'Connect'),
+            ),
+            new NavArea('Branding', 'palette',
+                new NavPage('environment.appearance', 'Appearance'),
+            ),
+            new NavArea('Monitoring', 'chart',
+                new NavPage('environment.audit', 'Audit log'),
+                new NavPage('environment.audit-streams', 'Log streams'),
+                new NavPage('environment.usage', 'Usage'),
+            ),
+            // Set up once and rarely revisited, or needed by few: the environment's own
+            // staff, governance, the outbound directions, and migration.
+            new NavArea('Advanced', 'sliders',
+                // Roles held across the whole environment by its own people — support,
+                // operations. Organizations never grant one.
+                new NavPage('environment.staff', 'Admins & support'),
+                new NavPage('environment.governance', 'Access reviews'),
+                new NavPage('environment.sod-policies', 'Role conflicts'),
+                new NavPage('environment.vault', 'Token vault'),
+                new NavPage('environment.provisioning', 'Outbound provisioning'),
+                // Outbound SAML: the applications that trust THIS environment as their
+                // identity provider. Enterprise SSO, under Authentication, is the inbound
+                // direction — people arriving with a company account they already have.
+                new NavPage('environment.sso-providers', 'SAML apps'),
+                new NavPage('environment.legacy-login', 'Legacy login'),
             ),
             new NavArea('Settings', 'settings',
                 new NavPage('environment.settings', 'Settings'),
-                new NavPage('environment.appearance', 'Appearance'),
             ),
         ]));
     }
@@ -179,7 +177,7 @@ class ConsoleNavigation
                 : new NavArea($area->label, $area->icon, ...$area->pages, ...$pages);
 
             // A module-introduced area sits immediately after the one it names, so
-            // Connectors lands between Developers and Logs on both rails.
+            // Connectors lands right after Developers on both rails.
             foreach ($additions as $label => $pages) {
                 if ($introduced[$label]->environmentAfter() === $area->label) {
                     $merged[] = new NavArea($label, $introduced[$label]->environmentIcon(), ...$pages);

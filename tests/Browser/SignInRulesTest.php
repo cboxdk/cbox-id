@@ -64,7 +64,7 @@ it('warns before requiring SSO, and writes nothing until the warning is answered
 
     $page = visit('/sign-in-rules');
 
-    $page->assertSee('Sign-in rules')
+    $page->assertSee('Authentication policy')
         ->assertDontSee('This will sign people out of');
 
     // Choose the mandate and submit. The dialog interrupts.

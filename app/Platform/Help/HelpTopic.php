@@ -57,6 +57,8 @@ enum HelpTopic: string
     case Billing = 'billing';
     case EnvironmentOverview = 'environment-overview';
     case ReviewAgentRequests = 'review-agent-requests';
+    case Agents = 'agents';
+    case ConnectAgent = 'connect-agent';
     case Organizations = 'organizations';
     case Users = 'users';
     case Staff = 'staff';
@@ -115,6 +117,8 @@ enum HelpTopic: string
             self::Billing => 'Plans and what they count',
             self::EnvironmentOverview => 'This environment at a glance',
             self::ReviewAgentRequests => 'Agent requests across the environment',
+            self::Agents => 'Software that acts on this environment',
+            self::ConnectAgent => 'Pointing an AI agent at this environment',
             self::Organizations => 'The teams using your product',
             self::Users => 'Everyone who can sign in here',
             self::Staff => 'Roles for your own people',
@@ -205,17 +209,21 @@ enum HelpTopic: string
 
             self::EnvironmentOverview => 'How many organizations, users, single sign-on connections, apps and user syncs this environment holds, each linking to its own page. The shortcuts underneath start the things people most often come here to create: an organization, a user, a single sign-on connection or an app.',
 
-            self::ReviewAgentRequests => 'Every pending request in this environment from an app or AI agent asking to act on a user\'s behalf. Each user approves their own, so there is no approve button here; deny a request when it looks like abuse, and the denial is recorded in the activity log.',
+            self::ReviewAgentRequests => 'What agents in this environment are waiting for a person to allow. An agent whose key needs approval for an action stops and asks the person who created the key, who can answer on their phone or here; anyone running this environment can deny one that looks wrong. Below them are requests from apps asking to act as one of your users, which each user approves for themselves.',
+
+            self::Agents => 'An agent is any software that acts on this environment with a management key: an AI assistant such as Claude Code or Cursor, an internal bot, or your own backend. Give each its own key with only the scopes it needs, decide which of its actions wait for your approval, and revoke the key the moment the agent is done or anything looks wrong.',
+
+            self::ConnectAgent => 'This environment serves an MCP server, the standard way AI assistants call tools, next to its REST API. Paste the address and a management key into Claude Code, Cursor or any other MCP client, and the agent can do exactly what the key\'s scopes allow, with the same checks and the same activity log as the console.',
 
             self::Organizations => 'Each organization is a company or team using your product, with its own members, roles, domains and single sign-on. Create one for each company that signs up, and open it to manage its members, invitations and verified domains, or to suspend it.',
 
-            self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, or change which organizations and roles they hold.',
+            self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, change which organizations and roles they hold, or erase them for good on a right-to-erasure request.',
             self::Staff => 'A staff role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
             self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s activity log records who did it and why.',
 
             self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in. The environment sets a baseline every organization inherits, and an organization can make its own rules stricter but never looser.',
 
-            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Single sign-on under Sign-in.',
+            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Single sign-on under Sign-in.',
 
             self::LegacyLogin => 'While you move off another system, an app can ask for the email and password of anyone not yet in Cbox ID to be checked against its old login endpoint. Test the endpoint before you approve it: a person it accepts is created here and never sent there again, but while it is down, nobody who has not moved yet can sign in.',
 
@@ -271,6 +279,8 @@ enum HelpTopic: string
             self::AgentApprovals => 'guides/agent-approvals',
             self::TrustedDevices => 'guides/trusted-devices',
             self::ReviewAgentRequests => 'guides/agent-approvals',
+            self::Agents,
+            self::ConnectAgent => 'guides/agents-and-mcp',
             self::Keys => 'guides/keys',
             self::ApiKeys,
             self::MemberApiKeys => 'guides/api-keys',

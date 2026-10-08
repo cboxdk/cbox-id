@@ -17,9 +17,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -379,17 +377,7 @@ class InstallCommand extends Command
             $this->cliClientIssuer = $this->laravel->make(EnvironmentContext::class)->runAs(
                 GenericEnvironment::of($key),
                 function () use ($key): string {
-                    if (! CliClient::find() instanceof Client) {
-                        $this->laravel->make(ClientRegistry::class)->register(new NewClient(
-                            name: CliClient::NAME,
-                            type: ClientType::Public,
-                            redirectUris: [],
-                            grantTypes: CliClient::GRANTS,
-                            scopes: CliClient::SCOPES,
-                            firstParty: true,
-                            organizationId: null,
-                        ));
-                    }
+                    CliClient::provision($this->laravel->make(ClientRegistry::class));
 
                     return $this->laravel->make(IssuerResolver::class)->forEnvironment($key);
                 },

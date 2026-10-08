@@ -18,6 +18,15 @@ return [
         'cancel' => 'Avbryt',
         'authorize' => 'Godkjenn',
         'redirect_notice' => 'Du blir sendt videre til :host etter godkjenningen.',
+        // A client that registered itself (RFC 7591, or a client ID metadata document).
+        'self_registered_owner' => 'appen selv',
+        'self_registered' => 'Denne appen har registrert seg selv. Ingen hos :account har gjennomgått den — fortsett bare hvis du selv startet denne påloggingen.',
+        'published_by' => 'Beskrevet av :host — det eneste ved denne appen som er kontrollert.',
+        'about_app' => 'Om denne appen',
+        // Management-plane scopes an agent acts with as the person.
+        'critical' => 'Kritisk',
+        'acts_as_you' => 'Alt den gjør som deg, er begrenset til det du selv har lov til, og blir ført i revisjonsloggen.',
+        'critical_notice' => 'Kritiske handlinger venter fortsatt på din godkjenning på enheten din, hver gang.',
 
         'scopes' => [
             'openid' => 'Bekrefte identiteten din',
@@ -37,6 +46,7 @@ return [
         'expired' => 'Denne godkjenningsforespørselen har utløpt eller er allerede brukt. Start på nytt.',
         'par_required' => 'Denne serveren krever pushed authorization requests (PAR). Send forespørselen til /oauth/par først.',
         'unknown_client' => 'Ukjent klient. Denne applikasjonen er ikke registrert hos Cbox ID.',
+        'client_document' => 'Beskrivelsen av applikasjonen kunne ikke leses. Den ligger på adressen applikasjonen oppga som sin ID, og dokumentet mangler, kan ikke nås eller er ugyldig.',
         'redirect_mismatch' => 'Omdirigerings-URI-en samsvarer ikke med noen som er registrert for denne applikasjonen.',
         'stale' => 'Denne godkjenningsforespørselen kan ikke lenger fullføres. Start på nytt.',
         'account_attention' => 'Kontoen din må følges opp før du kan fortsette. Logg inn på nytt.',

@@ -41,7 +41,7 @@ final readonly class FrontendKeyController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/keys/frontend', 'Keys', [
+        return $this->page('console/keys/frontend', 'API keys', [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::FRONTEND),
             'keys' => PublishableKey::query()

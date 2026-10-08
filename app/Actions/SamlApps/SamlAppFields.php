@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\SamlApps;
 
 use App\Http\Resources\Environment\Timestamp;
+use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
+use App\Platform\Actions\OrganizationTarget;
 use App\Rules\SecureRedirectUri;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\Models\ServiceProvider;
+use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * SAML applications — service providers that trust this environment as their identity
@@ -17,6 +20,12 @@ use Cbox\Id\SamlIdp\Models\ServiceProvider;
  *
  * THE SIGNING CERTIFICATE IS WRITE-ONLY. It is never returned; `has_certificate` says
  * whether one is on file, and leaving it out of a change keeps the one there is.
+ *
+ * AN APPLICATION IS EITHER ONE ORGANIZATION'S OR EVERYBODY'S. With `organization_id` set,
+ * the identity provider asserts only active members of that organization to it and refuses
+ * everyone else (`saml_idp.assertion_refused` on the trail). Null is environment-wide: any
+ * person in the environment can single-sign-on into it — which is how every application
+ * behaved before the field existed, and is rarely what a customer's own app should be.
  */
 final class SamlAppFields
 {
@@ -35,7 +44,26 @@ final class SamlAppFields
             ]))->max(100)->describe('The attributes the assertion carries. Sent, it is the COMPLETE list afterwards.'),
             Field::boolean('want_authn_requests_signed')->describe('Verify the application\'s signature on every AuthnRequest. Needs a certificate.'),
             Field::string('certificate')->nullable()->max(20000)->describe('The application\'s signing certificate (PEM). Write-only; left out or null keeps the one on file.'),
+            Field::string('organization_id')->nullable()->max(64)->describe('The organization that owns the application: only its active members are signed in to it, and the assertion names it. Null makes it environment-wide — every person in the environment may sign in to it.'),
         ];
+    }
+
+    /**
+     * The organization an application is for, or null for one every person in the
+     * environment may sign in to — checked like every other organization an action names.
+     *
+     * Blank is null: the console's "every organization" choice is an empty value, and an
+     * empty string stored as an owner would make `isOrganizationOwned()` answer no for a row
+     * that looks owned.
+     *
+     * @throws ActionRefused
+     * @throws AuthorizationException
+     */
+    public static function organization(ActionContext $context): ?string
+    {
+        $organizationId = trim((string) $context->nullableString('organization_id'));
+
+        return OrganizationTarget::check($context, $organizationId === '' ? null : $organizationId);
     }
 
     /** @throws ActionRefused */
@@ -128,6 +156,7 @@ final class SamlAppFields
             'want_authn_requests_signed' => $provider->want_authn_requests_signed,
             // WHETHER, never WHAT.
             'has_certificate' => $provider->certificate !== null,
+            'organization_id' => $provider->isOrganizationOwned() ? $provider->organization_id : null,
             'status' => $provider->status->value,
             'created_at' => Timestamp::of($provider->created_at),
             'updated_at' => Timestamp::of($provider->updated_at),

@@ -114,6 +114,18 @@ final readonly class WorkspaceKeyPrincipal implements Principal
         return null;
     }
 
+    /** The minting chain ends in a member of the workspace, a subject of the platform root. */
+    public function approverEnvironmentId(): ?string
+    {
+        return null;
+    }
+
+    /** Nothing on an environment's plane: it never runs an environment's actions at all. */
+    public function confinedToOrganization(): ?string
+    {
+        return null;
+    }
+
     public function key(): OrganizationApiKey
     {
         return $this->key;

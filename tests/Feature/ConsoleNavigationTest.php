@@ -110,9 +110,9 @@ it('hides what an account role may not see, and drops the area when it holds not
 it('claims a page detail route without claiming its prefix siblings', function (): void {
     $nav = (new ConsoleNavigation)->environment();
 
-    expect($nav->areaFor('environment.audit')?->label)->toBe('Logs')
-        ->and($nav->areaFor('environment.audit.show')?->label)->toBe('Logs')
-        ->and($nav->areaFor('environment.users.show')?->label)->toBe('People')
+    expect($nav->areaFor('environment.audit')?->label)->toBe('Monitoring')
+        ->and($nav->areaFor('environment.audit.show')?->label)->toBe('Monitoring')
+        ->and($nav->areaFor('environment.users.show')?->label)->toBe('Users & orgs')
         ->and($nav->areaFor('billing'))->toBeNull();
 
     $audit = $nav->areaFor('environment.audit');
@@ -135,8 +135,8 @@ it('knows where every page in every plane sits', function (): void {
 
     expect($location->areaLabel('billing'))->toBe('Workspace')
         ->and($location->areaLabel('account'))->toBe('My account')
-        ->and($location->areaLabel('environment.connections'))->toBe('Sign-in')
-        ->and($location->areaLabel('environment.users.show'))->toBe('People')
+        ->and($location->areaLabel('environment.connections'))->toBe('Authentication')
+        ->and($location->areaLabel('environment.users.show'))->toBe('Users & orgs')
         ->and($location->areaLabel('platform.usage'))->toBe('Insights')
         ->and($location->areaLabel('platform.operators'))->toBe('Administration');
 
@@ -164,4 +164,27 @@ it('resolves an area for every navigable route', function (): void {
     }
 
     expect($unplaced)->toBe([], 'no eyebrow would render on: '.implode(', ', $unplaced));
+});
+
+/**
+ * AI agents is where a person hands software access to the environment: the agents (its
+ * management keys), what they wait on, and how to connect one. Connect is a page of its
+ * own on the rail, so it must not be swallowed by Agents the way a detail route is — hence
+ * its route name sits outside `environment.agents.*`.
+ */
+it('files the AI agents area with Agents, Approvals and Connect, each lit on its own', function (): void {
+    $nav = (new ConsoleNavigation)->environment();
+    $area = $nav->areaFor('environment.agents');
+
+    expect($area?->label)->toBe('AI agents')
+        ->and(array_map(fn ($page): string => $page->label, $area->pages ?? []))->toBe(['Agents', 'Approvals', 'Connect'])
+        ->and($nav->areaFor('environment.agents.create')?->label)->toBe('AI agents')
+        ->and($nav->areaFor('environment.agent-connect')?->label)->toBe('AI agents')
+        // The frontend keys stay a developer's page; the management keys' old URL is a
+        // redirect to Agents and lights nothing on its own.
+        ->and($nav->areaFor('environment.keys.frontend')?->label)->toBe('Developers');
+
+    $owners = array_values(array_filter($area->pages ?? [], fn ($page): bool => $page->owns('environment.agent-connect')));
+
+    expect(array_map(fn ($page): string => $page->route, $owners))->toBe(['environment.agent-connect']);
 });

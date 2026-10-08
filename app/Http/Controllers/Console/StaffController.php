@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Users\GrantStaffRole;
+use App\Actions\Users\RevokeStaffRole;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\StaffRoleProps;
 use App\Http\Requests\Console\GrantStaffRoleRequest;
@@ -33,7 +35,7 @@ final readonly class StaffController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/staff/index', 'Staff', [
+        return $this->page('environment/staff/index', 'Admins & support', [
             'help' => HelpProps::for(HelpTopic::Staff),
             'grants' => array_map(static fn (StaffGrant $grant): array => [
                 'userId' => $grant->userId,
@@ -69,22 +71,22 @@ final readonly class StaffController extends ConsoleController
             return back()->withInput()->withErrors(['role' => 'That role cannot be granted across the environment.']);
         }
 
-        $refusal = $staff->grant($user->id, $request->roleId());
+        // The same action the user page and the management API grant one with, so
+        // segregation of duties is asked one way and a refusal names where it collides.
+        $result = $this->act(GrantStaffRole::class, ['id' => $user->id, 'role_id' => $request->roleId()], ['role_id' => 'role'], 'role');
 
-        if ($refusal !== null) {
-            return back()->withInput()->withErrors(['role' => $refusal->message()]);
-        }
-
-        return back()->with('status', 'Staff role granted to '.$user->email.'.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Staff role granted to '.$user->email.'.');
     }
 
-    public function destroy(string $user, string $role, StaffRoles $staff): RedirectResponse
+    public function destroy(string $user, string $role): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $staff->revoke($user, $role);
+        $result = $this->act(RevokeStaffRole::class, ['id' => $user, 'role_id' => $role], ['role_id' => 'role'], 'role');
 
-        return back()->with('status', 'Staff role taken back.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Staff role taken back.');
     }
 
     private function assertEnvironmentAdmin(): void

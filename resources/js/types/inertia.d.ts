@@ -64,6 +64,8 @@ declare module '@inertiajs/core' {
              * into a history entry is readable by pressing Back.
              */
             freshKey?: string;
+            /** The name of the key `freshKey` is the value of, for the reveal's heading. */
+            freshKeyName?: string;
             /**
              * What the "send the link again" button on the launchpad has to say.
              *

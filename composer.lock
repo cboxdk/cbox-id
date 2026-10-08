@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1f0c533df6b159ac4a8fa55e777d3906",
+    "content-hash": "d14c074309f7b62efc69fcd32b53c349",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -63,23 +63,24 @@
         },
         {
             "name": "brick/math",
-            "version": "0.18.0",
+            "version": "1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/brick/math.git",
-                "reference": "82944324d1c1bdb2c2618e89978d4e2ad78d69ad"
+                "reference": "2effe05d2177c451b86c6a073196a4034c02f211"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/brick/math/zipball/82944324d1c1bdb2c2618e89978d4e2ad78d69ad",
-                "reference": "82944324d1c1bdb2c2618e89978d4e2ad78d69ad",
+                "url": "https://api.github.com/repos/brick/math/zipball/2effe05d2177c451b86c6a073196a4034c02f211",
+                "reference": "2effe05d2177c451b86c6a073196a4034c02f211",
                 "shasum": ""
             },
             "require": {
                 "php": "^8.2"
             },
             "require-dev": {
-                "phpstan/phpstan": "2.1.22",
+                "phpstan/phpstan": "2.2.13",
+                "phpstan/phpstan-phpunit": "2.0.18",
                 "phpunit/phpunit": "^11.5"
             },
             "type": "library",
@@ -110,7 +111,7 @@
             ],
             "support": {
                 "issues": "https://github.com/brick/math/issues",
-                "source": "https://github.com/brick/math/tree/0.18.0"
+                "source": "https://github.com/brick/math/tree/1.0.0"
             },
             "funding": [
                 {
@@ -118,7 +119,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-06-14T18:21:03+00:00"
+            "time": "2026-09-12T10:28:18+00:00"
         },
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -566,16 +567,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v1.21.0",
+            "version": "v1.22.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "92366e5a8e418ad5b81e0d3533cceda1266795fc"
+                "reference": "e12600320f06ab51b1884c5fce32f2cfc0ad63ed"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/92366e5a8e418ad5b81e0d3533cceda1266795fc",
-                "reference": "92366e5a8e418ad5b81e0d3533cceda1266795fc",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/e12600320f06ab51b1884c5fce32f2cfc0ad63ed",
+                "reference": "e12600320f06ab51b1884c5fce32f2cfc0ad63ed",
                 "shasum": ""
             },
             "require": {
@@ -638,9 +639,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v1.21.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.22.0"
             },
-            "time": "2026-10-07T20:33:49+00:00"
+            "time": "2026-10-07T22:01:59+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",

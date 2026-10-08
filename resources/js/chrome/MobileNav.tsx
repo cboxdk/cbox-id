@@ -3,7 +3,8 @@ import { Dialog as Primitive } from 'radix-ui';
 import { type ReactNode, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { toggleTheme } from '@/lib/theme';
-import type { NavArea, User, WorkspaceLink } from '@/types';
+import type { NavArea, User } from '@/types';
+import { NavCount } from './NavCount';
 import { Icon } from '@/ui';
 import { EnvBadge } from './EnvBadge';
 
@@ -21,11 +22,15 @@ export interface MobileNavProps {
     showEnvironment?: boolean;
     /** The person's own account page — shown here only where the rail has no My account area. */
     accountUrl?: string;
+    /** Whether the rail lacks a My account area, so the sheet carries the link instead. */
+    showAccountLink?: boolean;
     /** The signed-in-user switcher. */
     switchUserUrl?: string;
-    /** The environment console's way back to its workspace. */
-    workspace?: WorkspaceLink | null;
-    /** Plane-specific content above the navigation — the organization switcher. */
+    /** The workspace's settings, where this person may change them. */
+    workspaceSettingsUrl?: string | null;
+    /** Platform admin, for whoever runs the install. */
+    platformUrl?: string | null;
+    /** Plane-specific content above the navigation — the context switcher. */
     children?: ReactNode;
 }
 
@@ -52,8 +57,10 @@ export function MobileNav({
     logoutUrl,
     showEnvironment = true,
     accountUrl,
+    showAccountLink = false,
     switchUserUrl,
-    workspace = null,
+    workspaceSettingsUrl = null,
+    platformUrl = null,
     children,
 }: MobileNavProps) {
     const [open, setOpen] = useState(false);
@@ -100,17 +107,6 @@ export function MobileNav({
 
                     {children !== undefined && <div className="cbx-sheet-slot">{children}</div>}
 
-                    {/*
-                        The topbar's back crumb, on a phone. A plain anchor: the workspace
-                        is on another host, so this is a page load rather than a visit.
-                    */}
-                    {workspace !== null && (
-                        <a href={workspace.href} className="nav-link" style={{ margin: '0 8px' }}>
-                            <Icon name="arrow-left" className="w-[1.15rem] h-[1.15rem]" />
-                            Back to {workspace.name}
-                        </a>
-                    )}
-
                     <nav className="cbx-sheet-nav" aria-label="Navigation">
                         {areas.map((area) => (
                             <div key={area.key} className="space-y-0.5">
@@ -131,6 +127,7 @@ export function MobileNav({
                                         aria-current={page.active ? 'page' : undefined}
                                     >
                                         {page.label}
+                                        <NavCount count={page.count} />
                                         {/*
                                             The sheet has the room the 176px sub-nav did
                                             not, so the entitlement lock is spelled out
@@ -172,11 +169,23 @@ export function MobileNav({
                         )}
 
                         {/*
+                            Plain anchors throughout: on the environment console every one
+                            of these is on the workspace's host, so it is a page load
+                            rather than a visit.
+                        */}
+                        {workspaceSettingsUrl !== null && (
+                            <a href={workspaceSettingsUrl} className="nav-link w-full">
+                                <Icon name="briefcase" className="w-[1.15rem] h-[1.15rem]" />
+                                Workspace settings
+                            </a>
+                        )}
+
+                        {/*
                             MY ACCOUNT only where the rail has no area for it — the
                             environment console, whose account pages are on the workspace's
                             host. Everywhere else it is a section of the sheet above.
                         */}
-                        {workspace !== null && accountUrl !== undefined && (
+                        {showAccountLink && accountUrl !== undefined && (
                             <a href={accountUrl} className="nav-link w-full">
                                 <Icon name="user" className="w-[1.15rem] h-[1.15rem]" />
                                 My account
@@ -187,6 +196,13 @@ export function MobileNav({
                             <a href={switchUserUrl} className="nav-link w-full">
                                 <Icon name="switch" className="w-[1.15rem] h-[1.15rem]" />
                                 Switch user
+                            </a>
+                        )}
+
+                        {platformUrl !== null && (
+                            <a href={platformUrl} className="nav-link w-full">
+                                <Icon name="lock" className="w-[1.15rem] h-[1.15rem]" />
+                                Platform admin
                             </a>
                         )}
 

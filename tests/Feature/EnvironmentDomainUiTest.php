@@ -140,9 +140,9 @@ it('does not leak another account domain challenge through the selected environm
 
     // And no write reaches it either.
     test()->post(route('environment-domains.verify'), ['environment' => $theirs['environment']->id])
-        ->assertForbidden();
+        ->assertNotFound();
     test()->delete(route('environment-domains.destroy'), ['environment' => $theirs['environment']->id])
-        ->assertForbidden();
+        ->assertNotFound();
 
     expect(app(EnvironmentDomains::class)->challenge($theirs['environment']->id))
         ->not->toBeNull('a foreign write cleared another account\'s pending domain');

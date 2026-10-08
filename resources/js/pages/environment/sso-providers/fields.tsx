@@ -1,6 +1,8 @@
 import type { InertiaFormProps } from '@inertiajs/react';
 import {
     Checkbox,
+    Combobox,
+    type ComboboxOption,
     Field,
     Input,
     type MetadataRow,
@@ -18,7 +20,11 @@ export interface ServiceProviderForm {
     attributeMappings: MetadataRow[];
     wantAuthnRequestsSigned: boolean;
     certificate: string;
+    /** The owning organization's id, or '' for an environment-wide application. */
+    organizationId: string;
 }
+
+export type OrganizationOption = ComboboxOption<string>;
 
 /**
  * THE SHAPE OF ONE SAML TRUST, asked once.
@@ -31,14 +37,54 @@ export interface ServiceProviderForm {
 export function ServiceProviderFields({
     form,
     formats,
+    organizations,
     hasCertificate,
 }: {
     form: InertiaFormProps<ServiceProviderForm>;
     formats: { value: string; label: string }[];
+    organizations: OrganizationOption[];
     hasCertificate: boolean;
 }) {
     return (
         <>
+            {/*
+                WHOSE APPLICATION THIS IS, asked first. An environment-wide application lets
+                every person with an account here sign in to it — every customer's people,
+                not only the one whose app it is — so the empty choice says so in words
+                rather than passing for "not set".
+            */}
+            <Panel
+                title="Who can sign in"
+                description="Only the active members of the organization you choose are signed in to this application. Everyone else is refused, and the refusal is in the activity log."
+            >
+                <div className="space-y-3">
+                    <Field label="For which organization?" error={form.errors.organizationId}>
+                        <Combobox
+                            aria-label="Owning organization"
+                            value={form.data.organizationId}
+                            onValueChange={(organization) =>
+                                form.setData('organizationId', organization)
+                            }
+                            options={organizations}
+                            placeholder="Choose an organization…"
+                            searchPlaceholder="Search organizations…"
+                            emptyMessage="No organization matches that."
+                        />
+                    </Field>
+
+                    {form.data.organizationId === '' && (
+                        <output
+                            className="block text-sm"
+                            style={{ color: 'var(--warning-strong)' }}
+                        >
+                            Environment-wide: anyone with an account in this environment, in any
+                            organization, can sign in to this application. Choose an organization
+                            unless that is what you mean.
+                        </output>
+                    )}
+                </div>
+            </Panel>
+
             <Panel title="Configuration">
                 <div className="space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">

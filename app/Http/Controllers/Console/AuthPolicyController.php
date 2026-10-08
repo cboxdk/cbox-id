@@ -15,6 +15,7 @@ use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
+use App\Platform\LockoutDefaults;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -91,7 +92,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $edited = $onEnvironmentPlane ? $baseline : $policies->resolve($this->organizationId());
         $override = $onEnvironmentPlane ? null : $policies->overrideFor($this->organizationId());
 
-        return $this->page('console/auth-policy', 'Sign-in rules', [
+        return $this->page('console/auth-policy', 'Authentication policy', [
             'help' => HelpProps::for(HelpTopic::SignInRules),
             'onEnvironmentPlane' => $onEnvironmentPlane,
             'policy' => self::toProps($edited),
@@ -113,6 +114,9 @@ final readonly class AuthPolicyController extends ConsoleController
                 'lockoutThreshold' => $override->lockoutThreshold !== $baseline->lockoutThreshold,
             ])),
             'scopeName' => $this->scopeName(),
+            // What an EMPTY lockout threshold means: the deployment's default, which is on
+            // unless the operator switched it off — never "no lockout" on its own.
+            'lockoutDefault' => LockoutDefaults::props(),
             /*
              * WHETHER PASSWORDS WORK TODAY — the one fact the "this will sign people out"
              * warning needs that the browser cannot derive.

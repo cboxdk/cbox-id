@@ -541,6 +541,22 @@ components:
         invited_by: { type: ["string", "null"], description: "The person, or the API key, that sent it — by name." }
         invited_at: { type: ["string", "null"], format: date-time }
         expires_at: { type: string, format: date-time }
+    CustomDomain:
+      type: object
+      required: [domain, verified_at, pending]
+      properties:
+        domain: { type: ["string", "null"], description: "The verified domain serving the environment." }
+        verified_at: { type: ["string", "null"], format: date-time }
+        pending:
+          description: "A domain waiting for its DNS proof, and the TXT record to publish."
+          oneOf:
+            - type: object
+              required: [domain, record_name, record_value]
+              properties:
+                domain: { type: string }
+                record_name: { type: string }
+                record_value: { type: string }
+            - { type: "null" }
     PageMeta:
       type: object
       description: >-

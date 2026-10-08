@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Directories\ConnectPullDirectory;
+use App\Actions\Directories\DeleteDirectory;
+use App\Actions\Directories\MapDirectoryGroup;
+use App\Actions\Directories\RegisterScimDirectory;
+use App\Actions\Directories\RotateDirectoryToken;
+use App\Actions\Directories\SetDirectoryStatus;
+use App\Actions\Directories\UpdateDirectory;
+use App\Actions\PortalLinks\CreatePortalLink;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\ConnectDirectoryRequest;
-use App\Platform\AdminPortal;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Entitlements;
@@ -16,16 +23,15 @@ use App\Platform\Help\HelpTopic;
 use App\Platform\OrgAccessRoles;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
-use Cbox\Id\AccessControl\Exceptions\UnknownRole;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\DirectoryConnectors;
-use Cbox\Id\Directory\DirectoryPullSync;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Directory\Models\DirectoryGroup;
+use Cbox\Id\Directory\ValueObjects\RegisteredDirectory;
 use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Federation\ValueObjects\ProviderParameter;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -34,7 +40,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
-use Throwable;
 
 /**
  * CONSOLE › SYNC USERS IN — every directory connection that feeds people INTO the
@@ -79,7 +84,7 @@ final readonly class DirectoryController extends ConsoleController
             ->whereIn('id', $directories->pluck('organization_id')->filter()->unique())
             ->pluck('name', 'id');
 
-        return $this->page('console/directories/index', 'Sync users in', [
+        return $this->page('console/directories/index', 'Directory Sync', [
             'help' => HelpProps::for(HelpTopic::SyncUsersIn),
             'directories' => $directories->getCollection()->map(fn (Directory $directory): array => [
                 'id' => $directory->id,
@@ -122,7 +127,7 @@ final readonly class DirectoryController extends ConsoleController
      * The organization console had this and the environment console did not — the plane
      * whose administrator is most likely to be setting a tenant up in the first place.
      */
-    public function invite(AdminPortal $portal): RedirectResponse
+    public function invite(): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -133,15 +138,17 @@ final readonly class DirectoryController extends ConsoleController
 
         abort_unless($this->scope->entitled('scim'), 403);
 
+        // The action a management key mints the same link with; it records WHO minted it,
+        // asked through the scope — the two consoles once recorded ids from two tables.
+        $result = $this->act(CreatePortalLink::class, ['organization_id' => $organizationId, 'covers' => PortalScope::Scim->value]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
         // ON THE FLASH CHANNEL: the link admits its holder to this tenant's SCIM setup
         // with no account at all, and page props are written into the history entry.
-        $this->inertia->flash('portalUrl', route('portal.enter', $portal->generate(
-            $organizationId,
-            PortalScope::Scim,
-            // WHO minted it, asked through the scope: the two consoles recorded ids from
-            // two different tables here.
-            $this->scope->actorId(),
-        )));
+        $this->inertia->flash('portalUrl', $result->value);
 
         return back();
     }
@@ -205,7 +212,7 @@ final readonly class DirectoryController extends ConsoleController
      * Register a SCIM (push) directory, mint its bearer token, and route to the page that
      * reveals it.
      */
-    public function store(Request $request, Directories $directories): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -231,7 +238,17 @@ final readonly class DirectoryController extends ConsoleController
             return to_route($sudo);
         }
 
-        $registered = $directories->register($organizationId, trim((string) $request->string('name')));
+        $result = $this->act(RegisterScimDirectory::class, [
+            'organization_id' => $organizationId,
+            'name' => trim((string) $request->string('name')),
+        ], fallback: 'name');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var RegisteredDirectory $registered */
+        $registered = $result->value;
 
         // The plaintext bearer token, revealed exactly once on the detail page. Only its
         // hash is persisted, so it can never be retrieved again after this hand-off.
@@ -249,12 +266,8 @@ final readonly class DirectoryController extends ConsoleController
      * means the first anyone hears of a wrong key is a nightly sync that quietly
      * provisions nobody.
      */
-    public function connect(
-        ConnectDirectoryRequest $request,
-        Directories $directories,
-        DirectoryConnectors $connectors,
-        DirectoryPullSync $sync,
-    ): RedirectResponse {
+    public function connect(ConnectDirectoryRequest $request, DirectoryConnectors $connectors): RedirectResponse
+    {
         $this->scope->assertMayAdminister();
 
         if ($this->scope->plane() === ConsolePlane::Organization) {
@@ -270,26 +283,22 @@ final readonly class DirectoryController extends ConsoleController
             return back()->withInput()->withErrors(['provider' => 'Choose a directory provider.']);
         }
 
-        $credentials = $request->credentials($provider);
-
-        if ($credentials === null) {
+        // Asked here too, in the form's own words for its own fields, before a password
+        // prompt stands between the person and a typo.
+        if ($request->credentials($provider) === null) {
             return back()->withInput()->withErrors([
                 'credentials' => $request->credentialProblem($provider),
             ]);
         }
 
-        if (! $connectors->for($provider)->verify($credentials)) {
-            return back()->withInput()->withErrors([
-                'credentials' => 'Could not connect to '.$provider->label().' — check the credentials and admin consent.',
-            ]);
-        }
-
         /*
-         * The same gate, immediately before the write. The pull path mints nothing and
-         * reveals nothing, so it is not the exfiltration shape the rest of this guards —
-         * but it seals a customer's provider credentials into the environment and opens a
-         * standing sync that creates and deactivates their people, which a session that
-         * cannot be shown to still be the administrator's has no business starting.
+         * The same gate, before the write. The pull path mints nothing and reveals
+         * nothing, so it is not the exfiltration shape the rest of this guards — but it
+         * seals a customer's provider credentials into the environment and opens a standing
+         * sync that creates and deactivates their people, which a session that cannot be
+         * shown to still be the administrator's has no business starting. Asked before the
+         * action, which verifies the credentials and registers in one step; `create()`
+         * already asked, so this is normally a no-op.
          */
         $sudo = $this->registrationChallenge();
 
@@ -297,17 +306,23 @@ final readonly class DirectoryController extends ConsoleController
             return to_route($sudo);
         }
 
-        $directory = $directories->registerPull($organizationId, $provider->label(), $provider, $credentials);
+        // Verified against the provider, registered with the credentials sealed, and the
+        // first sync run — so the administrator watches people arrive rather than an empty
+        // directory. A failed first fetch is recorded on the directory, not rolled back.
+        $result = $this->act(ConnectPullDirectory::class, [
+            'organization_id' => $organizationId,
+            'provider' => $provider->value,
+            'credentials' => $provider === DirectoryProvider::GoogleWorkspace
+                ? ['service_account_json' => (string) $request->string('googleServiceAccountJson'), 'admin_email' => (string) $request->string('googleAdminEmail')]
+                : ['tenant_id' => (string) $request->string('entraTenantId'), 'client_id' => (string) $request->string('entraClientId'), 'client_secret' => (string) $request->string('entraClientSecret')],
+        ], ['credentials' => 'credentials', 'provider' => 'provider'], fallback: 'credentials');
 
-        // The first sync now, so the administrator watches people arrive rather than an
-        // empty directory. A failure is recorded on the directory itself and surfaced on
-        // the list and detail pages.
-        try {
-            $sync->sync($directory);
-        } catch (Throwable) {
-            // Already stored on `last_sync_error` by the sync. The connection succeeded
-            // and is not rolled back because one fetch did not.
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
+
+        /** @var Directory $directory */
+        $directory = $result->value;
 
         return to_route($this->scope->routeName('directories.show'), $directory->id)
             ->with('status', $provider->label().' connected — users are syncing.');
@@ -393,10 +408,13 @@ final readonly class DirectoryController extends ConsoleController
 
         $request->validate(['name' => ['required', 'string', 'max:120']]);
 
-        $model->name = trim((string) $request->string('name'));
-        $model->save();
+        $result = $this->act(UpdateDirectory::class, [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'name' => trim((string) $request->string('name')),
+        ], fallback: 'name');
 
-        return back()->with('status', 'Directory updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Directory updated.');
     }
 
     /**
@@ -431,11 +449,14 @@ final readonly class DirectoryController extends ConsoleController
             return to_route($sudo);
         }
 
-        $token = 'scim_'.bin2hex(random_bytes(32));
-        $model->bearer_token_hash = hash('sha256', $token);
-        $model->save();
+        $result = $this->act(RotateDirectoryToken::class, ['id' => $model->id, 'organization_id' => $this->scope->organizationId()]);
 
-        $this->inertia->flash('newToken', $token);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        // Shown once on the next render; only its hash persists.
+        $this->inertia->flash('newToken', $result->value);
 
         return back()->with('status', 'Bearer token rotated — the previous token no longer works.');
     }
@@ -444,21 +465,31 @@ final readonly class DirectoryController extends ConsoleController
     {
         $model = $this->changeable($directory);
 
-        $model->status = $model->status === DirectoryStatus::Active
-            ? DirectoryStatus::Paused
-            : DirectoryStatus::Active;
-        $model->save();
+        // The switch sends the state it moves TO, read from the row it was drawn from.
+        $resume = $model->status !== DirectoryStatus::Active;
 
-        return back()->with('status', $model->status === DirectoryStatus::Active
+        $result = $this->act(SetDirectoryStatus::class, [
+            'id' => $model->id,
+            'active' => $resume,
+            'organization_id' => $this->scope->organizationId(),
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return back()->with('status', $resume
             ? 'Directory enabled — provisioning resumes.'
             : 'Directory paused — provisioning is suspended.');
     }
 
     public function destroy(string $directory): RedirectResponse
     {
-        $this->changeable($directory)->delete();
+        $model = $this->changeable($directory);
 
-        return to_route($this->scope->routeName('directories'))->with('status', 'Directory deleted.');
+        $result = $this->act(DeleteDirectory::class, ['id' => $model->id, 'organization_id' => $this->scope->organizationId()]);
+
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('directories'))->with('status', 'Directory deleted.');
     }
 
     /**
@@ -468,7 +499,7 @@ final readonly class DirectoryController extends ConsoleController
      * ONE ENDPOINT for both directions, because they are one control: a checkbox. Two
      * endpoints is how the environment console ended up scoping only the map half.
      */
-    public function map(Request $request, string $directory, GroupRoleMappings $mappings): RedirectResponse
+    public function map(Request $request, string $directory): RedirectResponse
     {
         $model = $this->changeable($directory);
 
@@ -484,21 +515,18 @@ final readonly class DirectoryController extends ConsoleController
         // map half — leaving an id from another directory able to be unmapped through this
         // page.
         $group = $this->group($model, (string) $request->string('group'));
-        $role = (string) $request->string('role');
 
-        if ($request->boolean('mapped')) {
-            try {
-                $mappings->map($model->organization_id, $group->id, $role);
-            } catch (UnknownRole) {
-                // Another organization's role, an orphaned one, or a staff-only one — none
-                // of which the picker offers, so this is a posted id, refused in words.
-                return back()->withErrors(['role' => 'That role cannot be given to a directory group here.']);
-            }
-        } else {
-            $mappings->unmap($model->organization_id, $group->id, $role);
-        }
+        // Another organization's role, an orphaned one, or a staff-only one — none of which
+        // the picker offers — is a posted id, refused by the action in words on `role`.
+        $result = $this->act(MapDirectoryGroup::class, [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'group_id' => $group->id,
+            'role_id' => (string) $request->string('role'),
+            'mapped' => $request->boolean('mapped'),
+        ], ['group_id' => 'group', 'role_id' => 'role'], fallback: 'role');
 
-        return back();
+        return $result instanceof RedirectResponse ? $result : back();
     }
 
     /**

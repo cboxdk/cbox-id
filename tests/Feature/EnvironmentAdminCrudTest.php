@@ -710,7 +710,7 @@ it('names the area this page belongs to, above its title', function (): void {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('shell.activeArea', fn (string $key): bool => $key !== '')
             ->where('shell', fn (Collection $shell): bool => collect($shell['areas'])
-                ->firstWhere('key', $shell['activeArea'])['label'] === 'People'));
+                ->firstWhere('key', $shell['activeArea'])['label'] === 'Users & orgs'));
 });
 
 /**

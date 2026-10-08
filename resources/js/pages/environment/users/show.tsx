@@ -95,6 +95,7 @@ type Props = PageProps<{
         resetMfa: string;
         deactivate: string;
         reactivate: string;
+        erase: string;
         revokeAllSessions: string;
         assignOrganization: string;
         environmentRole: string;
@@ -184,6 +185,8 @@ export default function UserDetail({
             <SupportAccess support={support} label={label} active={user.status === 'active'} />
 
             <Impersonation memberships={memberships} href={urls.impersonate} />
+
+            <EraseUser email={user.email} href={urls.erase} />
         </div>
     );
 }
@@ -355,25 +358,25 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                 </p>
 
                 {/*
-                    SAYS WHAT THE CONSOLE DOES NOT DO. A delete button used to sit above and
+                    SAYS WHAT EACH OFF-SWITCH DOES. A delete button used to sit here and
                     reported success without erasing anything; an administrator who believes
-                    an erasure happened stops pursuing it, which is the worse failure.
+                    an erasure happened stops pursuing it, which is the worse failure. The
+                    erasure is real now, at the foot of the page — and deactivation still
+                    keeps everything, which is what this says.
                 */}
                 <div
                     className="rounded-lg p-3 text-xs"
                     style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
                 >
                     <p>
-                        <b>Deactivation is the only off-switch here — there is no delete.</b>
+                        <b>Deactivating stops all sign-in but keeps the person's records</b> —
+                        sessions, passkeys and second factors, identity-provider profiles, directory
+                        data, issued tokens, role assignments and audit history all remain, and you
+                        can reactivate them.
                     </p>
                     <p className="mt-1.5">
-                        Deactivating stops all sign-in but keeps the person's records: sessions,
-                        passkeys and second factors, identity-provider profiles, directory data,
-                        issued tokens, role assignments and audit history all remain.
-                    </p>
-                    <p className="mt-1.5">
-                        Erasing a person is not implemented in this platform. A right-to-erasure
-                        request has to be handled outside the console until it is.
+                        To answer a right-to-erasure request, use <b>Erase user</b> at the foot of
+                        this page instead.
                     </p>
                 </div>
             </div>
@@ -1314,6 +1317,72 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
                 onConfirm={() => {
                     setConfirming(false);
                     form.post(href);
+                }}
+            />
+        </Panel>
+    );
+}
+
+/**
+ * The danger zone: erasing the person, GDPR Art. 17.
+ *
+ * THE ADDRESS IS TYPED, NOT CLICKED, and the server checks it again: a person's whole
+ * account goes, and the two-identical-tabs hazard (staging and production) is exactly the
+ * one a typed address catches. It also asks for a fresh credential, on the server, before
+ * anything runs.
+ *
+ * Says what is NOT erased, too — the audit trail keeps the opaque id — because a
+ * controller answering a regulator has to be able to say so precisely.
+ */
+function EraseUser({ email, href }: { email: string; href: string }) {
+    const [erasing, setErasing] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const { errors } = usePage().props;
+
+    return (
+        <Panel
+            title="Danger zone"
+            description="Erase this person for good — the right to erasure (GDPR Art. 17)."
+        >
+            <div className="space-y-3">
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    Their sessions and tokens are revoked, their passkeys, second factors,
+                    memberships, role grants, API tokens, vault secrets, devices and every stored
+                    copy of their details are deleted, and the account is kept only as a
+                    pseudonymised, disabled row. Apps that sync people from here are told to delete
+                    them. The activity log keeps their opaque id, not their name or address.
+                </p>
+
+                {errors.erase !== undefined && (
+                    <p className="field-error" role="alert">
+                        {errors.erase}
+                    </p>
+                )}
+
+                <Button size="sm" variant="danger" loading={busy} onClick={() => setErasing(true)}>
+                    Erase user…
+                </Button>
+            </div>
+
+            <ConfirmDelete
+                open={erasing}
+                onOpenChange={setErasing}
+                name={email}
+                verb="Erase"
+                actionLabel="Erase user"
+                consequence="This cannot be undone. Their credentials, memberships and personal data are deleted and their account is pseudonymised. If they are the only owner of an organization, transfer it first."
+                confirming={busy}
+                onConfirm={() => {
+                    setErasing(false);
+                    router.post(
+                        href,
+                        { confirmation: email },
+                        {
+                            preserveScroll: true,
+                            onStart: () => setBusy(true),
+                            onFinish: () => setBusy(false),
+                        },
+                    );
                 }}
             />
         </Panel>

@@ -49,7 +49,7 @@ export default function CreateLogStream({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Log streaming
+                Log streams
             </Link>
 
             <div className="mt-2">

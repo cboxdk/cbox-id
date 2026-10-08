@@ -354,6 +354,7 @@ score is the aggregate signature of one actor cycling addresses at that provider
   evidence, not an attestable record — do not cite it as one.
 - **A pseudonym is not anonymisation.** `email_hash` and `ip_hash` are keyed HMACs,
   which makes the trail personal data under GDPR: it is re-identifiable by anyone
-  holding `app.key`. Retention (default 90 days) is the control that bounds it, and a
-  subject-erasure request that names an address can be satisfied by deleting the rows
-  matching its pseudonym.
+  holding `app.key`. Retention (default 90 days) is the control that bounds it. Erasing
+  a person (`users.erase`) removes the pseudonym of their address from every row in
+  their environment and keeps the scored decision, which then names nobody — it shows
+  as `app.risk_decisions` on the erasure receipt.

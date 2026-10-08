@@ -19,6 +19,15 @@ return [
         'cancel' => 'Abbrechen',
         'authorize' => 'Autorisieren',
         'redirect_notice' => 'Nach der Autorisierung werden Sie zu :host weitergeleitet.',
+        // A client that registered itself (RFC 7591, or a client ID metadata document).
+        'self_registered_owner' => 'die App selbst',
+        'self_registered' => 'Diese App hat sich selbst registriert. Niemand bei :account hat sie geprüft — fahren Sie nur fort, wenn Sie diese Anmeldung selbst gestartet haben.',
+        'published_by' => 'Beschrieben von :host — das Einzige an dieser App, das überprüft wurde.',
+        'about_app' => 'Über diese App',
+        // Management-plane scopes an agent acts with as the person.
+        'critical' => 'Kritisch',
+        'acts_as_you' => 'Alles, was sie in Ihrem Namen tut, ist auf das beschränkt, was Sie selbst dürfen, und wird im Audit-Log festgehalten.',
+        'critical_notice' => 'Kritische Aktionen warten weiterhin jedes Mal auf Ihre Freigabe auf Ihrem Gerät.',
 
         'scopes' => [
             'openid' => 'Ihre Identität bestätigen',
@@ -38,6 +47,7 @@ return [
         'expired' => 'Diese Autorisierungsanfrage ist abgelaufen oder wurde bereits verwendet. Bitte beginnen Sie erneut.',
         'par_required' => 'Dieser Server erfordert Pushed Authorization Requests. Senden Sie die Anfrage zuerst an /oauth/par.',
         'unknown_client' => 'Unbekannter Client. Diese Anwendung ist nicht bei Cbox ID registriert.',
+        'client_document' => 'Die Beschreibung dieser Anwendung konnte nicht gelesen werden. Sie liegt unter der Adresse, die die Anwendung als ihre ID angegeben hat, und dieses Dokument fehlt, ist nicht erreichbar oder ungültig.',
         'redirect_mismatch' => 'Die Weiterleitungs-URI stimmt mit keiner der für diese Anwendung registrierten URIs überein.',
         'stale' => 'Diese Autorisierungsanfrage kann nicht mehr abgeschlossen werden. Bitte beginnen Sie erneut.',
         'account_attention' => 'Ihr Konto erfordert Ihre Aufmerksamkeit, bevor Sie fortfahren können. Bitte melden Sie sich erneut an.',

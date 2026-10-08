@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Platform\Organizations\CreateTenantOrganization;
+use App\Actions\Platform\Organizations\MoveTenantOrganization;
+use App\Actions\Platform\Organizations\SetTenantOrganizationStatus;
+use App\Http\Middleware\TargetEnvironment;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateTenantOrganizationRequest;
 use App\Platform\Console\LikeTerm;
@@ -19,6 +23,7 @@ use Cbox\Id\Identity\Models\MfaFactor;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Models\ServiceAccount;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -26,10 +31,8 @@ use Cbox\Id\Organization\Contracts\OrganizationHierarchy;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Enums\OrganizationType;
-use Cbox\Id\Organization\Exceptions\CannotReparent;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -122,18 +125,23 @@ final readonly class PlatformOrganizationController extends ConsoleController
         ]);
     }
 
-    public function store(CreateTenantOrganizationRequest $request, Organizations $organizations): RedirectResponse
+    /**
+     * Create an organization in the environment the console is pointed at, through
+     * {@see CreateTenantOrganization} — the action the operator API runs with the
+     * environment named in its path.
+     */
+    public function store(CreateTenantOrganizationRequest $request): RedirectResponse
     {
         $this->assertOperator();
 
-        $organizations->create(new NewOrganization(
-            name: $request->name(),
-            slug: $this->uniqueSlug($request->name()),
-            type: $request->type(),
-            parentId: $request->parentId(),
-        ));
+        $result = $this->act(CreateTenantOrganization::class, [
+            'environment_id' => $this->targetedEnvironmentId(),
+            'name' => $request->name(),
+            'type' => $request->type()->value,
+            'parent_id' => $request->parentId(),
+        ], ['name' => 'name', 'type' => 'type', 'parent_id' => 'parentId'], 'name');
 
-        return back()->with('status', 'Organization created.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization created.');
     }
 
     /** A read-only drill-down into one tenant, WITHOUT switching the console. */
@@ -273,62 +281,66 @@ final readonly class PlatformOrganizationController extends ConsoleController
         ]);
     }
 
+    /**
+     * Suspend or reactivate: the button asks {@see SetTenantOrganizationStatus} for the
+     * opposite of what it shows. Resolved through the SCOPED reader first, exactly like the
+     * read — so an id from another plane 404s here as it does there.
+     */
     public function toggle(string $organization, Organizations $organizations): RedirectResponse
     {
         $this->assertOperator();
 
-        $actorId = $this->scope->operator()?->id;
-
-        abort_if($actorId === null, 403);
-
-        // Resolved through the SCOPED reader, exactly like the read — so an id from
-        // another plane 404s here as it does there. Returning silently instead would leave
-        // an operator pressing a control that reports success and changes nothing.
         $tenant = $organizations->find($organization);
 
         abort_if($tenant === null, 404);
 
-        if ($tenant->status === OrganizationStatus::Active) {
-            $organizations->suspend($tenant->id, $actorId);
+        $suspending = $tenant->status === OrganizationStatus::Active;
 
-            return back()->with('status', 'Organization suspended.');
+        $result = $this->act(SetTenantOrganizationStatus::class, [
+            'environment_id' => $this->targetedEnvironmentId(),
+            'organization_id' => $tenant->id,
+            'status' => $suspending ? 'suspended' : 'active',
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
 
-        $organizations->reactivate($tenant->id, $actorId);
-
-        return back()->with('status', 'Organization reactivated.');
+        return back()->with('status', $suspending ? 'Organization suspended.' : 'Organization reactivated.');
     }
 
-    public function reparent(Request $request, string $organization, OrganizationHierarchy $hierarchy, Organizations $organizations): RedirectResponse
+    /**
+     * Move an organization in the hierarchy through {@see MoveTenantOrganization}, which
+     * resolves BOTH ids through the scoped reader before anything moves — a stranger is
+     * not found rather than reported as a cycle.
+     */
+    public function reparent(Request $request, string $organization): RedirectResponse
     {
         $this->assertOperator();
 
-        /*
-         * BOTH IDS ARE RESOLVED THROUGH THE SCOPED READER before anything moves. The
-         * hierarchy contract takes ids and does not itself ask which plane they belong to,
-         * so an id from another environment reaching `move()` would splice one plane's
-         * tenant into another's tree. Organizations are environment-owned, so `find()` is
-         * the predicate — and a stranger 404s rather than being reported as a cycle.
-         */
-        abort_if($organizations->find($organization) === null, 404);
-
         $parentId = trim((string) $request->string('parentId'));
-        $parentId = $parentId === '' ? null : $parentId;
 
-        if ($parentId !== null) {
-            abort_if($organizations->find($parentId) === null, 404);
-        }
+        $result = $this->act(MoveTenantOrganization::class, [
+            'environment_id' => $this->targetedEnvironmentId(),
+            'organization_id' => $organization,
+            'parent_id' => $parentId === '' ? null : $parentId,
+        ], ['parent_id' => 'parentId'], 'parentId');
 
-        try {
-            // move() rewrites the closure subtree and guards against cycles.
-            $hierarchy->move($organization, $parentId);
-        } catch (CannotReparent) {
-            return back()->withErrors([
-                'parentId' => 'That would create a cycle in the hierarchy — nothing was moved.',
-            ]);
-        }
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Hierarchy updated.');
+    }
 
-        return back()->with('status', 'Hierarchy updated.');
+    /**
+     * The environment the console is pointed at — {@see TargetEnvironment} put it in
+     * context before this page ran — which is the one the operator is looking at and the
+     * one every write here is for. None at all is a 404: there is nothing to write into.
+     */
+    private function targetedEnvironmentId(): string
+    {
+        $id = app(EnvironmentContext::class)->current()?->environmentKey();
+
+        abort_if($id === null, 404);
+
+        return $id;
     }
 
     /**
@@ -436,19 +448,6 @@ final readonly class PlatformOrganizationController extends ConsoleController
             'actorId' => $entry->actor_id,
             'recordedAt' => $entry->recorded_at?->toDayDateTimeString(),
         ], array_slice(array_reverse($page->items), 0, 20));
-    }
-
-    private function uniqueSlug(string $name): string
-    {
-        $base = Str::slug($name) ?: 'org';
-        $slug = $base;
-        $n = 2;
-
-        while (Organization::query()->where('slug', $slug)->exists()) {
-            $slug = $base.'-'.$n++;
-        }
-
-        return $slug;
     }
 
     /**

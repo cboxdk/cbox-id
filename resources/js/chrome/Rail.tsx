@@ -1,8 +1,9 @@
 import { Link } from '@inertiajs/react';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import type { NavArea } from '@/types';
 import { Icon } from '@/ui';
 import { cn } from '@/lib/cn';
+import { areaCount } from './NavCount';
 
 export interface RailProps {
     areas: NavArea[];
@@ -10,24 +11,28 @@ export interface RailProps {
     brandLabel: string;
     pinned: boolean;
     onTogglePin: () => void;
-    /** The account menu, which lives at the BOTTOM OF THE RAIL on every plane. */
-    foot: ReactNode;
 }
 
 /**
- * TIER 1 — one icon per area, in a 52px floating pill.
+ * TIER 1 — one entry per area, in a floating card.
  *
  * Three states, as the app-shell guideline specifies: minimised (icons only, in flow),
  * open-on-hover (expands in place to 210px as an overlay, so nothing on the page moves),
  * and pinned (expanded and in flow). The 64px of flow space is reserved by a spacer, which
  * is what lets the hover state be an overlay rather than a reflow.
  *
+ * PINNED — LABELS SHOWING — IS THE DEFAULT ({@see \App\Platform\Console\NavPin}). The icon
+ * strip asked somebody new to learn a dozen glyphs before they could find anything.
+ *
+ * Nothing at the foot any more: who you are is the avatar menu, top right, beside the
+ * rest of the context the topbar carries.
+ *
  * `onFocus`/`onBlur` alongside the pointer handlers, and not as an afterthought: without
  * them the rail expanded for a mouse and never for a keyboard, so tabbing through the
  * primary navigation moved focus between unlabelled icons whose only text was a `title`
  * attribute — which never appears for a keyboard or a touch user at all.
  */
-export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin, foot }: RailProps) {
+export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: RailProps) {
     const [hover, setHover] = useState(false);
 
     return (
@@ -56,7 +61,14 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin, foot }
                 <div className="cbx-rail-hd">
                     <Link href={brandHref} className="cbx-rail-brand" aria-label={brandLabel}>
                         <svg viewBox="0 0 64 64" aria-hidden="true">
-                            <rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)" />
+                            <rect
+                                x="2"
+                                y="2"
+                                width="60"
+                                height="60"
+                                rx="14"
+                                fill="var(--primary)"
+                            />
                             <text
                                 x="32"
                                 y="44"
@@ -98,13 +110,19 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin, foot }
                             // overwhelming majority of them.
                             prefetch="hover"
                         >
-                            <Icon name={area.icon} className="w-[18px] h-[18px]" />
+                            <span className="cbx-rail-ico">
+                                <Icon name={area.icon} className="w-[18px] h-[18px]" />
+                                {areaCount(area) > 0 && (
+                                    <span className="cbx-rail-dot" aria-hidden="true" />
+                                )}
+                            </span>
                             <span className="lbl">{area.label}</span>
+                            {areaCount(area) > 0 && (
+                                <span className="sr-only">, {areaCount(area)} waiting for you</span>
+                            )}
                         </Link>
                     ))}
                 </nav>
-
-                <div className="cbx-rail-foot">{foot}</div>
             </aside>
 
             {/*

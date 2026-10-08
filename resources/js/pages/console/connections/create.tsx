@@ -89,7 +89,7 @@ export default function CreateConnection({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Single sign-on
+                Enterprise SSO
             </Link>
 
             <h1 className="cbx-page-title mt-2">New connection</h1>

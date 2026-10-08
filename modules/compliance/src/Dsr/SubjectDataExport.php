@@ -16,11 +16,11 @@ use Cbox\Id\Compliance\ValueObjects\AuditExportRecord;
  *
  * Honest scope of v0.1:
  *  - Access/portability (this class) is supported: the trail is read, not mutated.
- *  - Erasure is NOT offered. The trail is append-only and hash-chained, so redacting
- *    a subject's fields in place would recompute (i.e. break) the chain and defeat
- *    the tamper-evidence the audit kernel exists to provide. Compliant erasure needs
- *    a redaction-aware canonical-hash seam in laravel-id (a framework change), so it
- *    is deliberately out of scope here rather than faked. See docs / the report.
+ *  - Erasure is not this class's job, and it never rewrites the trail. Erasing a person
+ *    is `users.erase` (laravel-id 1.22's SubjectEraser): it pseudonymises their account
+ *    and deletes their data everywhere else, and leaves past audit entries as they are —
+ *    redacting a hashed field in place would break the chain — so an access request
+ *    after an erasure still finds the entries under the opaque id, with the tombstone.
  *  - The bundle covers BOTH directions: what the subject did (`actor_id`) and what was
  *    done to them (`target_id`). The second half used to be missing, on the stated
  *    grounds that the reader exposed no target filter — it has since v0.19.0, and

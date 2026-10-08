@@ -41,7 +41,7 @@ export default function OutboundSyncDetail({
                         className="w-3.5 h-3.5"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    Sync users out
+                    Outbound provisioning
                 </Link>
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{connection.name}</h1>

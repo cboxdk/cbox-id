@@ -24,6 +24,67 @@ secrets are unrecoverable — no reset, no recovery.**
 
 Everything else on this page is routine. This is the part that has to be right.
 
+## Rotating the crypto master key
+
+`CBOX_ID_CRYPTO_KEY` can be rotated without losing a secret (laravel-id 1.22+). Every
+sealed value names the key it was sealed under (`v1.<key-id>.…`, the id an HMAC of the
+key, never the key), the old key is kept only to **open** values until they have been
+re-sealed, and `cbox-id:crypto:rewrap` moves everything onto the new one. Rotate on your
+key-custody schedule, when somebody who could read the key leaves, and after a suspected
+compromise — and after a compromise rotate the secrets themselves too (signing keys,
+webhook and connection secrets): a re-seal does not un-read what a leaked key already
+opened.
+
+1. **Generate** the new key:
+
+   ```bash
+   php -r "echo base64_encode(random_bytes(32)).PHP_EOL;"
+   ```
+
+2. **Swap and deploy.** Make the new key `CBOX_ID_CRYPTO_KEY` and move the old one into
+   `CBOX_ID_CRYPTO_PREVIOUS_KEYS` (comma-separated if you already keep one there).
+   Deploy everywhere — web, queue workers and the scheduler all seal and open secrets.
+   From this moment new secrets are sealed under the new key and old ones still open.
+   Store the new key in your secrets manager **before** the deploy, and keep the old one
+   there too.
+
+3. **Rewrap, dry run first:**
+
+   ```bash
+   php artisan cbox-id:crypto:rewrap --dry-run   # counts per column, writes nothing
+   php artisan cbox-id:crypto:rewrap             # re-seals onto the current key
+   ```
+
+   It walks every registered sealed column across **every environment** (the key is
+   deployment-wide), in bounded chunks, and only writes a value back if the row still
+   holds what it read — a secret rotated mid-run is never overwritten. It is safe to
+   interrupt and re-run; `--column=table.column` limits a run to one column and
+   `--chunk=` sizes the batches. A value no configured key opens is reported by row id and
+   left alone, and the command exits non-zero — do not go on to step 5 while that is so.
+
+   The columns this app adds are registered beside the framework's, so the rewrap covers
+   them: the devices module's push tokens (`id_devices.token_encrypted`).
+
+4. **Check:**
+
+   ```bash
+   php artisan cbox-id:doctor
+   ```
+
+   The **Master key rotation** line warns while anything is still sealed under a previous
+   key, and tells you when the previous keys are no longer needed. It is a warning, not a
+   failure: a deploy mid-rotation is healthy.
+
+5. **Remove the old key** from `CBOX_ID_CRYPTO_PREVIOUS_KEYS` and deploy — only once the
+   doctor says nothing needs it. Keep it in your offline backup for as long as you keep
+   database backups taken before the rotation: restoring one of those needs it again.
+
+One-time codes already mailed when you swap keys stop verifying (their HMAC key is
+derived from the current master key); they live for minutes, and the person asks for a
+new one. The framework's [master key
+management](https://github.com/cboxdk/laravel-id/blob/main/docs/security/key-management.md)
+page has the envelope format and the honest limits.
+
 ## Signing-key rotation
 
 Tokens are signed with rotating keys published at `/.well-known/jwks.json`. Rotate
@@ -72,11 +133,11 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
   time — makes that visible.
 
   It defaults to off deliberately rather than by oversight. The first signature is a
-  one-way door: a checkpoint is evidence about the hashes *as they are today*, and the
-  GDPR-erasure work still ahead needs one re-chain of the existing rows (hashing the
-  ciphertext of `ip` and `context` instead of the plaintext, so destroying a per-subject
-  key leaves every hashed byte unchanged). Any checkpoint signed before that re-chain
-  would report tampering that never happened, forever.
+  one-way door: a checkpoint is evidence about the hashes *as they are today*, and any
+  later re-chain of the existing rows would make every checkpoint signed before it report
+  tampering that never happened, forever. Erasing a person (`users.erase`, laravel-id
+  1.22) does **not** need one: it leaves past entries untouched — they keep the person's
+  opaque id — and appends a `user.erased` tombstone, so the chain verifies afterwards.
 
   Set `CBOX_ID_AUDIT_CHECKPOINT_SCHEDULE=true` only after following the order in the
   framework's `UPGRADING.md` — or right away on a deployment with no such migration

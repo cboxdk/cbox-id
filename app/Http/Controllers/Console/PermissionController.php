@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Permissions\CreatePermission;
+use App\Actions\Permissions\DeletePermission;
+use App\Actions\Permissions\PermissionFields;
+use App\Actions\Permissions\UpdatePermission;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SavePermissionRequest;
 use App\Http\Requests\Console\StorePermissionRequest;
@@ -42,7 +46,9 @@ use Inertia\Response;
  * The organization is read from the PLANE and never from the organization picker: an
  * environment administrator who has narrowed the console to one tenant is still
  * administering the environment, and what "Add" writes must not change meaning because a
- * dropdown elsewhere in the chrome was touched.
+ * dropdown elsewhere in the chrome was touched — and it is handed to the action as an
+ * explicit `organization_id`: every write here is an action (app/Actions/Permissions), the
+ * one the management API and MCP run.
  */
 final readonly class PermissionController extends ConsoleController
 {
@@ -88,8 +94,8 @@ final readonly class PermissionController extends ConsoleController
         /*
          * Split by ownership, because the controls differ and a row that draws an Edit
          * button this caller's writes cannot resolve is a lie the console tells once per
-         * render. `$mine` is exactly what {@see writable()} will resolve — the same
-         * predicate, written once on each side. On the environment plane the owner is
+         * render. `$mine` is exactly what {@see PermissionFields::writable()} resolves for this
+         * plane — the same predicate, written once on each side. On the environment plane the owner is
          * null, so `$mine` IS the shared tier and nothing is inherited.
          */
         $mine = $manual->filter(fn (Permission $p): bool => $p->organization_id === $owner)->values();
@@ -156,137 +162,51 @@ final readonly class PermissionController extends ConsoleController
         ]);
     }
 
+    /**
+     * Author a manual permission in the tier this PLANE writes: the acting organization's
+     * own on the organization plane, the environment's shared tier on the environment plane
+     * — passed to the action explicitly, never inferred there from the page.
+     */
     public function store(StorePermissionRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $owner = $this->owner();
-        $environmentId = $this->environmentId();
-        $name = $request->key();
-
-        /*
-         * Uniqueness among the manual permissions this author can SEE.
-         *
-         * Manual rows carry a null `client_id`, so the database's (client_id, name) unique
-         * index never actually constrains them. It is enforced here instead: scoped to the
-         * environment, so two environments may each own a `billing:refund`; and scoped to
-         * what is visible, so a tenant is told about a collision with the shared tier
-         * (which would otherwise hand them two identical keys in the roles editor) and
-         * never about one with a PEER's private key — which would make this form an
-         * existence oracle for other tenants' `feature:action` names.
-         */
-        $taken = Permission::query()
-            ->whereNull('client_id')
-            ->where('environment_id', $environmentId)
-            ->visibleToOrganization($owner)
-            ->where('name', $name)
-            ->exists();
-
-        if ($taken) {
-            return back()->withInput()->withErrors(['name' => 'A permission with that key already exists here.']);
-        }
-
-        Permission::query()->create([
-            'client_id' => null,
-            'environment_id' => $environmentId,
-            'organization_id' => $owner,
-            'name' => $name,
+        $result = $this->act(CreatePermission::class, [
+            'name' => $request->key(),
             'description' => $request->description(),
-            /*
-             * Tenant-assignable is how the SHARED tier says "organizations may compose
-             * this into their own roles". On a row an organization already owns there is
-             * nothing left to decide, so that plane does not offer the choice and writes
-             * true — offering it would invite an administrator to untick their own
-             * permission into uselessness.
-             */
-            'tenant_assignable' => $owner !== null || $request->tenantAssignable(),
-        ]);
+            'organization_id' => $this->owner(),
+            'tenant_assignable' => $request->tenantAssignable(),
+        ], ['name' => 'name', 'description' => 'description', 'tenant_assignable' => 'tenantAssignable'], 'name');
 
-        return back()->with('status', 'Permission "'.$name.'" created.');
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Permission "'.$request->key().'" created.');
     }
 
     public function update(SavePermissionRequest $request, string $permission): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $model = $this->writable($permission);
+        $result = $this->act(UpdatePermission::class, [
+            'id' => $permission,
+            'description' => $request->description(),
+            'tenant_assignable' => $request->tenantAssignable(),
+        ], ['description' => 'description', 'tenant_assignable' => 'tenantAssignable'], 'description');
 
-        $model->description = $request->description();
-
-        // Same rule as on the way in: an organization's own row has one possible answer,
-        // so the page does not ask and the server does not read a posted claim about it.
-        if ($this->owner() === null) {
-            $model->tenant_assignable = $request->tenantAssignable();
-        }
-
-        $model->save();
-
-        return back()->with('status', 'Permission updated.');
-    }
-
-    public function destroy(string $permission, Roles $roles): RedirectResponse
-    {
-        $this->scope->assertMayAdminister();
-
-        $model = $this->writable($permission);
-
-        /*
-         * REVOKED FROM EACH ROLE, not deleted out from under them.
-         *
-         * This was one raw `DB::table('role_permission')->delete()`: no audit entry and no
-         * `role.permission_revoked`, so a change that removed access from every holder of
-         * every role granting this key left nothing on /audit and nothing for a SIEM. The
-         * contract writes the same rows and reports each one.
-         *
-         * Fenced on the ROLE's own organization rather than on this page's, because a role
-         * in either tier may grant this key and the service refuses a mismatch.
-         */
-        $roleIds = DB::table('role_permission')
-            ->where('permission_id', $model->id)
-            ->pluck('role_id')
-            ->all();
-
-        foreach (Role::query()->whereIn('id', $roleIds)->get() as $role) {
-            $roles->revokePermission($role->id, $model->id, $role->organization_id);
-        }
-
-        /*
-         * AND ANY ROW WHOSE ROLE NO LONGER RESOLVES. The pivot has no foreign key, so a
-         * role deleted by some earlier path can leave its grants behind — and the contract
-         * cannot revoke a grant on a role it refuses to load. Left alone, those rows
-         * outlive the permission they point at and are then a pair of ids referring to
-         * nothing, which is the shape that makes a later join silently wrong.
-         *
-         * Nothing to announce here: no role holds this, so nobody's access changes.
-         */
-        DB::table('role_permission')->where('permission_id', $model->id)->delete();
-
-        $model->delete();
-
-        return back()->with('status', 'Permission deleted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission updated.');
     }
 
     /**
-     * Resolve a permission id for WRITING, deny-by-default: a MANUAL row, in this
-     * environment, owned by this author.
-     *
-     * The environment clause has been here since one environment's admin could delete
-     * another's. The owner clause is the same bug one level in: every tenant admin shared
-     * a single environment-wide catalogue, so any of them could rename or delete a key
-     * their peers' roles were built from.
-     *
-     * `ownedByOrganization()` and not `visibleToOrganization()` — a tenant can SEE the
-     * shared tier, because their roles are composed from it, and must still not write to
-     * it. The two predicates differ by exactly that, which is why the model names both.
+     * Delete it — revoked from each role first, through the contract, so the change to every
+     * holder's access is on the trail.
      */
-    private function writable(string $permission): Permission
+    public function destroy(string $permission): RedirectResponse
     {
-        return Permission::query()
-            ->whereKey($permission)
-            ->whereNull('client_id')
-            ->where('environment_id', $this->environmentId())
-            ->ownedByOrganization($this->owner())
-            ->firstOrFail();
+        $this->scope->assertMayAdminister();
+
+        $result = $this->act(DeletePermission::class, ['id' => $permission]);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission deleted.');
     }
 
     /**

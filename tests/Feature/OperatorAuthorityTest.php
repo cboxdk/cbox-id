@@ -118,7 +118,7 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
     // and the 404 is what proves the rail is not the authorization — a member who types
     // the URL is turned away by AuthenticateOperator whatever the nav says.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
-        ->and(railRoutes())->not->toContain('platform.customers')
+        ->and(railRoutes())->not->toContain('platform.workspaces')
         ->and(railRoutes())->not->toContain('platform.environments')
         ->and(railRoutes())->not->toContain('platform.operators');
 
@@ -139,7 +139,7 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
  * check that read the subject session alone answered "nobody" across the entire account
  * console — which is precisely where an operator signs in.
  */
-it('gives the platform pages to an operator, in the same rail', function (): void {
+it('gives the platform pages to an operator, as a mode of the same console', function (): void {
     $member = anAccountOwner('staff@cbox.test');
 
     // The same person, holding an operator record. `create()` reuses the existing subject
@@ -148,29 +148,39 @@ it('gives the platform pages to an operator, in the same rail', function (): voi
 
     signInAsMember($member->id);
 
-    // IN THE SAME RAIL, which is what the test's name has always claimed and what it could
-    // not check while the platform section had a rail of its own: the assertion is that
-    // one rendered console page carries BOTH a customer area and the platform areas, so an
-    // operator moves between them without changing shells.
+    // ONE REGISTRY, ONE SHELL: the platform areas are areas of the one console, offered
+    // to an operator and to nobody else.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue()
         ->and(railRoutes())->toContain('platform.environments')
         ->and(railRoutes())->toContain('platform.operators');
 
     /*
-     * ON THE PAGE ITSELF, read off the shell it is framed by. Asserted on the nav rather
-     * than on the document: the areas are serialised into the response either way, with the
-     * slashes escaped, so a substring check over the HTML was matching — or failing to —
-     * for reasons that had nothing to do with the rail.
+     * …BUT NOT ON EVERY RAIL. They used to be appended below the operator's own Settings
+     * on every page, so the controls that suspend a customer sat one icon from their own
+     * preferences with nothing to say which side of the line a page was on. Outside
+     * platform admin the rail is the operator's console; the door in is the account menu.
+     * Read off the shell the page is framed by, not the document: the areas are serialised
+     * into the response either way, slashes escaped.
      */
     $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
-
     $hrefs = collect($shell['areas'])->pluck('href');
 
-    expect($hrefs)->toContain(route('platform.customers'))
+    expect($hrefs)->toContain(route('dashboard'))
+        ->and($hrefs)->not->toContain(route('platform.workspaces'))
+        ->and($shell['platformMode'])->toBeFalse()
+        ->and($shell['platformHref'])->toBe(route('platform.workspaces'));
+
+    // INSIDE it, the rail is platform admin's alone, the mode is said, and there is a way
+    // out — the same session, the same shell, no second login.
+    $shell = (array) $this->get(route('platform.workspaces'))->assertOk()->inertiaProps('shell');
+    $hrefs = collect($shell['areas'])->pluck('href');
+
+    expect($hrefs)->toContain(route('platform.workspaces'))
         ->and($hrefs)->toContain(route('platform.operators'))
-        // …and a customer area beside them, which is the whole claim: one rail, both
-        // altitudes, no second shell to change into.
-        ->and($hrefs)->toContain(route('dashboard'));
+        ->and($hrefs)->not->toContain(route('dashboard'))
+        ->and($shell['platformMode'])->toBeTrue()
+        ->and($shell['section'])->toBe('Platform')
+        ->and($shell['exitPlatformHref'])->toBe(route('dashboard'));
 })->group('security');
 
 /**

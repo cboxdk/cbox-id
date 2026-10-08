@@ -112,13 +112,15 @@ function undocumentedByDesign(): array
         'GET /.well-known/jwks.json',
         'GET /.well-known/oauth-authorization-server',
         'GET /.well-known/oauth-protected-resource',
-        // RFC 9728 metadata for the MCP server at `/mcp`, which is JSON-RPC, not REST.
-        'GET /.well-known/oauth-protected-resource/mcp',
+        // RFC 9728 metadata for each declared protected resource (the MCP server at `/mcp`), served by the framework.
+        'GET /.well-known/oauth-protected-resource/{path}',
         'GET /.well-known/openid-configuration',
 
         // The specs themselves.
         'GET /api/v1/workspace/openapi.yaml',
         'GET /api/v1/environment/openapi.yaml',
+        'GET /api/v1/platform/openapi.yaml',
+        'GET /api/v1/me/openapi.yaml',
 
         // OAuth 2.0 / OIDC — RFC-specified. DEBT: no machine-readable contract yet.
         'GET /oauth/authorize',

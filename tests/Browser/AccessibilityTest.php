@@ -160,23 +160,23 @@ it('has no accessibility issues on the ported console pages', function (string $
     'members' => ['/team', 'Team'],
     'keys.workspace' => ['/keys/workspace', 'Keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
-    'audit' => ['/audit', 'Activity log'],
+    'audit' => ['/audit', 'Audit log'],
     'settings' => ['/settings', 'Settings'],
     'appearance' => ['/appearance', 'Appearance'],
-    'sign-in-rules' => ['/sign-in-rules', 'Sign-in rules'],
-    'clients' => ['/apps', 'Apps'],
-    'connections' => ['/single-sign-on', 'Single sign-on'],
-    'directories' => ['/sync-in', 'Sync users in'],
+    'sign-in-rules' => ['/sign-in-rules', 'Authentication policy'],
+    'clients' => ['/apps', 'Applications'],
+    'connections' => ['/single-sign-on', 'Enterprise SSO'],
+    'directories' => ['/sync-in', 'Directory Sync'],
     'roles' => ['/roles', 'Roles'],
     'permissions' => ['/permissions', 'Permissions'],
-    'hooks' => ['/inline-hooks', 'Inline hooks'],
+    'hooks' => ['/inline-hooks', 'Hooks'],
     'access-reviews' => ['/access-reviews', 'Access reviews'],
     'role-conflicts' => ['/role-conflicts', 'Role conflicts'],
     'vault' => ['/token-vault', 'Token vault'],
-    'outbound-sync' => ['/sync-out', 'Sync users out'],
-    'log-streams' => ['/log-streaming', 'Log streaming'],
+    'outbound-sync' => ['/sync-out', 'Outbound provisioning'],
+    'log-streams' => ['/log-streaming', 'Log streams'],
     'usage' => ['/usage', 'Usage'],
-    'social-providers' => ['/social-sign-in', 'Social sign-in'],
+    'social-providers' => ['/social-sign-in', 'Social login'],
     'get-started' => ['/get-started', 'Set up Acme'],
     'approvals' => ['/approvals', 'Approve agent requests'],
     'dashboard' => ['/dashboard', 'Welcome back'],
@@ -243,12 +243,12 @@ it('has no accessibility issues on the ported environment console pages', functi
     'home' => ['/admin', 'Overview'],
     'organizations' => ['/admin/organizations', 'Organizations'],
     'users' => ['/admin/users', 'Users'],
-    'saml-applications' => ['/admin/saml-apps', 'SAML applications'],
-    'approvals' => ['/admin/approvals', 'Review agent requests'],
+    'saml-applications' => ['/admin/saml-apps', 'SAML apps'],
+    'approvals' => ['/admin/approvals', 'Approvals'],
     // The SAME page as `/usage` on the other plane, and the reason that page exists: the
     // environment plane had a primitive copy of these counters called "Analytics".
     'analytics' => ['/admin/usage', 'Usage'],
-    'social-sign-in' => ['/admin/social-sign-in', 'Social sign-in'],
+    'social-sign-in' => ['/admin/social-sign-in', 'Social login'],
 ])->group('a11y');
 
 /**
@@ -478,10 +478,10 @@ it('has no accessibility issues on the ported platform console pages', function 
  */
 dataset('platform pages', [
     'environments' => ['/platform', 'Environments'],
-    'customers' => ['/platform/customers', 'Workspaces'],
+    'customers' => ['/platform/workspaces', 'Workspaces'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
-    'customer' => ['/platform/customers/first', 'Acme'],
+    'customer' => ['/platform/workspaces/first', 'Acme'],
     'organizations' => ['/platform/organizations', 'Organizations'],
     // The tenant's OWN page: a usage grid, a member table with an impersonation form on
     // every row, an entitlement table and an activity table — the densest page on the plane.
@@ -585,9 +585,10 @@ it('confirms before it suspends a tenant, and says who the operator is', functio
     $page = visit('/platform/organizations')
         // The page's own content first: `assertPresent` does not wait for React to mount.
         ->assertSee('Tenant A11y')
-        // WHAT AUTHORITY YOU ARE HOLDING, drawn on every console page — the topbar used to
-        // read "Workspace / Account" on a console where one click suspends a customer.
-        ->assertSee('Platform operator');
+        // WHAT AUTHORITY YOU ARE HOLDING, drawn above every platform page — the topbar used
+        // to read "Workspace / Account" on a console where one click suspends a customer.
+        ->assertSee('Platform admin')
+        ->assertSee('Exit platform admin');
 
     // Nothing is suspended by pressing it once.
     // BY ITS ACCESSIBLE NAME, which is also the assertion that it has one: every row on
@@ -717,8 +718,8 @@ it('offers a sign-out and a security page to somebody who belongs to nowhere', f
         ->assertSee('Manage security')
         ->assertNoJavaScriptErrors()
         // And the way out, behind the account menu — opened, because a control that is
-        // present but unreachable is the failure this is about. The trigger is the rail's
-        // own item, named for the person it belongs to.
-        ->click('button.cbx-railitem')
+        // present but unreachable is the failure this is about. The trigger is the avatar
+        // top right, named for the person it belongs to.
+        ->click('button.cbx-avatar-btn')
         ->assertSee('Sign out');
 })->group('a11y');

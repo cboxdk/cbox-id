@@ -28,9 +28,7 @@ use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\IssuedEnvironmentApiKey;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
-use Illuminate\Testing\TestResponse;
 use Laravel\Mcp\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,58 +49,6 @@ function mcpIssue(array $scopes = [EnvironmentApiScope::ApisRead, EnvironmentApi
         'Agent',
         array_map(fn (EnvironmentApiScope|string $scope): string => $scope instanceof EnvironmentApiScope ? $scope->value : $scope, $scopes),
     );
-}
-
-/**
- * @param  array<string, mixed>  $params
- */
-function mcpRpc(?string $token, string $method, array $params = []): TestResponse
-{
-    $request = test()->withHeaders(['Accept' => 'application/json, text/event-stream']);
-
-    if ($token !== null) {
-        $request = $request->withToken($token);
-    }
-
-    return $request->postJson('/mcp', [
-        'jsonrpc' => '2.0',
-        'id' => 1,
-        'method' => $method,
-        ...$params === [] ? [] : ['params' => $params],
-    ]);
-}
-
-/**
- * @param  array<string, mixed>  $arguments
- * @return array<string, mixed> The tool result: content, isError, structuredContent.
- */
-function mcpCall(string $token, string $tool, array $arguments = []): array
-{
-    $response = mcpRpc($token, 'tools/call', ['name' => $tool, 'arguments' => (object) $arguments])->assertOk();
-
-    // A tool that answers with several messages (execute_tools) is streamed as SSE; the
-    // result is the last `data:` line. Everything else is one JSON body.
-    if ($response->baseResponse instanceof StreamedResponse) {
-        preg_match_all('/^data: (.+)$/m', $response->streamedContent(), $lines);
-        $message = json_decode((string) end($lines[1]), true);
-        $result = is_array($message) ? ($message['result'] ?? null) : null;
-    } else {
-        $result = $response->json('result');
-    }
-
-    expect($result)->toBeArray();
-
-    return $result;
-}
-
-/**
- * @return array<string, array<string, mixed>> Listed tools, keyed by name.
- */
-function mcpTools(string $token): array
-{
-    $tools = mcpRpc($token, 'tools/list')->assertOk()->json('result.tools');
-
-    return collect($tools)->keyBy('name')->all();
 }
 
 // ── Authentication ──────────────────────────────────────────────────────────────
@@ -149,13 +95,13 @@ it('completes the initialize handshake a client opens with', function (): void {
 });
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
-    $scopes = collect(app(ActionRegistry::class)->all())->pluck('scope')->unique()->sort()->values()->all();
+    $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')->unique()->sort()->values()->all();
 
     $this->getJson('/.well-known/oauth-protected-resource/mcp')
         ->assertOk()
         ->assertJsonPath('resource', 'http://localhost/mcp')
         ->assertJsonPath('authorization_servers', [ServerMetadata::issuer()])
-        ->assertJsonPath('scopes_supported', $scopes)
+        ->assertJsonPath('scopes_supported', [...$scopes, 'offline_access'])
         ->assertJsonPath('bearer_methods_supported', ['header']);
 
     expect($scopes)->toContain('apis:read', 'apis:write');
@@ -166,7 +112,11 @@ it('lists only the tools the key\'s scopes allow, plus whoami, list_actions and 
 
     expect($reader)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'apis_list', 'apis_get']);
 
-    $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
+    $people = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::UsersRead])->plaintext));
+
+    expect($people)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'users_list', 'users_get', 'users_sessions_list']);
+
+    $nothing = array_keys(mcpTools(mcpIssue([EnvironmentApiScope::DirectoriesRead])->plaintext));
 
     expect($nothing)->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status']);
 
@@ -382,6 +332,13 @@ it('offers every action in the registry as a tool, with its own input schema', f
     foreach (app(ActionRegistry::class)->all() as $action) {
         if ($action->name === 'team.transfer_ownership') {
             continue; // Only the owner, in the console: no key holds the Owner role.
+        }
+
+        // The operator's and the person's own planes are no key's: never a tool for one.
+        if ($action->plane->personal()) {
+            expect($tools)->not->toHaveKey($action->toolName(), "Personal action {$action->name} is offered to a key.");
+
+            continue;
         }
 
         expect($tools)->toHaveKey($action->toolName(), message: "Action {$action->name} has no MCP tool.");

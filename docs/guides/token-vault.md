@@ -6,7 +6,7 @@ description: Store the API keys your apps and agents present to other services, 
 
 # Token vault
 
-**Console page:** Developers › Token vault
+**Console page:** Developers › Token vault (Advanced › Token vault in an environment console)
 
 The vault holds credentials your apps and agents need **for other services** — a
 provider's API key, a partner's token. They are encrypted at rest, handed only to

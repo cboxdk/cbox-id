@@ -8,6 +8,210 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Erase a person (GDPR Art. 17).** `users.erase` — the console's new Danger zone on a user's page, `POST /api/v1/users/{id}/erase` and the MCP tool `users_erase` — runs laravel-id 1.22's `SubjectEraser` in one transaction and returns its `ErasureReceipt`. Critical: the console asks for a fresh credential and the person's address typed out; a key needs the new `users:erase` scope (offered, flagged critical on the key form, not implied by `users:write`). The app's own stores are erasure steps of the same pipeline: Frontend API sign-in tickets, checklist dismissals, the risk trail's address pseudonym, and — registered by their modules — devices, push history and enrolment codes, and risk-plus's review trail and signal memory. The only owner of an organization is refused (`409 last_owner`) and nothing changes. The audit trail is not rewritten and still verifies.
+- **Organization-owned SAML applications.** A SAML app can belong to one organization (`organization_id` on `/v1/saml-apps`, "For which organization?" in the console); only its active members are then asserted to it. The list flags environment-wide apps.
+- `CBOX_ID_CRYPTO_PREVIOUS_KEYS` and a master-key rotation runbook (Operations › Rotating the crypto master key). The devices module registers its sealed push token with `SealedColumns`, so `cbox-id:crypto:rewrap` covers it.
+- `CBOX_ID_LOCKOUT_THRESHOLD`, `CBOX_ID_LOCKOUT_WINDOW_MINUTES`, `CBOX_ID_LOCKOUT_DURATION_MINUTES` in `.env.example` and the configuration docs.
+- **Enterprise SSO, directory sync, outbound provisioning, access governance, the token
+  vault and Admin Portal links are actions** — management API endpoints and MCP tools, and
+  the console's own writes run the same actions. New environment-plane endpoints:
+  `/sso/connections` (create, update, activate, disable, require-sso, delete, list, get),
+  `/sso/domains` (claim, verify, capture, remove, list), `/sso/saml-metadata` (parse IdP
+  metadata, stores nothing), `/directories` (SCIM register, Google/Entra connect, rename,
+  status, token rotate, group→role mapping, delete, list, get, groups),
+  `/provisioning-targets`, `/sod-policies`, `/access-reviews` (open, items, decide, close),
+  `/token-vault/secrets` (store, rotate, revoke, grants) and
+  `POST /organizations/{organization_id}/portal-links`. New key scopes: `sso:*`,
+  `directory_sync:*`, `provisioning:*`, `governance:*`, `token_vault:*` and
+  `portal_links:write` — `token_vault:*` manages the vault and is not the `vault.manage` /
+  `vault.lease` scopes an app's own token carries. Secrets are input only: a SCIM bearer
+  token and a portal link are shown once and redacted from idempotent replays; IdP
+  certificates, client secrets, signing keys, provider credentials and vault values are
+  never returned. Critical: connection update/activate/disable/delete/require-sso, domain
+  capture, SCIM register and rotate, pull connect, target register, SoD switch and delete,
+  vault rotate and grant, portal links.
+- Writes that recorded nothing now leave an attributed audit entry, from the console and
+  the API alike: `sso_connection.created|updated|disabled|deleted`, `directory.registered|
+  connected|renamed|token_rotated|paused|resumed|deleted|group_role_mapped|
+  group_role_unmapped`, `provisioning_connection.registered|paused|resumed|deleted`,
+  `sod.policy_deleted`, and `auth_policy.updated` for require-SSO.
+
+### Changed
+
+- **Sign-in rules: an empty lockout threshold is the deployment default, not "off".** Since laravel-id 1.22, 10 failures inside 15 minutes lock an account when no rule names a threshold; the page said "leave empty to disable lockout" and now states the default this deployment actually applies.
+
+- **Sign a person in to the management plane with OAuth.** `/mcp` and the REST environment
+  plane (`/api/v1/*` actions on an environment's host) now take an access token this
+  environment issued, audienced to its `/mcp` resource, as well as a management key. The
+  token becomes a `DelegatedTokenPrincipal`: the person, acting through the client they
+  signed in. It may run an action only when the token carries the action's scope AND the
+  person could do it on their own console here: an organization administrator, confined to
+  the organization the token is bound to, and on a customer's environment only what a
+  customer's console offers. The environment console's actions (APIs, keys, domains…) are
+  refused. Every **critical** action is held for the person's own approval on their device,
+  filed in their environment (`approval_pending` over MCP, `202 approval_required` over
+  REST, pollable at `/api/v1/action-approvals/{id}`). The trail names the person as a user
+  and records `context.oauth_client_id`. Live, `aud` present and naming `/mcp`, `iss` this
+  issuer, a subject and no `act`, and a valid DPoP proof when the token is bound; anything
+  else is `401 invalid_token`. A missing scope is a missing tool, never a 403, at `/mcp`.
+  See [Agents and MCP](docs/guides/agents-and-mcp.md).
+- **MCP clients sign in knowing only the URL.** `/oauth/register` defaults to the
+  framework's `mcp` profile (public clients, code + refresh grants, https or loopback
+  callbacks, the `/mcp` scopes) — `CBOX_ID_DCR_MODE`; client ID metadata documents are on —
+  `CBOX_ID_CIMD_ENABLED`; `/mcp` is open to self-registered clients —
+  `CBOX_ID_MCP_DYNAMIC_CLIENTS`; and self-registered clients unused for 30 days are pruned —
+  `CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS`.
+- **The consent screen says who is asking and what they may do.** `/oauth/authorize`
+  resolves the client through the framework's `AuthorizationClients` (so a metadata
+  document client works, held to the exact redirect URIs it published), reads `resource`
+  with `ResourceParameter` (one value, a repeated one is `invalid_target`) and asks the
+  token endpoint's `AudienceResolver` before showing anything, so it never agrees to what
+  redemption would refuse. A self-registered client is marked as one and never skips
+  consent; a metadata document client leads with the host that published it, its
+  `client_uri` and `logo_uri`. Management scopes are listed with their labels, and the
+  ones a critical action needs are flagged **Critical**. The device page flags them too.
+  New strings in all six hosted languages.
+- **`cbox login` reaches the management plane.** `/.well-known/cbox-cli` lists the
+  management scopes and the `resource` to name on the device grant (and `mcp_url`), so the
+  CLI's one token works at `/mcp` and on the REST environment API.
+  `php artisan cbox-id:cli:client` (and the installer) now provisions the CLI client with
+  those scopes, and brings an existing one up to them without replacing it.
+
+### Changed
+
+- `Principal` gains `confinedToOrganization()` and `approverEnvironmentId()`. The organization
+  confinement the action layer applied to organization-console sessions
+  (`OrganizationTarget`, `IntegrationReach`, the app actions' lookup) is now asked of the
+  principal, so a delegated token is confined the same way.
+- Environment action routes are `env.api:{scope},delegated`. The routes that are not
+  actions yet still take an environment key only, and answer a valid access token with a
+  `403` that says so.
+- **Users, organizations, members, invitations, roles, permissions, staff roles and support
+  sessions are actions** — one class each in `app/Actions/{Users,Organizations,Members,Invitations,Roles,Permissions,CustomerApiKeys,SupportSessions}`,
+  run by the console, the management API and MCP alike (a tool per action). The console's
+  environment-plane writes for them, and their organization-console twins for roles,
+  permissions and rename, now run those actions; 53 console writes leave the parity
+  allowlist (`BASELINE` 160 → 104).
+- New management API endpoints, with the actions behind them: `PATCH /users/{id}`,
+  `POST /users/{id}/reactivate`, `POST /users/{id}/password`, `POST /users/{id}/password-reset`,
+  `POST /users/{id}/verification`, `POST /users/{id}/verify`, `DELETE /users/{id}/mfa`,
+  `GET|DELETE /users/{id}/sessions`, `DELETE /users/{id}/sessions/{session_id}`,
+  `POST /organizations/{id}/suspend|reactivate`, `GET|POST /organizations/{organization_id}/domains`
+  with `…/{domain_id}/verify`, `PUT …/{domain_id}/capture` and `DELETE …/{domain_id}`,
+  `GET /roles/{id}`, `POST|PATCH|DELETE /roles…`, `PUT|DELETE /roles/{id}/permissions/{permission_id}`,
+  `GET|POST|PATCH|DELETE /permissions…` and `DELETE /support-sessions/{id}`.
+- `GET /users` takes `email` (exact, case-insensitive), `q` (a fragment of the address or
+  name) and `status`; `GET /organizations` takes `q` and `status`. Organizations carry
+  free-form `metadata` (create, update, and in every answer). `POST …/members` takes the
+  person by `email` as well as `user_id`, and `roles` to grant with the membership.
+  `POST /users` takes `send_sign_in_link`.
+- A management key scope, `role_definitions:write`, for defining roles and authoring
+  permissions — separate from `roles:write`, which grants and takes away roles.
+
+### Changed
+
+- The existing environment API endpoints for users, organizations, members, invitations,
+  roles, customer API keys and support sessions are the actions now; their hand-written
+  controllers are gone. URLs and answers are unchanged, except: the nested path
+  parameters are documented as `{organization_id}`, `{user_id}`, `{role_id}` and
+  `{invitation_id}`; every write takes `Idempotency-Key` and can answer `202
+  approval_required` under a key's step-up policy; and adding a member to a suspended or
+  archived organization is refused (`409 organization_inactive`).
+- **Ownership handed over by the environment's authority is recorded as its act.**
+  `POST /organizations/{id}/transfer-ownership` used to run the framework's owner-to-owner
+  hand-over when the organization had one owner, which records the OUTGOING owner as the
+  actor. A key (or the environment console) is nobody inside the organization, so every
+  current owner now steps down to admin and `organization.ownership_transferred` names the
+  key — with the previous owners in its context.
+- Console behaviour that moved with the actions: a typed URL handle that is taken is
+  refused rather than suffixed; an access role that cannot be held in the organization, or
+  a segregation-of-duties conflict, refuses an add-member/assign-organization outright
+  rather than skipping the role; a session, role or member that is not there is a 404
+  rather than a silent return; resetting a user's two-factor and setting their password
+  are recorded with the administrator's subject id as the actor (the reset used to name
+  the user themselves).
+- Danger levels: changing a user's address, setting a password, marking an address
+  verified, resetting two-factor, handing over ownership, granting a staff role, turning
+  domain capture on or off and starting a support session are **critical** — a key whose
+  step-up policy holds critical actions waits for its owner's approval on each.
+- **The operator API, `/api/v1/platform`** — the deployment itself as actions, run by the
+  console's Platform pages and by REST alike: `platform.workspaces.create` /
+  `.set_status`, `platform.environments.create` / `.provision`,
+  `platform.organizations.create` / `.set_status` / `.move` (inside a named environment),
+  `platform.operators.create` / `.set_status`. Every write is critical. No key of any kind
+  is accepted: only a platform operator's delegated token carrying `operator:*` scopes
+  (`operator:workspaces:write`, `operator:environments:write`,
+  `operator:organizations:write`, `operator:operators:write`). Statuses take the state
+  you want rather than flipping, so a retry never undoes itself. Spec at
+  `/api/v1/platform/openapi.yaml`.
+- **My account API, `/api/v1/me`** — the person's own profile, sessions, application
+  grants, personal API keys (`/organizations/{id}/api-keys`), passkeys, social links and
+  trusted devices, as actions (`account.*`), behind `account:*` scopes. Only a token the
+  person delegated reaches it; no management key acts as a person. Password, second-factor
+  enrolment, recovery codes and passkey registration stay ceremonies in the browser. Spec
+  at `/api/v1/me/openapi.yaml`.
+- Both planes answer 401 to every bearer until delegated management tokens are issued: the
+  resolver is the `DelegatedTokens` contract (bound to `NoDelegatedTokens`), the one seam
+  that opens them. Until then the console is the only way in.
+- **Custom domains from the workspace plane:** `environments.domain.request`, `.verify`
+  and `.remove` at `/api/v1/workspace/environments/{id}/domain` (scope
+  `environments:write`) — the workspace console's Environment domains page runs the same
+  actions, recorded on the workspace's trail as the key or the member.
+- **Agent requests on the environment plane:** `approvals.list` (`GET /agent-requests`,
+  `approvals:read`) and `approvals.deny` (`POST /agent-requests/{id}/deny`,
+  `approvals:write`) — the environment console's Approvals page denies through it.
+  Approving stays the person's own consent and has no action.
+
+### Changed
+
+- **The Platform section's customer pages are at `/platform/workspaces`**, with route names
+  `platform.workspaces.*`. `/platform/customers` and `/platform/customers/{id}` answer 301
+  to the new paths, query string kept.
+- Console writes that name an id they cannot reach now answer 404 throughout the actions
+  moved here: an environment domain write for an environment the member cannot reach
+  (was 403), an unknown operator on the roster toggle (was a silent redirect), an
+  organization or parent from another environment in the operator's organization writes
+  (a foreign parent was accepted on create).
+- The parity allowlist names a reason for every UI-only console write, grouped as
+  ceremonies, file downloads, UI preferences and vendor UI. Impersonation (operator and
+  environment admin) is a ceremony: a browser session by definition.
+- **AI agents in the environment console.** Three pages under **AI agents**:
+  - **Agents** (`/admin/agents`): the environment's management keys as the agents holding
+    them — scopes summarised, a risk badge for the most harmful thing they unlock (the
+    highest danger among the registry's actions needing each scope), the approval policy,
+    who created each, and keys minted by a key indented under their parent. Rotate (new
+    `environment.keys.rotate` route, claimed by `keys.rotate`) and revoke, with a warning
+    when revoking also revokes the keys it minted. The create flow (`/admin/agents/new`,
+    behind the environment step-up) offers **Read-only**, **Support agent** and **Full
+    admin** presets, a scope picker grouped by resource, approval by danger level and by
+    named action (`require_approval` on `keys.create`), and an expiry; the key is shown
+    once with the Claude Code command already carrying it. Every write is an existing key
+    action.
+  - **Approvals** (`/admin/approvals`): an agent's held actions now appear here with the
+    agent, action, danger, target, redacted arguments, binding code and expiry. The person
+    an action waits for can approve it here instead of on their phone — the same CIBA
+    request, so the agent's poll and repeat are unchanged — after confirming their
+    password for a critical action; any administrator can deny one. Both are recorded on
+    the workspace's activity log (`organization.action_approval_approved` / `_denied`). A
+    count beside **Approvals** in the rail shows what waits for the signed-in person.
+  - **Connect** (`/admin/agents/connect`): the environment's MCP URL and setup for Claude
+    Code, Claude Desktop, Cursor, VS Code and any other client (RFC 9728 metadata, REST
+    and OpenAPI URLs). Signing in with your account is shown as coming soon while the
+    `/mcp` resource accepts management keys only.
+- An action approval now stores the environment it belongs to, its binding code and a
+  redacted copy of the validated input (the action's `redact` fields and any field named
+  like a secret are removed), so it can be read before it is answered.
+
+### Changed
+
+- On the environment console, the management keys tab of **Developers › API keys** is
+  now **AI agents › Agents**; `/admin/keys` redirects there and **API keys** opens on the
+  frontend keys. One page per credential, so the two lists cannot disagree.
+
+- Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
+
 ### Security
 
 - **The environment-admin handoff no longer puts its token in a URL.** Opening an
@@ -515,6 +719,36 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   404 rather than a silent no-op.
 - **Requires `cboxdk/laravel-id` ^1.21.** Management-key scopes are its `ManagementScopes`
   vocabulary: the framework's own plus this app's (`AppManagementScopes`).
+- **One context switcher in every console's topbar: `Workspace ▾ / Project ▾ /
+  Environment ▾ [PRODUCTION]`.** It lists the workspaces you belong to, the current
+  workspace's projects, and only the environments you may administer (the same two checks
+  `/open/{environment}` makes). Choosing an environment opens the same console page there
+  when it exists without a record in its URL, else that page's list, else the Overview:
+  the page travels through `/open/{environment}?to=` into the handoff, bound to its token
+  with an HMAC and checked on both ends against an allow-list (a path under `/admin` that
+  routes to an environment-console GET page; `//host`, backslashes, absolute URLs and
+  anything else are dropped). The environment console has the switcher too; it used to
+  show a back arrow and the environment's name. It replaces the organization switcher and
+  the operator's "target environment" menu, which moved to Platform › Environments.
+- **The account menu is the avatar, top right:** Workspace settings, My account, Switch
+  user, Platform admin (operators), Theme, Sign out.
+- **The rail shows its labels by default.** Pinned is the default; unpinning is
+  remembered in the `cbox-nav-pinned` cookie, which now records only an explicit `0`.
+- **Platform admin is a mode.** The Platform, Insights and Administration areas are no
+  longer appended to every operator's rail; the account menu opens them, the rail there
+  holds only them, and a strip across the top says "Platform admin" with "Exit platform
+  admin".
+- **The environment console is filed by task, in market terms:** Home, Users & orgs,
+  Authentication, Developers, AI agents, Branding, Monitoring, Advanced, Settings (plus
+  Connectors when that module is on). Renamed pages, on both consoles where a page is
+  shared: Single sign-on → Enterprise SSO, Sync users in → Directory Sync, Sync users out
+  → Outbound provisioning, Activity log → Audit log, Log streaming → Log streams, Sign-in
+  rules → Authentication policy, Social sign-in → Social login, Apps → Applications,
+  Inline hooks → Hooks, SAML applications → SAML apps, Staff → Admins & support, Review
+  agent requests → Approvals, and the environment console's Keys → API keys. URLs and
+  route names are unchanged.
+- **The console chrome is built once per request.** The controller and the shared prop
+  each built it before.
 - **A customer's organization console is an admin portal now.** On a customer's
   environment host of a multi-tenant deployment, the organization console offers Members,
   Roles and Permissions, Single sign-on (with its domains), Sync users in, the Activity

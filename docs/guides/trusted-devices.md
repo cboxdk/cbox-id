@@ -78,7 +78,7 @@ than failing at send time. A misconfigured push must not be able to break a logi
 ### 3. Enrol a phone
 
 A user opens **My account → Trusted devices** and scans the enrolment QR with the app.
-Nothing is required of an administrator. **Sign-in → Trusted devices**
+Nothing is required of an administrator. **Sign-in → Trusted devices** (Authentication → Trusted devices in an environment console)
 (`/trusted-devices`) in the console shows the fleet: who enrolled what, when it was last seen, and every notification sent to it.
 
 ## When a push cannot be delivered

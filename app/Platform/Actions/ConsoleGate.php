@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions;
 
+use App\Platform\Actions\Principal\OperatorPrincipal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\OrganizationCapabilities;
@@ -38,6 +39,20 @@ enum ConsoleGate
     /** Invite, re-role and remove members; mint workspace keys; change workspace settings. */
     case ManageMembers;
 
+    /**
+     * A platform operator — Cbox staff running the deployment. The one gate of the platform
+     * plane: the console asks {@see ConsoleScope::isPlatformOperator()}, a delegated token
+     * answers as an {@see OperatorPrincipal}.
+     */
+    case Operator;
+
+    /**
+     * The person themself, signed in: the one gate of the account plane. Nobody administers
+     * somebody else's account through it — every action there is keyed to the person
+     * acting, never to an id the caller names.
+     */
+    case Person;
+
     /** Whether this gate is a workspace capability — the only gates a workspace action may name. */
     public function isWorkspace(): bool
     {
@@ -51,7 +66,7 @@ enum ConsoleGate
     public function capability(): string|false|null
     {
         return match ($this) {
-            self::EnvironmentAdmin, self::Administer => false,
+            self::EnvironmentAdmin, self::Administer, self::Operator, self::Person => false,
             self::WorkspaceMember => null,
             self::ManageEnvironments => 'manage-environments',
             self::ReadMembers => 'read-members',

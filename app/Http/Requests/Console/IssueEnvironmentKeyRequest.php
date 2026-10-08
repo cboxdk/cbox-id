@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Console;
 
+use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\EnvironmentKeyScopes;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
@@ -39,6 +42,15 @@ final class IssueEnvironmentKeyRequest extends FormRequest
             // the API cannot keep.
             'scopes.*' => [Rule::in(EnvironmentKeyScopes::offeredValues())],
             ...KeyExpiry::rules(),
+            // What it is for, and which of its actions wait for its owner's approval — the
+            // agent create flow asks both; the workspace console's form asks neither.
+            'description' => ['nullable', 'string', 'max:500'],
+            'approval' => ['nullable', Rule::in(['none', 'write', 'destructive', 'critical'])],
+            'approvalActions' => ['nullable', 'array', 'max:100'],
+            'approvalActions.*' => ['string', Rule::in(array_map(
+                static fn (ActionDefinition $action): string => $action->name,
+                app(ActionRegistry::class)->forPlane(ActionPlane::Environment),
+            ))],
         ];
     }
 
@@ -76,6 +88,28 @@ final class IssueEnvironmentKeyRequest extends FormRequest
     }
 
     /** When the key stops working, or null for a key that does not expire. */
+    public function description(): ?string
+    {
+        $description = trim((string) $this->string('description'));
+
+        return $description === '' ? null : $description;
+    }
+
+    /**
+     * The key's approval policy in the shape `keys.create` takes (`require_approval`), or
+     * null for none — which is also what an empty level with no named actions means.
+     *
+     * @return array{min_danger: string|null, actions: list<string>}|null
+     */
+    public function requireApproval(): ?array
+    {
+        $level = (string) $this->string('approval');
+        $actions = array_values(array_unique(array_filter((array) $this->input('approvalActions', []), 'is_string')));
+        $minDanger = in_array($level, ['write', 'destructive', 'critical'], true) ? $level : null;
+
+        return $minDanger === null && $actions === [] ? null : ['min_danger' => $minDanger, 'actions' => $actions];
+    }
+
     public function expiresAt(): ?CarbonImmutable
     {
         return KeyExpiry::expiresAt($this);

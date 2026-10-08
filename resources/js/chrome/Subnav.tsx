@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import type { NavPage } from '@/types';
+import { NavCount } from './NavCount';
 import { Icon, Tooltip } from '@/ui';
 import { cn } from '@/lib/cn';
 
@@ -33,7 +34,11 @@ export function Subnav({ label, pages, collapsed, onToggle }: SubnavProps) {
                 aria-label={`Expand ${label} navigation`}
             >
                 <span className="vlabel">{label}</span>
-                <Icon name="chevron" className="w-3.5 h-3.5" style={{ transform: 'rotate(-90deg)' }} />
+                <Icon
+                    name="chevron"
+                    className="w-3.5 h-3.5"
+                    style={{ transform: 'rotate(-90deg)' }}
+                />
             </button>
 
             <div className="cbx-subnav-hd">
@@ -45,7 +50,11 @@ export function Subnav({ label, pages, collapsed, onToggle }: SubnavProps) {
                     title="Collapse (⌘.)"
                     aria-label="Collapse subnav"
                 >
-                    <Icon name="chevron" className="w-4 h-4" style={{ transform: 'rotate(90deg)' }} />
+                    <Icon
+                        name="chevron"
+                        className="w-4 h-4"
+                        style={{ transform: 'rotate(90deg)' }}
+                    />
                 </button>
             </div>
 
@@ -59,6 +68,7 @@ export function Subnav({ label, pages, collapsed, onToggle }: SubnavProps) {
                         prefetch="hover"
                     >
                         <span>{page.label}</span>
+                        <NavCount count={page.count} />
 
                         {page.badge !== null && (
                             /*

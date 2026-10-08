@@ -1,7 +1,7 @@
 ---
 title: Screens
 weight: 3
-description: A tour of the three consoles (workspace, organization and environment), their areas, and the sign-in surface, with screenshots dated 2026-07-13.
+description: A tour of the three consoles (workspace, organization and environment), their areas and topbar, and the sign-in surface, with screenshots dated 2026-07-13.
 ---
 
 # Screens
@@ -42,15 +42,40 @@ under `/admin` (`/roles` and `/admin/roles`). Old paths answer with a 301, so a 
 still works. [Upgrading](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)
 lists them.
 
-The deployment's own pages (workspaces, environments, organizations, operators) are the
-**Platform**, **Insights** and **Administration** areas at the bottom of the rail, shown
-to whoever has authority over the deployment.
+The deployment's own pages (workspaces, environments, organizations, operators) are
+**platform admin**: reached from **Platform admin** in the account menu by whoever has
+authority over the deployment, with a rail of their own and a strip across the top that
+says so. They are no longer appended to every rail.
 
 ## The rail
 
-The rail is 64px wide and shows one icon per area; every area has its own icon. Hover it
-and an overlay opens with the labels; **pin** it to keep the labels open. Below the `lg`
-breakpoint it becomes an off-canvas drawer behind the menu button in the top bar.
+The rail shows each area's icon **and its label**, by default. The pin at the top
+collapses it to a strip of icons (hover it and an overlay opens with the labels); the
+choice is remembered in this browser. Below the `lg` breakpoint it becomes a sheet behind
+the menu button in the bottom bar.
+
+## The topbar
+
+Where you are on the left, search and your account on the right:
+
+```
+Acme ▾  /  Checkout ▾  /  Production ▾ [PRODUCTION]  /  All organizations ▾      Go to… ⌘K   (avatar)
+```
+
+- **Workspace ▾ / Project ▾ / Environment ▾** is one context switcher, the same on every
+  console. Choosing another environment opens the same page there. The badge names the
+  environment's type in words. On the workspace console no environment is current, so
+  the second crumb is **Environments ▾**, every environment you may open grouped by
+  project. [Workspaces &
+  organizations](../core-concepts/workspaces-and-organizations.md#moving-between-them)
+  describes each menu.
+- **All organizations ▾** (environment console only) filters every page to one of your
+  customers.
+- **The avatar** opens the account menu: Workspace settings, My account, Switch user,
+  Platform admin (operators), Theme, Sign out.
+
+On a phone the context switcher moves into the navigation sheet, and the bottom bar names
+the environment and its type.
 
 Every page has a **"?"** beside its title with a short explanation, and a **Read the
 guide** link to the [admin guides](../guides/_index.md) where there is one.
@@ -96,9 +121,9 @@ What a workspace member sees at the platform root of a hosted deployment. The ra
 workspace and nothing else:
 
 - **Workspace:** Projects, Team, Keys, Environment domains, Billing, Workspace settings.
-- **Team sign-in:** Single sign-on, Sign-in rules. How your own team signs in to Cbox, not
-  how your product's users sign in.
-- **Logs:** Activity log.
+- **Team sign-in:** Enterprise SSO, Authentication policy. How your own team signs in to
+  Cbox, not how your product's users sign in.
+- **Logs:** Audit log.
 - **My account:** Security, Sessions & activity.
 
 There is no Overview page and no setup guide here. The pages that administer end users
@@ -116,7 +141,7 @@ environment's console; everyone else lands on **Projects**, where each environme
 
 The full organization console, as a single-tenant install (and an operator) sees it. On a
 customer's environment host it keeps Overview and Approve agent requests, People (Members,
-Roles, Permissions), Single sign-on and Sync users in, the Activity log, and My account;
+Roles, Permissions), Enterprise SSO and Directory Sync, the Audit log, and My account;
 every other page below is on the environment console instead.
 
 ### Overview
@@ -141,20 +166,20 @@ hierarchy-aware.
 
 ### Sign-in
 
-*Single sign-on · Social sign-in · Sign-in rules · Sync users in · Sync users out.*
-Everything about how people get in and how their accounts arrive. Single sign-on
-connects an organization's own IdP (SAML / OIDC); social sign-in is picked from a
-catalogue rather than described from memory; **Sign-in rules** are the password, MFA and
-session policy (they used to sit under Settings); "sync users in" is inbound SCIM
-provisioning (deprovision revokes sessions immediately) and "sync users out" pushes the
-same directory to downstream apps.
+*Enterprise SSO · Social login · Authentication policy · Directory Sync · Outbound
+provisioning.* Everything about how people get in and how their accounts arrive.
+Enterprise SSO connects an organization's own IdP (SAML / OIDC); social login is picked
+from a catalogue rather than described from memory; **Authentication policy** is the
+password, MFA and session policy; **Directory Sync** is inbound SCIM provisioning
+(deprovision revokes sessions immediately) and **Outbound provisioning** pushes the same
+directory to downstream apps.
 
-The two SCIM directions are named as a pair on purpose: "Directory sync" beside
-"Outbound sync" gave no clue which way either moved people. The screenshots below predate
-that rename.
+These are the names other identity platforms use for the same pages, so somebody who has
+used one finds them by the word they already know. The screenshots below predate the
+rename.
 
-![Single sign-on](../screenshots/connections.png)
-![Sync users in](../screenshots/directories.png)
+![Enterprise SSO](../screenshots/connections.png)
+![Directory Sync](../screenshots/directories.png)
 
 ### Access control
 
@@ -165,17 +190,17 @@ No screenshot.
 
 ### Developers
 
-*Apps · Webhooks · Inline hooks · Token vault.* OAuth clients registered against this
+*Applications · Webhooks · Hooks · Token vault.* OAuth clients registered against this
 instance (including MCP clients self-registering through Dynamic Client Registration);
-HMAC-signed event delivery with retries and delivery history; synchronous inline hooks
-that run *during* a flow rather than after it; and the vault holding third-party tokens.
+HMAC-signed event delivery with retries and delivery history; synchronous hooks that run
+*during* a flow rather than after it; and the vault holding third-party tokens.
 Machine keys are on the [Keys](../guides/keys.md) page of the workspace and environment
 consoles.
 
 The screenshots below are from when this area was "API clients" and "Webhooks" as two
 separate top-level pages.
 
-![Apps](../screenshots/clients.png)
+![Applications](../screenshots/clients.png)
 ![Webhooks](../screenshots/webhooks.png)
 
 ### Connectors
@@ -185,11 +210,11 @@ the console. No screenshot.
 
 ### Logs
 
-*Activity log · Log streaming.* The append-only, hash-chained audit trail, filterable and
+*Audit log · Log streams.* The append-only, hash-chained audit trail, filterable and
 exportable to your SIEM. The compliance and risk modules append their pages here rather
 than minting areas of their own.
 
-![Activity log](../screenshots/audit.png)
+![Audit log](../screenshots/audit.png)
 
 ### Settings
 
@@ -210,54 +235,67 @@ No screenshot of its own. The 2026-07-13 image above filed these settings under
 
 ## The environment console
 
-Every area of the full organization console, plus the ones that only make sense for a
-whole environment:
+Every capability of the full organization console, plus the ones that only make sense for
+a whole environment, filed by task in the words the market uses:
 
-- **Overview:** Overview, Usage, **Review agent requests** (every pending agent request
-  in the environment, so an administrator can deny one that looks like abuse).
-- **Organizations:** your customers' organizations.
-- **People:** Users, Roles, Permissions. A user's page has **Staff roles**: roles granted
-  across the whole environment.
-- **Sign-in:** Single sign-on, Social sign-in, Sign-in rules, SAML applications, Sync
-  users in, Sync users out.
-- **Access control:** Access reviews, Role conflicts.
-- **Developers:** Apps, Keys, Legacy login, Webhooks, Inline hooks, Token vault.
-- **Connectors**, **Logs** (Activity log, Log streaming) and **Settings** (Settings,
-  Appearance, and Branding when the whitelabel module is on).
+- **Home:** Overview.
+- **Users & orgs:** Users, Organizations (your customers), Roles, Permissions. A user's
+  page has **Staff roles**: roles granted across the whole environment.
+- **Authentication:** Authentication policy, Social login, Enterprise SSO, Directory Sync:
+  every way people come in.
+- **Developers:** Applications, APIs, API keys, Webhooks, Hooks.
+- **AI agents:** Approvals (every pending agent request in the environment, so an
+  administrator can deny one that looks like abuse).
+- **Branding:** Appearance, and Branding when the white-label module is on.
+- **Monitoring:** Audit log, Log streams, Usage, and the analytics, compliance and risk
+  modules' pages.
+- **Advanced:** Admins & support, Access reviews, Role conflicts, Token vault, Outbound
+  provisioning, SAML apps, Legacy login: set up once and rarely revisited.
+- **Settings**, and **Connectors** when that module is on.
 
 It has no My account area. Your own password, passkeys and sessions belong to your
 workspace, so **My account** and **Switch user** in the account menu open on the
 workspace host.
 
-The topbar reads `← <Workspace> / <Environment> [badge] / <acting organization>`. The
-first crumb goes back to the workspace's Projects page.
+The topbar reads `<Workspace> ▾ / <Project> ▾ / <Environment> ▾ [badge] / <acting
+organization> ▾`. The workspace crumb goes back to the workspace's Projects page; the
+environment crumb opens the same page in another environment.
 
 ## Chrome
 
-### Organization switcher
+### Context switcher
 
-A signed-in user who belongs to several organizations switches the active organization
-from the sidebar card. The switch is server-verified against membership (you can only
-switch into an org you actually belong to) and the role updates with it (here: Owner in
-Acme, Admin in Globex). The security model is described in
-[Security](../security/_index.md#organization-switcher).
+A signed-in user who belongs to several workspaces or organizations switches from the
+first crumb of the topbar. The switch is server-verified against membership (you can only
+switch into one you actually belong to) and the role updates with it. The security model
+is described in [Security](../security/_index.md#organization-switcher). The project and
+environment crumbs list only the environments you may administer, and open them through
+the same signed handoff as **Open console** on Projects.
 
-The environment console has a second, unrelated picker in its topbar: which organization
-the console is **acting on**. It is a search rather than a list, because an environment
-with four thousand organizations is a real one.
+The environment console has a second, unrelated picker after it: which organization the
+console is **acting on**. It is a search rather than a list, because an environment with
+four thousand organizations is a real one.
+
+### Platform admin
+
+For whoever runs the install, **Platform admin** in the account menu opens the platform
+pages. The rail there holds only Platform, Insights and Administration, and a strip across
+the top says **Platform admin** with **Exit platform admin** beside it. The topbar's old
+"target environment" menu is gone; re-point the platform pages from **Platform ›
+Environments**.
 
 ![Organization switcher](../screenshots/org-switcher.png)
 
 ### Switch user
 
 **Switch user** in the account menu moves between the people signed in on this device.
-It does not change organization; the organization switcher does that.
+It does not change workspace or organization; the context switcher does that.
 
 ### Responsive (mobile & tablet)
 
-Below the `lg` breakpoint the rail collapses into an off-canvas **navigation drawer**
-(menu button in the top bar) holding the full nav, org context, theme toggle and
-sign-out; content stacks to a single column and wide tables scroll within their card.
+Below the `lg` breakpoint the rail collapses into a **navigation sheet** (menu button in
+the bottom bar) holding the full nav, the context switcher, the account links, theme
+toggle and sign-out; content stacks to a single column and wide tables scroll within their card.
 The sign-in split-screen collapses to a centered form. Verified at phone (390px) and
 tablet (768px) widths.
 

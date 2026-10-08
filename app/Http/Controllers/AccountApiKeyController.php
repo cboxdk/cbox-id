@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Account\CreateMyApiKey;
+use App\Actions\Account\RevokeMyApiKey;
+use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\AppApiKeyRows;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\IssueAppApiKeyRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\ApiKeys\HolderApiKeys;
 use App\Platform\ApiKeys\KeyApps;
 use App\Platform\ApiKeys\ValueObjects\KeyApp;
 use App\Platform\ApiKeys\ValueObjects\KeyOrganization;
 use App\Platform\ApiKeys\ValueObjects\KeyPermission;
-use App\Platform\ApiKeys\ValueObjects\RefusalExplanation;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
-use Cbox\Id\Organization\Exceptions\CustomerApiKeyRefused;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,6 +49,8 @@ use Inertia\Response;
  */
 final readonly class AccountApiKeyController extends PageController
 {
+    use RunsActions;
+
     public function index(Request $request, HolderApiKeys $holder, KeyApps $apps, AppApiKeyRows $rows): Response
     {
         $me = app(CurrentUser::class);
@@ -120,53 +124,53 @@ final readonly class AccountApiKeyController extends PageController
         ]);
     }
 
-    public function store(IssueAppApiKeyRequest $request, HolderApiKeys $holder, KeyApps $apps): RedirectResponse
+    /**
+     * Mint a key through {@see CreateMyApiKey} — the account plane's action. Every refusal
+     * is the sentence the action gives, on this form's own field.
+     */
+    public function store(IssueAppApiKeyRequest $request): RedirectResponse
     {
-        $me = app(CurrentUser::class);
+        $result = $this->act(CreateMyApiKey::class, [
+            'organization_id' => $request->organizationId(),
+            'client_id' => $request->clientId(),
+            'name' => $request->keyName(),
+            'permissions' => $request->permissions(),
+            'expires_at' => $request->expiresAt()?->toIso8601String(),
+        ], ['client_id' => 'client_id', 'organization_id' => 'organization_id', 'permissions' => 'permissions', 'name' => 'name', 'expires_at' => 'expiresOn'], 'name');
 
-        abort_unless($me->check(), 403);
-
-        try {
-            $issued = $holder->issue(
-                userId: $me->id(),
-                organizationId: $request->organizationId(),
-                clientId: $request->clientId(),
-                permissions: $request->permissions(),
-                name: $request->keyName(),
-                expiresAt: $request->expiresAt(),
-            );
-        } catch (CustomerApiKeyRefused $refused) {
-            $explanation = RefusalExplanation::of(
-                $refused,
-                $apps->offered($request->organizationId(), $request->clientId())?->name,
-            );
-
-            return back()->withErrors([$explanation->field => $explanation->message])->withInput();
+        if ($result instanceof RedirectResponse) {
+            return $result;
         }
+
+        /** @var array{token: string} $issued */
+        $issued = $result->payload;
 
         /*
          * The plaintext, on the flash channel and nowhere else. Props are written into the
          * browser's history entry; a credential there is readable by pressing Back, long
          * after the page that showed it has gone.
          */
-        $this->inertia->flash('freshKey', $issued->plaintext);
+        $this->inertia->flash('freshKey', $issued['token']);
 
         return back()->with('status', 'API key created — copy it now, it will not be shown again.');
     }
 
     /**
-     * Revoke one of your own keys. The key is looked up with the signed-in person and the
-     * organization IN the query, so an id from somebody else's list revokes nothing.
+     * Revoke one of your own keys through {@see RevokeMyApiKey}, looked up with you and the
+     * organization in the query — so an id from somebody else's list revokes nothing, and
+     * the page simply goes back, as it always has.
      */
-    public function destroy(Request $request, string $key, HolderApiKeys $holder): RedirectResponse
+    public function destroy(Request $request, string $key): RedirectResponse
     {
-        $me = app(CurrentUser::class);
-
-        abort_unless($me->check(), 403);
-
         $organizationId = $this->queryString($request, 'organization');
 
-        if ($organizationId === null || ! $holder->revoke($organizationId, $me->id(), $key)) {
+        if ($organizationId === null) {
+            return back();
+        }
+
+        try {
+            $this->runAction(RevokeMyApiKey::class, ['organization_id' => $organizationId, 'key_id' => $key]);
+        } catch (ActionRefused) {
             return back();
         }
 

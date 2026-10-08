@@ -6,7 +6,7 @@ description: Push your people into the other SaaS products your company uses ove
 
 # Sync users out
 
-**Console page:** Sign-in › Sync users out
+**Console page:** Sign-in › Outbound provisioning (Advanced › Outbound provisioning in an environment console)
 
 This is [syncing users in](sync-users-in.md) turned around. Instead of a provider
 filling Cbox ID, Cbox ID fills the other SaaS products your company pays for: it

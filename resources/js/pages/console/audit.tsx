@@ -137,7 +137,7 @@ export default function Audit({ help, entries, pagination, filters, environmentW
 
             <div className="card overflow-hidden mt-4">
                 <div className="overflow-x-auto">
-                    <Table caption="Activity log">
+                    <Table caption="Audit log">
                         <thead>
                             <tr>
                                 <Th style={{ width: '1%' }} className="hidden sm:table-cell">

@@ -7,9 +7,7 @@ namespace App\Platform\Integrations;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
-use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\Principal;
-use App\Platform\Console\ConsolePlane;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -25,8 +23,8 @@ use Illuminate\Database\Eloquent\Model;
  *  - an environment administrator on the environment console, or a management key: the
  *    environment's own authority, which sits above every organization in it. Nothing is
  *    narrowed; {@see self::confinedTo()} answers null.
- *  - an organization administrator on the organization console: their organization and
- *    nothing else. They SEE the environment's own webhooks and hooks (each receives their
+ *  - an organization administrator on the organization console, or acting through a
+ *    token they signed in for: their organization and nothing else. They SEE the environment's own webhooks and hooks (each receives their
  *    events, and one they could not see is one they could not ask about) but may change
  *    only their own, and may never mint one that is the environment's.
  *
@@ -41,16 +39,13 @@ final class IntegrationReach
      * The organization this principal is confined to, or null when it acts with the
      * environment's authority.
      *
-     * Only an organization-plane console session is confined; its organization comes from
-     * the session, never from input.
+     * The principal's own answer ({@see Principal::confinedToOrganization()}): an
+     * organization-plane console session and a person's delegated token are confined, and
+     * their organization comes from the session or the token, never from input.
      */
     public static function confinedTo(Principal $principal): ?string
     {
-        if ($principal instanceof ConsoleSessionPrincipal && $principal->scope()->plane() === ConsolePlane::Organization) {
-            return $principal->scope()->requireOrganizationId();
-        }
-
-        return null;
+        return $principal->confinedToOrganization();
     }
 
     /**

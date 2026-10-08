@@ -21,6 +21,7 @@ use App\Http\Controllers\Console\AccessReviewController;
 use App\Http\Controllers\Console\AccountSettingsController;
 use App\Http\Controllers\Console\ActingOrganizationController;
 use App\Http\Controllers\Console\AgentApprovalController;
+use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
 use App\Http\Controllers\Console\AppearanceController;
@@ -1149,6 +1150,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/users/{user}/two-factor/reset', [EnvironmentUserController::class, 'resetMfa'])->name('environment.users.mfa');
         Route::post('/users/{user}/deactivate', [EnvironmentUserController::class, 'deactivate'])->name('environment.users.deactivate');
         Route::post('/users/{user}/reactivate', [EnvironmentUserController::class, 'reactivate'])->name('environment.users.reactivate');
+        Route::post('/users/{user}/erase', [EnvironmentUserController::class, 'erase'])->name('environment.users.erase');
 
         Route::delete('/users/{user}/sessions', [EnvironmentUserController::class, 'revokeAllSessions'])->name('environment.users.sessions.revoke-all');
         Route::delete('/users/{user}/sessions/{session}', [EnvironmentUserController::class, 'revokeSession'])->name('environment.users.sessions.revoke');
@@ -1281,6 +1283,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::put('/keys/frontend/{key}/origins', [FrontendKeyController::class, 'origins'])->name('environment.keys.frontend.origins');
         Route::delete('/keys/frontend/{key}', [FrontendKeyController::class, 'destroy'])->name('environment.keys.frontend.destroy');
         Route::delete('/keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('environment.keys.destroy');
+        // A successor with the same name, scopes and approval policy; the old key keeps
+        // working for a grace period. Behind the step-up inside the controller, like minting.
+        Route::post('/keys/{key}/rotate', [EnvironmentKeyController::class, 'rotate'])->name('environment.keys.rotate');
         // Behind sudo, like the token vault and log-stream creation: the button on this
         // page decides where every un-migrated address and the password typed with it is
         // sent. The design deliberately put a person in the loop, and a person who has
@@ -1422,6 +1427,19 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/usage', [UsageController::class, 'index'])->name('environment.usage');
         Route::get('/approvals', [AgentApprovalController::class, 'index'])->name('environment.approvals');
         Route::post('/approvals/{request}/deny', [AgentApprovalController::class, 'deny'])->name('environment.approvals.deny');
+        // An agent's held ACTION, answered from the console instead of the phone — the same
+        // CIBA request, so the agent's poll and repeat are unchanged. Approve is the
+        // approver's own; deny is any administrator's, because it withholds.
+        Route::post('/approvals/actions/{approval}/approve', [AgentApprovalController::class, 'approveAction'])->name('environment.approvals.actions.approve');
+        Route::post('/approvals/actions/{approval}/deny', [AgentApprovalController::class, 'denyAction'])->name('environment.approvals.actions.deny');
+        // AI agents: this environment's management keys as the agents holding them, the
+        // create flow (behind the step-up — it mints a credential shown once), and how to
+        // point an MCP client here. Every write is a key action, on the routes above.
+        Route::get('/agents', [AgentController::class, 'index'])->name('environment.agents');
+        Route::get('/agents/new', [AgentController::class, 'create'])->middleware('env.sudo')->name('environment.agents.create');
+        // Its own name rather than `environment.agents.connect`: a page on the rail of its
+        // own, and the rail lights a page for every route under its name.
+        Route::get('/agents/connect', [AgentController::class, 'connect'])->name('environment.agent-connect');
         // Settings — the merged component. The route NAME is preserved on both planes;
         // only the component behind it is now shared.
         Route::get('/settings', [SettingsController::class, 'show'])->name('environment.settings');
@@ -1503,19 +1521,22 @@ Route::prefix('platform')->group(function (): void {
         // cboxdk/laravel-queue-monitor under `/platform/queues/monitor`, behind the same
         // operator gate plus the host bulkhead — see config/queue-monitor.php.
         Route::get('/queues', PlatformQueuesController::class)->name('platform.queues');
-        Route::get('/customers', [PlatformCustomerController::class, 'index'])->name('platform.customers');
-        Route::post('/customers', [PlatformCustomerController::class, 'store'])->name('platform.customers.store');
+        // WORKSPACES — the customers on the install. `/customers` until the console's own
+        // word for a customer became the URL's too; the old paths answer 301 (see the
+        // moved-pages table below), and the writes, which nothing bookmarks, simply moved.
+        Route::get('/workspaces', [PlatformCustomerController::class, 'index'])->name('platform.workspaces');
+        Route::post('/workspaces', [PlatformCustomerController::class, 'store'])->name('platform.workspaces.store');
 
-        // `platform.customers.show`, not `platform.account`. The console derives both the
+        // `platform.workspaces.show`, not `platform.workspace`. The console derives both the
         // eyebrow above the page title and the lit rail entry from the route name by the
         // same prefix rule ({@see \App\Platform\Navigation\NavPage::owns()}), so a detail
         // page named as a CHILD of its list gets "Platform" over its heading and keeps
-        // Accounts lit in the rail without a single hand-written label. `platform.organization`
+        // Workspaces lit in the rail without a single hand-written label. `platform.organization`
         // predates that rule and has to pass its own eyebrow; this one does not.
-        Route::get('/customers/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.customers.show');
-        Route::post('/customers/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.customers.toggle');
-        Route::post('/customers/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.customers.target');
-        Route::post('/customers/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.customers.open');
+        Route::get('/workspaces/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.workspaces.show');
+        Route::post('/workspaces/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.workspaces.toggle');
+        Route::post('/workspaces/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.workspaces.target');
+        Route::post('/workspaces/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.workspaces.open');
         Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
         Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('platform.organizations.store');
         Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('platform.organization');
@@ -1647,6 +1668,10 @@ foreach ([
     '/api-keys' => '/keys/workspace',
     '/environment-keys' => '/keys',
     '/organization-settings' => '/workspace-settings',
+
+    // The platform section: a customer is a workspace, in the URL as on the page.
+    '/platform/customers' => '/platform/workspaces',
+    '/platform/customers/{organization}' => '/platform/workspaces/{organization}',
 
     // The environment console.
     '/admin/applications' => '/admin/apps',

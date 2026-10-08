@@ -161,11 +161,19 @@ it('gives the environment console a way back to its workspace, on every page', f
 
     $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
 
-    // To Projects, not to the landing: the landing would hand them straight back here.
-    expect($shell['workspace'])->toBe([
-        'name' => $workspace->name,
-        'href' => 'https://cboxid.com/projects',
-    ])->and($shell['altitude'])->toBe('environment');
+    // The context switcher's first crumb names the workspace and goes to its Projects —
+    // not to the landing, which would hand them straight back here.
+    expect($shell['context']['noun'])->toBe('Workspace')
+        ->and($shell['context']['workspaces'])->toHaveCount(1)
+        ->and($shell['context']['workspaces'][0])->toMatchArray([
+            'id' => $workspace->id,
+            'label' => $workspace->name,
+            'current' => true,
+            'openHref' => 'https://cboxid.com/projects',
+        ])
+        // There is no POST from here: the session that holds a workspace is on that host.
+        ->and($shell['context']['switchUrl'])->toBeNull()
+        ->and($shell['altitude'])->toBe('environment');
 });
 
 it('sends the environment console\'s account links to the workspace host, where the person is signed in', function (): void {

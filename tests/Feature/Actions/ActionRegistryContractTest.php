@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRoutes;
+use App\Platform\Actions\ConsoleGate;
+use App\Platform\Actions\PlatformScopes;
 use App\Platform\Actions\WorkspaceScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +56,18 @@ it('requires a scope its plane\'s key can actually carry', function (ActionDefin
         return;
     }
 
+    // The planes only a person reaches: a scope the person delegates, and never one a
+    // management key could carry — the key form must not offer it.
+    if ($action->plane->personal()) {
+        $known = $action->plane === ActionPlane::Platform ? PlatformScopes::knows($action->scope) : AccountScopes::knows($action->scope);
+
+        expect($known)->toBeTrue("{$action->name} requires {$action->scope}, which its plane does not define")
+            ->and(app(ManagementScopes::class)->knows($action->scope))->toBeFalse("{$action->scope} is a management key scope: a key could reach {$action->name}")
+            ->and(WorkspaceScopes::knows($action->scope))->toBeFalse("{$action->scope} is a workspace key scope: a key could reach {$action->name}");
+
+        return;
+    }
+
     $scopes = app(ManagementScopes::class);
 
     expect($scopes->knows($action->scope))->toBeTrue("{$action->name} requires {$action->scope}, which no key can carry — add it to AppManagementScopes::APP_SCOPES")
@@ -62,7 +77,12 @@ it('requires a scope its plane\'s key can actually carry', function (ActionDefin
 it('names a console gate its plane can answer', function (ActionDefinition $action): void {
     // A workspace action is run by a workspace key too, and a key's role can only answer a
     // WORKSPACE capability — an environment-console gate would refuse every key, silently.
-    expect($action->consoleGate->isWorkspace())->toBe($action->plane === ActionPlane::Workspace);
+    expect($action->consoleGate->isWorkspace())->toBe($action->plane === ActionPlane::Workspace)
+        // The operator gate is the platform plane's and only its own; likewise the person's
+        // for the account plane — so no operator action is reachable as a mere member, and
+        // no account action administers anybody else.
+        ->and($action->consoleGate === ConsoleGate::Operator)->toBe($action->plane === ActionPlane::Platform)
+        ->and($action->consoleGate === ConsoleGate::Person)->toBe($action->plane === ActionPlane::Account);
 })->with('actions');
 
 it('matches its danger to its method and scope', function (ActionDefinition $action): void {

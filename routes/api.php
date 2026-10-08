@@ -4,16 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\Environment\ActionApprovalController;
-use App\Http\Controllers\Api\Environment\ApiKeyController;
-use App\Http\Controllers\Api\Environment\EnvironmentRoleController;
-use App\Http\Controllers\Api\Environment\InvitationController;
-use App\Http\Controllers\Api\Environment\MemberController as EnvironmentMemberController;
-use App\Http\Controllers\Api\Environment\MemberRoleController;
-use App\Http\Controllers\Api\Environment\OrganizationController;
-use App\Http\Controllers\Api\Environment\RoleController;
-use App\Http\Controllers\Api\Environment\SupportSessionController;
-use App\Http\Controllers\Api\Environment\UserController;
 use App\Http\Controllers\Api\VaultController;
+use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +69,51 @@ Route::middleware('throttle:api-workspace')
     });
 
 /*
+ * The OPERATOR API (GLOBAL) — the deployment itself, for Cbox staff: standing up customer
+ * workspaces, environments, organizations inside any environment, and the operator roster.
+ * Served on the platform-root host and resolving no environment, like the workspace plane.
+ *
+ * NO KEY OF ANY KIND IS ACCEPTED. Every route is `delegated.api:platform,<scope>`: a token
+ * a platform OPERATOR delegated, carrying the `operator:*` scope the action asks for. Until
+ * such tokens are issued (see DelegatedTokens) every request here answers 401, and the
+ * console's Platform pages — which run the very same actions — are the only way in.
+ */
+Route::get('v1/platform/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/platform.yaml'));
+    abort_if($spec === false, 404);
+
+    return response($spec, 200, ['Content-Type' => 'application/yaml']);
+})->name('api.platform.openapi');
+
+Route::middleware('throttle:api-platform')
+    ->prefix('v1/platform')
+    ->group(function (): void {
+        ActionRoutes::platform();
+    });
+
+/*
+ * A person's OWN ACCOUNT (SCOPED to the environment they belong to, so on its host) — the
+ * profile, sessions, app grants, personal API keys and trusted devices of whoever is
+ * calling. `delegated.api:account,<scope>`: a token the person delegated, never a key — no
+ * management credential acts as a person. Console-only until such tokens are issued.
+ *
+ * Every action here is keyed to the person behind the token; there is no account id in
+ * any path, so there is no other account to name.
+ */
+Route::get('v1/me/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/account.yaml'));
+    abort_if($spec === false, 404);
+
+    return response($spec, 200, ['Content-Type' => 'application/yaml']);
+})->name('api.account.openapi');
+
+Route::middleware([ResolveEnvironment::class, 'throttle:api-account'])
+    ->prefix('v1/me')
+    ->group(function (): void {
+        ActionRoutes::account();
+    });
+
+/*
  * Environment management plane (SCOPED). Served on an environment's OWN host
  * ({slug}.cboxid.com or a custom domain): ResolveEnvironment pins the environment
  * from the host, then a `Bearer cbid_env_…` key is authenticated by `env.api` and
@@ -95,55 +132,15 @@ Route::get('v1/environment/openapi.yaml', function () {
 Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
     ->prefix('v1')
     ->group(function (): void {
-        Route::get('organizations', [OrganizationController::class, 'index'])->middleware('env.api:organizations:read');
-        Route::post('organizations', [OrganizationController::class, 'store'])->middleware('env.api:organizations:write');
-        Route::get('organizations/{id}', [OrganizationController::class, 'show'])->middleware('env.api:organizations:read');
-        Route::patch('organizations/{id}', [OrganizationController::class, 'update'])->middleware('env.api:organizations:write');
-        Route::delete('organizations/{id}', [OrganizationController::class, 'destroy'])->middleware('env.api:organizations:write');
-        // Handing an organization over is an organization-level act (the scope's own
-        // description says so), not a change to one member's tier.
-        Route::post('organizations/{id}/transfer-ownership', [EnvironmentMemberController::class, 'transferOwnership'])->middleware('env.api:organizations:write');
-
-        Route::get('organizations/{id}/members', [EnvironmentMemberController::class, 'index'])->middleware('env.api:members:read');
-        Route::post('organizations/{id}/members', [EnvironmentMemberController::class, 'store'])->middleware('env.api:members:write');
-        Route::patch('organizations/{id}/members/{userId}', [EnvironmentMemberController::class, 'update'])->middleware('env.api:members:write');
-        Route::delete('organizations/{id}/members/{userId}', [EnvironmentMemberController::class, 'destroy'])->middleware('env.api:members:write');
-
-        Route::get('organizations/{id}/members/{userId}/roles', [MemberRoleController::class, 'index'])->middleware('env.api:roles:read');
-        Route::put('organizations/{id}/members/{userId}/roles/{roleId}', [MemberRoleController::class, 'update'])->middleware('env.api:roles:write');
-        Route::delete('organizations/{id}/members/{userId}/roles/{roleId}', [MemberRoleController::class, 'destroy'])->middleware('env.api:roles:write');
-
-        Route::get('organizations/{id}/invitations', [InvitationController::class, 'index'])->middleware('env.api:invitations:read');
-        Route::post('organizations/{id}/invitations', [InvitationController::class, 'store'])->middleware('env.api:invitations:write');
-        Route::delete('organizations/{id}/invitations/{invitationId}', [InvitationController::class, 'destroy'])->middleware('env.api:invitations:write');
-        Route::post('organizations/{id}/invitations/{invitationId}/resend', [InvitationController::class, 'resend'])->middleware('env.api:invitations:write');
-
-        Route::get('organizations/{id}/api-keys', [ApiKeyController::class, 'index'])->middleware('env.api:api_keys:read');
-        Route::delete('api-keys/{id}', [ApiKeyController::class, 'destroy'])->middleware('env.api:api_keys:write');
-
-        Route::get('users', [UserController::class, 'index'])->middleware('env.api:users:read');
-        Route::post('users', [UserController::class, 'store'])->middleware('env.api:users:write');
-        Route::get('users/{id}', [UserController::class, 'show'])->middleware('env.api:users:read');
-        Route::delete('users/{id}', [UserController::class, 'destroy'])->middleware('env.api:users:write');
-
-        // Staff: roles held everywhere in the environment rather than in one organization.
-        Route::get('users/{id}/environment-roles', [EnvironmentRoleController::class, 'index'])->middleware('env.api:roles:read');
-        Route::get('users/{id}/environment-roles/{roleId}', [EnvironmentRoleController::class, 'show'])->middleware('env.api:roles:read');
-        Route::put('users/{id}/environment-roles/{roleId}', [EnvironmentRoleController::class, 'update'])->middleware('env.api:roles:write');
-        Route::delete('users/{id}/environment-roles/{roleId}', [EnvironmentRoleController::class, 'destroy'])->middleware('env.api:roles:write');
-
-        Route::get('roles', [RoleController::class, 'index'])->middleware('env.api:roles:read');
-
-        // Everything that is an ACTION is routed from the action registry — its method,
-        // path and scope are declared once, on the action — and run by the one
-        // ActionController, the same way the console and MCP run it. Areas move here as
-        // they become actions; the routes above are the ones still waiting.
+        // EVERY management route here is an ACTION, routed from the action registry — its
+        // method, path and scope are declared once, on the action — and run by the one
+        // ActionController, the same way the console and MCP run it: organizations, users,
+        // members, invitations, roles, apps, APIs, keys and the rest.
         ActionRoutes::environment();
 
         // Where an action approval this key asked for stands (see ActionApprovalGate).
-        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'show'])->middleware('env.api');
-
-        Route::post('support-sessions', [SupportSessionController::class, 'store'])->middleware('env.api:support:write');
+        // A person's token polls the approvals IT raised, too: no scope, its own only.
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'show'])->middleware('env.api:,'.AuthenticateEnvironmentApi::DELEGATED);
     });
 
 Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])

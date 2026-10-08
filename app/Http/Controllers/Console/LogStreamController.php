@@ -84,7 +84,7 @@ final readonly class LogStreamController extends ConsoleController
 
         $streams = $query->get();
 
-        return $this->page('console/log-streams/index', 'Log streaming', [
+        return $this->page('console/log-streams/index', 'Log streams', [
             'help' => HelpProps::for(HelpTopic::LogStreaming),
             'streams' => $streams->map(fn (AuditStream $stream): array => [
                 'id' => $stream->id,

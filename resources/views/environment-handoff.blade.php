@@ -26,7 +26,9 @@
 </head>
 <body>
     <form method="post" action="{{ $action }}">
-        <input type="hidden" name="token" value="{{ $token }}">
+        @foreach ($fields as $name => $value)
+        <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+        @endforeach
         <noscript>
             <p>Continue to open {{ $environmentName }}.</p>
             <button type="submit">Continue</button>

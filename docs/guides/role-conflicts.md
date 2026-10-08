@@ -6,7 +6,7 @@ description: Declare the roles that must never be held by the same person — se
 
 # Role conflicts
 
-**Console page:** Access control › Role conflicts
+**Console page:** Access control › Role conflicts (Advanced › Role conflicts in an environment console)
 
 Some pairs of roles must never sit with the same person. Whoever raises a payment
 should not also approve it; whoever requests access should not also grant it. In

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Vault\GrantVaultAccess;
+use App\Actions\Vault\RevokeVaultAccess;
+use App\Actions\Vault\RevokeVaultSecret;
+use App\Actions\Vault\RotateVaultSecret;
+use App\Actions\Vault\StoreVaultSecret;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\GrantVaultAccessRequest;
@@ -13,7 +18,6 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\VaultScope;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
-use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Illuminate\Http\RedirectResponse;
@@ -100,7 +104,7 @@ final readonly class VaultController extends ConsoleController
         ]);
     }
 
-    public function store(StoreVaultSecretRequest $request, SecretVault $secrets, VaultScope $vault): RedirectResponse
+    public function store(StoreVaultSecretRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -124,12 +128,21 @@ final readonly class VaultController extends ConsoleController
             app(VerifiedEmailGate::class)->require('store a secret');
         }
 
-        $secret = $secrets->store(
-            $request->name(),
-            $request->provider(),
-            $request->secret(),
-            $vault->owner(),
-        );
+        // The owner is the console's scope ({@see VaultScope}), sent as the organization the
+        // action bounds itself by — never read off a row.
+        $result = $this->act(StoreVaultSecret::class, [
+            'organization_id' => $this->scope->organizationId(),
+            'name' => $request->name(),
+            'provider' => $request->provider(),
+            'secret' => $request->secret(),
+        ], ['provider' => 'provider', 'secret' => 'secret'], fallback: 'name');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var VaultSecret $secret */
+        $secret = $result->value;
 
         return to_route($this->scope->routeName('vault.show'), $secret->id)
             ->with('status', 'Secret sealed and stored — its value is never shown again.');
@@ -170,7 +183,7 @@ final readonly class VaultController extends ConsoleController
         ]);
     }
 
-    public function rotate(RotateVaultSecretRequest $request, string $secret, SecretVault $secrets, VaultScope $vault): RedirectResponse
+    public function rotate(RotateVaultSecretRequest $request, string $secret, VaultScope $vault): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -182,12 +195,16 @@ final readonly class VaultController extends ConsoleController
             return back()->withErrors(['secret' => 'This secret is revoked — it can no longer be rotated.']);
         }
 
-        $secrets->rotate($model->id, $request->secret(), $vault->owner());
+        $result = $this->act(RotateVaultSecret::class, [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'secret' => $request->secret(),
+        ], fallback: 'secret');
 
-        return back()->with('status', 'Secret rotated — the sealed value was replaced.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Secret rotated — the sealed value was replaced.');
     }
 
-    public function grant(GrantVaultAccessRequest $request, string $secret, SecretVault $secrets, VaultScope $vault): RedirectResponse
+    public function grant(GrantVaultAccessRequest $request, string $secret, VaultScope $vault): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -197,25 +214,40 @@ final readonly class VaultController extends ConsoleController
             return back()->withErrors(['client' => 'This secret is revoked — no client can lease it.']);
         }
 
-        $secrets->grant($model->id, $request->clientId(), $vault->owner());
+        $result = $this->act(GrantVaultAccess::class, [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'client_id' => $request->clientId(),
+        ], ['client_id' => 'client'], fallback: 'client');
 
-        return back()->with('status', 'Access granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access granted.');
     }
 
-    public function revokeGrant(string $secret, string $client, SecretVault $secrets, VaultScope $vault): RedirectResponse
+    public function revokeGrant(string $secret, string $client, VaultScope $vault): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $secrets->revokeGrant($this->resolve($secret, $vault)->id, $client, $vault->owner());
+        $result = $this->act(RevokeVaultAccess::class, [
+            'id' => $this->resolve($secret, $vault)->id,
+            'client_id' => $client,
+            'organization_id' => $this->scope->organizationId(),
+        ]);
 
-        return back()->with('status', 'Access revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access revoked.');
     }
 
-    public function revoke(string $secret, SecretVault $secrets, VaultScope $vault): RedirectResponse
+    public function revoke(string $secret, VaultScope $vault): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        $secrets->revoke($this->resolve($secret, $vault)->id, $vault->owner());
+        $result = $this->act(RevokeVaultSecret::class, [
+            'id' => $this->resolve($secret, $vault)->id,
+            'organization_id' => $this->scope->organizationId(),
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
 
         return to_route($this->scope->routeName('vault'))
             ->with('status', 'Secret revoked — no future lease can open it.');

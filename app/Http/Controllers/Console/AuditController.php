@@ -88,7 +88,7 @@ final readonly class AuditController extends ConsoleController
         // Resolved ONCE per page, in three queries — never per row.
         $resolved = $names->for($entries->getCollection());
 
-        return $this->page('console/audit', 'Activity log', [
+        return $this->page('console/audit', 'Audit log', [
             'help' => HelpProps::for(HelpTopic::ActivityLog),
             'entries' => $entries->getCollection()->map(fn (AuditEntry $entry): array => [
                 'id' => $entry->id,

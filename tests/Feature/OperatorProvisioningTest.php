@@ -114,7 +114,7 @@ it('refuses to create a customer for anyone who is not an operator', function ()
 
     // 404 rather than 403, on the page and on the write alike: the operator console is a
     // staff surface, and a 403 confirms to a stranger that the page exists.
-    $this->get(route('platform.customers'))->assertNotFound();
+    $this->get(route('platform.workspaces'))->assertNotFound();
 
     createCustomer(['name' => 'Should Not Exist', 'ownerEmail' => 'nobody@example.test'])
         ->assertNotFound();

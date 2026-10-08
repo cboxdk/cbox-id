@@ -74,20 +74,19 @@ it('draws only the tabs a person may open', function (): void {
     $this->get(route('keys.workspace'))->assertRedirect(route('projects'));
 });
 
-it('gives the environment console its own management keys and its frontend keys', function (): void {
-    ['environment' => $environment] = anEnvironmentKeyAdmin();
+it('gives the environment console its management keys as Agents, and its frontend keys as API keys', function (): void {
+    anEnvironmentKeyAdmin();
 
-    $this->get(route('environment.keys'))
+    // One page per credential: the management keys are listed — with their approval policy,
+    // the keys they minted and a Rotate — under AI agents › Agents, and the old URL lands
+    // there rather than drawing a second list of the same keys.
+    $this->get(route('environment.keys'))->assertRedirect(route('environment.agents'));
+
+    $this->get(route('environment.keys.frontend'))
         ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/keys/management')
-            ->where('title', 'Keys')
-            // The environment it stands on, and nothing else — no picker.
-            ->where('pickEnvironment', false)
-            ->where('environments', [['id' => $environment->id, 'name' => $environment->name]]));
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('title', 'API keys'));
 
-    expect(keyTabsOn(route('environment.keys')))->toBe(['management', 'frontend'])
-        ->and(keyTabsOn(route('environment.keys.frontend')))->toBe(['management', 'frontend']);
+    expect(keyTabsOn(route('environment.keys.frontend')))->toBe(['management', 'frontend']);
 });
 
 it('mints a management key for the environment the console stands on, on the workspace\'s record', function (): void {

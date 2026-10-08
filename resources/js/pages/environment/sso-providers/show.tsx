@@ -3,7 +3,7 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import { Button, ConfirmDelete, Icon, type MetadataRow, Panel, Pill } from '@/ui';
-import { ServiceProviderFields } from './fields';
+import { type OrganizationOption, ServiceProviderFields } from './fields';
 
 type Props = PageProps<{
     provider: {
@@ -18,13 +18,22 @@ type Props = PageProps<{
         hasCertificate: boolean;
         active: boolean;
         status: string;
+        /** The owning organization's id, or '' when it is environment-wide. */
+        organizationId: string;
     };
     formats: { value: string; label: string }[];
+    organizations: OrganizationOption[];
     indexHref: string;
     urls: { update: string; destroy: string };
 }>;
 
-export default function ServiceProviderDetail({ provider, formats, indexHref, urls }: Props) {
+export default function ServiceProviderDetail({
+    provider,
+    formats,
+    organizations,
+    indexHref,
+    urls,
+}: Props) {
     const [deleting, setDeleting] = useState(false);
 
     const form = useForm({
@@ -37,6 +46,7 @@ export default function ServiceProviderDetail({ provider, formats, indexHref, ur
         // Always blank: the stored certificate is never echoed back, and a blank field
         // means "keep the one on file".
         certificate: '',
+        organizationId: provider.organizationId,
     });
 
     return (
@@ -52,7 +62,7 @@ export default function ServiceProviderDetail({ provider, formats, indexHref, ur
                         className="w-3.5 h-3.5"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    SAML applications
+                    SAML apps
                 </Link>
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono">{provider.entityId}</h1>
@@ -80,6 +90,7 @@ export default function ServiceProviderDetail({ provider, formats, indexHref, ur
                 <ServiceProviderFields
                     form={form}
                     formats={formats}
+                    organizations={organizations}
                     hasCertificate={provider.hasCertificate}
                 />
 

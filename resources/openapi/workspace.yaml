@@ -320,6 +320,138 @@ paths:
                 message: 'Project [01J…] has reached its plan limit of 2 environment(s).'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/workspace/environments/{environment_id}/domain':
+    delete:
+      tags:
+        - Environments
+      summary: "Stop serving one of the workspace's environments on its custom domain. Anything using that domain stops reaching it."
+      description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: destructive.'
+      operationId: environments_domain_remove
+      x-action: environments.domain.remove
+      parameters:
+        -
+          name: environment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - Environments
+      summary: "Start serving one of the workspace's environments on a custom domain: returns the DNS TXT record that proves you control it."
+      description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: write.'
+      operationId: environments_domain_request
+      x-action: environments.domain.request
+      parameters:
+        -
+          name: environment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain:
+                  type: string
+                  description: 'The domain, for example login.example.com.'
+                  maxLength: 253
+              required:
+                - domain
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/workspace/environments/{environment_id}/domain/verify':
+    post:
+      tags:
+        - Environments
+      summary: "Look for the pending domain's DNS TXT record and, once it is visible, serve the environment on that domain."
+      description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: write.'
+      operationId: environments_domain_verify
+      x-action: environments.domain.verify
+      parameters:
+        -
+          name: environment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomDomain'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/workspace/environments/{environment_id}/keys':
     post:
       tags:
@@ -1588,6 +1720,40 @@ components:
         expires_at:
           type: string
           format: date-time
+    CustomDomain:
+      type: object
+      required:
+        - domain
+        - verified_at
+        - pending
+      properties:
+        domain:
+          type:
+            - string
+            - 'null'
+          description: 'The verified domain serving the environment.'
+        verified_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        pending:
+          description: 'A domain waiting for its DNS proof, and the TXT record to publish.'
+          oneOf:
+            -
+              type: object
+              required:
+                - domain
+                - record_name
+                - record_value
+              properties:
+                domain:
+                  type: string
+                record_name:
+                  type: string
+                record_value:
+                  type: string
+            - type: 'null'
     PageMeta:
       type: object
       description: 'Paging for a list response. `has_more` used to be returned with nothing to act on it — no page parameter and no cursor — so a caller told there was more had no way to ask for it. `next_page` is present exactly when `has_more` is true, so a client can loop without computing anything.'

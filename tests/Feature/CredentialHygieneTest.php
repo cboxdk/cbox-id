@@ -146,7 +146,7 @@ it('shows each environment scope by its label with its key beside it', function 
         ->issue($environmentId, 'Reporting', ['organizations:read']));
 
     expect(listedEnvironmentKeys($environmentId)['Reporting']['scopes'])->toBe([
-        ['value' => 'organizations:read', 'label' => 'Read organizations', 'writes' => false],
+        ['value' => 'organizations:read', 'label' => 'Read organizations', 'writes' => false, 'critical' => false],
     ]);
 });
 
@@ -190,7 +190,13 @@ it('offers a scope exactly while a route requires it, with no second list to edi
     $kept = new RouteCollection;
 
     foreach (Route::getRoutes()->getRoutes() as $route) {
-        if (! in_array('env.api:support:write', $route->middleware(), true)) {
+        // Matched by prefix: an action route also names the delegated-token door
+        // (`env.api:support:write,delegated`).
+        $requiresSupport = collect($route->middleware())->contains(
+            static fn (mixed $middleware): bool => is_string($middleware) && preg_match('/^env\.api:support:write(,|$)/', $middleware) === 1,
+        );
+
+        if (! $requiresSupport) {
             $kept->add($route);
         }
     }

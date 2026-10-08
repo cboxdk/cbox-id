@@ -9,9 +9,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Illuminate\Console\Command;
 
 /**
@@ -66,33 +64,21 @@ class CreateCliClientCommand extends Command
     {
         $issuer = $this->issuerFor(app(IssuerResolver::class), $environmentId);
 
-        $existing = CliClient::find();
+        // Re-running brings an existing client up to the management plane's scopes, so a
+        // client provisioned before `cbox login` could reach the plane can now.
+        [$client, $created] = CliClient::provision($clients);
 
-        if ($existing instanceof Client) {
+        if (! $created) {
             // The sign-in command too, because "already provisioned" is usually
             // asked by somebody who wants to know what to run next — and the
             // answer is not guessable from the deployment's own URL.
             $this->info("The cbox CLI client is already provisioned in {$environmentId}.");
-            $this->line("  client_id: {$existing->client_id}");
+            $this->line("  client_id: {$client->client_id}");
             $this->newLine();
             $this->line('  <options=bold>cbox login --issuer '.$issuer.'</>');
 
             return self::SUCCESS;
         }
-
-        $client = $clients->register(new NewClient(
-            name: CliClient::NAME,
-            // Public: a binary on a developer's laptop cannot keep a secret.
-            type: ClientType::Public,
-            // None. The device grant has no redirect — that is the point of it.
-            redirectUris: [],
-            grantTypes: CliClient::GRANTS,
-            scopes: CliClient::SCOPES,
-            // First-party: signing in to our own CLI should not ask a Cbox user
-            // to approve Cbox.
-            firstParty: true,
-            organizationId: null,
-        ))->client;
 
         $this->info("Provisioned the cbox CLI client in {$environmentId}.");
         $this->line('  client_id: '.$client->client_id);

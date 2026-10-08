@@ -69,7 +69,7 @@ final readonly class SocialProviderController extends ConsoleController
          */
         $template = SocialProviderFields::loginTemplate($request->string('provider')->toString());
 
-        return $this->page('console/social-providers', 'Social sign-in', [
+        return $this->page('console/social-providers', 'Social login', [
             'enabled' => array_map(fn (Connection $connection): array => [
                 'id' => $connection->id,
                 'name' => $connection->name,

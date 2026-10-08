@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Organizations\UpdateOrganization;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameOrganizationRequest;
 use App\Platform\Appearance\Appearance;
@@ -14,8 +15,6 @@ use App\Platform\Help\HelpTopic;
 use App\Platform\Membership\AfterLeaving;
 use App\Platform\Membership\MembershipLifecycle;
 use App\Platform\Membership\MembershipRefused;
-use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -170,31 +169,20 @@ final readonly class SettingsController extends ConsoleController
      * New to the environment plane, which could administer every organization in the
      * environment and not correct a typo in one's name without signing into its console.
      */
-    public function rename(RenameOrganizationRequest $request, AuditLog $audit): RedirectResponse
+    public function rename(RenameOrganizationRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
-        // `requireOrganizationId()`, not the nullable reader: with none resolved this
-        // write would otherwise rename whichever organization a downstream default picked.
-        $organization = Organization::query()->findOrFail($this->scope->requireOrganizationId());
+        // The organization is named explicitly — the one this page administers, and on an
+        // organization's own console the person's own, which the action holds them to.
+        // `requireOrganizationId()`, not the nullable reader: with none resolved this write
+        // would otherwise rename whichever organization a downstream default picked.
+        $result = $this->act(UpdateOrganization::class, [
+            'id' => $this->scope->requireOrganizationId(),
+            'name' => $request->name(),
+        ], ['name' => 'name'], 'name');
 
-        $to = $request->name();
-
-        if ($to === $organization->name) {
-            return back();
-        }
-
-        $from = $organization->name;
-        $organization->forceFill(['name' => $to])->save();
-
-        // The SCOPE's actor id, not the console's own idea of who is acting: the two
-        // planes recorded ids from different tables for the same act.
-        $audit->record(AuditEvent::forUser('organization.renamed', $this->scope->actorId(), $organization->id, [
-            'from' => $from,
-            'to' => $to,
-        ]));
-
-        return back()->with('status', 'Organization name updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization name updated.');
     }
 
     /**

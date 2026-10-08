@@ -70,6 +70,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\SessionKey;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
@@ -357,6 +358,73 @@ function signInAsMember(string $subjectId): void
 |
 | Pest.php is loaded by every worker, so anything here is always available.
 */
+
+/*
+ * THE MCP SERVER, DRIVEN AS A CLIENT DRIVES IT: JSON-RPC over HTTP to `/mcp`, with whatever
+ * credential the test holds — a management key or a person's access token. Shared because
+ * the key tests and the delegated-token tests both speak it.
+ */
+
+/**
+ * @param  array<string, mixed>  $params
+ */
+function mcpRpc(?string $token, string $method, array $params = []): TestResponse
+{
+    $request = test()->withHeaders(['Accept' => 'application/json, text/event-stream']);
+
+    if ($token !== null) {
+        $request = $request->withToken($token);
+    }
+
+    return $request->postJson('/mcp', [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => $method,
+        ...$params === [] ? [] : ['params' => $params],
+    ]);
+}
+
+/**
+ * @param  array<string, mixed>  $arguments
+ * @return array<string, mixed> The tool result: content, isError, structuredContent.
+ */
+function mcpCall(string $token, string $tool, array $arguments = []): array
+{
+    $response = mcpRpc($token, 'tools/call', ['name' => $tool, 'arguments' => (object) $arguments])->assertOk();
+
+    // A tool that answers with several messages (execute_tools) is streamed as SSE; the
+    // result is the last `data:` line. Everything else is one JSON body.
+    if ($response->baseResponse instanceof StreamedResponse) {
+        preg_match_all('/^data: (.+)$/m', $response->streamedContent(), $lines);
+        $message = json_decode((string) end($lines[1]), true);
+        $result = is_array($message) ? ($message['result'] ?? null) : null;
+    } else {
+        $result = $response->json('result');
+    }
+
+    expect($result)->toBeArray();
+
+    return $result;
+}
+
+/**
+ * @return array<string, array<string, mixed>> Listed tools, keyed by name.
+ */
+function mcpTools(string $token): array
+{
+    // Paged: follow `nextCursor` the way a client does — a key holding every scope sees
+    // more tools than one page carries.
+    $tools = [];
+    $cursor = null;
+
+    do {
+        $page = mcpRpc($token, 'tools/list', $cursor === null ? [] : ['cursor' => $cursor])->assertOk();
+        $tools = [...$tools, ...(array) $page->json('result.tools')];
+        $cursor = $page->json('result.nextCursor');
+    } while (is_string($cursor) && $cursor !== '');
+
+    return collect($tools)->keyBy('name')->all();
+}
 
 /**
  * Register an app the way the console's form does: every field, not only the changed one.
@@ -984,7 +1052,7 @@ function targetPlatformEnvironment(string $environmentId): TestResponse
 function platformCustomers(array $query = []): array
 {
     /** @var array{customers: list<array<string, mixed>>, pagination: array<string, mixed>, search: string} $props */
-    $props = (array) test()->get(route('platform.customers', $query))->assertOk()->inertiaProps();
+    $props = (array) test()->get(route('platform.workspaces', $query))->assertOk()->inertiaProps();
 
     return $props;
 }
@@ -992,14 +1060,14 @@ function platformCustomers(array $query = []): array
 /** One customer's own page, as props. */
 function platformCustomer(string $organizationId): array
 {
-    return (array) test()->get(route('platform.customers.show', $organizationId))->assertOk()->inertiaProps();
+    return (array) test()->get(route('platform.workspaces.show', $organizationId))->assertOk()->inertiaProps();
 }
 
 /** Onboard a customer the way the list's form does. */
 function createCustomer(array $changes = []): TestResponse
 {
-    return test()->from(route('platform.customers'))
-        ->post(route('platform.customers.store'), [
+    return test()->from(route('platform.workspaces'))
+        ->post(route('platform.workspaces.store'), [
             'name' => 'Northwind',
             'ownerName' => 'Ada Lovelace',
             'ownerEmail' => 'owner@northwind.example',
@@ -1011,22 +1079,22 @@ function createCustomer(array $changes = []): TestResponse
 /** Suspend or reactivate a customer, from either the list or its own page. */
 function toggleCustomer(string $organizationId): TestResponse
 {
-    return test()->from(route('platform.customers.show', $organizationId))
-        ->post(route('platform.customers.toggle', $organizationId));
+    return test()->from(route('platform.workspaces.show', $organizationId))
+        ->post(route('platform.workspaces.toggle', $organizationId));
 }
 
 /** Point the console at one of a customer's own environments, and stay on the customer. */
 function targetCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
 {
-    return test()->from(route('platform.customers.show', $organizationId))
-        ->post(route('platform.customers.target', [$organizationId, $environmentId]));
+    return test()->from(route('platform.workspaces.show', $organizationId))
+        ->post(route('platform.workspaces.target', [$organizationId, $environmentId]));
 }
 
 /** Target one of a customer's environments AND open the tenants inside it. */
 function openCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
 {
-    return test()->from(route('platform.customers.show', $organizationId))
-        ->post(route('platform.customers.open', [$organizationId, $environmentId]));
+    return test()->from(route('platform.workspaces.show', $organizationId))
+        ->post(route('platform.workspaces.open', [$organizationId, $environmentId]));
 }
 
 /** Bootstrap a plane with its first organization and an owner admin. */

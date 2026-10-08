@@ -10,7 +10,9 @@ use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\RiskPlus\Contracts\GeoLocator;
+use Cbox\Id\RiskPlus\Erasure\RiskHistoryErasureStep;
 use Cbox\Id\RiskPlus\Geo\NullGeoLocator;
 use Cbox\Id\RiskPlus\Listeners\RecordRiskEvent;
 use Cbox\Id\RiskPlus\Queries\OrganizationRiskEvents;
@@ -82,6 +84,11 @@ class RiskPlusServiceProvider extends ServiceProvider
 
         // Record elevated assessments for the console to review.
         $this->app->make(Dispatcher::class)->listen(RiskAssessed::class, RecordRiskEvent::class);
+
+        // That review trail names people by address and IP, so erasing a person reaches it.
+        $this->callAfterResolving(ErasureSteps::class, static function (ErasureSteps $steps, Application $app): void {
+            $steps->register($app->make(RiskHistoryErasureStep::class));
+        });
 
         // Console — always present. This was a licence check when the module shipped as
         // a separate paid package; vendored in-tree there is nothing to unlock.

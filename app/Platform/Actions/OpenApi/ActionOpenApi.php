@@ -7,6 +7,7 @@ namespace App\Platform\Actions\OpenApi;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\WorkspaceScopes;
 
@@ -102,6 +103,12 @@ final readonly class ActionOpenApi
 
         $operation['parameters'] = $parameters;
 
+        // A person's access token runs the actions their own console offers — and the
+        // document says so where it is true, rather than on every operation of the plane.
+        if ($action->plane === ActionPlane::Environment && $action->consoleGate === ConsoleGate::Administer) {
+            $operation['security'] = [['EnvironmentApiKey' => []], ['ManagementAccessToken' => []]];
+        }
+
         if (! $reads && $rest !== []) {
             $required = array_values(array_map(static fn (Field $field): string => $field->name, array_filter($rest, static fn (Field $field): bool => $field->isRequired())));
             $schema = ['type' => 'object', 'properties' => []];
@@ -185,6 +192,14 @@ final readonly class ActionOpenApi
     private function requirement(ActionDefinition $action): string
     {
         $sentence = "Requires scope `{$action->scope}`";
+
+        if ($action->plane === ActionPlane::Platform) {
+            return $sentence.' on an access token delegated by an active platform operator. No management key is accepted.';
+        }
+
+        if ($action->plane === ActionPlane::Account) {
+            return $sentence.' on an access token you delegated; it acts on your own account only. No management key is accepted.';
+        }
 
         if ($action->plane !== ActionPlane::Workspace) {
             return $sentence.'.';

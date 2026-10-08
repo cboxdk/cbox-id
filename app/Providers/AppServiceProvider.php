@@ -8,13 +8,18 @@ use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
+use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
+use App\Platform\Actions\Principal\DelegatedTokens;
+use App\Platform\Actions\Principal\NoDelegatedTokens;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
+use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
+use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
@@ -24,7 +29,10 @@ use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
+use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
@@ -38,6 +46,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // The MCP server at `/mcp` is a protected resource of every environment's issuer,
+        // declared beside whatever config declares (RFC 9728 metadata, RFC 8707 audience).
+        $this->app->extend(ProtectedResources::class, fn (ProtectedResources $configured, Application $app): ProtectedResources => new McpProtectedResources(
+            $configured,
+            $app->make(IssuerResolver::class),
+            $app->make(ActionRegistry::class),
+        ));
+
         // Domain-ownership verification reads the challenge TXT from the domain's
         // authoritative nameservers, not the framework's default recursive
         // resolver — so a freshly published record verifies immediately instead of
@@ -47,6 +63,12 @@ class AppServiceProvider extends ServiceProvider
         // the framework's SystemDnsResolver binding (app providers load last).
         // Discovered once per process: every door reads the same list.
         $this->app->singleton(ActionRegistry::class);
+
+        // The tables this app adds that name a person, so erasing one reaches them too —
+        // in the framework's transaction, after the framework's own steps.
+        $this->callAfterResolving(ErasureSteps::class, static function (ErasureSteps $steps, Application $app): void {
+            AppErasureSteps::register($steps, $app);
+        });
 
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.
@@ -63,6 +85,12 @@ class AppServiceProvider extends ServiceProvider
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
         $this->app->scoped(EnvironmentApiContext::class);
+
+        // The person a delegated token speaks for, on the planes no key reaches (platform,
+        // account) — and what turns a bearer into one. Recognises nothing until delegated
+        // management tokens are issued; binding their resolver here opens both planes.
+        $this->app->scoped(DelegatedApiContext::class);
+        $this->app->bindIf(DelegatedTokens::class, NoDelegatedTokens::class);
 
         // Who is calling the MCP server on this request — set by AuthenticateMcp, read by
         // every tool. Scoped and cleared after the request, like the key context above.

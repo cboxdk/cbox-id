@@ -2,17 +2,32 @@ import { useForm, usePage } from '@inertiajs/react';
 import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps, SharedProps } from '@/types';
-import { Button, Icon } from '@/ui';
+import { Button, Icon, Pill } from '@/ui';
 
 interface ScopeRow {
     scope: string;
     label: string;
+    /** A management-plane scope: what an agent may DO as this person, not what it learns. */
+    management?: boolean;
+    /** Some critical action needs it — minting credentials, changing how people sign in. */
+    critical?: boolean;
+}
+
+interface ClientProps {
+    name: string;
+    owner: string;
+    /** It registered itself (RFC 7591, or a metadata document): nobody here reviewed it. */
+    selfRegistered?: boolean;
+    /** The host that published its metadata document — the one VERIFIED fact about it. */
+    documentHost?: string | null;
+    clientUri?: string | null;
+    logoUri?: string | null;
 }
 
 type Props = PageProps<{
     /** Set when the request cannot be answered by redirecting anywhere. */
     error?: string;
-    client?: { name: string; owner: string };
+    client?: ClientProps;
     me?: { name: string; email: string | null; initial: string };
     /** The organization the app will see this person in, when there is one. */
     organization?: string | null;
@@ -114,20 +129,37 @@ function Authorize({
     const deny = useForm({});
     const accountName = useAccountName();
     const { t, rich } = useTranslator();
+    const actsAsYou = scopes.some((row) => row.management === true);
+    const anyCritical = scopes.some((row) => row.critical === true);
 
     return (
         <div>
-            <div
-                className="grid place-items-center rounded-full mb-5"
-                style={{
-                    width: '2.75rem',
-                    height: '2.75rem',
-                    background: 'var(--accent-soft)',
-                    color: 'var(--accent-strong)',
-                }}
-            >
-                <Icon name="shield" className="w-5 h-5" />
-            </div>
+            {/*
+                A metadata document's logo is the publisher's, fetched from their host, so it
+                goes without a referrer: the page a person is consenting on is nobody's
+                business but theirs.
+            */}
+            {client.logoUri ? (
+                <img
+                    src={client.logoUri}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="rounded-full mb-5 object-cover"
+                    style={{ width: '2.75rem', height: '2.75rem' }}
+                />
+            ) : (
+                <div
+                    className="grid place-items-center rounded-full mb-5"
+                    style={{
+                        width: '2.75rem',
+                        height: '2.75rem',
+                        background: 'var(--accent-soft)',
+                        color: 'var(--accent-strong)',
+                    }}
+                >
+                    <Icon name="shield" className="w-5 h-5" />
+                </div>
+            )}
 
             <h1 className="text-2xl font-semibold tracking-tight">
                 {t('oauth.consent.heading', { client: client.name })}
@@ -140,15 +172,52 @@ function Authorize({
             </p>
 
             {/*
+                A METADATA DOCUMENT CLIENT leads with the host that published it: the name and
+                the logo are whatever that host wrote, the host is what was fetched.
+            */}
+            {client.documentHost && (
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--muted)' }}>
+                    {rich('oauth.consent.published_by', {
+                        host: <b className="mono">{client.documentHost}</b>,
+                    })}
+                    {client.clientUri && (
+                        <>
+                            {' '}
+                            <a
+                                href={client.clientUri}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                {t('oauth.consent.about_app')}
+                            </a>
+                        </>
+                    )}
+                </p>
+            )}
+
+            {/*
                 PROVENANCE. An application's name is chosen by whoever registered it, so the
                 name alone is not evidence of who is asking — and any organization admin in
-                this environment may register an app called "Cbox ID Account Sync".
+                this environment may register an app called "Cbox ID Account Sync". One that
+                registered ITSELF has no owner to name, and says so as a warning: anybody who
+                can reach this server can register one, and send a link to it.
             */}
-            <p className="mt-1.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {rich('oauth.consent.registered_by', {
-                    owner: <b style={{ color: 'var(--muted)' }}>{client.owner}</b>,
-                })}
-            </p>
+            {client.selfRegistered ? (
+                <p
+                    className="mt-3 flex items-start gap-2 text-xs rounded-md p-2.5"
+                    style={{ background: 'var(--warning-soft)', color: 'var(--warning-strong)' }}
+                >
+                    <Icon name="warning" className="w-4 h-4 shrink-0" />
+                    <span>{t('oauth.consent.self_registered', { account: accountName })}</span>
+                </p>
+            ) : (
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                    {rich('oauth.consent.registered_by', {
+                        owner: <b style={{ color: 'var(--muted)' }}>{client.owner}</b>,
+                    })}
+                </p>
+            )}
 
             {/*
                 WHICH ACCOUNT. A person may hold several on this browser, and the one being
@@ -195,14 +264,35 @@ function Authorize({
                         {scopes.map((row) => (
                             <li key={row.scope} className="flex items-center gap-2.5 text-sm">
                                 <Icon
-                                    name="check"
+                                    name={row.critical ? 'warning' : 'check'}
                                     className="w-4 h-4 shrink-0"
-                                    style={{ color: 'var(--success-strong)' }}
+                                    style={{
+                                        color: row.critical
+                                            ? 'var(--danger-strong)'
+                                            : 'var(--success-strong)',
+                                    }}
                                 />
                                 <span>{row.label}</span>
+                                {/*
+                                    CRITICAL, SAID IN WORDS — the colour is never the only
+                                    carrier: a scope that lets an agent mint credentials or
+                                    change how people sign in must not read like one that
+                                    lets it see a name.
+                                */}
+                                {row.critical && (
+                                    <Pill tone="destructive" dot={false}>
+                                        {t('oauth.consent.critical')}
+                                    </Pill>
+                                )}
                             </li>
                         ))}
                     </ul>
+                    {actsAsYou && (
+                        <p className="mt-3 text-xs" style={{ color: 'var(--muted)' }}>
+                            {t('oauth.consent.acts_as_you')}
+                            {anyCritical && <> {t('oauth.consent.critical_notice')}</>}
+                        </p>
+                    )}
                 </>
             )}
 
