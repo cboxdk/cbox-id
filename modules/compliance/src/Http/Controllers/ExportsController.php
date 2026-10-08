@@ -83,6 +83,9 @@ final readonly class ExportsController extends ConsoleController
              * what it needs.
              */
             'needsOrganization' => $organizationId === null,
+            // An export is bounded by ONE organization's trail, so on the environment's own
+            // page the Organization chip goes to that organization's.
+            'organizationFilter' => $this->organizationJump('environment.organizations.compliance.data-exports'),
             'subjectId' => $subjectId,
             'subjectEntryCount' => $count,
             'downloadHref' => $this->url('compliance.data-exports.download'),
@@ -111,7 +114,7 @@ final readonly class ExportsController extends ConsoleController
 
         if ($subjectId === '' || $organizationId === null) {
             return back()->withErrors([
-                'subject' => 'Choose an organization and name a subject before exporting.',
+                'subject' => 'Name a subject, from the console of the organization whose trail it is.',
             ]);
         }
 

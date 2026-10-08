@@ -205,7 +205,7 @@ export default function DesignSystem() {
                                 value={org}
                                 onValueChange={setOrg}
                                 options={organizations}
-                                placeholder="Choose an organization…"
+                                placeholder="Find an organization…"
                             />
                         </Field>
 

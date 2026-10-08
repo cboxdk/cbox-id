@@ -7,7 +7,8 @@ info:
   description: |
     **Your own account** — the person calling, and nobody else: your profile, where you are
     signed in, which applications may act as you, your own API keys for the apps built on
-    this environment, your sign-in methods and your trusted devices. The same actions the
+    this environment, your sign-in methods, your trusted devices and the organizations you
+    belong to. The same actions the
     console's My account pages run, with the same rules, refusals and audit trail.
 
     **Who may call it.** Only you, through an access token you delegated carrying the
@@ -44,6 +45,8 @@ tags:
   - name: 'Sign-in methods'
   - name: Devices
     description: 'Your trusted devices, which approve sign-ins and agent requests.'
+  - name: Organizations
+    description: 'The organizations you are a member of — and leaving one.'
 paths:
   '/me/applications/{client_id}':
     delete:
@@ -208,6 +211,42 @@ paths:
           required: true
           schema:
             type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/me/organizations/{organization_id}/leave':
+    post:
+      tags:
+        - Organizations
+      summary: 'Leave one of your own organizations. The last owner cannot leave — transfer ownership first.'
+      description: 'Requires scope `account:organizations:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      operationId: account_organizations_leave
+      x-action: account.organizations.leave
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization you are leaving — one you are a member of.'
+            maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
       responses:

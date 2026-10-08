@@ -90,6 +90,16 @@ final class ConsoleRoutes
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($environmentUri, $uri, $component, $name): void {
             self::get($environmentUri ?? $uri, $component)->name('environment.'.$name);
+
+            // …and the same page about ONE organization, under that organization's own
+            // address — what the environment console's "acting organization" used to narrow
+            // it to from the session. `console.org` checks the id against this environment
+            // and binds it for the request; the page's links follow it there.
+            Route::middleware('console.org')
+                ->prefix('organizations/{organization}')
+                ->group(function () use ($environmentUri, $uri, $component, $name): void {
+                    self::get($environmentUri ?? $uri, $component)->name('environment.organizations.'.$name);
+                });
         });
     }
 
@@ -158,6 +168,13 @@ final class ConsoleRoutes
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($verb, $environmentUri, $uri, $action, $name): void {
             self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.'.$name);
+
+            // The write of the page above, about one organization — see {@see page()}.
+            Route::middleware('console.org')
+                ->prefix('organizations/{organization}')
+                ->group(function () use ($verb, $environmentUri, $uri, $action, $name): void {
+                    self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.organizations.'.$name);
+                });
         });
     }
 

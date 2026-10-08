@@ -1,8 +1,25 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
-import { Badge, Button, Combobox, EmptyState, Icon, Input, PageHeader, Pagination } from '@/ui';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
+import {
+    Badge,
+    Button,
+    Combobox,
+    EmptyState,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Pagination,
+} from '@/ui';
 
 interface Offerable {
     id: string;
@@ -38,27 +55,12 @@ type Props = PageProps<{
     pagination: PaginationState;
     search: string;
     mayAdminister: boolean;
-    organizationChosen: boolean;
     sample: { role: string; permissions: string[] } | null;
     createHref: string;
     consoleAccessHref: string | null;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
-
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
 
 export default function RolesIndex({
     help,
@@ -66,10 +68,10 @@ export default function RolesIndex({
     pagination,
     search,
     mayAdminister,
-    organizationChosen,
     sample,
     createHref,
     consoleAccessHref,
+    organizationFilter,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -146,7 +148,12 @@ export default function RolesIndex({
 
             {sample !== null && <TokenShape sample={sample} />}
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
@@ -212,15 +219,6 @@ export default function RolesIndex({
             </div>
 
             <Legend roles={roles} />
-
-            {!organizationChosen && (
-                // The distinction that matters: nothing is wrong with this administrator,
-                // they simply have not said which organization they are acting for.
-                <p className="mt-4 text-sm" style={{ color: 'var(--faint)' }}>
-                    Showing every role in this environment. Choose an organization in the console
-                    header to compose one of its roles.
-                </p>
-            )}
 
             <Pagination
                 pagination={pagination}

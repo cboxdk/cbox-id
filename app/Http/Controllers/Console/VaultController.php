@@ -82,6 +82,12 @@ final readonly class VaultController extends ConsoleController
              * administrator should have to infer.
              */
             'environmentWide' => $this->scope->organizationId() === null,
+            /*
+             * An organization's own secrets are a collection of their own, on that
+             * organization's page — so on the environment's list the Organization chip GOES
+             * there rather than narrowing this one, which would be a different set.
+             */
+            'organizationFilter' => $this->organizationJump('environment.organizations.vault'),
             'createHref' => $this->url('vault.create'),
         ]);
     }
@@ -144,7 +150,7 @@ final readonly class VaultController extends ConsoleController
         /** @var VaultSecret $secret */
         $secret = $result->value;
 
-        return to_route($this->scope->routeName('vault.show'), $secret->id)
+        return to_route($this->routeName('vault.show'), $secret->id)
             ->with('status', 'Secret sealed and stored — its value is never shown again.');
     }
 
@@ -249,7 +255,7 @@ final readonly class VaultController extends ConsoleController
             return $result;
         }
 
-        return to_route($this->scope->routeName('vault'))
+        return to_route($this->routeName('vault'))
             ->with('status', 'Secret revoked — no future lease can open it.');
     }
 

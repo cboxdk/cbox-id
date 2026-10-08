@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\BindConsoleOrganization;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
@@ -16,6 +17,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -295,36 +297,26 @@ it('never lets an environment step-up satisfy the console', function (): void {
 })->group('security');
 
 /**
- * THE ORGANIZATION PLANE NEVER READS THE ENVIRONMENT PLANE'S SELECTION — and that is what
- * keeps a console step-up from travelling.
+ * THE ORGANIZATION PLANE NEVER TAKES ITS ORGANIZATION FROM ANYWHERE BUT THE SESSION — and
+ * that is what keeps a console step-up from travelling.
  *
  * `Sudo::SESSION_KEY`'s docblock names "switching organization" as a transition that must
- * forget it. Two paths switch. `PlatformAuth::switchOrganization()` drops both step-ups;
- * `ConsoleScope::chooseOrganization()` drops only the environment one. That looks like a
- * hole — `sudo` gates the Token Vault, which is organization-scoped — and it is not one,
- * because `chooseOrganization()` writes `SELECTION_KEY`, which `organizationId()` reads
- * ONLY on the environment plane. On the organization plane the org comes from the session,
- * so an environment administrator's choice cannot move which organization the vault routes
- * (`plane:console`) act for.
- *
- * So the safety rests on plane separation, not on the step-up being dropped — two distant
- * decisions that happen to agree. This pins the one actually carrying it, because if the
- * organization plane ever started honouring the selection, the retained confirmation would
- * become exactly the hole it looks like, and nothing else would notice.
+ * forget it, and `PlatformAuth::switchOrganization()` drops it. The environment console's
+ * organization is no longer remembered at all — it is the URL's
+ * ({@see BindConsoleOrganization}) — and binding one is refused
+ * outright on this plane, so nothing an environment page does can move which organization
+ * the vault routes (`plane:console`) act for while a confirmation stands.
  */
-it('never lets the environment plane\'s organization selection reach the organization plane', function (): void {
+it('never lets anything but the session choose the organization plane\'s organization', function (): void {
     $subjectId = signIn();
 
     $second = app(Organizations::class)->create(new NewOrganization('Beta', 'beta-sudo'));
     app(Memberships::class)->add($second->id, $subjectId, MembershipRole::Owner);
 
-    // The environment plane's key, planted directly — no plane guard to satisfy, and the
-    // point is what the ORGANIZATION plane does with it.
-    session()->put(ConsoleScope::SELECTION_KEY, $second->id);
-
     $scope = app(ConsoleScope::class);
 
     expect($scope->plane())->toBe(ConsolePlane::Organization)
-        // The session's organization, never the planted selection.
+        ->and(fn () => $scope->bindOrganization($second->id))->toThrow(AuthorizationException::class)
+        // The session's organization, never the one somebody tried to bind.
         ->and($scope->organizationId())->not->toBe($second->id);
 })->group('security');

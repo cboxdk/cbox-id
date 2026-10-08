@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\CustomerApiKeys\RevokeCustomerApiKey;
 use App\Http\Props\Shared\AppApiKeyRows;
 use App\Http\Props\Shared\HelpProps;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\ApiKeys\MemberApiKeys;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Models\CustomerApiKey;
-use Cbox\Id\Organization\ValueObjects\ApiKeyActor;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
 
@@ -46,17 +47,21 @@ final readonly class MemberApiKeyController extends ConsoleController
     }
 
     /**
-     * Revoke a key in THIS organization. The organization is the signed-in person's, never
-     * the URL's, and it is part of the lookup — an id from another organization's list
-     * revokes nothing.
+     * Revoke a key in THIS organization — the same action an app's backend and an agent run
+     * ({@see RevokeCustomerApiKey}). The organization is the signed-in person's, never the
+     * URL's, and it is part of the lookup — an id from another organization's list revokes
+     * nothing.
+     *
+     * QUIETLY: a key that is not here (another organization's, or gone since the list was
+     * drawn) leaves the page as it was rather than answering a 404 for a row that was on it.
      */
-    public function destroy(string $key, MemberApiKeys $keys): RedirectResponse
+    public function destroy(string $key): RedirectResponse
     {
-        $this->scope->assertMayAdminister();
+        try {
+            $this->runAction(RevokeCustomerApiKey::class, ['id' => $key, 'organization_id' => $this->scope->requireOrganizationId()]);
+        } catch (ActionRefused $refused) {
+            abort_unless($refused->status === 404, $refused->status, $refused->getMessage());
 
-        $actor = $this->scope->auditActor();
-
-        if (! $keys->revoke($this->scope->requireOrganizationId(), $key, new ApiKeyActor($actor->type, $actor->id))) {
             return back();
         }
 

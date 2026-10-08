@@ -1,7 +1,17 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, PageHeader, Panel, RadioGroup } from '@/ui';
+import type { OrganizationPicker, PageProps } from '@/types';
+import {
+    Button,
+    Checkbox,
+    Field,
+    Icon,
+    Input,
+    OrganizationPickerField,
+    PageHeader,
+    Panel,
+    RadioGroup,
+} from '@/ui';
 
 interface PointOption {
     value: string;
@@ -13,6 +23,8 @@ type Props = PageProps<{
     points: PointOption[];
     /** Whether registering for the whole environment is on offer here. */
     mayScopeEnvironmentWide: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     indexHref: string;
     storeHref: string;
 }>;
@@ -20,6 +32,7 @@ type Props = PageProps<{
 export default function CreateHook({
     points,
     mayScopeEnvironmentWide,
+    organization,
     indexHref,
     storeHref,
 }: Props) {
@@ -27,6 +40,7 @@ export default function CreateHook({
         point: points[0]?.value ?? '',
         url: '',
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
     });
 
     return (
@@ -107,7 +121,16 @@ export default function CreateHook({
                                     form.setData('environmentWide', checked)
                                 }
                                 label="Environment-wide"
-                                hint="Call this endpoint for every organization in this environment, not just the one selected in the bar above."
+                                hint="Call this endpoint for every organization in this environment, not just one."
+                            />
+                        )}
+
+                        {organization !== null && !form.data.environmentWide && (
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="Whose sign-ins it is called for — or tick Environment-wide above."
                             />
                         )}
                     </div>

@@ -298,8 +298,8 @@ it('ends a session now — no more codes, every token it issued revoked', functi
         ->and($sessions[0]['reason'])->toBe('Ticket 4411: invoice totals look wrong')
         ->and($sessions[0]['startedBy'])->toBe('Owner');
 
-    // The organization's page lists the same session.
-    expect($this->get(route('environment.organizations.show', $org))->inertiaProps('supportSessions.0.id'))
+    // The organization's Support tab lists the same session.
+    expect($this->get(route('environment.organizations.support', $org))->inertiaProps('supportSessions.0.id'))
         ->toBe($sessions[0]['id']);
 
     $this->from(route('environment.users.show', $user))->delete($sessions[0]['endHref'])->assertSessionHasNoErrors();
@@ -329,9 +329,8 @@ it('puts the session on the organization\'s activity log and on the person\'s ow
 
     startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
 
-    $this->post(route('environment.acting-organization.choose'), ['organization' => $org]);
-
-    $entry = collect($this->get(route('environment.audit'))->assertOk()->inertiaProps('entries'))
+    // The organization's own trail, as the audit log narrowed to it shows it.
+    $entry = collect($this->get(route('environment.audit', ['organization' => $org]))->assertOk()->inertiaProps('entries'))
         ->firstWhere('action', 'support_session.started');
 
     expect($entry)->not->toBeNull()

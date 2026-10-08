@@ -1,8 +1,19 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pill } from '@/ui';
+import { listHref } from '@/lib/listHref';
+import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
+import {
+    Badge,
+    Button,
+    EmptyState,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Pill,
+} from '@/ui';
 
 interface ReviewRow {
     id: string;
@@ -14,6 +25,8 @@ interface ReviewRow {
     open: boolean;
     /** A review of staff roles — the environment's, belonging to no organization. */
     staff: boolean;
+    /** Whose access it reviews, on the list that holds every organization's. */
+    organization: string | null;
     href: string;
 }
 
@@ -22,15 +35,17 @@ type Props = PageProps<{
     search: string;
     createHref: string;
     help: HelpContent;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
 
-function listHref(search: string): string {
-    return search === ''
-        ? window.location.pathname
-        : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
-}
-
-export default function AccessReviewsIndex({ reviews, search, createHref, help }: Props) {
+export default function AccessReviewsIndex({
+    reviews,
+    search,
+    createHref,
+    help,
+    organizationFilter,
+}: Props) {
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -64,7 +79,12 @@ export default function AccessReviewsIndex({ reviews, search, createHref, help }
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
@@ -128,6 +148,9 @@ export default function AccessReviewsIndex({ reviews, search, createHref, help }
                         >
                             <div className="min-w-0 flex-1">
                                 <span className="font-medium truncate">{review.name}</span>
+                                {review.organization !== null && (
+                                    <Badge className="ml-2">{review.organization}</Badge>
+                                )}
                                 {review.staff && (
                                     <Badge tone="info" className="ml-2">
                                         Staff roles

@@ -42,7 +42,7 @@ use Cbox\Id\Whitelabel\Support\PaletteTokens;
     schema: 'WhitelabelBranding',
     tag: 'Branding',
     rest: ['PUT', '/branding/whitelabel'],
-    consoleRoutes: ['whitelabel.branding.save', 'environment.whitelabel.branding.save'],
+    consoleRoutes: ['whitelabel.branding.save', 'environment.whitelabel.branding.save', 'environment.organizations.whitelabel.branding.save'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class SaveBranding implements Action

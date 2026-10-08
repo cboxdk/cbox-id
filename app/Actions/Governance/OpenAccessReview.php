@@ -67,7 +67,7 @@ final readonly class OpenAccessReview implements Action
             $organizationId = null;
         } else {
             if ($context->nullableString('organization_id') === null) {
-                throw ActionRefused::because('organization_required', 'Choose an organization — a review snapshots one organization\'s access.', 'organization_id');
+                throw ActionRefused::because('organization_required', 'Name an organization — a review snapshots one organization\'s access.', 'organization_id');
             }
 
             $organizationId = EnterpriseReach::requiredOrganization($context);

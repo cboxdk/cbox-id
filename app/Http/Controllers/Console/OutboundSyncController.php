@@ -46,21 +46,19 @@ final readonly class OutboundSyncController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->scope->organizationId();
+        $filter = $this->organizationFilter();
 
         /*
-         * Scoped to the acting organization when one is chosen. With none chosen — only
-         * possible for an environment administrator — every connection in the environment,
-         * which is a deliberate overview rather than a leak: the model's environment scope
-         * still bounds it.
+         * Narrowed to the member's own organization, or to the one the list is filtered to.
+         * Unfiltered — only possible for an environment administrator — every connection in
+         * the environment, which is a deliberate overview rather than a leak: the model's
+         * environment scope still bounds it.
          *
          * It is also the only place an ENVIRONMENT-WIDE connection is listed. That is
          * deliberate: environment-wide coverage is a platform capability, so a tenant
          * administrator neither sees one here nor can reach its detail page.
          */
-        $query = ProvisioningConnection::query()
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
-            ->orderByDesc('id');
+        $query = $filter->apply(ProvisioningConnection::query())->orderByDesc('id');
 
         $term = trim($request->string('q')->toString());
 
@@ -89,7 +87,8 @@ final readonly class OutboundSyncController extends ConsoleController
             ], $page->getCollection()->all()),
             'pagination' => PaginationProps::from($page),
             'search' => $term,
-            'createHref' => $this->url('provisioning.create'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            'createHref' => $this->createUrl('provisioning.create'),
         ]);
     }
 
@@ -107,7 +106,9 @@ final readonly class OutboundSyncController extends ConsoleController
             ], AuthScheme::cases()),
             // Whether registering a connection for the WHOLE environment is on offer here.
             'mayScopeEnvironmentWide' => $this->scope->plane()->choosesOrganization(),
-            'organizationChosen' => $this->scope->organizationId() !== null,
+            // "For which organization?" on the environment console, unless it is for the
+            // whole environment; prefilled and locked when opened from an organization's page.
+            'organization' => $this->organizationPicker(),
             'indexHref' => $this->url('provisioning'),
             'storeHref' => $this->url('provisioning.store'),
         ]);
@@ -137,13 +138,9 @@ final readonly class OutboundSyncController extends ConsoleController
 
             $organizationId = null;
         } else {
-            $organizationId = $this->scope->organizationId();
-
-            if ($organizationId === null) {
-                return back()->withInput()->withErrors([
-                    'name' => 'Choose an organization in the console header, or register the connection for the whole environment.',
-                ]);
-            }
+            // The form's own answer on the environment console, checked against this
+            // environment; the member's own elsewhere.
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         $config = $request->authConfig();
@@ -244,8 +241,8 @@ final readonly class OutboundSyncController extends ConsoleController
     /**
      * The connection this page acts on, or a 404.
      *
-     * Fenced to the acting organization, not merely to the environment. With no
-     * organization chosen — only reachable by an environment administrator — the whole
+     * Fenced to the organization the console acts on, not merely to the environment. On the
+     * environment console — whose administrator holds every organization here — the whole
      * environment resolves, which is the overview the list already shows.
      */
     private function resolve(string $sync): ProvisioningConnection

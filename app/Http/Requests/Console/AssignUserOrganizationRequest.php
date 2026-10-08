@@ -43,7 +43,7 @@ final class AssignUserOrganizationRequest extends FormRequest
     {
         return [
             'role' => OrgRoles::message(),
-            'organization.required' => 'Choose an organization.',
+            'organization.required' => 'Say which organization to add them to.',
         ];
     }
 

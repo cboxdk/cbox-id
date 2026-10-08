@@ -1,8 +1,24 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
-import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pagination } from '@/ui';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
+import {
+    Badge,
+    Button,
+    EmptyState,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Pagination,
+} from '@/ui';
 
 interface AppRow {
     id: string;
@@ -26,23 +42,9 @@ type Props = PageProps<{
     showsEveryOrganization: boolean;
     mayAdminister: boolean;
     createHref: string;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
-
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
 
 export default function Clients({
     help,
@@ -53,6 +55,7 @@ export default function Clients({
     showsEveryOrganization,
     mayAdminister,
     createHref,
+    organizationFilter,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -91,7 +94,12 @@ export default function Clients({
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}

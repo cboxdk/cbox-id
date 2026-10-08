@@ -1,14 +1,22 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
 import {
     Badge,
     Button,
     CopyButton,
     EmptyState,
+    FilterChips,
     Icon,
     Input,
+    OrganizationFilterChip,
     PageHeader,
     Pagination,
     Panel,
@@ -33,29 +41,15 @@ type Props = PageProps<{
     pagination: PaginationState;
     search: string;
     mayAdminister: boolean;
-    organizationChosen: boolean;
     entitled: boolean;
     showsEveryOrganization: boolean;
+    /** The environment-wide list's Organization chip; null on a page about one organization. */
+    organizationFilter: OrganizationFilter | null;
     scimBaseUrl: string;
     createHref: string;
-    inviteHref: string;
+    /** A portal link is for ONE organization's IT admin: null where the page is about none. */
+    inviteHref: string | null;
 }>;
-
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
 
 export default function DirectoriesIndex({
     help,
@@ -63,9 +57,9 @@ export default function DirectoriesIndex({
     pagination,
     search,
     mayAdminister,
-    organizationChosen,
     entitled,
     showsEveryOrganization,
+    organizationFilter,
     scimBaseUrl,
     createHref,
     inviteHref,
@@ -102,15 +96,17 @@ export default function DirectoriesIndex({
                 actions={
                     canAct ? (
                         <>
-                            <Button
-                                icon="members"
-                                className="shrink-0"
-                                onClick={() =>
-                                    router.post(inviteHref, {}, { preserveScroll: true })
-                                }
-                            >
-                                Invite your IT admin
-                            </Button>
+                            {inviteHref !== null && (
+                                <Button
+                                    icon="members"
+                                    className="shrink-0"
+                                    onClick={() =>
+                                        router.post(inviteHref, {}, { preserveScroll: true })
+                                    }
+                                >
+                                    Invite your IT admin
+                                </Button>
+                            )}
                             <Button asChild variant="primary" className="shrink-0">
                                 <Link href={createHref}>
                                     <Icon name="plus" className="w-4 h-4" />
@@ -123,30 +119,21 @@ export default function DirectoriesIndex({
             />
 
             <div className="mt-8 space-y-6">
-                {/*
-                    Told apart deliberately: "you have not chosen an organization" and
-                    "this organization is not entitled" are different problems with
-                    different fixes, and the entitlement answers false for both.
-                */}
-                {!organizationChosen ? (
+                {!entitled && (
                     <div className="card">
                         <EmptyState
-                            icon="layers"
-                            title="Choose an organization"
-                            description="Below is every directory in this environment. A directory provisions one organization's users, so connecting one waits until you pick the organization you are configuring."
+                            icon="directory"
+                            title="Syncing users in is an Enterprise feature"
+                            help={help}
+                            description="Contact your account team to enable it for this organization."
                         />
                     </div>
-                ) : (
-                    !entitled && (
-                        <div className="card">
-                            <EmptyState
-                                icon="directory"
-                                title="Syncing users in is an Enterprise feature"
-                                help={help}
-                                description="Contact your account team to enable it for this organization."
-                            />
-                        </div>
-                    )
+                )}
+
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
                 )}
 
                 {portalUrl !== undefined && mayAdminister && (
@@ -192,8 +179,8 @@ export default function DirectoriesIndex({
                         narrowed to nothing.
                     */}
                     <output className="sr-only">
-                        {pagination.total}{' '}
-                        {pagination.total === 1 ? 'directory' : 'directories'} found.
+                        {pagination.total} {pagination.total === 1 ? 'directory' : 'directories'}{' '}
+                        found.
                     </output>
                 </div>
 
@@ -289,7 +276,7 @@ export default function DirectoriesIndex({
                     directory's page because it is the same for every SCIM directory in the
                     environment — it is the platform's address, not a property of any row.
                 */}
-                {organizationChosen && entitled && (
+                {entitled && (
                     <Panel
                         title="SCIM endpoint"
                         description="Paste this into your identity provider, with the bearer token from the directory you connect."

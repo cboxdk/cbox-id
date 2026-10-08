@@ -17,6 +17,7 @@ use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\ApiContract;
 use Tests\Support\FixedDns;
+use Tests\Support\FormOrganization;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -40,6 +41,9 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // No organization is named by a console form until a test says so.
+        FormOrganization::$id = null;
 
         // Every test runs inside a default environment — the platform's hard outer
         // scope is deny-by-default, so without one the environment-owned models

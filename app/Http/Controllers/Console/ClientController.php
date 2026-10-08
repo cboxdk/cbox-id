@@ -92,18 +92,17 @@ final readonly class ClientController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->actingOrganizationId();
+        $filter = $this->organizationFilter();
 
         /*
-         * Scoped to the acting organization when one is chosen. With none chosen — only
-         * possible for an environment administrator — this is every app in the
-         * environment, which is a deliberate overview rather than a leak: the model's
-         * environment scope still bounds it, and an organization member can never reach
-         * that branch because their organization is implicit.
+         * The member's own organization's apps, or the one organization the list is
+         * filtered to. Unfiltered — only possible for an environment administrator — every
+         * app in the environment, which is a deliberate overview rather than a leak: the
+         * model's environment scope still bounds it, and an organization member can never
+         * reach that branch because their organization is implicit. A filter naming no
+         * organization here matches nothing.
          */
-        $query = Client::query()
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
-            ->orderByDesc('id');
+        $query = $filter->apply(Client::query())->orderByDesc('id');
 
         $term = trim($request->string('q')->toString());
 
@@ -156,7 +155,7 @@ final readonly class ClientController extends ConsoleController
         // enumerate the environment's other tenants.
         $owners = $this->scope->organizationNames($clients->pluck('organization_id'));
 
-        $showsEveryOrganization = $organizationId === null;
+        $showsEveryOrganization = ! $filter->active();
 
         return $this->page('console/clients/index', 'Applications', [
             'help' => HelpProps::for(HelpTopic::Apps),
@@ -176,7 +175,8 @@ final readonly class ClientController extends ConsoleController
             // The view half of the guard. A merge that rewires only the PHP renders a
             // read-only shell, so every write control on this page asks this first.
             'mayAdminister' => $this->scope->mayAdminister(),
-            'createHref' => $this->url('clients.create'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            'createHref' => $this->createUrl('clients.create'),
             'scopeCount' => count($catalog->keys()),
         ]);
     }
@@ -216,6 +216,9 @@ final readonly class ClientController extends ConsoleController
             // The one branch a page is allowed to make on the plane: whether the
             // administrator acts on several organizations or implicitly on their own.
             'mayScopeEnvironmentWide' => $this->scope->plane()->choosesOrganization(),
+            // "For which organization?" on the environment console, unless the app is the
+            // environment's own; prefilled and locked when opened from an organization.
+            'organization' => $this->organizationPicker(),
             'indexHref' => $this->url('clients'),
             'storeHref' => $this->url('clients.store'),
         ]);
@@ -264,7 +267,9 @@ final readonly class ClientController extends ConsoleController
             abort_unless($this->scope->plane() === ConsolePlane::Environment, 403);
             $organizationId = null;
         } else {
-            $organizationId = $this->scope->requireOrganizationId();
+            // The member's own organization; on the environment console the form's "For
+            // which organization?", checked against this environment.
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         /*

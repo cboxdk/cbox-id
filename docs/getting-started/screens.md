@@ -240,7 +240,14 @@ a whole environment, filed by task in the words the market uses:
 
 - **Home:** Overview.
 - **Users & orgs:** Users, Organizations (your customers), Roles, Permissions. A user's
-  page has **Staff roles**: roles granted across the whole environment.
+  page has **Staff roles**: roles granted across the whole environment. An organization
+  opens on its own page, `/admin/organizations/{id}`, with a tab for each thing that is
+  its: Overview (is SSO connected, a domain verified, a directory syncing — and its latest
+  audit entries), Members, Invitations, SSO, Directory Sync, Domains, Roles, API keys,
+  Branding, Policy, Support, Audit log and Settings, plus an **Admin Portal link** for its
+  IT administrator. The environment-wide lists (Enterprise SSO, Roles, Audit log, …) show
+  every organization's rows with an Organization column and an **Organization** filter
+  chip; a form that creates something for one asks **For which organization?**.
 - **Authentication:** Authentication policy, Social login, Enterprise SSO, Directory Sync:
   every way people come in.
 - **Developers:** Applications, APIs, API keys, Webhooks, Hooks.

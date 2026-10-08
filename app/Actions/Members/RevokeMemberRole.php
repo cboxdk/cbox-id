@@ -10,10 +10,12 @@ use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
+use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\GrantAccessRole;
+use App\Platform\OrgAccessRoles;
 
 /**
  * Take an access role back from a member inside one organization. Revoking never conflicts
@@ -23,6 +25,10 @@ use App\Platform\GrantAccessRole;
  *
  * The console's per-role checkbox reaches this through the grant's route: one explicit
  * set, granted or not, rather than a toggle a retried request would flip back.
+ *
+ * FROM INSIDE THE ORGANIZATION only the roles its own administrators may hand out can be
+ * taken back there ({@see GrantMemberRole::tenantRole()}) — a staff role an environment
+ * administrator granted is theirs to withdraw.
  */
 #[AsAction(
     name: 'members.roles.revoke',
@@ -32,10 +38,14 @@ use App\Platform\GrantAccessRole;
     tag: 'Roles',
     rest: ['DELETE', '/organizations/{organization_id}/members/{user_id}/roles/{role_id}'],
     status: 204,
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RevokeMemberRole implements Action
 {
-    public function __construct(private GrantAccessRole $grants) {}
+    public function __construct(
+        private GrantAccessRole $grants,
+        private OrgAccessRoles $catalog,
+    ) {}
 
     public static function input(): InputSchema
     {
@@ -51,7 +61,9 @@ final readonly class RevokeMemberRole implements Action
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
         $member = MemberFields::find($organization->id, $context->string('user_id'));
-        $role = RoleFields::find($context->string('role_id'), $context->nullableString('client_id'), orphaned: true);
+        $role = TenantRoster::confined($context) !== null
+            ? GrantMemberRole::tenantRole($this->catalog, $organization->id, $context)
+            : RoleFields::find($context->string('role_id'), $context->nullableString('client_id'), orphaned: true);
 
         $this->grants->revoke($organization->id, $member->user_id, $role->id);
 

@@ -632,12 +632,14 @@ it('gives every environment detail page a real h2 outline', function (): void {
 it('keeps the help popover out of the page heading', function (): void {
     $header = (string) file_get_contents(base_path('resources/js/ui/PageHeader.tsx'));
 
-    // The h1 must be a single element with nothing but the page's title in it. Nested, the
-    // heading's accessible name became "Members What is Members? Members are the people
-    // who…" — on the one landmark a screen-reader user navigates the page by.
-    expect($header)->toMatch('/<h1 className="cbx-page-title">\{title \?\? stated\}<\/h1>/');
+    // The heading must be a single element with nothing but the page's title in it. Nested,
+    // its accessible name became "Members What is Members? Members are the people who…" —
+    // on the one landmark a screen-reader user navigates the page by. (`Heading` is the h1,
+    // or the h2 a page drawn inside an organization's page uses under that page's own h1.)
+    expect($header)->toMatch('/<Heading className="cbx-page-title">\{title \?\? stated\}<\/Heading>/')
+        ->and($header)->toContain("? 'h2' : 'h1'");
 
-    $between = (string) preg_replace('/^.*<h1 className="cbx-page-title">|<\/h1>.*$/s', '', $header);
+    $between = (string) preg_replace('/^.*<Heading className="cbx-page-title">|<\/Heading>.*$/s', '', $header);
 
     // No message argument: `toContain` is variadic, so a second string is another needle
     // and `not->toContain` passes as soon as one is missing. The `toMatch` above carries

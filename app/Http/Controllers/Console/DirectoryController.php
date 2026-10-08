@@ -63,11 +63,13 @@ final readonly class DirectoryController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->actingOrganizationId();
+        $filter = $this->organizationFilter();
 
-        $query = Directory::query()
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
-            ->orderByDesc('created_at');
+        // The organization this page is about — the member's own, or the one an
+        // organization's Directory Sync tab names — and null on the environment-wide list.
+        $organizationId = $this->routeOrganizationId();
+
+        $query = $filter->apply(Directory::query())->orderByDesc('created_at');
 
         $term = trim($request->string('q')->toString());
 
@@ -106,17 +108,17 @@ final readonly class DirectoryController extends ConsoleController
             // anything.
             'mayAdminister' => $this->scope->mayAdminister(),
             /*
-             * Told apart deliberately. `entitled()` answers false for "no organization
-             * chosen" too, and showing an environment administrator who has not picked a
-             * tenant an upsell telling them to contact their account team sends them
-             * somewhere useless about a decision they have not made yet.
+             * The environment-wide list is about no organization, so it is never told an
+             * organization's plan lacks this — an upsell there would be about a decision
+             * nobody has made. Entitlement is asked on the organization's own page.
              */
-            'organizationChosen' => $organizationId !== null,
-            'entitled' => $organizationId !== null && $this->scope->entitled('scim'),
+            'entitled' => $organizationId === null || $this->scope->entitled('scim'),
             'showsEveryOrganization' => $organizationId === null,
+            'organizationFilter' => $this->organizationFilterProps($filter),
             'scimBaseUrl' => url('/scim/v2'),
-            'createHref' => $this->url('directories.create'),
-            'inviteHref' => $this->url('directories.invite'),
+            'createHref' => $this->createUrl('directories.create'),
+            // A portal link is for ONE organization's IT administrator.
+            'inviteHref' => $organizationId === null ? null : $this->url('directories.invite'),
         ]);
     }
 
@@ -131,9 +133,9 @@ final readonly class DirectoryController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        // Resolved BEFORE the entitlement is asked, so an environment administrator who
-        // has simply not picked an organization is refused for the reason that is true
-        // rather than told their plan does not cover this.
+        // Resolved BEFORE the entitlement is asked, so a request about no organization is
+        // refused for the reason that is true rather than told a plan does not cover this.
+        // On the environment console this route lives under the organization's own URL.
         $organizationId = $this->scope->requireOrganizationId();
 
         abort_unless($this->scope->entitled('scim'), 403);
@@ -165,7 +167,7 @@ final readonly class DirectoryController extends ConsoleController
             return to_route($sudo);
         }
 
-        $organizationId = $this->actingOrganizationId();
+        $organizationId = $this->prefilledOrganizationId();
 
         /*
          * The enum is the public contract, so both planes offer what it publishes — minus
@@ -198,8 +200,10 @@ final readonly class DirectoryController extends ConsoleController
                  */
                 'setup' => self::setupProps($provider),
             ], $providers),
-            'organizationChosen' => $organizationId !== null,
-            'entitled' => $organizationId !== null && $this->scope->entitled('scim'),
+            // "For which organization?" on the environment console; prefilled and locked
+            // when the form was opened from an organization's own page.
+            'organization' => $this->organizationPicker(),
+            'entitled' => $this->organizationEntitled($organizationId, 'scim'),
             'indexHref' => $this->url('directories'),
             'urls' => [
                 'register' => $this->url('directories.store'),
@@ -226,7 +230,7 @@ final readonly class DirectoryController extends ConsoleController
             app(VerifiedEmailGate::class)->require('connect a directory');
         }
 
-        $organizationId = $this->entitledOrganizationId();
+        $organizationId = $this->entitledOrganizationId($request);
 
         $request->validate(['name' => ['required', 'string', 'max:120']]);
 
@@ -274,7 +278,7 @@ final readonly class DirectoryController extends ConsoleController
             app(VerifiedEmailGate::class)->require('connect a directory');
         }
 
-        $organizationId = $this->entitledOrganizationId();
+        $organizationId = $this->entitledOrganizationId($request);
         $provider = $request->provider();
 
         // Refused here rather than left to raise inside the registry: `scim` is a real
@@ -565,10 +569,10 @@ final readonly class DirectoryController extends ConsoleController
      * Whether this administrator may change this directory.
      *
      * The entitlement is asked of the directory's OWN organization rather than of the
-     * acting one. They are the same whenever an organization is chosen — the lookup
-     * guarantees it — and when none is (an environment administrator's whole-environment
-     * overview) the directory's organization is the only honest answer; asking the scope
-     * there would answer "not entitled" for every directory in the environment.
+     * page's. They are the same whenever the page is about one organization — the lookup
+     * guarantees it — and when it is not (an environment administrator's directory page)
+     * the directory's organization is the only honest answer; asking the scope there would
+     * answer "not entitled" for every directory in the environment.
      */
     private function mayChange(Directory $directory): bool
     {
@@ -597,14 +601,14 @@ final readonly class DirectoryController extends ConsoleController
     /**
      * The organization to connect a directory for, with the entitlement enforced.
      *
-     * The entitlement is a hard 403 — but only once an organization IS resolved.
-     * `entitled()` answers false for "none chosen" too, and 403-ing on that would tell an
-     * environment administrator to contact their account team about a decision they have
-     * simply not made yet.
+     * The form's "For which organization?" on the environment console (checked against this
+     * environment, and bound for the request), the member's own elsewhere. The entitlement is
+     * a hard 403 — but only once an organization IS resolved: a form that named none is told
+     * to name one, not that a plan lacks something.
      */
-    private function entitledOrganizationId(): string
+    private function entitledOrganizationId(Request $request): string
     {
-        $organizationId = $this->scope->requireOrganizationId();
+        $organizationId = (string) $this->chosenOrganizationId($request);
 
         abort_unless($this->scope->entitled('scim'), 403);
 

@@ -112,7 +112,8 @@ else — not even another environment the same person is entitled to administer,
 each one is authorized by its own one-time handoff. That property is independent of where
 the identity comes from, and it survived the collapse of the admin session into the
 subject session precisely because it is not an identity: it is a *selection*, of the same
-kind as the console's organization picker and an operator's target environment.
+kind as an operator's target environment. (The environment console no longer keeps an
+organization selection at all: a page about one organization names it in its URL.)
 
 ## Decisions taken
 

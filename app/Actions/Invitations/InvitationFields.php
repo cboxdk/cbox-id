@@ -10,7 +10,9 @@ use App\Models\InvitationRoleGrant;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\CurrentEnvironment;
+use App\Platform\CurrentUser;
 use App\Platform\Invitations\Enums\InvitationRefusalReason;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
 use App\Platform\Invitations\ValueObjects\Inviter;
@@ -42,12 +44,30 @@ final class InvitationFields
     /**
      * Who the mail says the invitation is from.
      *
-     * A person in the console signs it with their own name, and the trail keys it on their
-     * subject id. A key is nobody: it signs with the name it was given, else the app the
-     * invitation leads back to, else the environment's name.
+     * A person signs it with their own name, and the trail keys it on their subject id. A
+     * key is nobody: it signs with the name it was given, else the app the invitation leads
+     * back to, else the environment's name.
+     *
+     * WHERE THE PERSON IS A SUBJECT depends on the door. On the organization console they
+     * are the signed-in subject of THIS environment ({@see CurrentUser}); an environment
+     * console's administrator is a person of the platform root, looked up there. Asking the
+     * platform root for an organization member found nobody, and the mail said "An
+     * administrator". Through a token they signed in for, the token names them.
      */
     public static function inviter(ActionContext $context, ?string $name = null, ?string $clientId = null): Inviter
     {
+        $principal = $context->principal;
+
+        if ($principal instanceof DelegatedTokenPrincipal) {
+            return new Inviter($principal->subjectId(), $principal->personName());
+        }
+
+        if ($principal instanceof ConsoleSessionPrincipal && $principal->confinedToOrganization() !== null && app(CurrentUser::class)->check()) {
+            $me = app(CurrentUser::class);
+
+            return new Inviter($me->id(), $me->name());
+        }
+
         if ($context->principal instanceof ConsoleSessionPrincipal) {
             $subjectId = $context->principal->scope()->actorId();
             $subject = $subjectId === '' ? null : app(PlatformRoot::class)->run(

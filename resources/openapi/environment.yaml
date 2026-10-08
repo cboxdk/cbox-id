@@ -623,6 +623,11 @@ paths:
     delete:
       operationId: api_keys_revoke
       x-action: api_keys.revoke
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - 'API keys'
       summary: 'Revoke a member API key'
@@ -5018,6 +5023,11 @@ paths:
     post:
       operationId: organizations_transfer_ownership
       x-action: organizations.transfer_ownership
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Organizations
       summary: "Make a member the organization's owner"
@@ -5413,6 +5423,11 @@ paths:
     post:
       operationId: invitations_send
       x-action: invitations.send
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Invitations
       summary: 'Invite someone to the organization'
@@ -5506,6 +5521,11 @@ paths:
     delete:
       operationId: invitations_revoke
       x-action: invitations.revoke
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Invitations
       summary: 'Withdraw a pending invitation'
@@ -5535,6 +5555,11 @@ paths:
     post:
       operationId: invitations_resend
       x-action: invitations.resend
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Invitations
       summary: 'Mail a pending invitation again'
@@ -5706,6 +5731,11 @@ paths:
     patch:
       operationId: members_update
       x-action: members.update
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Members
       summary: "Change a member's role"
@@ -5756,6 +5786,11 @@ paths:
     delete:
       operationId: members_remove
       x-action: members.remove
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Members
       summary: 'Remove a member'
@@ -5823,6 +5858,11 @@ paths:
     put:
       operationId: members_roles_grant
       x-action: members.roles.grant
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Roles
       summary: 'Grant a member a role in the organization'
@@ -5873,6 +5913,11 @@ paths:
     delete:
       operationId: members_roles_revoke
       x-action: members.roles.revoke
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
       tags:
         - Roles
       summary: 'Take a role back from a member'
@@ -11137,7 +11182,13 @@ components:
         could run it on their own console here: an organization administrator, confined to
         the organization the token is bound to. Operations that belong to the environment
         console do not list it. Every critical operation answers `202 approval_required`
-        until the person approves it on their device. A DPoP-bound token is presented as
+        until the person approves it on their device.
+
+        On the organization's own roster (members, their roles, invitations, ownership, its
+        people's API keys) the organization's own rules hold, as on its People page: an
+        admin cannot change or remove an owner, nobody removes themselves, only the owner
+        transfers ownership, a staff-only role is `role_not_assignable`, and a customer
+        workspace's roster — administered under Workspace › Team — is `409 managed_elsewhere`. A DPoP-bound token is presented as
         `Authorization: DPoP <token>` with a proof.
     AppClientCredentials:
       type: http

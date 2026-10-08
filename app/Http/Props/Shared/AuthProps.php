@@ -80,9 +80,9 @@ final readonly class AuthProps implements Prop
                 email: $subject->email,
                 emailVerified: $subject->emailVerified,
             ),
-            // No organization: this person is acting on the ENVIRONMENT, and which of its
-            // tenants they are acting for is a separate control in the chrome — see
-            // {@see \App\Http\Props\Shell\ActingOrganizationProps}.
+            // No organization: this person is acting on the ENVIRONMENT. A page about one of
+            // its tenants names it in its own URL (`/admin/organizations/{organization}/…`)
+            // and says so in its own header — see {@see \App\Platform\Console\OrganizationHeader}.
             organization: null,
         );
     }

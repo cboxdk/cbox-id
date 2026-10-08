@@ -1,13 +1,17 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
+import type { HelpContent, OrganizationFilter, OrganizationPicker, PageProps } from '@/types';
 import {
+    Badge,
     Button,
     ConfirmDelete,
     CopyButton,
     Field,
+    FilterChips,
     Input,
+    OrganizationFilterChip,
+    OrganizationPickerField,
     PageHeader,
     Panel,
     ProviderMark,
@@ -21,6 +25,8 @@ interface EnabledProvider {
     protocol: string;
     /** The REAL redirect URI — it only exists once the connection does. */
     callbackUri: string;
+    /** Whose sign-in page offers it — named on the list that holds every organization's. */
+    organization: string | null;
     removeHref: string;
 }
 
@@ -56,6 +62,10 @@ type Props = PageProps<{
     enabled: EnabledProvider[];
     available: CatalogueEntry[];
     template: Template | null;
+    /** The environment-wide list's Organization chip; null on the organization console. */
+    organizationFilter: OrganizationFilter | null;
+    /** "For which organization?" on the setup form — the environment console only. */
+    organization: OrganizationPicker | null;
     indexHref: string;
     storeHref: string;
     help: HelpContent;
@@ -65,6 +75,8 @@ export default function SocialProviders({
     enabled,
     available,
     template,
+    organizationFilter,
+    organization,
     indexHref,
     storeHref,
     help,
@@ -79,6 +91,12 @@ export default function SocialProviders({
             />
 
             <div className="mt-6 space-y-5">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
+
                 <Panel
                     title="On your sign-in page"
                     description="These appear as buttons, in this order."
@@ -113,6 +131,11 @@ export default function SocialProviders({
                                     <div className="min-w-0 flex-1">
                                         <p className="font-medium text-sm truncate">
                                             {connection.name}
+                                            {connection.organization !== null && (
+                                                <Badge className="ml-2">
+                                                    {connection.organization}
+                                                </Badge>
+                                            )}
                                         </p>
                                         <p
                                             className="text-xs truncate"
@@ -155,7 +178,12 @@ export default function SocialProviders({
                 </Panel>
 
                 {template !== null && (
-                    <SetupPanel template={template} storeHref={storeHref} cancelHref={indexHref} />
+                    <SetupPanel
+                        template={template}
+                        organization={organization}
+                        storeHref={storeHref}
+                        cancelHref={indexHref}
+                    />
                 )}
 
                 {available.length > 0 && (
@@ -232,15 +260,18 @@ export default function SocialProviders({
  */
 function SetupPanel({
     template,
+    organization,
     storeHref,
     cancelHref,
 }: {
     template: Template;
+    organization: OrganizationPicker | null;
     storeHref: string;
     cancelHref: string;
 }) {
     const form = useForm({
         provider: template.key,
+        organization: organization?.selected?.id ?? '',
         clientId: '',
         clientSecret: '',
         parameters: Object.fromEntries(
@@ -284,6 +315,16 @@ function SetupPanel({
                     form.post(storeHref, { preserveScroll: true });
                 }}
             >
+                {/* A provider is offered on ONE organization's sign-in page. */}
+                {organization !== null && (
+                    <OrganizationPickerField
+                        picker={organization}
+                        error={form.errors.organization}
+                        onChange={(id) => form.setData('organization', id)}
+                        hint="Whose sign-in page offers it."
+                    />
+                )}
+
                 <div>
                     <p className="text-sm font-semibold">1. Register this redirect URI</p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>

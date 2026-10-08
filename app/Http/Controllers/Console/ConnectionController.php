@@ -66,18 +66,20 @@ final readonly class ConnectionController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->actingOrganizationId();
+        $filter = $this->organizationFilter();
+
+        // The ORGANIZATION this page is about — its own on the organization console, the one
+        // the URL names on an organization's SSO tab — and null on the environment-wide list.
+        $organizationId = $this->routeOrganizationId();
 
         /*
-         * Scoped to the acting organization when one is chosen. With none chosen — only
-         * possible for an environment administrator — this is every connection in the
-         * environment, which is a deliberate overview rather than a leak: the model's
-         * environment scope still bounds it, and an organization member can never reach
-         * this branch because their organization is implicit.
+         * Narrowed to one organization when the page is about one, or when the list is
+         * filtered to one. Otherwise — only possible for an environment administrator — every
+         * connection in the environment, which is a deliberate overview rather than a leak:
+         * the model's environment scope still bounds it. A filter naming no organization here
+         * is an empty list, never this overview ({@see \App\Platform\Console\OrganizationFilter}).
          */
-        $query = Connection::query()
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
-            ->orderByDesc('created_at');
+        $query = $filter->apply(Connection::query())->orderByDesc('created_at');
 
         $term = trim($request->string('q')->toString());
 
@@ -113,24 +115,25 @@ final readonly class ConnectionController extends ConsoleController
              */
             'mayAdminister' => $this->scope->mayAdminister(),
             /*
-             * "No organization chosen" is a real state on the environment plane and must
-             * not be reported as "not entitled" — `entitled()` answers false either way,
-             * and telling an administrator to contact their account team when they simply
-             * have not picked an organization sends them somewhere useless.
+             * The environment-wide list is about no organization, so it has no plan to be
+             * entitled under and is never told it is not — an upsell there would be about a
+             * decision nobody has made. Entitlement is the organization's, asked on its page.
              */
-            'needsOrganization' => $organizationId === null,
-            'entitled' => $this->scope->entitled('sso'),
-            // A domain belongs to ONE organization, so the whole-environment overview has
-            // none to show rather than every tenant's.
-            'domains' => $organizationId === null ? [] : collect($domains->forOrganization($organizationId))
+            'entitled' => $organizationId === null || $this->scope->entitled('sso'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            // A domain belongs to ONE organization, so the whole-environment list has none
+            // to show rather than every tenant's: they are on each organization's page.
+            'domains' => $organizationId === null ? null : collect($domains->forOrganization($organizationId))
                 ->map(fn (VerifiedDomain $domain): array => [
                     'id' => $domain->id,
                     'domain' => $domain->domain,
                     'verified' => $domain->isVerified(),
                     'capture' => $domain->capture,
                 ])->values()->all(),
-            'createHref' => $this->url('connections.create'),
-            'urls' => [
+            'createHref' => $this->createUrl('connections.create'),
+            // The writes about ONE organization — a portal link, its domains — exist only
+            // where the page is about one.
+            'urls' => $organizationId === null ? null : [
                 'invite' => $this->url('connections.invite'),
                 'addDomain' => $this->url('connections.domains.store'),
             ],
@@ -168,7 +171,7 @@ final readonly class ConnectionController extends ConsoleController
     }
 
     /**
-     * Register a domain for the acting organization and mint its DNS challenge.
+     * Register a domain for the organization this page is about and mint its DNS challenge.
      *
      * The instructions — challenge host and token — are surfaced once so the administrator
      * can publish the TXT record.
@@ -271,8 +274,10 @@ final readonly class ConnectionController extends ConsoleController
         $this->scope->assertMayAdminister();
 
         return $this->page('console/connections/create', 'New connection', [
-            'needsOrganization' => $this->actingOrganizationId() === null,
-            'entitled' => $this->scope->entitled('sso'),
+            // "For which organization?" — on the environment console, where the form is not
+            // already about one. Prefilled and locked when it was opened from one's page.
+            'organization' => $this->organizationPicker(),
+            'entitled' => $this->organizationEntitled($this->prefilledOrganizationId(), 'sso'),
             /*
              * The environment plane may own a connection itself. An environment-owned one
              * signs people in and enrols them nowhere — for an environment that does not
@@ -325,7 +330,9 @@ final readonly class ConnectionController extends ConsoleController
             abort_unless($this->scope->plane() === ConsolePlane::Environment, 403);
             $organizationId = null;
         } else {
-            $organizationId = $this->scope->requireOrganizationId();
+            // The form's own answer on the environment console, checked against this
+            // environment and bound for the checks below; the member's own elsewhere.
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         /*
@@ -419,12 +426,12 @@ final readonly class ConnectionController extends ConsoleController
             'organizationName' => $model->organization_id === null
                 ? null
                 : Organization::query()->whereKey($model->organization_id)->value('name'),
-            // Only the environment console has an organization detail page to link to; on
-            // the organization plane there is exactly one organization and no page about
-            // it, so the name is text rather than a link that 404s.
+            // Only the environment console has an organization page to link to — its SSO
+            // tab; on the organization plane there is exactly one organization and no page
+            // about it, so the name is text rather than a link that 404s.
             'organizationHref' => $this->scope->plane() === ConsolePlane::Environment
                 && $model->organization_id !== null
-                    ? route('environment.organizations.show', $model->organization_id)
+                    ? route('environment.organizations.sso', ['organization' => $model->organization_id])
                     : null,
             'offeringMandate' => $justActivated && $passwordsStillAllowed && $model->isActive(),
             'passwordsStillAllowed' => $passwordsStillAllowed,
@@ -458,7 +465,7 @@ final readonly class ConnectionController extends ConsoleController
         $result = $this->act(UpdateSsoConnection::class, [
             ...$config,
             'id' => $model->id,
-            'organization_id' => $this->actingOrganizationId(),
+            'organization_id' => $this->routeOrganizationId(),
             'name' => $request->name(),
         ], self::formFields(), fallback: 'name');
 
@@ -484,7 +491,7 @@ final readonly class ConnectionController extends ConsoleController
 
         // The service scopes the flip to the owning organization, so a draft cannot be
         // activated across tenants.
-        $result = $this->act(ActivateSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+        $result = $this->act(ActivateSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -522,7 +529,7 @@ final readonly class ConnectionController extends ConsoleController
             return back()->with('error', 'This connection belongs to the environment, not to one organization. Set the requirement under Sign-in rules.');
         }
 
-        $result = $this->act(RequireSso::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+        $result = $this->act(RequireSso::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
         return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections.show'), $model->id)
             ->with('status', 'Single sign-on is now required.');
@@ -532,7 +539,7 @@ final readonly class ConnectionController extends ConsoleController
     {
         $model = $this->guardEntitledConnection($connection);
 
-        $result = $this->act(DisableSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+        $result = $this->act(DisableSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Connection disabled.');
     }
@@ -541,7 +548,7 @@ final readonly class ConnectionController extends ConsoleController
     {
         $model = $this->guardEntitledConnection($connection);
 
-        $result = $this->act(DeleteSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+        $result = $this->act(DeleteSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
         return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections'))->with('status', 'Connection deleted.');
     }
@@ -549,13 +556,13 @@ final readonly class ConnectionController extends ConsoleController
     /**
      * The connection, re-resolved and re-scoped on every read and write.
      *
-     * The organization narrowing is the half the environment copy never needed. The acting
-     * organization is simply the boundary — and a connection the ENVIRONMENT owns has none,
-     * so it is visible on the plane that holds it and nowhere else.
+     * The organization narrowing is the half the environment copy never needed. The
+     * organization the page acts on is simply the boundary — and a connection the
+     * ENVIRONMENT owns has none, so it is visible on the plane that holds it and nowhere else.
      */
     private function connection(string $id): Connection
     {
-        $organizationId = $this->actingOrganizationId();
+        $organizationId = $this->routeOrganizationId();
 
         $model = Connection::query()
             ->whereKey($id)
@@ -570,11 +577,11 @@ final readonly class ConnectionController extends ConsoleController
     /**
      * The connection, refused unless its organization is entitled to SSO.
      *
-     * Asked of the CONNECTION's organization rather than the acting one: an entitlement
-     * belongs to the organization whose sign-in this connection governs, and an
-     * environment administrator following a deep link has not necessarily chosen one —
-     * resolving the gate against a blank selection would refuse a legitimate edit while
-     * telling nobody why. On the organization plane the two are the same by construction.
+     * Asked of the CONNECTION's organization rather than the page's: an entitlement
+     * belongs to the organization whose sign-in this connection governs, and a connection's
+     * page on the environment console is about no organization — resolving the gate against
+     * that would refuse a legitimate edit while telling nobody why. On the organization
+     * plane the two are the same by construction.
      */
     private function guardEntitledConnection(string $id): Connection
     {
@@ -606,8 +613,8 @@ final readonly class ConnectionController extends ConsoleController
     /**
      * Deny-by-default entitlement gate for the LIST's own mutations.
      *
-     * Also the guard that stops a write with no organization chosen: `entitled()` answers
-     * false when nothing is resolved rather than defaulting open.
+     * Also the guard that stops a write about no organization: `entitled()` answers false
+     * when nothing is resolved rather than defaulting open.
      */
     private function guardEntitled(): void
     {
@@ -616,13 +623,13 @@ final readonly class ConnectionController extends ConsoleController
     }
 
     /**
-     * A domain the ACTING organization owns, or 404.
+     * A domain the organization this page is about owns, or 404.
      *
      * The organization is a predicate IN the query, so a foreign id simply never matches
      * — the same fence `DomainVerification::forOrganization()` draws, without loading
      * every domain the organization has to find one. `requireOrganizationId()` rather
-     * than the nullable reader, because an environment administrator who has chosen
-     * nothing must not thereby be handed every domain in the environment by id.
+     * than the nullable reader, because a page about no organization must not thereby be
+     * handed every domain in the environment by id.
      *
      * 404, not the 403 it used to be: another organization's domain is not a permission
      * this person lacks, it is a row they have no business learning exists.

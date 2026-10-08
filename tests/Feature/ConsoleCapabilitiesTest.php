@@ -74,6 +74,7 @@ use Illuminate\Testing\TestResponse;
 use Inertia\Support\SessionKey;
 use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
+use Tests\Support\FormOrganization;
 
 /**
  * The console's capabilities, one controller each, through every door that offers them.
@@ -111,7 +112,10 @@ function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
     actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
     $orgId = app(Organizations::class)->create(new NewOrganization('Tenant Co', $slug))->id;
-    app(ConsoleScope::class)->chooseOrganization($orgId);
+
+    // The organization the environment console's create forms below name — "For which
+    // organization?" — the way the picker posts it. Nothing in the session says it.
+    FormOrganization::$id = $orgId;
 
     return $orgId;
 }
@@ -162,11 +166,11 @@ it('takes the organization from the scope rather than a field on the form', func
     expect(CertificationCampaign::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to open a review before an organization is chosen', function (): void {
+it('refuses to open a review that names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
-    openAccessReview([], 'environment.governance')->assertSessionHasErrors('name');
+    openAccessReview([], 'environment.governance')->assertSessionHasErrors('organization');
 
     // Refused rather than landed on whichever organization a downstream default picked.
     expect(CertificationCampaign::query()->exists())->toBeFalse();
@@ -224,12 +228,12 @@ it('registers an outbound connection against the organization from the scope', f
     expect(ProvisioningConnection::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to register an outbound connection before an organization is chosen', function (): void {
+it('refuses to register an outbound connection that names no organization', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-sync-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
-    registerOutboundSync([], 'environment.provisioning')->assertSessionHasErrors('name');
+    registerOutboundSync([], 'environment.provisioning')->assertSessionHasErrors('organization');
 
     expect(ProvisioningConnection::query()->exists())->toBeFalse();
 })->group('security');
@@ -365,13 +369,13 @@ it('registers a hook against the organization from the scope', function (): void
     expect(ExternalActionEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to register a hook before an organization is chosen', function (): void {
+it('refuses to register a hook that names no organization', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-hooks-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
     confirmConsoleStepUp();
-    registerHook([], 'environment.hooks')->assertSessionHasErrors('url');
+    registerHook([], 'environment.hooks')->assertSessionHasErrors('organization');
 
     expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 })->group('security');
@@ -508,14 +512,14 @@ it('defines a rule against the organization from the scope', function (): void {
     expect(SodPolicy::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to define a rule before an organization is chosen', function (): void {
+it('refuses to define a rule that names no organization', function (): void {
     $orgId = anEnvironmentAdminActingOn('tenant-sod-unchosen');
     $a = app(Roles::class)->define($orgId, 'create-po');
     $b = app(Roles::class)->define($orgId, 'approve-pay');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
     defineRoleConflict(['roles' => [$a->id, $b->id]], 'environment.sod-policies')
-        ->assertSessionHasErrors('name');
+        ->assertSessionHasErrors('organization');
 
     expect(SodPolicy::query()->exists())->toBeFalse();
 })->group('security');
@@ -690,18 +694,28 @@ it('serves the activity log from the same component on the organization plane', 
         ->assertInertia(fn (AssertableInertia $page) => $page->component('console/audit'));
 })->group('security');
 
-it('scopes the trail to the organization the environment console is acting on', function (): void {
-    // The picker is not decoration: an environment administrator reading one tenant's
-    // trail must be reading THAT tenant's, not a merged feed of every tenant's.
+it('scopes the trail to one organization by its filter, and on the organization\'s own page', function (): void {
+    // An environment administrator reading one tenant's trail must be reading THAT
+    // tenant's, not a merged feed of every tenant's — whether they narrowed the list with
+    // the Organization chip or opened the organization's Audit log tab.
     $orgId = anEnvironmentAdminActingOn('tenant-audit-scoped');
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-audit'))->id;
 
     anAuditEntry('mine.recorded', $orgId);
     anAuditEntry('theirs.recorded', $other);
+    anAuditEntry('environment.recorded');
 
-    expect(auditActions('environment.audit'))
+    expect(auditActions('environment.audit', ['organization' => $orgId]))
+        ->toContain('mine.recorded')
+        ->not->toContain('theirs.recorded')
+        ->not->toContain('environment.recorded');
+
+    expect(auditActions('environment.organizations.audit', ['organization' => $orgId]))
         ->toContain('mine.recorded')
         ->not->toContain('theirs.recorded');
+
+    // A filter naming no organization here is an EMPTY trail — never the whole one.
+    expect(auditActions('environment.audit', ['organization' => '01JQZZZZZZZZZZZZZZZZZZZZZZ']))->toBe([]);
 })->group('security');
 
 it('never shows an organization admin another organization\'s trail', function (): void {
@@ -731,7 +745,7 @@ it('keeps the whole-environment trail on the environment plane', function (): vo
     // picker also carried: the environment's own overview, across every tenant in it.
     $orgId = anEnvironmentAdminActingOn('tenant-audit-wide');
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-audit-wide'))->id;
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
     anAuditEntry('mine.recorded', $orgId);
     anAuditEntry('theirs.recorded', $other);
@@ -934,6 +948,7 @@ it('registers an endpoint against the organization from the scope', function ():
     confirmConsoleStepUp();
     $this->from(route('environment.webhooks.create'))
         ->post(route('environment.webhooks.store'), [
+            'organization' => FormOrganization::$id,
             'url' => 'https://hooks.example.test/events',
             'eventTypes' => ['user.created'],
         ])
@@ -942,18 +957,19 @@ it('registers an endpoint against the organization from the scope', function ():
     expect(WebhookEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to register an endpoint before an organization is chosen', function (): void {
+it('refuses to register an endpoint that names no organization', function (): void {
     config(['cbox-id.webhooks.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-webhooks-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
     confirmConsoleStepUp();
     $this->from(route('environment.webhooks.create'))
         ->post(route('environment.webhooks.store'), [
+            'organization' => FormOrganization::$id,
             'url' => 'https://hooks.example.test/events',
             'eventTypes' => ['user.created'],
         ])
-        ->assertSessionHasErrors('url');
+        ->assertSessionHasErrors('organization');
 
     expect(WebhookEndpoint::query()->exists())->toBeFalse();
 })->group('security');
@@ -969,6 +985,7 @@ it('keeps environment-wide webhook registration on the environment plane', funct
     confirmConsoleStepUp();
     $this->from(route('environment.webhooks.create'))
         ->post(route('environment.webhooks.store'), [
+            'organization' => FormOrganization::$id,
             'url' => 'https://hooks.example.test/everyone',
             'eventTypes' => ['user.created'],
             'environmentWide' => true,
@@ -1186,6 +1203,7 @@ it('reveals the signing secret exactly once, and never into the history entry', 
     confirmConsoleStepUp();
     $this->from(route('environment.webhooks.create'))
         ->post(route('environment.webhooks.store'), [
+            'organization' => FormOrganization::$id,
             'url' => 'https://hooks.example.test/events',
             'eventTypes' => ['user.created'],
         ])
@@ -1266,11 +1284,11 @@ it('defines a role against the organization from the scope', function (): void {
     expect(Role::query()->where('organization_id', $orgId)->where('name', 'Manager')->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to define a role before an organization is chosen', function (): void {
+it('refuses to define a role that names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-roles-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
-    defineRole([], 'environment.roles')->assertSessionHasErrors('name');
+    defineRole([], 'environment.roles')->assertSessionHasErrors('organization');
 
     expect(Role::query()->where('name', 'Manager')->exists())->toBeFalse();
 })->group('security');
@@ -1566,18 +1584,18 @@ it('registers an app against the organization from the scope', function (): void
     expect(Client::query()->where('organization_id', $orgId)->where('name', 'Support Portal')->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to register an app before an organization is chosen', function (): void {
+it('refuses to register an app that names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-apps-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
     confirmConsoleStepUp();
-    // Refused outright rather than reported on a field: with no organization resolved
-    // there is nowhere for this app to land, and a downstream default picking one would
-    // register it against a tenant nobody named.
+    // Refused on the form's "For which organization?": with none named there is nowhere for
+    // this app to land, and a downstream default picking one would register it against a
+    // tenant nobody named.
     registerApp([
         'name' => 'Support Portal',
         'redirectUris' => 'https://portal.example.test/callback',
-    ], 'environment.clients')->assertForbidden();
+    ], 'environment.clients')->assertSessionHasErrors('organization');
 
     expect(Client::query()->where('name', 'Support Portal')->exists())->toBeFalse();
 })->group('security');
@@ -1857,7 +1875,7 @@ it('never writes a rotated client secret into the page props', function (): void
     // The same property as the reveal above, on the OTHER way a plaintext appears. A
     // rotation is where an administrator is most likely to be sharing a screen, and a
     // secret in props is a secret in the history entry.
-    anEnvironmentAdminActingOn('tenant-apps-snapshot');
+    $orgId = anEnvironmentAdminActingOn('tenant-apps-snapshot');
 
     $client = app(ClientRegistry::class)->register(new NewClient(
         name: 'Rotating App',
@@ -1865,7 +1883,7 @@ it('never writes a rotated client secret into the page props', function (): void
         redirectUris: ['https://rotating.example.test/callback'],
         grantTypes: ['authorization_code'],
         scopes: ['openid'],
-        organizationId: app(ConsoleScope::class)->requireOrganizationId(),
+        organizationId: $orgId,
     ))->client;
 
     confirmConsoleStepUp();
@@ -2019,34 +2037,40 @@ it('registers a directory against the organization from the scope', function ():
     expect(Directory::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to register a directory before an organization is chosen', function (): void {
+it('refuses to register a directory that names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-dir-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
     confirmConsoleStepUp();
-    // Refused outright rather than reported on a field: with no organization resolved
-    // there is nowhere for this directory to land.
-    registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')->assertForbidden();
+    // Refused on the form's "For which organization?": with none named there is nowhere for
+    // this directory to land.
+    registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')->assertSessionHasErrors('organization');
 
     expect(Directory::query()->exists())->toBeFalse();
 })->group('security');
 
-it('tells an unchosen environment administrator to pick an organization, not to call their account team', function (): void {
-    // `entitled()` answers false for "no organization chosen" as well as for "this
-    // organization has no plan", and the two need different words. Sending an
-    // administrator who holds the whole environment to their account team over a picker
-    // they have simply not touched is a dead end dressed as an answer.
+it('never tells the environment-wide list to call the account team, and says so on the organization page', function (): void {
+    // An entitlement is an organization's. The environment-wide list is about no one
+    // organization, so it is never told a plan lacks this — sending an administrator who
+    // holds the whole environment to their account team over a list is a dead end dressed
+    // as an answer. The organization's own Directory Sync tab is where its plan speaks.
     config(['cbox-id.entitlements.mode' => 'metered']);
-    anEnvironmentAdminActingOn('tenant-dir-unentitled');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-unentitled');
 
     $this->get(route('environment.directories'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            // Two different problems with two different fixes, and the props say which:
-            // nothing is chosen, so nothing is unentitled yet.
-            ->where('organizationChosen', false)
-            ->where('entitled', false));
+            ->where('entitled', true)
+            ->where('inviteHref', null)
+            ->has('organizationFilter'));
+
+    $this->get(route('environment.organizations.directory-sync', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/directories/index')
+            ->where('entitled', false)
+            ->where('organizationFilter', null)
+            ->where('organizationHub.id', $orgId));
 })->group('security');
 
 it('connects a pull directory on the environment plane', function (): void {
@@ -2275,13 +2299,13 @@ it('creates a connection against the organization from the scope', function (): 
     expect(Connection::query()->where('organization_id', $orgId)->where('name', 'Acme Okta')->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to create a connection before an organization is chosen', function (): void {
+it('refuses to create a connection that names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-sso-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    FormOrganization::$id = null;
 
-    // Refused outright rather than reported on a field: with no organization resolved
-    // there is nowhere for this connection to land.
-    createConnection(['name' => 'Acme Okta'], 'environment.connections')->assertForbidden();
+    // Refused on the form's "For which organization?": with none named there is nowhere
+    // for this connection to land.
+    createConnection(['name' => 'Acme Okta'], 'environment.connections')->assertSessionHasErrors('organization');
 
     expect(Connection::query()->exists())->toBeFalse();
 })->group('security');
@@ -2316,23 +2340,32 @@ it('gives the organization plane the edit, disable and delete it never had', fun
     expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
 })->group('security');
 
-it('gives the environment plane domain verification and the Admin Portal invite', function (): void {
+it('gives the environment plane domain verification and the Admin Portal invite, on the organization\'s own page', function (): void {
     // The other half of the union. Neither existed on the environment console, so an
     // operator configuring SSO for a tenant could not prove the tenant's email domain —
-    // which is the thing that routes their people to the IdP at all.
+    // which is the thing that routes their people to the IdP at all. Both are about ONE
+    // organization, so they live on its SSO tab, under its own URL.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
+    $tab = route('environment.organizations.sso', $orgId);
+
+    $this->get($tab)
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/connections/index')
+            ->where('organizationHub.id', $orgId)
+            ->where('urls.addDomain', route('environment.connections.domains.store', $orgId)));
 
     // Upper-case → normalized to lowercase.
-    $this->from(route('environment.connections'))
-        ->post(route('environment.connections.domains.store'), ['domain' => 'ACME.com'])
+    $this->from($tab)
+        ->post(route('environment.connections.domains.store', $orgId), ['domain' => 'ACME.com'])
         ->assertSessionHasNoErrors();
 
     expect(VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->exists())->toBeTrue();
 
     // The portal link rides on the FLASH CHANNEL, not in props: it admits its holder to
     // this tenant's SSO setup with no account at all.
-    $this->from(route('environment.connections'))
-        ->post(route('environment.connections.invite'))
+    $this->from($tab)
+        ->post(route('environment.connections.invite', $orgId))
         ->assertInertiaFlash('portalUrl');
 
     $flash = session()->get(SessionKey::FLASH_DATA, []);
@@ -2347,8 +2380,8 @@ it('attributes an Admin Portal link to the environment administrator who minted 
     $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
     $actor = app(ConsoleScope::class)->actorId();
 
-    $this->from(route('environment.connections'))
-        ->post(route('environment.connections.invite'))
+    $this->from(route('environment.organizations.sso', $orgId))
+        ->post(route('environment.connections.invite', $orgId))
         ->assertSessionHasNoErrors();
 
     expect($actor)->not->toBe('')
@@ -2411,8 +2444,6 @@ it('keeps the whole-environment connection overview on the environment plane', f
     aSamlConnection($orgId, 'First IdP');
     aSamlConnection($other->id, 'Second IdP');
 
-    session()->forget(ConsoleScope::SELECTION_KEY);
-
     $this->get(route('environment.connections'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -2420,9 +2451,23 @@ it('keeps the whole-environment connection overview on the environment plane', f
                 ->pluck('name')
                 ->contains('First IdP') && $rows->pluck('name')->contains('Second IdP'))
             // Domain verification and the portal invite belong to ONE organization, so
-            // they wait for a choice rather than acting on whichever the page loaded.
-            ->where('needsOrganization', true)
-            ->where('domains', []));
+            // they are on its own page rather than acting on whichever the list loaded.
+            ->where('domains', null)
+            ->where('urls', null));
+
+    // The Organization chip narrows the overview to one…
+    $this->get(route('environment.connections', ['organization' => $other->id]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('connections', fn (Collection $rows): bool => $rows->pluck('name')->all() === ['Second IdP'])
+            ->where('organizationFilter.selected.id', $other->id));
+
+    // …and one that names no organization here empties it rather than unfiltering it.
+    $this->get(route('environment.connections', ['organization' => '01JQZZZZZZZZZZZZZZZZZZZZZZ']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('connections', [])
+            ->where('organizationFilter.unknown', true));
 })->group('security');
 
 it('refuses single sign-on to an organization admin with no organization at all', function (): void {
@@ -2510,34 +2555,46 @@ it('still themes the environment default when the environment console saves', fu
         ->and(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
 })->group('security');
 
-it('lets the environment console theme the organization it is acting on instead', function (): void {
-    // The other half of the choice — and the capability the organization plane always had,
-    // now reachable from this one without switching consoles.
+it('lets the environment console theme one organization on its own Branding tab instead', function (): void {
+    // The other half — and the capability the organization plane always had, now reachable
+    // from this one without switching consoles. Which organization is the page's address.
     $orgId = anEnvironmentAdminActingOn('tenant-appearance-org');
     $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
 
     $theme = Appearance::fromPreset('warm')->toArray();
     $theme['light']['primary'] = '#123456';
+    unset($theme['logo'], $theme['name']);
 
-    saveAppearance('environment.appearance', $theme)
-        ->assertRedirect(route('environment.appearance'))
+    $this->get(route('environment.organizations.branding', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/appearance')
+            ->where('environmentDefault', false)
+            ->where('saveHref', route('environment.organizations.branding.update', $orgId))
+            ->where('organizationHub.id', $orgId));
+
+    $this->from(route('environment.organizations.branding', $orgId))
+        ->post(route('environment.organizations.branding.update', $orgId), ['theme' => $theme])
+        ->assertRedirect(route('environment.organizations.branding', $orgId))
         ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->settings['appearance']['light']['primary'])->toBe('#123456')
         ->and(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
 })->group('security');
 
-it('refuses to theme an organization before one is chosen', function (): void {
-    // The editor is not even drawn in this state, so this is the forged half: with no
-    // organization resolved the write would otherwise land wherever a downstream default
-    // pointed, which on this plane is somebody's tenant.
+it('themes only the environment default from the environment\'s own Appearance page', function (): void {
+    // The page's address says what it themes. A save from the environment's own page lands
+    // on the environment default whatever the form claims — never on an organization a
+    // downstream default picked — and an organization's own Branding tab for one that is not
+    // in this environment is a 404.
     $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
 
     saveAppearance('environment.appearance', Appearance::fromPreset('warm')->toArray())
-        ->assertForbidden();
+        ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
+
+    $this->get(route('environment.organizations.branding', '01JQZZZZZZZZZZZZZZZZZZZZZZ'))->assertNotFound();
 })->group('security');
 
 it('refuses an organization admin the environment default theme', function (): void {
@@ -2633,16 +2690,30 @@ it('serves settings from the same component on the organization plane', function
             ->whereNot('organization', null));
 })->group('security');
 
-it('gives the environment plane the rename it never had', function (): void {
+it('gives the environment plane the rename it never had, on the organization\'s own Settings tab', function (): void {
     // An administrator who holds every organization in the environment could not correct
-    // a typo in one's name without signing into that organization's own console.
+    // a typo in one's name without signing into that organization's own console. It is the
+    // organization's Settings tab now; the environment's own Settings page names none.
     $orgId = anEnvironmentAdminActingOn('tenant-settings-rename');
 
-    $this->patch(route('environment.settings.rename'), ['name' => 'Renamed Co'])
+    $this->get(route('environment.organizations.settings', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('environment/organizations/tabs/settings')
+            ->where('urls.update', route('environment.organizations.update', $orgId)));
+
+    $this->patch(route('environment.organizations.update', $orgId), ['name' => 'Renamed Co', 'slug' => 'tenant-settings-rename'])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->name)->toBe('Renamed Co');
+
+    $this->get(route('environment.settings'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('organization', null)
+            ->where('renameHref', null)
+            ->where('organizationsHref', route('environment.organizations')));
 })->group('security');
 
 it('attributes the rename to the subject who made it, on either plane', function (): void {
@@ -2653,7 +2724,7 @@ it('attributes the rename to the subject who made it, on either plane', function
     $orgId = anEnvironmentAdminActingOn('tenant-settings-actor');
     $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
 
-    $this->patch(route('environment.settings.rename'), ['name' => 'Attributed Co']);
+    $this->patch(route('environment.organizations.update', $orgId), ['name' => 'Attributed Co', 'slug' => 'tenant-settings-actor']);
 
     expect(AuditEntry::query()->where('action', 'organization.renamed')->value('actor_id'))
         ->toBe($subjectId)
@@ -2661,23 +2732,23 @@ it('attributes the rename to the subject who made it, on either plane', function
         ->toBe($orgId);
 })->group('security');
 
-it('refuses a rename before an organization is chosen', function (): void {
+it('renames no organization from the environment\'s own Settings page', function (): void {
+    // The rename that page used to carry acted on whichever organization the console
+    // header named. That route is gone, and the page about the environment renames nothing.
     anEnvironmentAdminActingOn('tenant-settings-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
 
-    $this->patch(route('environment.settings.rename'), ['name' => 'Nobody In Particular'])
-        ->assertForbidden();
+    expect(Route::has('environment.settings.rename'))->toBeFalse();
+
+    $this->patch('/admin/settings', ['name' => 'Nobody In Particular'])->assertStatus(405);
 
     expect(AuditEntry::query()->where('action', 'organization.renamed')->exists())->toBeFalse();
 })->group('security');
 
-it('renames the organization the console is acting on and no other', function (): void {
-    // The rename takes no id from the wire — it resolves the target through the scope —
-    // so the other organization in the environment is untouchable from this page.
+it('renames the organization its own page is about and no other', function (): void {
     $orgId = anEnvironmentAdminActingOn('tenant-settings-scoped');
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-settings'));
 
-    $this->patch(route('environment.settings.rename'), ['name' => 'Only Mine']);
+    $this->patch(route('environment.organizations.update', $orgId), ['name' => 'Only Mine', 'slug' => 'tenant-settings-scoped']);
 
     expect(app(Organizations::class)->find($orgId)?->name)->toBe('Only Mine')
         ->and(app(Organizations::class)->find($other->id)?->name)->toBe('Other Co');
@@ -2742,15 +2813,17 @@ it('serves social sign-in on the environment plane, not only the organization on
     expect($orgId)->not->toBe('');
 })->group('security');
 
-it('refuses to enable a provider before an organization is chosen', function (): void {
+it('refuses to enable a provider that names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-social-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
 
-    // The READ renders — the page has to, or the acting-organization picker in the console
-    // header is unreachable and the administrator can never choose one. The WRITE is what
-    // must refuse, and it does so by demanding an organization rather than by silently
-    // writing to none.
-    $this->get(route('environment.social-providers'))->assertOk();
+    // The READ renders — every organization's providers, with the setup form asking which
+    // organization. The WRITE is what must refuse, and it does so by demanding an
+    // organization rather than by silently writing to none.
+    $this->get(route('environment.social-providers'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('organizationFilter')
+            ->has('organization'));
 
     test()->from(route('environment.social-providers'))
         ->post(route('environment.social-providers.store'), [
@@ -2759,7 +2832,7 @@ it('refuses to enable a provider before an organization is chosen', function ():
             'clientSecret' => 'gh',
             'parameters' => [],
         ])
-        ->assertForbidden();
+        ->assertSessionHasErrors('organization');
 })->group('security');
 
 /*

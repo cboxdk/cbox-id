@@ -80,13 +80,13 @@ it('opens a review of staff roles from the environment console, and a revoke tak
     expect(app(Roles::class)->everywhereFor($sam))->toBe([]);
 });
 
-it('keeps a staff review visible while an organization is chosen in the console header', function (): void {
+it('keeps a staff review visible on the environment console, beside every organization\'s', function (): void {
     crudSetup();
     ['org' => $org] = staffReviewFixture();
 
     $staffReview = app(AccessReviews::class)->open(null, 'Staff access');
 
-    $this->post(route('environment.acting-organization.choose'), ['organization' => $org]);
+    expect($org)->not->toBe('');
 
     $this->get(route('environment.governance.show', $staffReview->id))->assertOk();
 

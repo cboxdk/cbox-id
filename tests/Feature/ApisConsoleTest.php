@@ -215,21 +215,19 @@ it('links an API only to an app with the same owner', function (): void {
     expect(Api::query()->count())->toBe(0);
 });
 
-it('registers an API for the organization being administered, and for no other', function (): void {
+it('registers an API for the organization the form names, and for none outside this environment', function (): void {
     crudSetup();
     $acme = app(Organizations::class)->create(new NewOrganization('Acme Retail', 'acme-retail'));
-    $globex = app(Organizations::class)->create(new NewOrganization('Globex', 'globex'));
 
-    test()->post(route('environment.acting-organization.choose'), ['organization' => $acme->id]);
-
-    // The create page offers the environment and the organization being acted on.
-    $owners = collect((array) test()->get(route('environment.apis.create'))->assertOk()->inertiaProps('owners'));
+    // The create page offers the environment, and the organization its link names — the
+    // form's "For which organization?" reloads it with `?organization=`.
+    $owners = collect((array) test()->get(route('environment.apis.create', ['organization' => $acme->id]))->assertOk()->inertiaProps('owners'));
 
     expect($owners->pluck('value')->all())->toBe(['environment', $acme->id]);
 
-    // A crafted owner — another organization than the one chosen — is refused.
-    registerApiInConsole(['owner' => $globex->id])
-        ->assertSessionHasErrors(['owner' => 'Choose the environment, or the organization you are acting on.']);
+    // An owner that names no organization of THIS environment is a field error.
+    registerApiInConsole(['owner' => '01JQZZZZZZZZZZZZZZZZZZZZZZ'])
+        ->assertSessionHasErrors(['owner' => 'That organization is not in this environment.']);
 
     registerApiInConsole(['owner' => $acme->id, 'identifier' => 'https://books.acme.example'])->assertSessionHasNoErrors();
 

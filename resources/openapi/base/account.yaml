@@ -5,7 +5,8 @@ info:
   description: |
     **Your own account** — the person calling, and nobody else: your profile, where you are
     signed in, which applications may act as you, your own API keys for the apps built on
-    this environment, your sign-in methods and your trusted devices. The same actions the
+    this environment, your sign-in methods, your trusted devices and the organizations you
+    belong to. The same actions the
     console's My account pages run, with the same rules, refusals and audit trail.
 
     **Who may call it.** Only you, through an access token you delegated carrying the
@@ -39,6 +40,8 @@ tags:
   - name: Sign-in methods
   - name: Devices
     description: Your trusted devices, which approve sign-ins and agent requests.
+  - name: Organizations
+    description: The organizations you are a member of — and leaving one.
 paths: {}
 components:
   securitySchemes:

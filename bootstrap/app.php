@@ -6,6 +6,7 @@ use App\Http\Middleware\AuthenticateDelegatedApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateWorkspaceApi;
+use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -301,6 +302,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // Host-plane bulkheads + the environment-admin (account-layer) console gate.
             'plane' => EnforcePlane::class,
             'env.admin' => AuthenticateEnvironmentAdmin::class,
+            // The organization an environment-console page acts on, from its URL
+            // (`/admin/organizations/{organization}/…`) — never from the session.
+            'console.org' => BindConsoleOrganization::class,
             // A surface that only exists in the multi-tenant shape (see the class).
             'multi.tenant' => RequireMultiTenant::class,
             // What a customer's own organization console offers, on a customer's

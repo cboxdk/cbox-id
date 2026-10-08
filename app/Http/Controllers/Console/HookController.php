@@ -62,17 +62,18 @@ final readonly class HookController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->scope->organizationId();
+        $filter = $this->organizationFilter();
+        $organizationId = $filter->id;
 
         $query = ExternalActionEndpoint::query()
             /*
-             * The environment's own endpoints are listed beside the organization's. With
-             * no organization chosen — only possible for an environment administrator —
-             * this is every endpoint in the environment, which is a deliberate overview
-             * rather than a leak: the model's environment scope still bounds it, and an
-             * organization member can never reach that branch because their organization
-             * is implicit.
+             * The environment's own endpoints are listed beside the organization's — the
+             * member's own, or the one the list is filtered to. Unfiltered — only possible
+             * for an environment administrator — every endpoint in the environment, which is
+             * a deliberate overview rather than a leak: the model's environment scope still
+             * bounds it. A filter naming no organization here matches nothing.
              */
+            ->when($filter->unknown, fn (Builder $q): Builder => $filter->apply($q))
             ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
                 fn (Builder $scoped): Builder => $scoped
                     ->whereNull('organization_id')
@@ -108,7 +109,8 @@ final readonly class HookController extends ConsoleController
             ], $page->getCollection()->all()),
             'pagination' => PaginationProps::from($page),
             'search' => $term,
-            'createHref' => $this->url('hooks.create'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            'createHref' => $this->createUrl('hooks.create'),
         ]);
     }
 
@@ -138,6 +140,9 @@ final readonly class HookController extends ConsoleController
              * own explicit choice, offered on the environment plane alone.
              */
             'mayScopeEnvironmentWide' => $this->scope->plane()->choosesOrganization(),
+            // "For which organization?" on the environment console, unless the endpoint is
+            // the whole environment's; prefilled and locked when opened from an organization.
+            'organization' => $this->organizationPicker(),
             'indexHref' => $this->url('hooks'),
             'storeHref' => $this->url('hooks.store'),
         ]);
@@ -168,16 +173,10 @@ final readonly class HookController extends ConsoleController
 
             $organizationId = null;
         } else {
-            $organizationId = $this->actingOrganizationId();
-
-            if ($organizationId === null) {
-                // Reported on the field rather than thrown: on the environment plane
-                // "you have not chosen an organization yet" is an ordinary state of the
-                // console, and the form must survive to be resubmitted.
-                return back()->withInput()->withErrors([
-                    'url' => 'Choose an organization in the console header, or register the endpoint for the whole environment.',
-                ]);
-            }
+            // The form's own answer on the environment console, checked against this
+            // environment — a field error the form survives, never a write into whichever
+            // organization a default picked; the member's own elsewhere.
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         // LAST, after authorization and after the refusals above — the order every other
@@ -306,7 +305,7 @@ final readonly class HookController extends ConsoleController
     /**
      * The endpoint, refused unless this administrator may CHANGE it.
      *
-     * {@see ExternalActions} answers a mismatched acting organization with a silent no-op —
+     * {@see ExternalActions} answers a mismatched organization with a silent no-op —
      * the caller was not entitled to learn the endpoint exists — but a silent no-op reached
      * through this page would still redirect and announce "Endpoint removed" over an
      * endpoint that is still running. So the refusal is explicit here and the contract's

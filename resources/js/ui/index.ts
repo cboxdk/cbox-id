@@ -30,6 +30,7 @@ export {
 } from './DropdownMenu';
 export { EmptyState } from './EmptyState';
 export { Field, useFieldControl } from './Field';
+export { FilterChip, FilterChips, OrganizationFilterChip } from './FilterChips';
 export { Help } from './Help';
 export { Icon, type IconProps } from './Icon';
 export { type IconName, iconNames, iconPaths } from './icons';
@@ -53,6 +54,11 @@ export {
 export { Kv, KvList } from './Kv';
 export { LinkConfirmation, type LinkConfirmationContent } from './LinkConfirmation';
 export { type MetadataRow, MetadataRows } from './MetadataRows';
+export {
+    OrganizationField,
+    OrganizationLookupList,
+    OrganizationPickerField,
+} from './OrganizationField';
 export { PageHeader } from './PageHeader';
 export { PasswordField, PasswordManagerIdentity } from './PasswordField';
 export {

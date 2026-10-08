@@ -39,7 +39,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
     schema: 'Appearance',
     tag: 'Branding',
     rest: ['PUT', '/branding/appearance'],
-    consoleRoutes: ['appearance.update', 'environment.appearance.update'],
+    consoleRoutes: ['appearance.update', 'environment.appearance.update', 'environment.organizations.branding.update'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class SetAppearance implements Action

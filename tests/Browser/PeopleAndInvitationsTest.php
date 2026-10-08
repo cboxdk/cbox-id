@@ -185,14 +185,18 @@ it('draws the same invite form on the environment console, with "Make owner" on 
     $erin = app(Subjects::class)->create('erin@tenant.test', 'Erin');
     app(Memberships::class)->add($org->id, $erin->id, MembershipRole::Member);
 
-    $page = visit('/admin/organizations/'.$org->id);
-
-    $page->assertSee('Invite someone')
+    // The organization's Invitations tab carries the invite form…
+    visit('/admin/organizations/'.$org->id.'/invitations')
+        ->assertSee('Invite someone')
         ->assertSee('Send invitation')
-        ->click('[aria-label="More actions for Erin"]')
-        ->assertSee('Make owner')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'environment-organization');
+
+    // …and its Members tab the roster, with "Make owner" on a row.
+    visit('/admin/organizations/'.$org->id.'/members')
+        ->click('[aria-label="More actions for Erin"]')
+        ->assertSee('Make owner')
+        ->assertNoJavaScriptErrors();
 })->group('a11y');
 
 it('draws no staff-only role on the environment console\'s invite form, and does on its add-member form', function (): void {
@@ -202,18 +206,20 @@ it('draws no staff-only role on the environment console\'s invite form, and does
     app(Roles::class)->define(null, 'Approver');
     app(Roles::class)->define(null, 'Vendor support', tenantAssignable: false);
 
-    $page = visit('/admin/organizations/'.$org->id)
+    $invitations = visit('/admin/organizations/'.$org->id.'/invitations')
         ->assertSee('Send invitation')
         ->assertNoJavaScriptErrors();
 
-    // Rendered first (asserted above), then read: the invite form's own text, not the
-    // page's, because the add-member form beside it rightly offers the staff role.
-    $invite = (string) $page->script('document.querySelector(\'form[aria-label="Invite someone"]\').innerText');
+    // Rendered first (asserted above), then read: the invite form's own text, because the
+    // add-member form on the Members tab rightly offers the staff role.
+    $invite = (string) $invitations->script('document.querySelector(\'form[aria-label="Invite someone"]\').innerText');
 
     expect($invite)->toContain('Approver')
         ->and($invite)->not->toContain('Vendor support');
 
     // Offered on the add-member form, and marked for what it is — in the Staff page's words.
+    $page = visit('/admin/organizations/'.$org->id.'/members');
+
     $page->assertSee('Vendor support')
         ->assertSee('Staff-only')
         ->assertSee('this organization\'s admins can\'t see or grant it')
@@ -224,11 +230,11 @@ it('draws no staff-only role on the environment console\'s invite form, and does
 
     expect($approver)->not->toContain('Staff-only');
 
-    visit('/admin/organizations/'.$org->id)->inDarkMode()
+    visit('/admin/organizations/'.$org->id.'/members')->inDarkMode()
         ->assertSee('Staff-only')
         ->screenshot(filename: 'environment-organization-staff-roles-dark');
 
-    visit('/admin/organizations/'.$org->id)->resize(375, 812)
+    visit('/admin/organizations/'.$org->id.'/members')->resize(375, 812)
         ->assertSee('Staff-only')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->screenshot(filename: 'environment-organization-staff-roles-mobile');

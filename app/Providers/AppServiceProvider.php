@@ -107,10 +107,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CspNonce::class);
 
         // The console's one answer to "who is acting, on which organization, and what
-        // may they do". Scoped, not singleton: the environment plane picks an
-        // organization per request, and a singleton would carry one administrator's
-        // choice into the next request on a long-lived worker.
+        // may they do". Scoped, not singleton: on the environment plane the organization
+        // is the one THIS request's URL or form names, and a singleton would carry it into
+        // the next request on a long-lived worker. Released when the request ends as well,
+        // for a process that reuses the container without flushing scoped instances.
         $this->app->scoped(ConsoleScope::class);
+        $this->app->terminating(function (): void {
+            if ($this->app->resolved(ConsoleScope::class)) {
+                $this->app->make(ConsoleScope::class)->releaseOrganization();
+            }
+        });
 
         // Discovery, plus what THIS application's `/oauth/authorize` does with `prompt`.
         // Bound over the framework's controllers so its routes keep their middleware.

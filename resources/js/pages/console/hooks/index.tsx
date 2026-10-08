@@ -1,13 +1,21 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
 import {
     Badge,
     Button,
     EmptyState,
+    FilterChips,
     Icon,
     Input,
+    OrganizationFilterChip,
     PageHeader,
     Pagination,
     Pill,
@@ -31,25 +39,18 @@ type Props = PageProps<{
     pagination: PaginationState;
     search: string;
     createHref: string;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
 
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
-
-export default function HooksIndex({ help, hooks, pagination, search, createHref }: Props) {
+export default function HooksIndex({
+    help,
+    hooks,
+    pagination,
+    search,
+    createHref,
+    organizationFilter,
+}: Props) {
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -83,7 +84,12 @@ export default function HooksIndex({ help, hooks, pagination, search, createHref
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}

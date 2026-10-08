@@ -1,13 +1,26 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, EmptyState, Field, Icon, Input, PageHeader, Panel, RadioGroup } from '@/ui';
+import type { OrganizationPicker, PageProps } from '@/types';
+import {
+    Button,
+    Field,
+    Icon,
+    Input,
+    OrganizationPickerField,
+    PageHeader,
+    Panel,
+    RadioGroup,
+} from '@/ui';
 
 type Covers = 'organization' | 'staff';
 
 type Props = PageProps<{
-    organizationChosen: boolean;
-    organizationName: string | null;
+    /**
+     * "For which organization?" — the environment console only, where a review of one
+     * organization's access has to say which; null on the organization console, whose
+     * review is always its own.
+     */
+    organization: OrganizationPicker | null;
     /** The environment console can also review staff roles, which no organization owns. */
     canReviewStaff: boolean;
     covers: Covers;
@@ -16,17 +29,19 @@ type Props = PageProps<{
 }>;
 
 export default function CreateAccessReview({
-    organizationChosen,
-    organizationName,
+    organization,
     canReviewStaff,
     covers,
     indexHref,
     storeHref,
 }: Props) {
-    const form = useForm<{ name: string; covers: Covers }>({ name: '', covers });
+    const form = useForm<{ name: string; covers: Covers; organization: string }>({
+        name: '',
+        covers,
+        organization: organization?.selected?.id ?? '',
+    });
 
     const reviewingStaff = canReviewStaff && form.data.covers === 'staff';
-    const needsOrganization = !reviewingStaff && !organizationChosen;
 
     return (
         <>
@@ -48,7 +63,7 @@ export default function CreateAccessReview({
                     description={
                         reviewingStaff
                             ? 'Snapshots every staff role — each role held across the whole environment — as items to certify or revoke. A revoke takes the role back in every organization at once.'
-                            : 'Snapshots every current role assignment and membership in the selected organization as items to certify or revoke.'
+                            : 'Snapshots every current role assignment and membership in one organization as items to certify or revoke.'
                     }
                 />
             </div>
@@ -71,11 +86,8 @@ export default function CreateAccessReview({
                             options={[
                                 {
                                     value: 'organization',
-                                    label: organizationName ?? 'One organization',
-                                    hint:
-                                        organizationName === null
-                                            ? 'Pick the organization in the bar above first.'
-                                            : "Its members' roles and memberships.",
+                                    label: 'One organization',
+                                    hint: "Its members' roles and memberships.",
                                 },
                                 {
                                     value: 'staff',
@@ -87,51 +99,47 @@ export default function CreateAccessReview({
                     </Panel>
                 )}
 
-                {needsOrganization ? (
-                    // Nothing is wrong with this administrator: a review of an
-                    // organization's access covers ONE organization, and they have not
-                    // said which.
-                    <div className="card">
-                        <EmptyState
-                            icon="layers"
-                            title="Choose an organization"
-                            description="A review snapshots one organization's roles and memberships, so there is nothing to take a picture of yet. Pick the organization in the bar above."
-                            actions={
-                                <Button asChild>
-                                    <Link href={indexHref}>Back to Access reviews</Link>
-                                </Button>
-                            }
-                        />
-                    </div>
-                ) : (
-                    <>
-                        <Panel>
-                            <Field
-                                label="Review name"
-                                hint="What this round is called when somebody asks which review a decision came from — a quarter, an audit, a date."
-                                error={form.errors.name}
-                            >
-                                <Input
-                                    name="name"
-                                    placeholder={
-                                        reviewingStaff ? 'Q3 staff access' : 'Q3 access review'
-                                    }
-                                    value={form.data.name}
-                                    onChange={(event) => form.setData('name', event.target.value)}
-                                />
-                            </Field>
-                        </Panel>
+                <Panel>
+                    <div className="space-y-5">
+                        {/*
+                            A review of an organization's access covers ONE organization, so
+                            the environment console asks which — on the form, rather than
+                            sending somebody to change a setting somewhere else first.
+                        */}
+                        {organization !== null && !reviewingStaff && (
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="Whose roles and memberships the review snapshots."
+                            />
+                        )}
 
-                        <div className="flex items-center gap-2">
-                            <Button type="submit" variant="primary" loading={form.processing}>
-                                Open review
-                            </Button>
-                            <Button asChild>
-                                <Link href={indexHref}>Cancel</Link>
-                            </Button>
-                        </div>
-                    </>
-                )}
+                        <Field
+                            label="Review name"
+                            hint="What this round is called when somebody asks which review a decision came from — a quarter, an audit, a date."
+                            error={form.errors.name}
+                        >
+                            <Input
+                                name="name"
+                                placeholder={
+                                    reviewingStaff ? 'Q3 staff access' : 'Q3 access review'
+                                }
+                                value={form.data.name}
+                                onChange={(event) => form.setData('name', event.target.value)}
+                            />
+                        </Field>
+                    </div>
+                </Panel>
+
+                <div className="flex items-center gap-2">
+                    <Button type="submit" variant="primary" loading={form.processing}>
+                        Open review
+                    </Button>
+                    <Button asChild>
+                        <Link href={indexHref}>Cancel</Link>
+                    </Button>
+                </div>
             </form>
         </>
     );
