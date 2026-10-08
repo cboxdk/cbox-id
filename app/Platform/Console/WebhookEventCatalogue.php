@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Platform\Sso\CertificateExpiryAlerts;
 use Cbox\Id\Webhooks\Enums\WebhookEventType;
-use Cbox\Id\Webhooks\ValueObjects\WebhookEventDescriptor;
 
 /**
  * The event types the console offers as subscription checkboxes — the framework's
@@ -27,6 +27,20 @@ use Cbox\Id\Webhooks\ValueObjects\WebhookEventDescriptor;
  */
 final class WebhookEventCatalogue
 {
+    /**
+     * Events THIS APP emits that the framework's catalogue does not know, each listed after
+     * the framework event it sits beside. Delivery matches a subscription by its string, so
+     * the framework's enum is the picker's list and not a gate on what can be delivered.
+     *
+     * `connection.certificate_expiring` is the daily SAML certificate scan's
+     * ({@see CertificateExpiryAlerts}).
+     *
+     * @var array<string, string> event => the framework event it is listed after
+     */
+    public const array APP_EVENTS = [
+        'connection.certificate_expiring' => 'connection.activated',
+    ];
+
     /** The sentence a submission naming an event the picker does not list gets. */
     public const string REFUSAL = 'Choose events from the list. An endpoint can only subscribe to events Cbox ID sends.';
 
@@ -39,10 +53,24 @@ final class WebhookEventCatalogue
      */
     public static function offered(): array
     {
-        return array_values(array_map(
-            static fn (WebhookEventDescriptor $event): string => $event->name(),
-            array_filter(WebhookEventType::catalogue(), static fn (WebhookEventDescriptor $event): bool => $event->isOffered()),
-        ));
+        $offered = [];
+
+        foreach (WebhookEventType::catalogue() as $event) {
+            if (! $event->isOffered()) {
+                continue;
+            }
+
+            $offered[] = $event->name();
+
+            // This app's own events, beside the framework's of the same group.
+            foreach (self::APP_EVENTS as $name => $after) {
+                if ($after === $event->name()) {
+                    $offered[] = $name;
+                }
+            }
+        }
+
+        return $offered;
     }
 
     /**

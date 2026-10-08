@@ -289,12 +289,24 @@ return [
 
     /*
      * Admin Portal setup links — the short-lived, single-use URL an entitled org
-     * admin hands to an external IT admin so they can configure that one org's
-     * SSO/SCIM without a platform account. `ttl_minutes` bounds how long a
-     * generated link stays redeemable.
+     * admin hands to an external IT admin so they can set up that one org's SSO,
+     * directory sync, domains, log streams or SAML certificate without a platform
+     * account. `ttl_minutes` is how long a generated link stays redeemable when its
+     * minter does not choose (they may pick 5 minutes to 7 days); `session_minutes`
+     * is how long the setup session it opens lasts, counted from the redemption.
+     *
+     * `certificate_alerts` is the daily scan for SAML signing certificates about to
+     * expire: a `connection.certificate_expiring` webhook at each threshold (days
+     * before expiry), and — unless `mail_admins` is off — a mail to the
+     * organization's owners and admins.
      */
     'portal' => [
         'ttl_minutes' => (int) env('CBOX_ID_PORTAL_TTL_MINUTES', 30),
+        'session_minutes' => (int) env('CBOX_ID_PORTAL_SESSION_MINUTES', 120),
+        'certificate_alerts' => [
+            'thresholds' => [30, 7],
+            'mail_admins' => (bool) env('CBOX_ID_CERTIFICATE_ALERT_MAIL', true),
+        ],
     ],
 
     /*

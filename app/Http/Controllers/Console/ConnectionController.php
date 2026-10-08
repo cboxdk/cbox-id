@@ -23,8 +23,9 @@ use App\Http\Requests\Console\SaveConnectionRequest;
 use App\Http\Requests\Console\StoreConnectionRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Entitlements;
-use App\Platform\Enums\PortalScope;
+use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Sso\CertificateExpiryAlerts;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -133,6 +134,12 @@ final readonly class ConnectionController extends ConsoleController
             'createHref' => $this->createUrl('connections.create'),
             // The writes about ONE organization — a portal link, its domains — exist only
             // where the page is about one.
+            // An organization's SAML certificates about to stop working — the daily scan's
+            // warning, read live; the environment-wide list is about no one organization.
+            'certificateWarnings' => $organizationId === null ? [] : array_map(fn (array $warning): array => [
+                ...$warning,
+                'href' => $this->url('connections.show', $warning['connection_id']),
+            ], app(CertificateExpiryAlerts::class)->warningsFor($organizationId)),
             'urls' => $organizationId === null ? null : [
                 'invite' => $this->url('connections.invite'),
                 'addDomain' => $this->url('connections.domains.store'),
@@ -152,7 +159,7 @@ final readonly class ConnectionController extends ConsoleController
         // scope's `actorId()` here, since the environment plane has no subject session.
         $result = $this->act(CreatePortalLink::class, [
             'organization_id' => $this->scope->requireOrganizationId(),
-            'covers' => PortalScope::Sso->value,
+            'intents' => [PortalIntent::Sso->value],
         ]);
 
         if ($result instanceof RedirectResponse) {

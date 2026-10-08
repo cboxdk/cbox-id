@@ -244,7 +244,7 @@ it('refuses a key without the scope, reads included', function (): void {
     $this->withToken($reader)->postJson('/api/v1/sso/domains', ['organization_id' => $org, 'domain' => 'acme.com'])->assertForbidden();
     $this->withToken($nothing)->getJson('/api/v1/sso/connections')->assertForbidden();
     $this->withToken($nothing)->getJson('/api/v1/sso/domains')->assertForbidden();
-    $this->withToken($reader)->postJson("/api/v1/organizations/{$org}/portal-links", ['covers' => 'sso'])->assertForbidden();
+    $this->withToken($reader)->postJson("/api/v1/organizations/{$org}/portal-links", ['intents' => ['sso']])->assertForbidden();
 
     expect(Connection::query()->count())->toBe(0);
 })->group('security');
@@ -325,12 +325,12 @@ it('mints a one-time Admin Portal link, shown once and never kept for a replay',
     $org = entOrg();
 
     $first = $this->withToken($key)->withHeader('Idempotency-Key', 'portal-1')
-        ->postJson("/api/v1/organizations/{$org}/portal-links", ['covers' => 'both'])
+        ->postJson("/api/v1/organizations/{$org}/portal-links", ['intents' => ['sso', 'dsync']])
         ->assertCreated()
         ->assertJsonPath('data.organization_id', $org)
-        ->assertJsonPath('data.covers', 'both');
+        ->assertJsonPath('data.intents', ['sso', 'dsync']);
     $again = $this->withToken($key)->withHeader('Idempotency-Key', 'portal-1')
-        ->postJson("/api/v1/organizations/{$org}/portal-links", ['covers' => 'both'])
+        ->postJson("/api/v1/organizations/{$org}/portal-links", ['intents' => ['sso', 'dsync']])
         ->assertCreated();
 
     $url = (string) $first->json('data.url');
@@ -348,14 +348,14 @@ it('mints a one-time Admin Portal link, shown once and never kept for a replay',
         ->and($entry->organization_id)->toBe($org);
 
     $this->flushHeaders();
-    $this->withToken($key)->postJson('/api/v1/organizations/org_missing/portal-links', ['covers' => 'sso'])->assertNotFound();
+    $this->withToken($key)->postJson('/api/v1/organizations/org_missing/portal-links', ['intents' => ['sso']])->assertNotFound();
 })->group('security');
 
 it('refuses a portal link for a feature the organization\'s plan does not include', function (): void {
     config(['cbox-id.entitlements.mode' => 'metered']);
     [$key] = entKey(['portal_links:write']);
 
-    $this->withToken($key)->postJson('/api/v1/organizations/'.entOrg().'/portal-links', ['covers' => 'scim'])
+    $this->withToken($key)->postJson('/api/v1/organizations/'.entOrg().'/portal-links', ['intents' => ['dsync']])
         ->assertForbidden()->assertJsonPath('error', 'not_entitled');
 
     expect(entTrail('portal_link.created'))->toBe([]);

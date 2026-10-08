@@ -96,6 +96,11 @@ use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
+use App\Http\Controllers\Portal\PortalCertificateController;
+use App\Http\Controllers\Portal\PortalDirectoryController;
+use App\Http\Controllers\Portal\PortalDomainController;
+use App\Http\Controllers\Portal\PortalLogStreamController;
+use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalSetupController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
@@ -501,9 +506,11 @@ Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, Block
 
 /*
  * Admin Portal — a single-use setup link. An external IT admin opens it with
- * NO platform account and configures one org's SSO/SCIM, nothing else. These live
- * in the guest area and must never be reachable via a platform session; the
- * scoped portal session (distinct key) is the only thing that unlocks /setup.
+ * NO platform account and sets up what the link's intents cover for one org —
+ * SSO, directory sync, domains, log streams, SAML certificate renewal — nothing
+ * else. These live in the guest area and must never be reachable via a platform
+ * session; the scoped portal session (distinct key) is the only thing that
+ * unlocks /setup.
  *
  * `plane:console`, which is where the link is minted: /connections is a console page, so
  * the URL is always generated on the host whose console minted it, and redeemed on the
@@ -525,20 +532,39 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
     Route::get('/setup/done', [PortalSetupController::class, 'done'])->name('portal.done');
 
     Route::middleware('portal.session')->group(function (): void {
+        // The checklist: one card per intent the link covers, each with its progress.
         Route::get('/setup', [PortalSetupController::class, 'show'])->name('portal.setup');
 
         /*
-         * Each write its own route, and each re-asks the session AND the link's scope — a
-         * link scoped to SCIM must not be able to add a domain by forming the request.
-         * Under Volt all of these arrived at `/livewire/update`, which is why the component
-         * had to open every action with the same guard by hand.
+         * One page per intent, and each write its own route. Every write is an ACTION run as
+         * the portal session's principal, which refuses whatever the link's intents do not
+         * cover — a link opened for directory sync cannot add a domain by forming the
+         * request — and each page 404s for a session whose link does not cover it.
          */
-        Route::post('/setup/domains', [PortalSetupController::class, 'addDomain'])->name('portal.domains.store');
-        Route::post('/setup/domains/{domain}/verify', [PortalSetupController::class, 'verifyDomain'])->name('portal.domains.verify');
-        Route::delete('/setup/domains/{domain}', [PortalSetupController::class, 'removeDomain'])->name('portal.domains.destroy');
-        Route::post('/setup/connections', [PortalSetupController::class, 'createConnection'])->name('portal.connections.store');
-        Route::post('/setup/connections/{connection}/activate', [PortalSetupController::class, 'activateConnection'])->name('portal.connections.activate');
-        Route::post('/setup/directories', [PortalSetupController::class, 'registerDirectory'])->name('portal.directories.store');
+        Route::get('/setup/single-sign-on', [PortalSsoController::class, 'show'])->name('portal.sso');
+        Route::post('/setup/connections', [PortalSsoController::class, 'store'])->name('portal.connections.store');
+        Route::patch('/setup/connections/{connection}', [PortalSsoController::class, 'update'])->name('portal.connections.update');
+        Route::post('/setup/connections/{connection}/metadata', [PortalSsoController::class, 'metadata'])->name('portal.connections.metadata');
+        Route::post('/setup/connections/{connection}/activate', [PortalSsoController::class, 'activate'])->name('portal.connections.activate');
+
+        Route::get('/setup/domains', [PortalDomainController::class, 'show'])->name('portal.domains');
+        Route::post('/setup/domains', [PortalDomainController::class, 'store'])->name('portal.domains.store');
+        Route::post('/setup/domains/{domain}/verify', [PortalDomainController::class, 'verify'])->name('portal.domains.verify');
+        Route::delete('/setup/domains/{domain}', [PortalDomainController::class, 'destroy'])->name('portal.domains.destroy');
+
+        Route::get('/setup/directory-sync', [PortalDirectoryController::class, 'show'])->name('portal.directories');
+        Route::post('/setup/directories', [PortalDirectoryController::class, 'store'])->name('portal.directories.store');
+        Route::post('/setup/directories/{directory}/rotate', [PortalDirectoryController::class, 'rotate'])->name('portal.directories.rotate');
+
+        Route::get('/setup/log-streams', [PortalLogStreamController::class, 'show'])->name('portal.log-streams');
+        Route::post('/setup/log-streams', [PortalLogStreamController::class, 'store'])->name('portal.log-streams.store');
+        Route::post('/setup/log-streams/{stream}/test', [PortalLogStreamController::class, 'test'])->name('portal.log-streams.test');
+        Route::delete('/setup/log-streams/{stream}', [PortalLogStreamController::class, 'destroy'])->name('portal.log-streams.destroy');
+
+        Route::get('/setup/certificates', [PortalCertificateController::class, 'show'])->name('portal.certificates');
+        Route::post('/setup/certificates/{connection}', [PortalCertificateController::class, 'stage'])->name('portal.certificates.stage');
+        Route::post('/setup/certificates/{connection}/activate', [PortalCertificateController::class, 'activate'])->name('portal.certificates.activate');
+
         Route::post('/setup/finish', [PortalSetupController::class, 'finish'])->name('portal.finish');
     });
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\AdminPortalLink;
 use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
+use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\EmailVerification;
@@ -113,7 +114,7 @@ it('shows an Admin Portal setup link without entering it, then enters on the POS
     config(['cbox-id.entitlements.mode' => 'metered']);
     $orgId = gateAdmin('portal-single-use');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     // A chat unfurler, then the IT admin.
     $this->get(route('portal.enter', $token))->assertOk();

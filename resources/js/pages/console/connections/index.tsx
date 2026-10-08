@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { listHref } from '@/lib/listHref';
 import type {
+    CertificateWarning,
     HelpContent,
     OrganizationFilter,
     PageProps,
@@ -11,6 +12,7 @@ import type {
 import {
     Badge,
     Button,
+    CertificateWarnings,
     ConfirmDelete,
     EmptyState,
     Field,
@@ -55,6 +57,8 @@ type Props = PageProps<{
     createHref: string;
     /** The writes about ONE organization; null where the page is about none. */
     urls: { invite: string; addDomain: string } | null;
+    /** The organization's SAML certificates about to stop working; empty where the page is about none. */
+    certificateWarnings: CertificateWarning[];
 }>;
 
 export default function ConnectionsIndex({
@@ -68,6 +72,7 @@ export default function ConnectionsIndex({
     domains,
     createHref,
     urls,
+    certificateWarnings,
 }: Props) {
     // Both on the flash channel: the portal link admits its holder to this tenant's SSO
     // setup with no account at all, and the DNS token is a one-shot instruction. Neither
@@ -125,6 +130,12 @@ export default function ConnectionsIndex({
                     ) : undefined
                 }
             />
+
+            {certificateWarnings.length > 0 && (
+                <div className="mb-6">
+                    <CertificateWarnings warnings={certificateWarnings} />
+                </div>
+            )}
 
             {!entitled ? (
                 <div className="card mt-8">

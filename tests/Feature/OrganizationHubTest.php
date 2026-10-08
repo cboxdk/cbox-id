@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Mail\PortalLinkMail;
 use App\Models\AdminPortalLink;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\OrganizationTabs;
@@ -20,6 +21,7 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Support\SessionKey;
 use Inertia\Testing\AssertableInertia;
 
@@ -108,7 +110,7 @@ it('answers 404 for an organization that is not in this environment, on every ta
 
     // …and the writes that live under the organization's URL too: a foreign id never
     // reaches the action.
-    $this->post(route('environment.organizations.portal-links.store', $foreign), ['covers' => 'sso'])->assertNotFound();
+    $this->post(route('environment.organizations.portal-links.store', $foreign), ['intents' => ['sso']])->assertNotFound();
     $this->post(route('environment.connections.domains.store', $foreign), ['domain' => 'evil.example'])->assertNotFound();
 })->group('security');
 
@@ -171,7 +173,7 @@ it('mints an Admin Portal link from the header, on the flash channel, as the adm
             ->where('organizationHub.portalLink.href', route('environment.organizations.portal-links.store', $orgId)));
 
     $this->from(route('environment.organizations.show', $orgId))
-        ->post(route('environment.organizations.portal-links.store', $orgId), ['covers' => 'sso'])
+        ->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => ['sso']])
         ->assertSessionHasNoErrors()
         ->assertInertiaFlash('portalUrl');
 
@@ -333,4 +335,40 @@ it('carries no acting organization in the console chrome any more', function ():
     $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
 
     expect($shell)->not->toHaveKey('actingOrganization');
+});
+
+it('mints a link from the organization hub with intents, lifetime and the IT contact\'s address', function (): void {
+    Mail::fake();
+    $orgId = anEnvironmentAdminWithOrganizations();
+
+    $this->get(route('environment.organizations.show', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('organizationHub.portalLink.intents.0.value', 'sso')
+            ->where('organizationHub.portalLink.intents.4.value', 'certificate_renewal')
+            ->has('organizationHub.portalLink.lifetimes', 5)
+            ->has('organizationHub.portalLink.locales'));
+
+    $this->from(route('environment.organizations.show', $orgId))
+        ->post(route('environment.organizations.portal-links.store', $orgId), [
+            'intents' => ['sso', 'dsync'],
+            'expires_in_minutes' => '4320',
+            'email' => 'it@tenant.example',
+            'locale' => 'fr',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('portalUrl');
+
+    $link = AdminPortalLink::query()->where('organization_id', $orgId)->sole();
+
+    expect($link->intents)->toBe(['sso', 'dsync'])
+        ->and($link->emailed_to)->toBe('it@tenant.example')
+        ->and((int) round(now()->diffInMinutes($link->expires_at)))->toBe(4320);
+
+    Mail::assertSent(PortalLinkMail::class, fn (PortalLinkMail $mail): bool => $mail->locale === 'fr');
+
+    // Nothing ticked is a field error, not a link.
+    $this->from(route('environment.organizations.show', $orgId))
+        ->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => []])
+        ->assertSessionHasErrors('intents');
 });

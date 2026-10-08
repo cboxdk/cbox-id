@@ -80,6 +80,10 @@ final readonly class UpdateSsoConnection implements Action
             $config = SsoFields::discovered($config);
         }
 
+        // Everything else on file stays: the certificates staged for a rollover, the
+        // logout URL, the IdP-initiated switch — none of them is a field of this form.
+        $config = [...$current, ...$config];
+
         $name = $context->nullableString('name');
 
         if ($name !== null && trim($name) !== $connection->name) {

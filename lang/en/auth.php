@@ -305,9 +305,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Set up single sign-on',
+        'title' => 'Admin setup',
         'heading' => 'Set up sign-in for your organization',
-        'lead' => 'You were sent a setup link to connect your identity provider or directory. Continue to open the setup screen.',
+        'lead' => 'You were sent a setup link for your organization — single sign-on, directory sync, domains, log streams or a certificate renewal. Continue to open the setup screen.',
         'action' => 'Open setup',
         'note' => 'The link works once, and the setup session it opens expires. Open it when you are ready to finish.',
     ],

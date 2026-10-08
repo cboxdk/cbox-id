@@ -5302,6 +5302,62 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/log-streams/{id}/test':
+    post:
+      tags:
+        - 'Log streams'
+      summary: 'Send one test entry to a log stream now and report whether the SIEM accepted it.'
+      description: 'Requires scope `log_streams:write`. Danger: write.'
+      operationId: log_streams_test
+      x-action: log_streams.test
+      x-scope: 'log_streams:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The log stream's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStreamTest'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /oauth/api-keys/verify:
     servers:
       -
@@ -6839,7 +6895,7 @@ paths:
     post:
       tags:
         - 'Admin Portal'
-      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up its SSO and domains, or its directory sync, without an account. The URL is shown once."
+      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal without an account. The URL is shown once."
       description: 'Requires scope `portal_links:write`. Danger: critical.'
       operationId: organizations_portal_links_create
       x-action: organizations.portal_links.create
@@ -6871,15 +6927,46 @@ paths:
             schema:
               type: object
               properties:
-                covers:
-                  type: string
-                  description: 'What the link may configure: sso (connection and email domains), scim (directory sync), or both.'
+                intents:
+                  type: array
+                  description: "What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection's signing certificate)."
+                  minItems: 1
+                  items:
+                    type: string
+                    enum:
+                      - sso
+                      - dsync
+                      - domain_verification
+                      - log_streams
+                      - certificate_renewal
+                expires_in_minutes:
+                  type:
+                    - integer
+                    - 'null'
+                  description: "How long the link may wait to be opened, in minutes — 5 to 10080 (a week). Left out, the deployment's default (30)."
+                  minimum: 5
+                  maximum: 10080
+                email:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Mail the link to this address — the customer's IT contact. Left out, nothing is sent."
+                  format: email
+                  maxLength: 254
+                locale:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The language of that mail. Left out, the environment's default language."
                   enum:
-                    - sso
-                    - scim
-                    - both
+                    - en
+                    - da
+                    - de
+                    - sv
+                    - nb
+                    - fr
               required:
-                - covers
+                - intents
       responses:
         201:
           description: OK
@@ -9303,10 +9390,13 @@ paths:
                   maxLength: 120
                 type:
                   type: string
-                  description: 'saml or oidc. The config fields of that type are required.'
+                  description: 'saml or oidc. The config fields of that type are required, unless pending_idp.'
                   enum:
                     - saml
                     - oidc
+                pending_idp:
+                  type: boolean
+                  description: "True to create the draft before the identity provider's details are known: the answer's service_provider is what to paste into it. Complete it with update before activating."
                 idp_entity_id:
                   type:
                     - string
@@ -9330,13 +9420,13 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: the entity id this environment presents as the service provider.'
+                  description: "SAML: the entity id this environment presents as the service provider. Left out on create, this connection's own."
                   maxLength: 500
                 sp_acs_url:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: where the identity provider posts its assertions.'
+                  description: "SAML: where the identity provider posts its assertions. Left out on create, this connection's own ACS URL."
                   format: uri
                   maxLength: 500
                 issuer:
@@ -9654,13 +9744,13 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: the entity id this environment presents as the service provider.'
+                  description: "SAML: the entity id this environment presents as the service provider. Left out on create, this connection's own."
                   maxLength: 500
                 sp_acs_url:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: where the identity provider posts its assertions.'
+                  description: "SAML: where the identity provider posts its assertions. Left out on create, this connection's own ACS URL."
                   format: uri
                   maxLength: 500
                 issuer:
@@ -9769,6 +9859,224 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/SsoConnection'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/certificates':
+    get:
+      tags:
+        - 'Single sign-on'
+      summary: "List a SAML connection's signing certificates — primary and staged — with each one's fingerprint and expiry."
+      description: 'Requires scope `sso:read`. Danger: read.'
+      operationId: sso_connections_certificates_list
+      x-action: sso.connections.certificates.list
+      x-scope: 'sso:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoCertificates'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) beside the current one, so a renewal has no outage. Activate it once the IdP signs with it."
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_certificates_stage
+      x-action: sso.connections.certificates.stage
+      x-scope: 'sso:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                certificate:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The new signing certificate, PEM. Send this or metadata.'
+                  maxLength: 20000
+                metadata:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The identity provider's metadata XML, or the https URL it is published at. Send this or certificate."
+                  maxLength: 500000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoCertificates'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/certificates/activate':
+    post:
+      tags:
+        - 'Single sign-on'
+      summary: "Make a staged SAML signing certificate the connection's primary. The certificate it replaces stops being trusted."
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_certificates_activate
+      x-action: sso.connections.certificates.activate
+      x-scope: 'sso:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                fingerprint_sha256:
+                  type: string
+                  description: "The staged certificate's SHA-256 fingerprint, as the certificate list gives it."
+                  maxLength: 200
+              required:
+                - fingerprint_sha256
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoCertificates'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -12342,6 +12650,7 @@ paths:
                       - domain.removed
                       - domain.verified
                       - connection.activated
+                      - connection.certificate_expiring
                       - entitlement.set
                       - entitlement.updated
                       - entitlement.revoked
@@ -14563,6 +14872,9 @@ components:
             - inactive
         active:
           type: boolean
+        complete:
+          type: boolean
+          description: 'false for a draft created with pending_idp whose identity-provider details are still missing. Activation refuses it.'
         config:
           type: object
           description: 'The settings that are not secrets.'
@@ -14579,6 +14891,20 @@ components:
               type: string
             client_id:
               type: string
+        service_provider:
+          type:
+            - object
+            - 'null'
+          description: "What to paste into the identity provider: this connection's own entity id and ACS URL (SAML), or its redirect URI (OIDC). null for a social sign-in connection."
+          properties:
+            sp_entity_id:
+              type: string
+            sp_acs_url:
+              type: string
+              format: uri
+            redirect_uri:
+              type: string
+              format: uri
         created_at:
           type:
             - string
@@ -14588,6 +14914,126 @@ components:
           type:
             - string
             - 'null'
+          format: date-time
+    SsoCertificates:
+      type: object
+      required:
+        - connection_id
+        - organization_id
+        - expires_at
+        - days_remaining
+        - certificates
+      description: "A SAML connection's signing certificates. The certificates themselves are never returned."
+      properties:
+        connection_id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When the connection stops working if nothing is done: the latest expiry among the certificates it trusts.'
+        days_remaining:
+          type:
+            - integer
+            - 'null'
+        certificates:
+          type: array
+          items:
+            type: object
+            required:
+              - role
+              - readable
+              - fingerprint_sha256
+              - subject
+              - issuer
+              - not_before
+              - not_after
+              - days_remaining
+              - expired
+            properties:
+              role:
+                type: string
+                enum:
+                  - primary
+                  - staged
+                description: 'primary signs today; staged is trusted beside it until activated.'
+              readable:
+                type: boolean
+                description: 'false for a certificate on file that could not be parsed — still trusted.'
+              fingerprint_sha256:
+                type:
+                  - string
+                  - 'null'
+              subject:
+                type:
+                  - string
+                  - 'null'
+              issuer:
+                type:
+                  - string
+                  - 'null'
+              not_before:
+                type:
+                  - string
+                  - 'null'
+                format: date-time
+              not_after:
+                type:
+                  - string
+                  - 'null'
+                format: date-time
+              days_remaining:
+                type:
+                  - integer
+                  - 'null'
+              expired:
+                type:
+                  - boolean
+                  - 'null'
+        checks:
+          type: array
+          description: 'On the stage answer only: what the new certificate was tested for.'
+          items:
+            type: object
+            required:
+              - check
+              - passed
+            properties:
+              check:
+                type: string
+                enum:
+                  - readable
+                  - not_expired
+                  - key_strength
+                  - not_on_file
+                  - valid_now
+              passed:
+                type: boolean
+    LogStreamTest:
+      type: object
+      required:
+        - id
+        - delivered
+        - error
+        - tested_at
+      properties:
+        id:
+          type: string
+        delivered:
+          type: boolean
+          description: 'Whether the destination accepted the test entry.'
+        error:
+          type:
+            - string
+            - 'null'
+          description: "The destination's refusal, scrubbed of the stream's secret."
+        tested_at:
+          type: string
           format: date-time
     SsoDomain:
       type: object
@@ -14654,20 +15100,31 @@ components:
       required:
         - id
         - organization_id
-        - covers
+        - intents
         - url
         - expires_at
+        - emailed_to
       properties:
         id:
           type: string
         organization_id:
           type: string
-        covers:
-          type: string
-          enum:
-            - sso
-            - scim
-            - both
+        intents:
+          type: array
+          description: 'What the link may set up.'
+          items:
+            type: string
+            enum:
+              - sso
+              - dsync
+              - domain_verification
+              - log_streams
+              - certificate_renewal
+        emailed_to:
+          type:
+            - string
+            - 'null'
+          description: 'The address the link was mailed to, or null when it was not sent.'
         url:
           type:
             - string

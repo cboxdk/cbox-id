@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Platform\AdminPortal;
+use App\Platform\Enums\PortalScope;
 use Cbox\Id\Kernel\Tenancy\Concerns\BelongsToEnvironment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentOwned;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -13,8 +14,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * A short-lived, single-use Admin Portal setup link. An entitled org admin mints
- * one and hands it to an external IT admin, who redeems it to configure that one
- * org's SSO/SCIM — with no platform account.
+ * one and hands it to an external IT admin, who redeems it to configure what it covers
+ * for that one org — SSO, directory sync, domains, log streams, certificate renewal —
+ * with no platform account.
  *
  * Only a SHA-256 hash of the random token is stored; the plaintext is shown to
  * the minting admin exactly once and is never retrievable again. A link is
@@ -37,11 +39,12 @@ use Illuminate\Support\Carbon;
  * @property string $id
  * @property string $environment_id
  * @property string $organization_id
- * @property string $scope
+ * @property list<string>|null $intents the {@see PortalScope} it covers, as stored
  * @property string $token_hash
  * @property Carbon $expires_at
  * @property Carbon|null $consumed_at
  * @property string $created_by
+ * @property string|null $emailed_to the IT contact it was mailed to, when the console sent it
  */
 final class AdminPortalLink extends Model implements EnvironmentOwned
 {
@@ -59,11 +62,21 @@ final class AdminPortalLink extends Model implements EnvironmentOwned
     }
 
     /**
+     * What the link may set up — null when the stored list names nothing this deployment
+     * knows, which opens nothing ({@see PortalScope::fromStored()}).
+     */
+    public function portalScope(): ?PortalScope
+    {
+        return PortalScope::fromStored($this->intents);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
+            'intents' => 'array',
             'expires_at' => 'datetime',
             'consumed_at' => 'datetime',
         ];

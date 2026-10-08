@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Help, Icon, Panel, Pill, Stat } from '@/ui';
+import type { CertificateWarning, HelpContent, PageProps } from '@/types';
+import { CertificateWarnings, Help, Icon, Panel, Pill, Stat } from '@/ui';
 
 interface SetupStep {
     key: string;
@@ -27,6 +27,8 @@ type Props = PageProps<{
     counts: { members: number; invitations: number };
     recent: RecentEntry[];
     hrefs: { members: string; invitations: string; audit: string };
+    /** SAML connections whose signing certificates stop working within 30 days. */
+    certificateWarnings: CertificateWarning[];
 }>;
 
 /**
@@ -36,9 +38,18 @@ type Props = PageProps<{
  * checklist anybody ticked, and each links to the tab where it is done. The header and tabs
  * are the layout's (`../frame.tsx`).
  */
-export default function OrganizationOverview({ help, setup, counts, recent, hrefs }: Props) {
+export default function OrganizationOverview({
+    help,
+    setup,
+    counts,
+    recent,
+    hrefs,
+    certificateWarnings,
+}: Props) {
     return (
         <div className="space-y-6">
+            <CertificateWarnings warnings={certificateWarnings} />
+
             <div className="grid gap-4 sm:grid-cols-2">
                 <Stat
                     icon="members"

@@ -64,3 +64,11 @@ Schedule::command('queue-monitor:resolve-stuck')
 Schedule::call(static fn () => SchedulerHeartbeat::beat())
     ->name('health:scheduler-heartbeat')
     ->everyMinute();
+
+// SAML signing certificates about to expire: a `connection.certificate_expiring` webhook,
+// a trail entry and a mail to the organization's admins at 30 and 7 days, once each.
+// Daily is enough — the thresholds are days — and onOneServer() keeps the alerts single.
+// ({@see \App\Platform\Sso\CertificateExpiryAlerts})
+Schedule::command('cbox-id:sso:certificate-expiry')
+    ->dailyAt('06:00')
+    ->onOneServer();

@@ -21,6 +21,7 @@ export { Avatar } from './Avatar';
 export { AccessRoleHint, type AccessRoleOption } from './AccessRoleHint';
 export { Badge, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
+export { CertificateWarnings } from './CertificateWarnings';
 export { Checkbox } from './Checkbox';
 export { CodeBlock, type CodeBlockProps } from './CodeBlock';
 export { Combobox, type ComboboxOption } from './Combobox';

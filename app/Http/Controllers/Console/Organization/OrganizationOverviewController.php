@@ -9,6 +9,7 @@ use App\Platform\AuditNames;
 use App\Platform\Entitlements;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Sso\CertificateExpiryAlerts;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -36,7 +37,7 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
     /** How many trail entries the overview shows before handing over to the Audit log tab. */
     private const RECENT = 8;
 
-    public function show(DomainVerification $domains, Memberships $memberships, OrganizationInvitations $invitations, Entitlements $entitlements, AuditNames $names): Response
+    public function show(DomainVerification $domains, Memberships $memberships, OrganizationInvitations $invitations, Entitlements $entitlements, AuditNames $names, CertificateExpiryAlerts $certificates): Response
     {
         $organization = $this->organization();
         $ids = ['organization' => $organization->id];
@@ -111,6 +112,12 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
                 'actorName' => $entry->actor_id === null ? null : ($resolved[$entry->actor_id] ?? $entry->actor_id),
                 'recordedAt' => $entry->recorded_at?->toIso8601String(),
             ])->values()->all(),
+            // The daily certificate scan's warnings, read live: a SAML connection that stops
+            // working within 30 days is the one thing on this page that will break by itself.
+            'certificateWarnings' => array_map(static fn (array $warning): array => [
+                ...$warning,
+                'href' => route('environment.connections.show', $warning['connection_id']),
+            ], $certificates->warningsFor($organization->id)),
             'hrefs' => [
                 'members' => route('environment.organizations.members', $ids),
                 'invitations' => route('environment.organizations.invitations', $ids),

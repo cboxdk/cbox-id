@@ -160,6 +160,16 @@ declare module '@inertiajs/core' {
             portalOrganization?: string | null;
             /** The name a freshly-minted SCIM directory was given, beside its token. */
             newTokenName?: string;
+            /**
+             * The Admin Portal's "Send test entry" answer, for the one stream it was about —
+             * true for one render, like every other outcome on this channel.
+             */
+            streamTest?: { id: string; delivered: boolean; error: string | null };
+            /** What a newly uploaded SAML certificate was checked for, beside its connection. */
+            certificateChecks?: {
+                connectionId: string;
+                checks: { check: string; passed: boolean }[];
+            };
             /** SAML fields parsed out of an IdP's metadata, to fill the create form once. */
             metadata?: { idp_entity_id: string; idp_sso_url: string; idp_x509cert: string };
         };

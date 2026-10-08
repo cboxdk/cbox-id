@@ -68,4 +68,33 @@ return [
         'invited_as' => ':inviter hat Sie eingeladen, :organization als :role in :brand zu verwalten – der Konsole für die Identitätsanbieter der Organisation: Umgebungen, Mitglieder und Abrechnung. Nehmen Sie die Einladung an, um ein Passwort festzulegen und sich anzumelden.',
         'button' => 'Einladung annehmen',
     ],
+
+    // An Admin Portal link, mailed to the customer's IT contact. :organization is bold in the lead.
+    'portal_link' => [
+        'subject' => ':organization in :brand einrichten',
+        'heading' => ':organization einrichten',
+        'lead' => 'Sie wurden gebeten, Folgendes für :organization in :brand einzurichten. Sie benötigen kein Konto – die Schaltfläche unten genügt.',
+        'intents' => [
+            'sso' => 'Single Sign-On mit Ihrem Identitätsanbieter',
+            'dsync' => 'Verzeichnissynchronisierung (SCIM)',
+            'domain_verification' => 'Verifizierung Ihrer E-Mail-Domains',
+            'log_streams' => 'Streaming Ihres Audit-Logs an Ihr SIEM',
+            'certificate_renewal' => 'Erneuerung Ihres SAML-Signaturzertifikats',
+        ],
+        'button' => 'Einrichtung starten',
+        'expires' => 'Der Link kann einmal verwendet werden und gilt bis :date. Wenn er abläuft, fordern Sie einen neuen an.',
+    ],
+
+    // From the daily certificate scan, to an organization's owners and admins. :connection
+    // and :organization are bold in the lead; :date is already in the reader's format.
+    'certificate_expiring' => [
+        'subject' => 'Single Sign-On über :connection funktioniert noch :count Tag|Single Sign-On über :connection funktioniert noch :count Tage',
+        'subject_expired' => 'Single Sign-On über :connection funktioniert nicht mehr',
+        'heading' => 'Ihr SAML-Zertifikat läuft bald ab',
+        'heading_expired' => 'Ihr SAML-Zertifikat ist abgelaufen',
+        'lead' => 'Das Signaturzertifikat von :connection, der Single-Sign-On-Verbindung für :organization, läuft am :date ab. Danach kann sich niemand mehr darüber anmelden.',
+        'lead_expired' => 'Das Signaturzertifikat von :connection, der Single-Sign-On-Verbindung für :organization, ist am :date abgelaufen. Bis es erneuert wird, kann sich niemand darüber anmelden.',
+        'what_to_do' => 'Bitten Sie die Person, die Ihren Identitätsanbieter verwaltet, um das neue Signaturzertifikat, und laden Sie es dann in Ihrer Admin-Konsole hoch – oder bitten Sie Ihren Administrator um einen Admin-Portal-Link, um es dort hochzuladen.',
+        'why' => 'Sie erhalten diese E-Mail, weil Sie Inhaber oder Administrator dieser Organisation in :brand sind.',
+    ],
 ];

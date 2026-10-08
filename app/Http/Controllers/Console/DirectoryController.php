@@ -18,7 +18,7 @@ use App\Http\Requests\Console\ConnectDirectoryRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Entitlements;
-use App\Platform\Enums\PortalScope;
+use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
 use App\Platform\OrgAccessRoles;
 use App\Platform\VerifiedEmailGate;
@@ -142,7 +142,7 @@ final readonly class DirectoryController extends ConsoleController
 
         // The action a management key mints the same link with; it records WHO minted it,
         // asked through the scope — the two consoles once recorded ids from two tables.
-        $result = $this->act(CreatePortalLink::class, ['organization_id' => $organizationId, 'covers' => PortalScope::Scim->value]);
+        $result = $this->act(CreatePortalLink::class, ['organization_id' => $organizationId, 'intents' => [PortalIntent::Dsync->value]]);
 
         if ($result instanceof RedirectResponse) {
             return $result;

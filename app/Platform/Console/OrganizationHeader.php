@@ -7,14 +7,15 @@ namespace App\Platform\Console;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Props\Console\OptionProps;
 use App\Http\Props\Console\OrganizationHeaderProps;
-use App\Platform\Entitlements;
-use App\Platform\Enums\PortalFeature;
-use App\Platform\Enums\PortalScope;
+use App\Http\Props\Console\PortalIntentProps;
+use App\Platform\AdminPortal;
+use App\Platform\Enums\PortalIntent;
+use App\Platform\Locale\HostedLocales;
 use Cbox\Id\Organization\Models\Organization;
 
 /**
  * The header every tab of an organization's page shares — built in one place, so thirteen
- * tabs cannot disagree about its name, its tabs, or whether a portal link can be made.
+ * tabs cannot disagree about its name, its tabs, or what a portal link can cover.
  *
  * Shared with every page under `/admin/organizations/{organization}/…` by
  * {@see BindConsoleOrganization}, which is what lets a page written for
@@ -23,9 +24,19 @@ use Cbox\Id\Organization\Models\Organization;
  */
 final readonly class OrganizationHeader
 {
+    /** How long the dialog offers to let a link wait, in minutes, with what it calls each. */
+    private const array LIFETIMES = [
+        30 => '30 minutes',
+        240 => '4 hours',
+        1440 => '24 hours',
+        4320 => '3 days',
+        10080 => '7 days',
+    ];
+
     public function __construct(
         private OrganizationTabs $tabs,
-        private Entitlements $entitlements,
+        private AdminPortal $portal,
+        private HostedLocales $locales,
     ) {}
 
     public function for(string $organizationId, string $tab): ?OrganizationHeaderProps
@@ -36,8 +47,6 @@ final readonly class OrganizationHeader
             return null;
         }
 
-        $covers = $this->portalCovers($organization->id);
-
         return new OrganizationHeaderProps(
             id: $organization->id,
             name: $organization->name,
@@ -45,37 +54,36 @@ final readonly class OrganizationHeader
             status: $organization->status->value,
             tabs: $this->tabs->for($organization->id, $tab),
             indexHref: route('environment.organizations'),
-            portalLinkHref: $covers === [] ? null : route('environment.organizations.portal-links.store', ['organization' => $organization->id]),
-            portalCovers: $covers,
+            portalLinkHref: route('environment.organizations.portal-links.store', ['organization' => $organization->id]),
+            portalIntents: $this->portalIntents($organization->id),
+            portalLifetimes: array_map(
+                static fn (int $minutes, string $label): OptionProps => new OptionProps((string) $minutes, $label),
+                array_keys(self::LIFETIMES),
+                array_values(self::LIFETIMES),
+            ),
+            portalLocales: array_map(
+                static fn ($locale): OptionProps => new OptionProps($locale->value, $locale->nativeName()),
+                $this->locales->enabled(),
+            ),
+            portalDefaultLocale: $this->locales->default()->value,
         );
     }
 
     /**
-     * What a portal link for this organization may cover: only what it is entitled to, and
-     * "both" only when it is entitled to both — the action refuses anything else, and a
-     * choice offered here only to be refused there is the console lying about what it can do.
+     * Every intent, each saying whether this organization may have it — one its plan does not
+     * include is shown and cannot be ticked, rather than offered and then refused by the
+     * action: a choice the console offers only to be refused is the console lying about what
+     * it can do, and one it hides is a feature nobody learns exists.
      *
-     * @return list<OptionProps>
+     * @return list<PortalIntentProps>
      */
-    private function portalCovers(string $organizationId): array
+    private function portalIntents(string $organizationId): array
     {
-        $sso = $this->entitlements->entitled($organizationId, PortalFeature::Sso->entitlement());
-        $scim = $this->entitlements->entitled($organizationId, PortalFeature::Scim->entitlement());
-
-        $covers = [];
-
-        if ($sso) {
-            $covers[] = new OptionProps(PortalScope::Sso->value, 'Single sign-on and domains');
-        }
-
-        if ($scim) {
-            $covers[] = new OptionProps(PortalScope::Scim->value, 'Directory sync');
-        }
-
-        if ($sso && $scim) {
-            $covers[] = new OptionProps(PortalScope::Both->value, 'Both');
-        }
-
-        return $covers;
+        return array_map(fn (PortalIntent $intent): PortalIntentProps => new PortalIntentProps(
+            value: $intent->value,
+            label: $intent->label(),
+            description: $intent->description(),
+            available: $this->portal->intentUsable($organizationId, $intent),
+        ), PortalIntent::cases());
     }
 }

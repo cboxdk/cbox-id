@@ -796,18 +796,13 @@ function addPortalDomain(string $domain): TestResponse
         ->post(route('portal.domains.store'), ['domain' => $domain]));
 }
 
-/** Create an SSO connection from the Admin Portal. Defaults to a complete SAML one. */
+/** Start an SSO connection from the Admin Portal: a SAML draft for Okta, our half only. */
 function createPortalConnection(array $changes = []): TestResponse
 {
     return inertiaRequest(fn (): TestResponse => test()->from(route('portal.setup'))
         ->post(route('portal.connections.store'), [
-            'type' => 'saml',
-            'connName' => 'Bound Co',
-            'idp_entity_id' => 'https://idp.corp/metadata',
-            'idp_sso_url' => 'https://idp.corp/sso',
-            'idp_x509cert' => '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----',
-            'sp_entity_id' => 'https://sp.acme/metadata',
-            'sp_acs_url' => 'https://sp.acme/acs',
+            'provider' => 'okta',
+            'name' => 'Bound Co',
             ...$changes,
         ]));
 }

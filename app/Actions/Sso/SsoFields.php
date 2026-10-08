@@ -43,6 +43,9 @@ final class SsoFields
     /** The URLs among them, refused when they are not one. */
     private const array URLS = ['idp_sso_url', 'sp_acs_url', 'issuer'];
 
+    /** The SAML keys this environment knows for itself — derived from the connection when left blank. */
+    public const array SERVICE_PROVIDER = ['sp_entity_id', 'sp_acs_url'];
+
     /**
      * The config inputs of both types. Which set applies is the connection's type.
      *
@@ -54,8 +57,8 @@ final class SsoFields
             Field::string('idp_entity_id')->nullable()->max(500)->describe('SAML: the identity provider\'s entity id.'),
             Field::string('idp_sso_url')->nullable()->max(500)->format('uri')->describe('SAML: the identity provider\'s single sign-on URL.'),
             Field::string('idp_x509cert')->nullable()->max(20000)->describe('SAML: the identity provider\'s signing certificate (PEM). Write-only.'),
-            Field::string('sp_entity_id')->nullable()->max(500)->describe('SAML: the entity id this environment presents as the service provider.'),
-            Field::string('sp_acs_url')->nullable()->max(500)->format('uri')->describe('SAML: where the identity provider posts its assertions.'),
+            Field::string('sp_entity_id')->nullable()->max(500)->describe('SAML: the entity id this environment presents as the service provider. Left out on create, this connection\'s own.'),
+            Field::string('sp_acs_url')->nullable()->max(500)->format('uri')->describe('SAML: where the identity provider posts its assertions. Left out on create, this connection\'s own ACS URL.'),
             Field::string('issuer')->nullable()->max(500)->format('uri')->describe('OIDC: the provider\'s issuer URL; its endpoints are discovered from it.'),
             Field::string('client_id')->nullable()->max(500)->describe('OIDC: the client id registered at the provider.'),
             Field::string('client_secret')->nullable()->max(500)->describe('OIDC: the client secret. Write-only.'),
@@ -78,6 +81,43 @@ final class SsoFields
         }
 
         return $config;
+    }
+
+    /**
+     * What this environment presents to the identity provider for $connection — the values
+     * an administrator pastes into their IdP's setup screen: for SAML the entity id and the
+     * ACS URL, for OIDC the redirect URI. Keyed by the connection's id, because the route
+     * that receives the assertion is.
+     *
+     * @return array<string, string>
+     */
+    public static function serviceProvider(Connection $connection): array
+    {
+        return $connection->type === ConnectionType::Saml
+            ? [
+                'sp_entity_id' => url('/sso/saml/'.$connection->id),
+                'sp_acs_url' => route('sso.saml.acs', $connection->id),
+            ]
+            : ['redirect_uri' => route('sso.oidc.callback', $connection->id)];
+    }
+
+    /**
+     * Whether every value the connection's type requires is on file — what activation asks
+     * before anybody is routed to it.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public static function isComplete(ConnectionType $type, array $config): bool
+    {
+        foreach ($type === ConnectionType::Saml ? self::SAML : self::OIDC as $key) {
+            $value = $config[$key] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -205,6 +245,8 @@ final class SsoFields
             }
         }
 
+        $configurable = in_array($connection->type, [ConnectionType::Saml, ConnectionType::Oidc], true);
+
         return [
             'id' => $connection->id,
             'organization_id' => $connection->organization_id,
@@ -213,7 +255,11 @@ final class SsoFields
             'provider' => $connection->provider,
             'status' => $connection->status->value,
             'active' => $connection->isActive(),
+            // A draft created before its identity provider's details were known is not.
+            'complete' => ! $configurable || self::isComplete($connection->type, $config),
             'config' => $public === [] ? (object) [] : $public,
+            // What to paste into the identity provider; null for a social sign-in connection.
+            'service_provider' => $configurable ? self::serviceProvider($connection) : null,
             'created_at' => Timestamp::of($connection->getAttribute('created_at')),
             'updated_at' => Timestamp::of($connection->getAttribute('updated_at')),
         ];

@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
+use App\Platform\Actions\Principal\PortalPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Support\CliClient;
 use Illuminate\Http\Request;
 
 /**
- * WHICH DOOR AN ACTION CAME THROUGH — the console, the REST API, an MCP tool call or the
- * `cbox` CLI.
+ * WHICH DOOR AN ACTION CAME THROUGH — the console, the REST API, an MCP tool call, the
+ * `cbox` CLI or the hosted Admin Portal.
  *
  * The principal says WHO acted; this says HOW. They are different questions with
  * different answers: a management key reaches the same action over REST and over MCP, and
@@ -31,12 +32,22 @@ enum ActionVia: string
     case Cli = 'cli';
 
     /**
+     * The hosted Admin Portal: a customer's IT administrator under a one-time link
+     * ({@see PortalPrincipal}).
+     */
+    case Portal = 'portal';
+
+    /**
      * The door when the caller did not name one: the console for a console session, the
-     * REST API for everything else — the only two doors that existed before MCP.
+     * Admin Portal for a portal session, the REST API for everything else.
      */
     public static function inferredFrom(Principal $principal): self
     {
-        return $principal->kind() === 'console' ? self::Console : self::Rest;
+        return match ($principal->kind()) {
+            'console' => self::Console,
+            'portal' => self::Portal,
+            default => self::Rest,
+        };
     }
 
     /**
@@ -67,6 +78,7 @@ enum ActionVia: string
             self::Rest => 'REST API',
             self::Mcp => 'MCP',
             self::Cli => 'CLI',
+            self::Portal => 'Admin Portal',
         };
     }
 }

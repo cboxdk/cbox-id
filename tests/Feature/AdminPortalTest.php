@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\AdminPortalLink;
 use App\Platform\AdminPortal;
+use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
@@ -69,26 +70,27 @@ it('a non-admin cannot reach the invite action even on an entitled org', functio
 it('opens the portal for a valid token', function () {
     $orgId = gateAdmin('portal-open');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
-    // Followed through to the setup screen, and asked what it OFFERS: a link scoped to
-    // SSO opens the SSO steps and not the SCIM one, which is the property this redemption
-    // has to preserve — `assertSee('SSO connection')` would pass on a page that showed the
-    // heading and no controls under it.
+    // Followed through to the checklist, and asked what it OFFERS: a link for SSO lists the
+    // SSO task and not directory sync, which is the property this redemption has to
+    // preserve — and the directory sync page is not there to be reached by URL either.
     $props = (array) $this->followingRedirects()
         ->post(route('portal.enter.store', $token))
         ->assertOk()
         ->inertiaProps();
 
-    expect($props['showSso'])->toBeTrue()
-        ->and($props['showScim'])->toBeFalse()
-        ->and($props['urls']['createConnection'])->toBe(route('portal.connections.store'));
+    expect(array_column($props['tasks'], 'intent'))->toBe(['sso'])
+        ->and($props['tasks'][0]['href'])->toBe(route('portal.sso'));
+
+    $this->get(route('portal.sso'))->assertOk();
+    $this->get(route('portal.directories'))->assertNotFound();
 });
 
 it('regenerates the session id when a setup link is redeemed (anti-fixation)', function () {
     $orgId = gateAdmin('portal-fixation');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     session()->start();
     $before = session()->getId();
@@ -107,7 +109,7 @@ it('creates a connection only for the org bound to the portal session', function
     $orgB = gateAdmin('portal-b');
     grantFeature($orgB, 'cbox-id-sso');
 
-    $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgA, PortalScope::only(PortalIntent::Sso), 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
     createPortalConnection()->assertSessionHasNoErrors();
@@ -121,24 +123,27 @@ it('lets the IT admin verify their domain from the self-serve portal, bound to t
     grantFeature($orgA, 'cbox-id-sso');
     $orgB = gateAdmin('portal-dom-b');
 
-    $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgA, PortalScope::only(PortalIntent::Sso), 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
     addPortalDomain('acme.com')->assertSessionHasNoErrors();
 
-    // The DNS challenge is surfaced — on the flash channel, because it is what the admin
-    // must publish on the render that answered — and the domain is bound to the portal's
-    // org and no other.
-    expect(flashed('dns'))->not->toBeNull()
-        ->and(flashed('dns')['domain'])->toBe('acme.com')
-        ->and(VerifiedDomain::query()->where('organization_id', $orgA)->where('domain', 'acme.com')->exists())->toBeTrue()
+    // The domain is bound to the portal's org and no other, and the page shows the TXT
+    // record to publish for it.
+    expect(VerifiedDomain::query()->where('organization_id', $orgA)->where('domain', 'acme.com')->exists())->toBeTrue()
         ->and(VerifiedDomain::query()->where('organization_id', $orgB)->exists())->toBeFalse();
+
+    $domains = (array) $this->get(route('portal.domains'))->assertOk()->inertiaProps('domains');
+
+    expect($domains[0]['domain'])->toBe('acme.com')
+        ->and($domains[0]['recordHost'])->toContain('acme.com')
+        ->and($domains[0]['recordValue'])->not->toBe('');
 });
 
 it('a portal session grants no access to the platform console', function () {
     $orgId = gateAdmin('portal-iso');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
     $link = AdminPortalLink::query()->where('organization_id', $orgId)->firstOrFail();
 
     /*
@@ -155,7 +160,8 @@ it('a portal session grants no access to the platform console', function () {
         AdminPortal::SESSION_KEY => [
             'link_id' => $link->id,
             'org' => $orgId,
-            'scope' => 'sso',
+            'intents' => ['sso'],
+            'created_by' => 'sub_creator',
             'expires' => now()->addMinutes(10)->getTimestamp(),
         ],
     ])->get('/dashboard')->assertRedirect(route('login'));
@@ -164,7 +170,7 @@ it('a portal session grants no access to the platform console', function () {
 it('refuses an expired token at the entry point', function () {
     $orgId = gateAdmin('portal-exp');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['expires_at' => now()->subMinute()]);
 
@@ -174,7 +180,7 @@ it('refuses an expired token at the entry point', function () {
 it('refuses a consumed token at the entry point', function () {
     $orgId = gateAdmin('portal-consumed');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['consumed_at' => now()]);
 
@@ -184,7 +190,7 @@ it('refuses a consumed token at the entry point', function () {
 it('refuses redemption when the org is no longer entitled', function () {
     $orgId = gateAdmin('portal-lapse');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     app(EntitlementWriter::class)->revoke($orgId, 'cbox-id-sso', EntitlementSource::Manual);
 
@@ -195,7 +201,7 @@ it('refuses redemption when the org is no longer entitled', function () {
 it('finishing marks the link consumed, records completion, and closes the session', function () {
     $orgId = gateAdmin('portal-finish');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     $fake = new FakeAuditLog;
     app()->instance(AuditLog::class, $fake);
@@ -242,7 +248,7 @@ it('refuses a setup link minted in another environment, on the service and over 
     app(EnvironmentContext::class)->set($envA);
     $orgId = gateAdmin('portal-xenv');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     // On env B the link does not EXIST — the hard scope removes it from the token-hash
     // lookup redemption is built on, so nothing downstream (the entitlement re-gate, the
@@ -265,7 +271,7 @@ it('refuses a setup link minted in another environment, on the service and over 
 it('is single-use: a token cannot be redeemed twice (R7)', function () {
     $orgId = gateAdmin('portal-single-use');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
     // First redemption succeeds and burns the link; a leaked/re-opened URL fails.
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull()
@@ -283,7 +289,7 @@ it('404s a portal domain action aimed at another organization\'s domain, or at n
     $orgB = gateAdmin('portal-foreign-b');
     $theirs = app(DomainVerification::class)->add($orgB, 'theirs.example');
 
-    $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgA, PortalScope::only(PortalIntent::Sso), 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
     $this->from(route('portal.setup'))->post(route('portal.domains.verify', $theirs->id))->assertNotFound();

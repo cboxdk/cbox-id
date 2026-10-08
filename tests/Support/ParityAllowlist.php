@@ -131,13 +131,23 @@ final class ParityAllowlist
     public static function adminPortal(): array
     {
         return [
-            // The portal's hosted steps, under a one-time link; the link is an action.
+            // The portal's hosted steps, under a one-time link. The link is an action, and so is
+            // every step: each runs the console's own action as the portal session's principal
+            // (PortalPrincipal), which a console route cannot claim — it is not the console's.
+            'portal.certificates.activate',
+            'portal.certificates.stage',
             'portal.connections.activate',
+            'portal.connections.metadata',
             'portal.connections.store',
+            'portal.connections.update',
+            'portal.directories.rotate',
             'portal.directories.store',
             'portal.domains.destroy',
             'portal.domains.store',
             'portal.domains.verify',
+            'portal.log-streams.destroy',
+            'portal.log-streams.store',
+            'portal.log-streams.test',
         ];
     }
 
