@@ -26,7 +26,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
     tag: 'Token vault',
     rest: ['DELETE', '/token-vault/secrets/{id}/grants/{client_id}'],
     status: 204,
-    consoleRoutes: ['vault.grants.destroy', 'environment.vault.grants.destroy'],
+    consoleRoutes: ['vault.grants.destroy', 'environment.vault.grants.destroy', 'environment.organizations.vault.grants.destroy'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RevokeVaultAccess implements Action

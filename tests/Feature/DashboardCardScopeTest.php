@@ -227,7 +227,7 @@ it('renders no connectors card until an environment administrator has chosen an 
     // …and it comes back the moment there IS an organization to count for, so the
     // assertion above is about scope and not about a card that never renders.
     $organizationId = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'cards-tenant'))->id;
-    app(ConsoleScope::class)->chooseOrganization($organizationId);
+    app(ConsoleScope::class)->bindOrganization($organizationId);
 
     expect(hasDashboardCard('Active connectors'))->toBeTrue();
 })->group('security');

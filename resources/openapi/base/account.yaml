@@ -5,7 +5,8 @@ info:
   description: |
     **Your own account** — the person calling, and nobody else: your profile, where you are
     signed in, which applications may act as you, your own API keys for the apps built on
-    this environment, your sign-in methods and your trusted devices. The same actions the
+    this environment, your sign-in methods, your trusted devices and the organizations you
+    belong to. The same actions the
     console's My account pages run, with the same rules, refusals and audit trail.
 
     **Who may call it.** Only you, through an access token you delegated carrying the
@@ -18,7 +19,10 @@ info:
     new recovery codes and registering a passkey are ceremonies you perform in a browser —
     a token that could do them could take the account over.
 
-    Served on the host of the environment your account belongs to.
+    Served on the host of the environment your account belongs to: an environment's own
+    host for its own people, with a token that environment issued; the platform root's
+    host for a workspace's team and the operators, with the token the root issued them
+    (`cbox login` at the root).
 
     **Envelope.** Every success returns `{ "data": … }` (or `204` with no body). Every
     error returns `{ "error": "<code>", "message": "<human message>" }`.
@@ -39,7 +43,38 @@ tags:
   - name: Sign-in methods
   - name: Devices
     description: Your trusted devices, which approve sign-ins and agent requests.
-paths: {}
+  - name: Approvals
+    description: Where a held operation's approval stands.
+  - name: Organizations
+    description: The organizations you are a member of — and leaving one.
+paths:
+  /me/action-approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Where an approval you asked for stands
+      description: |
+        The `poll_url` of a `202 approval_required`: an approval this token raised, and only those — another token's id is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [pending, approved, denied, expired, consumed] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
 components:
   securitySchemes:
     PersonToken:
@@ -136,6 +171,7 @@ components:
       properties:
         error: { type: string, description: Stable machine code }
         message: { type: string, description: Human-readable explanation }
+        request_id: { type: string, description: "The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem." }
         errors:
           type: object
           description: Present on `validation_failed` only — the offending fields, each mapped to its messages.

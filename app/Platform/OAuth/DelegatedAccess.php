@@ -145,8 +145,10 @@ final readonly class DelegatedAccess
     /**
      * What the person knows the client as: its registered name, or the host of the
      * metadata document that describes it — the one verified fact about such a client.
+     * Looked up in the environment being served; {@see RootDelegatedAccess} asks it inside
+     * the platform root, where its clients are registered.
      */
-    private function clientName(string $clientId): string
+    public function clientName(string $clientId): string
     {
         $registered = $this->clients->byClientId($clientId);
 

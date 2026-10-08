@@ -45,15 +45,6 @@ final readonly class ShellProps implements Prop
          * `Workspace ▾ / Project ▾ / Environment ▾`. See {@see ShellContextProps}.
          */
         public ShellContextProps $context,
-        /**
-         * The environment plane's acting organization, and null on every other plane.
-         *
-         * Separate from the context's workspaces because the two answer different
-         * questions: those are "which of MY organizations", answered with a list because a
-         * person belongs to a handful; this is "which TENANT of this environment", where
-         * the set is unbounded and the chrome must never try to enumerate it.
-         */
-        public ?ActingOrganizationProps $actingOrganization,
         public bool $isOperator,
         /**
          * Whether this page is in PLATFORM ADMIN — the install as a whole, every customer
@@ -97,7 +88,6 @@ final readonly class ShellProps implements Prop
             'activeArea' => $this->activeArea,
             'section' => $this->section,
             'context' => $this->context,
-            'actingOrganization' => $this->actingOrganization,
             'isOperator' => $this->isOperator,
             'platformMode' => $this->platformMode,
             'brandHref' => $this->brandHref,

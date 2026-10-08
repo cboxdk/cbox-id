@@ -25,12 +25,13 @@ use Tests\Feature\Actions\ActionParityTest;
  *    for anyone else.
  *  - VENDOR UI from a package (the queue monitor's dashboard), with its own routes.
  *  - PENDING: real management writes with no action yet. Every one is something an agent
- *    cannot do. Moving one into an action removes it from this list.
+ *    cannot do. Moving one into an action removed it from this list — and the list is now
+ *    empty, held there by the parity test.
  */
 final class ParityAllowlist
 {
-    /** The most PENDING entries there may be. Lower it whenever an area becomes actions. */
-    public const int BASELINE = 9;
+    /** The most PENDING entries there may be: none — the debt is paid, and stays paid. */
+    public const int BASELINE = 0;
 
     /** @return list<string> */
     public static function ceremonies(): array
@@ -54,13 +55,11 @@ final class ParityAllowlist
             'device.approve',
             'device.deny',
             'device.lookup',
-            // A fresh password before a sensitive change, on either console.
-            'environment.acting-organization.choose',
-            'environment.acting-organization.clear',
             // A person answering an agent's held action — the same consent their phone
             // gives. As an action, a credential could approve its own held requests.
             'environment.approvals.actions.approve',
             'environment.approvals.actions.deny',
+            // A fresh password before a sensitive change, on either console.
             'environment.sudo.confirm',
             // An environment administrator stepping into a person's own BROWSER session — the
             // session is swapped under this browser, and a REST call has no browser to swap.
@@ -150,6 +149,7 @@ final class ParityAllowlist
             // file and recorded as `compliance.subject_export`.
             'compliance.data-exports.download',
             'environment.compliance.data-exports.download',
+            'environment.organizations.compliance.data-exports.download',
         ];
     }
 
@@ -162,6 +162,8 @@ final class ParityAllowlist
             // Hiding the dashboard's setup checklist, and the guided first run.
             'dashboard.checklist.dismiss',
             'get-started.dismiss',
+            'environment.get-started.dismiss',
+            'environment.get-started.restore',
             // Which organization the environment console is looking at.
             // The hosted pages' language picker: a cookie for the next render, nothing more.
             'locale.update',
@@ -189,20 +191,16 @@ final class ParityAllowlist
         ];
     }
 
-    /** @return list<string> */
+    /**
+     * CLOSED: every management write the console makes is an action. A new console write is
+     * an action from its first commit, or — only if it is one of the kinds above — listed
+     * there with its reason.
+     *
+     * @return list<string>
+     */
     public static function pending(): array
     {
-        return [
-            'directory.api-keys.revoke',
-            'directory.members.access',
-            'directory.members.invitations.resend',
-            'directory.members.invitations.revoke',
-            'directory.members.invite',
-            'directory.members.leave',
-            'directory.members.remove',
-            'directory.members.role',
-            'directory.members.transfer-ownership',
-        ];
+        return [];
     }
 
     /** @return list<string> */

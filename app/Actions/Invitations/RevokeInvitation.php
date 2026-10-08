@@ -28,8 +28,8 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
     tag: 'Invitations',
     rest: ['DELETE', '/organizations/{organization_id}/invitations/{invitation_id}'],
     status: 204,
-    consoleRoutes: ['environment.organizations.invitations.revoke'],
-    consoleGate: ConsoleGate::EnvironmentAdmin,
+    consoleRoutes: ['environment.organizations.invitations.revoke', 'directory.members.invitations.revoke'],
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RevokeInvitation implements Action
 {

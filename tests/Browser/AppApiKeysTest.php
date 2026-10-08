@@ -120,10 +120,10 @@ it('draws an organization\'s keys on the environment console\'s organization pag
     $fixture = appKeyFixture('tenant-keys-browser');
     mintAppKey($fixture, $fixture['ada'], ['returns:read', 'returns:file'], name: 'Accounting sync');
 
-    // The panel sits below the roster and the invite form; bring it into the frame.
+    // The organization's API keys tab; brought into the frame below its header and tabs.
     $toPanel = 'Array.from(document.querySelectorAll("h2")).find((h) => h.textContent === "Member API keys")?.scrollIntoView()';
 
-    $light = visit('/admin/organizations/'.$fixture['org']->id)
+    $light = visit('/admin/organizations/'.$fixture['org']->id.'/api-keys')
         ->assertSee('Member API keys')
         ->assertSee('Accounting sync')
         ->assertSee('Ada Lovelace')
@@ -131,13 +131,13 @@ it('draws an organization\'s keys on the environment console\'s organization pag
     $light->script($toPanel);
     $light->screenshot(filename: 'environment-organization-api-keys');
 
-    $dark = visit('/admin/organizations/'.$fixture['org']->id)
+    $dark = visit('/admin/organizations/'.$fixture['org']->id.'/api-keys')
         ->inDarkMode()
         ->assertSee('Accounting sync');
     $dark->script($toPanel);
     $dark->screenshot(filename: 'environment-organization-api-keys-dark');
 
-    $phone = visit('/admin/organizations/'.$fixture['org']->id)
+    $phone = visit('/admin/organizations/'.$fixture['org']->id.'/api-keys')
         ->resize(375, 812)
         ->assertSee('Accounting sync')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);

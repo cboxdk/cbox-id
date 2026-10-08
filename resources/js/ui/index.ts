@@ -9,12 +9,20 @@
  * probably a primitive that has not been written yet — write it here rather than
  * assembling it inline, or the console grows two spellings of the same control.
  */
+export {
+    ApiEquivalent,
+    ApiEquivalentBody,
+    type ApiEquivalentProps,
+    PageApiEquivalents,
+    usePageActions,
+} from './ApiEquivalent';
 export { type AppApiKey, AppApiKeyList } from './AppApiKeyList';
 export { Avatar } from './Avatar';
 export { AccessRoleHint, type AccessRoleOption } from './AccessRoleHint';
 export { Badge, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { Checkbox } from './Checkbox';
+export { CodeBlock, type CodeBlockProps } from './CodeBlock';
 export { Combobox, type ComboboxOption } from './Combobox';
 export { ConfirmDelete } from './ConfirmDelete';
 export { CopyButton } from './CopyButton';
@@ -30,6 +38,7 @@ export {
 } from './DropdownMenu';
 export { EmptyState } from './EmptyState';
 export { Field, useFieldControl } from './Field';
+export { FilterChip, FilterChips, OrganizationFilterChip } from './FilterChips';
 export { Help } from './Help';
 export { Icon, type IconProps } from './Icon';
 export { type IconName, iconNames, iconPaths } from './icons';
@@ -53,6 +62,11 @@ export {
 export { Kv, KvList } from './Kv';
 export { LinkConfirmation, type LinkConfirmationContent } from './LinkConfirmation';
 export { type MetadataRow, MetadataRows } from './MetadataRows';
+export {
+    OrganizationField,
+    OrganizationLookupList,
+    OrganizationPickerField,
+} from './OrganizationField';
 export { PageHeader } from './PageHeader';
 export { PasswordField, PasswordManagerIdentity } from './PasswordField';
 export {
@@ -62,6 +76,7 @@ export {
 } from './PendingInvitations';
 export { Pagination } from './Pagination';
 export { SimplePagination } from './SimplePagination';
+export { type CodeSnippet, SnippetTabs, type SnippetTabsProps } from './SnippetTabs';
 export { Panel, type PanelProps } from './Panel';
 export { Pill, type PillTone } from './Pill';
 export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './Popover';

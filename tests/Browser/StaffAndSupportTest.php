@@ -142,7 +142,7 @@ it('lists an open support session on the person\'s and the organization\'s page,
         ->assertSee('Ticket 4411: invoice totals look wrong')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-open-session');
 
-    $page = visit('/admin/organizations/'.$world['org']);
+    $page = visit('/admin/organizations/'.$world['org'].'/support');
 
     $page->assertSee('Support sessions')
         ->assertSee('Grace Hopper')
@@ -156,7 +156,7 @@ it('lists an open support session on the person\'s and the organization\'s page,
         ->assertNoJavaScriptErrors();
 
     openSupportSession($world);
-    visit('/admin/organizations/'.$world['org'])->inDarkMode()->resize(375, 812)->assertSee('Support sessions')
+    visit('/admin/organizations/'.$world['org'].'/support')->inDarkMode()->resize(375, 812)->assertSee('Support sessions')
         ->screenshotElement('section:has(h2:has-text("Support sessions"))', 'organization-sessions-phone-dark');
 });
 

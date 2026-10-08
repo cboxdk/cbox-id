@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Actions\CustomerApiKeys\RevokeCustomerApiKey;
+use App\Http\Middleware\BindConsoleOrganization;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
@@ -24,8 +25,10 @@ use Illuminate\Http\RedirectResponse;
  */
 final readonly class EnvironmentOrganizationApiKeyController extends ConsoleController
 {
-    public function destroy(string $organization, string $key): RedirectResponse
+    public function destroy(string $key): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
         abort_if(Organization::query()->whereKey($organization)->doesntExist(), 404);
 
@@ -34,5 +37,15 @@ final readonly class EnvironmentOrganizationApiKeyController extends ConsoleCont
         return $result instanceof RedirectResponse
             ? $result
             : back()->with('status', 'API key revoked. Whatever was using it stops working now.');
+    }
+
+    /**
+     * The organization the URL names, checked against this environment and bound before
+     * this controller ran (`console.org`, {@see BindConsoleOrganization})
+     * — so another environment's id, or a made-up one, is a 404 before any action sees it.
+     */
+    private function organizationInUrl(): string
+    {
+        return (string) $this->routeOrganizationId();
     }
 }

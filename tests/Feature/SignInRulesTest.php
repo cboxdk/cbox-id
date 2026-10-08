@@ -26,6 +26,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Routing\Exceptions\UrlGenerationException;
 use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
@@ -311,6 +312,39 @@ it('keeps the environment plane writing the baseline, not an override', function
         ->and($setup['envId'])->not->toBe('');
 })->group('security');
 
+it('writes one organization\'s override from its Policy tab on the environment console, and gives it back', function (): void {
+    // The environment console's own page is the baseline. One organization's override is
+    // its own page — `/admin/organizations/{organization}/policy` — which edits exactly what
+    // that organization's own console edits, and inherits again from the same place.
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-override'));
+    $tab = route('environment.organizations.policy', $org->id);
+
+    test()->get($tab)
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/auth-policy')
+            ->where('onEnvironmentPlane', false)
+            ->where('inheriting', true)
+            ->where('saveHref', route('environment.organizations.policy.update', $org->id))
+            ->where('inheritHref', route('environment.auth-policy.inherit', $org->id)));
+
+    $rules = (array) test()->get($tab)->inertiaProps('policy');
+
+    test()->from($tab)
+        ->put(route('environment.organizations.policy.update', $org->id), [...$rules, 'minLength' => 21])
+        ->assertRedirect($tab)
+        ->assertSessionHasNoErrors();
+
+    expect(app(AuthPolicies::class)->overrideFor($org->id)?->minLength)->toBe(21)
+        // The baseline is untouched: the write landed on the organization the URL named.
+        ->and(app(AuthPolicies::class)->forEnvironment()->minLength)->not->toBe(21);
+
+    test()->from($tab)->delete(route('environment.auth-policy.inherit', $org->id))->assertRedirect($tab);
+
+    expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull();
+})->group('security');
+
 it('refuses the environment baseline an attempt to inherit from itself', function (): void {
     // Forged, not clicked: the control is not rendered on this plane, so the refusal has
     // to live in the action. There is nothing above the baseline to fall back to, and a
@@ -318,9 +352,17 @@ it('refuses the environment baseline an attempt to inherit from itself', functio
     // have — which is exactly the write that would land somewhere unintended.
     crudSetup();
 
+    // There is no "inherit" on the baseline's own page at all: the route lives under an
+    // organization's Policy tab, so the environment's page has nowhere to send it…
+    expect(fn () => route('environment.auth-policy.inherit'))->toThrow(UrlGenerationException::class);
+
+    $page = test()->get(route('environment.auth-policy'))->assertOk();
+    expect($page->inertiaProps('inheritHref'))->toBeNull();
+
+    // …and the environment-wide address answers no DELETE.
     test()->from(route('environment.auth-policy'))
-        ->delete(route('environment.auth-policy.inherit'))
-        ->assertForbidden();
+        ->delete('/admin/sign-in-rules')
+        ->assertStatus(405);
 })->group('security');
 
 /*
@@ -638,10 +680,9 @@ it('resolves an account member\'s mandate in the platform root', function (): vo
 
 it('refuses to write a policy for an organization the scope will not name', function (): void {
     // The write guard, asserted directly rather than through the page: on the environment
-    // plane with no organization chosen, an organization-level write has nowhere to land,
+    // plane with no organization named, an organization-level write has nowhere to land,
     // and a downstream default picking one would legislate for a tenant nobody named.
     crudSetup();
-    session()->forget(ConsoleScope::SELECTION_KEY);
 
     expect(fn (): string => app(ConsoleScope::class)->requireOrganizationId())
         ->toThrow(AuthorizationException::class);

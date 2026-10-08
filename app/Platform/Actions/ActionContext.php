@@ -9,7 +9,8 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 
 /**
  * What an action is given to work with: who is acting, and its input — already validated
- * against the action's own schema, so a field that is present has the declared type.
+ * against the action's own schema, so a field that is present has the declared type — and
+ * which door it came through ({@see ActionVia}), which the trail records for it.
  */
 final readonly class ActionContext
 {
@@ -19,6 +20,7 @@ final readonly class ActionContext
     public function __construct(
         public Principal $principal,
         public array $input,
+        public ActionVia $via = ActionVia::Rest,
     ) {}
 
     /** Who the trail names for what this action does. */

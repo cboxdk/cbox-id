@@ -245,6 +245,8 @@ it('never shows one environment\'s data on another\'s console', function (): voi
      */
     $rendersNoTenantData = [
         'environment.home' => 'counts and empty states only',
+        // A checklist of what kinds of thing exist, and the one app the quickstart made.
+        'environment.get-started' => 'checklist booleans and the quickstart\'s own app',
         'environment.usage' => 'aggregates over an event store the fixture does not populate',
         'environment.approvals' => 'CIBA requests, which need a live backchannel flow',
         'environment.permissions' => 'the platform permission catalogue, not tenant data',

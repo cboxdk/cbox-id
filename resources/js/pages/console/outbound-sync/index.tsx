@@ -1,8 +1,25 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
-import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pagination, Pill } from '@/ui';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
+import {
+    Badge,
+    Button,
+    EmptyState,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Pagination,
+    Pill,
+} from '@/ui';
 
 interface ConnectionRow {
     id: string;
@@ -21,23 +38,9 @@ type Props = PageProps<{
     search: string;
     createHref: string;
     help: HelpContent;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
-
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
 
 export default function OutboundSyncIndex({
     connections,
@@ -45,6 +48,7 @@ export default function OutboundSyncIndex({
     search,
     createHref,
     help,
+    organizationFilter,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -79,7 +83,12 @@ export default function OutboundSyncIndex({
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
@@ -94,7 +103,8 @@ export default function OutboundSyncIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total} {pagination.total === 1 ? 'connection' : 'connections'} found.
+                    {pagination.total} {pagination.total === 1 ? 'connection' : 'connections'}{' '}
+                    found.
                 </output>
             </div>
 
@@ -112,6 +122,7 @@ export default function OutboundSyncIndex({
                     ) : (
                         <EmptyState
                             icon="directory"
+                            equivalent="provisioning.targets.create"
                             title="No outbound sync yet"
                             description="Apps that keep their own user list drift out of step the moment somebody joins or leaves. A SCIM connection pushes every change to them as it happens — including the departures, which are the ones that get forgotten."
                             steps={[

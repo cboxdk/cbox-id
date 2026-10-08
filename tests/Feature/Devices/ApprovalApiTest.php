@@ -164,8 +164,8 @@ it('collapses every non-actionable outcome into one 409', function (): void {
     $unknown = $this->postJson('/api/v1/approvals/01JZZZZZZZZZZZZZZZZZZZZZZZ/approve', [], approvalAuth('bob-tok'))
         ->assertStatus(409);
 
-    expect($wrongSubject->json())->toBe($repeat->json())
-        ->and($unknown->json())->toBe($repeat->json());
+    expect(withoutRequestId($wrongSubject))->toBe(withoutRequestId($repeat))
+        ->and(withoutRequestId($unknown))->toBe(withoutRequestId($repeat));
 });
 
 it('cannot be used by one subject to approve on behalf of another', function (): void {

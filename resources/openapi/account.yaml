@@ -7,7 +7,8 @@ info:
   description: |
     **Your own account** — the person calling, and nobody else: your profile, where you are
     signed in, which applications may act as you, your own API keys for the apps built on
-    this environment, your sign-in methods and your trusted devices. The same actions the
+    this environment, your sign-in methods, your trusted devices and the organizations you
+    belong to. The same actions the
     console's My account pages run, with the same rules, refusals and audit trail.
 
     **Who may call it.** Only you, through an access token you delegated carrying the
@@ -20,7 +21,10 @@ info:
     new recovery codes and registering a passkey are ceremonies you perform in a browser —
     a token that could do them could take the account over.
 
-    Served on the host of the environment your account belongs to.
+    Served on the host of the environment your account belongs to: an environment's own
+    host for its own people, with a token that environment issued; the platform root's
+    host for a workspace's team and the operators, with the token the root issued them
+    (`cbox login` at the root).
 
     **Envelope.** Every success returns `{ "data": … }` (or `204` with no body). Every
     error returns `{ "error": "<code>", "message": "<human message>" }`.
@@ -44,7 +48,57 @@ tags:
   - name: 'Sign-in methods'
   - name: Devices
     description: 'Your trusted devices, which approve sign-ins and agent requests.'
+  - name: Approvals
+    description: "Where a held operation's approval stands."
+  - name: Organizations
+    description: 'The organizations you are a member of — and leaving one.'
 paths:
+  '/me/action-approvals/{id}':
+    get:
+      tags:
+        - Approvals
+      summary: 'Where an approval you asked for stands'
+      description: |
+        The `poll_url` of a `202 approval_required`: an approval this token raised, and only those — another token's id is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - status
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - pending
+                          - approved
+                          - denied
+                          - expired
+                          - consumed
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/me/applications/{client_id}':
     delete:
       tags:
@@ -53,6 +107,8 @@ paths:
       description: 'Requires scope `account:applications:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_applications_revoke
       x-action: account.applications.revoke
+      x-scope: 'account:applications:write'
+      x-danger: destructive
       parameters:
         -
           name: client_id
@@ -87,6 +143,8 @@ paths:
       description: 'Requires scope `account:devices:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_devices_remove
       x-action: account.devices.remove
+      x-scope: 'account:devices:write'
+      x-danger: destructive
       parameters:
         -
           name: device_id
@@ -121,6 +179,8 @@ paths:
       description: 'Requires scope `account:api_keys:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_api_keys_create
       x-action: account.api_keys.create
+      x-scope: 'account:api_keys:write'
+      x-danger: critical
       parameters:
         -
           name: organization_id
@@ -195,6 +255,8 @@ paths:
       description: 'Requires scope `account:api_keys:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_api_keys_revoke
       x-action: account.api_keys.revoke
+      x-scope: 'account:api_keys:write'
+      x-danger: destructive
       parameters:
         -
           name: organization_id
@@ -227,6 +289,44 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/me/organizations/{organization_id}/leave':
+    post:
+      tags:
+        - Organizations
+      summary: 'Leave one of your own organizations. The last owner cannot leave — transfer ownership first.'
+      description: 'Requires scope `account:organizations:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      operationId: account_organizations_leave
+      x-action: account.organizations.leave
+      x-scope: 'account:organizations:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization you are leaving — one you are a member of.'
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/me/passkeys/{passkey_id}':
     delete:
       tags:
@@ -235,6 +335,8 @@ paths:
       description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_passkeys_remove
       x-action: account.passkeys.remove
+      x-scope: 'account:sign_in:write'
+      x-danger: critical
       parameters:
         -
           name: passkey_id
@@ -269,6 +371,8 @@ paths:
       description: 'Requires scope `account:profile:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_profile_update
       x-action: account.profile.update
+      x-scope: 'account:profile:write'
+      x-danger: write
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -318,6 +422,8 @@ paths:
       description: 'Requires scope `account:sessions:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_sessions_revoke_others
       x-action: account.sessions.revoke_others
+      x-scope: 'account:sessions:write'
+      x-danger: critical
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
@@ -353,6 +459,8 @@ paths:
       description: 'Requires scope `account:sessions:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_sessions_revoke
       x-action: account.sessions.revoke
+      x-scope: 'account:sessions:write'
+      x-danger: destructive
       parameters:
         -
           name: session_id
@@ -387,6 +495,8 @@ paths:
       description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_social_unlink
       x-action: account.social.unlink
+      x-scope: 'account:sign_in:write'
+      x-danger: critical
       parameters:
         -
           name: provider
@@ -597,6 +707,9 @@ components:
         message:
           type: string
           description: 'Human-readable explanation'
+        request_id:
+          type: string
+          description: 'The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem.'
         errors:
           type: object
           description: 'Present on `validation_failed` only — the offending fields, each mapped to its messages.'

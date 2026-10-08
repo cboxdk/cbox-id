@@ -45,14 +45,15 @@ final readonly class AppearanceController extends ConsoleController
         $mayThemeEnvironment = $this->scope->plane() === ConsolePlane::Environment;
 
         /*
-         * WHICH THING IS BEING THEMED, on the environment plane, is a choice — and its
-         * landing state there is the environment default, because that is the capability
-         * that console's page WAS. A merge that silently retargeted "Appearance" at
-         * whichever organization happened to be picked would have an operator re-theming
-         * one tenant while believing they were setting the default for all of them.
+         * WHICH THING IS BEING THEMED is the page's ADDRESS, not a choice on it. The
+         * environment console's Appearance page is the environment default every
+         * organization inherits; one organization's own theme is its Branding tab
+         * (`/admin/organizations/{organization}/branding`). It used to be a toggle on one
+         * page, aimed by whichever organization the console header had been pointed at —
+         * an operator could re-theme one tenant believing they were setting the default
+         * for all of them.
          */
-        $environmentDefault = $mayThemeEnvironment
-            && request()->string('target')->toString() !== 'organization';
+        $environmentDefault = $mayThemeEnvironment && $this->scope->organizationId() === null;
 
         $organization = $this->organization();
         $environment = $this->environment($environments);
@@ -78,13 +79,14 @@ final readonly class AppearanceController extends ConsoleController
             // from one rule.
             'mayThemeEnvironment' => $mayThemeEnvironment,
             'environmentDefault' => $environmentDefault,
-            'organizationName' => $organization?->name,
-            // Nothing to theme: an environment administrator who has not chosen an
-            // organization, or a member who belongs to none.
+            // Nothing to theme: a member who belongs to no organization, or an environment
+            // that could not be resolved.
             'hasTarget' => $target !== null,
-            // WHERE SAVE POSTS, resolved by the server: one controller action serves two
-            // route names, so the page cannot work out which plane it is on by itself.
-            'saveHref' => $this->url('appearance.update'),
+            // WHERE SAVE POSTS, resolved by the server: one controller action serves three
+            // route names — both consoles' pages and an organization's Branding tab.
+            'saveHref' => $mayThemeEnvironment && ! $environmentDefault
+                ? route('environment.organizations.branding.update')
+                : $this->url('appearance.update'),
         ]);
     }
 
@@ -97,20 +99,25 @@ final readonly class AppearanceController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
+        /*
+         * WHOSE THEME, from the address alone: the environment default on the environment
+         * console's own Appearance page, the organization on its Branding tab and on the
+         * organization console. The form's `environmentDefault` is not trusted to choose —
+         * its arrival on the organization plane is a forged payload, refused rather than
+         * quietly downgraded, because treating a forgery as a typo is how a control stops
+         * being one.
+         */
+        $environmentDefault = $this->scope->plane() === ConsolePlane::Environment && $this->scope->organizationId() === null;
+
         if ($request->environmentDefault()) {
-            /*
-             * Refused rather than quietly downgraded to the organization: the control is
-             * not rendered on the organization plane, so its arrival there is a forged
-             * payload, and treating a forgery as a typo is how a control stops being one.
-             */
-            abort_unless($this->scope->plane() === ConsolePlane::Environment, 403,
-                'Only an environment administrator may change the environment default theme.');
+            abort_unless($environmentDefault, 403,
+                'Only an environment administrator may change the environment default theme, on the environment\'s own Appearance page.');
         }
 
         $result = $this->act(SetAppearance::class, [
             // `requireOrganizationId()`, not the nullable reader: with none resolved this
             // write would otherwise land wherever a downstream default pointed.
-            'organization_id' => $request->environmentDefault() ? null : $this->scope->requireOrganizationId(),
+            'organization_id' => $environmentDefault ? null : $this->scope->requireOrganizationId(),
             // Through the sanitizer first, so the editor's extra keys (its name and logo
             // preview) never reach the action as theme fields.
             'theme' => Appearance::fromArray($request->theme())->toArray(),
@@ -121,7 +128,7 @@ final readonly class AppearanceController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $request->environmentDefault() ? 'Environment appearance saved.' : 'Appearance saved.');
+        return back()->with('status', $environmentDefault ? 'Environment appearance saved.' : 'Appearance saved.');
     }
 
     /**
@@ -144,8 +151,8 @@ final readonly class AppearanceController extends ConsoleController
      * The organization being themed — the SCOPE's, never a form field's.
      *
      * On the organization plane it is the member's own and nothing in the request can
-     * change it; on the environment plane the scope re-validates the chosen id against
-     * this environment on every read, so an id carried from elsewhere resolves to nothing.
+     * change it; on the environment plane it is the one the URL names, checked against this
+     * environment before the page ran, so an id carried from elsewhere is a 404.
      */
     private function organization(): ?Organization
     {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\ConsoleScope;
 use App\Platform\Navigation\ConsoleNavigation;
 use Carbon\CarbonInterface;
 use Cbox\Id\Compliance\Models\AuditExportRun;
@@ -70,7 +69,7 @@ function enrolledHandset(string $subjectId, string $name, ?CarbonInterface $last
     return $device;
 }
 
-/** Sign in as an environment administrator, optionally acting on an organization. */
+/** Sign in as an environment administrator, optionally with an organization to open pages about. */
 function moduleEnvironmentAdmin(string $slug = 'module-parity', bool $chooseOrganization = true): ?string
 {
     // The environment console lives under `/admin`, which exists only on a multi-tenant
@@ -96,10 +95,9 @@ function moduleEnvironmentAdmin(string $slug = 'module-parity', bool $chooseOrga
         return null;
     }
 
-    $organizationId = app(Organizations::class)->create(new NewOrganization('Tenant Co', $slug))->id;
-    app(ConsoleScope::class)->chooseOrganization($organizationId);
-
-    return $organizationId;
+    // Nothing is chosen in the session: a page about this organization says so in its own
+    // URL (`/admin/organizations/{organization}/…`), which the tests below open.
+    return app(Organizations::class)->create(new NewOrganization('Tenant Co', $slug))->id;
 }
 
 /** Every module feature on, so a feature gate cannot 404 a page this file is measuring. */
@@ -224,21 +222,28 @@ it('never routes a workspace page on the environment plane', function (): void {
 |--------------------------------------------------------------------------
 */
 
-it('serves every module page to an environment administrator', function (): void {
+it('serves every module page to an environment administrator, for the environment and for one organization', function (): void {
     everyModuleFeatureOn();
-    moduleEnvironmentAdmin('serves');
+    $organizationId = moduleEnvironmentAdmin('serves');
 
     foreach ([
-        'environment.sign-in-activity',
-        'environment.compliance.audit',
-        'environment.compliance.data-exports',
-        'environment.connectors.catalog',
-        'environment.connectors.connections',
-        'environment.risk-plus.events',
-        'environment.whitelabel.branding',
-        'environment.devices.index',
+        'sign-in-activity',
+        'compliance.audit',
+        'compliance.data-exports',
+        'connectors.catalog',
+        'connectors.connections',
+        'risk-plus.events',
+        'whitelabel.branding',
+        'devices.index',
     ] as $route) {
-        expect($this->get(route($route))->status())->toBe(200, "[{$route}] did not render on the environment plane");
+        expect($this->get(route('environment.'.$route))->status())->toBe(200, "[environment.{$route}] did not render on the environment plane");
+
+        // The same page about one organization, under that organization's own address —
+        // and a 404 for an organization this environment does not have.
+        expect($this->get(route('environment.organizations.'.$route, $organizationId))->status())
+            ->toBe(200, "[environment.organizations.{$route}] did not render for one organization");
+        expect($this->get(route('environment.organizations.'.$route, '01JQZZZZZZZZZZZZZZZZZZZZZZ'))->status())
+            ->toBe(404, "[environment.organizations.{$route}] answered for an organization that is not here");
     }
 })->group('security');
 
@@ -401,11 +406,11 @@ it('reaches a device that falls past the first page', function (): void {
  * is the same fact one step earlier, and it does not move when somebody edits the wording.
  * The page saying it out loud is held in tests/Browser.
  */
-it('narrows connectors to the organization an environment administrator chose', function (): void {
+it('narrows connectors to the organization the page is about', function (): void {
     everyModuleFeatureOn();
-    moduleEnvironmentAdmin('connectors-scope');
+    $organizationId = moduleEnvironmentAdmin('connectors-scope');
 
-    $this->get(route('environment.connectors.connections'))
+    $this->get(route('environment.organizations.connectors.connections', $organizationId))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('wholeEnvironment', false));
 })->group('security');
@@ -428,7 +433,7 @@ it('shows the whole environment\'s connectors when none is chosen', function ():
  * empty table and a one-sided test would call that isolation. So the acting
  * organization's own entry must be there, and the other's must not.
  */
-it('reads the acting organization\'s audit chain and no other', function (): void {
+it('reads the audit chain of the organization the page is about, and no other', function (): void {
     everyModuleFeatureOn();
     $organizationId = moduleEnvironmentAdmin('audit-scope');
 
@@ -446,7 +451,7 @@ it('reads the acting organization\'s audit chain and no other', function (): voi
         organizationId: $other->id,
     ));
 
-    $this->get(route('environment.compliance.audit'))
+    $this->get(route('environment.organizations.compliance.audit', (string) $organizationId))
         ->assertOk()
         ->assertSee('ours.happened')
         ->assertDontSee('zarquon.happened');
@@ -541,10 +546,22 @@ it('edits the environment default when no organization is chosen', function (): 
         ->and($profile?->organization_id)->toBeNull();
 })->group('security');
 
-it('edits the chosen organization\'s profile and leaves the environment default alone', function (): void {
+it('edits one organization\'s profile from its own page and leaves the environment default alone', function (): void {
     $organizationId = moduleEnvironmentAdmin('brand-org');
 
-    saveBranding(['appName' => 'Just This Tenant'], environmentPlane: true)->assertSessionHasNoErrors();
+    $this->get(route('environment.organizations.whitelabel.branding', (string) $organizationId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('saveHref', route('environment.organizations.whitelabel.branding.save', (string) $organizationId)));
+
+    $this->from(route('environment.organizations.whitelabel.branding', (string) $organizationId))
+        ->post(route('environment.organizations.whitelabel.branding.save', (string) $organizationId), [
+            'palette' => [],
+            'appName' => 'Just This Tenant',
+            'emailFromName' => '',
+            'emailTemplate' => '',
+        ])
+        ->assertSessionHasNoErrors();
 
     expect(app(BrandProfiles::class)->forOrganization((string) $organizationId)?->app_name)->toBe('Just This Tenant')
         ->and(app(BrandProfiles::class)->forEnvironment())->toBeNull();

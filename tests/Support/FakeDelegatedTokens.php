@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Platform\Actions\Principal\DelegatedTokens;
-use App\Platform\Actions\Principal\NoDelegatedTokens;
+use App\Platform\Actions\Principal\OAuthDelegatedTokens;
 use App\Platform\Actions\Principal\PersonPrincipal;
+use Illuminate\Http\Request;
 
 /**
  * Delegated tokens, as a test states them: bearer => the person it speaks for.
  *
- * The real resolver (delegated OAuth management tokens) is built elsewhere and bound in
- * place of {@see NoDelegatedTokens}; this one proves the seam — that the platform and
- * account planes run their actions for whatever principal that resolver hands over, and
- * refuse everything else.
+ * The real resolver ({@see OAuthDelegatedTokens}) reads OAuth access tokens; this one
+ * proves the seam — that the platform and account planes run their actions for whatever
+ * principal the resolver hands over, and refuse everything else.
  */
 final class FakeDelegatedTokens implements DelegatedTokens
 {
@@ -63,8 +63,8 @@ final class FakeDelegatedTokens implements DelegatedTokens
         return $this;
     }
 
-    public function principal(string $bearer): ?PersonPrincipal
+    public function principal(Request $request): ?PersonPrincipal
     {
-        return $this->tokens[$bearer] ?? null;
+        return $this->tokens[(string) $request->bearerToken()] ?? null;
     }
 }

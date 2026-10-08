@@ -8,7 +8,10 @@ use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateMcp;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Actions\Principal\SignedInPerson;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 
 /**
@@ -22,12 +25,17 @@ use Cbox\Id\Platform\Models\EnvironmentApiKey;
  * At most one of the two is set. {@see key()} stays the KEY alone, because the routes that
  * read it — the ones not yet actions — act as a key and nothing else; {@see Principal()} is
  * the question the action layer asks.
+ *
+ * The person is any {@see SignedInPerson}: the environment's own subject
+ * ({@see DelegatedTokenPrincipal}), or on the root host a workspace member — unbound
+ * ({@see RootPersonPrincipal}) for the approval poll, bound to the environment named for the
+ * call ({@see EnvironmentMemberPrincipal}) for an action.
  */
 final class EnvironmentApiContext
 {
     private ?EnvironmentApiKey $key = null;
 
-    private ?DelegatedTokenPrincipal $delegated = null;
+    private ?SignedInPerson $delegated = null;
 
     public function set(EnvironmentApiKey $key): void
     {
@@ -35,7 +43,7 @@ final class EnvironmentApiContext
         $this->delegated = null;
     }
 
-    public function setDelegated(DelegatedTokenPrincipal $principal): void
+    public function setDelegated(SignedInPerson $principal): void
     {
         $this->delegated = $principal;
         $this->key = null;
@@ -62,7 +70,7 @@ final class EnvironmentApiContext
     }
 
     /** The person whose access token authenticated this request, when one did. */
-    public function delegated(): ?DelegatedTokenPrincipal
+    public function delegated(): ?SignedInPerson
     {
         return $this->delegated;
     }
@@ -80,6 +88,12 @@ final class EnvironmentApiContext
     /** The environment the authenticated credential belongs to (host-resolved and credential-bound agree). */
     public function environmentId(): ?string
     {
-        return $this->key->environment_id ?? $this->delegated?->environmentId();
+        if ($this->key !== null) {
+            return $this->key->environment_id;
+        }
+
+        return $this->delegated instanceof DelegatedTokenPrincipal || $this->delegated instanceof EnvironmentMemberPrincipal
+            ? $this->delegated->environmentId()
+            : null;
     }
 }

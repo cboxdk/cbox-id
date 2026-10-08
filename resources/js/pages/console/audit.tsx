@@ -2,13 +2,22 @@ import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { absoluteTime, relativeTime } from '@/lib/time';
-import type { HelpContent, PageProps, SimplePagination as SimplePaginationState } from '@/types';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    SimplePagination as SimplePaginationState,
+} from '@/types';
 import {
     Badge,
+    Button,
     EmptyState,
+    FilterChips,
     Icon,
     Input,
+    OrganizationFilterChip,
     PageHeader,
+    Pill,
     SimplePagination,
     Table,
     Td,
@@ -24,24 +33,48 @@ interface Entry {
     actorId: string | null;
     actorName: string | null;
     actorType: string;
+    /** Whose trail the entry is on — named on the list that holds every organization's. */
+    organization: string | null;
     targetId: string | null;
     targetName: string | null;
     targetType: string | null;
     facts: string[];
+    /** Who it was, as the chips filter it: `human`, `agent`, `api_key`, `system`. */
+    actorKind: string;
+    /** The door it came through — "MCP", "CLI" — when an action recorded one. */
+    via: string | null;
+    /** The person who approved it, for an action that was held for approval. */
+    approvedBy: string | null;
     recordedAt: string | null;
+}
+
+interface Option {
+    value: string;
+    label: string;
+}
+
+interface Filters {
+    action: string;
+    q: string;
+    actor: string | null;
+    via: string | null;
 }
 
 type Props = PageProps<{
     help: HelpContent;
     entries: Entry[];
     pagination: SimplePaginationState;
-    filters: { action: string; q: string };
+    filters: Filters;
+    actorKinds: Option[];
+    doors: Option[];
     /** No organization is chosen: this is the whole environment's trail. */
     environmentWide: boolean;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
 
-/** The filter state, as a URL. Both boxes and the page number live in one place. */
-function filterHref(filters: { action: string; q: string }, page?: number): string {
+/** The filter state, as a URL. Both boxes, both chip rows and the page number in one place. */
+function filterHref(filters: Filters, page?: number): string {
     const query = new URLSearchParams();
 
     if (filters.action !== '') {
@@ -50,6 +83,21 @@ function filterHref(filters: { action: string; q: string }, page?: number): stri
 
     if (filters.q !== '') {
         query.set('q', filters.q);
+    }
+
+    if (filters.actor !== null) {
+        query.set('actor', filters.actor);
+    }
+
+    if (filters.via !== null) {
+        query.set('via', filters.via);
+    }
+
+    // The Organization chip lives in the URL too; changing another filter keeps it.
+    const organization = new URLSearchParams(window.location.search).get('organization');
+
+    if (organization !== null && organization !== '') {
+        query.set('organization', organization);
     }
 
     if (page !== undefined && page > 1) {
@@ -61,7 +109,16 @@ function filterHref(filters: { action: string; q: string }, page?: number): stri
     return search === '' ? window.location.pathname : `${window.location.pathname}?${search}`;
 }
 
-export default function Audit({ help, entries, pagination, filters, environmentWide }: Props) {
+export default function Audit({
+    help,
+    entries,
+    pagination,
+    filters,
+    actorKinds,
+    doors,
+    environmentWide,
+    organizationFilter,
+}: Props) {
     const [action, setAction] = useState(filters.action);
     const [search, setSearch] = useState(filters.q);
 
@@ -74,16 +131,32 @@ export default function Audit({ help, entries, pagination, filters, environmentW
 
         const timer = setTimeout(() => {
             router.get(
-                filterHref({ action, q: search }),
+                filterHref({ ...filters, action, q: search }),
                 {},
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [action, search, filters.action, filters.q]);
+    }, [action, search, filters]);
 
-    const filtered = filters.action !== '' || filters.q !== '';
+    const filtered =
+        filters.action !== '' || filters.q !== '' || filters.actor !== null || filters.via !== null;
+
+    // A chip applies at once — there is nothing to debounce about a click — and a second
+    // click on the pressed one takes it off.
+    const choose = (key: 'actor' | 'via', value: string): void => {
+        router.get(
+            filterHref({
+                ...filters,
+                action,
+                q: search,
+                [key]: filters[key] === value ? null : value,
+            }),
+            {},
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
 
     return (
         <>
@@ -103,7 +176,12 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
@@ -123,14 +201,29 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                     page cost the size of the environment — so there is no total to
                     announce, and inventing one would be a number nobody measured.
                 */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <ChipGroup
+                        label="Who"
+                        options={actorKinds}
+                        value={filters.actor}
+                        onChoose={(value) => choose('actor', value)}
+                    />
+                    <ChipGroup
+                        label="Via"
+                        options={doors}
+                        value={filters.via}
+                        onChoose={(value) => choose('via', value)}
+                    />
+                </div>
+
                 <output className="sr-only">
                     {entries.length} {entries.length === 1 ? 'entry' : 'entries'} shown.
                 </output>
 
                 {environmentWide && (
                     <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                        Every organization in this environment. Choose one above to narrow the trail
-                        to it.
+                        Every organization in this environment. Add the Organization filter to
+                        narrow the trail to one.
                     </p>
                 )}
             </div>
@@ -162,7 +255,7 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                                             <EmptyState
                                                 icon="search"
                                                 title="No matching entries"
-                                                description="No entry on this page matches that action or target. Try a broader term, or clear the filter."
+                                                description="No entry matches those filters. Try a broader term, or clear a filter."
                                             />
                                         ) : (
                                             <EmptyState
@@ -192,6 +285,9 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                                             >
                                                 {entry.action}
                                             </p>
+                                            {entry.organization !== null && (
+                                                <Badge className="mt-1">{entry.organization}</Badge>
+                                            )}
                                         </Td>
 
                                         {/*
@@ -282,6 +378,20 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                                         </Td>
 
                                         <Td className="text-right whitespace-nowrap">
+                                            {(entry.via !== null || entry.approvedBy !== null) && (
+                                                <p className="mb-0.5 flex flex-wrap justify-end gap-1">
+                                                    {entry.via !== null && (
+                                                        <Pill tone="neutral" dot={false}>
+                                                            via {entry.via}
+                                                        </Pill>
+                                                    )}
+                                                    {entry.approvedBy !== null && (
+                                                        <Pill tone="success" dot={false}>
+                                                            approved by {entry.approvedBy}
+                                                        </Pill>
+                                                    )}
+                                                </p>
+                                            )}
                                             {entry.recordedAt !== null && (
                                                 <time
                                                     className="text-xs"
@@ -318,6 +428,43 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                 />
             </div>
         </>
+    );
+}
+
+/**
+ * One row of filter chips: toggle buttons, at most one pressed. Buttons with `aria-pressed`
+ * rather than radios, because "none of them" is a state the row has to be able to return to.
+ */
+function ChipGroup({
+    label,
+    options,
+    value,
+    onChoose,
+}: {
+    label: string;
+    options: Option[];
+    value: string | null;
+    onChoose: (value: string) => void;
+}) {
+    return (
+        <fieldset className="flex flex-wrap items-center gap-1.5 border-0 p-0 m-0 min-w-0">
+            <legend className="sr-only">Filter by {label.toLowerCase()}</legend>
+            <span className="text-xs" aria-hidden="true" style={{ color: 'var(--faint)' }}>
+                {label}
+            </span>
+            {options.map((option) => (
+                <Button
+                    key={option.value}
+                    type="button"
+                    size="sm"
+                    variant={value === option.value ? 'secondary' : 'ghost'}
+                    aria-pressed={value === option.value}
+                    onClick={() => onChoose(option.value)}
+                >
+                    {option.label}
+                </Button>
+            ))}
+        </fieldset>
     );
 }
 

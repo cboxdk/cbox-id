@@ -42,7 +42,7 @@ use Illuminate\Validation\ValidationException;
     schema: 'Organization',
     tag: 'Organizations',
     rest: ['PATCH', '/organizations/{id}'],
-    consoleRoutes: ['environment.organizations.update', 'settings.rename', 'environment.settings.rename'],
+    consoleRoutes: ['environment.organizations.update', 'settings.rename'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class UpdateOrganization implements Action

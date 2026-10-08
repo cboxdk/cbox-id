@@ -9,6 +9,7 @@ use App\Actions\SignIn\RemoveSocialProvider;
 use App\Actions\SignIn\SocialProviderFields;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\EnableSocialProviderRequest;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
@@ -52,14 +53,34 @@ final readonly class SocialProviderController extends ConsoleController
         $this->scope->assertMayAdminister();
 
         /*
-         * Empty rather than a refusal on the READ path, so the page renders and the
-         * acting-organization picker in the console header is reachable. Writes cannot slip
-         * through on it: every one of them calls `requireOrganizationId()`.
+         * A provider is offered on ONE organization's sign-in page. The organization console
+         * lists its own; the environment console lists every organization's — with whose it
+         * is — or the one organization its filter names. The "add a provider" half is about
+         * one organization either way: on the environment console its form asks which.
          */
-        $organizationId = $this->scope->organizationId() ?? '';
+        $filter = $this->organizationFilter();
+        $organizationId = $filter->id;
 
-        $enabled = $connections->catalogueProvidersFor($organizationId);
-        $enabledKeys = array_map(static fn (Connection $connection): ?string => $connection->provider, $enabled);
+        $enabled = match (true) {
+            $filter->unknown => [],
+            $organizationId !== null => $connections->catalogueProvidersFor($organizationId),
+            default => Connection::query()
+                ->whereNotNull('organization_id')
+                ->whereNotNull('provider')
+                ->orderBy('provider')
+                ->get()
+                ->all(),
+        };
+
+        // What is already offered is only "already offered" for one organization; across the
+        // environment every provider can still be added somewhere.
+        $enabledKeys = $organizationId === null
+            ? []
+            : array_map(static fn (Connection $connection): ?string => $connection->provider, $enabled);
+
+        $owners = $organizationId === null
+            ? $this->scope->organizationNames(array_map(static fn (Connection $connection): ?string => $connection->organization_id, $enabled))
+            : [];
 
         /*
          * WHICH PROVIDER IS BEING SET UP, in the URL rather than in component state. It was a
@@ -83,6 +104,9 @@ final readonly class SocialProviderController extends ConsoleController
                  * the URI, which reads as a credential problem and gets debugged as one.
                  */
                 'callbackUri' => $this->callbackUriFor($connection),
+                'organization' => $organizationId === null && $connection->organization_id !== null
+                    ? ($owners[$connection->organization_id] ?? $connection->organization_id)
+                    : null,
                 'removeHref' => $this->url('social-providers.destroy', $connection->id),
             ], $enabled),
             /*
@@ -95,12 +119,21 @@ final readonly class SocialProviderController extends ConsoleController
                 'key' => $option->key,
                 'name' => $option->name,
                 'protocol' => $option->isOidc() ? 'OpenID Connect' : 'OAuth 2.0',
-                'href' => $this->url('social-providers', ['provider' => $option->key]),
+                // The filter rides along, so the setup form opens for the organization the
+                // list is narrowed to.
+                'href' => $this->url('social-providers', array_filter([
+                    'provider' => $option->key,
+                    'organization' => $this->organizationFilterProps($filter) === null ? null : $organizationId,
+                ])),
             ], array_values(array_filter(
                 ProviderCatalog::withCapability(ProviderCapability::Login),
                 static fn (ProviderTemplate $t): bool => ! in_array($t->key, $enabledKeys, true),
             ))),
             'template' => $template === null ? null : $this->templateProps($template),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            // "For which organization?" on the setup form, on the environment console —
+            // prefilled and locked to the one the list is filtered to.
+            'organization' => $this->organizationPicker(),
             'indexHref' => $this->url('social-providers'),
             'storeHref' => $this->url('social-providers.store'),
             'help' => HelpProps::for(HelpTopic::SocialSignIn),
@@ -128,7 +161,9 @@ final readonly class SocialProviderController extends ConsoleController
         }
 
         $result = $this->act(EnableSocialProvider::class, [
-            'organization_id' => $this->scope->requireOrganizationId(),
+            // The member's own; on the environment console the form's "For which
+            // organization?", checked against this environment.
+            'organization_id' => $this->chosenOrganizationId($request),
             'provider' => $request->provider(),
             'client_id' => $request->clientId(),
             'client_secret' => $request->clientSecret(),
@@ -142,8 +177,10 @@ final readonly class SocialProviderController extends ConsoleController
         /** @var Connection $enabled */
         $enabled = $result->value;
 
-        return to_route($this->scope->routeName('social-providers'))
-            ->with('status', $enabled->name.' is now offered on your sign-in page.');
+        return to_route($this->scope->routeName('social-providers'), $this->scope->plane() === ConsolePlane::Environment
+            ? ['organization' => $enabled->organization_id]
+            : [])
+            ->with('status', $enabled->name.' is now offered on the sign-in page.');
     }
 
     public function destroy(string $connection): RedirectResponse
@@ -157,7 +194,9 @@ final readonly class SocialProviderController extends ConsoleController
          */
         $result = $this->act(RemoveSocialProvider::class, [
             'id' => $connection,
-            'organization_id' => $this->scope->requireOrganizationId(),
+            // The member's own organization, which the action holds the lookup to; on the
+            // environment console, whose administrator holds every organization, none.
+            'organization_id' => $this->routeOrganizationId(),
         ]);
 
         if ($result instanceof RedirectResponse) {

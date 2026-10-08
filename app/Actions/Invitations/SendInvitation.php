@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Invitations;
 
+use App\Actions\Members\TenantRoster;
 use App\Actions\Organizations\OrganizationFields;
 use App\Actions\Roles\RoleFields;
 use App\Platform\Actions\Action;
@@ -35,6 +36,10 @@ use Cbox\Id\Organization\Enums\MembershipRole;
  * role out, this refuses it (`role_not_assignable`): a caller that sent a role and got a 201
  * would reasonably believe it will be granted. Grant a staff role to the member once they
  * have joined.
+ *
+ * FROM INSIDE THE ORGANIZATION — its own People page, or a token one of its administrators
+ * signed in for — a customer's roster is administered from Workspace › Team instead, and is
+ * refused here (`managed_elsewhere`, {@see TenantRoster}). The mail is signed by that person.
  */
 #[AsAction(
     name: 'invitations.send',
@@ -45,8 +50,8 @@ use Cbox\Id\Organization\Enums\MembershipRole;
     tag: 'Invitations',
     rest: ['POST', '/organizations/{organization_id}/invitations'],
     status: 201,
-    consoleRoutes: ['environment.organizations.invitations.store'],
-    consoleGate: ConsoleGate::EnvironmentAdmin,
+    consoleRoutes: ['environment.organizations.invitations.store', 'directory.members.invite'],
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class SendInvitation implements Action
 {
@@ -71,6 +76,11 @@ final readonly class SendInvitation implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
+
+        if (TenantRoster::confined($context) !== null) {
+            TenantRoster::assertManagedHere($organization->id, 'email');
+        }
+
         $clientId = $context->nullableString('client_id');
         $clientId = $clientId === null ? null : trim($clientId);
 

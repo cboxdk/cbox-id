@@ -83,6 +83,38 @@ not the address is already confirmed — so it cannot be used to test verificati
 and is throttled to **3 sends per 10 minutes per member**, because outbound mail is the
 resource worth abusing here.
 
+### MCP sign-in at the platform root
+
+On a multi-tenant deployment the platform root is not an identity provider for anybody's
+app: it serves no OpenID Connect discovery, UserInfo, SAML or SCIM, and an organization
+admin who creates an OAuth client there (Developers › Apps) cannot use it to sign anyone
+in. It does sign in two kinds of client, both for its own `/mcp`:
+
+- the platform's own first-party clients, such as the `cbox` CLI (device grant);
+- since `CBOX_ID_ROOT_MCP_OAUTH` (on by default), any MCP client, so
+  `claude mcp add --transport http cbox-id https://<platform-root>/mcp` gives a person one
+  connection for their whole workspace.
+
+What the second one exposes on the root, and what bounds it:
+
+| Surface | Bound |
+|---|---|
+| `/.well-known/oauth-protected-resource/mcp` | The `/mcp` resource only; any other path is `404`. |
+| `/.well-known/oauth-authorization-server` | Written for the root: code flow with S256 PKCE, public clients, the root `/mcp` scopes and `offline_access`. No OpenID Connect fields. |
+| `POST /oauth/register` | The `mcp` profile only (public client, PKCE, https or loopback redirects, the authorization-code and refresh grants). In any other `CBOX_ID_DCR_MODE` the root registers nothing. No RFC 7592 management. Per-address ceiling (`CBOX_ID_DCR_MAX_PER_IP_PER_HOUR`), and unused clients are pruned (`CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS`). |
+| `/oauth/authorize`, consent, `/oauth/token`, `/oauth/revoke` | Only for a client that registered itself at the root or a client ID metadata document, besides the first-party clients. `/oauth/authorize` is metered per address at the root (60/min); the token endpoint keeps its 30/min. |
+| Who can finish signing in | Only a member of a workspace's team or an operator. Anyone else is refused on the page. |
+| What the token is for | The root's `/mcp` only. A missing `resource` defaults to it; any other (the root issuer, a registered API, another host) is `invalid_target`, at `/authorize` and at the token endpoint, refresh included. `openid`, `profile` and `email` are refused, so no ID token is issued. |
+| What the token can do | What the person can do, within the scopes they allowed. The consent screen is never skipped for these clients, and every critical action waits for the person's approval. |
+| Record | Each registration as `mcp.client_registered` with the address it came from; each consent as `mcp.client_authorized` in the person's workspace trail. |
+
+Why this is acceptable: the risk the root's wall exists for is a customer turning the one
+host every customer's owner trusts into a sign-in page for their own app. These clients
+cannot do that. They can only ever be issued a token for the root's `/mcp`, which acts as
+the person who signed in and nothing more, and the person sees the consent screen every
+time, with the client marked as one that registered itself. `CBOX_ID_ROOT_MCP_OAUTH=false`
+returns every surface above to `404`.
+
 ## End-user consent surfaces
 
 - **OAuth consent (`/oauth/authorize`)** — registered clients requesting access are

@@ -19,7 +19,6 @@ use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Auth\SudoController;
 use App\Http\Controllers\Console\AccessReviewController;
 use App\Http\Controllers\Console\AccountSettingsController;
-use App\Http\Controllers\Console\ActingOrganizationController;
 use App\Http\Controllers\Console\AgentApprovalController;
 use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
@@ -33,10 +32,12 @@ use App\Http\Controllers\Console\ClientScopesController;
 use App\Http\Controllers\Console\ClientSecretsController;
 use App\Http\Controllers\Console\ClientSettingsController;
 use App\Http\Controllers\Console\ConnectionController;
+use App\Http\Controllers\Console\ConsoleSearchController;
 use App\Http\Controllers\Console\DashboardController;
 use App\Http\Controllers\Console\DirectoryController;
 use App\Http\Controllers\Console\DirectoryMemberController;
 use App\Http\Controllers\Console\EnvironmentDomainController;
+use App\Http\Controllers\Console\EnvironmentGetStartedController;
 use App\Http\Controllers\Console\EnvironmentHomeController;
 use App\Http\Controllers\Console\EnvironmentKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationApiKeyController;
@@ -51,6 +52,15 @@ use App\Http\Controllers\Console\MemberApiKeyController;
 use App\Http\Controllers\Console\MemberController;
 use App\Http\Controllers\Console\MyApprovalController;
 use App\Http\Controllers\Console\OperatorRosterController;
+use App\Http\Controllers\Console\Organization\OrganizationApiKeysController;
+use App\Http\Controllers\Console\Organization\OrganizationDomainsController;
+use App\Http\Controllers\Console\Organization\OrganizationInvitationsController;
+use App\Http\Controllers\Console\Organization\OrganizationMembersController;
+use App\Http\Controllers\Console\Organization\OrganizationOverviewController;
+use App\Http\Controllers\Console\Organization\OrganizationPortalLinkController;
+use App\Http\Controllers\Console\Organization\OrganizationSettingsController;
+use App\Http\Controllers\Console\Organization\OrganizationSupportController;
+use App\Http\Controllers\Console\OrganizationLookupController;
 use App\Http\Controllers\Console\OutboundSyncController;
 use App\Http\Controllers\Console\PermissionController;
 use App\Http\Controllers\Console\PlatformCustomerController;
@@ -439,8 +449,13 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
      * issues the longest-lived credential of the set: a refresh token that outlives both
      * the impersonation window and the operator's session, attributed to the person being
      * impersonated.
+     *
+     * `plane:mcp-client`, not `plane:first-party`: at the platform root this also serves an
+     * MCP client signing a person in for the root's `/mcp` (App\Platform\OAuth\RootMcpOAuth)
+     * — the root is still nobody's identity provider. `throttle:oauth-authorize` meters that
+     * per address there and nothing anywhere else ({@see \App\Http\WebRateLimiters}).
      */
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize');
 
 /*
@@ -454,11 +469,11 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
  * cannot influence any of them.
  */
 Route::post('/oauth/authorize/{authorization}/approve', [OAuthConsentController::class, 'approve'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.approve');
 
 Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::class, 'deny'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.deny');
 
 /*
@@ -474,7 +489,7 @@ Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::cl
  * the page would leave the browser on the step's URL, where a reload re-submits a choice
  * that was already spent.
  */
-Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->group(function (): void {
         Route::get('/oauth/authorize/{authorization}', [OAuthConsentController::class, 'review'])
             ->name('oauth.authorize.review');
@@ -565,6 +580,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // an entry that would sit there dead for the rest of the org's life is clutter.
     Route::get('/get-started', [GetStartedController::class, 'index'])->name('get-started');
     Route::post('/get-started/dismiss', [GetStartedController::class, 'dismiss'])->name('get-started.dismiss');
+
+    // ⌘K, confined to this person's organization. JSON for the palette.
+    Route::get('/search', ConsoleSearchController::class)->name('search');
 
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
@@ -1095,44 +1113,115 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 
         Route::get('/', [EnvironmentHomeController::class, 'index'])->name('environment.home');
 
-        /*
-         * WHICH TENANT THIS CONSOLE IS ACTING ON — chrome rather than a page, so it has no
-         * screen of its own. The search is a JSON endpoint because the set is unbounded and
-         * the control has to stay bounded whatever it does.
-         */
-        Route::get('/acting-organization', [ActingOrganizationController::class, 'search'])->name('environment.acting-organization.search');
-        Route::post('/acting-organization', [ActingOrganizationController::class, 'choose'])->name('environment.acting-organization.choose');
-        Route::delete('/acting-organization', [ActingOrganizationController::class, 'clear'])->name('environment.acting-organization.clear');
+        // ⌘K: users, organizations, apps, keys and audit entries in THIS environment, as JSON
+        // for the palette. And the guided first run — framework → app → first sign-in.
+        Route::get('/search', ConsoleSearchController::class)->name('environment.search');
+        Route::get('/get-started', [EnvironmentGetStartedController::class, 'index'])->name('environment.get-started');
+        Route::post('/get-started/app', [EnvironmentGetStartedController::class, 'createApp'])->name('environment.get-started.app');
+        Route::post('/get-started/dismiss', [EnvironmentGetStartedController::class, 'dismiss'])->name('environment.get-started.dismiss');
+        Route::delete('/get-started/dismiss', [EnvironmentGetStartedController::class, 'restore'])->name('environment.get-started.restore');
 
-        // Organizations — routable list → create → detail (deep-linkable).
+        /*
+         * The organizations of this environment, a page at a time, for the "For which
+         * organization?" fields and the Organization filter chips. A JSON endpoint because
+         * the set is unbounded and the controls have to stay bounded whatever it does.
+         */
+        Route::get('/lookup/organizations', OrganizationLookupController::class)->name('environment.lookup.organizations');
+
+        // Organizations — routable list → create → the organization's own page (the hub,
+        // below), deep-linkable tab by tab.
         Route::get('/organizations', [EnvironmentOrganizationController::class, 'index'])->name('environment.organizations');
         Route::get('/organizations/new', [EnvironmentOrganizationController::class, 'create'])->name('environment.organizations.create');
         Route::post('/organizations', [EnvironmentOrganizationController::class, 'store'])->name('environment.organizations.store');
-        Route::get('/organizations/{organization}', [EnvironmentOrganizationController::class, 'show'])->name('environment.organizations.show');
-        Route::patch('/organizations/{organization}', [EnvironmentOrganizationController::class, 'update'])->name('environment.organizations.update');
-        Route::post('/organizations/{organization}/suspend', [EnvironmentOrganizationController::class, 'suspend'])->name('environment.organizations.suspend');
-        Route::post('/organizations/{organization}/reactivate', [EnvironmentOrganizationController::class, 'reactivate'])->name('environment.organizations.reactivate');
-        Route::delete('/organizations/{organization}', [EnvironmentOrganizationController::class, 'destroy'])->name('environment.organizations.destroy');
 
-        // The roster. Every id is in the URL of its own mutation, so each one re-resolves
-        // the member INSIDE the organization rather than trusting the page it came from.
-        Route::post('/organizations/{organization}/members', [EnvironmentOrganizationController::class, 'addMember'])->name('environment.organizations.members.store');
-        Route::patch('/organizations/{organization}/members/{member}/role', [EnvironmentOrganizationController::class, 'changeMemberRole'])->name('environment.organizations.members.role');
-        Route::post('/organizations/{organization}/members/{member}/access', [EnvironmentOrganizationController::class, 'setAccessRole'])->name('environment.organizations.members.access');
-        Route::delete('/organizations/{organization}/members/{member}', [EnvironmentOrganizationController::class, 'removeMember'])->name('environment.organizations.members.remove');
-        // Ownership is transferred, not picked from the role list — this is also how an
-        // organization created here, which starts with no owner, gets its first one.
-        Route::post('/organizations/{organization}/members/{member}/transfer-ownership', [EnvironmentOrganizationController::class, 'transferOwnership'])->name('environment.organizations.members.transfer-ownership');
+        /*
+         * THE ORGANIZATION'S OWN PAGE — one tab per URL ({@see \App\Platform\Console\OrganizationTabs}).
+         *
+         * Everything here acts on the organization in the address and no other: `console.org`
+         * checks it against this environment (404 otherwise) and binds it for the request.
+         * That is what replaced the console header's "acting organization", which answered
+         * the same question from the session. Some tabs are the environment-wide pages
+         * (Enterprise SSO, Roles, the audit log…) narrowed to this organization, and the
+         * writes that only ever made sense for ONE organization — its SSO domains, an Admin
+         * Portal link, its branding and its sign-in rules — moved here with them, keeping
+         * their route names.
+         */
+        Route::middleware('console.org')->prefix('/organizations/{organization}')->group(function (): void {
+            Route::get('/', [OrganizationOverviewController::class, 'show'])->name('environment.organizations.show');
 
-        Route::post('/organizations/{organization}/invitations', [EnvironmentOrganizationController::class, 'invite'])->name('environment.organizations.invitations.store');
-        Route::post('/organizations/{organization}/invitations/{invitation}/resend', [EnvironmentOrganizationController::class, 'resendInvitation'])->name('environment.organizations.invitations.resend');
-        Route::delete('/organizations/{organization}/invitations/{invitation}', [EnvironmentOrganizationController::class, 'revokeInvitation'])->name('environment.organizations.invitations.revoke');
+            // Every write about the organization, under its own URL like its pages — the
+            // organization re-resolved by `console.org`, and each member, invitation, domain or
+            // key it names re-resolved INSIDE the organization by the action that runs.
+            Route::patch('/', [EnvironmentOrganizationController::class, 'update'])->name('environment.organizations.update');
+            Route::post('/suspend', [EnvironmentOrganizationController::class, 'suspend'])->name('environment.organizations.suspend');
+            Route::post('/reactivate', [EnvironmentOrganizationController::class, 'reactivate'])->name('environment.organizations.reactivate');
+            Route::delete('/', [EnvironmentOrganizationController::class, 'destroy'])->name('environment.organizations.destroy');
 
-        Route::post('/organizations/{organization}/domains', [EnvironmentOrganizationController::class, 'addDomain'])->name('environment.organizations.domains.store');
-        Route::post('/organizations/{organization}/domains/{domain}/verify', [EnvironmentOrganizationController::class, 'verifyDomain'])->name('environment.organizations.domains.verify');
-        Route::post('/organizations/{organization}/domains/{domain}/capture', [EnvironmentOrganizationController::class, 'toggleCapture'])->name('environment.organizations.domains.capture');
-        Route::delete('/organizations/{organization}/domains/{domain}', [EnvironmentOrganizationController::class, 'removeDomain'])->name('environment.organizations.domains.remove');
-        Route::delete('/organizations/{organization}/api-keys/{key}', [EnvironmentOrganizationApiKeyController::class, 'destroy'])->name('environment.organizations.api-keys.revoke');
+            // The roster. Every id is in the URL of its own mutation, so each one re-resolves
+            // the member INSIDE the organization rather than trusting the page it came from.
+            Route::post('/members', [EnvironmentOrganizationController::class, 'addMember'])->name('environment.organizations.members.store');
+            Route::patch('/members/{member}/role', [EnvironmentOrganizationController::class, 'changeMemberRole'])->name('environment.organizations.members.role');
+            Route::post('/members/{member}/access', [EnvironmentOrganizationController::class, 'setAccessRole'])->name('environment.organizations.members.access');
+            Route::delete('/members/{member}', [EnvironmentOrganizationController::class, 'removeMember'])->name('environment.organizations.members.remove');
+            // Ownership is transferred, not picked from the role list — this is also how an
+            // organization created here, which starts with no owner, gets its first one.
+            Route::post('/members/{member}/transfer-ownership', [EnvironmentOrganizationController::class, 'transferOwnership'])->name('environment.organizations.members.transfer-ownership');
+
+            Route::post('/invitations', [EnvironmentOrganizationController::class, 'invite'])->name('environment.organizations.invitations.store');
+            Route::post('/invitations/{invitation}/resend', [EnvironmentOrganizationController::class, 'resendInvitation'])->name('environment.organizations.invitations.resend');
+            Route::delete('/invitations/{invitation}', [EnvironmentOrganizationController::class, 'revokeInvitation'])->name('environment.organizations.invitations.revoke');
+
+            Route::post('/domains', [EnvironmentOrganizationController::class, 'addDomain'])->name('environment.organizations.domains.store');
+            Route::post('/domains/{domain}/verify', [EnvironmentOrganizationController::class, 'verifyDomain'])->name('environment.organizations.domains.verify');
+            Route::post('/domains/{domain}/capture', [EnvironmentOrganizationController::class, 'toggleCapture'])->name('environment.organizations.domains.capture');
+            Route::delete('/domains/{domain}', [EnvironmentOrganizationController::class, 'removeDomain'])->name('environment.organizations.domains.remove');
+            Route::delete('/api-keys/{key}', [EnvironmentOrganizationApiKeyController::class, 'destroy'])->name('environment.organizations.api-keys.revoke');
+
+            Route::get('/members', [OrganizationMembersController::class, 'index'])->name('environment.organizations.members');
+            Route::get('/invitations', [OrganizationInvitationsController::class, 'index'])->name('environment.organizations.invitations');
+
+            Route::get('/single-sign-on', [ConnectionController::class, 'index'])->name('environment.organizations.sso');
+            Route::post('/single-sign-on/invite', [ConnectionController::class, 'invite'])->name('environment.connections.invite');
+            Route::post('/single-sign-on/domains', [ConnectionController::class, 'addDomain'])->name('environment.connections.domains.store');
+            Route::post('/single-sign-on/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('environment.connections.domains.verify');
+            Route::post('/single-sign-on/domains/{domain}/capture', [ConnectionController::class, 'toggleCapture'])->name('environment.connections.domains.capture');
+            Route::delete('/single-sign-on/domains/{domain}', [ConnectionController::class, 'removeDomain'])->name('environment.connections.domains.destroy');
+
+            Route::get('/directory-sync', [DirectoryController::class, 'index'])->name('environment.organizations.directory-sync');
+            Route::post('/directory-sync/invite', [DirectoryController::class, 'invite'])->name('environment.directories.invite');
+
+            Route::get('/domains', [OrganizationDomainsController::class, 'index'])->name('environment.organizations.domains');
+            Route::get('/roles', [RoleController::class, 'index'])->name('environment.organizations.roles');
+            Route::get('/api-keys', [OrganizationApiKeysController::class, 'index'])->name('environment.organizations.api-keys');
+
+            Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.organizations.branding');
+            Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.organizations.branding.update');
+
+            Route::get('/policy', [AuthPolicyController::class, 'edit'])->name('environment.organizations.policy');
+            Route::put('/policy', [AuthPolicyController::class, 'update'])->name('environment.organizations.policy.update');
+            Route::delete('/policy', [AuthPolicyController::class, 'inherit'])->name('environment.auth-policy.inherit');
+
+            Route::get('/support', [OrganizationSupportController::class, 'index'])->name('environment.organizations.support');
+            Route::get('/audit', [AuditController::class, 'index'])->name('environment.organizations.audit');
+            Route::get('/settings', [OrganizationSettingsController::class, 'show'])->name('environment.organizations.settings');
+
+            // The header's "Admin Portal link": a one-time link for the customer's IT admin.
+            Route::post('/portal-links', [OrganizationPortalLinkController::class, 'store'])->name('environment.organizations.portal-links.store');
+
+            // The organization's own token vault — a collection separate from the
+            // environment's, so it has an address of its own rather than a toggle on the
+            // environment's page. Behind the same step-up as the environment's vault.
+            Route::middleware('env.sudo')->group(function (): void {
+                Route::get('/token-vault', [VaultController::class, 'index'])->name('environment.organizations.vault');
+                Route::get('/token-vault/new', [VaultController::class, 'create'])->name('environment.organizations.vault.create');
+                Route::post('/token-vault', [VaultController::class, 'store'])->name('environment.organizations.vault.store');
+                Route::get('/token-vault/{secret}', [VaultController::class, 'show'])->name('environment.organizations.vault.show');
+                Route::post('/token-vault/{secret}/rotate', [VaultController::class, 'rotate'])->name('environment.organizations.vault.rotate');
+                Route::post('/token-vault/{secret}/grants', [VaultController::class, 'grant'])->name('environment.organizations.vault.grants.store');
+                Route::delete('/token-vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('environment.organizations.vault.grants.destroy');
+                Route::post('/token-vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('environment.organizations.vault.revoke');
+            });
+        });
 
         // Users — routable list → create → detail. Every lifecycle action names the user
         // in its own URL, so each one re-resolves them through the environment-scoped
@@ -1177,11 +1266,6 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
         Route::get('/single-sign-on', [ConnectionController::class, 'index'])->name('environment.connections');
-        Route::post('/single-sign-on/invite', [ConnectionController::class, 'invite'])->name('environment.connections.invite');
-        Route::post('/single-sign-on/domains', [ConnectionController::class, 'addDomain'])->name('environment.connections.domains.store');
-        Route::post('/single-sign-on/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('environment.connections.domains.verify');
-        Route::post('/single-sign-on/domains/{domain}/capture', [ConnectionController::class, 'toggleCapture'])->name('environment.connections.domains.capture');
-        Route::delete('/single-sign-on/domains/{domain}', [ConnectionController::class, 'removeDomain'])->name('environment.connections.domains.destroy');
 
         // The SAME component the organization plane serves. It shipped on one plane only
         // — reachable, but not by the person who owns the environment, who holds an
@@ -1213,7 +1297,6 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
         Route::get('/sync-in', [DirectoryController::class, 'index'])->name('environment.directories');
-        Route::post('/sync-in/invite', [DirectoryController::class, 'invite'])->name('environment.directories.invite');
         Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('environment.directories.create');
         Route::post('/sync-in', [DirectoryController::class, 'store'])->name('environment.directories.store');
         Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('environment.directories.connect');
@@ -1443,7 +1526,6 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Settings — the merged component. The route NAME is preserved on both planes;
         // only the component behind it is now shared.
         Route::get('/settings', [SettingsController::class, 'show'])->name('environment.settings');
-        Route::patch('/settings', [SettingsController::class, 'rename'])->name('environment.settings.rename');
         // Sign-in rules — the merged component. This plane writes the BASELINE every
         // organization inherits; the organization plane writes one organization's
         // override. Same page, same controls, different level — which is the only
@@ -1451,7 +1533,6 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // half of it had no surface at all.
         Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('environment.auth-policy');
         Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('environment.auth-policy.update');
-        Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('environment.auth-policy.inherit');
         // The environment's self-service sign-up switch — environment plane only: it
         // decides who may create an account anywhere in the environment.
         Route::put('/sign-in-rules/self-service-signup', [AuthPolicyController::class, 'selfServiceSignup'])->name('environment.auth-policy.self-service-signup');
@@ -1697,6 +1778,8 @@ foreach ([
     '/admin/stored-tokens/{secret}' => '/admin/token-vault/{secret}',
     '/admin/frontend-keys' => '/admin/keys/frontend',
     '/admin/analytics' => '/admin/usage',
+    // The organization lookup that used to sit beside the header's "acting organization".
+    '/admin/acting-organization' => '/admin/lookup/organizations',
 ] as $from => $to) {
     ConsoleRoutes::moved($from, $to);
 }

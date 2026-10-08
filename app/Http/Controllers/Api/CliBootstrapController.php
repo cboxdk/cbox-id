@@ -52,13 +52,21 @@ final class CliBootstrapController
             'scopes' => $signIn['scopes'],
             'grant_types' => $signIn['grant_types'],
             // The RFC 8707 `resource` to name when redeeming the device code, so the token
-            // is audienced to this environment's management plane — good at `/mcp` and on
-            // the REST environment API alike, as the person who approved it.
+            // is audienced to this host's `/mcp` — good there and on the REST API alike, as
+            // the person who approved it. At the platform root that is the workspace, its
+            // environments (named per call), the person's account and, for an operator,
+            // the deployment.
             'resource' => $signIn['resource'],
             // Where the management planes live, so the CLI can save an endpoint
             // alongside the sign-in rather than making one up from the issuer.
             'api_base' => rtrim($issuer, '/').'/api/v1',
             'mcp_url' => $signIn['resource'],
+            // The two endpoints of the device grant, named outright. The platform root
+            // serves them to this client and serves no discovery document at all — it is
+            // an identity provider for nobody's app — so a CLI that looked them up in
+            // `/.well-known/openid-configuration` would stop there.
+            'device_authorization_endpoint' => rtrim($issuer, '/').'/oauth/device_authorization',
+            'token_endpoint' => rtrim($issuer, '/').'/oauth/token',
         ]);
     }
 }

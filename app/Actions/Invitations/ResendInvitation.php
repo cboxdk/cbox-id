@@ -22,6 +22,9 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
  * Mail a pending invitation again, on a FRESH link: the server keeps only a hash of the old
  * one, so there is nothing to re-send. The answer is the new invitation — its id replaces
  * the old one, which stops working. Throttled per invitation (`too_soon`).
+ *
+ * The environment console and an organization's own People page alike; a person signs the
+ * new mail with their own name ({@see InvitationFields::inviter()}).
  */
 #[AsAction(
     name: 'invitations.resend',
@@ -31,8 +34,8 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
     schema: 'Invitation',
     tag: 'Invitations',
     rest: ['POST', '/organizations/{organization_id}/invitations/{invitation_id}/resend'],
-    consoleRoutes: ['environment.organizations.invitations.resend'],
-    consoleGate: ConsoleGate::EnvironmentAdmin,
+    consoleRoutes: ['environment.organizations.invitations.resend', 'directory.members.invitations.resend'],
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class ResendInvitation implements Action
 {

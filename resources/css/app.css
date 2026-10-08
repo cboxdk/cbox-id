@@ -1269,6 +1269,21 @@
         font-size: 14px;
         color: var(--muted-foreground);
     }
+    /* "Or from code" under an empty list: the API twin of its first step. Left-aligned and
+       as wide as the panel allows — code centred in a 384px column is unreadable. */
+    .cbx-empty-equivalent {
+        width: 100%;
+        max-width: 640px;
+        text-align: left;
+    }
+    .cbx-empty .cbx-empty-equivalent p {
+        max-width: none;
+        margin: 0;
+    }
+    .cbx-empty-equivalent .cbx-api-equivalent > .btn {
+        margin: 0 auto;
+        display: flex;
+    }
     .cbx-empty-steps {
         display: flex;
         flex-direction: column;
@@ -1413,6 +1428,12 @@
         flex: 1;
         text-align: left;
     }
+    /* On a phone the search is the icon alone — the same palette, a thumb's width. */
+    @media (max-width: 767px) {
+        .cbx-search {
+            padding: 0 9px;
+        }
+    }
     .cbx-search kbd {
         font-family: var(--font-mono);
         font-size: 10px;
@@ -1441,13 +1462,6 @@
         top: 0;
         z-index: 20;
     }
-    /* Context-switcher trigger (org/environment/target). Hover background lives here as a
-     * CSS rule rather than inline onmouseover/onmouseout handlers, which the app's own CSP
-     * (script-src without 'unsafe-inline') blocks — the handlers never fired. */
-    .cbx-switcher-item:hover {
-        background: var(--secondary);
-    }
-
     /* Sidebar (two-tier tier-2 subnav column) */
     .cbx-nav {
         flex: 1;
@@ -2270,6 +2284,90 @@
         font-size: 13px;
         color: var(--muted-foreground);
     }
+    /* A server-side search's own line under its results: what it found, or that it is
+       still looking — the organization lookup's, which never renders every organization. */
+    .cbx-lookup-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px 8px;
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        color: var(--muted-foreground);
+    }
+
+    /* Filter chips above a list: each one a narrowing the URL carries, said out loud and
+       removable in one click. An unset filter is a dashed "add" chip. */
+    .cbx-filter-chips {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+    .cbx-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        min-height: 28px;
+        padding: 2px 6px 2px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--secondary);
+        color: var(--foreground);
+        font-size: 12px;
+        line-height: 1.3;
+    }
+    .cbx-filter-chip.is-unset {
+        padding-right: 10px;
+        border-style: dashed;
+        background: transparent;
+        color: var(--muted-foreground);
+        cursor: pointer;
+    }
+    .cbx-filter-chip.is-unset:hover {
+        color: var(--foreground);
+        border-color: var(--muted-foreground);
+    }
+    .cbx-filter-chip.is-unset:focus-visible,
+    .cbx-filter-chip-clear:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    .cbx-filter-chip.is-warning {
+        border-color: color-mix(in oklch, var(--warning) 45%, transparent);
+        background: var(--warning-soft);
+    }
+    .cbx-filter-chip-label {
+        color: var(--muted-foreground);
+    }
+    .cbx-filter-chip-value {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+    .cbx-filter-chip-clear {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        border: 0;
+        background: transparent;
+        color: var(--muted-foreground);
+        cursor: pointer;
+    }
+    .cbx-filter-chip-clear:hover {
+        background: var(--surface-2);
+        color: var(--foreground);
+    }
 
     /* One focus answer for every control here, matching .input:focus above. Radix moves
        focus with the keyboard only (`:focus-visible`), so clicking a switch does not
@@ -2475,8 +2573,7 @@
         display: none;
     }
     .cbx-ctx-sheet .cbx-ctx-trigger,
-    .cbx-ctx-sheet .cbx-ctx-static,
-    .cbx-ctx-sheet .cbx-switcher-item {
+    .cbx-ctx-sheet .cbx-ctx-static {
         width: 100%;
         justify-content: flex-start;
     }
@@ -2590,6 +2687,18 @@
         max-height: min(24rem, 60vh);
         overflow-y: auto;
         padding: 4px;
+    }
+    /* Recent, Results, Go to, Actions — small caps over each group, as the rail's areas. */
+    .cbx-palette [cmdk-group-heading] {
+        padding: 8px 8px 4px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--faint);
+    }
+    .cbx-palette [cmdk-group] + [cmdk-group] {
+        margin-top: 4px;
     }
     @keyframes cbx-palette-in {
         from {

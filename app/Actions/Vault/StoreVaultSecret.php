@@ -33,7 +33,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
     tag: 'Token vault',
     rest: ['POST', '/token-vault/secrets'],
     status: 201,
-    consoleRoutes: ['vault.store', 'environment.vault.store'],
+    consoleRoutes: ['vault.store', 'environment.vault.store', 'environment.organizations.vault.store'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class StoreVaultSecret implements Action

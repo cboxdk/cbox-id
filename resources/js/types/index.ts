@@ -10,6 +10,8 @@
  * page is given without asking — see `App\Http\Middleware\HandleInertiaRequests`.
  */
 
+import type { ApiAction } from '@/lib/apiSnippets';
+import type { LinkTab } from '@/ui/LinkTabs';
 import type { IconName } from '@/ui/icons';
 
 /** `Cbox\Id\Organization\Enums\MembershipRole` */
@@ -230,20 +232,49 @@ export interface ShellContext {
     projects: ContextProject[];
 }
 
+/** One organization as a lookup answers it — `GET /admin/lookup/organizations`. */
+export interface OrganizationOption {
+    id: string;
+    name: string;
+}
+
 /**
- * The environment console's acting tenant, and where to change it.
- *
- * NOT A LIST OF OPTIONS, unlike `ShellContext.workspaces`: that names the handful of
- * organizations a person belongs to, and this names every tenant in the environment, which
- * is unbounded. The chrome carries the current one and a URL to search.
+ * `App\Http\Props\Shared\OrganizationFilterProps` — the Organization chip on an
+ * environment-wide list. It adds and removes `?{parameter}=` on the page's own URL, or —
+ * where `hrefTemplate` is set — goes to that organization's own page instead.
  */
-export interface ActingOrganization {
-    /** Null means the whole environment, unfiltered — the ordinary state, not a gap. */
-    id: string | null;
-    name: string | null;
-    searchUrl: string;
-    chooseUrl: string;
-    clearUrl: string;
+export interface OrganizationFilter {
+    parameter: string;
+    selected: OrganizationOption | null;
+    /** An id was asked for that names no organization here: the list is empty, not unfiltered. */
+    unknown: boolean;
+    lookupHref: string;
+    /** `__organization__` marks where the chosen id goes. */
+    hrefTemplate: string | null;
+}
+
+/**
+ * `App\Http\Props\Shared\OrganizationPickerProps` — "For which organization?" on an
+ * environment-console create form. Locked when the form was opened from that organization's
+ * own page.
+ */
+export interface OrganizationPicker {
+    lookupHref: string;
+    selected: OrganizationOption | null;
+    locked: boolean;
+    allowsEnvironment: boolean;
+}
+
+/** `App\Http\Props\Console\OrganizationHeaderProps` — the header every tab of an organization's page shares. */
+export interface OrganizationHub {
+    id: string;
+    name: string;
+    slug: string;
+    status: string;
+    tabs: LinkTab[];
+    indexHref: string;
+    /** Null when the organization's plan includes neither single sign-on nor directory sync. */
+    portalLink: { href: string; covers: { value: string; label: string }[] } | null;
 }
 
 /** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */
@@ -253,8 +284,6 @@ export interface Shell {
     /** "Platform" for the pages about the whole install, null for a customer's own. */
     section: string | null;
     context: ShellContext;
-    /** Environment plane only; null on every other. */
-    actingOrganization: ActingOrganization | null;
     isOperator: boolean;
     /** Inside platform admin — the install as a whole. Its own rail, strip and way out. */
     platformMode: boolean;
@@ -310,6 +339,17 @@ export interface SharedProps {
     flash: Flash;
     shell: Shell | null;
     i18n: I18n | null;
+    /**
+     * Shared on every page under `/admin/organizations/{organization}/…`: the organization the
+     * page is about, which the layout draws as the hub's header and tabs around the page.
+     */
+    organizationHub?: OrganizationHub | null;
+    /**
+     * The actions this console page hosts, keyed by name, for "</> API"
+     * (`App\Platform\Connect\ActionSnippets`). Empty off the console. Optional because a
+     * page rendered outside the middleware — a test, an error page — has none.
+     */
+    apiEquivalents?: Record<string, ApiAction>;
     /**
      * The page's name, stated by the controller.
      *

@@ -2,8 +2,10 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import {
+    cboxLogin,
     claudeCode,
     claudeCodeOAuth,
+    claudeCodeWorkspace,
     claudeDesktop,
     type ClientId,
     type ClientSnippet,
@@ -22,9 +24,19 @@ type Props = PageProps<{
     openApiUrl: string;
     /** True once the MCP resource lets a client sign a person in instead of holding a key. */
     oauthAvailable: boolean;
+    /** The platform root's `/mcp` — one connection for the whole workspace — when there is one. */
+    workspace: WorkspaceProps | null;
     urls: { createAgent: string; agents: string };
     help: HelpContent;
 }>;
+
+interface WorkspaceProps {
+    mcpUrl: string;
+    issuer: string;
+    restBaseUrl: string;
+    /** True while an MCP client may sign a person in at the root itself (`api.mcp.root_oauth`). */
+    oauth: boolean;
+}
 
 const CLIENTS: { id: ClientId; label: string }[] = [
     { id: 'claude-code', label: 'Claude Code' },
@@ -40,6 +52,7 @@ export default function ConnectAgent({
     restBaseUrl,
     openApiUrl,
     oauthAvailable,
+    workspace,
     urls,
     help,
 }: Props) {
@@ -143,6 +156,8 @@ export default function ConnectAgent({
                     </Tabs>
                 </Panel>
 
+                {workspace && <WorkspaceConnection workspace={workspace} />}
+
                 <Panel title="For developers">
                     <dl className="grid gap-3 text-sm">
                         <Endpoint label="Resource metadata (RFC 9728)" value={metadataUrl} />
@@ -168,12 +183,19 @@ function Snippet({ snippet }: { snippet: ClientSnippet }) {
         <div>
             <p className="label">{snippet.where}</p>
             <div className="mt-1.5 relative">
-                <pre
+                <section
+                    // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
+
+                    // (WCAG 2.1.1; axe scrollable-region-focusable), which the lint rule does not know.
+
+                    // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                    tabIndex={0}
+                    aria-label={snippet.where}
                     className="mono text-xs rounded-lg px-3.5 py-3 overflow-x-auto"
                     style={{ background: 'var(--surface-2)', whiteSpace: 'pre' }}
                 >
-                    <code>{snippet.code}</code>
-                </pre>
+                    <pre className="m-0"><code>{snippet.code}</code></pre>
+                </section>
                 <div className="mt-2">
                     <CopyButton value={snippet.code} size="sm" label="Copy" />
                 </div>
@@ -190,7 +212,13 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
     if (available) {
         return (
             <div>
-                <p className="text-sm font-medium">Or sign in with your account</p>
+                <p className="text-sm font-medium">
+                    Or sign in with an account of this environment
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                    For one of this environment's own people — an organization's administrator. The
+                    agent acts as them, in their organization.
+                </p>
                 <div className="mt-2">
                     <Snippet snippet={claudeCodeOAuth(mcpUrl)} />
                 </div>
@@ -214,6 +242,88 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
                 </p>
             </div>
         </div>
+    );
+}
+
+/**
+ * The other way in: the platform root's `/mcp`, where the workspace's own people sign in.
+ * One connection reaches the workspace and every environment of it the person administers,
+ * so it is offered beside this environment's own server rather than instead of it.
+ *
+ * Signing the agent in at the root with the person's account is the first way offered: the
+ * client needs nothing but the URL. The cbox CLI and a workspace key are the alternatives.
+ */
+function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
+    return (
+        <Panel title="One connection for your whole workspace">
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                Connect once at the platform root instead of once per environment. Signed in as you,
+                it reaches your workspace, every environment of it you administer and your own
+                account — an environment tool takes an <span className="mono">environment</span>{' '}
+                argument, and the REST API a <span className="mono">Cbox-Environment</span> header,
+                naming where to act. It can do what you can, within what you allow, and every
+                critical action waits for your approval on your device.
+            </p>
+            <div className="mt-4 space-y-5">
+                {workspace.oauth ? (
+                    <div>
+                        <p className="text-sm font-medium">Add it to Claude Code and sign in</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                            Claude Code opens your browser to sign in here and asks you what to
+                            allow. No key to keep safe. Any MCP client that signs in with OAuth
+                            works the same way with this URL.
+                        </p>
+                        <div className="mt-2">
+                            <Snippet snippet={claudeCodeOAuth(workspace.mcpUrl)} />
+                        </div>
+                    </div>
+                ) : (
+                    <div
+                        className="flex items-start gap-3 rounded-lg px-3.5 py-3"
+                        style={{ background: 'var(--surface-2)' }}
+                    >
+                        <Icon name="user" className="w-4 h-4 mt-0.5 shrink-0" />
+                        <div>
+                            <p className="text-sm font-medium">
+                                Agents signing in at the root are turned off
+                            </p>
+                            <p
+                                className="text-xs mt-0.5"
+                                style={{ color: 'var(--muted-foreground)' }}
+                            >
+                                This deployment does not let an MCP client sign you in at the root.
+                                Use the cbox CLI or a workspace key below.
+                            </p>
+                        </div>
+                    </div>
+                )}
+                <div>
+                    <p className="text-sm font-medium">
+                        {workspace.oauth
+                            ? 'Or sign the cbox CLI in as yourself'
+                            : 'Sign the cbox CLI in as yourself'}
+                    </p>
+                    <div className="mt-2">
+                        <Snippet snippet={cboxLogin(workspace.issuer)} />
+                    </div>
+                </div>
+                <div>
+                    <p className="text-sm font-medium">Or give an agent a workspace key</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                        A workspace key reaches the workspace itself — projects, environments, the
+                        team and keys — not inside an environment. Mint one under Keys › Workspace
+                        keys at the platform root.
+                    </p>
+                    <div className="mt-2">
+                        <Snippet snippet={claudeCodeWorkspace(workspace.mcpUrl)} />
+                    </div>
+                </div>
+            </div>
+            <dl className="mt-5 grid gap-3 text-sm">
+                <Endpoint label="MCP server (platform root)" value={workspace.mcpUrl} />
+                <Endpoint label="REST API (platform root)" value={workspace.restBaseUrl} />
+            </dl>
+        </Panel>
     );
 }
 

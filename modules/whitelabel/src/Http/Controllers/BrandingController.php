@@ -71,6 +71,9 @@ final readonly class BrandingController extends ConsoleController
              * comes to believe they changed something they did not.
              */
             'environmentDefault' => $this->scope->organizationId() === null,
+            // One organization's own brand is a profile of its own, on its own page — so on
+            // the environment default the Organization chip goes there.
+            'organizationFilter' => $this->organizationJump('environment.organizations.whitelabel.branding'),
             'saveHref' => $this->url('whitelabel.branding.save'),
         ]);
     }

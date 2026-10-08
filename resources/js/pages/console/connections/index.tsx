@@ -1,15 +1,23 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
 import {
     Badge,
     Button,
     ConfirmDelete,
     EmptyState,
     Field,
+    FilterChips,
     Icon,
     Input,
+    OrganizationFilterChip,
     PageHeader,
     Pagination,
     Panel,
@@ -39,29 +47,15 @@ type Props = PageProps<{
     pagination: PaginationState;
     search: string;
     mayAdminister: boolean;
-    /** An environment administrator has not chosen an organization yet. */
-    needsOrganization: boolean;
     entitled: boolean;
-    domains: DomainRow[];
+    /** The environment-wide list's Organization chip; null on a page about one organization. */
+    organizationFilter: OrganizationFilter | null;
+    /** An organization's domains — null on the environment-wide list, which is about none. */
+    domains: DomainRow[] | null;
     createHref: string;
-    urls: { invite: string; addDomain: string };
+    /** The writes about ONE organization; null where the page is about none. */
+    urls: { invite: string; addDomain: string } | null;
 }>;
-
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
 
 export default function ConnectionsIndex({
     help,
@@ -69,8 +63,8 @@ export default function ConnectionsIndex({
     pagination,
     search,
     mayAdminister,
-    needsOrganization,
     entitled,
+    organizationFilter,
     domains,
     createHref,
     urls,
@@ -111,14 +105,16 @@ export default function ConnectionsIndex({
                 actions={
                     canAct ? (
                         <>
-                            <Button
-                                icon="members"
-                                onClick={() =>
-                                    router.post(urls.invite, {}, { preserveScroll: true })
-                                }
-                            >
-                                Invite your IT admin
-                            </Button>
+                            {urls !== null && (
+                                <Button
+                                    icon="members"
+                                    onClick={() =>
+                                        router.post(urls.invite, {}, { preserveScroll: true })
+                                    }
+                                >
+                                    Invite your IT admin
+                                </Button>
+                            )}
                             <Button asChild variant="primary" className="shrink-0">
                                 <Link href={createHref}>
                                     <Icon name="plus" className="w-4 h-4" />
@@ -130,7 +126,7 @@ export default function ConnectionsIndex({
                 }
             />
 
-            {!needsOrganization && !entitled ? (
+            {!entitled ? (
                 <div className="card mt-8">
                     <EmptyState
                         icon="connections"
@@ -141,16 +137,6 @@ export default function ConnectionsIndex({
                 </div>
             ) : (
                 <div className="mt-8 space-y-6">
-                    {needsOrganization && (
-                        <div className="card">
-                            <EmptyState
-                                icon="layers"
-                                title="Choose an organization"
-                                description="Below is every connection in this environment. To add one, verify a domain or invite an IT admin, pick the organization you are configuring — the selector sits in the bar at the top of the page."
-                            />
-                        </div>
-                    )}
-
                     {portalUrl !== undefined && mayAdminister && (
                         <RevealedOnce
                             icon="members"
@@ -160,7 +146,12 @@ export default function ConnectionsIndex({
                         />
                     )}
 
-                    <div>
+                    <div className="space-y-3">
+                        {organizationFilter !== null && (
+                            <FilterChips>
+                                <OrganizationFilterChip filter={organizationFilter} />
+                            </FilterChips>
+                        )}
                         <Input
                             type="search"
                             style={{ maxWidth: '24rem' }}
@@ -169,15 +160,15 @@ export default function ConnectionsIndex({
                             value={term}
                             onChange={(event) => setTerm(event.target.value)}
                         />
-                            {/*
+                        {/*
                                 SC 4.1.3: the list is replaced on a debounced keystroke with no focus
                                 change, so the count is the only thing that can report the filter
                                 narrowed to nothing.
                             */}
-                            <output className="sr-only">
-                                {pagination.total}{' '}
-                                {pagination.total === 1 ? 'connection' : 'connections'} found.
-                            </output>
+                        <output className="sr-only">
+                            {pagination.total}{' '}
+                            {pagination.total === 1 ? 'connection' : 'connections'} found.
+                        </output>
                     </div>
 
                     <div
@@ -194,6 +185,7 @@ export default function ConnectionsIndex({
                             ) : (
                                 <EmptyState
                                     icon="connections"
+                                    equivalent="sso.connections.create"
                                     title="No identity provider connected yet"
                                     help={help}
                                     description="Right now people sign in with credentials held here. Connect your provider and they use the company account they already have — and lose access here the moment you disable it there."
@@ -232,9 +224,10 @@ export default function ConnectionsIndex({
                                             <span className="font-medium truncate">
                                                 {connection.name}
                                             </span>
-                                            {needsOrganization && connection.owner !== null && (
-                                                <Badge>{connection.owner}</Badge>
-                                            )}
+                                            {organizationFilter !== null &&
+                                                connection.owner !== null && (
+                                                    <Badge>{connection.owner}</Badge>
+                                                )}
                                         </div>
                                         <p
                                             className="text-xs truncate mono"
@@ -271,7 +264,7 @@ export default function ConnectionsIndex({
                         and the optional capture gate. They belong to the ORGANIZATION
                         rather than to one connection, which is why they live here.
                     */}
-                    {!needsOrganization && (
+                    {domains !== null && urls !== null && (
                         <div className="space-y-4">
                             <div>
                                 <h2 className="cbx-panel-title" style={{ fontSize: '18px' }}>

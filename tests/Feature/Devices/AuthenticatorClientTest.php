@@ -72,7 +72,7 @@ it('answers 404 the same way whether unprovisioned or disabled', function (): vo
     $disabled = $this->getJson('/.well-known/cbox-authenticator')->assertStatus(404);
 
     // Probing hosts must not reveal whether the feature exists but is unconfigured.
-    expect($disabled->json())->toBe($unprovisioned->json());
+    expect(withoutRequestId($disabled))->toBe(withoutRequestId($unprovisioned));
 });
 
 it('never exposes a client secret', function (): void {

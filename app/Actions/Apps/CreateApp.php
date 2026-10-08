@@ -53,7 +53,7 @@ use Illuminate\Validation\ValidationException;
     tag: 'Apps',
     rest: ['POST', '/apps'],
     status: 201,
-    consoleRoutes: ['clients.store', 'environment.clients.store'],
+    consoleRoutes: ['clients.store', 'environment.clients.store', 'environment.get-started.app'],
     consoleGate: ConsoleGate::Administer,
     redact: ['client_secret'],
 )]

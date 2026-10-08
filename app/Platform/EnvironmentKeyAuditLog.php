@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
-use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
+use App\Platform\Actions\ActionTrail;
+use App\Platform\Actions\Principal\SignedInPerson;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditCheckpoint;
@@ -37,7 +38,16 @@ use Cbox\Id\Kernel\Audit\ValueObjects\ChainVerification;
  * everything one credential did without knowing which actions it can reach.
  *
  * A PERSON'S TOKEN is attributed the same way, to the person: an unclaimed entry becomes
- * theirs, and `context.oauth_client_id` names the agent or CLI they acted through.
+ * theirs — as the actor their principal names: a user of the environment for its own
+ * subject, a workspace member for one of the workspace's people acting in an environment —
+ * and `context.oauth_client_id` names the agent or CLI they acted through.
+ *
+ * AND HOW: while an action runs, every entry it causes — whoever's — gains the door it
+ * came through (`context.via`: console, rest, mcp, cli) and, when it waited for one, the
+ * approval it spent and the person who gave it ({@see ActionTrail}). Said here, once, for
+ * the same reason the key is: the services writing the entries do not know the door and
+ * should not have to. The console's own acts are covered too — they run through the same
+ * runner, and the activity log ({@see OrganizationActivity}) writes through this log.
  *
  * The context is read LAZILY, per entry, for the same reason Impersonation is: it is a
  * `scoped` binding, and this decorator is built once with the audit log.
@@ -54,7 +64,7 @@ final class EnvironmentKeyAuditLog implements AuditLog
 
     public function record(AuditEvent $event): AuditEntry
     {
-        return $this->inner->record($this->attribute($event));
+        return $this->inner->record($this->door($this->attribute($event)));
     }
 
     public function verifyChain(?string $organizationId = null, int $fromSequence = 1, ?int $toSequence = null): ChainVerification
@@ -70,6 +80,28 @@ final class EnvironmentKeyAuditLog implements AuditLog
     public function checkpoint(?string $organizationId = null): AuditCheckpoint
     {
         return $this->inner->checkpoint($organizationId);
+    }
+
+    /** The running action's door and approval, onto the entry; nothing outside an action. */
+    private function door(AuditEvent $event): AuditEvent
+    {
+        $trail = app(ActionTrail::class)->context();
+
+        if ($trail === []) {
+            return $event;
+        }
+
+        return new AuditEvent(
+            action: $event->action,
+            actorType: $event->actorType,
+            actorId: $event->actorId,
+            organizationId: $event->organizationId,
+            targetType: $event->targetType,
+            targetId: $event->targetId,
+            // The writer's own words win: an entry that already says how it happened knows.
+            context: [...$trail, ...$event->context],
+            ip: $event->ip,
+        );
     }
 
     private function attribute(AuditEvent $event): AuditEvent
@@ -103,14 +135,15 @@ final class EnvironmentKeyAuditLog implements AuditLog
      * every entry records the client they used, because "the person did it" and "the
      * person's agent did it" are different answers to an auditor.
      */
-    private function attributeToPerson(AuditEvent $event, DelegatedTokenPrincipal $person): AuditEvent
+    private function attributeToPerson(AuditEvent $event, SignedInPerson $person): AuditEvent
     {
         $unclaimed = $event->actorId === null;
+        $actor = $person->auditActor();
 
         return new AuditEvent(
             action: $event->action,
-            actorType: $unclaimed ? ActorType::User : $event->actorType,
-            actorId: $unclaimed ? $person->subjectId() : $event->actorId,
+            actorType: $unclaimed ? $actor->type : $event->actorType,
+            actorId: $unclaimed ? $actor->id : $event->actorId,
             organizationId: $event->organizationId,
             targetType: $event->targetType,
             targetId: $event->targetId,

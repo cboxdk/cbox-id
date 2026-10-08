@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentSudo;
 use App\Platform\StepUpReason;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -23,6 +22,7 @@ use Cbox\LaravelSiem\Models\LogStream;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Livewire\Features\SupportTesting\PersistentMiddleware;
+use Tests\Support\FormOrganization;
 
 uses(RefreshDatabase::class);
 
@@ -211,7 +211,7 @@ it('refuses to rotate a webhook signing secret with no step-up, and rotates with
  */
 it('refuses to register an app with no step-up, and registers with one', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-newapp'));
-    session()->put(ConsoleScope::SELECTION_KEY, $org->id);
+    FormOrganization::$id = $org->id;
 
     /*
      * THE WRITE, ASKED DIRECTLY. The create page asks for the step-up at the door too, but
@@ -240,7 +240,7 @@ it('refuses to register an app with no step-up, and registers with one', functio
 it('refuses to register a SCIM directory with no step-up, and registers with one', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-newdir'));
     grantFeature($org->id, 'scim');
-    session()->put(ConsoleScope::SELECTION_KEY, $org->id);
+    FormOrganization::$id = $org->id;
 
     app(EnvironmentSudo::class)->forget();
 
@@ -259,10 +259,11 @@ it('refuses to register a SCIM directory with no step-up, and registers with one
 
 it('refuses to register a webhook endpoint with no step-up, and registers with one', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-newhook'));
-    session()->put(ConsoleScope::SELECTION_KEY, $org->id);
+    FormOrganization::$id = $org->id;
 
     $store = route('environment.webhooks.store');
     $form = [
+        'organization' => $org->id,
         'url' => 'https://collector.attacker.example/events',
         'eventTypes' => ['user.created'],
     ];
@@ -288,7 +289,7 @@ it('refuses to register an inline hook with no step-up, and registers with one',
     config(['cbox-id.external_actions.verify_url' => false]);
 
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-inline'));
-    session()->put(ConsoleScope::SELECTION_KEY, $org->id);
+    FormOrganization::$id = $org->id;
 
     $url = 'https://inline.example.test/hook';
 
@@ -355,7 +356,7 @@ it('refuses to register a log stream with no step-up, and registers with one', f
  */
 it('tells the administrator why the step-up appeared', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-why'));
-    session()->put(ConsoleScope::SELECTION_KEY, $org->id);
+    FormOrganization::$id = $org->id;
 
     app(EnvironmentSudo::class)->forget();
 

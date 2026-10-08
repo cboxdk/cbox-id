@@ -7,6 +7,7 @@ namespace App\Actions\Workspace;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\OrganizationActivity;
@@ -25,7 +26,9 @@ use Illuminate\Http\Request;
 
 /**
  * What every workspace action needs to know about who is acting, whichever door they came
- * through: a person in the workspace console, or a workspace key. A helper, not an action.
+ * through: a person in the workspace console, a person through a token the platform root
+ * issued them ({@see RootPersonPrincipal} — the same member, without the browser), or a
+ * workspace key. A helper, not an action.
  *
  * ONE ANSWER PER QUESTION, AND THE CONSOLE'S. The workspace console recorded its acts as
  * an organization member's, named the inviter by the person's name, and fenced every id
@@ -46,6 +49,7 @@ final class InWorkspace
         return match (true) {
             $principal instanceof WorkspaceKeyPrincipal => $principal->key()->organization_id,
             $principal instanceof ConsoleSessionPrincipal => $principal->scope()->requireOrganizationId(),
+            $principal instanceof RootPersonPrincipal => $principal->workspace()->id ?? throw new AuthorizationException('You are not on a workspace\'s team.'),
             default => throw new AuthorizationException('Only a workspace member or a workspace key acts on a workspace.'),
         };
     }
@@ -56,20 +60,22 @@ final class InWorkspace
         return match (true) {
             $principal instanceof WorkspaceKeyPrincipal => $principal->capabilities(),
             $principal instanceof ConsoleSessionPrincipal => $principal->scope()->capabilities(),
+            $principal instanceof RootPersonPrincipal => $principal->workspace()?->capabilities(),
             default => null,
         };
     }
 
     /**
-     * Who the trail names. A person in the workspace console is the workspace's MEMBER —
-     * not a user of whichever environment serves the console, which is what the console
-     * scope's own actor would say — and a key is a service.
+     * Who the trail names. A person — in the workspace console, or through a token they
+     * signed in — is the workspace's MEMBER: not a user of whichever environment serves the
+     * console, which is what the console scope's own actor would say, and never the
+     * person-and-client id a token's principal keys its idempotency on. A key is a service.
      */
     public static function actor(Principal $principal): AuditActor
     {
         return $principal instanceof WorkspaceKeyPrincipal
             ? AuditActor::service($principal->id())
-            : AuditActor::organizationMember($principal->id());
+            : AuditActor::organizationMember(self::personId($principal) ?? $principal->id());
     }
 
     /** How a key this principal mints records its maker ({@see KeyProvenance}). */
@@ -78,10 +84,25 @@ final class InWorkspace
         return $principal instanceof WorkspaceKeyPrincipal ? 'workspace_key' : 'organization_member';
     }
 
-    /** The person whose session this is, or null for a key — which is nobody's. */
+    /**
+     * Who a key this principal mints records as its maker: the key, or the PERSON — whose
+     * approvals the minted key's held actions then go to ({@see KeyProvenance}).
+     */
+    public static function creatorId(Principal $principal): ?string
+    {
+        $id = $principal instanceof WorkspaceKeyPrincipal ? $principal->id() : self::personId($principal);
+
+        return $id === null || $id === '' ? null : $id;
+    }
+
+    /** The person acting — in the console, or through a token — or null for a key, which is nobody's. */
     public static function personId(Principal $principal): ?string
     {
-        return $principal instanceof ConsoleSessionPrincipal && $principal->id() !== '' ? $principal->id() : null;
+        return match (true) {
+            $principal instanceof ConsoleSessionPrincipal => $principal->id() !== '' ? $principal->id() : null,
+            $principal instanceof RootPersonPrincipal => $principal->subjectId(),
+            default => null,
+        };
     }
 
     /**
@@ -120,7 +141,7 @@ final class InWorkspace
             return new Inviter($principal->key()->id, $principal->key()->name);
         }
 
-        $actorId = $principal->id();
+        $actorId = self::personId($principal) ?? $principal->id();
         $subject = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->find($actorId));
 
         return new Inviter($actorId, $subject === null ? 'A teammate' : ($subject->name ?? $subject->email ?? 'A teammate'));
@@ -160,7 +181,7 @@ final class InWorkspace
 
         $personId = self::personId($principal);
 
-        if ($principal instanceof ConsoleSessionPrincipal) {
+        if (! $principal instanceof WorkspaceKeyPrincipal) {
             $reachable = $personId === null ? [] : (app(PlatformRoot::class)->run(
                 fn (): array => app(Memberships::class)->accessibleEnvironmentIds($workspaceId, $personId),
             ) ?? []);
@@ -184,7 +205,7 @@ final class InWorkspace
      */
     public static function assertUnscoped(Principal $principal, string $workspaceId): void
     {
-        if (! $principal instanceof ConsoleSessionPrincipal) {
+        if ($principal instanceof WorkspaceKeyPrincipal) {
             return;
         }
 

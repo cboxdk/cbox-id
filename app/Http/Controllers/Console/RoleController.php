@@ -55,7 +55,7 @@ use Inertia\Response;
  * Served to a tenant, the same code is write access to every other tenant's roles.
  *
  * Three sets, deliberately distinct:
- *   {@see visible()}    — may READ. The acting organization's own, plus environment-owned
+ *   {@see visible()}    — may READ. The organization's own, plus environment-owned
  *                         ones that apply to it.
  *   {@see RoleAuthority::changeable()} — may WRITE. Environment-owned roles are excluded
  *                         on the organization plane: they are assignable inside every
@@ -83,7 +83,12 @@ final readonly class RoleController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $query = $this->visible()
+        // The member's own organization, the one an organization's Roles tab names, or the
+        // one the environment-wide list is filtered to — read as that organization would see
+        // its roles: its own plus the environment's that apply to it.
+        $filter = $this->organizationFilter();
+
+        $query = ($filter->unknown ? $filter->apply(Role::query()) : $this->visible($filter->id))
             // App-declared roles last: an administrator's own are the ones they act on.
             ->orderByRaw('client_id is not null')
             ->orderBy('name');
@@ -100,19 +105,19 @@ final readonly class RoleController extends ConsoleController
         $rows = $page->getCollection();
 
         $permissionsByRole = $this->grantedNamesFor($rows);
-        $appNames = $this->usableApps();
+        $appNames = $this->usableApps($filter->id);
         $offerable = $this->offerableFor($rows);
 
         $first = $rows->first();
 
         /*
-         * WHOSE ROLE IT IS, when that is not already obvious. With no organization chosen
-         * the environment plane lists every tenant's roles in one list, and two tenants'
-         * "Editor" were two identical rows — one click away from re-permissioning the
-         * wrong customer's access. Named through the scope's own list, so on a plane that
-         * holds one organization this can never enumerate the others.
+         * WHOSE ROLE IT IS, when that is not already obvious. Unfiltered, the environment
+         * plane lists every tenant's roles in one list, and two tenants' "Editor" were two
+         * identical rows — one click away from re-permissioning the wrong customer's access.
+         * Named through the scope's own list, so on a plane that holds one organization this
+         * can never enumerate the others.
          */
-        $showsEveryOrganization = $this->actingOrganizationId() === null;
+        $showsEveryOrganization = ! $filter->active();
         $owners = $showsEveryOrganization
             ? $this->scope->organizationNames($rows->pluck('organization_id'))
             : [];
@@ -150,10 +155,7 @@ final readonly class RoleController extends ConsoleController
             'pagination' => PaginationProps::from($page),
             'search' => $term,
             'mayAdminister' => $this->scope->mayAdminister(),
-            // Not an entitlement problem and not an empty environment: an environment
-            // administrator who has chosen no organization is looking at all of it, and
-            // cannot compose a tenant's role until they say which tenant they mean.
-            'organizationChosen' => $this->actingOrganizationId() !== null,
+            'organizationFilter' => $this->organizationFilterProps($filter),
             // THE LAST MILE. The page says a role is "a label stamped into the token", and
             // then never shows the token — so the developer on the other end still has to
             // guess which claim to read, and the two commonest guesses (`scope`, and a
@@ -164,7 +166,7 @@ final readonly class RoleController extends ConsoleController
                 'role' => $first->name,
                 'permissions' => array_slice($permissionsByRole[$first->id] ?? [], 0, 3),
             ],
-            'createHref' => $this->url('roles.create'),
+            'createHref' => $this->createUrl('roles.create'),
             // "Console access" is set on the organization's PEOPLE page — which is a different
             // page for a customer than for everybody else, and hard-coding the customer's
             // sent a tenant admin through two redirects to the dashboard. The environment
@@ -188,7 +190,9 @@ final readonly class RoleController extends ConsoleController
             ),
             // Whether defining a role for the whole environment is even on offer here.
             'holdsEnvironment' => $this->scope->plane() === ConsolePlane::Environment,
-            'organizationChosen' => $this->actingOrganizationId() !== null,
+            // "For which organization?" on the environment console, unless the role is for
+            // the whole environment; prefilled and locked when opened from an organization.
+            'organization' => $this->organizationPicker(),
             // Authoring a permission by hand is the control plane's own page and has no
             // organization-plane equivalent, so the pointer goes where the page exists
             // rather than being dropped from the merge.
@@ -230,14 +234,9 @@ final readonly class RoleController extends ConsoleController
 
             $organizationId = null;
         } else {
-            // WHOSE role it is, named explicitly: the organization this page administers.
-            $organizationId = $this->actingOrganizationId();
-
-            if ($organizationId === null) {
-                return back()->withInput()->withErrors([
-                    'name' => 'Choose an organization in the console header, or define the role for the whole environment.',
-                ]);
-            }
+            // WHOSE role it is, named explicitly: the form's answer on the environment
+            // console, checked against this environment; the member's own elsewhere.
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         $result = $this->act(CreateRole::class, [
@@ -383,9 +382,9 @@ final readonly class RoleController extends ConsoleController
      *
      * @return Builder<Role>
      */
-    private function visible(): Builder
+    private function visible(?string $organizationId = null): Builder
     {
-        $organizationId = $this->actingOrganizationId();
+        $organizationId ??= $this->routeOrganizationId();
 
         if ($organizationId === null) {
             // Environment-scoped by the model, so this is every role in THIS environment
@@ -393,7 +392,7 @@ final readonly class RoleController extends ConsoleController
             return Role::query();
         }
 
-        $clientIds = array_keys($this->usableApps());
+        $clientIds = array_keys($this->usableApps($organizationId));
 
         return Role::query()->where(fn (Builder $q): Builder => $q
             ->where('organization_id', $organizationId)
@@ -667,8 +666,9 @@ final readonly class RoleController extends ConsoleController
     }
 
     /**
-     * client_id => name for every app IN SCOPE: the platform's own plus the acting
-     * organization's, and every app in the environment when no organization is chosen.
+     * client_id => name for every app IN SCOPE: the platform's own plus the organization's
+     * (the one the console acts on, or the one asked about), and every app in the
+     * environment when there is none.
      *
      * A plain map rather than a Collection — this is a lookup for badges and a picker, a
      * serialization edge, and `pluck()` returns a shape neither PHPStan nor a reader can
@@ -676,9 +676,9 @@ final readonly class RoleController extends ConsoleController
      *
      * @return array<string, string>
      */
-    private function usableApps(): array
+    private function usableApps(?string $organizationId = null): array
     {
-        $organizationId = $this->actingOrganizationId();
+        $organizationId ??= $this->routeOrganizationId();
 
         $clients = Client::query()
             ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(

@@ -1,6 +1,8 @@
 import {
+    cboxLogin,
     claudeCode,
     claudeCodeOAuth,
+    claudeCodeWorkspace,
     claudeDesktop,
     cursor,
     generic,
@@ -30,6 +32,16 @@ describe('MCP client snippets', () => {
             'claude mcp add --transport http cbox-id https://acme.cboxid.com/mcp',
         );
         expect(claudeCodeOAuth(URL).code).not.toContain('Authorization');
+    });
+
+    it('adds the workspace-wide server at the root under its own name, with a workspace key', () => {
+        expect(claudeCodeWorkspace('https://cboxid.com/mcp').code).toBe(
+            'claude mcp add --transport http cbox-workspace https://cboxid.com/mcp --header "Authorization: Bearer cbid_ws_…"',
+        );
+    });
+
+    it('signs the cbox CLI in at the root', () => {
+        expect(cboxLogin('https://cboxid.com').code).toBe('cbox login --issuer https://cboxid.com');
     });
 
     it('bridges Claude Desktop through mcp-remote, with the header in the environment', () => {

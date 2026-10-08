@@ -1,7 +1,15 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, EmptyState, Icon, PageHeader } from '@/ui';
+import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
+import {
+    Badge,
+    Button,
+    EmptyState,
+    FilterChips,
+    Icon,
+    OrganizationFilterChip,
+    PageHeader,
+} from '@/ui';
 
 /** `App\Http\Props\Console\ApiRowProps` */
 interface ApiRow {
@@ -17,10 +25,12 @@ interface ApiRow {
 type Props = PageProps<{
     help: HelpContent;
     apis: ApiRow[];
+    /** The Organization chip: an organization's own APIs, and the environment's it may use. */
+    organizationFilter: OrganizationFilter | null;
     createHref: string;
 }>;
 
-export default function Apis({ help, apis, createHref }: Props) {
+export default function Apis({ help, apis, organizationFilter, createHref }: Props) {
     return (
         <>
             <PageHeader
@@ -36,6 +46,14 @@ export default function Apis({ help, apis, createHref }: Props) {
                 }
             />
 
+            {organizationFilter !== null && (
+                <div className="mt-6">
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                </div>
+            )}
+
             <div
                 className="mt-6 rounded-xl border overflow-hidden"
                 style={{ borderColor: 'var(--border)' }}
@@ -43,6 +61,7 @@ export default function Apis({ help, apis, createHref }: Props) {
                 {apis.length === 0 ? (
                     <EmptyState
                         icon="code"
+                        equivalent="apis.create"
                         title="No APIs registered yet"
                         help={help}
                         description="Until an API is registered, a scope is just text on an app, and anyone who can edit an app can give it any scope. Register the APIs your apps call so their scopes have an owner."

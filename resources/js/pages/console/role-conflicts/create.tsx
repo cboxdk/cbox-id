@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { OrganizationPicker, PageProps } from '@/types';
 import {
     Button,
     Checkbox,
@@ -9,6 +9,7 @@ import {
     Field,
     Icon,
     Input,
+    OrganizationPickerField,
     PageHeader,
     Panel,
 } from '@/ui';
@@ -23,7 +24,8 @@ type Props = PageProps<{
     roleSearch: string;
     pickerLimit: number;
     holdsEnvironment: boolean;
-    organizationChosen: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     indexHref: string;
     storeHref: string;
 }>;
@@ -33,7 +35,7 @@ export default function CreateRoleConflict({
     roleSearch,
     pickerLimit,
     holdsEnvironment,
-    organizationChosen,
+    organization,
     indexHref,
     storeHref,
 }: Props) {
@@ -42,6 +44,7 @@ export default function CreateRoleConflict({
         description: '',
         roles: [] as string[],
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
     });
 
     const [term, setTerm] = useState(roleSearch);
@@ -77,8 +80,6 @@ export default function CreateRoleConflict({
             checked ? [...form.data.roles, id] : form.data.roles.filter((held) => held !== id),
         );
     };
-
-    const needsOrganization = !organizationChosen && !form.data.environmentWide;
 
     return (
         <>
@@ -151,14 +152,13 @@ export default function CreateRoleConflict({
                             </div>
                         )}
 
-                        {needsOrganization && (
-                            <output
-                                className="block text-sm"
-                                style={{ color: 'var(--warning-strong)' }}
-                            >
-                                Choose an organization in the console header, or write the rule for
-                                the whole environment.
-                            </output>
+                        {organization !== null && !form.data.environmentWide && (
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="Whose rule it is — or tick the box above to apply it to every organization."
+                            />
                         )}
                     </div>
                 </Panel>

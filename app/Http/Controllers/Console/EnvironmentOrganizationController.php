@@ -22,50 +22,38 @@ use App\Actions\Organizations\SuspendOrganization;
 use App\Actions\Organizations\TransferOwnership;
 use App\Actions\Organizations\UpdateOrganization;
 use App\Actions\Organizations\VerifyOrganizationDomain;
-use App\Http\Props\Shared\AppApiKeyRows;
+use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
-use App\Http\Props\Shared\PendingInvitationProps;
-use App\Http\Props\Shared\ReturnAppProps;
-use App\Http\Props\Shared\RoleOptionProps;
-use App\Http\Props\Shared\SupportSessionProps;
 use App\Http\Requests\Console\AddOrganizationDomainRequest;
 use App\Http\Requests\Console\AddOrganizationMemberRequest;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
 use App\Platform\Actions\ActionRefused;
-use App\Platform\ApiKeys\MemberApiKeys;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Invitations\AppReturnTargets;
-use App\Platform\Invitations\Contracts\OrganizationInvitations;
-use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
-use App\Platform\SupportAccess\Contracts\SupportAccess;
 use Cbox\Id\AccessControl\Models\Role;
-use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Models\User;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
-use Cbox\Id\Organization\Models\CustomerApiKey;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
- * ENVIRONMENT PLANE › ORGANIZATIONS — the tenants inside this environment, and everything
- * about one of them: its details, its roster, its pending invitations and its claimed
- * email domains.
+ * ENVIRONMENT PLANE › ORGANIZATIONS — the tenants inside this environment: the list, the
+ * form that creates one, and every write about one of them — its details, its roster, its
+ * pending invitations and its claimed email domains. The PAGES about one organization are
+ * its hub's tabs (app/Http/Controllers/Console/Organization), one URL each.
  *
  * THE WORD DOES TWO JOBS IN THIS PLATFORM, and the page says so rather than leaving a
  * reader to work out which altitude they are at: up in the platform root an "organization"
@@ -156,115 +144,16 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             ->with('status', 'Organization created.');
     }
 
-    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog, OrganizationInvitations $invitations, AppReturnTargets $targets, MemberApiKeys $apiKeys, AppApiKeyRows $apiKeyRows, SupportAccess $support): Response
-    {
-        $this->assertEnvironmentAdmin();
-
-        $model = $this->resolve($organization);
-
-        /*
-         * A PAGE OF THE ROSTER, and the names looked up for JUST that page.
-         *
-         * This read was one row per member of the organization, hydrated in full on every
-         * interaction — and the name lookup beside it was every user in the ENVIRONMENT.
-         * Scoping both keeps the cost flat in the environment and proportional only to
-         * what is on screen.
-         */
-        $roster = $memberships->paginateForOrganization($model->id, self::PER_PAGE);
-
-        /** @var list<string> $memberIds */
-        $memberIds = array_map(
-            static fn (Membership $membership): string => (string) $membership->user_id,
-            $roster->items(),
-        );
-
-        $users = User::query()->whereIn('id', $memberIds)->get(['id', 'name', 'email'])->keyBy('id');
-
-        $accessRoles = $catalog->assignable($model->id);
-        $appNames = $catalog->appNames($accessRoles);
-        $inviteRoles = $catalog->tenantAssignable($model->id);
-        $assignments = $catalog->assignmentsByUser($model->id, $memberIds);
-
-        return $this->page('environment/organizations/show', $model->name, [
-            'organization' => [
-                'id' => $model->id,
-                'name' => $model->name,
-                'slug' => $model->slug,
-                'status' => $model->status->value,
-                'metadata' => $this->metadataOf($model),
-            ],
-            'members' => array_map(function (Membership $membership) use ($users, $assignments, $model): array {
-                $user = $users->get($membership->user_id);
-
-                return [
-                    'userId' => (string) $membership->user_id,
-                    'name' => $user->name ?? $user->email ?? (string) $membership->user_id,
-                    'email' => $user?->email,
-                    'role' => $membership->role->value,
-                    'accessRoleIds' => array_values(array_filter(
-                        (array) ($assignments[$membership->user_id] ?? []),
-                        'is_string',
-                    )),
-                    'urls' => [
-                        'role' => route('environment.organizations.members.role', [$model->id, $membership->user_id]),
-                        'accessRole' => route('environment.organizations.members.access', [$model->id, $membership->user_id]),
-                        'remove' => route('environment.organizations.members.remove', [$model->id, $membership->user_id]),
-                        'transfer' => route('environment.organizations.members.transfer-ownership', [$model->id, $membership->user_id]),
-                    ],
-                ];
-            }, $roster->items()),
-            'pagination' => PaginationProps::from($roster),
-            'invitations' => array_map(
-                static fn (PendingInvitationSummary $pending): PendingInvitationProps => PendingInvitationProps::from(
-                    $pending,
-                    route('environment.organizations.invitations.resend', [$model->id, $pending->id]),
-                    route('environment.organizations.invitations.revoke', [$model->id, $pending->id]),
-                ),
-                $invitations->pending($model->id),
-            ),
-            'domains' => $this->domainProps($model->id),
-            'accessRoles' => $this->accessRoleProps($accessRoles, $appNames),
-            // What an INVITATION may carry: the tenant plane's set, because accepting one
-            // is the invitee's act inside the organization. Staff-only roles are granted
-            // on the member once they have joined, from `accessRoles` above.
-            'inviteAccessRoles' => $this->accessRoleProps($inviteRoles, $catalog->appNames($inviteRoles)),
-            // The same lists the organization's own People page offers — one set of roles,
-            // wherever somebody is invited from.
-            'roleOptions' => RoleOptionProps::organization(),
-            'rosterRoleOptions' => RoleOptionProps::organization(withOwner: true),
-            'apps' => array_map(ReturnAppProps::from(...), $targets->appsFor($model->id)),
-            // Every API key the organization's people hold for its apps. Seen and revoked
-            // here; never minted — each person creates their own under My account.
-            'apiKeys' => $apiKeyRows->for(
-                $apiKeys->inOrganization($model->id),
-                withHolder: true,
-                revokeHref: static fn (CustomerApiKey $key): string => route('environment.organizations.api-keys.revoke', [$model->id, $key->id]),
-            ),
-            // Somebody signed in to an app as one of this organization's people, right now.
-            // The organization's own activity log records each one; this is where the
-            // environment's administrators see them while they are open, and end them.
-            'supportSessions' => SupportSessionProps::list($support->activeForOrganization($model->id)),
-            'indexHref' => route('environment.organizations'),
-            'urls' => [
-                'update' => route('environment.organizations.update', $model->id),
-                'suspend' => route('environment.organizations.suspend', $model->id),
-                'reactivate' => route('environment.organizations.reactivate', $model->id),
-                'destroy' => route('environment.organizations.destroy', $model->id),
-                'addMember' => route('environment.organizations.members.store', $model->id),
-                'invite' => route('environment.organizations.invitations.store', $model->id),
-                'addDomain' => route('environment.organizations.domains.store', $model->id),
-            ],
-        ]);
-    }
-
     /**
      * Name, handle and metadata through the action — which renames through the framework
      * (announced as `organization.updated`, the old name kept on the trail) where this used
      * to save the model and record nothing. Anything else under `settings` belongs to
      * another screen and survives.
      */
-    public function update(SaveOrganizationRequest $request, string $organization): RedirectResponse
+    public function update(SaveOrganizationRequest $request): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(UpdateOrganization::class, [
@@ -279,8 +168,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization updated.');
     }
 
-    public function suspend(string $organization): RedirectResponse
+    public function suspend(): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(SuspendOrganization::class, ['id' => $organization]);
@@ -288,8 +179,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization suspended.');
     }
 
-    public function reactivate(string $organization): RedirectResponse
+    public function reactivate(): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(ReactivateOrganization::class, ['id' => $organization]);
@@ -302,8 +195,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * its members at the request pipeline, the device flow and the consent screen, exactly as
      * a suspension does — {@see Organizations::archive()}, through the action.
      */
-    public function destroy(string $organization): RedirectResponse
+    public function destroy(): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(DeleteOrganization::class, ['id' => $organization]);
@@ -317,8 +212,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * Add an existing user by address, with the access roles ticked — one action, so a
      * segregation-of-duties conflict refuses the lot rather than leaving half of it behind.
      */
-    public function addMember(AddOrganizationMemberRequest $request, string $organization): RedirectResponse
+    public function addMember(AddOrganizationMemberRequest $request): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(AddMember::class, [
@@ -341,8 +238,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return back()->with('status', 'Member added.');
     }
 
-    public function changeMemberRole(Request $request, string $organization, string $member): RedirectResponse
+    public function changeMemberRole(Request $request, string $member): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         // Untrusted: an unassignable or unknown role is refused outright rather than
@@ -371,8 +270,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * not disagree about which state was asked for. One action per state; segregation of
      * duties refuses a toxic pair and the refusal names both roles.
      */
-    public function setAccessRole(Request $request, string $organization, string $member): RedirectResponse
+    public function setAccessRole(Request $request, string $member): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $request->validate([
@@ -393,8 +294,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access granted.');
     }
 
-    public function removeMember(string $organization, string $member): RedirectResponse
+    public function removeMember(string $member): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(RemoveMember::class, [
@@ -409,8 +312,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * The invitee accepts via the emailed token — nobody is added without consent. The same
      * action an app's backend sends one with, signed with this administrator's name.
      */
-    public function invite(InviteOrganizationMemberRequest $request, string $organization): RedirectResponse
+    public function invite(InviteOrganizationMemberRequest $request): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(SendInvitation::class, [
@@ -433,8 +338,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return back()->with('status', 'Invitation sent to '.$request->email().'.');
     }
 
-    public function resendInvitation(string $organization, string $invitation): RedirectResponse
+    public function resendInvitation(string $invitation): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->attempt(ResendInvitation::class, ['organization_id' => $organization, 'invitation_id' => $invitation]);
@@ -448,8 +355,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return back()->with('status', 'Invitation sent again'.($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
     }
 
-    public function revokeInvitation(string $organization, string $invitation): RedirectResponse
+    public function revokeInvitation(string $invitation): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->attempt(RevokeInvitation::class, ['organization_id' => $organization, 'invitation_id' => $invitation]);
@@ -468,8 +377,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * owner steps down to admin. That is also how an organization this console created —
      * which starts with no owner at all — gets its first one.
      */
-    public function transferOwnership(string $organization, string $member): RedirectResponse
+    public function transferOwnership(string $member): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(TransferOwnership::class, ['id' => $organization, 'user_id' => $member], ['user_id' => 'member'], 'member');
@@ -477,8 +388,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Ownership transferred.');
     }
 
-    public function addDomain(AddOrganizationDomainRequest $request, string $organization): RedirectResponse
+    public function addDomain(AddOrganizationDomainRequest $request): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(AddOrganizationDomain::class, [
@@ -491,8 +404,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             : back()->with('status', 'Domain added — add the DNS TXT record shown below, then verify.');
     }
 
-    public function verifyDomain(string $organization, string $domain): RedirectResponse
+    public function verifyDomain(string $domain): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(VerifyOrganizationDomain::class, ['organization_id' => $organization, 'domain_id' => $domain], [], 'domain');
@@ -505,8 +420,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
      * turning it on is refused for a domain nobody proved they own. The page's button flips
      * it; the action is told which state it means.
      */
-    public function toggleCapture(string $organization, string $domain): RedirectResponse
+    public function toggleCapture(string $domain): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $model = $this->ownedDomain($organization, $domain);
@@ -520,69 +437,15 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain capture updated.');
     }
 
-    public function removeDomain(string $organization, string $domain): RedirectResponse
+    public function removeDomain(string $domain): RedirectResponse
     {
+        $organization = $this->organizationInUrl();
+
         $this->assertEnvironmentAdmin();
 
         $result = $this->act(RemoveOrganizationDomain::class, ['organization_id' => $organization, 'domain_id' => $domain], [], 'domain');
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain removed.');
-    }
-
-    /**
-     * The domains this organization claims.
-     *
-     * The TXT record is `verification_token` — the ONE value somebody has to copy into a
-     * DNS panel, so it is handed over as its own field rather than left in prose.
-     *
-     * @return list<array{id: string, domain: string, verified: bool, capture: bool, token: string, urls: array{verify: string, capture: string, remove: string}}>
-     */
-    private function domainProps(string $organizationId): array
-    {
-        $rows = [];
-
-        foreach (app(DomainVerification::class)->forOrganization($organizationId) as $domain) {
-            $rows[] = [
-                'id' => $domain->id,
-                'domain' => $domain->domain,
-                'verified' => $domain->isVerified(),
-                'capture' => $domain->capture,
-                'token' => $domain->verification_token,
-                'urls' => [
-                    'verify' => route('environment.organizations.domains.verify', [$organizationId, $domain->id]),
-                    'capture' => route('environment.organizations.domains.capture', [$organizationId, $domain->id]),
-                    'remove' => route('environment.organizations.domains.remove', [$organizationId, $domain->id]),
-                ],
-            ];
-        }
-
-        return $rows;
-    }
-
-    /**
-     * @param  Collection<int, Role>  $roles
-     * @param  array<string, string>  $appNames
-     * @return list<array{id: string, name: string, app: string|null}>
-     */
-    private function accessRoleProps($roles, array $appNames): array
-    {
-        $rows = [];
-
-        foreach ($roles as $role) {
-            $rows[] = [
-                'id' => $role->id,
-                'name' => $role->name,
-                // Grouped org-wide vs per-app, because "what a person can do" reads
-                // differently depending on which apps it reaches.
-                'app' => $role->client_id === null ? null : ($appNames[$role->client_id] ?? $role->client_id),
-                // A staff role the environment may grant inside one organization; tagged so
-                // it is not mistaken for one of the organization's own. Tenant surfaces
-                // never list it (OrgAccessRoles::tenantAssignable()).
-                'staffOnly' => $role->tenant_assignable === false,
-            ];
-        }
-
-        return $rows;
     }
 
     /** The environment console's own gate: a membership administering THIS environment. */
@@ -619,25 +482,12 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     }
 
     /**
-     * @return list<array{key: string, value: string}>
+     * The organization the URL names, checked against this environment and bound before
+     * this controller ran (`console.org`, {@see BindConsoleOrganization})
+     * — so another environment's id, or a made-up one, is a 404 before any action sees it.
      */
-    private function metadataOf(Organization $organization): array
+    private function organizationInUrl(): string
     {
-        $meta = $organization->settings['metadata'] ?? [];
-
-        if (! is_array($meta)) {
-            return [];
-        }
-
-        $rows = [];
-
-        foreach ($meta as $key => $value) {
-            $rows[] = [
-                'key' => (string) $key,
-                'value' => is_scalar($value) ? (string) $value : '',
-            ];
-        }
-
-        return $rows;
+        return (string) $this->routeOrganizationId();
     }
 }

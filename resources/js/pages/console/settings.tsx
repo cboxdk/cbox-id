@@ -40,7 +40,10 @@ type Props = PageProps<{
         darkPrimary: string;
     };
     appearanceHref: string;
-    renameHref: string;
+    /** The organization console's own rename; null on the environment console. */
+    renameHref: string | null;
+    /** The environment console's list of organizations, where each one is renamed on its own page. */
+    organizationsHref: string | null;
     accountHref: string;
     setupGuideHref: string | null;
     issuer: string;
@@ -56,6 +59,7 @@ export default function Settings({
     appearance,
     appearanceHref,
     renameHref,
+    organizationsHref,
     accountHref,
     setupGuideHref,
     issuer,
@@ -106,18 +110,23 @@ export default function Settings({
                 </Panel>
             )}
 
-            <Panel title="Organization" description="The organization this console is acting on.">
-                {organization === null ? (
-                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        Choose an organization to see and rename it.
-                    </p>
-                ) : (
+            {organizationsHref !== null && (
+                <Panel
+                    title="Organizations"
+                    description="Each organization's name, handle and details are on its own page."
+                >
+                    <Link href={organizationsHref} className="text-sm">
+                        Go to Organizations
+                    </Link>
+                </Panel>
+            )}
+
+            {organization !== null && renameHref !== null && (
+                <Panel
+                    title="Organization"
+                    description="The organization this console administers."
+                >
                     <>
-                        {/*
-                            Rename is new to the environment plane: an administrator who
-                            holds every organization here could not correct a typo in one's
-                            name without signing into that organization's own console.
-                        */}
                         <form
                             className="mb-4"
                             onSubmit={(event) => {
@@ -156,8 +165,8 @@ export default function Settings({
                             <Kv label="Organization ID">{organization.id}</Kv>
                         </KvList>
                     </>
-                )}
-            </Panel>
+                </Panel>
+            )}
 
             {/*
                 The way back to the setup guide. Dismissing it on the dashboard is meant to

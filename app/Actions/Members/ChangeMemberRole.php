@@ -24,6 +24,10 @@ use Cbox\Id\Organization\Exceptions\LastOwner;
  * and announces it. Ownership is not a tier this sets; demoting the last owner is refused
  * (`last_owner`): an organization with nobody in charge has nobody to hand it over or close
  * it.
+ *
+ * FROM INSIDE THE ORGANIZATION — its People page, or a token one of its administrators
+ * signed in for — two more rules hold ({@see TenantRoster}): only an owner may change an
+ * owner, and a customer's roster is administered from Workspace › Team (`managed_elsewhere`).
  */
 #[AsAction(
     name: 'members.update',
@@ -33,8 +37,8 @@ use Cbox\Id\Organization\Exceptions\LastOwner;
     schema: 'Member',
     tag: 'Members',
     rest: ['PATCH', '/organizations/{organization_id}/members/{user_id}'],
-    consoleRoutes: ['environment.organizations.members.role', 'environment.users.organizations.role'],
-    consoleGate: ConsoleGate::EnvironmentAdmin,
+    consoleRoutes: ['environment.organizations.members.role', 'environment.users.organizations.role', 'directory.members.role'],
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class ChangeMemberRole implements Action
 {
@@ -53,6 +57,11 @@ final readonly class ChangeMemberRole implements Action
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
         $member = MemberFields::find($organization->id, $context->string('user_id'));
+
+        if (TenantRoster::confined($context) !== null) {
+            TenantRoster::assertMayActOn($context->principal, $organization->id, $member);
+            TenantRoster::assertManagedHere($organization->id, 'role');
+        }
 
         try {
             $membership = $this->memberships->changeRole($organization->id, $member->user_id, MembershipRole::from($context->string('role')));

@@ -273,9 +273,9 @@ it('does not pay per-organization queries for the signed-in subject', function (
 | The ENVIRONMENT plane
 |--------------------------------------------------------------------------
 | Everything above measures the organization console. The environment console is
-| the one an account's administrator lives in, it is where the acting-organization
-| switcher lives, and it was where both of the worst measurements were — because
-| nothing here reached it.
+| the one an account's administrator lives in, it is where the organization switcher
+| used to live, and it was where both of the worst measurements were — because nothing
+| here reached it. Its pages about one organization are that organization's own page now.
 */
 
 /**
@@ -289,7 +289,7 @@ it('does not pay per-organization queries for the signed-in subject', function (
  *
  * @return array{queries: list<string>, html: int}
  */
-function consoleRequest(string $route): array
+function consoleRequest(string $route, array $parameters = []): array
 {
     nextRequest();
 
@@ -298,13 +298,16 @@ function consoleRequest(string $route): array
         $queries[] = $query->sql;
     });
 
-    $response = test()->get(route($route));
+    $response = test()->get(route($route, $parameters));
     $response->assertOk();
 
     return ['queries' => $queries, 'html' => strlen((string) $response->getContent())];
 }
 
-/** An environment administrator, acting on one of this environment's organizations. */
+/**
+ * An environment administrator, and the first of this environment's organizations — the one
+ * the measurements below open pages about (`/admin/organizations/{organization}/…`).
+ */
 function environmentBudgetAdmin(int $organizations = 1): string
 {
     ['envId' => $envId] = crudSetup();
@@ -316,18 +319,13 @@ function environmentBudgetAdmin(int $organizations = 1): string
         $first ??= $organization->id;
     }
 
-    // Choosing is the steady state an administrator is in, and it is the state the cost
-    // lived in: with nothing chosen, organizationId() returns before it validates
-    // anything, so a fixture that never chose would have measured a page nobody uses.
-    if ($first !== null) {
-        app(ConsoleScope::class)->chooseOrganization($first);
-    }
+    expect($envId)->not->toBe('');
 
-    return $envId;
+    return (string) $first;
 }
 
 /**
- * The finding this exists for: the acting-organization picker enumerated every
+ * The finding this exists for: the console header's organization picker enumerated every
  * organization in the environment into the page chrome, each as its own `<form>` with its
  * own CSRF token, on EVERY environment-console page.
  *
@@ -340,9 +338,9 @@ function environmentBudgetAdmin(int $organizations = 1): string
  * tenant, in queries OR in bytes.
  */
 it('does not pay for the size of the environment when rendering an environment-console page', function (): void {
-    environmentBudgetAdmin(organizations: 7);
+    $organizationId = environmentBudgetAdmin(organizations: 7);
 
-    $small = consoleRequest('environment.roles');
+    $small = consoleRequest('environment.organizations.roles', ['organization' => $organizationId]);
 
     // The SAME application, five hundred more organizations in it. One instance on
     // purpose: refreshApplication() would drop the in-memory schema.
@@ -350,7 +348,7 @@ it('does not pay for the size of the environment when rendering an environment-c
         app(Organizations::class)->create(new NewOrganization("Scale Org {$i}", "scale-org-{$i}"));
     }
 
-    $large = consoleRequest('environment.roles');
+    $large = consoleRequest('environment.organizations.roles', ['organization' => $organizationId]);
 
     $smallQueries = count($small['queries']);
     $largeQueries = count($large['queries']);
@@ -385,10 +383,10 @@ it('does not pay for the size of the environment when rendering an environment-c
  * platform-root row resolved five times, the same organization list ten times.
  */
 it('does not ask the same question twice within a console render', function (): void {
-    environmentBudgetAdmin(organizations: 7);
+    $organizationId = environmentBudgetAdmin(organizations: 7);
 
-    foreach (['environment.roles', 'environment.connections', 'environment.directories'] as $route) {
-        $counts = array_count_values(consoleRequest($route)['queries']);
+    foreach (['environment.organizations.roles', 'environment.organizations.sso', 'environment.organizations.directory-sync', 'environment.roles', 'environment.connections'] as $route) {
+        $counts = array_count_values(consoleRequest($route, str_starts_with($route, 'environment.organizations.') ? ['organization' => $organizationId] : [])['queries']);
         arsort($counts);
 
         $worst = (string) array_key_first($counts);
@@ -435,10 +433,10 @@ it('does not ask the same question twice within an organization-console render',
  * than a total that drifts with the page.
  */
 it('builds the console chrome once per request', function (): void {
-    environmentBudgetAdmin();
+    $organizationId = environmentBudgetAdmin();
 
-    foreach (['environment.roles', 'environment.home'] as $route) {
-        $builds = collect(consoleRequest($route)['queries'])
+    foreach (['environment.organizations.roles', 'environment.roles', 'environment.home'] as $route) {
+        $builds = collect(consoleRequest($route, $route === 'environment.organizations.roles' ? ['organization' => $organizationId] : [])['queries'])
             ->filter(fn (string $sql): bool => (bool) preg_match('/from ["`]environments["`] where ["`]project_id["`] in .* and ["`]id["`] in/', $sql))
             ->count();
 

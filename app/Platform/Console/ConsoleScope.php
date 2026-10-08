@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Http\Middleware\BindConsoleOrganization;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\EnvironmentSudo;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -37,17 +37,14 @@ use Illuminate\Auth\Access\AuthorizationException;
  * So this is the seam. A page resolves a scope and stops caring which door the
  * administrator came through; the scope is the only thing in the console that knows.
  *
- * Bound `scoped`: the acting organization is chosen per request (the environment plane
- * carries a picker), and a singleton would leak one administrator's choice into the next
- * request on a long-lived worker.
+ * Bound `scoped`: the organization a request acts on is named by THAT request's URL (the
+ * environment plane's `/admin/organizations/{organization}/…`), and a singleton would leak
+ * one request's organization into the next on a long-lived worker.
  */
 class ConsoleScope
 {
-    /** The environment plane's chosen organization, held so a picker survives navigation. */
-    public const SELECTION_KEY = 'cbox.console.organization';
-
-    /** How many organizations the switcher offers at once before asking for a search. */
-    public const SWITCHER_LIMIT = 8;
+    /** How many organizations a lookup offers at once before asking for a narrower search. */
+    public const LOOKUP_LIMIT = 8;
 
     /** @see operator() — the subject the memo below was resolved FOR, or '' for nobody. */
     private ?string $operatorKey = null;
@@ -66,10 +63,11 @@ class ConsoleScope
 
     private ?string $nameRecord = null;
 
-    /** @see validatedThisRequest() — "(selection, environment)" the verdict below belongs to. */
-    private ?string $validatedKey = null;
+    /** @see bindOrganization() — the organization this request's URL names, environment plane only. */
+    private ?string $boundOrganization = null;
 
-    private bool $validatedRecord = false;
+    /** @see bindOrganization() — the environment the binding above was checked in. */
+    private ?string $boundEnvironment = null;
 
     public function __construct(
         private readonly CurrentUser $subject,
@@ -96,11 +94,13 @@ class ConsoleScope
     }
 
     /**
-     * The organization being administered, or null when the environment plane has not
-     * chosen one yet.
+     * The organization being administered, or null when the environment plane is looking
+     * at the whole environment.
      *
      * On the organization plane this is not a choice: it is the organization the person
-     * is a member of, and nothing in the request can change it.
+     * is a member of, and nothing in the request can change it. On the environment plane it
+     * is the organization the URL names — `/admin/organizations/{organization}/…`, bound by
+     * {@see BindConsoleOrganization} — and nothing anywhere else.
      */
     public function organizationId(): ?string
     {
@@ -109,7 +109,7 @@ class ConsoleScope
 
             // An organization-plane session with no organization is not a state the
             // console can render anything for, and it must not be reported as null —
-            // because null here means "an environment administrator has not chosen yet",
+            // because null here means "an environment administrator is looking at all of it",
             // and every read in the console is written as
             // `when($id !== null, fn ($q) => $q->where('organization_id', $id))`.
             //
@@ -126,124 +126,67 @@ class ConsoleScope
             return $organizationId;
         }
 
-        $chosen = session()->get(self::SELECTION_KEY);
-
-        if (! is_string($chosen) || $chosen === '') {
+        /*
+         * NO REMEMBERED CHOICE. This used to read an "acting organization" an administrator
+         * picked in the console header and the session kept — a hidden filter that changed
+         * what sixteen pages showed and which organization a write landed in, with nothing
+         * in the URL to say so. A link pasted to a colleague opened a different page for
+         * them; a second tab changed the first. The organization is now part of the address,
+         * so a page acting on one says which, and a page that does not acts on none.
+         *
+         * Asked of the environment the binding was checked in, as the selection used to be
+         * re-validated: a request can move between environments
+         * ({@see EnvironmentContext::runAs()}), and an id that named an organization on one
+         * host must not be carried to another.
+         */
+        if ($this->boundOrganization === null || $this->boundEnvironment !== $this->environmentKey()) {
             return null;
         }
 
-        // Re-validated on every read, not trusted because it was validated when chosen.
-        // The environment scope on Organization is what makes this safe: an id belonging
-        // to another environment resolves to nothing here, so a session carried to a
-        // different host cannot act on the organization it named.
-        //
-        // Asked as an EXISTENCE question about the one id, rather than by loading every
-        // organization in the environment and looking for it in the map. The property is
-        // identical — the same global scope answers both — but the map version made the
-        // cost of validating one id the size of the tenant: a console page asks this ten
-        // times through entitled(), and an environment holding a few thousand B2B
-        // organizations paid ten full reads of them per render.
-        return $this->validatedThisRequest($chosen) ? $chosen : null;
+        return $this->boundOrganization;
     }
 
     /**
-     * The re-validation above, asked once per (selection, environment) rather than ten
-     * times per render.
+     * Act on ONE organization for the rest of this request — the one the URL names.
+     * Environment plane only, and only an organization of THIS environment: false for any
+     * other id, which the caller answers with a 404, exactly as for an id that never existed.
      *
-     * MEMOISED ON ITS INPUTS, not merely computed once, and the environment is one of
-     * them. That is the whole of the property this re-validation exists for: the answer is
-     * "does this id name an organization on THIS host", and a request can legitimately
-     * move between environments ({@see EnvironmentContext::runAs()}) — a flat memo would
-     * carry the previous environment's verdict across that move, which is precisely the
-     * bleed the check is here to stop.
-     */
-    private function validatedThisRequest(string $organizationId): bool
-    {
-        $key = $organizationId."\0".(app(EnvironmentContext::class)->current()?->environmentKey() ?? '');
-
-        if ($this->validatedKey === $key) {
-            return $this->validatedRecord;
-        }
-
-        $this->validatedRecord = $this->existsHere($organizationId);
-        $this->validatedKey = $key;
-
-        return $this->validatedRecord;
-    }
-
-    /**
-     * Choose the organization to act on. Environment plane only.
-     *
-     * Refused rather than ignored on the organization plane: a member who could set this
-     * would be choosing which organization to administer, which is precisely the
-     * authorization the plane exists to withhold.
+     * Refused on the organization plane rather than ignored: a member who could name an
+     * organization here would be choosing which one to administer, which is precisely the
+     * authorization that plane exists to withhold.
      *
      * @throws AuthorizationException
      */
-    public function chooseOrganization(string $organizationId): void
+    public function bindOrganization(string $organizationId): bool
     {
         if ($this->plane() !== ConsolePlane::Environment) {
-            throw new AuthorizationException('Only an environment administrator may choose which organization to act on.');
-        }
-
-        if (! $this->existsHere($organizationId)) {
-            throw new AuthorizationException('That organization is not in this environment.');
-        }
-
-        session()->put(self::SELECTION_KEY, $organizationId);
-
-        // The step-up does not travel with the selection.
-        //
-        // {@see \App\Platform\PlatformAuth::switchOrganization()} drops it on the tenant
-        // plane and says why: switching tenant changes which authority the session
-        // carries, so a confirmation made against the previous one does not transfer. The
-        // same sentence is truer here, because this plane's confirmation is worth more —
-        // one password, entered once, otherwise covered rotating EVERY tenant's secrets
-        // for the rest of the 15-minute window, simply by switching between them.
-        app(EnvironmentSudo::class)->forget();
-
-        // The selection has moved, so anything derived from it has to. Nothing here can
-        // have changed the SET — but a memo that survives the write it belongs to is the
-        // bug memoising would otherwise introduce, and the name definitely has changed.
-        $this->forgetDerivedSelection();
-    }
-
-    /**
-     * Go back to acting on the WHOLE environment.
-     *
-     * The missing half of {@see chooseOrganization()}, and its absence made choosing a
-     * one-way door: every read in this console is written as
-     * `when($id !== null, fn ($q) => $q->where('organization_id', $id))`, so an unselected
-     * console is the environment-wide view — the default an administrator arrives at, and
-     * one they could never return to for the rest of the session once they had picked an
-     * organization. Signing out was the only way back.
-     *
-     * The same step-up reasoning as choosing: the confirmation was made while acting as
-     * one organization and does not transfer to acting as all of them.
-     *
-     * @throws AuthorizationException
-     */
-    public function clearOrganization(): void
-    {
-        if ($this->plane() !== ConsolePlane::Environment) {
-            // On the organization plane the selection is the membership, not a choice —
-            // there is nothing to clear and pretending otherwise would answer null, which
-            // that plane reads as "no filter" and must never be handed.
             throw new AuthorizationException('Only an environment administrator acts on more than one organization.');
         }
 
-        session()->forget(self::SELECTION_KEY);
+        if (! $this->existsHere($organizationId)) {
+            return false;
+        }
 
-        app(EnvironmentSudo::class)->forget();
-
-        $this->forgetDerivedSelection();
-    }
-
-    private function forgetDerivedSelection(): void
-    {
-        $this->availableRecord = null;
+        $this->boundOrganization = $organizationId;
+        $this->boundEnvironment = $this->environmentKey();
         $this->nameResolved = false;
         $this->nameRecord = null;
+
+        return true;
+    }
+
+    /** Back to acting on no one organization — the end of the request that bound one. */
+    public function releaseOrganization(): void
+    {
+        $this->boundOrganization = null;
+        $this->boundEnvironment = null;
+        $this->nameResolved = false;
+        $this->nameRecord = null;
+    }
+
+    private function environmentKey(): string
+    {
+        return app(EnvironmentContext::class)->current()?->environmentKey() ?? '';
     }
 
     /**
@@ -346,20 +289,21 @@ class ConsoleScope
 
     /**
      * The organizations to OFFER, for a term the administrator typed — a bounded page of
-     * the same set {@see availableOrganizations()} describes.
+     * the same set {@see availableOrganizations()} describes. What the console's "For which
+     * organization?" field and its filter chips look up (`/admin/lookup/organizations`).
      *
-     * This exists because the set has no size limit. The switcher rendered every
+     * This exists because the set has no size limit. A switcher once rendered every
      * organization in the environment, each as its own `<form>` with its own CSRF token,
      * so an environment holding a few thousand of them — the shape this product is sold
      * into — served a 3.5 MB document on every console page. That is an availability
      * problem, not a slow one, and no amount of caching fixes a response that large.
      *
      * The organization plane has exactly one and never chooses, so it answers with that
-     * one and ignores the term: the switcher is a label there, not a control.
+     * one and ignores the term.
      *
      * @return list<ConsoleOrganization>
      */
-    public function searchOrganizations(string $term = '', int $limit = self::SWITCHER_LIMIT): array
+    public function searchOrganizations(string $term = '', int $limit = self::LOOKUP_LIMIT): array
     {
         if ($this->plane() === ConsolePlane::Organization) {
             $organization = $this->subject->organization();
@@ -400,12 +344,12 @@ class ConsoleScope
     }
 
     /**
-     * The acting organization's name, or null when none is chosen.
+     * The name of the organization being administered, or null when there is none.
      *
      * Asked of the ONE organization rather than looked up in
-     * {@see availableOrganizations()}, which is the whole point: rendering the chosen
-     * organization's name in the chrome must not cost a read of every organization in the
-     * environment. Memoised because the chrome asks and so does the page eyebrow.
+     * {@see availableOrganizations()}, which is the whole point: naming it on a page must
+     * not cost a read of every organization in the environment. Memoised because a page
+     * header asks and so does the page itself.
      */
     public function organizationName(): ?string
     {
@@ -559,7 +503,7 @@ class ConsoleScope
         // change inside one request — an account switch, an impersonation resume, a
         // sign-in — and a memo on an identity is the one kind that fails dangerously: it
         // would answer with the previous person's authority under the new person's session.
-        // The same keying, for the same reason, as validatedThisRequest() above.
+        // The same keying, for the same reason, as the organization binding above.
         if ($this->operatorKey === ($subjectId ?? '')) {
             return $this->operatorRecord;
         }
@@ -930,7 +874,7 @@ class ConsoleScope
         $organizationId = $this->organizationId();
 
         if ($organizationId === null) {
-            throw new AuthorizationException('Choose an organization before making changes.');
+            throw new AuthorizationException('This acts on one organization, and none is named here. Open it from the organization\'s own page.');
         }
 
         return $organizationId;

@@ -149,10 +149,13 @@ it('offers every environment-console page somewhere in its rail', function (): v
                 // console from the account plane. It has no rail entry because it is not
                 // somewhere you navigate to.
                 'environment.open',
-                // CHROME, and the one GET in this console that is not a page at all: the
-                // acting-organization picker answers JSON for a control in the topbar. It
-                // is a GET because it is a read, not because it is somewhere to be.
-                'environment.acting-organization.search',
+                // The one GET in this console that is not a page at all: the organization
+                // lookup answers JSON for the "For which organization?" fields and the
+                // Organization filter chips. It is a GET because it is a read, not because it
+                // is somewhere to be.
+                'environment.lookup.organizations',
+                // CHROME too: ⌘K's search answers JSON for the palette in the topbar.
+                'environment.search',
                 // A REDIRECT kept for links and bookmarks: the environment console's
                 // management keys are its Agents page (AI agents › Agents) now.
                 'environment.keys',

@@ -1,8 +1,20 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, Panel, RadioGroup, Textarea } from '@/ui';
+import type { OrganizationPicker, PageProps } from '@/types';
+import { lines } from '@/lib/apiSnippets';
+import {
+    ApiEquivalent,
+    Button,
+    Checkbox,
+    Field,
+    Icon,
+    Input,
+    OrganizationPickerField,
+    Panel,
+    RadioGroup,
+    Textarea,
+} from '@/ui';
 
 interface AppKindOption {
     value: string;
@@ -28,6 +40,8 @@ type Props = PageProps<{
     appKinds: AppKindOption[];
     /** Only a plane that CHOOSES an organization may register an environment-wide app. */
     mayScopeEnvironmentWide: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     indexHref: string;
     storeHref: string;
 }>;
@@ -36,6 +50,7 @@ export default function CreateClient({
     scopeGroups,
     appKinds,
     mayScopeEnvironmentWide,
+    organization,
     indexHref,
     storeHref,
 }: Props) {
@@ -53,6 +68,7 @@ export default function CreateClient({
         manifestUrl: '',
         firstParty: false,
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
     });
 
     const kind = useMemo(
@@ -363,6 +379,14 @@ export default function CreateClient({
                                 label="Register it to this environment rather than to an organization"
                                 hint="An environment app, not one organization's."
                             />
+                            {organization !== null && !form.data.environmentWide && (
+                                <OrganizationPickerField
+                                    picker={organization}
+                                    error={form.errors.organization}
+                                    onChange={(id) => form.setData('organization', id)}
+                                    hint="The organization the app belongs to — or register it to the environment above."
+                                />
+                            )}
                             <Checkbox
                                 checked={form.data.firstParty}
                                 onCheckedChange={(checked) => form.setData('firstParty', checked)}
@@ -373,7 +397,7 @@ export default function CreateClient({
                     </Panel>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
                         Create app
                     </Button>
@@ -381,6 +405,23 @@ export default function CreateClient({
                         <Link href={indexHref}>Cancel</Link>
                     </Button>
                 </div>
+
+                {/* The same app, created from code — with what this form holds now. */}
+                <ApiEquivalent
+                    action="apps.create"
+                    values={{
+                        name: form.data.name,
+                        type: form.data.kind,
+                        redirect_uris: lines(form.data.redirectUris),
+                        post_logout_redirect_uris: lines(form.data.postLogoutRedirectUris),
+                        scopes: [
+                            ...form.data.scopes,
+                            ...form.data.customScopes.split(/[\s,]+/).filter(Boolean),
+                        ],
+                        manifest_url: form.data.manifestUrl,
+                        first_party: form.data.firstParty || undefined,
+                    }}
+                />
             </form>
         </>
     );

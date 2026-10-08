@@ -12,10 +12,10 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRoutes;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\OperatorPrincipal;
 use App\Platform\Actions\Principal\Principal;
-use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\WorkspaceApiContext;
@@ -29,7 +29,8 @@ use Illuminate\Http\Response;
  *
  * It does three things and no more: names the principal (the credential the plane's
  * middleware authenticated — an environment key or a person's access token on an
- * environment's host, a workspace key on the workspace plane), gathers the input (URL parameters, query and body as one argument
+ * environment's host, a workspace key or a member's root token on the workspace plane),
+ * gathers the input (URL parameters, query and body as one argument
  * list — the same list an MCP tool call carries), and renders the outcome in the
  * management API's envelope. Validation and authorization failures are thrown on to
  * {@see ApiErrorRenderer}, which renders them the same as before actions existed.
@@ -54,12 +55,15 @@ final readonly class ActionController
         $input = [...$body, ...array_intersect_key($parameters, array_flip($action->input()->pathFields()))];
 
         try {
+            $principal = $this->principal($action);
+
             $result = $this->runner->run(
                 $action,
-                $this->principal($action),
+                $principal,
                 $input,
                 $request->headers->get('Idempotency-Key'),
                 $request->headers->get('Cbox-Approval'),
+                ActionVia::overRest($principal, $request),
             );
         } catch (ApprovalRequired $held) {
             return response()->json([
@@ -97,7 +101,8 @@ final readonly class ActionController
         return match ($action->plane) {
             // A key, or the person whose access token `env.api` admitted on this route.
             ActionPlane::Environment => app(EnvironmentApiContext::class)->principal() ?? abort(401),
-            ActionPlane::Workspace => new WorkspaceKeyPrincipal(app(WorkspaceApiContext::class)->key() ?? abort(401)),
+            // A workspace key, or a member of the team through a token the root issued them.
+            ActionPlane::Workspace => app(WorkspaceApiContext::class)->principal() ?? abort(401),
             // A person's delegated token — and on the platform plane, only an operator's.
             ActionPlane::Platform => ($person = app(DelegatedApiContext::class)->principal()) instanceof OperatorPrincipal ? $person : abort(401),
             ActionPlane::Account => app(DelegatedApiContext::class)->principal() ?? abort(401),

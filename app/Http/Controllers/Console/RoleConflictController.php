@@ -10,6 +10,7 @@ use App\Actions\Governance\SetSodPolicyStatus;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\StoreRoleConflictRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\OrganizationFilter;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
@@ -29,10 +30,10 @@ use Inertia\Response;
  * would break a rule, and the DETECTIVE one, which finds the people who already hold a
  * forbidden pair.
  *
- * The detective half is the reason the "choose an organization" state has to be said out
+ * The detective half is the reason the "no organization to scan" state has to be said out
  * loud rather than rendered as an empty list. `scan()` takes an explicit organization, so
- * with none chosen there is nothing to scan — and reporting "no conflicts detected" for a
- * scan that never ran is a more dangerous answer than reporting nothing at all.
+ * an unfiltered environment-wide list has nothing to scan — and reporting "no conflicts
+ * detected" for a scan that never ran is a more dangerous answer than reporting nothing.
  *
  * AN ENVIRONMENT-WIDE RULE IS NOT A TENANT'S TO SWITCH OFF. It binds every organization
  * here, and an administrator who could deactivate it could then grant themselves the very
@@ -49,15 +50,18 @@ final readonly class RoleConflictController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->actingOrganizationId();
+        $filter = $this->organizationFilter();
+        $organizationId = $filter->id;
 
         /*
-         * The acting organization's own rules plus the environment-wide ones that bind
-         * it. With none chosen — only possible for an environment administrator — every
-         * rule in the environment, which is a deliberate overview rather than a leak: the
-         * model's environment scope still bounds it.
+         * The organization's own rules plus the environment-wide ones that bind it — the
+         * member's own organization, or the one the list is filtered to. Unfiltered — only
+         * possible for an environment administrator — every rule in the environment, which
+         * is a deliberate overview rather than a leak: the model's environment scope still
+         * bounds it. A filter naming no organization here matches nothing.
          */
         $query = SodPolicy::query()
+            ->when($filter->unknown, fn (Builder $q): Builder => $filter->apply($q))
             ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
                 fn (Builder $q): Builder => $q->whereNull('organization_id')->orWhere('organization_id', $organizationId),
             ))
@@ -107,11 +111,13 @@ final readonly class RoleConflictController extends ConsoleController
             /*
              * A SCAN NEEDS AN ORGANIZATION. Told apart from "no conflicts" deliberately:
              * the page has to say which of the two it is, because the second is a result
-             * and the first is the absence of one.
+             * and the first is the absence of one. On the environment console the scan runs
+             * for the organization the list is filtered to.
              */
-            'organizationChosen' => $organizationId !== null,
+            'scanned' => $organizationId !== null,
+            'organizationFilter' => $this->organizationFilterProps($filter),
             'violations' => $this->violationProps($violations, $roleNames, $subjects),
-            'createHref' => $this->url('sod-policies.create'),
+            'createHref' => $this->createUrl('sod-policies.create'),
         ]);
     }
 
@@ -119,7 +125,7 @@ final readonly class RoleConflictController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->actingOrganizationId();
+        $organizationId = $this->prefilledOrganizationId();
         $chosen = array_values(array_filter((array) $request->input('roles', []), 'is_string'));
         $term = trim($request->string('roleSearch')->toString());
 
@@ -156,7 +162,9 @@ final readonly class RoleConflictController extends ConsoleController
             'pickerLimit' => self::PICKER_LIMIT,
             // Whether writing a rule for the whole environment is even on offer here.
             'holdsEnvironment' => $this->scope->plane() === ConsolePlane::Environment,
-            'organizationChosen' => $organizationId !== null,
+            // "For which organization?" on the environment console, unless the rule is for
+            // the whole environment; prefilled and locked when opened from an organization.
+            'organization' => $this->organizationPicker(),
             'indexHref' => $this->url('sod-policies'),
             'storeHref' => $this->url('sod-policies.store'),
         ]);
@@ -181,13 +189,9 @@ final readonly class RoleConflictController extends ConsoleController
 
             $organizationId = null;
         } else {
-            $organizationId = $this->actingOrganizationId();
-
-            if ($organizationId === null) {
-                return back()->withInput()->withErrors([
-                    'name' => 'Choose an organization in the console header, or write the rule for the whole environment.',
-                ]);
-            }
+            // The form's own answer on the environment console, checked against this
+            // environment; the member's own elsewhere.
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         $result = $this->act(DefineSodPolicy::class, [
@@ -221,10 +225,14 @@ final readonly class RoleConflictController extends ConsoleController
 
         /*
          * The organization this rule is evaluated against: its own where it has one, and
-         * otherwise the one being administered. Never a picker on this page, which was the
-         * second place that answer lived.
+         * otherwise the member's own on the organization console. An environment-wide rule
+         * on the environment console binds every organization, so the scan names one —
+         * `?organization=`, checked against this environment. A READ, so a query parameter
+         * is the right place for it; nothing is written for that organization.
          */
-        $scanOrganizationId = $model->organization_id ?? $this->actingOrganizationId();
+        $scanOrganizationId = $model->organization_id
+            ?? $this->routeOrganizationId()
+            ?? OrganizationFilter::fromRequest($request)->id;
 
         /*
          * ASKED FOR, not run on every render. A scan walks every grant in the
@@ -294,7 +302,7 @@ final readonly class RoleConflictController extends ConsoleController
         $result = $this->act(SetSodPolicyStatus::class, [
             'id' => $model->id,
             'active' => ! $model->active,
-            'organization_id' => $this->actingOrganizationId(),
+            'organization_id' => $this->routeOrganizationId(),
         ]);
 
         if ($result instanceof RedirectResponse) {
@@ -313,7 +321,7 @@ final readonly class RoleConflictController extends ConsoleController
         $model = $this->changeable()->whereKey($policy)->firstOrFail();
         $name = $model->name;
 
-        $result = $this->act(DeleteSodPolicy::class, ['id' => $model->id, 'organization_id' => $this->actingOrganizationId()]);
+        $result = $this->act(DeleteSodPolicy::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -338,14 +346,14 @@ final readonly class RoleConflictController extends ConsoleController
     }
 
     /**
-     * The rules this administrator may READ: the acting organization's own, plus the
+     * The rules this administrator may READ: the organization's own, plus the
      * environment-wide ones that bind it — an organization must see what constrains it.
      *
      * @return Builder<SodPolicy>
      */
     private function visible(): Builder
     {
-        $organizationId = $this->actingOrganizationId();
+        $organizationId = $this->routeOrganizationId();
 
         return SodPolicy::query()
             ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(

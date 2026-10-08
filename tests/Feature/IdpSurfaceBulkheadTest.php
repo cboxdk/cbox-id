@@ -59,6 +59,11 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     // exactly what SetEnvironment/ResolveEnvironment do in production.
     $this->getJson('http://cboxid.com/.well-known/openid-configuration')->assertNotFound();
     // JWKS is NOT in this list — see the test below, and the reason it is deliberate.
+    // The RFC 8414 document answers on the root while MCP clients may sign in there — written
+    // for them alone, with no OpenID Connect in it (Mcp/RootMcpOAuthTest) — and is absent
+    // like the rest the moment that is switched off.
+    $this->getJson('http://cboxid.com/.well-known/oauth-authorization-server')->assertOk()->assertJsonMissingPath('userinfo_endpoint');
+    config(['api.mcp.root_oauth' => false]);
     $this->getJson('http://cboxid.com/.well-known/oauth-authorization-server')->assertNotFound();
     $this->getJson('http://cboxid.com/.well-known/oauth-protected-resource')->assertNotFound();
     $this->postJson('http://cboxid.com/oauth/token')->assertNotFound();

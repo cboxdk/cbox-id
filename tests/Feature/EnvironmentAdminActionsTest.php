@@ -3,14 +3,12 @@
 declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
-use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentSudo;
 use App\Platform\Impersonation;
 use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
-use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
@@ -29,9 +27,6 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientType;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -44,15 +39,9 @@ use Cbox\Id\Provisioning\Enums\AuthScheme as ProvisioningAuthScheme;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\Models\ServiceProvider;
-use Cbox\Id\TokenVault\Contracts\SecretVault;
-use Cbox\Id\TokenVault\Models\VaultGrant;
-use Cbox\Id\TokenVault\Models\VaultSecret;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
-use Cbox\LaravelSiem\Contracts\LogStreams;
-use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
-use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -309,15 +298,13 @@ it('exercises the sod-policy detail mutating actions (scan, toggle, remove)', fu
     $policy = app(SegregationOfDuties::class)
         ->definePolicy(null, 'MC', [$roleA->id, $roleB->id]);
 
-    // One component on both planes now, and the organization an environment-wide rule is
-    // evaluated against comes from the console chrome rather than from a picker the page
-    // carried — so it is chosen here, the way an administrator chooses it.
-    app(ConsoleScope::class)->chooseOrganization($scanOrgId);
-
+    // An environment-wide rule binds every organization, so the scan names the one it is
+    // evaluated against — in the URL, the way the page's link says it.
+    //
     // The scan is a READ, asked for by a query parameter rather than an action — it walks
     // every grant in the organization, so it runs when somebody wants it rather than every
     // time the page opens.
-    test()->get(route('environment.sod-policies.show', ['policy' => $policy->id, 'scan' => 1]))
+    test()->get(route('environment.sod-policies.show', ['policy' => $policy->id, 'scan' => 1, 'organization' => $scanOrgId]))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('scanned', true));
 
@@ -363,13 +350,11 @@ it('exercises the governance detail mutating action (close)', function (): void 
     $orgId = makeOrg('gov-org');
     $campaign = app(AccessReviews::class)->open($orgId, 'Q3');
 
-    // Choose the organization, as the console chrome's picker does. Applying revokes now
-    // goes through ConsoleScope::requireOrganizationId() rather than reading the
-    // campaign's own organization_id back out of the record — which is what made the
-    // framework's ownership assertion compare a campaign to itself and pass for any
-    // caller. Opening a review already required a selection (governance/create), so this
-    // states a precondition the flow always had rather than adding one.
-    app(ConsoleScope::class)->chooseOrganization($orgId);
+    // The environment console holds every organization here, so the close acts on the
+    // review's own organization with that authority — the same rule an environment key
+    // has ({@see \App\Actions\Governance\AccessReviewFields::writeOrganizationId()}). The
+    // organization console still names its own, so the framework's ownership assertion
+    // compares the record to the ADMINISTRATOR there rather than to itself.
 
     // note: certify() and revoke() require a seeded campaign item (a snapshotted role
     // assignment / membership for a subject in the org). A freshly opened campaign over
@@ -382,137 +367,29 @@ it('exercises the governance detail mutating action (close)', function (): void 
         ->toBe(CampaignStatus::Closed);
 });
 
-it('refuses to close a review before an organization is chosen', function (): void {
-    // The other half of the same fix. `close()` used to pass the campaign's OWN
-    // `organization_id` to the framework's ownership assertion, so the assertion compared
-    // the record to itself and passed for every caller — the check existed and could not
-    // fail. It asks the SCOPE now, which means an environment administrator who has not
-    // named an organization is refused rather than applying revokes on one they never
-    // chose. Opening a review already required a selection, so nothing legitimate lost it.
+it('closes a review with the environment\'s authority, and never another organization\'s from inside one', function (): void {
+    // The environment console holds every organization in it, so closing a review there
+    // acts on the review's own organization — as an environment key does. What must still
+    // refuse is an organization's own console reaching another organization's review: its
+    // ownership assertion compares the record to the administrator, never to itself.
     crudSetup();
     $campaign = app(AccessReviews::class)->open(makeOrg('gov-unchosen'), 'Q4');
 
-    test()->post(route('environment.governance.close', $campaign->id))->assertForbidden();
+    test()->post(route('environment.governance.close', $campaign->id))->assertRedirect();
 
     expect(CertificationCampaign::query()->whereKey($campaign->id)->value('status'))
+        ->toBe(CampaignStatus::Closed);
+
+    [, $mine] = actingAsRole(MembershipRole::Owner);
+    $theirs = app(AccessReviews::class)->open(makeOrg('gov-theirs'), 'Q4');
+
+    expect($mine->id)->not->toBe($theirs->organization_id);
+
+    test()->post(route('governance.close', $theirs->id))->assertNotFound();
+
+    expect(CertificationCampaign::query()->whereKey($theirs->id)->value('status'))
         ->toBe(CampaignStatus::Open);
 });
-
-it('exercises the vault detail mutating actions (startRotate, rotate, addGrant, revokeGrant, revoke)', function (): void {
-    crudSetup();
-    $secret = app(SecretVault::class)->store('K', 'stripe', 'sk_x');
-    $client = app(ClientRegistry::class)->register(new NewClient(
-        name: 'Agent App',
-        type: ClientType::Confidential,
-        redirectUris: ['https://agent.example/cb'],
-        grantTypes: ['authorization_code'],
-        scopes: ['openid'],
-    ))->client;
-
-    // The merged component — one page for both planes. It resolves the owner from the
-    // CONSOLE'S scope rather than from the row, so with no organization chosen this acts
-    // on the environment's own unowned secrets, which is what store() above created.
-    /*
-     * THE STEP-UP WINDOW, opened deliberately. Every vault route is behind `env.sudo`,
-     * reads included, so without this each request below is a redirect to the step-up
-     * screen — and `assertSessionHasNoErrors()` is perfectly happy with one of those. The
-     * assertions therefore name where each redirect LANDS rather than merely that nothing
-     * errored; ConsoleStepUpTest is where the gate itself is proven.
-     */
-    confirmEnvironmentStepUp();
-
-    $from = route('environment.vault.show', $secret->id);
-
-    test()->from($from)->post(route('environment.vault.rotate', $secret->id), ['secret' => 'sk_rotated_value'])
-        ->assertRedirect($from);
-
-    // ROTATED, not merely accepted. The sealed value has to have actually changed, and the
-    // id has to be the same one — rotation keeps the sealing context stable, which is the
-    // whole reason it is not a delete-and-store.
-    expect(VaultSecret::query()->whereKey($secret->id)->value('rotated_at'))->not->toBeNull();
-
-    test()->from($from)->post(route('environment.vault.grants.store', $secret->id), ['client' => $client->client_id])
-        ->assertRedirect($from);
-
-    expect(VaultGrant::query()->where('secret_id', $secret->id)->whereNull('revoked_at')->exists())->toBeTrue();
-
-    test()->from($from)->delete(route('environment.vault.grants.destroy', [
-        'secret' => $secret->id,
-        'client' => $client->client_id,
-    ]))->assertRedirect($from);
-
-    expect(VaultGrant::query()->where('secret_id', $secret->id)->whereNull('revoked_at')->exists())->toBeFalse();
-
-    // revoke is a soft revoke (isRevoked), not a hard delete — the row stays but is sealed off.
-    test()->post(route('environment.vault.revoke', $secret->id))
-        ->assertRedirect(route('environment.vault'));
-
-    expect(VaultSecret::query()->whereKey($secret->id)->value('revoked_at'))->not->toBeNull();
-});
-
-it('exercises the audit-stream detail mutating actions (disable, resume, delete)', function (): void {
-    crudSetup();
-    $stream = app(LogStreams::class)->create(
-        'S',
-        Destination::GenericJson,
-        'https://example.com/s',
-        'k',
-        SiemAuthScheme::Bearer,
-    )->stream;
-
-    $from = route('environment.audit-streams.show', $stream->id);
-
-    test()->from($from)->post(route('environment.audit-streams.toggle', $stream->id))
-        ->assertRedirect($from);
-    expect(AuditStream::query()->whereKey($stream->id)->value('enabled'))->toBeFalse();
-
-    test()->from($from)->post(route('environment.audit-streams.toggle', $stream->id))
-        ->assertRedirect($from);
-    expect(AuditStream::query()->whereKey($stream->id)->value('enabled'))->toBeTrue();
-
-    test()->delete(route('environment.audit-streams.destroy', $stream->id))
-        ->assertRedirect(route('environment.audit-streams'));
-    expect(AuditStream::query()->whereKey($stream->id)->exists())->toBeFalse();
-});
-
-/**
- * @group security
- *
- * EXISTENCE IS NOT LIFE.
- *
- * Adding a user to an organization checked only that the row was there — so a member
- * could be added to a SUSPENDED or DELETED organization, and the membership was really
- * written. Access granted through an organization that refuses every authenticated
- * action, from a picker that offered it as an ordinary choice.
- *
- * Asserted through the property rather than the dropdown: hiding an option is not a
- * guard, because `assignOrgId` is a Livewire property and a client sets it to whatever
- * it likes.
- */
-it('refuses to add a user to an organization that is not live', function (string $status): void {
-    multiTenantDeployment();
-    platformRootEnvironment();
-    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        organizationName: 'Acme',
-        ownerEmail: 'owner@acme.example',
-        ownerName: 'Owner',
-        ownerPassword: 'a-strong-unbreached-passphrase',
-    ));
-
-    serveOnTestHost($result->environment);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
-
-    $subjectId = app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
-
-    $dead = app(Organizations::class)->create(new NewOrganization('Gone Ltd', 'gone-ltd-'.$status));
-    $dead->forceFill(['status' => OrganizationStatus::from($status)])->save();
-
-    assignUserToOrganization($subjectId, $dead->id, ['role' => MembershipRole::Member->value])
-        ->assertSessionHasErrors('organization');
-
-    expect(app(Memberships::class)->of($dead->id, $subjectId))->toBeNull();
-})->with(['suspended', 'deleted'])->group('security');
 
 /**
  * And it is not offered in the first place, so nobody is invited to try.

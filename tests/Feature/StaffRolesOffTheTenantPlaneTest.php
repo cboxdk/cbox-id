@@ -203,10 +203,8 @@ it('offers the environment console\'s invite form only the roles a tenant could 
     $staff = staffRole();
     $shared = app(Roles::class)->define(null, 'Approver');
 
-    $page = test()->get(route('environment.organizations.show', $org->id))->assertOk();
-
-    $grantable = collect((array) $page->inertiaProps('accessRoles'))->pluck('id')->all();
-    $invitable = collect((array) $page->inertiaProps('inviteAccessRoles'))->pluck('id')->all();
+    $grantable = collect((array) test()->get(route('environment.organizations.members', $org->id))->assertOk()->inertiaProps('accessRoles'))->pluck('id')->all();
+    $invitable = collect((array) test()->get(route('environment.organizations.invitations', $org->id))->assertOk()->inertiaProps('inviteAccessRoles'))->pluck('id')->all();
 
     // Granted on a member directly: yes. Carried by an invitation: no.
     expect($grantable)->toContain($staff->id)
@@ -224,8 +222,8 @@ it('marks a staff role as staff-only wherever the environment console offers one
 
     $tags = fn (array $roles): array => collect($roles)->pluck('staffOnly', 'id')->all();
 
-    // The organization's page: its add-member picker and every member's roles.
-    $page = test()->get(route('environment.organizations.show', $org->id))->assertOk();
+    // The organization's Members tab: its add-member picker and every member's roles.
+    $page = test()->get(route('environment.organizations.members', $org->id))->assertOk();
     expect($tags((array) $page->inertiaProps('accessRoles')))->toMatchArray([$staff->id => true, $shared->id => false]);
 
     // A user's page: each membership's roles, and the add-to-organization picker.

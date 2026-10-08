@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, PageHeader, Panel } from '@/ui';
+import { ApiEquivalent, Button, Checkbox, Field, Icon, Input, PageHeader, Panel } from '@/ui';
 
 type Props = PageProps<{
     indexHref: string;
@@ -82,6 +82,15 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
                         <Link href={indexHref}>Cancel</Link>
                     </Button>
                 </div>
+
+                <ApiEquivalent
+                    action="users.create"
+                    values={{
+                        email: form.data.email,
+                        name: form.data.name,
+                        send_sign_in_link: form.data.sendLink,
+                    }}
+                />
             </form>
         </>
     );

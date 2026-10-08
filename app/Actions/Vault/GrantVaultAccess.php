@@ -30,7 +30,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
     schema: 'TokenVaultSecret',
     tag: 'Token vault',
     rest: ['POST', '/token-vault/secrets/{id}/grants'],
-    consoleRoutes: ['vault.grants.store', 'environment.vault.grants.store'],
+    consoleRoutes: ['vault.grants.store', 'environment.vault.grants.store', 'environment.organizations.vault.grants.store'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class GrantVaultAccess implements Action

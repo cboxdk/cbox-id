@@ -117,6 +117,7 @@ export default function Agents({
                     <div className="card">
                         <EmptyState
                             icon="magic"
+                            equivalent="keys.create"
                             title="No agents yet"
                             description="Create a key for Claude Code, Cursor or your own bot. Give it only the scopes it needs, and decide which of its actions wait for your approval."
                             actions={

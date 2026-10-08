@@ -215,21 +215,19 @@ it('links an API only to an app with the same owner', function (): void {
     expect(Api::query()->count())->toBe(0);
 });
 
-it('registers an API for the organization being administered, and for no other', function (): void {
+it('registers an API for the organization the form names, and for none outside this environment', function (): void {
     crudSetup();
     $acme = app(Organizations::class)->create(new NewOrganization('Acme Retail', 'acme-retail'));
-    $globex = app(Organizations::class)->create(new NewOrganization('Globex', 'globex'));
 
-    test()->post(route('environment.acting-organization.choose'), ['organization' => $acme->id]);
-
-    // The create page offers the environment and the organization being acted on.
-    $owners = collect((array) test()->get(route('environment.apis.create'))->assertOk()->inertiaProps('owners'));
+    // The create page offers the environment, and the organization its link names — the
+    // form's "For which organization?" reloads it with `?organization=`.
+    $owners = collect((array) test()->get(route('environment.apis.create', ['organization' => $acme->id]))->assertOk()->inertiaProps('owners'));
 
     expect($owners->pluck('value')->all())->toBe(['environment', $acme->id]);
 
-    // A crafted owner — another organization than the one chosen — is refused.
-    registerApiInConsole(['owner' => $globex->id])
-        ->assertSessionHasErrors(['owner' => 'Choose the environment, or the organization you are acting on.']);
+    // An owner that names no organization of THIS environment is a field error.
+    registerApiInConsole(['owner' => '01JQZZZZZZZZZZZZZZZZZZZZZZ'])
+        ->assertSessionHasErrors(['owner' => 'That organization is not in this environment.']);
 
     registerApiInConsole(['owner' => $acme->id, 'identifier' => 'https://books.acme.example'])->assertSessionHasNoErrors();
 
@@ -497,6 +495,18 @@ function apiTrail(string $identifier): array
         ->all());
 }
 
+/**
+ * A trail with the door taken out of each entry — `via` says console or rest, and that is
+ * the one difference between the two doors' trails that is supposed to be there.
+ *
+ * @param  list<array{action: string, organization_id: string|null, context: array<string, mixed>}>  $trail
+ * @return list<array{action: string, organization_id: string|null, context: array<string, mixed>}>
+ */
+function apiTrailWithoutDoor(array $trail): array
+{
+    return array_map(static fn (array $entry): array => [...$entry, 'context' => Arr::except($entry['context'], ['via'])], $trail);
+}
+
 it('leaves the same trail whether the console or the management API changed the API', function (): void {
     ['subjectId' => $adminId, 'envId' => $envId] = crudSetup();
 
@@ -552,7 +562,11 @@ it('leaves the same trail whether the console or the management API changed the 
         ApiAudit::SCOPE_DEFINED,
         ApiAudit::SCOPE_REMOVED,
         ApiAudit::DELETED,
-    ])->and($api)->toBe($console);
+    ])
+        // The same trail but for the one fact that is MEANT to differ: the door.
+        ->and(array_column(array_column($console, 'context'), 'via'))->each->toBe('console')
+        ->and(array_column(array_column($api, 'context'), 'via'))->each->toBe('rest')
+        ->and(apiTrailWithoutDoor($api))->toBe(apiTrailWithoutDoor($console));
 
     // Only the actor differs: the administrator on one door, the key on the other.
     $actors = AuditEntry::query()->where('target_type', 'api')->orderBy('sequence')->get(['actor_type', 'actor_id']);

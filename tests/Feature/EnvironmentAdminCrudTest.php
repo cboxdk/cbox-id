@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
-use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentSudo;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
@@ -45,13 +44,13 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\Destination;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia;
+use Tests\Support\FormOrganization;
 
 uses(RefreshDatabase::class);
 
@@ -68,7 +67,7 @@ it('renders the user + org detail pages and edits a user profile', function (): 
 
     $this->get("/admin/organizations/{$org->id}")
         ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('organization.name', 'Tenant A'));
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('organizationHub.name', 'Tenant A'));
 
     test()->from(route('environment.users.show', $user->id))
         ->patch(route('environment.users.update', $user->id), [
@@ -261,7 +260,7 @@ it('resets a user\'s two-factor factors', function (): void {
 it('requires and stores client_secret for an OIDC connection created via the form', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'OIDC Co', slug: 'oidc-co'));
-    app(ConsoleScope::class)->chooseOrganization($org->id);
+    FormOrganization::$id = $org->id;
     $key = "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----";
 
     // The federation OIDC token exchange requires client_secret — the form must too.
@@ -303,7 +302,7 @@ it('requires and stores client_secret for an OIDC connection created via the for
 it('refuses an OIDC connection whose issuer has no reachable discovery document', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Bad OIDC', slug: 'bad-oidc'));
-    app(ConsoleScope::class)->chooseOrganization($org->id);
+    FormOrganization::$id = $org->id;
     config(['cbox-id.federation.verify_url' => false]);
     Http::fake(['badidp.example/.well-known/openid-configuration' => Http::response('nope', 404)]);
 
@@ -353,19 +352,12 @@ it('keeps the last owner when a demotion is attempted (no uncaught 500)', functi
 it('rejects an out-of-environment organization for an inline-hook registration', function (): void {
     crudSetup();
 
-    // The create form no longer carries its own organization picker — that field was the
-    // second place the answer lived, and the two planes validated it differently. The
-    // console chrome owns the choice now, so a crafted id has to go through the scope,
-    // which refuses one that is not in this environment.
-    expect(fn () => app(ConsoleScope::class)->chooseOrganization('not-a-real-org-id'))
-        ->toThrow(AuthorizationException::class);
-
-    // …and with the refused choice never taken there is no organization to register
-    // against, so the endpoint is not created at all rather than landing on whichever
-    // organization a downstream default would have picked.
+    // The form's "For which organization?" is checked against THIS environment, so a
+    // crafted id is a field error and the endpoint is not created at all — rather than
+    // landing on whichever organization a downstream default would have picked.
     confirmConsoleStepUp();
-    registerHook(['url' => 'https://example.com/hook'], 'environment.hooks')
-        ->assertSessionHasErrors('url');
+    registerHook(['url' => 'https://example.com/hook', 'organization' => 'not-a-real-org-id'], 'environment.hooks')
+        ->assertSessionHasErrors(['organization' => 'That organization is not in this environment.']);
 
     expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 });
@@ -618,7 +610,7 @@ it('assigns a user to an org WITH access roles from the user screen', function (
         ->exists())->toBeTrue();
 });
 
-it('renders a member\'s assigned access role on the organization screen', function (): void {
+it('renders a member\'s assigned access role on the organization\'s Members tab', function (): void {
     crudSetup();
     $user = app(Subjects::class)->create('hana@acme.example', 'Hana');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant G', slug: 'tenant-g'));
@@ -626,7 +618,7 @@ it('renders a member\'s assigned access role on the organization screen', functi
     $role = app(Roles::class)->define(null, 'Team leads', null, null);
     app(Roles::class)->assign($org->id, $user->id, $role->id);
 
-    $this->get("/admin/organizations/{$org->id}")
+    $this->get(route('environment.organizations.members', $org->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             // The role is OFFERED on the screen…
@@ -662,7 +654,7 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
         }
     });
 
-    test()->get(route('environment.organizations.show', $org->id))
+    test()->get(route('environment.organizations.members', $org->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where(
             'members',
@@ -731,7 +723,7 @@ it('renders one page of an organization roster, however many members it has', fu
         app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
     }
 
-    test()->get(route('environment.organizations.show', $org->id))
+    test()->get(route('environment.organizations.members', $org->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             /*
@@ -760,7 +752,7 @@ it('says where directory groups come from before any have arrived', function ():
     crudSetup();
 
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Groups Co', slug: 'groups-co'));
-    app(ConsoleScope::class)->chooseOrganization($org->id);
+    FormOrganization::$id = $org->id;
 
     $directory = app(Directories::class)->register($org->id, 'Okta')->directory;
 

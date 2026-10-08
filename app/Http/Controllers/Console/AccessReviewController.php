@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Governance\AccessReviewFields;
 use App\Actions\Governance\CloseAccessReview;
 use App\Actions\Governance\DecideAccessReviewItem;
 use App\Actions\Governance\OpenAccessReview;
@@ -62,14 +63,16 @@ final readonly class AccessReviewController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
+        $filter = $this->organizationFilter();
+
         /*
-         * Scoped to the acting organization when one is chosen. With none chosen — only
-         * possible for an environment administrator — this is every campaign in the
+         * The member's own organization's campaigns, or — on the environment console — the
+         * one organization the list is filtered to. Unfiltered, every campaign in the
          * environment, a deliberate cross-tenant overview rather than a leak: the model's
          * environment scope still bounds it, and an organization member can never reach
          * that branch because their organization is implicit.
          */
-        $query = $this->fenced(CertificationCampaign::query())->orderByDesc('created_at');
+        $query = $filter->apply($this->fenced(CertificationCampaign::query()))->orderByDesc('created_at');
 
         $term = trim($request->string('q')->toString());
 
@@ -78,6 +81,8 @@ final readonly class AccessReviewController extends ConsoleController
         }
 
         $campaigns = $query->get();
+
+        $owners = $this->scope->organizationNames($campaigns->pluck('organization_id'));
 
         return $this->page('console/access-reviews/index', 'Access reviews', [
             'help' => HelpProps::for(HelpTopic::AccessReviews),
@@ -96,10 +101,15 @@ final readonly class AccessReviewController extends ConsoleController
                 'open' => $campaign->status === CampaignStatus::Open,
                 // A review of staff roles rather than of one organization's access.
                 'staff' => $campaign->organization_id === null,
+                // Whose access it reviews, on the list that holds every organization's.
+                'organization' => $filter->active() || $campaign->organization_id === null
+                    ? null
+                    : ($owners[$campaign->organization_id] ?? $campaign->organization_id),
                 'href' => $this->url('governance.show', $campaign->id),
             ])->all(),
             'search' => $term,
-            'createHref' => $this->url('governance.create'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            'createHref' => $this->createUrl('governance.create'),
         ]);
     }
 
@@ -110,11 +120,9 @@ final readonly class AccessReviewController extends ConsoleController
         $staff = $this->reviewsStaff();
 
         return $this->page('console/access-reviews/create', 'New access review', [
-            // Not an entitlement problem and not an empty environment: an environment
-            // administrator who has chosen no organization has nothing to snapshot, and
-            // saying so before the form is filled in is kinder than refusing it after.
-            'organizationChosen' => $this->scope->organizationId() !== null,
-            'organizationName' => $this->scope->organizationName(),
+            // "For which organization?" — a review snapshots ONE organization's access, so the
+            // environment console asks; prefilled and locked when opened from an organization.
+            'organization' => $this->organizationPicker(),
             // The environment console can also review staff roles, which belong to no
             // organization. The Staff page links here with `?review=staff`.
             'canReviewStaff' => $staff,
@@ -130,14 +138,6 @@ final readonly class AccessReviewController extends ConsoleController
         // gets the page and the wording they always did.
         $this->scope->assertMayAdminister();
 
-        /*
-         * The organization comes from the SCOPE, not from a field on this form. The
-         * environment plane picks it in the console chrome; the organization plane never
-         * picks at all. A field here was the second place the answer lived, and the two
-         * planes validated it differently.
-         */
-        $organizationId = $this->scope->organizationId();
-
         // STAFF ROLES: the environment's own review, with no organization. Only on the
         // environment console — the organization console has no such choice, and a posted
         // `covers=staff` there is refused rather than quietly read as its own organization.
@@ -145,10 +145,13 @@ final readonly class AccessReviewController extends ConsoleController
             abort_unless($this->reviewsStaff(), 403);
 
             $organizationId = null;
-        } elseif ($organizationId === null) {
-            return back()->withInput()->withErrors([
-                'name' => 'Choose an organization in the console header — a review snapshots one organization\'s access.',
-            ]);
+        } else {
+            /*
+             * The organization plane's own, whatever was posted; on the environment console
+             * the form's "For which organization?", checked against this environment. A
+             * review snapshots one organization's access, so "none" is a field error.
+             */
+            $organizationId = $this->chosenOrganizationId($request);
         }
 
         // Who opened it is the scope's `actorId()`, as it always was — the action's principal.
@@ -289,9 +292,9 @@ final readonly class AccessReviewController extends ConsoleController
     /**
      * The campaign this page acts on, or a 404.
      *
-     * Fenced to the ACTING organization. With no organization chosen — only reachable by
-     * an environment administrator — the whole environment resolves, which is the overview
-     * the list already shows.
+     * Fenced to the member's own organization on the organization console. On the
+     * environment console the whole environment resolves, which is the overview the list
+     * already shows.
      */
     private function visible(string $campaign): CertificationCampaign
     {
@@ -307,8 +310,8 @@ final readonly class AccessReviewController extends ConsoleController
      *
      * The organization console: its own organization's, and nothing else — `organization_id
      * = ?` never matches a staff review, whose organization is null. The environment
-     * console: the chosen organization's plus the staff reviews, which belong to the
-     * environment rather than to any organization; with none chosen, everything.
+     * console: everything, its staff reviews included — the list narrows itself with the
+     * Organization filter ({@see self::index()}).
      *
      * @param  Builder<CertificationCampaign>  $query
      * @return Builder<CertificationCampaign>
@@ -339,15 +342,15 @@ final readonly class AccessReviewController extends ConsoleController
     /**
      * The organization a write is attributed to and checked against.
      *
-     * `requireOrganizationId()`, NEVER the campaign's own `organization_id`. Reading the
-     * id off the record being written is what made the framework's ownership assertion
-     * vacuous — it compared the campaign to itself and passed for every caller. Asking the
-     * scope makes the assertion compare the record to the ADMINISTRATOR, which is the
-     * question it was written to answer, and refuses an environment administrator who has
-     * chosen no organization rather than letting them apply revokes environment-wide.
+     * The CALLER's, NEVER the campaign's own `organization_id`. Reading the id off the record
+     * being written is what made the framework's ownership assertion vacuous — it compared
+     * the campaign to itself and passed for every caller. On the organization console this
+     * is the member's own organization, so the assertion compares the record to the
+     * ADMINISTRATOR, which is the question it was written to answer.
      *
-     * No new burden: opening a review already requires a chosen organization, so a
-     * campaign that exists was named against one.
+     * On the environment console it is null — that console's administrator holds every
+     * organization here — and the action acts on the review's own organization, which that
+     * authority covers ({@see AccessReviewFields::writeOrganizationId()}).
      */
     private function writeOrganizationId(CertificationCampaign $campaign): ?string
     {
@@ -361,7 +364,7 @@ final readonly class AccessReviewController extends ConsoleController
             return null;
         }
 
-        return $this->scope->requireOrganizationId();
+        return $this->routeOrganizationId();
     }
 
     /**

@@ -1,8 +1,8 @@
-import { router, useForm, usePage } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { FontStacks, Theme, ThemeCatalogue } from '@/lib/appearance';
 import type { HelpContent, PageProps } from '@/types';
-import { EmptyState, PageHeader, RadioGroup, ThemeEditor } from '@/ui';
+import { EmptyState, PageHeader, ThemeEditor } from '@/ui';
 
 type Props = PageProps<{
     help: HelpContent;
@@ -14,7 +14,6 @@ type Props = PageProps<{
     /** Only the environment plane may theme the default every organization inherits. */
     mayThemeEnvironment: boolean;
     environmentDefault: boolean;
-    organizationName: string | null;
     hasTarget: boolean;
     /**
      * Where Save posts.
@@ -35,7 +34,6 @@ export default function AppearancePage({
     radii,
     mayThemeEnvironment,
     environmentDefault,
-    organizationName,
     hasTarget,
     saveHref,
 }: Props) {
@@ -49,46 +47,17 @@ export default function AppearancePage({
 
     return (
         <>
-            {mayThemeEnvironment && (
+            {mayThemeEnvironment && environmentDefault && (
                 /*
-                    The environment plane's own capability, made explicit. It was never an
-                    organization: it is the default every organization here inherits, and
-                    the console chrome's organization picker has no way to say that.
-
-                    The choice is in the URL rather than in component state, because it
-                    decides WHICH RECORD is loaded — the editor has to be re-seeded from
-                    the server when it changes, or the preview shows one thing and Save
-                    writes another.
+                    WHICH THING IS BEING THEMED is this page's address. This is the
+                    environment default every organization inherits; one organization's own
+                    theme is its Branding tab, under Organizations — a page of its own, so the
+                    editor is never seeded from one record and saved to another.
                 */
-                <div className="card p-4 mb-6">
-                    <RadioGroup
-                        label="What you are theming"
-                        value={environmentDefault ? 'environment' : 'organization'}
-                        onValueChange={(target) =>
-                            router.get(
-                                window.location.pathname,
-                                { target },
-                                { preserveScroll: true },
-                            )
-                        }
-                        options={[
-                            {
-                                value: 'environment',
-                                label: 'Environment default',
-                                hint: 'inherited by every organization that has not set its own',
-                            },
-                            ...(organizationName !== null
-                                ? [
-                                      {
-                                          value: 'organization',
-                                          label: organizationName,
-                                          hint: 'overrides the default for this organization alone',
-                                      },
-                                  ]
-                                : []),
-                        ]}
-                    />
-                </div>
+                <p className="mb-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    The environment default, inherited by every organization that has not set its
+                    own. An organization's own theme is on its page, under Branding.
+                </p>
             )}
 
             {hasTarget ? (
@@ -131,7 +100,7 @@ export default function AppearancePage({
                     <EmptyState
                         icon="settings"
                         title="Nothing to theme yet"
-                        description="Choose an organization to theme its sign-in page, or switch to the environment default above to set the theme every organization inherits."
+                        description="There is no organization or environment here to theme."
                     />
                 </>
             )}

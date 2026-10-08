@@ -74,7 +74,7 @@ final readonly class SettingsController extends ConsoleController
          */
         $issuer = rtrim(app(IssuerResolver::class)->issuer(), '/');
 
-        // Whose theme the branding card previews: the acting organization's own, or the
+        // Whose theme the branding card previews: the organization's own, or the
         // environment default it would inherit when there is no organization to speak of.
         $brandingTarget = $organization ?? $environment;
         $appearance = Appearance::fromSettings(
@@ -115,7 +115,10 @@ final readonly class SettingsController extends ConsoleController
                 'darkPrimary' => $appearance->dark->primary,
             ],
             'appearanceHref' => $this->url('appearance'),
-            'renameHref' => $this->url('settings.rename'),
+            // Renaming is the organization console's own; on the environment console an
+            // organization is renamed on its own page, which is where this page points.
+            'renameHref' => $onEnvironmentPlane ? null : route('settings.rename'),
+            'organizationsHref' => $onEnvironmentPlane ? route('environment.organizations') : null,
             'accountHref' => route('account'),
             /*
              * The guided first run is an ORGANIZATION's, and its route only answers to a
@@ -164,10 +167,8 @@ final readonly class SettingsController extends ConsoleController
     }
 
     /**
-     * Rename the organization the console is acting on.
-     *
-     * New to the environment plane, which could administer every organization in the
-     * environment and not correct a typo in one's name without signing into its console.
+     * Rename the member's own organization, from the organization console. The environment
+     * console renames one on that organization's own page (its Settings tab).
      */
     public function rename(RenameOrganizationRequest $request): RedirectResponse
     {
@@ -189,8 +190,8 @@ final readonly class SettingsController extends ConsoleController
      * The organization being administered — the SCOPE's, never a form field's.
      *
      * On the organization plane it is the member's own and nothing in the request can
-     * change it; on the environment plane the scope re-validates the chosen id against
-     * this environment on every read, so an id carried from elsewhere resolves to nothing.
+     * change it. The environment console's Settings page is about the environment, and
+     * names no organization.
      */
     private function organization(): ?Organization
     {

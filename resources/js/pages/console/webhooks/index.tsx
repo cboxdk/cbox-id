@@ -1,8 +1,24 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
-import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pagination, Pill } from '@/ui';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
+import {
+    Badge,
+    Button,
+    EmptyState,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Pagination,
+    Pill,
+} from '@/ui';
 
 interface Endpoint {
     id: string;
@@ -20,9 +36,18 @@ type Props = PageProps<{
     search: string;
     createHref: string;
     help: HelpContent;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
 
-export default function WebhooksIndex({ endpoints, pagination, search, createHref, help }: Props) {
+export default function WebhooksIndex({
+    endpoints,
+    pagination,
+    search,
+    createHref,
+    help,
+    organizationFilter,
+}: Props) {
     const [term, setTerm] = useState(search);
     const first = useRef(true);
 
@@ -43,11 +68,12 @@ export default function WebhooksIndex({ endpoints, pagination, search, createHre
         }
 
         const timer = setTimeout(() => {
-            router.get(
-                window.location.pathname,
-                term === '' ? {} : { q: term },
-                { replace: true, preserveState: true, preserveScroll: true, only: ['endpoints', 'pagination', 'search'] },
-            );
+            router.get(window.location.pathname, term === '' ? {} : { q: term }, {
+                replace: true,
+                preserveState: true,
+                preserveScroll: true,
+                only: ['endpoints', 'pagination', 'search'],
+            });
         }, 300);
 
         return () => clearTimeout(timer);
@@ -70,7 +96,12 @@ export default function WebhooksIndex({ endpoints, pagination, search, createHre
                 />
             </div>
 
-            <div>
+            <div className="space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     value={term}
@@ -109,6 +140,7 @@ export default function WebhooksIndex({ endpoints, pagination, search, createHre
                         */
                         <EmptyState
                             icon="webhooks"
+                            equivalent="webhooks.create"
                             title="Nothing is being notified yet"
                             help={help}
                             description="Add an endpoint and your own systems hear about members joining, roles changing and sign-ins failing as it happens — no polling, no nightly export."

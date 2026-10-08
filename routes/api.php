@@ -74,9 +74,9 @@ Route::middleware('throttle:api-workspace')
  * Served on the platform-root host and resolving no environment, like the workspace plane.
  *
  * NO KEY OF ANY KIND IS ACCEPTED. Every route is `delegated.api:platform,<scope>`: a token
- * a platform OPERATOR delegated, carrying the `operator:*` scope the action asks for. Until
- * such tokens are issued (see DelegatedTokens) every request here answers 401, and the
- * console's Platform pages — which run the very same actions — are the only way in.
+ * the platform root issued a platform OPERATOR (`cbox login` at the root, or an agent
+ * signed in there), carrying the `operator:*` scope the action asks for. The console's
+ * Platform pages run the very same actions.
  */
 Route::get('v1/platform/openapi.yaml', function () {
     $spec = @file_get_contents(resource_path('openapi/platform.yaml'));
@@ -89,13 +89,18 @@ Route::middleware('throttle:api-platform')
     ->prefix('v1/platform')
     ->group(function (): void {
         ActionRoutes::platform();
+
+        // Where an approval a held operator action asked for stands — the operator's own.
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'showForPerson'])->middleware('delegated.api:platform');
     });
 
 /*
  * A person's OWN ACCOUNT (SCOPED to the environment they belong to, so on its host) — the
  * profile, sessions, app grants, personal API keys and trusted devices of whoever is
  * calling. `delegated.api:account,<scope>`: a token the person delegated, never a key — no
- * management credential acts as a person. Console-only until such tokens are issued.
+ * management credential acts as a person. On an environment's host that is the
+ * environment's own token for its own subject; on the platform root's, the root's token
+ * for a workspace member or an operator — each person's account lives where they sign in.
  *
  * Every action here is keyed to the person behind the token; there is no account id in
  * any path, so there is no other account to name.
@@ -111,6 +116,9 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-account'])
     ->prefix('v1/me')
     ->group(function (): void {
         ActionRoutes::account();
+
+        // Where an approval a held account action asked for stands — the person's own.
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'showForPerson'])->middleware('delegated.api:account');
     });
 
 /*

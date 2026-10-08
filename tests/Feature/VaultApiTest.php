@@ -129,14 +129,20 @@ it('denies a lease to an agent with no grant, uniformly', function (): void {
         'purpose' => 'charge',
     ], bearer('other-agent-tok'))
         ->assertStatus(403)
-        ->assertExactJson(['error' => 'lease_denied', 'message' => 'The lease was denied.']);
+        ->assertJsonPath('error', 'lease_denied')
+        ->assertJsonPath('message', 'The lease was denied.')
+        // Those two and the request's own id, nothing else.
+        ->assertJsonCount(3);
 
     // …and a lease against a secret that does not exist at all is the same response.
     $this->postJson('/api/v1/vault/secrets/does-not-exist/lease', [
         'purpose' => 'charge',
     ], bearer('other-agent-tok'))
         ->assertStatus(403)
-        ->assertExactJson(['error' => 'lease_denied', 'message' => 'The lease was denied.']);
+        ->assertJsonPath('error', 'lease_denied')
+        ->assertJsonPath('message', 'The lease was denied.')
+        // Those two and the request's own id, nothing else.
+        ->assertJsonCount(3);
 });
 
 it('denies a lease after the grant is revoked', function (): void {

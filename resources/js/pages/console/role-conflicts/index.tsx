@@ -1,8 +1,20 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, EmptyState, Icon, Input, PageHeader, Panel, Pill } from '@/ui';
+import { listHref } from '@/lib/listHref';
+import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
+import {
+    Badge,
+    Button,
+    EmptyState,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Panel,
+    Pill,
+} from '@/ui';
 
 interface RuleRow {
     id: string;
@@ -27,25 +39,22 @@ type Props = PageProps<{
     help: HelpContent;
     rules: RuleRow[];
     search: string;
-    /** False when no organization is chosen — so no scan has run, which is not "clean". */
-    organizationChosen: boolean;
+    /** False when the list is about no one organization — so no scan has run, which is not "clean". */
+    scanned: boolean;
     violations: Violation[];
     createHref: string;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
-
-function listHref(search: string): string {
-    return search === ''
-        ? window.location.pathname
-        : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
-}
 
 export default function RoleConflictsIndex({
     help,
     rules,
     search,
-    organizationChosen,
+    scanned,
     violations,
     createHref,
+    organizationFilter,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -80,7 +89,12 @@ export default function RoleConflictsIndex({
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
@@ -113,6 +127,7 @@ export default function RoleConflictsIndex({
                     ) : (
                         <EmptyState
                             icon="shield"
+                            equivalent="sod_policies.create"
                             title="No rules yet"
                             help={help}
                             description="A rule names two or more roles that must never sit with the same person — whoever raises a payment should not also approve it."
@@ -138,7 +153,7 @@ export default function RoleConflictsIndex({
                 )}
             </div>
 
-            <Violations chosen={organizationChosen} violations={violations} />
+            <Violations scanned={scanned} violations={violations} />
         </>
     );
 }
@@ -194,19 +209,19 @@ function Rule({ rule, last }: { rule: RuleRow; last: boolean }) {
 /**
  * The detective half: people who already hold a forbidden pair.
  *
- * "CHOOSE AN ORGANIZATION" IS NOT "NO CONFLICTS". A scan needs an organization to walk, so
- * with none chosen nothing has been checked — and reporting a clean result for a scan that
- * never ran is the more dangerous of the two answers.
+ * "NOT SCANNED" IS NOT "NO CONFLICTS". A scan needs an organization to walk, so a list
+ * about every organization has checked nothing — and reporting a clean result for a scan
+ * that never ran is the more dangerous of the two answers.
  */
-function Violations({ chosen, violations }: { chosen: boolean; violations: Violation[] }) {
+function Violations({ scanned, violations }: { scanned: boolean; violations: Violation[] }) {
     return (
         <div className="mt-8">
             <h2 className="cbx-section-title mb-3">Violations</h2>
 
-            {!chosen ? (
+            {!scanned ? (
                 <Panel>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Choose an organization above to scan it for people who already hold a
+                        Filter the list to one organization to scan it for people who already hold a
                         conflicting pair. Nothing has been checked yet.
                     </p>
                 </Panel>

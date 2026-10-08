@@ -387,8 +387,10 @@ Two more planes are served, and **no key of any kind reaches either**:
   Every write there is critical.
 
 Both take only an access token a **person** delegated — you, or a platform operator with
-`operator:*` scopes — and until delegated management tokens are issued they answer `401`
-to every request; the console runs the same actions meanwhile. Their contracts are at
+`operator:*` scopes. On an environment's host that is the token the environment issued
+you; at the platform root, the token the root issued you (`cbox login` at the root, see
+[Agents and MCP](../guides/agents-and-mcp.md#one-connection-for-your-whole-workspace)), and
+only an operator's reaches `/api/v1/platform`. Their contracts are at
 `/api/v1/me/openapi.yaml` and `/api/v1/platform/openapi.yaml`.
 
 ## Errors

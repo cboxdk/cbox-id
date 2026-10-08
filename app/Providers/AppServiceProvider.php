@@ -10,10 +10,12 @@ use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
 use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Principal\DelegatedTokens;
-use App\Platform\Actions\Principal\NoDelegatedTokens;
+use App\Platform\Actions\Principal\OAuthDelegatedTokens;
 use App\Platform\AuthoritativeDnsResolver;
+use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\DelegatedApiContext;
@@ -23,6 +25,8 @@ use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\OAuth\RootMcpAudiences;
+use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\WorkspaceApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
@@ -32,7 +36,9 @@ use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
+use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
@@ -54,6 +60,14 @@ class AppServiceProvider extends ServiceProvider
             $app->make(ActionRegistry::class),
         ));
 
+        // MCP clients signing a person in at the PLATFORM ROOT are held to its `/mcp`: every
+        // token a self-registered client is issued there is audienced to it, and such a
+        // client may hold its scopes and `offline_access` alone — no `openid`, because the
+        // root is nobody's identity provider. Both inert everywhere but the root of a
+        // multi-tenant deployment. See App\Platform\OAuth\RootMcpOAuth.
+        $this->app->extend(AudienceResolver::class, fn (AudienceResolver $inner): AudienceResolver => new RootMcpAudiences($inner));
+        $this->app->bind(SelfRegisteredScopes::class, RootMcpSelfRegisteredScopes::class);
+
         // Domain-ownership verification reads the challenge TXT from the domain's
         // authoritative nameservers, not the framework's default recursive
         // resolver — so a freshly published record verifies immediately instead of
@@ -63,6 +77,8 @@ class AppServiceProvider extends ServiceProvider
         // the framework's SystemDnsResolver binding (app providers load last).
         // Discovered once per process: every door reads the same list.
         $this->app->singleton(ActionRegistry::class);
+        // Which console page hosts which action, worked out once per route table.
+        $this->app->singleton(ActionSnippets::class);
 
         // The tables this app adds that name a person, so erasing one reaches them too —
         // in the framework's transaction, after the framework's own steps.
@@ -87,14 +103,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(EnvironmentApiContext::class);
 
         // The person a delegated token speaks for, on the planes no key reaches (platform,
-        // account) — and what turns a bearer into one. Recognises nothing until delegated
-        // management tokens are issued; binding their resolver here opens both planes.
+        // account) — and what turns a bearer into one: the platform root's token at the
+        // root and on the global planes, an environment's own on its host.
         $this->app->scoped(DelegatedApiContext::class);
-        $this->app->bindIf(DelegatedTokens::class, NoDelegatedTokens::class);
+        $this->app->bindIf(DelegatedTokens::class, OAuthDelegatedTokens::class);
 
         // Who is calling the MCP server on this request — set by AuthenticateMcp, read by
         // every tool. Scoped and cleared after the request, like the key context above.
         $this->app->scoped(McpCaller::class);
+
+        // The door and approval of the action running now, for the audit decorator below.
+        $this->app->scoped(ActionTrail::class);
 
         // …and what it does is recorded as ITS act: the framework services behind the
         // management API write their own audit entries, mostly with no actor at all.
@@ -107,10 +126,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CspNonce::class);
 
         // The console's one answer to "who is acting, on which organization, and what
-        // may they do". Scoped, not singleton: the environment plane picks an
-        // organization per request, and a singleton would carry one administrator's
-        // choice into the next request on a long-lived worker.
+        // may they do". Scoped, not singleton: on the environment plane the organization
+        // is the one THIS request's URL or form names, and a singleton would carry it into
+        // the next request on a long-lived worker. Released when the request ends as well,
+        // for a process that reuses the container without flushing scoped instances.
         $this->app->scoped(ConsoleScope::class);
+        $this->app->terminating(function (): void {
+            if ($this->app->resolved(ConsoleScope::class)) {
+                $this->app->make(ConsoleScope::class)->releaseOrganization();
+            }
+        });
 
         // Discovery, plus what THIS application's `/oauth/authorize` does with `prompt`.
         // Bound over the framework's controllers so its routes keep their middleware.

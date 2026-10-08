@@ -36,6 +36,17 @@ use Symfony\Component\HttpFoundation\Response;
  *    The root holds subjects who sign in and enrol authenticators, so it must be able to
  *    issue them tokens for the binary we ship — without becoming an issuer for the OAuth
  *    clients an organization admin can create there.
+ *  - `plane:mcp-client` — `/oauth/authorize` (and its consent steps), `/oauth/token` and
+ *    `/oauth/revoke`: `first-party` plus one more narrow exception, an MCP client signing a
+ *    person in at the platform root for its `/mcp` — one that registered itself there, or
+ *    a client ID metadata document — while `api.mcp.root_oauth` is on. The device grant
+ *    stays `first-party`: no such client may hold it.
+ *  - `plane:mcp-discovery` — the three documents and the one write such a client needs
+ *    before it can send anybody to `/oauth/authorize`: the RFC 9728 resource metadata for
+ *    `/mcp`, the RFC 8414 authorization server metadata, and `/oauth/register`. `issuer`,
+ *    plus the platform root's own host while `api.mcp.root_oauth` is on — where each serves
+ *    the MCP slice of itself and nothing else (no OpenID Connect discovery: that stays
+ *    `issuer`, and absent on the root).
  *  - `plane:environment` — the environment-admin console under `/admin`, reached by
  *    redeeming the account plane's signed handoff. Never on the account plane itself.
  *
@@ -62,7 +73,7 @@ final class EnforcePlane
      *
      * @var list<string>
      */
-    private const PLANES = ['signup', 'console', 'issuer', 'first-party', 'keys', 'environment', 'operator'];
+    private const PLANES = ['signup', 'console', 'issuer', 'first-party', 'mcp-client', 'mcp-discovery', 'keys', 'environment', 'operator'];
 
     /**
      * Where a client identifier is found on the endpoints carrying `plane:first-party`.
@@ -125,6 +136,14 @@ final class EnforcePlane
             // which now includes the platform root. See servesVerificationKeys().
             'keys' => $this->planes->servesVerificationKeys(),
             'first-party' => $this->planes->servesFirstPartyIssuer($this->clientIdOf($request)),
+            // The token endpoints once more, now also for an MCP client signing a person in
+            // at the platform root for its `/mcp`. See PlaneResolver::admitsRootMcpClient()
+            // for which clients that is, and RootMcpOAuth for what they can be issued.
+            'mcp-client' => $this->planes->servesFirstPartyIssuer($clientId = $this->clientIdOf($request))
+                || $this->planes->admitsRootMcpClient($clientId, $request->getHost()),
+            // What an MCP client reads and writes before it can send anybody to sign in. A
+            // HOST question at the root, like `console`: see PlaneResolver::servesRootMcpOAuth().
+            'mcp-discovery' => $this->planes->servesIssuer() || $this->planes->servesRootMcpOAuth($request->getHost()),
             // The environment-admin console. Asked as its own question rather than
             // borrowed from `issuer`: same answer today, different reason, and a shared
             // name is how two surfaces end up moving together when only one should.
@@ -155,7 +174,7 @@ final class EnforcePlane
     }
 
     /**
-     * The client a `plane:first-party` request is for.
+     * The client a `plane:first-party` or `plane:mcp-client` request is for.
      *
      * `/oauth/authorize` and the token endpoints NAME it (`client_id`). The steps that follow
      * the authorize request — the consent screen, approve and deny, the hosted organization

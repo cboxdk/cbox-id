@@ -93,6 +93,7 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                     ) : (
                         <EmptyState
                             icon="audit"
+                            equivalent="log_streams.create"
                             title="No log streams yet"
                             description="The audit trail lives here and your security team's tools live somewhere else. A stream mirrors every entry into them as it is written, so an investigation does not start with somebody asking you to export a CSV."
                             steps={[

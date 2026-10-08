@@ -1051,7 +1051,7 @@ function AddToOrganization({
                     <Select
                         value={form.data.organization === '' ? undefined : form.data.organization}
                         onValueChange={choose}
-                        placeholder="Choose an organization…"
+                        placeholder="Find an organization…"
                         options={joinable}
                     />
                 </Field>

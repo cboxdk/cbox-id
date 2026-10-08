@@ -9,7 +9,8 @@ info:
     actions — the same rules, refusals and audit trail.
 
     **Who may call it.** Only a platform OPERATOR, through an access token they delegated
-    carrying the `operator:*` scope each operation names. **No management key is accepted
+    carrying the `operator:*` scope each operation names — the token the platform root
+    issues them for its `/mcp` (`cbox login` at the root, or an agent signed in there). **No management key is accepted
     here** — not an environment key (`cbid_env_…`), not a workspace key (`cbid_ws_…`):
     those speak for a customer, and this API is the deployment above every customer. A
     token whose person is not an active operator is refused with `403`; anything else
@@ -47,7 +48,36 @@ tags:
     description: Organizations inside any one environment.
   - name: Operators
     description: The people who run the deployment.
-paths: {}
+  - name: Approvals
+    description: Where a held operation's approval stands.
+paths:
+  /platform/action-approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Where an approval you asked for stands
+      description: |
+        The `poll_url` of a `202 approval_required`: an approval this token raised, and only those — another token's id is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [pending, approved, denied, expired, consumed] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
 components:
   securitySchemes:
     OperatorToken:
@@ -178,6 +208,7 @@ components:
       properties:
         error: { type: string, description: Stable machine code }
         message: { type: string, description: Human-readable explanation }
+        request_id: { type: string, description: "The id this request was served under, also sent as the X-Request-Id header. Quote it when reporting a problem." }
         errors:
           type: object
           description: Present on `validation_failed` only — the offending fields, each mapped to its messages.

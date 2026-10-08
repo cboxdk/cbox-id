@@ -66,7 +66,7 @@ export function ServiceProviderFields({
                                 form.setData('organizationId', organization)
                             }
                             options={organizations}
-                            placeholder="Choose an organization…"
+                            placeholder="Find an organization…"
                             searchPlaceholder="Search organizations…"
                             emptyMessage="No organization matches that."
                         />
@@ -78,7 +78,7 @@ export function ServiceProviderFields({
                             style={{ color: 'var(--warning-strong)' }}
                         >
                             Environment-wide: anyone with an account in this environment, in any
-                            organization, can sign in to this application. Choose an organization
+                            organization, can sign in to this application. Name an organization
                             unless that is what you mean.
                         </output>
                     )}

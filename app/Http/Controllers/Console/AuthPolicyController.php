@@ -77,7 +77,7 @@ final readonly class AuthPolicyController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $onEnvironmentPlane = $this->onEnvironmentPlane();
+        $onEnvironmentPlane = $this->editsEnvironment();
         $baseline = $policies->forEnvironment();
 
         /*
@@ -136,9 +136,13 @@ final readonly class AuthPolicyController extends ConsoleController
             'organizationsPagination' => $onEnvironmentPlane
                 ? PaginationProps::from($this->organizationPage())
                 : null,
-            // Both writes, resolved by the server: one controller serves two route names.
-            'saveHref' => $this->url('auth-policy.update'),
-            'inheritHref' => $this->url('auth-policy.inherit'),
+            // Both writes, resolved by the server: one controller serves both consoles' pages
+            // and an organization's Policy tab. The environment baseline inherits from
+            // nothing, so it has nowhere to send "inherit".
+            'saveHref' => $this->scope->plane() === ConsolePlane::Environment && ! $onEnvironmentPlane
+                ? route('environment.organizations.policy.update')
+                : $this->url('auth-policy.update'),
+            'inheritHref' => $onEnvironmentPlane ? null : $this->url('auth-policy.inherit'),
             'selfServiceSignup' => $onEnvironmentPlane ? $this->selfServiceProps() : null,
         ]);
     }
@@ -188,7 +192,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $policy = $request->policy();
 
         $result = $this->act(UpdateSignInPolicy::class, [
-            'organization_id' => $this->onEnvironmentPlane() ? null : $this->organizationId(),
+            'organization_id' => $this->editsEnvironment() ? null : $this->organizationId(),
             ...AuthPolicyFields::toArray($policy),
         ], self::FIELDS);
 
@@ -207,7 +211,7 @@ final readonly class AuthPolicyController extends ConsoleController
 
         // Not reachable from the rendered page; refused anyway, because the property that
         // makes that true is the markup, and markup is not an authorization.
-        abort_if($this->onEnvironmentPlane(), 403,
+        abort_if($this->editsEnvironment(), 403,
             'The environment baseline is what organizations inherit; it cannot itself inherit.');
 
         $result = $this->act(InheritSignInPolicy::class, ['organization_id' => $this->organizationId()]);
@@ -224,7 +228,7 @@ final readonly class AuthPolicyController extends ConsoleController
      * asked `overrideFor()` for each, which is the N+1 the batch reader on that contract
      * was added to remove.
      *
-     * @return list<array{id: string, name: string, overridden: bool, minLength: int, mfa: string, sso: string}>
+     * @return list<array{id: string, name: string, href: string, overridden: bool, minLength: int, mfa: string, sso: string}>
      */
     private function organizationRows(AuthPolicies $policies): array
     {
@@ -246,6 +250,8 @@ final readonly class AuthPolicyController extends ConsoleController
             return [
                 'id' => $organization->id,
                 'name' => $organization->name,
+                // Its own Policy tab, where the override is edited.
+                'href' => route('environment.organizations.policy', ['organization' => $organization->id]),
                 'overridden' => isset($overrides[$organization->id]),
                 'minLength' => $effective->minLength,
                 'mfa' => ucfirst($effective->mfa->value),
@@ -270,7 +276,7 @@ final readonly class AuthPolicyController extends ConsoleController
      */
     private function scopeName(): string
     {
-        if (! $this->onEnvironmentPlane()) {
+        if (! $this->editsEnvironment()) {
             $name = $this->scope->organizationName();
 
             return $name === null || $name === '' ? 'this organization' : $name;
@@ -311,14 +317,20 @@ final readonly class AuthPolicyController extends ConsoleController
         return $key === null ? null : Environment::query()->find($key);
     }
 
-    private function onEnvironmentPlane(): bool
+    /**
+     * Whether this page edits the ENVIRONMENT's baseline rather than one organization's
+     * override: the environment console's own Sign-in rules page. An organization's Policy
+     * tab on the same console (`/admin/organizations/{organization}/policy`) edits that
+     * organization's, exactly as its own console does.
+     */
+    private function editsEnvironment(): bool
     {
-        return $this->scope->plane() === ConsolePlane::Environment;
+        return $this->scope->plane() === ConsolePlane::Environment && $this->scope->organizationId() === null;
     }
 
     /**
-     * The organization being edited. Never called on the environment plane, where this
-     * page is about the environment itself.
+     * The organization being edited. Never called on the environment's own page, which is
+     * about the environment itself.
      */
     private function organizationId(): string
     {

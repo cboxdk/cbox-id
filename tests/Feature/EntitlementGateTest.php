@@ -68,7 +68,7 @@ it('shows the SCIM upsell and refuses every SCIM action for a non-entitled org',
     test()->get(route('directories'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('organizationChosen', true)
+            ->where('organizationFilter', null)
             ->where('entitled', false));
 
     // Both shapes of "connect a directory" are refused, not just SCIM: the merged page

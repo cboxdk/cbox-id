@@ -34,9 +34,10 @@ use Symfony\Component\HttpFoundation\Response;
  * when the action runs, for the reason the key middlewares give: an action reached by any
  * other door must not depend on this one.
  *
- * THE SEAM. Until delegated tokens are issued {@see DelegatedTokens} is bound to a
- * resolver that recognises nothing, so both planes answer 401 to every request and are
- * reached from the console alone.
+ * WHICH TOKEN. {@see DelegatedTokens} reads it by the issuer that signed it: the platform
+ * root's (a workspace member or an operator, at the root and on the platform plane, which
+ * resolves no environment), or an environment's own, for its own subject's account on its
+ * host. Either may arrive under the `DPoP` scheme, and a bound one needs its proof.
  */
 final readonly class AuthenticateDelegatedApi
 {
@@ -51,8 +52,7 @@ final readonly class AuthenticateDelegatedApi
     public function handle(Request $request, Closure $next, string $plane, ?string $scope = null): Response
     {
         $plane = ActionPlane::from($plane);
-        $bearer = $request->bearerToken();
-        $principal = $bearer === null || $bearer === '' ? null : $this->tokens->principal($bearer);
+        $principal = $this->tokens->principal($request);
 
         if (! $principal instanceof PersonPrincipal) {
             return $this->deny('unauthorized', $plane === ActionPlane::Platform

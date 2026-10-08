@@ -9,9 +9,11 @@ use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\DelegatedAccess;
+use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\WorkspaceApiContext;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
@@ -40,6 +42,11 @@ use Symfony\Component\HttpFoundation\Response;
  *   audienced to this `/mcp`, a person's, DPoP-proven when bound — into a
  *   {@see DelegatedTokenPrincipal}, and set on {@see EnvironmentApiContext} so the trail
  *   names the person and the client.
+ * - ON THE ROOT HOST of a multi-tenant deployment that token is the PLATFORM ROOT's, and
+ *   its person is a workspace member or an operator: read by {@see RootDelegatedAccess}
+ *   into a {@see RootPersonPrincipal}, who sees the workspace's tools as a member, each
+ *   environment's tools with an `environment` argument naming where to act, their own
+ *   account's, and — an operator — the deployment's.
  *
  * Each sees the tools of its own plane only — the principal refuses the other plane's
  * actions, so they are never listed to it — and a person sees what their token's scopes
@@ -70,6 +77,7 @@ final class AuthenticateMcp
         private readonly ProtectedResources $resources,
         private readonly DpopResourceGuard $dpop,
         private readonly DelegatedAccess $delegated,
+        private readonly RootDelegatedAccess $root,
     ) {}
 
     /**
@@ -119,7 +127,9 @@ final class AuthenticateMcp
         }
 
         if (! str_starts_with($token, self::KEY_PREFIX)) {
-            $person = $this->delegated->principal($request);
+            $person = $this->root->onRootHost()
+                ? $this->root->principal($request)
+                : $this->delegated->principal($request);
 
             if ($person !== null) {
                 $this->context->setDelegated($person);

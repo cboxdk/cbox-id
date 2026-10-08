@@ -8,6 +8,7 @@ use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Console\ConsoleScope;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -93,7 +94,7 @@ trait RunsActions
     protected function attempt(string $action, array $input, array $fields = [], string $fallback = 'form'): ActionResult|ActionRefused
     {
         try {
-            return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal(app(ConsoleScope::class)), $input);
+            return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal(app(ConsoleScope::class)), $input, via: ActionVia::Console);
         } catch (ActionRefused $refused) {
             abort_if($refused->status === 404, 404);
 
@@ -124,6 +125,6 @@ trait RunsActions
      */
     protected function runAction(string $action, array $input): ActionResult
     {
-        return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal(app(ConsoleScope::class)), $input);
+        return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal(app(ConsoleScope::class)), $input, via: ActionVia::Console);
     }
 }

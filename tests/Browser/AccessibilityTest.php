@@ -631,6 +631,37 @@ it('has no accessibility issues on the ported module pages', function (string $p
 ])->group('a11y');
 
 /**
+ * AN ORGANIZATION'S OWN PAGE, every tab of it — the header (name, id to copy, status, the
+ * Admin Portal link) and the tab strip are drawn around pages written for the environment-
+ * wide console too, and each tab is its own document to a screen reader.
+ */
+it('has no accessibility issues on any tab of an organization\'s page', function (string $tab, string $heading): void {
+    environmentAdminForAudit();
+
+    $organization = app(Organizations::class)->create(new NewOrganization('Hub A11y', 'hub-a11y'));
+
+    visit('/admin/organizations/'.$organization->id.$tab)
+        ->assertSee('Hub A11y')
+        ->assertSee($heading)
+        ->assertNoAccessibilityIssues()
+        ->assertNoJavaScriptErrors();
+})->with([
+    'overview' => ['', 'Setup'],
+    'members' => ['/members', 'Members'],
+    'invitations' => ['/invitations', 'Invite someone'],
+    'sso' => ['/single-sign-on', 'Enterprise SSO'],
+    'directory sync' => ['/directory-sync', 'Directory Sync'],
+    'domains' => ['/domains', 'Email domains'],
+    'roles' => ['/roles', 'Roles'],
+    'api keys' => ['/api-keys', 'Member API keys'],
+    'branding' => ['/appearance', 'Appearance'],
+    'policy' => ['/policy', 'Authentication policy'],
+    'support' => ['/support', 'Support sessions'],
+    'audit log' => ['/audit', 'Audit log'],
+    'settings' => ['/settings', 'Delete organization'],
+])->group('a11y');
+
+/**
  * And the two detail pages, which is where the environment console's real density is: the
  * user page alone carries a password panel, a session list, a membership roster with two
  * kinds of role on every row, and an impersonation form.
@@ -649,7 +680,7 @@ it('audits the environment console detail pages, with rows on them', function ()
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/organizations/'.$organization->id)
+    visit('/admin/organizations/'.$organization->id.'/members')
         ->assertSee('Members')
         ->assertSee('a11y-env-user@acme.test')
         ->assertNoAccessibilityIssues()
