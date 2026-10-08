@@ -18,7 +18,10 @@ info:
     new recovery codes and registering a passkey are ceremonies you perform in a browser —
     a token that could do them could take the account over.
 
-    Served on the host of the environment your account belongs to.
+    Served on the host of the environment your account belongs to: an environment's own
+    host for its own people, with a token that environment issued; the platform root's
+    host for a workspace's team and the operators, with the token the root issued them
+    (`cbox login` at the root).
 
     **Envelope.** Every success returns `{ "data": … }` (or `204` with no body). Every
     error returns `{ "error": "<code>", "message": "<human message>" }`.
@@ -39,7 +42,36 @@ tags:
   - name: Sign-in methods
   - name: Devices
     description: Your trusted devices, which approve sign-ins and agent requests.
-paths: {}
+  - name: Approvals
+    description: Where a held operation's approval stands.
+paths:
+  /me/action-approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Where an approval you asked for stands
+      description: |
+        The `poll_url` of a `202 approval_required`: an approval this token raised, and only those — another token's id is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [pending, approved, denied, expired, consumed] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
 components:
   securitySchemes:
     PersonToken:

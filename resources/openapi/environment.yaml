@@ -54,6 +54,18 @@ info:
 
     **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
+
+    **From the platform root.** The people who run a workspace — its team, signed in with
+    `cbox login` at the platform root (`https://cboxid.com`) — reach every environment of
+    their workspace from there, with ONE access token (`WorkspaceAccessToken`): call these
+    same paths on the root's host and name the environment in the `Cbox-Environment` header
+    (its id or slug). The token runs what the person could run on that environment's
+    console — their role must administer environments, and their membership must reach
+    that one — within the scopes it carries. Without the header the answer is
+    `400 environment_required`; an environment the person cannot reach, or another
+    workspace's, is `404`. Everything is recorded in that environment's own trail, as the
+    person (`actor_type: organization_member`), and every critical operation waits for
+    their approval on their device.
 servers:
   -
     url: 'https://{host}/api/v1'
@@ -107,11 +119,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -156,10 +171,14 @@ paths:
                     $ref: '#/components/schemas/AccessReview'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -199,6 +218,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -218,10 +243,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -253,6 +282,12 @@ paths:
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -267,6 +302,8 @@ paths:
                     $ref: '#/components/schemas/AccessReview'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -295,11 +332,14 @@ paths:
             description: "The review's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -327,6 +367,8 @@ paths:
                     $ref: '#/components/schemas/AccessReview'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -380,6 +422,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -399,6 +447,8 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -434,11 +484,14 @@ paths:
             description: "The item's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -480,6 +533,8 @@ paths:
                     $ref: '#/components/schemas/AccessReviewItem'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -558,6 +613,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -577,10 +638,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -602,11 +667,19 @@ paths:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -633,11 +706,19 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Revoked.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -655,6 +736,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -672,10 +759,14 @@ paths:
                       $ref: '#/components/schemas/Api'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
     post:
@@ -684,6 +775,12 @@ paths:
       summary: 'Register an API and its scopes'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       description: |
         Requires scope `apis:write`. Registering an API is the environment's act; no tenant
         surface can. `identifier` is an absolute URI (RFC 8707) and becomes the token's
@@ -732,10 +829,14 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -750,6 +851,12 @@ paths:
       description: 'Requires scope `apis:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -762,6 +869,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -781,6 +890,12 @@ paths:
         register a new API instead.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -811,6 +926,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -830,9 +947,17 @@ paths:
         expire; apps holding its scope keys keep them as plain scopes.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Deleted.
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -867,6 +992,12 @@ paths:
             maxLength: 128
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -896,6 +1027,8 @@ paths:
                     $ref: '#/components/schemas/Api'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -933,11 +1066,19 @@ paths:
             maxLength: 128
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1087,6 +1228,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -1104,10 +1251,14 @@ paths:
                       $ref: '#/components/schemas/App'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
     post:
@@ -1136,6 +1287,14 @@ paths:
       x-action: apps.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -1211,10 +1370,14 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/App'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -1237,16 +1400,21 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1275,6 +1443,12 @@ paths:
             type: string
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -1289,6 +1463,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1316,11 +1492,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -1360,6 +1539,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1386,6 +1567,12 @@ paths:
       x-action: apps.blueprint
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -1398,6 +1585,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/AppBlueprint'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1424,6 +1613,12 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -1464,6 +1659,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1494,11 +1691,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -1527,6 +1727,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1557,11 +1759,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -1576,6 +1781,8 @@ paths:
                     type: object
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1606,11 +1813,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -1639,6 +1849,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1665,6 +1877,12 @@ paths:
       x-action: apps.secrets.list
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -1682,6 +1900,8 @@ paths:
                       $ref: '#/components/schemas/AppSecret'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1707,11 +1927,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -1740,6 +1963,8 @@ paths:
                     $ref: '#/components/schemas/AppSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1778,16 +2003,21 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1818,11 +2048,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -1850,6 +2083,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1880,11 +2115,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -1916,6 +2154,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1946,11 +2186,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -1976,6 +2219,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -2006,11 +2251,14 @@ paths:
             description: "The app's id, or its `client_id`."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -2037,6 +2285,8 @@ paths:
                     $ref: '#/components/schemas/App'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -2102,11 +2352,14 @@ paths:
             description: "Only this organization's entries."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -2126,10 +2379,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -2152,6 +2409,12 @@ paths:
             description: "Read this organization's theme. Left out, the environment default."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -2166,10 +2429,14 @@ paths:
                     $ref: '#/components/schemas/Appearance'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -2184,11 +2451,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -2273,10 +2543,14 @@ paths:
                     $ref: '#/components/schemas/Appearance'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -2301,6 +2575,12 @@ paths:
             description: "Read this organization's branding. Left out, the environment default."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -2315,10 +2595,14 @@ paths:
                     $ref: '#/components/schemas/WhitelabelBranding'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -2333,11 +2617,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -2412,10 +2699,14 @@ paths:
                     $ref: '#/components/schemas/WhitelabelBranding'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -2591,11 +2882,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -2628,10 +2922,14 @@ paths:
                     $ref: '#/components/schemas/Directory'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -2671,6 +2969,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -2690,10 +2994,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -2709,11 +3017,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -2773,10 +3084,14 @@ paths:
                     $ref: '#/components/schemas/Directory'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -2801,11 +3116,14 @@ paths:
             description: "The directory's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -2824,6 +3142,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -2862,6 +3182,12 @@ paths:
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -2876,6 +3202,8 @@ paths:
                     $ref: '#/components/schemas/Directory'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -2903,11 +3231,14 @@ paths:
             description: "The directory's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -2941,6 +3272,8 @@ paths:
                     $ref: '#/components/schemas/Directory'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -2971,11 +3304,14 @@ paths:
             description: "The directory's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3018,6 +3354,8 @@ paths:
                     $ref: '#/components/schemas/DirectoryGroup'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3071,6 +3409,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3090,6 +3434,8 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3118,11 +3464,14 @@ paths:
             description: "The directory's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -3150,6 +3499,8 @@ paths:
                     $ref: '#/components/schemas/Directory'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3180,11 +3531,14 @@ paths:
             description: "The directory's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3217,6 +3571,8 @@ paths:
                     $ref: '#/components/schemas/Directory'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3240,6 +3596,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3267,10 +3629,14 @@ paths:
                     $ref: '#/components/schemas/CustomDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -3286,6 +3652,12 @@ paths:
       x-action: domains.get
       parameters:
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3300,10 +3672,14 @@ paths:
                     $ref: '#/components/schemas/CustomDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -3318,15 +3694,25 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -3344,6 +3730,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3358,10 +3750,14 @@ paths:
                     $ref: '#/components/schemas/CustomDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -3411,11 +3807,14 @@ paths:
             description: "Only this organization's events."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3435,10 +3834,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -3454,6 +3857,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3497,10 +3906,14 @@ paths:
                     $ref: '#/components/schemas/FrontendKey'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -3530,6 +3943,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3549,10 +3968,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -3575,11 +3998,19 @@ paths:
             description: "The key's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3610,6 +4041,12 @@ paths:
             description: "The key's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3641,6 +4078,8 @@ paths:
                     $ref: '#/components/schemas/FrontendKey'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3664,11 +4103,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3717,10 +4159,14 @@ paths:
                     $ref: '#/components/schemas/InlineHook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -3750,11 +4196,14 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3774,10 +4223,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -3800,16 +4253,21 @@ paths:
             description: 'The inline hook id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3838,11 +4296,14 @@ paths:
             type: string
             description: 'The inline hook id.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -3857,6 +4318,8 @@ paths:
                     $ref: '#/components/schemas/InlineHook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3884,11 +4347,14 @@ paths:
             description: 'The inline hook id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -3915,6 +4381,8 @@ paths:
                     $ref: '#/components/schemas/InlineHook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -3938,6 +4406,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -4005,10 +4479,14 @@ paths:
                     type: object
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -4038,6 +4516,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4057,10 +4541,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -4083,11 +4571,19 @@ paths:
             description: 'The key to revoke.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4118,6 +4614,12 @@ paths:
             description: 'The key to rotate.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -4144,6 +4646,8 @@ paths:
                     type: object
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4166,6 +4670,12 @@ paths:
       x-action: legacy_login.get
       parameters:
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4180,10 +4690,14 @@ paths:
                     $ref: '#/components/schemas/LegacyLogin'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -4199,6 +4713,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4213,10 +4733,14 @@ paths:
                     $ref: '#/components/schemas/LegacyLogin'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -4234,6 +4758,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -4262,10 +4792,14 @@ paths:
                     type: object
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -4283,6 +4817,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4297,10 +4837,14 @@ paths:
                     $ref: '#/components/schemas/LegacyLogin'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -4318,11 +4862,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -4387,10 +4934,14 @@ paths:
                     $ref: '#/components/schemas/LogStream'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -4420,11 +4971,14 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4444,10 +4998,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -4470,16 +5028,21 @@ paths:
             description: 'The log stream id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4508,11 +5071,14 @@ paths:
             type: string
             description: 'The log stream id.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4527,6 +5093,8 @@ paths:
                     $ref: '#/components/schemas/LogStream'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4554,11 +5122,14 @@ paths:
             description: 'The log stream id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -4585,6 +5156,8 @@ paths:
                     $ref: '#/components/schemas/LogStream'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4687,7 +5260,17 @@ paths:
               - active
               - suspended
               - deleted
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         200:
@@ -4720,6 +5303,12 @@ paths:
       description: 'Requires scope `organizations:write`.'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -4783,10 +5372,14 @@ paths:
                     $ref: '#/components/schemas/Organization'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -4801,6 +5394,12 @@ paths:
       description: 'Requires scope `organizations:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4813,6 +5412,8 @@ paths:
                     $ref: '#/components/schemas/Organization'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4835,6 +5436,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -4873,6 +5482,8 @@ paths:
                     $ref: '#/components/schemas/Organization'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4900,6 +5511,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: 'The archived organization.'
@@ -4914,6 +5531,8 @@ paths:
                     $ref: '#/components/schemas/Organization'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4943,6 +5562,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -4957,6 +5582,8 @@ paths:
                     $ref: '#/components/schemas/Organization'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -4988,6 +5615,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5002,6 +5635,8 @@ paths:
                     $ref: '#/components/schemas/Organization'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5032,6 +5667,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5057,6 +5698,8 @@ paths:
                     $ref: '#/components/schemas/Member'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5089,6 +5732,12 @@ paths:
           required: false
           schema:
             type: string
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5108,6 +5757,8 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5128,6 +5779,12 @@ paths:
         that proves it (`record_name`, `record_value`). A handful at most; not paged.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5144,6 +5801,8 @@ paths:
                       $ref: '#/components/schemas/OrganizationDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5170,6 +5829,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5197,6 +5862,8 @@ paths:
                     $ref: '#/components/schemas/OrganizationDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5236,11 +5903,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5280,6 +5955,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5306,6 +5987,8 @@ paths:
                     $ref: '#/components/schemas/OrganizationDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5345,6 +6028,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5359,6 +6048,8 @@ paths:
                     $ref: '#/components/schemas/OrganizationDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5383,6 +6074,12 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5402,6 +6099,8 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5439,6 +6138,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5488,6 +6193,8 @@ paths:
                     $ref: '#/components/schemas/Invitation'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5516,11 +6223,19 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/InvitationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Withdrawn.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5550,6 +6265,12 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/InvitationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: 'Sent again.'
@@ -5564,6 +6285,8 @@ paths:
                     $ref: '#/components/schemas/Invitation'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5588,6 +6311,12 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5607,6 +6336,8 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5640,6 +6371,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5690,6 +6427,8 @@ paths:
                     $ref: '#/components/schemas/Member'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5716,6 +6455,12 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5741,6 +6486,8 @@ paths:
                     $ref: '#/components/schemas/Member'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5766,11 +6513,19 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Removed.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5795,6 +6550,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -5811,6 +6572,8 @@ paths:
                       $ref: '#/components/schemas/RoleAssignment'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5844,6 +6607,12 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: 'Granted (or already held).'
@@ -5858,6 +6627,8 @@ paths:
                     $ref: '#/components/schemas/RoleAssignment'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5883,11 +6654,19 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: 'Not held any more.'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5915,11 +6694,14 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -5950,6 +6732,8 @@ paths:
                     $ref: '#/components/schemas/PortalLink'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -5973,11 +6757,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -6019,10 +6806,14 @@ paths:
                     $ref: '#/components/schemas/Permission'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -6076,6 +6867,12 @@ paths:
             description: 'Only permissions whose key or description contains this.'
             maxLength: 120
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6095,10 +6892,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -6122,16 +6923,21 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6162,11 +6968,14 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -6196,6 +7005,8 @@ paths:
                     $ref: '#/components/schemas/Permission'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6219,11 +7030,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -6297,10 +7111,14 @@ paths:
                     $ref: '#/components/schemas/ProvisioningTarget'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -6340,6 +7158,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6359,10 +7183,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -6385,11 +7213,14 @@ paths:
             description: "The target's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -6408,6 +7239,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6446,6 +7279,12 @@ paths:
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6460,6 +7299,8 @@ paths:
                     $ref: '#/components/schemas/ProvisioningTarget'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6488,11 +7329,14 @@ paths:
             description: "The target's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -6525,6 +7369,8 @@ paths:
                     $ref: '#/components/schemas/ProvisioningTarget'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6561,6 +7407,12 @@ paths:
           required: false
           schema:
             type: string
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6577,6 +7429,8 @@ paths:
                       $ref: '#/components/schemas/Role'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6595,11 +7449,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -6650,10 +7507,14 @@ paths:
                     $ref: '#/components/schemas/Role'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -6679,16 +7540,21 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6726,6 +7592,12 @@ paths:
             description: 'The app whose manifest `key` `id` is.'
             maxLength: 255
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6740,6 +7612,8 @@ paths:
                     $ref: '#/components/schemas/Role'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6768,11 +7642,14 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -6803,6 +7680,8 @@ paths:
                     $ref: '#/components/schemas/Role'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6842,11 +7721,14 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6861,6 +7743,8 @@ paths:
                     $ref: '#/components/schemas/Role'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6899,11 +7783,14 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -6918,6 +7805,8 @@ paths:
                     $ref: '#/components/schemas/Role'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -6941,6 +7830,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -7019,10 +7914,14 @@ paths:
                     $ref: '#/components/schemas/SamlApp'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -7052,6 +7951,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -7071,10 +7976,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -7097,11 +8006,19 @@ paths:
             description: "The SAML application's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7130,6 +8047,12 @@ paths:
             type: string
             description: "The SAML application's id."
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -7144,6 +8067,8 @@ paths:
                     $ref: '#/components/schemas/SamlApp'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7171,6 +8096,12 @@ paths:
             description: "The SAML application's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -7246,6 +8177,8 @@ paths:
                     $ref: '#/components/schemas/SamlApp'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7276,6 +8209,12 @@ paths:
             description: "Read one organization's rules. Left out, the environment baseline."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -7290,10 +8229,14 @@ paths:
                     $ref: '#/components/schemas/SignInPolicy'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -7308,11 +8251,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -7381,10 +8327,14 @@ paths:
                     $ref: '#/components/schemas/SignInPolicy'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -7410,16 +8360,21 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7443,6 +8398,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -7469,10 +8430,14 @@ paths:
                     type: object
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -7511,6 +8476,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -7530,10 +8501,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -7548,11 +8523,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -7642,10 +8620,14 @@ paths:
                     $ref: '#/components/schemas/SocialProvider'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -7670,11 +8652,14 @@ paths:
             description: "The provider's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -7693,6 +8678,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7716,11 +8703,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -7772,10 +8762,14 @@ paths:
                     $ref: '#/components/schemas/SodPolicy'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -7815,6 +8809,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -7834,10 +8834,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -7860,11 +8864,14 @@ paths:
             description: "The rule's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -7883,6 +8890,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7921,6 +8930,12 @@ paths:
             description: 'Only if it binds this organization (its own, or environment-wide); anything else is a 404.'
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -7935,6 +8950,8 @@ paths:
                     $ref: '#/components/schemas/SodPolicy'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -7963,11 +8980,14 @@ paths:
             description: "The rule's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -8000,6 +9020,8 @@ paths:
                     $ref: '#/components/schemas/SodPolicy'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8023,11 +9045,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -8128,10 +9153,14 @@ paths:
                     $ref: '#/components/schemas/SsoConnection'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -8171,6 +9200,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -8190,10 +9225,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -8216,11 +9255,14 @@ paths:
             description: "The connection's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8239,6 +9281,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8277,6 +9321,12 @@ paths:
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -8291,6 +9341,8 @@ paths:
                     $ref: '#/components/schemas/SsoConnection'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8318,11 +9370,14 @@ paths:
             description: "The connection's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8411,6 +9466,8 @@ paths:
                     $ref: '#/components/schemas/SsoConnection'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8441,11 +9498,14 @@ paths:
             description: "The connection's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8473,6 +9533,8 @@ paths:
                     $ref: '#/components/schemas/SsoConnection'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8503,11 +9565,14 @@ paths:
             description: "The connection's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8535,6 +9600,8 @@ paths:
                     $ref: '#/components/schemas/SsoConnection'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8565,11 +9632,14 @@ paths:
             description: "The connection's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8597,6 +9667,8 @@ paths:
                     $ref: '#/components/schemas/SignInPolicy'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8620,11 +9692,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -8657,10 +9732,14 @@ paths:
                     $ref: '#/components/schemas/SsoDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -8700,6 +9779,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -8719,10 +9804,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -8745,11 +9834,14 @@ paths:
             description: "The domain's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8768,6 +9860,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8798,11 +9892,14 @@ paths:
             description: "The domain's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -8835,6 +9932,8 @@ paths:
                     $ref: '#/components/schemas/SsoDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8865,11 +9964,14 @@ paths:
             description: "The domain's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -8897,6 +9999,8 @@ paths:
                     $ref: '#/components/schemas/SsoDomain'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -8920,11 +10024,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -8952,10 +10059,14 @@ paths:
                     $ref: '#/components/schemas/SamlMetadata'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -8995,6 +10106,12 @@ paths:
         one token and are refused before the session starts (`422 invalid_target`).
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -9055,10 +10172,14 @@ paths:
                     $ref: '#/components/schemas/SupportSession'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -9084,11 +10205,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9112,11 +10241,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -9160,10 +10292,14 @@ paths:
                     $ref: '#/components/schemas/TokenVaultSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -9203,6 +10339,12 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -9222,10 +10364,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -9257,6 +10403,12 @@ paths:
             description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
             maxLength: 64
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -9271,6 +10423,8 @@ paths:
                     $ref: '#/components/schemas/TokenVaultSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9299,11 +10453,14 @@ paths:
             description: "The secret's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -9337,6 +10494,8 @@ paths:
                     $ref: '#/components/schemas/TokenVaultSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9375,11 +10534,14 @@ paths:
             maxLength: 190
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -9398,6 +10560,8 @@ paths:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9428,11 +10592,14 @@ paths:
             description: "The secret's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -9460,6 +10627,8 @@ paths:
                     $ref: '#/components/schemas/TokenVaultSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9490,11 +10659,14 @@ paths:
             description: "The secret's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -9528,6 +10700,8 @@ paths:
                     $ref: '#/components/schemas/TokenVaultSecret'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9580,7 +10754,17 @@ paths:
               - active
               - disabled
               - locked
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         200:
@@ -9613,6 +10797,12 @@ paths:
       description: 'Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link.'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -9654,10 +10844,14 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -9672,6 +10866,12 @@ paths:
       description: 'Requires scope `users:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -9684,6 +10884,8 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9706,6 +10908,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -9718,6 +10926,8 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9744,6 +10954,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -9775,6 +10991,8 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9797,6 +11015,12 @@ paths:
       description: 'Requires scope `roles:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -9813,6 +11037,8 @@ paths:
                       $ref: '#/components/schemas/RoleAssignment'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9833,6 +11059,12 @@ paths:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: Held.
@@ -9847,6 +11079,8 @@ paths:
                     $ref: '#/components/schemas/RoleAssignment'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9873,6 +11107,12 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: 'Granted (or already held).'
@@ -9887,6 +11127,8 @@ paths:
                     $ref: '#/components/schemas/RoleAssignment'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9911,11 +11153,19 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: 'Not held any more.'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9942,6 +11192,12 @@ paths:
             description: "The user's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -9956,6 +11212,8 @@ paths:
                     $ref: '#/components/schemas/ErasureReceipt'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -9987,11 +11245,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10023,6 +11289,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -10073,6 +11345,8 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10104,11 +11378,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10140,6 +11422,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -10154,6 +11442,8 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10179,6 +11469,12 @@ paths:
         `impersonation` marks a session somebody else opened as this person.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -10195,6 +11491,8 @@ paths:
                       $ref: '#/components/schemas/UserSession'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10221,11 +11519,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10265,11 +11571,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10301,11 +11615,19 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10337,6 +11659,12 @@ paths:
             maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -10351,6 +11679,8 @@ paths:
                     $ref: '#/components/schemas/User'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10660,11 +11990,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: true
         content:
@@ -10750,10 +12083,14 @@ paths:
                     $ref: '#/components/schemas/Webhook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -10783,11 +12120,14 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -10807,10 +12147,14 @@ paths:
                     $ref: '#/components/schemas/PageMeta'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -10833,16 +12177,21 @@ paths:
             description: 'The webhook endpoint id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         204:
           description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10871,11 +12220,14 @@ paths:
             type: string
             description: 'The webhook endpoint id.'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -10890,6 +12242,8 @@ paths:
                     $ref: '#/components/schemas/Webhook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10917,11 +12271,14 @@ paths:
             description: 'The webhook endpoint id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       requestBody:
         required: false
         content:
@@ -10954,6 +12311,8 @@ paths:
                     $ref: '#/components/schemas/Webhook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -10984,11 +12343,14 @@ paths:
             description: 'The webhook endpoint id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -11003,6 +12365,8 @@ paths:
                     $ref: '#/components/schemas/Webhook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -11033,11 +12397,14 @@ paths:
             description: 'The webhook endpoint id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -11052,6 +12419,8 @@ paths:
                     $ref: '#/components/schemas/Webhook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -11082,11 +12451,14 @@ paths:
             description: 'The webhook endpoint id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
         -
           ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
       responses:
         200:
           description: OK
@@ -11101,6 +12473,8 @@ paths:
                     $ref: '#/components/schemas/Webhook'
         202:
           $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -11139,6 +12513,19 @@ components:
         console do not list it. Every critical operation answers `202 approval_required`
         until the person approves it on their device. A DPoP-bound token is presented as
         `Authorization: DPoP <token>` with a proof.
+    WorkspaceAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A workspace member's OAuth access token from the PLATFORM ROOT, audienced to the
+        root's `/mcp` (`cbox login` at the root; an agent signed in there). Presented on the
+        ROOT's host, with `Cbox-Environment` naming the environment of the person's
+        workspace to act in. It runs what that environment's console runs — when the
+        person's role administers environments and their membership reaches this one — and
+        only within the scopes it carries. Every critical operation answers
+        `202 approval_required` until the person approves it on their device. A DPoP-bound
+        token is presented as `Authorization: DPoP <token>` with a proof.
     AppClientCredentials:
       type: http
       scheme: basic
@@ -11175,6 +12562,16 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    CboxEnvironment:
+      name: Cbox-Environment
+      in: header
+      required: false
+      description: |
+        Only with a `WorkspaceAccessToken`, on the platform root's host: the environment of
+        your workspace to act in, by id or slug. Required there; ignored with a key, which
+        is bound to its own environment's host.
+      schema:
+        type: string
     CboxApproval:
       name: Cbox-Approval
       in: header
@@ -13464,6 +14861,14 @@ components:
             $ref: '#/components/schemas/Error'
     NotFound:
       description: 'No such resource in this environment.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    EnvironmentRequired:
+      description: |
+        A `WorkspaceAccessToken` on the platform root's host named no environment
+        (`error: environment_required`): send `Cbox-Environment`.
       content:
         application/json:
           schema:

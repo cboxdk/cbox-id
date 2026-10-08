@@ -2,8 +2,10 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import {
+    cboxLogin,
     claudeCode,
     claudeCodeOAuth,
+    claudeCodeWorkspace,
     claudeDesktop,
     type ClientId,
     type ClientSnippet,
@@ -22,6 +24,8 @@ type Props = PageProps<{
     openApiUrl: string;
     /** True once the MCP resource lets a client sign a person in instead of holding a key. */
     oauthAvailable: boolean;
+    /** The platform root's `/mcp` — one connection for the whole workspace — when there is one. */
+    workspace: { mcpUrl: string; issuer: string; restBaseUrl: string } | null;
     urls: { createAgent: string; agents: string };
     help: HelpContent;
 }>;
@@ -40,6 +44,7 @@ export default function ConnectAgent({
     restBaseUrl,
     openApiUrl,
     oauthAvailable,
+    workspace,
     urls,
     help,
 }: Props) {
@@ -143,6 +148,8 @@ export default function ConnectAgent({
                     </Tabs>
                 </Panel>
 
+                {workspace && <WorkspaceConnection workspace={workspace} />}
+
                 <Panel title="For developers">
                     <dl className="grid gap-3 text-sm">
                         <Endpoint label="Resource metadata (RFC 9728)" value={metadataUrl} />
@@ -190,7 +197,11 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
     if (available) {
         return (
             <div>
-                <p className="text-sm font-medium">Or sign in with your account</p>
+                <p className="text-sm font-medium">Or sign in with an account of this environment</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                    For one of this environment's own people — an organization's
+                    administrator. The agent acts as them, in their organization.
+                </p>
                 <div className="mt-2">
                     <Snippet snippet={claudeCodeOAuth(mcpUrl)} />
                 </div>
@@ -214,6 +225,68 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
                 </p>
             </div>
         </div>
+    );
+}
+
+/**
+ * The other way in: the platform root's `/mcp`, where the workspace's own people sign in.
+ * One connection reaches the workspace and every environment of it the person administers,
+ * so it is offered beside this environment's own server rather than instead of it.
+ */
+function WorkspaceConnection({
+    workspace,
+}: {
+    workspace: { mcpUrl: string; issuer: string; restBaseUrl: string };
+}) {
+    return (
+        <Panel title="One connection for your whole workspace">
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                Connect once at the platform root instead of once per environment. Signed in
+                as you, it reaches your workspace, every environment of it you administer and
+                your own account — an environment tool takes an <span className="mono">environment</span>{' '}
+                argument, and the REST API a <span className="mono">Cbox-Environment</span>{' '}
+                header, naming where to act. It can do what you can, within what you allow,
+                and every critical action waits for your approval on your device.
+            </p>
+            <div className="mt-4 space-y-5">
+                <div>
+                    <p className="text-sm font-medium">Sign the cbox CLI in as yourself</p>
+                    <div className="mt-2">
+                        <Snippet snippet={cboxLogin(workspace.issuer)} />
+                    </div>
+                </div>
+                <div>
+                    <p className="text-sm font-medium">Or give an agent a workspace key</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                        A workspace key reaches the workspace itself — projects, environments,
+                        the team and keys — not inside an environment. Mint one under Keys ›
+                        Workspace keys at the platform root.
+                    </p>
+                    <div className="mt-2">
+                        <Snippet snippet={claudeCodeWorkspace(workspace.mcpUrl)} />
+                    </div>
+                </div>
+                <div
+                    className="flex items-start gap-3 rounded-lg px-3.5 py-3"
+                    style={{ background: 'var(--surface-2)' }}
+                >
+                    <Icon name="user" className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium flex items-center gap-2">
+                            Agents signing in as you at the root <Badge>Coming soon</Badge>
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                            Until then, an agent acts as you across the workspace through the
+                            token the cbox CLI holds, or here per environment with a key.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <dl className="mt-5 grid gap-3 text-sm">
+                <Endpoint label="MCP server (platform root)" value={workspace.mcpUrl} />
+                <Endpoint label="REST API (platform root)" value={workspace.restBaseUrl} />
+            </dl>
+        </Panel>
     );
 }
 

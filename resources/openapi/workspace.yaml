@@ -16,6 +16,15 @@ info:
     minted with no scopes is bounded by its role alone. Each operation names the scope and
     the capability it needs; a key missing either gets `403`.
 
+    **As a member of the team.** Beside a key, the plane takes an access token the platform
+    root issued one of the workspace's people (`WorkspaceAccessToken` — `cbox login` at the
+    root, or an agent signed in there). It is bounded the same two ways: the person's
+    membership role must hold the capability, and the token must carry the scope. What it
+    does is recorded as the member, and every critical operation waits for the person's
+    approval on their device. With the same token, each environment of the workspace is
+    reached from the root's host through the environment API, naming it in
+    `Cbox-Environment`.
+
     **Bootstrapping an environment.** `POST /workspace/environments` with `initial_key`
     creates the environment and mints its first management key (`cbid_env_…`) in one call.
     That key is returned once, as `initial_key.token`, and works on the environment's own
@@ -49,6 +58,8 @@ servers:
 security:
   -
     OrganizationApiKey: []
+  -
+    WorkspaceAccessToken: []
 tags:
   - name: Organization
   - name: Projects
@@ -137,8 +148,8 @@ paths:
         - Approvals
       summary: 'Where an approval this key asked for stands'
       description: |
-        Any workspace key may poll the approvals it raised, and only those: another key's id
-        is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
+        Any workspace key — or a member's token — may poll the approvals it raised, and only
+        those: another credential's id is a 404. `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
       parameters:
         -
           name: id
@@ -1373,6 +1384,14 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
+    WorkspaceAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A workspace member's access token from the platform root, audienced to the root's
+        `/mcp`. Bounded by the person's role in the workspace and by its scopes. A DPoP-bound
+        token is presented as `Authorization: DPoP <token>` with a proof.
     OrganizationApiKey:
       type: http
       scheme: bearer

@@ -9,6 +9,7 @@ use App\Console\Commands\InstallCommand;
 use App\Http\Controllers\Api\CliBootstrapController;
 use App\Mcp\McpProtectedResources;
 use App\Platform\OAuth\DelegatedAccess;
+use App\Platform\OAuth\RootDelegatedAccess;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -36,11 +37,21 @@ use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
  * asking a Cbox user to approve Cbox. The device page still lists what it may do.
  *
  * AND IT SIGNS IN TO THE MANAGEMENT PLANE. Its scopes are the sign-in ones plus
- * every scope of the environment's management plane ({@see McpProtectedResources}),
- * and `cbox login` names that plane as its RFC 8707 `resource` — the framework
+ * every scope of the host's `/mcp` resource ({@see McpProtectedResources}), and
+ * `cbox login` names that resource as its RFC 8707 `resource` — the framework
  * honours it on the device grant — so the one token it holds is good at `/mcp`
- * and on the REST environment API alike ({@see DelegatedAccess}), as the person
- * who approved the code and within what they may do themselves.
+ * and on the REST API alike, as the person who approved the code and within what
+ * they may do themselves:
+ *
+ *  - on an ENVIRONMENT's host, as one of its own subjects ({@see DelegatedAccess}):
+ *    that environment's management plane, and their own account there;
+ *  - at the PLATFORM ROOT, as one of a workspace's team or an operator
+ *    ({@see RootDelegatedAccess}): the workspace, every environment of it they
+ *    administer (named per call — the MCP tools' `environment` argument, the REST
+ *    `Cbox-Environment` header), their own account, and for an operator the
+ *    deployment. That is the `cbox login` most people who run a workspace want, and
+ *    the root's client is provisioned for it like any other
+ *    (`php artisan cbox-id:cli:client --environment=<root>`; the installer does it).
  */
 final class CliClient
 {
@@ -72,8 +83,9 @@ final class CliClient
     }
 
     /**
-     * The environment's management plane — the `resource` the CLI signs in for — or null
-     * when this host declares none.
+     * This host's `/mcp` — the `resource` the CLI signs in for: an environment's management
+     * plane, or at the platform root every plane a workspace's people use — or null when
+     * this host declares none.
      */
     public static function resource(): ?ProtectedResource
     {

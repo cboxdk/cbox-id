@@ -35,9 +35,10 @@ use Tests\Support\FakeDelegatedTokens;
 |--------------------------------------------------------------------------
 |
 | The console's Platform pages run these actions as the signed-in operator; the REST door
-| (`/api/v1/platform`) runs them for an operator's DELEGATED token, which is a seam here:
-| {@see FakeDelegatedTokens} stands in for the resolver delegated management tokens will
-| bind. Until it is bound, every bearer is a 401.
+| (`/api/v1/platform`) runs them for an operator's DELEGATED token. Here
+| {@see FakeDelegatedTokens} stands in for the real resolver, so the plane's own rules are
+| tested apart from token issuance (tests/Feature/Mcp/RootDelegatedAccessTest drives a real
+| root token through the same door).
 */
 
 beforeEach(function (): void {
@@ -74,7 +75,7 @@ function platformRoutes(): array
     return $routes;
 }
 
-it('refuses every key and every bearer it does not know, before a delegated resolver exists', function (): void {
+it('refuses every key and every bearer it does not know', function (): void {
     $account = provisionAccount();
     $workspaceKey = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Owner key', MembershipRole::Owner)->plaintext;
     $environmentKey = app(EnvironmentApiKeys::class)->issue($account['environment']->id, 'Env key', ['users:write', 'organizations:write'])->plaintext;

@@ -52,6 +52,18 @@ info:
 
     **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
+
+    **From the platform root.** The people who run a workspace — its team, signed in with
+    `cbox login` at the platform root (`https://cboxid.com`) — reach every environment of
+    their workspace from there, with ONE access token (`WorkspaceAccessToken`): call these
+    same paths on the root's host and name the environment in the `Cbox-Environment` header
+    (its id or slug). The token runs what the person could run on that environment's
+    console — their role must administer environments, and their membership must reach
+    that one — within the scopes it carries. Without the header the answer is
+    `400 environment_required`; an environment the person cannot reach, or another
+    workspace's, is `404`. Everything is recorded in that environment's own trail, as the
+    person (`actor_type: organization_member`), and every critical operation waits for
+    their approval on their device.
 servers:
   - url: https://{host}/api/v1
     description: The environment's own host
@@ -1951,6 +1963,19 @@ components:
         console do not list it. Every critical operation answers `202 approval_required`
         until the person approves it on their device. A DPoP-bound token is presented as
         `Authorization: DPoP <token>` with a proof.
+    WorkspaceAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A workspace member's OAuth access token from the PLATFORM ROOT, audienced to the
+        root's `/mcp` (`cbox login` at the root; an agent signed in there). Presented on the
+        ROOT's host, with `Cbox-Environment` naming the environment of the person's
+        workspace to act in. It runs what that environment's console runs — when the
+        person's role administers environments and their membership reaches this one — and
+        only within the scopes it carries. Every critical operation answers
+        `202 approval_required` until the person approves it on their device. A DPoP-bound
+        token is presented as `Authorization: DPoP <token>` with a proof.
     AppClientCredentials:
       type: http
       scheme: basic
@@ -1987,6 +2012,15 @@ components:
         an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
         itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
+    CboxEnvironment:
+      name: Cbox-Environment
+      in: header
+      required: false
+      description: |
+        Only with a `WorkspaceAccessToken`, on the platform root's host: the environment of
+        your workspace to act in, by id or slug. Required there; ignored with a key, which
+        is bound to its own environment's host.
+      schema: { type: string }
     CboxApproval:
       name: Cbox-Approval
       in: header
@@ -2890,6 +2924,13 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: No such resource in this environment.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    EnvironmentRequired:
+      description: |
+        A `WorkspaceAccessToken` on the platform root's host named no environment
+        (`error: environment_required`): send `Cbox-Environment`.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

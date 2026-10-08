@@ -50,6 +50,37 @@ export function claudeCodeOAuth(url: string): ClientSnippet {
     };
 }
 
+/** The name the workspace-wide server is added under, beside an environment's. */
+export const WORKSPACE_SERVER_NAME = 'cbox-workspace';
+
+/** What the workspace snippet shows where a workspace key goes. */
+export const WORKSPACE_KEY_PLACEHOLDER = 'cbid_ws_…';
+
+/**
+ * The platform root's `/mcp`, with a WORKSPACE key: one server for the whole workspace —
+ * its projects, environments, team and keys — rather than one per environment.
+ */
+export function claudeCodeWorkspace(url: string, key: string = WORKSPACE_KEY_PLACEHOLDER): ClientSnippet {
+    return {
+        where: 'In a terminal',
+        language: 'bash',
+        code: `claude mcp add --transport http ${WORKSPACE_SERVER_NAME} ${url} --header "Authorization: Bearer ${key}"`,
+    };
+}
+
+/**
+ * Signing the `cbox` CLI in as yourself at the platform root — one sign-in for the
+ * workspace, every environment of it you administer, your account and, for an operator,
+ * the deployment.
+ */
+export function cboxLogin(issuer: string): ClientSnippet {
+    return {
+        where: 'In a terminal',
+        language: 'bash',
+        code: `cbox login --issuer ${issuer}`,
+    };
+}
+
 /**
  * Claude Desktop speaks to remote servers through the `mcp-remote` bridge. The header
  * goes through an environment variable because the bridge splits arguments on spaces.

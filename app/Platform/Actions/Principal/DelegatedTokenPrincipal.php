@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions\Principal;
 
+use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\StepUpPolicy;
@@ -49,6 +50,12 @@ use Illuminate\Auth\Access\AuthorizationException;
  *  - the workspace plane is above every environment and reached with a workspace key, and
  *    is refused.
  *
+ * AND THE PERSON'S OWN ACCOUNT. The account plane (`/api/v1/me`) is served on the host of
+ * the environment the person belongs to — this one — and asks nothing of them but that
+ * they delegated the `account:*` scope: every account action is keyed to
+ * {@see subjectId()}, never to an id the caller names, so there is no other account to
+ * reach. That is why this is a {@see PersonPrincipal} as well.
+ *
  * CRITICAL ALWAYS WAITS FOR THE PERSON. A key's owner chooses its step-up policy; a token
  * has no owner but the person it stands for, and an agent holding it may be acting on a
  * prompt nobody read. So every {@see Danger::Critical} action is held for the person's own
@@ -58,7 +65,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  * and every entry the action causes records the client they used
  * ({@see EnvironmentKeyAuditLog}).
  */
-final readonly class DelegatedTokenPrincipal implements Principal
+final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedInPerson
 {
     /**
      * @param  list<string>  $scopes  the scopes the token carries
@@ -100,6 +107,14 @@ final readonly class DelegatedTokenPrincipal implements Principal
 
     public function authorize(ActionDefinition $action): void
     {
+        if ($action->plane === ActionPlane::Account) {
+            if (! AccountScopes::knows($action->scope) || ! $this->grants($action->scope)) {
+                throw new AuthorizationException("This sign-in was not granted the required scope: {$action->scope}.");
+            }
+
+            return;
+        }
+
         if ($action->plane !== ActionPlane::Environment) {
             throw new AuthorizationException('A signed-in token reaches this environment\'s actions only. The workspace is reached with a workspace key.');
         }
@@ -187,8 +202,9 @@ final readonly class DelegatedTokenPrincipal implements Principal
     }
 
     /**
-     * The management scopes the token carries — what `whoami` reports. The protocol scopes
-     * (`openid`, `offline_access`) ride on every token and grant nothing here.
+     * The management scopes the token carries — what `whoami` reports: the environment's,
+     * and the person's own account's. The protocol scopes (`openid`, `offline_access`) ride
+     * on every token and grant nothing here.
      *
      * @return list<string>
      */
@@ -196,7 +212,18 @@ final readonly class DelegatedTokenPrincipal implements Principal
     {
         $vocabulary = app(ManagementScopes::class);
 
-        return array_values(array_filter($this->scopes, static fn (string $scope): bool => $vocabulary->knows($scope)));
+        return array_values(array_filter($this->scopes, static fn (string $scope): bool => $vocabulary->knows($scope) || AccountScopes::knows($scope)));
+    }
+
+    /** A token is no sign-in session: "everywhere else" is everywhere. */
+    public function currentSessionId(): ?string
+    {
+        return null;
+    }
+
+    public function grants(string $scope): bool
+    {
+        return in_array($scope, $this->scopes, true);
     }
 
     public function expiresAt(): ?int

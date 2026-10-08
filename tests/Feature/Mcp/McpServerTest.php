@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
+use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
@@ -95,7 +96,10 @@ it('completes the initialize handshake a client opens with', function (): void {
 });
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
-    $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')->unique()->sort()->values()->all();
+    // The environment's plane, and the person's own account on the same host.
+    $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')
+        ->merge(AccountScopes::all())
+        ->unique()->sort()->values()->all();
 
     $this->getJson('/.well-known/oauth-protected-resource/mcp')
         ->assertOk()
@@ -104,7 +108,9 @@ it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', functio
         ->assertJsonPath('scopes_supported', [...$scopes, 'offline_access'])
         ->assertJsonPath('bearer_methods_supported', ['header']);
 
-    expect($scopes)->toContain('apis:read', 'apis:write');
+    expect($scopes)->toContain('apis:read', 'apis:write', 'account:profile:write')
+        // The workspace's and the deployment's are the platform root's `/mcp`'s alone.
+        ->not->toContain('team:write')->not->toContain('operator:workspaces:write');
 });
 
 it('lists only the tools the key\'s scopes allow, plus whoami, list_actions and approval_status', function (): void {

@@ -8,6 +8,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
@@ -86,7 +87,7 @@ final readonly class ManagementKeys
         try {
             $issued = $this->keys->issue($environmentId, $name, $scopes, $expiresAt, new KeyProvenance(
                 createdByType: $this->creatorType($principal),
-                createdById: $principal->id() !== '' ? $principal->id() : null,
+                createdById: $this->creatorId($principal),
                 parentKeyId: $parent?->id,
                 rotatedFromId: $rotatedFromId,
                 description: $description,
@@ -205,9 +206,22 @@ final readonly class ManagementKeys
     {
         return match (true) {
             $principal instanceof EnvironmentKeyPrincipal => 'environment_key',
-            $principal instanceof ConsoleSessionPrincipal => 'organization_member',
+            $principal instanceof ConsoleSessionPrincipal, $principal instanceof EnvironmentMemberPrincipal => 'organization_member',
             default => $principal->kind(),
         };
+    }
+
+    /**
+     * Who the key records as its maker. A workspace member acting through a token is
+     * recorded as the PERSON, exactly as from their console — so the key's held actions go
+     * to them for approval — never as the person-and-client id the token's principal keys
+     * its idempotency on.
+     */
+    private function creatorId(Principal $principal): ?string
+    {
+        $id = $principal instanceof EnvironmentMemberPrincipal ? $principal->subjectId() : $principal->id();
+
+        return $id !== '' ? $id : null;
     }
 
     /**
