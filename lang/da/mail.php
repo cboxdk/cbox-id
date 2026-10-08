@@ -37,7 +37,7 @@ return [
     'email_verification' => [
         'subject' => 'Bekræft din e-mailadresse til :brand',
         'heading' => 'Bekræft din e-mail',
-        'body' => 'Velkommen til :brand. Bekræft at dette er din e-mailadresse for at gøre sikringen af din konto færdig. Linket kan kun bruges én gang og udløber om 24 timer.',
+        'body' => 'Velkommen til :brand. Bekræft at dette er din e-mailadresse, så din konto er sikret. Linket kan kun bruges én gang og udløber om 24 timer.',
         'button' => 'Bekræft e-mailadresse',
     ],
 
@@ -47,7 +47,7 @@ return [
         'body' => 'En administrator har angivet en ny adgangskode til din konto. Log ind med den herunder.',
         'temporary' => 'Du bliver bedt om at vælge din egen adgangskode med det samme.',
         'expires' => 'Adgangskoden holder op med at virke :date, så log ind inden da.',
-        'not_expected' => 'Hvis du ikke havde ventet dette, så kontakt din administrator. Ændringen er foretaget af en person med adgang til din organisations konsol, og den er registreret i revisionsloggen.',
+        'not_expected' => 'Hvis du ikke havde forventet dette, så kontakt din administrator. Ændringen er foretaget af en person med adgang til din organisations konsol, og den er registreret i revisionsloggen.',
     ],
 
     'invitation' => [
@@ -58,21 +58,21 @@ return [
         'accept_app' => 'Accepter for at logge ind på :app med din konto i :organization.',
         'accept' => 'Accepter for at oprette din konto og logge ind.',
         'button' => 'Se invitationen',
-        'note' => 'Linket åbner en side hvor du skal bekræfte. Der sker ingenting før du gør det. Linket udløber om 7 dage. Hvis du ikke havde ventet invitationen, kan du ignorere den.',
+        'note' => 'Linket åbner en side hvor du skal bekræfte. Der sker ingenting før du gør det. Linket udløber om 7 dage. Hvis du ikke havde forventet invitationen, kan du bare ignorere den.',
     ],
 
     'organization_invite' => [
         'subject' => ':inviter har inviteret dig til at administrere :organization på :brand',
         'heading' => 'Vær med til at administrere :organization på :brand',
-        'invited' => ':inviter har inviteret dig til at administrere :organization på :brand — konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
-        'invited_as' => ':inviter har inviteret dig til at administrere :organization med rollen :role på :brand — konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
+        'invited' => ':inviter har inviteret dig til at administrere :organization på :brand – konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
+        'invited_as' => ':inviter har inviteret dig til at administrere :organization med rollen :role på :brand – konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
         'button' => 'Accepter invitation',
     ],
 
     'portal_link' => [
         'subject' => 'Sæt :organization op på :brand',
         'heading' => 'Sæt :organization op',
-        'lead' => 'Du er blevet bedt om at sætte følgende op for :organization på :brand. Du behøver ikke en konto — knappen herunder er alt, hvad der skal til.',
+        'lead' => 'Du er blevet bedt om at sætte følgende op for :organization på :brand. Du behøver ingen konto – knappen herunder er alt der skal til.',
         'intents' => [
             'sso' => 'Single sign-on med jeres identitetsudbyder',
             'dsync' => 'Katalogsynkronisering (SCIM)',
@@ -82,7 +82,7 @@ return [
             'audit_logs' => 'Gennemgang af jeres revisionslog (skrivebeskyttet)',
         ],
         'button' => 'Start opsætningen',
-        'expires' => 'Linket kan bruges én gang og virker til :date. Hvis det udløber, så bed om et nyt.',
+        'expires' => 'Linket kan kun bruges én gang og virker indtil :date. Hvis det udløber, så bed om et nyt.',
     ],
 
     'certificate_expiring' => [
@@ -90,9 +90,9 @@ return [
         'subject_expired' => 'Single sign-on via :connection er holdt op med at virke',
         'heading' => 'Jeres SAML-certifikat udløber snart',
         'heading_expired' => 'Jeres SAML-certifikat er udløbet',
-        'lead' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløber :date. Derefter kan ingen logge ind gennem den.',
-        'lead_expired' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløb :date. Ingen kan logge ind gennem den, før certifikatet er fornyet.',
-        'what_to_do' => 'Bed den, der administrerer jeres identitetsudbyder, om det nye signeringscertifikat, og upload det derefter i jeres administrationskonsol — eller bed jeres administrator om et link til Admin Portal, så du kan uploade det der.',
-        'why' => 'Du modtager denne e-mail, fordi du er ejer eller administrator af denne organisation på :brand.',
+        'lead' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløber den :date. Derefter kan ingen logge ind via den.',
+        'lead_expired' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløb den :date. Ingen kan logge ind via den, før certifikatet er fornyet.',
+        'what_to_do' => 'Bed den der administrerer jeres identitetsudbyder om det nye signeringscertifikat, og upload det derefter i jeres administrationskonsol – eller bed jeres administrator om et link til Admin Portal, så du kan uploade det der.',
+        'why' => 'Du modtager denne e-mail fordi du er ejer eller administrator af organisationen på :brand.',
     ],
 ];

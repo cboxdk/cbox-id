@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Changed
+
+- **Danish hosted pages and mail, reviewed by a native speaker's standard.** `lang/da` now uses one term per concept — "log ind" / "login", "loginlink", "adgangskode", "adgangsnøgle", "totrinsbekræftelse", "arbejdsområde" (was also "workspace"), "revisionslog" (was also "audit-log"), "logstreaming", "API-nøgle" — with "access key" kept in English on the AWS form so it is never confused with a passkey. Sentence case, du-form, “ ” quotation marks (no more » «), spaced en dashes, no comma before restrictive subclauses, "den" before dates in mail, and the Admin Portal addressing the IT admin's organization as "jeres". Wording that read as translated is rewritten (the forgot-password lead no longer offers to reset the email address; "tamper-evident" is now "der ikke kan ændres ubemærket"). Identity providers' own field and button names are unchanged. The chosen terms are listed in `docs/guides/languages.md` under **Danish terminology**.
+
 ## [2.0.0] - 2026-10-08
 
 ### Security

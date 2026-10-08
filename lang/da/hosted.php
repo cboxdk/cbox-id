@@ -9,12 +9,12 @@ return [
         'theme' => 'Tema',
         'toggle_theme' => 'Skift mellem lyst og mørkt tema',
         'about' => 'Om dette produkt',
-        'hero_body' => 'Enterprise-SSO, SCIM-katalogsynkronisering, MFA og adgangsnøgler, RBAC og en revisionslog der afslører manipulation. Du kan hoste det selv, og det er dit.',
+        'hero_body' => 'Enterprise-SSO, katalogsynkronisering med SCIM, MFA og adgangsnøgler, RBAC og en revisionslog der ikke kan ændres ubemærket. Kan hostes på egne servere – og er jeres.',
         'features' => [
             'sso' => 'Single sign-on med SAML og OIDC',
-            'scim' => 'Katalogprovisionering med SCIM 2.0',
+            'scim' => 'Katalogsynkronisering med SCIM 2.0',
             'mfa' => 'Adgangsnøgler, TOTP og loginlinks',
-            'audit' => 'Hashkædet revisionslog der afslører manipulation',
+            'audit' => 'Hashkædet revisionslog der ikke kan ændres ubemærket',
         ],
     ],
 
