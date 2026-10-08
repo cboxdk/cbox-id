@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\AdminPortalLink;
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
@@ -360,6 +361,139 @@ it('refuses a portal link for a feature the organization\'s plan does not includ
 
     expect(entTrail('portal_link.created'))->toBe([]);
 });
+
+/**
+ * Mint a portal link over the API and hand back its id and URL.
+ *
+ * @return array{0: string, 1: string}
+ */
+function entPortalLink(string $key, string $org, array $body = ['intents' => ['sso']]): array
+{
+    $data = test()->withToken($key)->postJson("/api/v1/organizations/{$org}/portal-links", $body)->assertCreated()->json('data');
+    test()->flushHeaders();
+
+    return [(string) $data['id'], (string) $data['url']];
+}
+
+it('lists an organization\'s portal links with where each stands, and never the link itself', function (): void {
+    [$key] = entKey(['portal_links:read', 'portal_links:write']);
+    $org = entOrg();
+    [$pending, $pendingUrl] = entPortalLink($key, $org, ['intents' => ['sso', 'dsync'], 'email' => 'it@customer.example']);
+    [$revoked, $revokedUrl] = entPortalLink($key, $org);
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$org}/portal-links/{$revoked}")->assertNoContent();
+
+    // Somebody else's, in the same environment: not on this organization's list.
+    entPortalLink($key, entOrg('someone-else'));
+
+    $list = $this->withToken($key)->getJson("/api/v1/organizations/{$org}/portal-links")
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.id', $revoked)
+        ->assertJsonPath('data.0.status', 'revoked')
+        ->assertJsonPath('data.1.id', $pending)
+        ->assertJsonPath('data.1.status', 'pending')
+        ->assertJsonPath('data.1.intents', ['sso', 'dsync'])
+        ->assertJsonPath('data.1.emailed_to', 'it@customer.example')
+        ->assertJsonPath('data.1.consumed_at', null)
+        ->assertJsonPath('data.1.completed_at', null)
+        ->assertJsonMissingPath('data.1.url')
+        ->assertJsonMissingPath('data.1.token_hash');
+
+    $body = (string) $list->getContent();
+    $hashes = AdminPortalLink::query()->pluck('token_hash')->all();
+
+    expect($body)->not->toContain(basename($pendingUrl))
+        ->and($body)->not->toContain(basename($revokedUrl));
+
+    foreach ($hashes as $hash) {
+        expect($body)->not->toContain((string) $hash);
+    }
+
+    // The read scope reads; it does not withdraw.
+    [$reader] = entKey(['portal_links:read']);
+    $this->flushHeaders();
+    $this->withToken($reader)->deleteJson("/api/v1/organizations/{$org}/portal-links/{$pending}")->assertForbidden();
+})->group('security');
+
+it('revokes a portal link before it is opened: it opens nothing, and the trail says who', function (): void {
+    [$key, $keyId] = entKey(['portal_links:write']);
+    $org = entOrg();
+    [$id, $url] = entPortalLink($key, $org);
+
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$org}/portal-links/{$id}")->assertNoContent();
+    $this->flushHeaders();
+
+    $this->post($url)->assertRedirect(route('portal.expired'));
+    $this->get(route('portal.sso'))->assertRedirect(route('portal.expired'));
+
+    [$entry] = entTrail('portal_link.revoked');
+
+    expect($entry->actor_type)->toBe(ActorType::Service)
+        ->and($entry->actor_id)->toBe($keyId)
+        ->and($entry->organization_id)->toBe($org)
+        ->and($entry->target_id)->toBe($id)
+        ->and(AdminPortalLink::query()->findOrFail($id)->revoked_at)->not->toBeNull();
+
+    // Withdrawing it again changes nothing and is not a second event.
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$org}/portal-links/{$id}")->assertNoContent();
+
+    expect(entTrail('portal_link.revoked'))->toHaveCount(1);
+})->group('security');
+
+it('ends an open setup session on its next request once its link is revoked', function (): void {
+    [$key] = entKey(['portal_links:write', 'portal_links:read']);
+    $org = entOrg();
+    [$id, $url] = entPortalLink($key, $org);
+
+    // The IT administrator opens the link and is mid-setup.
+    $this->post($url)->assertRedirect(route('portal.setup'));
+    $this->get(route('portal.sso'))->assertOk();
+
+    $this->withToken($key)->getJson("/api/v1/organizations/{$org}/portal-links")->assertJsonPath('data.0.status', 'in_use');
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$org}/portal-links/{$id}")->assertNoContent();
+    $this->flushHeaders();
+
+    // The very next request — a page or a write — lands on the expired page.
+    $this->get(route('portal.sso'))->assertRedirect(route('portal.expired'));
+    $this->post(route('portal.connections.store'), ['provider' => 'okta'])->assertRedirect(route('portal.expired'));
+
+    expect(Connection::query()->where('organization_id', $org)->exists())->toBeFalse();
+})->group('security');
+
+it('lists a link whose setup was finished as completed, with when', function (): void {
+    [$key] = entKey(['portal_links:write', 'portal_links:read']);
+    $org = entOrg();
+    [, $url] = entPortalLink($key, $org);
+
+    $this->post($url)->assertRedirect(route('portal.setup'));
+    $this->post(route('portal.finish'))->assertRedirect();
+
+    $this->withToken($key)->getJson("/api/v1/organizations/{$org}/portal-links")
+        ->assertJsonPath('data.0.status', 'completed')
+        ->assertJsonPath('data.0.completed_at', fn (mixed $at): bool => is_string($at) && $at !== '');
+});
+
+it('answers 404 for a portal link of another organization, or of another environment\'s', function (): void {
+    [$key] = entKey(['portal_links:read', 'portal_links:write']);
+    $org = entOrg();
+    $other = entOrg('other-tenant');
+    [$theirs] = entPortalLink($key, $other);
+
+    // Named under the wrong organization: not found, and not withdrawn.
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$org}/portal-links/{$theirs}")->assertNotFound();
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$org}/portal-links/01JQZZZZZZZZZZZZZZZZZZZZZZ")->assertNotFound();
+
+    expect(AdminPortalLink::query()->findOrFail($theirs)->revoked_at)->toBeNull();
+
+    // An organization in another environment is the same 404 as one that does not exist.
+    $foreign = entElsewhere(fn (): string => entOrg('foreign-tenant'));
+
+    $this->withToken($key)->getJson("/api/v1/organizations/{$foreign}/portal-links")->assertNotFound();
+    $this->withToken($key)->getJson('/api/v1/organizations/org_missing/portal-links')->assertNotFound();
+    $this->withToken($key)->deleteJson("/api/v1/organizations/{$foreign}/portal-links/{$theirs}")->assertNotFound();
+
+    expect(entTrail('portal_link.revoked'))->toBe([]);
+})->group('security');
 
 // ── Directory sync ───────────────────────────────────────────────────────────
 

@@ -10,6 +10,7 @@ use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 
 /**
@@ -155,10 +156,12 @@ final class AdminPortal
 
         // The link was already burned at redemption (single-use); don't clobber that
         // timestamp — consumed_at should read as the REDEMPTION moment. Only stamp it
-        // here for a legacy link redeemed before single-use landed.
-        if ($link->consumed_at === null) {
-            $link->forceFill(['consumed_at' => now()])->save();
-        }
+        // here for a legacy link redeemed before single-use landed. Finishing is a moment
+        // of its own, which the list of links reads.
+        $link->forceFill([
+            'consumed_at' => $link->consumed_at ?? now(),
+            'completed_at' => now(),
+        ])->save();
 
         $this->audit->record(new AuditEvent(
             // The redeemer is an external IT admin with no platform identity, so the
@@ -184,8 +187,10 @@ final class AdminPortal
     /**
      * Whether the current portal session is valid RIGHT NOW. The link is consumed at
      * redemption (single-use), so validity is a property of the SESSION — its
-     * unexpired window plus a live re-check that the org may still use something the
-     * link covers (catches a mid-session plan lapse). Re-evaluated on every call.
+     * unexpired window, a live re-check that the link behind it has not been REVOKED
+     * (an administrator who withdraws a link mid-setup means now, not when the window
+     * runs out), and a live re-check that the org may still use something the link
+     * covers (catches a mid-session plan lapse). Re-evaluated on every call.
      */
     public function sessionValid(): bool
     {
@@ -195,7 +200,44 @@ final class AdminPortal
             return false;
         }
 
+        // A link that is gone — revoked, or its organization's rows erased — opens nothing.
+        if (! AdminPortalLink::query()->whereKey($data['link_id'])->whereNull('revoked_at')->exists()) {
+            return false;
+        }
+
         return $this->usable($data['org'], $data['scope']) !== [];
+    }
+
+    /**
+     * Withdraw a link: it can no longer be redeemed, and the setup session it opened, if
+     * any, ends on its next request ({@see sessionValid()}). Recorded as
+     * `portal_link.revoked` with whoever withdrew it. A link already revoked is left as it
+     * was — withdrawing twice is not a second event.
+     */
+    public function revoke(AdminPortalLink $link, AuditActor $actor): AdminPortalLink
+    {
+        if ($link->isRevoked()) {
+            return $link;
+        }
+
+        $link->forceFill(['revoked_at' => now(), 'revoked_by' => $actor->id])->save();
+
+        $this->audit->record(new AuditEvent(
+            action: 'portal_link.revoked',
+            actorType: $actor->type,
+            actorId: $actor->id,
+            organizationId: $link->organization_id,
+            targetType: 'admin_portal_link',
+            targetId: $link->id,
+            context: array_filter([
+                'intents' => $link->portalScope()?->values() ?? [],
+                // Whether somebody was mid-setup when it was withdrawn: their session ends.
+                'was_opened' => $link->consumed_at !== null,
+                'emailed_to' => $link->emailed_to,
+            ], static fn (mixed $value): bool => $value !== null),
+        ));
+
+        return $link;
     }
 
     /**
@@ -329,7 +371,8 @@ final class AdminPortal
         return is_int($ttl) && $ttl > 0 ? $ttl : 30;
     }
 
-    private function sessionMinutes(): int
+    /** How long a redeemed link's setup session lasts, in minutes. */
+    public function sessionMinutes(): int
     {
         $minutes = config('cbox-id.portal.session_minutes', 120);
 

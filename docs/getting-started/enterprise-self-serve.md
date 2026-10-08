@@ -94,8 +94,9 @@ curl -X POST https://<env-host>/api/v1/organizations/$ORG/portal-links \
 ```
 
 The answer's `url` is shown once. A link covering an intent the organization's plan lacks
-is refused (`403 not_entitled`). There is no action to list or revoke links yet, so a link
-stays redeemable until it is used or expires: keep lifetimes short. The full walkthrough,
+is refused (`403 not_entitled`). `organizations.portal_links.list` shows where each recent
+link stands and `organizations.portal_links.revoke` withdraws one before it is used or
+expires (see below). The full walkthrough,
 from both sides, is the [Admin Portal guide](../guides/admin-portal.md) and
 [For your customers' IT admins](../for-it-admins/_index.md).
 
@@ -108,9 +109,17 @@ from both sides, is the [Admin Portal guide](../guides/admin-portal.md) and
   (mail and chat previews would otherwise burn it). It re-checks the plan, consumes the
   link, and opens a **portal session** under its own key (`cbox.portal`) that lasts
   `cbox-id.portal.session_minutes` (default 120) from that moment.
+- **Revoking.** `organizations.portal_links.list` (`GET …/portal-links`, scope
+  `portal_links:read`) shows an organization's links from the last 30 days and where each
+  stands — `pending`, `in_use`, `completed`, `expired`, `revoked` — never the URL.
+  `organizations.portal_links.revoke` (`DELETE …/portal-links/{id}`) withdraws one: it can
+  no longer be opened, and a session it already opened ends on its next request. The
+  organization's Overview in the console lists the outstanding links with a **Revoke**
+  button. Recorded as `portal_link.revoked`.
 - **The checklist.** `/setup` shows one card per intent with its progress, read from what
   is actually configured. Each intent has its own page: SSO walks provider → our ACS URL
-  and entity ID (or OIDC redirect URI) to paste, field by field, into Okta, Entra ID,
+  and entity ID (or OIDC redirect URI, or the SAML SP metadata URL for a provider that
+  imports one) to paste, field by field, into Okta, Entra ID,
   Google Workspace, OneLogin, JumpCloud, PingFederate or any SAML/OIDC provider → their
   metadata back → a verified domain → activate. Directory sync shows the SCIM base URL and
   a bearer token (once) with guides for Okta, Entra ID, OneLogin, JumpCloud and generic SCIM.

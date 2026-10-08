@@ -96,11 +96,34 @@ key with an approval policy may wait for a person first
   The IT admin can come back to the checklist any time inside it.
 - **Finishing ends it.** **Finish setup** (or **Done** on a read-only audit logs link)
   closes the session and the link for good.
-- **You cannot revoke a link before it expires.** There is no list or revoke action yet.
-  Choose the shortest lifetime that works, and send the link only to the person who will
-  use it.
+- **You can revoke it.** Revoking a link means it can no longer be opened, and somebody
+  in the middle of setup lands on the "no longer valid" page at their next click. What
+  they already configured stays configured. Still choose the shortest lifetime that works,
+  and send the link only to the person who will use it.
 
 If a link expired or was used, create a new one.
+
+## Seeing and revoking links
+
+An organization's **Overview** in the environment console lists its outstanding Admin
+Portal links in an **Admin Portal links** panel, each with a **Revoke** button. Over the
+API:
+
+| Action | Route | Scope | Danger |
+|---|---|---|---|
+| `organizations.portal_links.list` | `GET /api/v1/organizations/{organization_id}/portal-links` | `portal_links:read` | read |
+| `organizations.portal_links.revoke` | `DELETE /api/v1/organizations/{organization_id}/portal-links/{id}` | `portal_links:write` | destructive |
+
+The list covers the last 30 days and never includes the URL itself. Each link has a
+status:
+
+| Status | Means |
+|---|---|
+| `pending` | created, not opened yet |
+| `in_use` | redeemed; a portal session is running |
+| `completed` | the IT admin chose **Finish setup** (or **Done**) |
+| `expired` | its lifetime or its session ran out |
+| `revoked` | withdrawn; recorded on the Audit log as `portal_link.revoked` |
 
 ## What the IT admin sees
 
@@ -127,13 +150,17 @@ page:
 The page-by-page walkthroughs, with the field names, are in
 [For your customers' IT admins](../for-it-admins/_index.md).
 
-Two gaps to know about before you send a link:
+Two details of the Enterprise SSO page worth knowing:
 
-- The OpenID Connect form asks for a **Signing key** as well as the issuer, client ID and
-  client secret, although the page's lead says the first three are enough.
-- The SAML step shows the ACS URL and entity ID to copy, but not a service-provider
-  metadata URL, so an identity provider that wants to import one has to be filled in by
-  hand.
+- **SAML:** besides the ACS URL and entity ID, the page shows a copyable **Service provider
+  metadata URL** (`/sso/saml/{connection}/metadata`) for a provider that imports
+  service-provider metadata — PingFederate by URL, Microsoft Entra ID by uploading the
+  downloaded file, AD FS as the federation metadata address. It works as soon as the draft
+  connection exists.
+- **OpenID Connect:** the issuer URL, client ID and client secret are enough. The
+  provider's signing keys are read from its `jwks_uri` and its rotations followed on their
+  own; **Signing key (optional)** is only for a provider that publishes no `jwks_uri`, and
+  takes an RS256 public key in PEM form. HS256 (a shared-secret signature) is not supported.
 
 ## Languages
 

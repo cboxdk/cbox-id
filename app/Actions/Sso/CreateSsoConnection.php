@@ -27,7 +27,9 @@ use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
  * The owner is said out loud: one organization, or — the environment's authority only —
  * the environment itself, a connection that signs people in and enrols them nowhere. An
  * organization's connection needs its plan to include SSO. An OIDC provider is discovered
- * NOW, so a mistyped issuer fails while somebody is still looking at it.
+ * NOW, so a mistyped issuer fails while somebody is still looking at it — and its discovery
+ * document's `jwks_uri` is where its ID tokens are verified from, so the signing key is
+ * optional: asked for only of a provider that publishes none.
  *
  * The certificate, client secret and signing key are input only: sealed into the
  * connection, never returned, never on the trail.
@@ -80,10 +82,11 @@ final readonly class CreateSsoConnection implements Action
         $type = ConnectionType::from($context->string('type'));
         $pending = $context->boolean('pending_idp');
 
-        // Ours, when left out: filled in from the connection once it has an id, below.
+        // Ours, when left out: filled in from the connection once it has an id, below. And
+        // an optional value left out is not on file at all, rather than on file as blank.
         $config = array_filter(
             SsoFields::configFrom($context, $type),
-            static fn (string $value, string $key): bool => $value !== '' || ! in_array($key, SsoFields::SERVICE_PROVIDER, true),
+            static fn (string $value, string $key): bool => $value !== '' || ! in_array($key, [...SsoFields::SERVICE_PROVIDER, ...SsoFields::OPTIONAL], true),
             ARRAY_FILTER_USE_BOTH,
         );
 
@@ -94,11 +97,20 @@ final readonly class CreateSsoConnection implements Action
             SsoFields::assertComplete($config);
         }
 
+        $stored = $config;
+
+        if ($type === ConnectionType::Oidc && ! $pending) {
+            // The provider's endpoints, and where it publishes its signing keys — which is
+            // what verifies its ID tokens unless a key was pasted.
+            $stored = SsoFields::discovered($config);
+            SsoFields::assertVerifiable($stored);
+        }
+
         $connection = $this->connections->create(
             $organizationId,
             $type,
             trim($context->string('name')),
-            $type === ConnectionType::Oidc && ! $pending ? SsoFields::discovered($config) : $config,
+            $stored,
         );
 
         if ($type === ConnectionType::Saml) {
@@ -126,7 +138,12 @@ final readonly class CreateSsoConnection implements Action
      */
     private function withServiceProvider(Connection $connection, array $config): void
     {
-        $missing = array_diff_key(SsoFields::serviceProvider($connection), $config);
+        // The entity id and ACS URL only: the metadata URL is where they are served from,
+        // not a setting of the connection.
+        $missing = array_diff_key(
+            array_intersect_key(SsoFields::serviceProvider($connection), array_flip(SsoFields::SERVICE_PROVIDER)),
+            $config,
+        );
 
         if ($missing === []) {
             return;

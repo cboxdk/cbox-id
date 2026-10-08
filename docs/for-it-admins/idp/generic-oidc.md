@@ -30,16 +30,14 @@ sign in this way.
 | Issuer URL | The issuer: the base URL under which your provider publishes `/.well-known/openid-configuration`, not that path itself |
 | Client ID | The client's ID |
 | Client secret | The client's secret |
-| Signing key | The provider's token-signing **public key**, in PEM form (`-----BEGIN PUBLIC KEY-----`) |
+| Signing key (optional) | Leave blank. Only for a provider whose OpenID configuration publishes no `jwks_uri`: its RS256 token-signing **public key**, in PEM form (`-----BEGIN PUBLIC KEY-----`) |
 
 The endpoints are read from the issuer, so there is nothing else to paste. If the portal
 says "We couldn't read the provider's OpenID configuration", check that the issuer URL is
 right and reachable from the internet.
 
-The portal currently requires the **Signing key**, although its own lead says the issuer,
-client ID and secret are enough. Many providers publish their keys only as a JWKS;
-converting the current key to PEM works. If you cannot, ask the person who sent you the
-link to finish the connection from their side.
+The signing keys are read from the provider's `jwks_uri`, and a key rotation there is
+picked up on its own. ID tokens signed with a shared secret (HS256) are not supported.
 
 ## Related
 

@@ -45,8 +45,11 @@ Whatever the provider, send the person's **email address as the Name ID** and al
 [SAML guide](idp/generic-saml.md) has the details. Assign the app to the people or groups
 who should use it; most providers send nobody until you do.
 
-The page does not show a service-provider metadata URL to import. If your provider insists
-on one, enter the values above by hand instead.
+If your provider can import service-provider metadata, the page also shows a **Service
+provider metadata URL**. Give your provider that URL (or the file it downloads) instead of
+copying the values one by one: PingFederate takes it under **Import Metadata — URL**,
+Microsoft Entra ID through **Upload metadata file** after you download it, AD FS as the
+federation metadata address. It works as soon as you have started the connection.
 
 ## 3. Bring back the details from your provider
 
@@ -57,12 +60,12 @@ Now give the portal what your provider created:
   sign-on URL and certificate are read from it. Prefer the metadata: it is the step people
   most often get wrong by hand. If you must, **Enter the values by hand instead**:
   **IdP entity ID**, **IdP SSO URL** and **IdP X.509 certificate**.
-- **OpenID Connect:** enter the **Issuer URL**, **Client ID**, **Client secret** and
-  **Signing key**. The issuer is the base URL, not the `.well-known` path; the endpoints
-  are read from it. The portal currently also requires the **Signing key**: your
-  provider's token-signing public key, in PEM form. If your provider only publishes its
-  keys as a JWKS and you cannot get a PEM, ask the person who sent you the link to finish
-  this connection for you.
+- **OpenID Connect:** enter the **Issuer URL**, **Client ID** and **Client secret**. The
+  issuer is the base URL, not the `.well-known` path; the endpoints and the signing keys
+  are read from it, and key rotations at your provider are followed on their own. Leave
+  **Signing key (optional)** blank unless your provider publishes no signing keys in its
+  OpenID configuration; then paste its RS256 public key, in PEM form. Tokens signed with a
+  shared secret (HS256) are not supported.
 
 When the details are saved, the page shows **Received from your identity provider** with
 what it read.
