@@ -154,6 +154,8 @@ it('offers every environment-console page somewhere in its rail', function (): v
                 // Organization filter chips. It is a GET because it is a read, not because it
                 // is somewhere to be.
                 'environment.lookup.organizations',
+                // CHROME too: ⌘K's search answers JSON for the palette in the topbar.
+                'environment.search',
                 // A REDIRECT kept for links and bookmarks: the environment console's
                 // management keys are its Agents page (AI agents › Agents) now.
                 'environment.keys',

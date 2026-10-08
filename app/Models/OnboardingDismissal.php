@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property string $id
  * @property string $environment_id
- * @property string $organization_id
+ * @property string|null $organization_id null for the environment console's own checklist
  * @property string $subject_id
  */
 final class OnboardingDismissal extends Model implements EnvironmentOwned

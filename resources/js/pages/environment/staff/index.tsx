@@ -87,6 +87,7 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                     <div className="rounded-xl border" style={{ borderColor: 'var(--border)' }}>
                         <EmptyState
                             icon="members"
+                            equivalent="users.environment_roles.grant"
                             title="Nobody holds a staff role"
                             description="Grant one to the people who support or run your apps. An app's own role reaches only that app's tokens; a role for all apps reaches every one of them."
                         />

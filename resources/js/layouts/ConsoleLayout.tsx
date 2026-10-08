@@ -14,7 +14,7 @@ import { useDocumentLanguage } from '@/i18n';
 import { setNavPinned } from '@/lib/theme';
 import { OrganizationFrame } from '@/pages/environment/organizations/frame';
 import type { SharedProps } from '@/types';
-import { Icon, TooltipProvider } from '@/ui';
+import { Icon, PageApiEquivalents, TooltipProvider } from '@/ui';
 import { logout } from '@routes';
 import { exit as exitImpersonation } from '@routes/impersonation';
 
@@ -196,6 +196,8 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                         <div className="cbx-topbar-context">{context}</div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                            {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
+                            <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
 
                             <AccountMenu

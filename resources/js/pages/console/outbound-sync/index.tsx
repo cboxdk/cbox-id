@@ -122,6 +122,7 @@ export default function OutboundSyncIndex({
                     ) : (
                         <EmptyState
                             icon="directory"
+                            equivalent="provisioning.targets.create"
                             title="No outbound sync yet"
                             description="Apps that keep their own user list drift out of step the moment somebody joins or leaves. A SCIM connection pushes every change to them as it happens — including the departures, which are the ones that get forgotten."
                             steps={[

@@ -1,21 +1,37 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, Icon, type IconName, PageHeader, Stat } from '@/ui';
+import { type ChecklistProps, EnvironmentChecklist } from './checklist';
 
 type Props = PageProps<{
     stats: { label: string; icon: IconName; count: number; href: string }[];
     quickActions: { label: string; href: string }[];
     help: HelpContent;
+    /** "Get started", until it is done or put away. */
+    checklist: (ChecklistProps & { href: string; dismissHref: string }) | null;
 }>;
 
-export default function EnvironmentHome({ stats, quickActions, help }: Props) {
+export default function EnvironmentHome({ stats, quickActions, help, checklist }: Props) {
     return (
         <>
             <PageHeader
                 help={help}
                 description="Everything in this environment — organizations, users, and sign-in."
             />
+
+            {checklist !== null && (
+                <div className="mt-6">
+                    <EnvironmentChecklist
+                        checklist={checklist}
+                        compact
+                        href={checklist.href}
+                        onDismiss={() =>
+                            router.post(checklist.dismissHref, {}, { preserveScroll: true })
+                        }
+                    />
+                </div>
+            )}
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {stats.map((stat) => (

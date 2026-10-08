@@ -42,16 +42,17 @@ final readonly class ActionApprovalGate
 
     /**
      * @param  array<string, mixed>  $input
+     * @return string|null The approval this run spent, or null when it needed none.
      *
      * @throws ApprovalRequired
      * @throws ActionRefused
      */
-    public function enforce(Principal $principal, ActionDefinition $action, array $input, ?string $approvalId): void
+    public function enforce(Principal $principal, ActionDefinition $action, array $input, ?string $approvalId): ?string
     {
         $policy = $principal->stepUpPolicy();
 
         if ($policy === null || ! $policy->requires($action)) {
-            return;
+            return null;
         }
 
         $digest = $this->digest($principal, $action, $input);
@@ -59,7 +60,7 @@ final readonly class ActionApprovalGate
         if ($approvalId !== null && $approvalId !== '') {
             $this->spend($principal, $approvalId, $digest);
 
-            return;
+            return $approvalId;
         }
 
         $approver = $principal->approverSubjectId();

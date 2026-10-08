@@ -162,6 +162,9 @@ final class ParityAllowlist
             // Hiding the dashboard's setup checklist, and the guided first run.
             'dashboard.checklist.dismiss',
             'get-started.dismiss',
+            'environment.get-started.dismiss',
+            'environment.get-started.restore',
+            // Which organization the environment console is looking at.
             // The hosted pages' language picker: a cookie for the next render, nothing more.
             'locale.update',
             // Which organization the console is looking at.

@@ -140,6 +140,7 @@ export default function WebhooksIndex({
                         */
                         <EmptyState
                             icon="webhooks"
+                            equivalent="webhooks.create"
                             title="Nothing is being notified yet"
                             help={help}
                             description="Add an endpoint and your own systems hear about members joining, roles changing and sign-ins failing as it happens — no polling, no nightly export."

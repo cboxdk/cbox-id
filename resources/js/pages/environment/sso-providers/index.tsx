@@ -138,6 +138,7 @@ export default function ServiceProviders({
                     ) : (
                         <EmptyState
                             icon="key"
+                            equivalent="saml_apps.create"
                             title="No SAML apps yet"
                             description="Register one to let an application sign its users in with the accounts they already have in this environment."
                             actions={

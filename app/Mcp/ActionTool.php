@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
@@ -261,7 +262,7 @@ final class ActionTool extends Tool
         try {
             $result = $principal instanceof EnvironmentMemberPrincipal
                 ? $this->runIn($principal, $runner, $input, $idempotencyKey, $approval)
-                : $runner->run($this->action, $principal, $input, $idempotencyKey, $approval);
+                : $runner->run($this->action, $principal, $input, $idempotencyKey, $approval, ActionVia::Mcp);
         } catch (ApprovalRequired $held) {
             // Not an error: the call is waiting for a person. Said in a shape an agent can
             // act on without parsing prose.
@@ -304,7 +305,7 @@ final class ActionTool extends Tool
         $context->setDelegated($member);
 
         try {
-            return $member->within(fn (): ActionResult => $runner->run($this->action, $member, $input, is_string($idempotencyKey) ? $idempotencyKey : null, $approvalId));
+            return $member->within(fn (): ActionResult => $runner->run($this->action, $member, $input, is_string($idempotencyKey) ? $idempotencyKey : null, $approvalId, ActionVia::Mcp));
         } finally {
             $context->clear();
         }

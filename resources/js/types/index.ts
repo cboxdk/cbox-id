@@ -10,6 +10,7 @@
  * page is given without asking — see `App\Http\Middleware\HandleInertiaRequests`.
  */
 
+import type { ApiAction } from '@/lib/apiSnippets';
 import type { LinkTab } from '@/ui/LinkTabs';
 import type { IconName } from '@/ui/icons';
 
@@ -343,6 +344,12 @@ export interface SharedProps {
      * page is about, which the layout draws as the hub's header and tabs around the page.
      */
     organizationHub?: OrganizationHub | null;
+    /**
+     * The actions this console page hosts, keyed by name, for "</> API"
+     * (`App\Platform\Connect\ActionSnippets`). Empty off the console. Optional because a
+     * page rendered outside the middleware — a test, an error page — has none.
+     */
+    apiEquivalents?: Record<string, ApiAction>;
     /**
      * The page's name, stated by the controller.
      *

@@ -12,6 +12,7 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRoutes;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\OperatorPrincipal;
 use App\Platform\Actions\Principal\Principal;
@@ -54,12 +55,15 @@ final readonly class ActionController
         $input = [...$body, ...array_intersect_key($parameters, array_flip($action->input()->pathFields()))];
 
         try {
+            $principal = $this->principal($action);
+
             $result = $this->runner->run(
                 $action,
-                $this->principal($action),
+                $principal,
                 $input,
                 $request->headers->get('Idempotency-Key'),
                 $request->headers->get('Cbox-Approval'),
+                ActionVia::overRest($principal, $request),
             );
         } catch (ApprovalRequired $held) {
             return response()->json([

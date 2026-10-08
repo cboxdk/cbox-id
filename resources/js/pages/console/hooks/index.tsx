@@ -122,6 +122,7 @@ export default function HooksIndex({
                     ) : (
                         <EmptyState
                             icon="webhooks"
+                            equivalent="hooks.create"
                             title="No inline hooks registered"
                             help={help}
                             description="Most integrations want Webhooks instead — those run after the fact and cannot hold anything up. Reach for an inline hook only when your own system must have a say while a sign-in or token is being issued."

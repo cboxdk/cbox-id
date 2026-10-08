@@ -6,6 +6,9 @@ namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
+use App\Platform\Actions\ActionTrail;
+use App\Platform\Actions\ActionVia;
+use App\Platform\Audit\AuditActorKind;
 use App\Platform\AuditNames;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -69,6 +72,23 @@ final readonly class AuditController extends ConsoleController
             $query->where('action', 'like', '%'.$action.'%');
         }
 
+        // One entry by its id — where ⌘K sends a pasted audit id. Within the same bounds as
+        // the rest of the page: another organization's entry is simply not found.
+        $entry = trim($request->string('entry')->toString());
+
+        if ($entry !== '') {
+            $query->whereKey($entry);
+        }
+
+        $actor = AuditActorKind::tryFrom($request->string('actor')->toString());
+        $actor?->constrain($query);
+
+        $via = ActionVia::tryFrom($request->string('via')->toString());
+
+        if ($via !== null) {
+            $query->where('context->'.ActionTrail::VIA, $via->value);
+        }
+
         $term = trim($request->string('q')->toString());
 
         if ($term !== '') {
@@ -119,6 +139,8 @@ final readonly class AuditController extends ConsoleController
                  * table cell, and flattening one here produces a row nobody can read.
                  */
                 'facts' => collect($entry->context)
+                    // The door and the approval have places of their own on the row.
+                    ->except([ActionTrail::VIA, ActionTrail::APPROVAL, ActionTrail::APPROVED_BY])
                     ->filter(fn (mixed $value): bool => is_scalar($value))
                     // The facts a person wrote down first: a support session's reason is
                     // the only account the organization gets of it, and three ids ahead of
@@ -128,14 +150,33 @@ final readonly class AuditController extends ConsoleController
                     ->map(fn (mixed $value, string $key): string => $key.': '.(string) $value)
                     ->values()
                     ->all(),
+                'actorKind' => AuditActorKind::of($entry)->value,
+                'via' => ActionVia::tryFrom(self::contextString($entry, ActionTrail::VIA))?->label(),
+                /*
+                 * WHO SAID YES. An action an agent's key was held on ran because a person
+                 * approved it, and the row said only that the key did it — which is true and
+                 * leaves out the half an auditor is asking about.
+                 */
+                'approvedBy' => ($approver = self::contextString($entry, ActionTrail::APPROVED_BY)) === ''
+                    ? null
+                    : ($resolved[$approver] ?? $approver),
                 // ISO, rendered relative in the browser: "3 minutes ago" computed on the
                 // server is wrong the moment the page sits open.
                 'recordedAt' => $entry->recorded_at?->toIso8601String(),
             ])->values()->all(),
             'pagination' => SimplePaginationProps::from($entries),
-            'filters' => ['action' => $action, 'q' => $term],
+            'filters' => ['action' => $action, 'q' => $term, 'actor' => $actor?->value, 'via' => $via?->value],
+            'actorKinds' => array_map(static fn (AuditActorKind $kind): array => ['value' => $kind->value, 'label' => $kind->label()], AuditActorKind::cases()),
+            'doors' => array_map(static fn (ActionVia $door): array => ['value' => $door->value, 'label' => $door->label()], ActionVia::cases()),
             'environmentWide' => ! $filter->active(),
             'organizationFilter' => $this->organizationFilterProps($filter),
         ]);
+    }
+
+    private static function contextString(AuditEntry $entry, string $key): string
+    {
+        $value = $entry->context[$key] ?? null;
+
+        return is_string($value) ? $value : '';
     }
 }

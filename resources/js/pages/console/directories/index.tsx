@@ -198,6 +198,7 @@ export default function DirectoriesIndex({
                         ) : (
                             <EmptyState
                                 icon="directory"
+                                equivalent="directories.create"
                                 title="No directory connected yet"
                                 help={help}
                                 description="Today somebody adds and removes people here by hand. Connect the directory your company already keeps and it does both for you — including the removals, which are the ones that get forgotten."
