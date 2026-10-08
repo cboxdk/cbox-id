@@ -8,6 +8,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-08
+
 ### Security
 
 - Revoking a workspace key now also revokes the environment management keys it minted (an environment's `initial_key`, `keys.environment.create`) and everything those keys minted in turn. A credential an agent was handed by a key no longer outlives that key on the other plane.
