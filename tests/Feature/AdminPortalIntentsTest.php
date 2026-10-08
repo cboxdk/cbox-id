@@ -23,6 +23,7 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\IdentityProviderGuides;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
@@ -410,7 +411,8 @@ it('walks single sign-on end to end: start, paste our values, import metadata, v
 
     // The guides, with the providers an IT administrator actually runs.
     $guides = $this->get(route('portal.sso', ['provider' => 'entra']))->assertOk()->inertiaProps('guides');
-    expect(array_column($guides, 'key'))->toBe(['okta', 'entra', 'google', 'onelogin', 'jumpcloud', 'pingfederate', 'saml', 'oidc']);
+    expect(array_column($guides, 'key'))->toBe(IdentityProviderGuides::keys())
+        ->and(array_slice(array_column($guides, 'key'), -2))->toBe(['saml', 'oidc']);
 
     // Start: a draft with only OUR half — which is what exists to be pasted.
     portalWrite('post', route('portal.sso', ['provider' => 'entra']), route('portal.connections.store'), ['provider' => 'entra', 'name' => 'Entra ID'])
@@ -474,7 +476,7 @@ it('walks directory sync: create a directory, see the token once, rotate it', fu
 
     $props = (array) $this->get(route('portal.directories', ['provider' => 'okta']))->assertOk()->inertiaProps();
 
-    expect(array_column($props['guides'], 'key'))->toBe(['okta', 'entra', 'onelogin', 'jumpcloud', 'scim'])
+    expect(array_column($props['guides'], 'key'))->toBe(['okta', 'entra', 'onelogin', 'jumpcloud', 'pingfederate', 'pingone', 'duo', 'cyberark', 'oracle', 'scim'])
         ->and($props['scimBaseUrl'])->toBe(url('/scim/v2'));
 
     portalWrite('post', route('portal.directories'), route('portal.directories.store'), ['name' => 'Okta SCIM'])

@@ -15,9 +15,10 @@ The page walks you through five steps.
 
 ## 1. Choose your identity provider
 
-Pick yours from the list: Okta, Microsoft Entra ID, Google Workspace, OneLogin, JumpCloud,
-PingFederate, **SAML 2.0** or **OpenID Connect**. Not listed? Choose SAML 2.0 or OpenID
-Connect; any standard identity provider works.
+Pick yours from the list: twenty identity providers, from Okta, Microsoft Entra ID and
+Google Workspace to AD FS, Keycloak, Shibboleth and Cloudflare Access
+([every one, with its own page](idp/_index.md)), or **SAML 2.0** or **OpenID Connect**.
+Not listed? Choose SAML 2.0 or OpenID Connect; any standard identity provider works.
 
 ## 2. Create the app in your provider
 

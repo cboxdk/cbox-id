@@ -13,7 +13,7 @@ Workspace**. Then, in the Google Admin console (you need super admin rights):
 
 1. Go to **Apps → Web and mobile apps**, then **Add app → Add custom SAML app**.
 2. Name the app and choose **Continue**.
-3. On the **Google Identity Provider details** page, choose **DOWNLOAD METADATA**, then
+3. On the **Google Identity Provider details** page, choose **Download Metadata**, then
    **Continue**. Keep the file: you paste it into the portal at the end.
 4. Under **Service provider details**, fill in the values the portal shows, then
    **Continue**:
@@ -22,12 +22,13 @@ Workspace**. Then, in the Google Admin console (you need super admin rights):
    |---|---|
    | ACS URL | The portal's ACS URL (`https://…/sso/saml/…/acs`) |
    | Entity ID | The portal's entity ID (`https://…/sso/saml/…`) |
-   | Name ID format | `EMAIL` |
+   | Name ID format | `Email` |
    | Name ID | Basic Information > Primary email |
 
-5. Under **Attribute mapping**, map **Primary email** to `email`. The portal's steps also
-   map **First name** and **Last name** to `firstName` and `lastName`; they do no harm.
-   Choose **Finish**.
+5. Under **Attribute mapping**, you may map **Primary email** to `email`, and **First name**
+   and **Last name** to `firstName` and `lastName`, as the portal's steps do. The email
+   attribute is optional: with Name ID format `Email`, the NameID already carries the
+   address, and it is read from there when no attribute is sent. Choose **Finish**.
 6. Open **User access** and turn the app **ON** for everyone, or for the groups or
    organizational units who should use it. Google can take a while to apply the change.
 7. Paste the contents of the metadata file you downloaded into the portal's **Metadata URL

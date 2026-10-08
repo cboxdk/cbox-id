@@ -3182,7 +3182,7 @@ Enable a social login provider (Google, GitHub, Apple…) for one organization w
 | Input | Type | Required | Description |
 |---|---|---|---|
 | `organization_id` | string | yes | The organization whose sign-in page offers it. At most 64 characters. |
-| `provider` | string | yes | The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook. At most 100 characters. |
+| `provider` | string | yes | The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook, linkedin, bitbucket, xero, intuit. At most 100 characters. |
 | `client_id` | string | yes | The client id from your own account with the provider. For Apple, the Services ID. At most 400 characters. |
 | `client_secret` | string, nullable | no | The client secret. Write-only. Not used by Apple, which signs its own. At most 5000 characters. |
 | `parameters` | object | no | What the chosen provider needs besides its client credentials — Microsoft's directory, Okta's domain, Apple's team id, key id and private key. |

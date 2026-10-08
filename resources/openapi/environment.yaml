@@ -9873,7 +9873,7 @@ paths:
                   maxLength: 64
                 provider:
                   type: string
-                  description: 'The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook.'
+                  description: 'The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook, linkedin, bitbucket, xero, intuit.'
                   maxLength: 100
                 client_id:
                   type: string

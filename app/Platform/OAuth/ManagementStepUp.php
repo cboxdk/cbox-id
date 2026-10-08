@@ -129,7 +129,7 @@ final readonly class ManagementStepUp
         return match (strtolower($acr)) {
             'aal2', 'mfa' => AuthenticationContextClass::Aal2->value,
             'aal1', 'pwd' => AuthenticationContextClass::Aal1->value,
-            default => AuthenticationContextClass::tryFrom($acr)?->value
+            default => AuthenticationContextClass::tryFrom($acr)->value
                 ?? throw new InvalidArgumentException('api.mcp.step_up.acr must be aal1, aal2 (mfa) or one of: '.implode(', ', AuthenticationContextClass::values()).". Got: {$acr}."),
         };
     }

@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace App\Platform\Portal;
 
+use Cbox\Id\Federation\Enums\SpValue;
+use Cbox\Id\Federation\IdentityProviderGuides;
 use Cbox\Id\Federation\ProviderCatalog;
+use Cbox\Id\Federation\ValueObjects\GuideField;
+use Cbox\Id\Federation\ValueObjects\IdentityProviderGuide;
+use Cbox\Id\Federation\ValueObjects\ScimDirectoryGuide;
+use Cbox\Id\Federation\ValueObjects\ServiceProviderValues;
 
 /**
  * STEP-BY-STEP GUIDES for the identity providers an IT administrator actually runs, as the
@@ -12,229 +18,72 @@ use Cbox\Id\Federation\ProviderCatalog;
  * wrong — WHICH of our values goes into WHICH of their fields, by the name their admin
  * screen gives that field.
  *
- * Not {@see ProviderCatalog}. That is the framework's list of providers WE sign in to with
- * OAuth credentials the customer creates (Google, GitHub, Apple…); this is the opposite
- * direction — enterprise identity providers that sign their people in to US over SAML or
- * OIDC, and directories that push their people to us over SCIM. The framework's catalogue
- * deliberately leaves SCIM out for the same reason, and the two would share nothing but a
- * few vendor names.
+ * THE DATA IS THE FRAMEWORK'S ({@see IdentityProviderGuides}): twenty identity providers and
+ * the SCIM half of the nine that can push to a custom app, every field label read off the
+ * vendor's own documentation. This class used to hold its own copy of eight of them, and a
+ * copy is how "Application username" stayed on the page after Okta renamed the field
+ * "Application username format". What stays here is the portal's half: the props shape the
+ * pages draw, and the step TEXT in the visitor's language.
  *
- * The sentences are translated (`lang/{locale}/portal.php`, `portal.guides.*`); the field
- * names are NOT — "Audience URI (SP Entity ID)" is what the person will find on Okta's
- * screen, whatever language this page is in.
+ * Not {@see ProviderCatalog}. That is the providers WE sign in to with OAuth credentials the
+ * customer creates (Google, GitHub, Apple…); this is the opposite direction — enterprise
+ * identity providers that sign their people in to US over SAML or OIDC, and directories
+ * that push their people to us over SCIM.
  *
- * `fields` maps each of OUR values to THEIR field: `acs_url`, `entity_id`, `metadata_url`,
- * `redirect_uri`, `scim_base_url`, `scim_token`, plus `acs_regex` for OneLogin's validator
- * and a `literal` for a value that is the same for everybody. `metadata_url` is listed only
- * where the provider's screen has a field that takes one by URL (PingFederate's Import
- * Metadata step); every other SAML guide still shows it, under our own name for it, for
- * whoever's provider imports a file or a URL somewhere the guide does not cover. `returns` names what they bring back from
- * their screen: a metadata URL or file, or an issuer and client credentials.
+ * THE STEPS are translated (`lang/{locale}/portal.php`, `portal.guides.{sso|directory}.{key}`),
+ * worded for this page — our values are listed above the steps, theirs are pasted below.
+ * A guide the framework adds before anybody has translated it falls back to its English
+ * `setupSteps`, so a new identity provider is offered at once rather than hidden until a
+ * translation lands. The field LABELS are never translated: "Audience URI (SP Entity ID)"
+ * is what the person will find on Okta's screen, whatever language this page is in.
+ *
+ * `fields` maps each of OUR values ({@see SpValue}: `acs_url`, `entity_id`, `sp_metadata_url`,
+ * `slo_url`, `login_url`, `redirect_uri`, `scim_base_url`, `scim_token`, the derived
+ * `acs_regex` / `scim_host` / `scim_base_path`, and a `literal` the same for everybody) to
+ * THEIR field; {@see self::values()} supplies ours for one connection. `returns` names what
+ * they bring back from their screen.
  */
 final class PortalGuides
 {
-    /**
-     * @var list<array{key: string, name: string, protocol: 'saml'|'oidc', fields: list<array{ours: string, theirs: string, literal?: string}>, returns: array{kind: 'url'|'xml'|'url_or_xml'|'oidc', theirs: string}, docs: ?string}>
-     */
-    private const array SSO = [
-        [
-            'key' => 'okta',
-            'name' => 'Okta',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'acs_url', 'theirs' => 'Single sign-on URL'],
-                ['ours' => 'entity_id', 'theirs' => 'Audience URI (SP Entity ID)'],
-                ['ours' => 'literal', 'theirs' => 'Name ID format', 'literal' => 'EmailAddress'],
-                ['ours' => 'literal', 'theirs' => 'Application username', 'literal' => 'Email'],
-            ],
-            'returns' => ['kind' => 'url', 'theirs' => 'Metadata URL'],
-            'docs' => 'https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_saml.htm',
-        ],
-        [
-            'key' => 'entra',
-            'name' => 'Microsoft Entra ID',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'entity_id', 'theirs' => 'Identifier (Entity ID)'],
-                ['ours' => 'acs_url', 'theirs' => 'Reply URL (Assertion Consumer Service URL)'],
-                ['ours' => 'literal', 'theirs' => 'Unique User Identifier (Name ID)', 'literal' => 'user.mail'],
-            ],
-            'returns' => ['kind' => 'url', 'theirs' => 'App Federation Metadata Url'],
-            'docs' => 'https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/add-application-portal-setup-sso',
-        ],
-        [
-            'key' => 'google',
-            'name' => 'Google Workspace',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'acs_url', 'theirs' => 'ACS URL'],
-                ['ours' => 'entity_id', 'theirs' => 'Entity ID'],
-                ['ours' => 'literal', 'theirs' => 'Name ID format', 'literal' => 'EMAIL'],
-                ['ours' => 'literal', 'theirs' => 'Name ID', 'literal' => 'Basic Information > Primary email'],
-            ],
-            'returns' => ['kind' => 'xml', 'theirs' => 'IdP metadata (DOWNLOAD METADATA)'],
-            'docs' => 'https://support.google.com/a/answer/6087519',
-        ],
-        [
-            'key' => 'onelogin',
-            'name' => 'OneLogin',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'entity_id', 'theirs' => 'Audience (EntityID)'],
-                ['ours' => 'acs_url', 'theirs' => 'Recipient'],
-                ['ours' => 'acs_regex', 'theirs' => 'ACS (Consumer) URL Validator'],
-                ['ours' => 'acs_url', 'theirs' => 'ACS (Consumer) URL'],
-                ['ours' => 'literal', 'theirs' => 'SAML nameID format', 'literal' => 'Email'],
-            ],
-            'returns' => ['kind' => 'url', 'theirs' => 'Issuer URL'],
-            'docs' => null,
-        ],
-        [
-            'key' => 'jumpcloud',
-            'name' => 'JumpCloud',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'entity_id', 'theirs' => 'SP Entity ID'],
-                ['ours' => 'acs_url', 'theirs' => 'ACS URLs'],
-                ['ours' => 'literal', 'theirs' => 'SAMLSubject NameID', 'literal' => 'email'],
-                ['ours' => 'literal', 'theirs' => 'SAMLSubject NameID Format', 'literal' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
-            ],
-            'returns' => ['kind' => 'xml', 'theirs' => 'Export Metadata'],
-            'docs' => null,
-        ],
-        [
-            'key' => 'pingfederate',
-            'name' => 'PingFederate',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'entity_id', 'theirs' => 'Partner\'s Entity ID (Connection ID)'],
-                ['ours' => 'metadata_url', 'theirs' => 'Import Metadata — URL'],
-                ['ours' => 'acs_url', 'theirs' => 'Assertion Consumer Service URL — Endpoint URL (binding POST)'],
-                ['ours' => 'literal', 'theirs' => 'SAML_SUBJECT', 'literal' => 'mail'],
-            ],
-            'returns' => ['kind' => 'xml', 'theirs' => 'Metadata Export'],
-            'docs' => null,
-        ],
-        [
-            'key' => 'saml',
-            'name' => 'SAML 2.0',
-            'protocol' => 'saml',
-            'fields' => [
-                ['ours' => 'entity_id', 'theirs' => 'SP Entity ID / Audience'],
-                ['ours' => 'acs_url', 'theirs' => 'ACS URL / Reply URL'],
-                ['ours' => 'literal', 'theirs' => 'NameID format', 'literal' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
-            ],
-            'returns' => ['kind' => 'url_or_xml', 'theirs' => 'IdP metadata'],
-            'docs' => null,
-        ],
-        [
-            'key' => 'oidc',
-            'name' => 'OpenID Connect',
-            'protocol' => 'oidc',
-            'fields' => [
-                ['ours' => 'redirect_uri', 'theirs' => 'Redirect URI / Callback URL'],
-                ['ours' => 'literal', 'theirs' => 'Scopes', 'literal' => 'openid email profile'],
-            ],
-            'returns' => ['kind' => 'oidc', 'theirs' => 'Issuer URL, Client ID, Client secret'],
-            'docs' => null,
-        ],
-    ];
+    /** The generic SCIM guide's key — {@see IdentityProviderGuides::genericDirectory()} has none of its own. */
+    public const string GENERIC_DIRECTORY = 'scim';
 
     /**
-     * @var list<array{key: string, name: string, fields: list<array{ours: string, theirs: string, literal?: string}>, docs: ?string}>
-     */
-    private const array DIRECTORIES = [
-        [
-            'key' => 'okta',
-            'name' => 'Okta',
-            'fields' => [
-                ['ours' => 'scim_base_url', 'theirs' => 'SCIM connector base URL'],
-                ['ours' => 'literal', 'theirs' => 'Unique identifier field for users', 'literal' => 'userName'],
-                ['ours' => 'literal', 'theirs' => 'Authentication Mode', 'literal' => 'HTTP Header'],
-                ['ours' => 'scim_token', 'theirs' => 'Authorization (Bearer)'],
-            ],
-            'docs' => 'https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_scim.htm',
-        ],
-        [
-            'key' => 'entra',
-            'name' => 'Microsoft Entra ID',
-            'fields' => [
-                ['ours' => 'scim_base_url', 'theirs' => 'Tenant URL'],
-                ['ours' => 'scim_token', 'theirs' => 'Secret Token'],
-            ],
-            'docs' => 'https://learn.microsoft.com/en-us/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups',
-        ],
-        [
-            'key' => 'onelogin',
-            'name' => 'OneLogin',
-            'fields' => [
-                ['ours' => 'scim_base_url', 'theirs' => 'SCIM Base URL'],
-                ['ours' => 'scim_token', 'theirs' => 'SCIM Bearer Token'],
-            ],
-            'docs' => null,
-        ],
-        [
-            'key' => 'jumpcloud',
-            'name' => 'JumpCloud',
-            'fields' => [
-                ['ours' => 'scim_base_url', 'theirs' => 'Base URL'],
-                ['ours' => 'scim_token', 'theirs' => 'Token Key'],
-            ],
-            'docs' => null,
-        ],
-        [
-            'key' => 'scim',
-            'name' => 'SCIM 2.0',
-            'fields' => [
-                ['ours' => 'scim_base_url', 'theirs' => 'SCIM base URL'],
-                ['ours' => 'scim_token', 'theirs' => 'Authorization: Bearer'],
-            ],
-            'docs' => null,
-        ],
-    ];
-
-    /**
-     * The single sign-on guides, in the order the portal offers them.
+     * The single sign-on guides, in the order the portal offers them: the framework's, the
+     * most common first and the two generic ones last.
      *
-     * @return list<array{key: string, name: string, protocol: 'saml'|'oidc', fields: list<array{ours: string, theirs: string, literal?: string}>, returns: array{kind: 'url'|'xml'|'url_or_xml'|'oidc', theirs: string}, docs: ?string, steps: list<string>}>
+     * @return list<array{key: string, name: string, protocol: string, fields: list<array<string, string|bool>>, returns: array{kind: string, theirs: string}, docs: ?string, steps: list<string>}>
      */
     public static function sso(): array
     {
-        $guides = [];
-
-        foreach (self::SSO as $guide) {
-            $guides[] = [
-                'key' => $guide['key'],
-                'name' => $guide['name'],
-                'protocol' => $guide['protocol'],
-                'fields' => $guide['fields'],
-                'returns' => $guide['returns'],
-                'docs' => $guide['docs'],
-                'steps' => self::steps('sso', $guide['key']),
-            ];
-        }
-
-        return $guides;
+        return array_map(static fn (IdentityProviderGuide $guide): array => [
+            'key' => $guide->key,
+            'name' => $guide->name,
+            'protocol' => $guide->protocol->value,
+            'fields' => self::fields($guide->fields),
+            'returns' => ['kind' => $guide->returns->kind->value, 'theirs' => $guide->returns->theirs],
+            'docs' => $guide->documentationUrl,
+            'steps' => self::steps('sso', $guide->key, $guide->setupSteps),
+        ], IdentityProviderGuides::all());
     }
 
     /**
-     * The directory-sync guides — SCIM 2.0, which the customer's directory speaks to us.
+     * The directory-sync guides — SCIM 2.0, which the customer's directory speaks to us —
+     * and the generic one last, for a directory with no guide of its own.
      *
-     * @return list<array{key: string, name: string, fields: list<array{ours: string, theirs: string, literal?: string}>, docs: ?string, steps: list<string>}>
+     * @return list<array{key: string, name: string, fields: list<array<string, string|bool>>, docs: ?string, steps: list<string>}>
      */
     public static function directories(): array
     {
         $guides = [];
 
-        foreach (self::DIRECTORIES as $guide) {
-            $guides[] = [
-                'key' => $guide['key'],
-                'name' => $guide['name'],
-                'fields' => $guide['fields'],
-                'docs' => $guide['docs'],
-                'steps' => self::steps('directory', $guide['key']),
-            ];
+        foreach (IdentityProviderGuides::directories() as $guide) {
+            if ($guide->directory !== null) {
+                $guides[] = self::directory($guide->key, $guide->name, $guide->directory);
+            }
         }
+
+        $guides[] = self::directory(self::GENERIC_DIRECTORY, 'SCIM 2.0', IdentityProviderGuides::genericDirectory());
 
         return $guides;
     }
@@ -242,20 +91,88 @@ final class PortalGuides
     /** @return list<string> */
     public static function ssoKeys(): array
     {
-        return array_column(self::sso(), 'key');
+        return IdentityProviderGuides::keys();
+    }
+
+    /** @return list<string> */
+    public static function directoryKeys(): array
+    {
+        return array_column(self::directories(), 'key');
     }
 
     /**
-     * A guide's steps in the visitor's language.
+     * OUR values for one connection or directory, keyed the way a guide's fields name them
+     * ({@see SpValue}) — the derived ones (OneLogin's ACS pattern, Oracle's SCIM host and
+     * path) derived by the framework, so every console derives them alike. A value the
+     * connection does not have is left out, and its line is not drawn.
      *
+     * The SCIM token is never in here: it exists in plaintext only on the one response
+     * that minted it, and the page holds it from the flash.
+     *
+     * @return array<string, string>
+     */
+    public static function values(ServiceProviderValues $ours): array
+    {
+        $values = [];
+
+        foreach (SpValue::cases() as $value) {
+            if ($value === SpValue::Literal || $value->isSecret()) {
+                continue;
+            }
+
+            $resolved = $ours->for($value);
+
+            if ($resolved !== null) {
+                $values[$value->value] = $resolved;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * @return array{key: string, name: string, fields: list<array<string, string|bool>>, docs: ?string, steps: list<string>}
+     */
+    private static function directory(string $key, string $name, ScimDirectoryGuide $guide): array
+    {
+        return [
+            'key' => $key,
+            'name' => $name,
+            'fields' => self::fields($guide->fields),
+            'docs' => $guide->documentationUrl,
+            'steps' => self::steps('directory', $key, $guide->setupSteps),
+        ];
+    }
+
+    /**
+     * @param  list<GuideField>  $fields
+     * @return list<array<string, string|bool>>
+     */
+    private static function fields(array $fields): array
+    {
+        return array_map(static fn (GuideField $field): array => array_filter([
+            'ours' => $field->ours->value,
+            'theirs' => $field->theirs,
+            'literal' => $field->literal,
+            'optional' => $field->optional ?: null,
+            'location' => $field->location,
+        ], static fn (string|bool|null $value): bool => $value !== null), $fields);
+    }
+
+    /**
+     * A guide's steps in the visitor's language, or the framework's English when nobody
+     * has translated this guide yet.
+     *
+     * @param  list<string>  $english
      * @return list<string>
      */
-    private static function steps(string $kind, string $key): array
+    private static function steps(string $kind, string $key, array $english): array
     {
-        $steps = __("portal.guides.{$kind}.{$key}");
+        $line = "portal.guides.{$kind}.{$key}";
+        $steps = __($line);
 
         return is_array($steps)
             ? array_values(array_filter($steps, 'is_string'))
-            : [];
+            : $english;
     }
 }
