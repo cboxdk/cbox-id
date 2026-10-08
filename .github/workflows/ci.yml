@@ -143,15 +143,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The deployment target: Laravel Cloud runs MySQL 8.4. Floored at 8.0.13
-          # in the docs because that is where EXPRESSION column defaults landed,
-          # which is the only spelling MySQL accepts for a json default.
+          # Kept green for self-hosters: MySQL is a supported production database.
+          # Floored at 8.0.13 in the docs because that is where EXPRESSION column
+          # defaults landed, which is the only spelling MySQL accepts for a json
+          # default.
           - driver: mysql
             image: mysql:8.4
             port: 3306
             health: mysqladmin ping -h 127.0.0.1 -u root -proot
-          # Kept green for self-hosters, and because it was production until the
-          # move to Cloud — dropping it would quietly un-support it.
+          # The deployment target: cbox.yaml binds a PostgreSQL 17 (`resources.database`,
+          # a CloudNativePG cluster on the Kubernetes deployment). The major is pinned
+          # there and matched here — DeploymentManifestTest fails if the two drift.
           - driver: pgsql
             image: postgres:17
             port: 5432

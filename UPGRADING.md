@@ -16,6 +16,39 @@ package changes that need action here rather than in a client.
 
 ## 2.0.0
 
+### On Kubernetes: the operator checklist
+
+For the deployment run from `cbox.yaml` on the Cbox platform. The sections below say why
+each step is there; on a VM the same steps apply with your own secrets store and process
+supervisor.
+
+1. **Back up the database** and confirm `CBOX_ID_CRYPTO_KEY` and `APP_KEY` are in the
+   offline key backup. Several migrations below write data (portal-link intents, revoked
+   `cbid_org_` keys), so this is the release to have a restore point for.
+2. **Create the platform Secrets `cbox-id-app` and `cbox-id-mail` before the rollout.**
+   `cbox.yaml` references them, and a pod whose Secret or key is missing fails to start.
+   `cbox-id-app` holds `APP_KEY`, `CBOX_ID_CRYPTO_KEY` (raw base64, no `base64:` prefix)
+   and `HEALTH_TOKEN`; `cbox-id-mail` holds `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
+   `MAIL_PASSWORD` and `MAIL_FROM_ADDRESS`. Carry the existing `APP_KEY` and crypto key
+   across unchanged: a new crypto key cannot open anything sealed under the old one.
+3. **Replace every `cbid_org_` key first.** They stop working on deploy, with no alias.
+   Mint `cbid_ws_` keys under **Workspace settings › Keys** and move every integration and
+   CLI to `/api/v1/workspace` (below).
+4. **Decide on the root's MCP sign-in.** `CBOX_ID_ROOT_MCP_OAUTH` is on by default; add
+   `CBOX_ID_ROOT_MCP_OAUTH: "false"` under `env` in `cbox.yaml` to keep the platform root
+   answering `404` to MCP clients (below).
+5. **Run the migrations once, from the new release**, as a one-off command —
+   `php artisan migrate --force` — before the web pods roll. A deploy does not migrate.
+6. **Deploy.** The queue manager and the scheduler are the `queue` and `scheduler`
+   processes in `cbox.yaml` and roll with it: nothing to add on the platform.
+7. **Check:** `php artisan cbox-id:doctor` in a web pod (no ✗), then `/health/status` with
+   the `HEALTH_TOKEN` green once the scheduler and queue manager have reported in, then
+   `php artisan cbox-id:cli:client --environment=<id>` for each environment with a CLI
+   client.
+
+The order and the reasons are in
+[Rolling out a release on Kubernetes](docs/operations/deployment.md#rolling-out-a-release-on-kubernetes).
+
 ### Admin Portal links take `intents`
 
 `POST /api/v1/organizations/{id}/portal-links` (`organizations.portal_links.create`, and
@@ -181,11 +214,14 @@ processes itself. Until it runs, every queued job — webhook deliveries, back-c
 tokens, app manifest syncs, Postal delivery reports, queued mail — sits in the queue and is
 never delivered. Nothing else errors.
 
-- **Laravel Cloud:** add a background process (Custom worker) running
-  `php artisan queue:autoscale`, 1 process. No deploy-command change: Cloud replaces the
-  instance on deploy and the manager drains on SIGTERM. Do not also add a Cloud queue
-  worker. Keep `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis`.
-- **Self-hosted:** run it under systemd or Supervisor (a unit is in
+- **Kubernetes (`cbox.yaml`):** already declared as the `queue` process, with
+  `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis` and cluster mode on. Nothing to add: a
+  rollout replaces the pod and the manager drains on SIGTERM.
+- **A PaaS:** add one long-lived background process running `php artisan queue:autoscale`.
+  Do not also add the platform's own queue-worker type; if it runs the process on every
+  instance and the app scales past one, set `QUEUE_AUTOSCALE_CLUSTER_ENABLED=true`. Keep
+  `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis`.
+- **A VM:** run it under systemd or Supervisor (a unit is in
   `docs/operations/queue-workers.md`) and keep `php artisan queue:restart` in the deploy
   script; the manager honours it. Remove any `queue:work` program you ran before — two
   supervisors fight over the same jobs.

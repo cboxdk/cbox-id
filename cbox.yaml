@@ -1,3 +1,21 @@
+# THE PRODUCTION DEPLOYMENT. cboxid.com runs on the company's own Kubernetes cluster, and
+# this file is the whole of what the Cbox platform is told about it: the web process
+# (`replicas`), the queue manager and the scheduler (`processes`), the Postgres and the
+# Valkey (`resources`), every secret by reference (`secrets`) and the probes (`health`).
+# The platform compiles it with cboxdk/platform into Deployments, a CloudNativePG Cluster,
+# a Valkey and an HTTPRoute. Held to its production shape by
+# tests/Feature/DeploymentManifestTest.php; read with docs/operations/deployment.md.
+#
+# TWO KEYS THE PLATFORM'S READER DOES NOT KNOW YET. `secrets` and `health` are refused by
+# cbox-engine's ProjectManifestReader (its KEYS list), and the compiler has nowhere to put
+# them: it emits no probes, and its only secret env is one it writes ITSELF from values.
+# They stay because they are what this deployment needs — without them a pod boots with
+# no APP_KEY and takes traffic before it can serve — and the platform has to learn both
+# before this file deploys as written. DeploymentManifestTest pins them as the only two.
+#
+# NO RELEASE HOOK. The format has no pre-deploy step, so migrations are NOT run by a deploy:
+# run `php artisan migrate --force` once against the new release BEFORE its web pods roll
+# — docs/operations/deployment.md, "Rolling out a release".
 name: cbox-id
 image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
 port: 80
@@ -16,7 +34,9 @@ processes:
   # The queue MANAGER, not a worker: it starts, sizes and stops the `queue:work`
   # processes itself (cboxdk/laravel-queue-autoscale). In cluster mode
   # (QUEUE_AUTOSCALE_CLUSTER_ENABLED below) every manager coordinates through Valkey and
-  # one leader decides the sizing, so the process may run on more than one pod.
+  # one leader decides the sizing, so the process may run on more than one pod — and it
+  # does for a moment on every rollout, while the outgoing pod drains (SIGTERM) beside the
+  # incoming one. Its own pod, so the web tier's memory is not what caps its workers.
   # See docs/operations/queue-workers.md.
   queue: ["php", "artisan", "queue:autoscale"]
   # The SCHEDULER, which every background duty depends on: the domain-event relay behind
@@ -120,14 +140,22 @@ secrets:
 # Managed data. A binding names the variables this application reads; the platform
 # resolves each to its own Secret (the database password is a `secretKeyRef`, never a
 # copied value), so no credential for either appears anywhere above.
+#
+# The binding's fields are the platform's (host, port, database, user, password, url —
+# `user`, not `username`; the reader refuses any other spelling) and the variables on the
+# right are this application's.
 resources:
   database:
     engine: postgres
+    # Stated rather than left to the platform's default, so a platform release cannot move
+    # the major under the data. CI's `engines` job runs the suite on this same major
+    # (postgres:17 in .github/workflows/ci.yml); change the two together.
+    version: "17"
     bind:
       host: DB_HOST
       port: DB_PORT
       database: DB_DATABASE
-      username: DB_USERNAME
+      user: DB_USERNAME
       password: DB_PASSWORD
   # The platform deploys Valkey without a password, reachable only inside the project's
   # own network — so there is no REDIS_PASSWORD to bind, and the platform refuses a

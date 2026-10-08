@@ -9,8 +9,8 @@ use App\Platform\Queues\ManagerBeat;
 /**
  * Proof that a queue manager (`php artisan queue:autoscale`) is running somewhere.
  *
- * The manager is a separate, long-running process — on Laravel Cloud a background
- * process, self-hosted a systemd unit — and the web tier cannot see it. Without a signal
+ * The manager is a separate, long-running process — on Kubernetes its own pod (the `queue`
+ * process in cbox.yaml), on a VM a systemd unit — and the web tier cannot see it. Without a signal
  * of its own, "no manager" and "an idle manager" look identical from here: an empty queue
  * either way. That is exactly how this deployment ran with no worker for weeks.
  *

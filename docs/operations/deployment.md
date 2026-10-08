@@ -1,26 +1,48 @@
 ---
 title: Deployment
 weight: 2
-description: From a fresh server to a running, hardened Cbox ID instance.
+description: From a fresh server or cluster to a running, hardened Cbox ID instance — the processes, the probes, the shared state, and how a release rolls out.
 ---
 
 # Deployment
 
-From a fresh server to a running, hardened Cbox ID instance. This is an identity
-provider — the guidance here is deliberately security-first.
+From a fresh server or cluster to a running, hardened Cbox ID instance. This is an
+identity provider — the guidance here is deliberately security-first.
+
+**Where `cboxid.com` runs.** Production is the company's own Kubernetes cluster, deployed
+from [`cbox.yaml`](https://github.com/cboxdk/cbox-id/blob/main/cbox.yaml) through the Cbox
+platform: two web replicas, a queue-manager pod and a scheduler pod, a managed PostgreSQL
+and Valkey, and every secret referenced from a platform Secret. Everything on this page
+holds for any platform — Kubernetes, a VM with systemd or Supervisor, or a PaaS — and where
+the steps differ, the Kubernetes way is written first. The shape every deployment needs:
+
+| Piece | On the cluster (`cbox.yaml`) | Anywhere else |
+|---|---|---|
+| Web | the image's nginx + PHP-FPM, `replicas: 2` | the same, behind your TLS proxy |
+| Queue manager | `processes.queue`: `php artisan queue:autoscale` | one per host, under a supervisor |
+| Scheduler | `processes.scheduler`: `php artisan schedule:work` | one, under a supervisor (or `schedule:run` from cron) |
+| Database | `resources.database`: PostgreSQL 17 | PostgreSQL, or MySQL 8.0.13 or later |
+| Cache, sessions, queue | `resources.cache`: Valkey, `noeviction` | Redis, `noeviction` |
+| Secrets | `secrets:` references to the Secrets `cbox-id-app` and `cbox-id-mail` | your secrets manager, into the environment |
+| Probes | liveness `/up`, readiness `/health/ready` with `HEALTH_TOKEN` | the same, on your load balancer |
 
 ## Requirements
 
 - **PHP 8.5** with `ext-sodium` and `ext-openssl` (the crypto layer needs both;
   `cbox-id:doctor` fails loudly if either is missing).
-- A database — **PostgreSQL or MySQL** in production (not SQLite).
-- A cache/queue backend — **Redis** recommended (sessions, rate limits, queues).
+- A database — **PostgreSQL or MySQL** in production (not SQLite). The cluster runs
+  PostgreSQL 17.
+- A cache/queue backend — **Valkey or Redis** (sessions, rate limits, queues), running
+  `maxmemory-policy noeviction` because it holds the queue.
 - **TLS terminated in front of the app.** Passkeys (WebAuthn) and secure cookies
   require HTTPS; the platform assumes it.
 
 See [Requirements](../requirements.md) for the full, `composer.json`-backed list.
 
 ## 1. Install the code
+
+On the cluster there is nothing to install: the platform runs the
+`php-fpm-nginx:8.5-bookworm-v1` base image with the application in it. Anywhere else:
 
 ```bash
 composer install --no-dev --optimize-autoloader
@@ -51,6 +73,16 @@ It refuses to run on a deployment that already holds anything, so it is safe to 
 in a provisioning script — but it is not idempotent and there is no `--force`. See
 [Installation](../getting-started/installation.md) for every option.
 
+**On Kubernetes, nothing it writes to `.env` survives the pod.** Put the keys in the
+platform Secret first — `APP_KEY`, and `CBOX_ID_CRYPTO_KEY` from
+`php -r "echo base64_encode(random_bytes(32)).PHP_EOL;"`; the installer only mints a crypto
+key when none is set — put the issuer and the deployment shape's variables under `env` in
+`cbox.yaml`, deploy, and then run the non-interactive install once as a one-off command in
+a web pod. The `/first-run` screen works too, but its setup token lives on one pod's disk:
+with two replicas the request can land on the other pod, so read the token with
+`php artisan cbox-id:setup-token` in the pod that answers, or claim it while the deployment
+runs one replica.
+
 ## 3. Optimize for production
 
 ```bash
@@ -59,7 +91,8 @@ php artisan route:cache
 php artisan event:cache
 ```
 
-Re-run these on every deploy after the code and `.env` are in place.
+Re-run these on every deploy after the code and `.env` are in place. On the cluster the
+base image's entrypoint does this at container start, against the pod's own environment.
 
 ## 4. Create the first platform operator
 
@@ -90,11 +123,15 @@ php artisan queue:autoscale        # the queue manager, one per host, under a su
 php artisan schedule:work          # a long-running process — or `schedule:run` from cron, every minute
 ```
 
+On the cluster these are the `queue` and `scheduler` entries under `processes:` in
+`cbox.yaml`. The platform runs each as its own Deployment of one pod, from the same image,
+environment and secrets as the web pods, and restarts it if it exits.
+
 The queue manager starts and sizes the `queue:work` processes itself; do not run
 `queue:work` beside it. Without it no webhook, back-channel logout or queued mail is ever
 sent, and `/health/status` reports it. This repository's own manifests already declare
-it — `cbox.yaml` (the cbox platform) and `docker-compose.yml`; for any other host, the
-systemd unit, the deploy step and the sizing are in [Queue workers](queue-workers.md).
+it — `cbox.yaml` and `docker-compose.yml`; for any other host, the systemd unit, the
+deploy step and the sizing are in [Queue workers](queue-workers.md).
 
 The scheduler is not optional and its absence does not raise an error. Without it the
 domain-event outbox is never relayed, and because every subscriber hangs off that
@@ -135,7 +172,7 @@ other manifest.
 
 ### `cbox.yaml` is the production shape
 
-The manifest in this repository is a production deployment, held to it by
+The manifest in this repository is the production deployment, held to it by
 `tests/Feature/DeploymentManifestTest.php`, which boots its environment and runs the
 doctor's production checks against it:
 
@@ -155,7 +192,61 @@ doctor's production checks against it:
   that has one takes `REDIS_PASSWORD` under `secrets:` like the rest.
 
 Create the referenced Secrets (`cbox-id-app`, `cbox-id-mail`) on the platform before the
-first deploy.
+first deploy. A missing one fails the pod at start (`CreateContainerConfigError`) rather
+than booting it without the value.
+
+| Secret | Keys |
+|---|---|
+| `cbox-id-app` | `APP_KEY`, `CBOX_ID_CRYPTO_KEY` (raw base64 of 32 bytes, no `base64:` prefix), `HEALTH_TOKEN` |
+| `cbox-id-mail` | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` |
+
+**What the platform does not read yet.** The Cbox platform's manifest reader refuses keys
+it does not know, and two of this file's are among them: `secrets:` (an environment
+variable taken from a Secret the operator created) and `health:` (the readiness and
+liveness probes). Both describe what this deployment needs, so they stay; until the
+platform reads them, whatever applies this deployment must set the same `secretKeyRef`
+entries and probes on the pod spec. The test pins them as the only two such keys.
+
+## Rolling out a release on Kubernetes
+
+The platform's deploy compiles `cbox.yaml`, removes objects the manifest no longer asks
+for (never a database), and applies the rest. The web Deployment then rolls: with two
+replicas, a new pod starts and has to pass readiness (`/health/ready`: database, cache,
+queue, storage) before an old one is stopped, so the sign-in page stays up. That is the
+readiness probe's job, which is why it matters that the pod spec carries one: without it a
+pod counts as ready the moment its container starts. The queue and
+scheduler pods are replaced the same way; the outgoing queue manager gets SIGTERM, lets its
+workers finish their current job and exits, and the new one starts on the new code.
+
+**A deploy does not run migrations.** The manifest has no release or pre-deploy hook, so
+the order is the operator's:
+
+1. **Back up the database** (the platform's backup of the Postgres cluster), and confirm
+   `CBOX_ID_CRYPTO_KEY` and `APP_KEY` are in your offline key backup.
+2. **Create or update the platform Secrets** if the release needs a new key in them —
+   before the deploy, since a missing key fails the new pods.
+3. **Migrate, once, with the new release:** `php artisan migrate --force`, run as a one-off
+   command (a Kubernetes Job) from the new release's web container, so it has the same
+   image, environment, secrets and database binding. Not in a running old pod: that is the
+   old code, with the old migrations.
+4. **Deploy.** The web pods roll behind readiness; the queue and scheduler pods follow.
+5. **Run `php artisan cbox-id:doctor`** in a new web pod and treat any ✗ as a reason to
+   roll back. `/health/status` should be green within a couple of minutes, once the new
+   scheduler and queue manager have reported in.
+
+Migrations run while the old pods still serve, so they have to be safe for the old code:
+add columns and tables, do not drop or rename one a running release reads. A release that
+cannot keep to that says so in
+[`UPGRADING.md`](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md).
+
+The base image can also migrate at container start (`LARAVEL_MIGRATE_ENABLED=true`, with
+`--isolated` so only one pod runs it at a time). It is **off** here on purpose: every pod —
+web, queue and scheduler — would run it, a failed migration would crash-loop the new pods,
+and it takes away the backup-first step a release like 2.0.0 needs.
+
+**Anywhere else** the order is the same: back up, put the code in place, migrate, rebuild
+the caches, restart the queue manager (`php artisan queue:restart`) and the scheduler, run
+the doctor. See [Day-2 operations](operations.md#upgrades).
 
 ## 6. Verify
 
@@ -333,10 +424,10 @@ stricter `same-origin` this identity provider chose was being silently downgrade
 (Clickjacking itself stayed blocked throughout by the CSP's `frame-ancestors 'none'`,
 so the `X-Frame-Options` half was defence in depth, not an open hole.)
 
-**Set these four on every deployment** — the k8s Deployment/ConfigMap, the Helm
-values, whatever renders the pod spec. They are already set in this repo's
-`Dockerfile` and `docker-compose.yml`; the k8s manifests live in a separate infra
-repository, so they must be added there by hand:
+**Set these four on every deployment** — whatever renders the pod spec or the
+process environment. They are already set in this repository's `cbox.yaml` (the
+production deployment), `Dockerfile` and `docker-compose.yml`; any other manifest needs
+them by hand:
 
 ```yaml
 env:
@@ -379,7 +470,9 @@ Route on both; **alert** on `/health/status` (scheduler, event relay, queue work
 which must never route — a stopped scheduler is not a reason to take web pods out of
 rotation. Without `HEALTH_TOKEN` readiness answers 403 to everything, the platform's own
 probe included, and `cbox-id:doctor` fails it in production. `cbox.yaml` declares both
-probes and references the token from a platform Secret.
+probes under `health:` and references the token from the `cbox-id-app` Secret. Only the
+web pods are probed: the queue and scheduler pods serve nothing, and their health is the
+`queue_workers` and `scheduler` checks on `/health/status`.
 
 `GET /up` is a JSON liveness probe served by the framework package:
 

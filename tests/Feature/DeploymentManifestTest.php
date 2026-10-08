@@ -183,6 +183,60 @@ it('probes readiness at the health package\'s readiness path, behind its token, 
     $this->get('/up')->assertOk();
 });
 
+/*
+| The platform reads this file with cbox-engine's ProjectManifestReader, which refuses a key
+| it does not know rather than ignoring it. Its lists are copied here, because the engine is
+| not a dependency of this application: a key added here that the platform cannot read
+| fails this test, not a deploy. `secrets` and `health` are the two this deployment needs
+| and the reader does not know yet — named, so a third cannot slip in beside them.
+*/
+it('speaks the platform reader\'s schema, but for the two keys the platform still has to learn', function (): void {
+    $manifest = deploymentManifest();
+
+    // ProjectManifestReader::KEYS.
+    $readable = ['build', 'domains', 'env', 'idle_seconds', 'image', 'mount', 'name', 'port',
+        'mounts', 'processes', 'replicas', 'resources', 'scale_to_zero', 'services', 'source', 'url'];
+
+    expect(array_values(array_diff(array_keys($manifest), $readable)))->toEqualCanonicalizing(['secrets', 'health']);
+
+    foreach ((array) $manifest['resources'] as $name => $resource) {
+        $resource = (array) $resource;
+
+        expect(array_values(array_diff(array_keys($resource), ['engine', 'version', 'storage', 'bind'])))->toBe([], "resources.{$name}");
+
+        // Cbox\Platform\Binding\ConnectionField — `user`, never `username`.
+        foreach (array_keys((array) ($resource['bind'] ?? [])) as $field) {
+            expect($field)->toBeIn(['host', 'port', 'database', 'user', 'password', 'url'], "resources.{$name}.bind.{$field}");
+        }
+
+        // The platform's Valkey has no password, and the reader refuses a binding for one.
+        if ($resource['engine'] === 'valkey') {
+            expect((array) ($resource['bind'] ?? []))->not->toHaveKey('password');
+        }
+    }
+
+    // A container runs a program, not a shell line: the reader refuses `&&`, pipes,
+    // redirects and `$VAR` by name.
+    foreach ((array) $manifest['processes'] as $name => $command) {
+        expect($command)->toBeList();
+
+        foreach ((array) $command as $argument) {
+            expect((string) $argument)->not->toMatch('/^(&&|\|\|?|;|>>?|<)$|\$/', "processes.{$name}");
+        }
+    }
+});
+
+it('is tested in CI on the database it deploys', function (): void {
+    $database = (array) deploymentManifest()['resources']['database'];
+    $ci = (string) file_get_contents(base_path('.github/workflows/ci.yml'));
+
+    expect($database['engine'])->toBe('postgres')
+        // Stated, so a platform release cannot move the major; and the same major is the
+        // one the `engines` job runs the suite against.
+        ->and($database)->toHaveKey('version')
+        ->and($ci)->toContain('image: postgres:'.$database['version']);
+});
+
 it('leaves the security headers to the application, and never sets a second CSP in nginx', function (): void {
     $env = (array) deploymentManifest()['env'];
 

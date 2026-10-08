@@ -8,6 +8,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Fixed
+
+- **`cbox.yaml` binds the database user as `user`**, the field name the Cbox platform's manifest reader knows; it refused `username`. The Postgres major is now stated (`version: "17"`) rather than left to the platform's default, and `DeploymentManifestTest` holds it to the `postgres:17` CI tests on, holds the file to the reader's keys, binding fields and command rules, and names `secrets` and `health` as the two keys the platform still has to learn.
+
+### Changed
+
+- **The deployment docs describe the Kubernetes cluster production runs on**, deployed from `cbox.yaml` through the Cbox platform, instead of Laravel Cloud: the processes (web, `queue:autoscale`, `schedule:work`), the probes, Valkey with `noeviction`, secrets by reference, replicas and `CBOX_ID_REPLICAS`, and how to roll out a release — back up, create the Secrets, migrate once from the new release, deploy, run the doctor; a deploy does not migrate. Self-hosting guidance stays, for a VM with systemd or Supervisor and for a PaaS. `docs/requirements.md` states the databases (PostgreSQL 17 in production, MySQL 8.0.13 or later supported), `UPGRADING.md` gains a 2.0.0 checklist for the cluster, and the CI `engines` job's comment names PostgreSQL 17 as the deployment target. The doctor's "no queue manager" message names the `queue` process in `cbox.yaml` instead of a Laravel Cloud background process.
+
 ## [2.0.0] - 2026-10-08
 
 ### Security

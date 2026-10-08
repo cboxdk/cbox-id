@@ -25,8 +25,9 @@ guidance**, not hard requirements.
 the crypto layer in `cboxdk/laravel-id` needs both and `php artisan cbox-id:doctor`
 fails loudly if either is missing. `ext-pcntl` and `ext-posix` are required by
 `cboxdk/laravel-queue-autoscale`, so Composer refuses to install without them; the doctor
-checks them again in the CLI the queue manager actually runs under. Laravel Cloud's PHP
-runtime ships both.
+checks them again in the CLI the queue manager actually runs under. The
+`ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1` base image — what `cbox.yaml`
+runs in production and the `Dockerfile` builds from — ships all four.
 
 ## Framework
 
@@ -88,8 +89,24 @@ The default `.env.example` ships `DB_CONNECTION=sqlite` and the test suite runs 
 SQLite, so nothing in `composer.json` mandates a particular database. For a
 production identity provider, however, run a server database:
 
-- **Recommended in production:** PostgreSQL or MySQL/MariaDB (not SQLite).
-- **Recommended cache/queue/session backend:** Redis.
+| | Production (`cbox.yaml`) | Also supported |
+|---|---|---|
+| Database | **PostgreSQL 17** — the platform's managed Postgres, bound under `resources.database` | MySQL **8.0.13 or later** (CI runs the suite on 8.4) |
+| Cache, sessions, queue | **Valkey** — the platform's, bound under `resources.cache` | Redis |
 
-These are recommendations for a live deployment — see
-[Deployment](operations/deployment.md) — not constraints the resolver enforces.
+- **Not SQLite** in production: one file, one writer, and no shared state for a second
+  replica.
+- **MySQL's floor is 8.0.13** because that is where expression column defaults landed,
+  which is the only way MySQL accepts a default on a `json` column. MariaDB is not tested.
+- **The store that holds the queue runs `maxmemory-policy noeviction`.** A queued job is
+  data: under an evicting policy a full Valkey or Redis silently drops webhooks,
+  back-channel logouts and mail. With `noeviction` a full instance refuses writes, which is
+  an error somebody sees. If the cache shares the instance, size it so the cache's TTL'd
+  keys never fill it, or give the cache its own instance.
+- **More than one web replica needs all of it shared.** Cache, sessions and rate limits
+  in Redis/Valkey rather than `file` or `array`; `cbox-id:doctor` fails a per-process store
+  when `CBOX_ID_REPLICAS` is above one.
+
+The CI `engines` job runs the whole suite on both server engines, and
+`tests/Feature/DeploymentManifestTest.php` fails if the PostgreSQL major `cbox.yaml` pins
+and the one CI tests drift apart. See [Deployment](operations/deployment.md).

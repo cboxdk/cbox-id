@@ -23,8 +23,9 @@ use Cbox\LaravelQueueAutoscale\Scaling\Strategies\HybridStrategy;
 | docs/operations/queue-workers.md.
 |
 | Every value below is chosen for the smallest shape this runs on: ONE 512 MB
-| instance that also serves the web traffic. Where a value differs from the
-| package default, the comment says why.
+| host that also serves the web traffic. Where a value differs from the
+| package default, the comment says why. Production (Kubernetes, cbox.yaml) runs
+| the manager in a pod of its own and changes one value: cluster mode, below.
 |
 */
 
@@ -128,7 +129,9 @@ return [
      *  - max_total_workers 2 — a HARD cap, applied after everything else, and the one
      *    that holds even if the host's memory reading is wrong (a container reporting the
      *    node's memory instead of its own limit would make the percentage ceiling below
-     *    meaningless). Raise it only with a larger instance or a Worker cluster.
+     *    meaningless). Raise it only with more memory to spend: on Kubernetes the manager
+     *    has a pod of its own (the `queue` process in cbox.yaml) and shares it with no web
+     *    traffic, so the cap follows that pod's memory limit.
      *  - max_memory_percent 70 — stop spawning while the instance is above 70 %, leaving
      *    headroom for a burst of web requests rather than racing them to the OOM killer.
      *  - worker_memory_mb_estimate 96 — the cold-start estimate before a measurement
@@ -149,17 +152,19 @@ return [
         'shutdown_grace_seconds' => 30,
         'log_channel' => env('QUEUE_AUTOSCALE_LOG_CHANNEL', 'stack'),
         'restart_scope' => env('QUEUE_AUTOSCALE_RESTART_SCOPE'),
-        // `php artisan queue:restart` in a self-hosted deploy script restarts the manager
-        // too. On Laravel Cloud the deploy replaces the instance, so nothing has to.
+        // `php artisan queue:restart` in a VM's deploy script restarts the manager too. On
+        // Kubernetes a rollout replaces the pod (SIGTERM, drain, exit), so nothing has to.
         'honor_queue_restart' => env('QUEUE_AUTOSCALE_HONOR_QUEUE_RESTART', true),
         'reap_orphans_on_start' => env('QUEUE_AUTOSCALE_REAP_ORPHANS_ON_START', true),
     ],
 
     /*
-     * SINGLE-HOST MODE. There is one App instance and exactly one manager on it. Cluster
-     * mode is for several hosts sharing one set of queues; turn it on (it needs Redis)
-     * the day the App cluster autoscales past one replica, or two managers will each
-     * size the pool as if alone — see docs/operations/queue-workers.md.
+     * SINGLE-HOST MODE BY DEFAULT: one host, exactly one manager on it. Cluster mode is for
+     * more than one manager sharing one set of queues; it needs Redis or Valkey, and
+     * without it two managers each size the pool as if alone. The Kubernetes deployment
+     * turns it ON (QUEUE_AUTOSCALE_CLUSTER_ENABLED in cbox.yaml): on every rollout the
+     * outgoing and incoming queue pods overlap. Turn it on anywhere else the day the
+     * manager runs on more than one host — see docs/operations/queue-workers.md.
      */
     'cluster' => [
         'enabled' => env('QUEUE_AUTOSCALE_CLUSTER_ENABLED', false),

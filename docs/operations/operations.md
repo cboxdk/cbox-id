@@ -43,7 +43,10 @@ opened.
 
 2. **Swap and deploy.** Make the new key `CBOX_ID_CRYPTO_KEY` and move the old one into
    `CBOX_ID_CRYPTO_PREVIOUS_KEYS` (comma-separated if you already keep one there).
-   Deploy everywhere — web, queue workers and the scheduler all seal and open secrets.
+   Deploy everywhere — web, queue workers and the scheduler all seal and open secrets. On
+   the cluster both keys are entries in the `cbox-id-app` Secret: add
+   `CBOX_ID_CRYPTO_PREVIOUS_KEYS` there, reference it under `secrets:` in `cbox.yaml`, and
+   roll every pod.
    From this moment new secrets are sealed under the new key and old ones still open.
    Store the new key in your secrets manager **before** the deploy, and keep the old one
    there too.
@@ -112,10 +115,17 @@ should exceed your access-token TTL.
 php artisan cbox-id:doctor
 ```
 
-Run it after every deploy and as a periodic probe. It verifies extensions, the
+Run it after every deploy and as a periodic probe — on the cluster, in a web pod, which
+has the same environment as the queue and scheduler pods. It verifies extensions, the
 crypto key, migrations, active signing keys, issuer, passkey config, and — in
-production — the hardening posture (`APP_DEBUG` off, secure + encrypted sessions).
+production — the hardening posture (`APP_DEBUG` off, secure + encrypted sessions), real
+mail, a shared cache and session store when `CBOX_ID_REPLICAS` is above one, the
+`HEALTH_TOKEN`, and whether the scheduler and the queue manager are running.
 Exit code is non-zero only on real problems, so it's safe to wire into CI/monitoring.
+
+The probes are separate from it: liveness on `/up`, readiness on `/health/ready` (with
+`HEALTH_TOKEN`), and alerting on `/health/status` — see
+[Deployment](deployment.md#health-probes).
 
 ## Audit & monitoring
 
@@ -154,28 +164,41 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
 
 ## Upgrades
 
+Read [`UPGRADING.md`](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md) for every
+release between the one you run and the one you deploy, and roll forward one release at a
+time.
+
+**On the cluster** the order is: back up the database, create or update the platform
+Secrets the release needs, run `php artisan migrate --force` once as a one-off command
+from the new release, deploy, run the doctor. A deploy does not migrate by itself; the
+reasons and the details are in
+[Rolling out a release on Kubernetes](deployment.md#rolling-out-a-release-on-kubernetes).
+
+**On a VM:**
+
 ```bash
-composer update --no-dev
+composer install --no-dev --optimize-autoloader   # the new release's lock
 php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
+php artisan queue:restart                         # the queue manager follows it
 php artisan cbox-id:doctor
 ```
 
 The three cache commands are separate artisan invocations (or use
-`php artisan optimize` to run them together). Roll forward one release at a time;
-run `doctor` before returning traffic. Because the framework is a versioned package
-pinned to a pre-1.0 series (`cboxdk/laravel-id >=0.52 <1.0`), check its changelog for
-migration or config changes before bumping — minor bumps in that range may carry
-breaking changes.
+`php artisan optimize` to run them together); restart the scheduler too if it runs as
+`schedule:work`. Run `doctor` before returning traffic. The framework,
+`cboxdk/laravel-id`, is a 1.x package under semantic versioning, and a minor is where its
+new migrations arrive — check its changelog before bumping it.
 
 ## Break-glass (emergency admin access)
 
 If normal admin access is lost (MFA device gone, admin locked out), recover through
 an **out-of-band, audited** path — never by weakening the running config:
 
-1. Access the server/console directly (SSH + artisan), not the public UI.
+1. Access the server directly — a shell in a running web pod on the cluster, SSH on a VM —
+   and use artisan, not the public UI.
 2. Provision or re-enroll a break-glass admin via a seeding/artisan path; the action
    is written to the audit trail like any other.
 3. Enroll a fresh MFA/passkey on it immediately, complete the emergency task, then
