@@ -101,10 +101,39 @@ return [
         ],
     ],
 
+    // The organization's audit events, under a link that covers `audit_logs` — read-only.
+    'audit_logs' => [
+        'title' => 'Revisionslog',
+        'heading' => 'Revisionslog',
+        'heading_for' => 'Revisionslog · :organization',
+        'description' => 'Det, applikationen har registreret om din organisation, nyeste først. Visningen er skrivebeskyttet: intet her kan ændres.',
+        'action' => 'Handling',
+        'actor' => 'Aktør-ID',
+        'target' => 'Mål-ID',
+        'from' => 'Fra',
+        'to' => 'Til',
+        'filter' => 'Filtrér',
+        'clear' => 'Ryd filtre',
+        'export' => 'Eksportér CSV',
+        'export_note' => 'CSV-filen indeholder de nyeste matchende hændelser, op til :limit.',
+        'empty' => 'Ingen hændelser matcher disse filtre.',
+        'empty_none' => 'Der er endnu ikke registreret hændelser for denne organisation.',
+        'time' => 'Tidspunkt',
+        'targets' => 'Mål',
+        'location' => 'Placering',
+        'metadata' => 'Detaljer',
+        'newer' => 'Nyeste hændelser',
+        'older' => 'Ældre hændelser',
+        'done' => 'Færdig',
+        'count' => ':count hændelser på denne side',
+    ],
+
     'done' => [
         'title' => 'Alt er klar',
         'heading' => 'Alt er klar',
         'body' => 'Virksomhedslogin for :organization er konfigureret. Opsætningslinket er nu brugt og lukket. Du kan lukke dette vindue.',
+        // For a link that only read the audit logs: nothing was configured.
+        'audit_logs_body' => 'Du er færdig med at gennemgå revisionsloggen for :organization. Linket er nu brugt og lukket. Du kan lukke dette vindue.',
         'this_organization' => 'denne organisation',
     ],
 

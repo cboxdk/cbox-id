@@ -101,10 +101,39 @@ return [
         ],
     ],
 
+    // The organization's audit events, under a link that covers `audit_logs` — read-only.
+    'audit_logs' => [
+        'title' => 'Granskningsloggar',
+        'heading' => 'Granskningsloggar',
+        'heading_for' => 'Granskningsloggar · :organization',
+        'description' => 'Det som applikationen har registrerat om din organisation, nyast först. Vyn är skrivskyddad: inget här kan ändras.',
+        'action' => 'Händelse',
+        'actor' => 'Aktörs-ID',
+        'target' => 'Mål-ID',
+        'from' => 'Från',
+        'to' => 'Till',
+        'filter' => 'Filtrera',
+        'clear' => 'Rensa filter',
+        'export' => 'Exportera CSV',
+        'export_note' => 'CSV-filen innehåller de nyaste matchande händelserna, högst :limit.',
+        'empty' => 'Inga händelser matchar dessa filter.',
+        'empty_none' => 'Inga händelser har registrerats för den här organisationen ännu.',
+        'time' => 'Tidpunkt',
+        'targets' => 'Mål',
+        'location' => 'Plats',
+        'metadata' => 'Detaljer',
+        'newer' => 'Nyaste händelser',
+        'older' => 'Äldre händelser',
+        'done' => 'Klar',
+        'count' => ':count händelser på den här sidan',
+    ],
+
     'done' => [
         'title' => 'Klart',
         'heading' => 'Klart',
         'body' => 'Inloggning för företag är konfigurerad för :organization. Den här konfigurationslänken har nu använts och är stängd. Du kan stänga det här fönstret.',
+        // For a link that only read the audit logs: nothing was configured.
+        'audit_logs_body' => 'Du har granskat granskningsloggarna för :organization. Länken är nu använd och stängd. Du kan stänga det här fönstret.',
         'this_organization' => 'den här organisationen',
     ],
 

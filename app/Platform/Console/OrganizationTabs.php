@@ -52,6 +52,8 @@ final readonly class OrganizationTabs
 
     public const AUDIT = 'audit';
 
+    public const AUDIT_LOGS = 'audit-logs';
+
     public const SETTINGS = 'settings';
 
     /**
@@ -72,6 +74,7 @@ final readonly class OrganizationTabs
         self::POLICY => ['Policy', 'environment.organizations.policy'],
         self::SUPPORT => ['Support', 'environment.organizations.support'],
         self::AUDIT => ['Audit log', 'environment.organizations.audit'],
+        self::AUDIT_LOGS => ['App audit logs', 'environment.organizations.audit-logs'],
         self::SETTINGS => ['Settings', 'environment.organizations.settings'],
     ];
 

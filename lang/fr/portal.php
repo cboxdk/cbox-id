@@ -101,10 +101,39 @@ return [
         ],
     ],
 
+    // The organization's audit events, under a link that covers `audit_logs` — read-only.
+    'audit_logs' => [
+        'title' => 'Journaux d’audit',
+        'heading' => 'Journaux d’audit',
+        'heading_for' => 'Journaux d’audit · :organization',
+        'description' => 'Ce que l’application a enregistré au sujet de votre organisation, du plus récent au plus ancien. Cette vue est en lecture seule : rien ne peut y être modifié.',
+        'action' => 'Action',
+        'actor' => 'ID de l’acteur',
+        'target' => 'ID de la cible',
+        'from' => 'Du',
+        'to' => 'Au',
+        'filter' => 'Filtrer',
+        'clear' => 'Effacer les filtres',
+        'export' => 'Exporter en CSV',
+        'export_note' => 'Le fichier CSV contient les événements correspondants les plus récents, jusqu’à :limit.',
+        'empty' => 'Aucun événement ne correspond à ces filtres.',
+        'empty_none' => 'Aucun événement n’a encore été enregistré pour cette organisation.',
+        'time' => 'Date',
+        'targets' => 'Cibles',
+        'location' => 'Emplacement',
+        'metadata' => 'Détails',
+        'newer' => 'Événements les plus récents',
+        'older' => 'Événements plus anciens',
+        'done' => 'Terminé',
+        'count' => ':count événements sur cette page',
+    ],
+
     'done' => [
         'title' => 'Tout est prêt',
         'heading' => 'Tout est prêt',
         'body' => 'La connexion d’entreprise pour :organization est configurée. Ce lien de configuration a été utilisé et est désormais fermé. Vous pouvez fermer cette fenêtre.',
+        // For a link that only read the audit logs: nothing was configured.
+        'audit_logs_body' => 'Vous avez terminé la consultation des journaux d’audit de :organization. Ce lien a été utilisé et est désormais fermé. Vous pouvez fermer cette fenêtre.',
         'this_organization' => 'cette organisation',
     ],
 

@@ -8,6 +8,7 @@ use App\Http\Requests\Portal\AddPortalDomainRequest;
 use App\Http\Requests\Portal\CreatePortalConnectionRequest;
 use App\Platform\AdminPortal;
 use App\Platform\Enums\PortalFeature;
+use App\Platform\Enums\PortalScope;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
@@ -40,8 +41,13 @@ use Inertia\Response;
  */
 final readonly class PortalSetupController extends PageController
 {
-    public function show(AdminPortal $portal): Response
+    public function show(AdminPortal $portal): Response|RedirectResponse
     {
+        // A link that covers the organization's audit logs sets nothing up: it lands on them.
+        if ($portal->boundScope() === PortalScope::AuditLogs) {
+            return redirect()->route('portal.audit-logs');
+        }
+
         $organizationId = $portal->boundOrgId();
 
         return $this->page('portal/setup', __('portal.setup.title'), [
@@ -218,10 +224,13 @@ final readonly class PortalSetupController extends PageController
 
         $organizationId = $portal->boundOrgId();
         $name = $organizationId === null ? null : app(Organizations::class)->find($organizationId)?->name;
+        $auditLogs = $portal->boundScope() === PortalScope::AuditLogs;
 
         $portal->complete();
 
         $this->inertia->flash('portalOrganization', $name);
+        // "All set" says what was done: a link that only read the audit logs configured nothing.
+        $this->inertia->flash('portalAuditLogs', $auditLogs);
 
         return redirect()->route('portal.done');
     }

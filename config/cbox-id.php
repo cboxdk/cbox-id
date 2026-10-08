@@ -299,6 +299,9 @@ return [
         'mode' => env('CBOX_ID_ENTITLEMENTS', 'open'),
         'sso' => env('CBOX_ID_ENTITLEMENT_SSO', 'cbox-id-sso'),
         'scim' => env('CBOX_ID_ENTITLEMENT_SCIM', 'cbox-id-scim'),
+        // The organization's own view of the audit events an app sends about it — in the
+        // hosted Admin Portal, under a link that covers `audit_logs`.
+        'audit_logs' => env('CBOX_ID_ENTITLEMENT_AUDIT_LOGS', 'cbox-id-audit-logs'),
     ],
 
     /*
@@ -309,6 +312,25 @@ return [
      */
     'portal' => [
         'ttl_minutes' => (int) env('CBOX_ID_PORTAL_TTL_MINUTES', 30),
+    ],
+
+    /*
+     * AUDIT LOGS — the audit events an app built on an environment sends about its own
+     * customers (`POST /api/v1/audit-logs/events`), kept per organization in a hash chain
+     * and shown to that organization's administrators. See docs/guides/audit-logs.md.
+     *
+     * `retention_days` is the default an environment keeps events for, counted from when
+     * they were RECEIVED; each environment may set its own (`audit_logs.settings.update`).
+     * The daily `audit-logs:prune` applies it. `export_disk` is the filesystem disk a CSV
+     * export is written to — private, the file is only ever handed out through a signed,
+     * short-lived URL — and `export_ttl_hours` how long a finished export stays there.
+     * `portal_export_limit` bounds the CSV the hosted Admin Portal streams directly.
+     */
+    'audit_logs' => [
+        'retention_days' => (int) env('CBOX_ID_AUDIT_LOGS_RETENTION_DAYS', 365),
+        'export_disk' => env('CBOX_ID_AUDIT_LOGS_EXPORT_DISK', 'local'),
+        'export_ttl_hours' => (int) env('CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS', 72),
+        'portal_export_limit' => (int) env('CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT', 50000),
     ],
 
     /*

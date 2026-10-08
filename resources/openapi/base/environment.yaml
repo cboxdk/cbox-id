@@ -2742,13 +2742,120 @@ components:
       properties:
         id: { type: string }
         organization_id: { type: string }
-        covers: { type: string, enum: [sso, scim, both] }
+        covers: { type: string, enum: [sso, scim, both, audit_logs] }
         url:
           type: ["string", "null"]
           description: |
             The one-time setup link — the whole credential. Shown once; `null` on an
             idempotent replay of this answer.
         expires_at: { type: ["string", "null"], format: date-time }
+    AuditLogEvent:
+      type: object
+      description: |
+        One audit event your app sent. `hash` covers `id`, `organization_id`, `sequence`,
+        `action`, `occurred_at`, `actor`, `targets`, `context` and `metadata`, chained to
+        the organization's previous event by `prev_hash` — see the Audit Logs guide for how
+        to verify it yourself.
+      required: [id, organization_id, sequence, action, occurred_at, actor, targets, context, metadata, schema_version, received_at, prev_hash, hash]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        sequence: { type: integer, description: "The event's place in its organization's chain, from 1." }
+        action: { type: string, description: "e.g. `invoice.voided`." }
+        occurred_at: { type: string, format: date-time, description: "When it happened, as the sender said, to the millisecond." }
+        actor:
+          type: object
+          required: [id, type, name, metadata]
+          properties:
+            id: { type: string }
+            type: { type: string }
+            name: { type: ["string", "null"] }
+            metadata: { type: ["object", "null"] }
+        targets:
+          type: array
+          items:
+            type: object
+            required: [id, type, name, metadata]
+            properties:
+              id: { type: string }
+              type: { type: string }
+              name: { type: ["string", "null"] }
+              metadata: { type: ["object", "null"] }
+        context:
+          type: object
+          required: [location, user_agent]
+          properties:
+            location: { type: ["string", "null"] }
+            user_agent: { type: ["string", "null"] }
+        metadata: { type: ["object", "null"] }
+        schema_version: { type: ["integer", "null"], description: "The version of its action's schema it was checked against; null when the action has none." }
+        received_at: { type: ["string", "null"], format: date-time, description: "When it arrived. Retention counts from here." }
+        prev_hash: { type: string, description: "The previous event's hash; 64 zeros for an organization's first." }
+        hash: { type: string }
+    AuditLogEventBatch:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          description: The recorded events, in the order they were sent.
+          items: { $ref: "#/components/schemas/AuditLogEvent" }
+    AuditLogSchema:
+      type: object
+      required: [id, action, version, targets, actor_metadata, metadata, created_at, updated_at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        version: { type: integer, description: "Starts at 1; every replacement is the next." }
+        targets:
+          type: ["array", "null"]
+          description: The target types this action's events may name; null allows any.
+          items:
+            type: object
+            required: [type, metadata]
+            properties:
+              type: { type: string }
+              metadata: { type: ["object", "null"] }
+        actor_metadata: { type: ["object", "null"], description: "A metadata schema (a subset of JSON Schema)." }
+        metadata: { type: ["object", "null"], description: "A metadata schema (a subset of JSON Schema)." }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    AuditLogExport:
+      type: object
+      required: [id, organization_id, state, filters, row_count, url, created_at, completed_at, expires_at]
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null for an export across the whole environment." }
+        state: { type: string, enum: [pending, ready, failed, expired] }
+        filters: { type: object, description: The filters it was asked with. }
+        row_count: { type: ["integer", "null"] }
+        url:
+          type: ["string", "null"]
+          description: |
+            Where the CSV downloads from once `ready` — signed, and valid for a few minutes;
+            read the export again for a fresh one. null otherwise, and on an idempotent replay.
+        created_at: { type: ["string", "null"], format: date-time }
+        completed_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: ["string", "null"], format: date-time, description: "When the file is deleted." }
+    AuditLogSettings:
+      type: object
+      required: [retention_days, strict_schemas]
+      properties:
+        retention_days: { type: integer, description: "Events are kept this many days after they arrive." }
+        strict_schemas: { type: boolean, description: "Whether an action with no schema is refused." }
+    AuditLogVerification:
+      type: object
+      required: [organization_id, valid, complete, verified_count, first_sequence, last_sequence, head_sequence, broken_at_sequence, reason]
+      properties:
+        organization_id: { type: string }
+        valid: { type: boolean, description: "Every event checked is unchanged and in place." }
+        complete: { type: boolean, description: "The check reached the chain's head. When false, continue from last_sequence + 1." }
+        verified_count: { type: integer }
+        first_sequence: { type: ["integer", "null"] }
+        last_sequence: { type: ["integer", "null"] }
+        head_sequence: { type: integer }
+        broken_at_sequence: { type: ["integer", "null"] }
+        reason: { type: ["string", "null"], enum: [missing, link, hash, truncated, null] }
     Directory:
       type: object
       required: [id, organization_id, name, provider, pull, active, status]

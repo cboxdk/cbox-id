@@ -113,10 +113,39 @@ return [
         ],
     ],
 
+    // The organization's audit events, under a link that covers `audit_logs` — read-only.
+    'audit_logs' => [
+        'title' => 'Audit logs',
+        'heading' => 'Audit logs',
+        'heading_for' => 'Audit logs · :organization',
+        'description' => 'What the application recorded about your organization, newest first. This view is read-only: nothing here can be changed.',
+        'action' => 'Action',
+        'actor' => 'Actor ID',
+        'target' => 'Target ID',
+        'from' => 'From',
+        'to' => 'To',
+        'filter' => 'Filter',
+        'clear' => 'Clear filters',
+        'export' => 'Export CSV',
+        'export_note' => 'The CSV holds the newest matching events, up to :limit.',
+        'empty' => 'No audit events match these filters.',
+        'empty_none' => 'No audit events have been recorded for this organization yet.',
+        'time' => 'Time',
+        'targets' => 'Targets',
+        'location' => 'Location',
+        'metadata' => 'Details',
+        'newer' => 'Newest events',
+        'older' => 'Older events',
+        'done' => 'Done',
+        'count' => ':count events on this page',
+    ],
+
     'done' => [
         'title' => 'All set',
         'heading' => 'All set',
         'body' => 'Enterprise sign-in for :organization is configured. This setup link has now been used and is closed. You can close this window.',
+        // For a link that only read the audit logs: nothing was configured.
+        'audit_logs_body' => 'You have finished reviewing the audit logs for :organization. This link has now been used and is closed. You can close this window.',
         // Stands in for :organization above when the organization's name is not known.
         'this_organization' => 'this organization',
     ],

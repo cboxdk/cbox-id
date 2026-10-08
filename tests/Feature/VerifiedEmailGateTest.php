@@ -113,6 +113,9 @@ it('gates every subject-plane create action', function (): void {
     //  - `environment.apis` — the same: registering an API is the environment console's
     //    alone ({@see \App\Http\Controllers\Console\ApiController}), where the person
     //    acting is an environment administrator and there is no subject session to ask.
+    //  - `environment.audit-logs.schemas` — an audit-log schema is the environment
+    //    console's alone, reaches nothing outside the tenant (it only narrows what the app's
+    //    own events may say), and there is no subject session there to ask about.
     //  - `environment.organizations` — the environment plane's tenants. A tenant record
     //    reaches nothing on its own: it is this customer's own bookkeeping of who their
     //    customers are, the same shape as `projects` above, and the writes that DO reach
@@ -129,6 +132,7 @@ it('gates every subject-plane create action', function (): void {
     $deliberatelyUngated = [
         'app/Http/Controllers/Console/AccessReviewController.php::store()',
         'app/Http/Controllers/Console/ApiController.php::store()',
+        'app/Http/Controllers/Console/AuditLogController.php::store()',
         'app/Http/Controllers/Console/EnvironmentOrganizationController.php::store()',
         'app/Http/Controllers/Console/LogStreamController.php::store()',
         'app/Http/Controllers/Console/ProjectController.php::store()',

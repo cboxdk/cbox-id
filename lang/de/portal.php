@@ -102,10 +102,39 @@ return [
         ],
     ],
 
+    // The organization's audit events, under a link that covers `audit_logs` — read-only.
+    'audit_logs' => [
+        'title' => 'Audit-Logs',
+        'heading' => 'Audit-Logs',
+        'heading_for' => 'Audit-Logs · :organization',
+        'description' => 'Was die Anwendung über Ihre Organisation aufgezeichnet hat, neueste zuerst. Diese Ansicht ist schreibgeschützt: Hier kann nichts geändert werden.',
+        'action' => 'Aktion',
+        'actor' => 'Akteur-ID',
+        'target' => 'Ziel-ID',
+        'from' => 'Von',
+        'to' => 'Bis',
+        'filter' => 'Filtern',
+        'clear' => 'Filter zurücksetzen',
+        'export' => 'CSV exportieren',
+        'export_note' => 'Die CSV-Datei enthält die neuesten passenden Ereignisse, höchstens :limit.',
+        'empty' => 'Keine Ereignisse entsprechen diesen Filtern.',
+        'empty_none' => 'Für diese Organisation wurden noch keine Ereignisse aufgezeichnet.',
+        'time' => 'Zeitpunkt',
+        'targets' => 'Ziele',
+        'location' => 'Standort',
+        'metadata' => 'Details',
+        'newer' => 'Neueste Ereignisse',
+        'older' => 'Ältere Ereignisse',
+        'done' => 'Fertig',
+        'count' => ':count Ereignisse auf dieser Seite',
+    ],
+
     'done' => [
         'title' => 'Alles erledigt',
         'heading' => 'Alles erledigt',
         'body' => 'Die Unternehmensanmeldung für :organization ist konfiguriert. Dieser Einrichtungslink wurde verwendet und ist jetzt geschlossen. Sie können dieses Fenster schließen.',
+        // For a link that only read the audit logs: nothing was configured.
+        'audit_logs_body' => 'Sie haben die Audit-Logs für :organization durchgesehen. Dieser Link wurde verwendet und ist jetzt geschlossen. Sie können dieses Fenster schließen.',
         // Follows "für", so it is in the accusative.
         'this_organization' => 'diese Organisation',
     ],

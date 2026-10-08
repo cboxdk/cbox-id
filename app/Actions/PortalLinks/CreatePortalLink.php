@@ -34,7 +34,7 @@ use App\Platform\Enums\PortalScope;
  */
 #[AsAction(
     name: 'organizations.portal_links.create',
-    summary: 'Create a one-time Admin Portal link an organization\'s IT administrator uses to set up its SSO and domains, or its directory sync, without an account. The URL is shown once.',
+    summary: 'Create a one-time Admin Portal link an organization\'s IT administrator uses to set up its SSO and domains or its directory sync, or to read its audit logs, without an account. The URL is shown once.',
     scope: 'portal_links:write',
     danger: Danger::Critical,
     schema: 'PortalLink',
@@ -54,7 +54,7 @@ final readonly class CreatePortalLink implements Action
         return InputSchema::of([
             Field::string('organization_id')->inPath()->max(64)->describe('The organization the link sets up.'),
             Field::string('covers')->required()->oneOf(array_map(static fn (PortalScope $scope): string => $scope->value, PortalScope::cases()))
-                ->describe('What the link may configure: sso (connection and email domains), scim (directory sync), or both.'),
+                ->describe('What the link opens: sso (connection and email domains), scim (directory sync), both, or audit_logs (the organization\'s audit events, read-only, with CSV export).'),
         ]);
     }
 

@@ -76,6 +76,12 @@ final readonly class OrganizationHeader
             $covers[] = new OptionProps(PortalScope::Both->value, 'Both');
         }
 
+        // Read-only: the organization's own audit events, for the admin who has to answer
+        // "who did that?" inside their company without an account here.
+        if ($this->entitlements->entitled($organizationId, PortalFeature::AuditLogs->entitlement())) {
+            $covers[] = new OptionProps(PortalScope::AuditLogs->value, 'Audit logs (read-only)');
+        }
+
         return $covers;
     }
 }

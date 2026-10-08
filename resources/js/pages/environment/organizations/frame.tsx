@@ -125,7 +125,7 @@ function PortalLinkDialog({
             open={open}
             onOpenChange={onOpenChange}
             title="Admin Portal link"
-            description={`A single-use link ${name}'s IT administrator opens to set things up themselves, without an account here. It expires soon and is shown once.`}
+            description={`A single-use link ${name}'s IT administrator opens to set things up or read its audit logs themselves, without an account here. It expires soon and is shown once.`}
             footer={
                 <>
                     <DialogClose asChild>
@@ -144,7 +144,7 @@ function PortalLinkDialog({
                 }}
             >
                 <RadioGroup
-                    label="What it sets up"
+                    label="What it opens"
                     value={form.data.covers}
                     onValueChange={(covers) => form.setData('covers', covers)}
                     options={link.covers.map((option) => ({

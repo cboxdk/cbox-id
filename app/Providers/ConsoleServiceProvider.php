@@ -167,6 +167,9 @@ final class ConsoleServiceProvider extends ServiceProvider
         // their pages to this area rather than minting their own (see below).
         $nav->area('audit', 'Logs', 'audit', 70)
             ->page('audit', 'Audit log', order: 10)
+            // The audit events the app built on this environment sends about this
+            // organization — the customer's view of its own product's activity.
+            ->page('audit-logs', 'App audit logs', order: 15)
             // Where this console is the environment's own administration — a single-tenant
             // install, the platform root. Not on a customer's console: there shipping the
             // trail to a SIEM is the vendor's job, done from the environment console.
