@@ -70,7 +70,9 @@ story.
 |---|---|---|---|
 | `CBOX_ID_ENTITLEMENT_SSO` | The **namespaced** entitlement key whose `enabled` flag unlocks self-serve SAML/OIDC SSO for an org. Deny-by-default: without it, the SSO screen shows an upsell and its actions `abort(403)`. | `cbox-id-sso` | Change only to align with the key your billing system pushes. The `cbox-id-` prefix keeps it from clashing with entitlements your tenant products push through the same projection. |
 | `CBOX_ID_ENTITLEMENT_SCIM` | The namespaced entitlement key whose `enabled` flag unlocks self-serve SCIM directory sync. Deny-by-default, same as SSO. | `cbox-id-scim` | As above. |
-| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal setup link stays redeemable, in minutes. Links are single-use and only their token hash is stored. | `30` | Lower it for a tighter window; raise it if your customers' IT teams need longer to act. |
+| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal setup link stays redeemable, in minutes, when whoever minted it did not choose (they may pick 5 minutes to 7 days). Links are single-use and only their token hash is stored. | `30` | Lower it for a tighter window; raise it if your customers' IT teams need longer to act. |
+| `CBOX_ID_PORTAL_SESSION_MINUTES` | How long the setup session a redeemed Admin Portal link opens lasts, counted from redemption. | `120` | Raise it if setting up an identity provider routinely takes longer. |
+| `CBOX_ID_CERTIFICATE_ALERT_MAIL` | Whether the daily SAML certificate scan mails an organization's owners and admins. The `connection.certificate_expiring` webhook and the trail entry are always written. | `true` | Turn off if you relay the webhook to your customers yourself. |
 
 ## Branding
 
