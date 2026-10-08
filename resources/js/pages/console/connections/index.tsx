@@ -194,6 +194,7 @@ export default function ConnectionsIndex({
                             ) : (
                                 <EmptyState
                                     icon="connections"
+                                    equivalent="sso.connections.create"
                                     title="No identity provider connected yet"
                                     help={help}
                                     description="Right now people sign in with credentials held here. Connect your provider and they use the company account they already have — and lose access here the moment you disable it there."

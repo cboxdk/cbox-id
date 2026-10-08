@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Console;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Onboarding\EnvironmentChecklist;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Enums\UserStatus;
@@ -29,11 +30,25 @@ use Inertia\Response;
  */
 final readonly class EnvironmentHomeController extends ConsoleController
 {
-    public function index(): Response
+    public function index(EnvironmentChecklist $checklist): Response
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        $membership = app(EnvironmentAdminAuth::class)->membership();
+        abort_if($membership === null, 403);
+
+        $subject = app(EnvironmentAdminAuth::class)->subjectId();
+        $progress = $checklist->toProps($membership->organization_id);
 
         return $this->page('environment/home', 'Overview', [
+            /*
+             * "Get started" on top until it is done or put away — the next step named, the
+             * rest a click away. Null once neither applies, so the home page goes back to
+             * being the numbers.
+             */
+            'checklist' => $progress['isComplete'] || ($subject !== null && $checklist->isDismissed($subject)) ? null : [
+                ...$progress,
+                'href' => route('environment.get-started'),
+                'dismissHref' => route('environment.get-started.dismiss'),
+            ],
             'help' => HelpProps::for(HelpTopic::EnvironmentOverview),
             'stats' => [
                 [

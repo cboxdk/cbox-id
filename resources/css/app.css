@@ -1269,6 +1269,21 @@
         font-size: 14px;
         color: var(--muted-foreground);
     }
+    /* "Or from code" under an empty list: the API twin of its first step. Left-aligned and
+       as wide as the panel allows — code centred in a 384px column is unreadable. */
+    .cbx-empty-equivalent {
+        width: 100%;
+        max-width: 640px;
+        text-align: left;
+    }
+    .cbx-empty .cbx-empty-equivalent p {
+        max-width: none;
+        margin: 0;
+    }
+    .cbx-empty-equivalent .cbx-api-equivalent > .btn {
+        margin: 0 auto;
+        display: flex;
+    }
     .cbx-empty-steps {
         display: flex;
         flex-direction: column;
@@ -1412,6 +1427,12 @@
     .cbx-search .label {
         flex: 1;
         text-align: left;
+    }
+    /* On a phone the search is the icon alone — the same palette, a thumb's width. */
+    @media (max-width: 767px) {
+        .cbx-search {
+            padding: 0 9px;
+        }
     }
     .cbx-search kbd {
         font-family: var(--font-mono);

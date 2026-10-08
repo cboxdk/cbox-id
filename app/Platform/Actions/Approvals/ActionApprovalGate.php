@@ -40,7 +40,6 @@ final readonly class ActionApprovalGate
 
     /**
      * @param  array<string, mixed>  $input
-     *
      * @return string|null The approval this run spent, or null when it needed none.
      *
      * @throws ApprovalRequired

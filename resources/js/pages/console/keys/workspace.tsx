@@ -106,6 +106,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                     {keys.length === 0 ? (
                         <EmptyState
                             icon="key"
+                            equivalent="keys.workspace.create"
                             title="No workspace keys yet"
                             description="Create a key to reach the workspace API from your own services."
                         />

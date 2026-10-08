@@ -144,6 +144,7 @@ export default function VaultIndex({
                     ) : (
                         <EmptyState
                             icon="key"
+                            equivalent="token_vault.secrets.create"
                             title="No secrets stored yet"
                             help={help}
                             description="Every API key sitting in an app’s config or environment file is one you cannot rotate centrally or take away in a hurry. Stored here, it is encrypted, granted per app, and revocable in one click."

@@ -44,14 +44,7 @@ export interface PageHeaderProps {
  * The page's one h1. Every page has exactly one, and it is here — so no page can ship
  * with two headings competing to be the title, or with none at all.
  */
-export function PageHeader({
-    eyebrow,
-    title,
-    badge,
-    help,
-    description,
-    actions,
-}: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, badge, help, description, actions }: PageHeaderProps) {
     const { shell, title: stated, apiEquivalents } = usePage<SharedProps>().props;
     // Every page whose forms run actions offers their API twins, wired or not.
     const hasApi = Object.keys(apiEquivalents ?? {}).length > 0;

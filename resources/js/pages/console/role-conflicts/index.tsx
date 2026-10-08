@@ -113,6 +113,7 @@ export default function RoleConflictsIndex({
                     ) : (
                         <EmptyState
                             icon="shield"
+                            equivalent="sod_policies.create"
                             title="No rules yet"
                             help={help}
                             description="A rule names two or more roles that must never sit with the same person — whoever raises a payment should not also approve it."

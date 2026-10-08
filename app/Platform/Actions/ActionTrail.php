@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Platform\EnvironmentKeyAuditLog;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Closure;
 
 /**
@@ -12,7 +13,7 @@ use Closure;
  * through, and whose approval it spent.
  *
  * An action records its own entries — and the framework services it calls record theirs —
- * through the one {@see \Cbox\Id\Kernel\Audit\Contracts\AuditLog}. None of them knows the
+ * through the one {@see AuditLog}. None of them knows the
  * door, and none should: threading a `via` through every service signature would put a
  * transport detail into domain code. So {@see ActionRunner} says it here for the duration
  * of the run, and the audit decorator ({@see EnvironmentKeyAuditLog}) adds it to every

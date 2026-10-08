@@ -124,6 +124,7 @@ export default function UsersIndex({ users, pagination, search, createHref, help
                     ) : (
                         <EmptyState
                             icon="members"
+                            equivalent="users.create"
                             title="No users yet"
                             description="Every end-user identity in this environment appears here. Create the first user to get started."
                             actions={

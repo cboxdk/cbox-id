@@ -2,7 +2,9 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
+import { lines } from '@/lib/apiSnippets';
 import {
+    ApiEquivalent,
     Button,
     ConfirmDelete,
     Field,
@@ -209,9 +211,21 @@ export default function ClientDetail({
                             />
                         </Field>
 
-                        <Button type="submit" variant="primary" loading={details.processing}>
-                            Save changes
-                        </Button>
+                        <div className="flex flex-wrap items-start gap-2">
+                            <Button type="submit" variant="primary" loading={details.processing}>
+                                Save changes
+                            </Button>
+                            <ApiEquivalent
+                                action="apps.update"
+                                values={{
+                                    name: details.data.name,
+                                    redirect_uris: lines(details.data.redirectUris),
+                                    post_logout_redirect_uris: lines(
+                                        details.data.postLogoutRedirectUris,
+                                    ),
+                                }}
+                            />
+                        </div>
                     </form>
                 </Panel>
             )}

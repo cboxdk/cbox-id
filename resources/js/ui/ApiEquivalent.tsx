@@ -60,7 +60,13 @@ export function ApiEquivalent({
     }
 
     return (
-        <div className="cbx-api-equivalent" data-api-equivalent={action}>
+        <div
+            className="cbx-api-equivalent"
+            data-api-equivalent={action}
+            // Beside a submit button it sits in the button row; opened, it takes the row's
+            // whole width rather than squeezing code into the space beside the button.
+            style={{ minWidth: 0, flexBasis: open ? '100%' : undefined }}
+        >
             <Button
                 type="button"
                 size="sm"
@@ -155,9 +161,10 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
             label: 'id-js',
             code: sdk(action, values),
             install: 'npm i @cboxdk/id-js',
+            docs: 'https://www.npmjs.com/package/@cboxdk/id-js',
             note: action.sdkPreview
-                ? 'Preview: @cboxdk/id-js does not ship a management client yet. Use curl or MCP today.'
-                : undefined,
+                ? 'Preview: this call is not in the published SDK yet. Use curl or MCP today.'
+                : 'Server code only — the client holds a management credential.',
         },
     ];
 }

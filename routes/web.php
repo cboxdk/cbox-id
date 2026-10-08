@@ -33,10 +33,12 @@ use App\Http\Controllers\Console\ClientScopesController;
 use App\Http\Controllers\Console\ClientSecretsController;
 use App\Http\Controllers\Console\ClientSettingsController;
 use App\Http\Controllers\Console\ConnectionController;
+use App\Http\Controllers\Console\ConsoleSearchController;
 use App\Http\Controllers\Console\DashboardController;
 use App\Http\Controllers\Console\DirectoryController;
 use App\Http\Controllers\Console\DirectoryMemberController;
 use App\Http\Controllers\Console\EnvironmentDomainController;
+use App\Http\Controllers\Console\EnvironmentGetStartedController;
 use App\Http\Controllers\Console\EnvironmentHomeController;
 use App\Http\Controllers\Console\EnvironmentKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationApiKeyController;
@@ -566,6 +568,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/get-started', [GetStartedController::class, 'index'])->name('get-started');
     Route::post('/get-started/dismiss', [GetStartedController::class, 'dismiss'])->name('get-started.dismiss');
 
+    // ⌘K, confined to this person's organization. JSON for the palette.
+    Route::get('/search', ConsoleSearchController::class)->name('search');
+
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
@@ -1094,6 +1099,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/login', fn () => redirect()->route('environment.home'))->name('admin.login');
 
         Route::get('/', [EnvironmentHomeController::class, 'index'])->name('environment.home');
+
+        // ⌘K: users, organizations, apps, keys and audit entries in THIS environment, as JSON
+        // for the palette. And the guided first run — framework → app → first sign-in.
+        Route::get('/search', ConsoleSearchController::class)->name('environment.search');
+        Route::get('/get-started', [EnvironmentGetStartedController::class, 'index'])->name('environment.get-started');
+        Route::post('/get-started/app', [EnvironmentGetStartedController::class, 'createApp'])->name('environment.get-started.app');
+        Route::post('/get-started/dismiss', [EnvironmentGetStartedController::class, 'dismiss'])->name('environment.get-started.dismiss');
+        Route::delete('/get-started/dismiss', [EnvironmentGetStartedController::class, 'restore'])->name('environment.get-started.restore');
 
         /*
          * WHICH TENANT THIS CONSOLE IS ACTING ON — chrome rather than a page, so it has no

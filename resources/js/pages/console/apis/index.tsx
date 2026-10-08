@@ -43,6 +43,7 @@ export default function Apis({ help, apis, createHref }: Props) {
                 {apis.length === 0 ? (
                     <EmptyState
                         icon="code"
+                        equivalent="apis.create"
                         title="No APIs registered yet"
                         help={help}
                         description="Until an API is registered, a scope is just text on an app, and anyone who can edit an app can give it any scope. Register the APIs your apps call so their scopes have an owner."

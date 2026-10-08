@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { HelpContent } from '@/types';
+import { ApiEquivalent } from './ApiEquivalent';
 import { Help } from './Help';
 import { Icon } from './Icon';
 import type { IconName } from './icons';
@@ -17,6 +18,12 @@ export interface EmptyStateProps {
      */
     steps?: ReactNode[];
     actions?: ReactNode;
+    /**
+     * The action that creates the first one (`apps.create`), offered as code beside the
+     * button: the API, MCP and CLI way to do the same next step. Nothing renders when the
+     * page does not host that action, so naming it is always safe.
+     */
+    equivalent?: string;
 }
 
 /**
@@ -25,7 +32,15 @@ export interface EmptyStateProps {
  * The heading is an h3 because an empty state always sits inside a `<Panel>`, whose title
  * is the h2 — so the document outline stays intact rather than skipping a level.
  */
-export function EmptyState({ icon, title, help, description, steps, actions }: EmptyStateProps) {
+export function EmptyState({
+    icon,
+    title,
+    help,
+    description,
+    steps,
+    actions,
+    equivalent,
+}: EmptyStateProps) {
     return (
         <div className="cbx-empty">
             {icon !== undefined && (
@@ -52,6 +67,12 @@ export function EmptyState({ icon, title, help, description, steps, actions }: E
             )}
 
             {actions !== undefined && <div className="cbx-empty-actions">{actions}</div>}
+
+            {equivalent !== undefined && (
+                <div className="cbx-empty-equivalent">
+                    <ApiEquivalent action={equivalent} label="Or from code" />
+                </div>
+            )}
         </div>
     );
 }

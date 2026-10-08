@@ -6,6 +6,7 @@ namespace App\Platform\Connect;
 
 use App\Http\Props\Console\ApiEquivalentProps;
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ApprovalInput;
 use App\Platform\Actions\Input\Field;
@@ -70,6 +71,18 @@ final class ActionSnippets
         'environment.support-sessions.end' => 'environment.users.show',
     ];
 
+    /**
+     * Pages that submit to a write route living under ANOTHER page's URL, besides its host —
+     * the AI agents pages mint, rotate and revoke management keys through the keys routes.
+     *
+     * @var array<string, list<string>>
+     */
+    private const array ALSO = [
+        'environment.keys.store' => ['environment.agents', 'environment.agents.create'],
+        'environment.keys.rotate' => ['environment.agents'],
+        'environment.keys.destroy' => ['environment.agents'],
+    ];
+
     /** The console homes: a write route nesting only under one of these has no host page. */
     private const array ROOTS = ['', 'admin'];
 
@@ -102,7 +115,13 @@ final class ActionSnippets
             return [];
         }
 
-        return $this->forPage($route->getName(), $route->parameters());
+        $parameters = [];
+
+        foreach ($route->parameters() as $name => $value) {
+            $parameters[(string) $name] = $value;
+        }
+
+        return $this->forPage($route->getName(), $parameters);
     }
 
     /**
@@ -139,7 +158,10 @@ final class ActionSnippets
 
         foreach ($action->input()->fields as $field) {
             $schema = $field->schema();
-            $type = is_array($schema['type']) ? (string) $schema['type'][0] : (string) $schema['type'];
+            // `['string', 'null']` for a nullable field: the first is the type a caller sends.
+            $declared = $schema['type'];
+            $type = is_array($declared) ? ($declared[0] ?? 'string') : $declared;
+            $type = is_string($type) ? $type : 'string';
             $inPath = in_array($field->name, $pathFields, true);
             $enum = $schema['enum'] ?? null;
 
@@ -218,14 +240,21 @@ final class ActionSnippets
     }
 
     /**
-     * What the call will look like in `@cboxdk/id-js` once it has a management client:
-     * `apps.secrets.rotate` → `id.management.apps.secrets.rotate`, camel-cased per segment.
+     * The method on `@cboxdk/id-js/management`'s client for the action's plane: the action's
+     * name, camel-cased per segment — `apps.secrets.rotate` is `env.apps.secrets.rotate`,
+     * `sso.connections.require_sso` is `env.sso.connections.requireSso`, the SDK's own rule.
      */
     private static function sdk(ActionDefinition $action): string
     {
         $segments = array_map(static fn (string $segment): string => Str::camel(str_replace('-', '_', $segment)), explode('.', $action->name));
+        $client = match ($action->plane) {
+            ActionPlane::Environment => 'env',
+            ActionPlane::Workspace => 'workspace',
+            ActionPlane::Platform => 'platform',
+            ActionPlane::Account => 'account',
+        };
 
-        return 'id.management.'.implode('.', $segments);
+        return $client.'.'.implode('.', $segments);
     }
 
     /**
@@ -240,7 +269,7 @@ final class ActionSnippets
     {
         $routes = $this->router->getRoutes();
 
-        if ($this->hosted !== null && $this->routeCount === count($routes)) {
+        if ($this->hosted !== null && $this->routeCount === count($routes->getRoutes())) {
             return $this->hosted;
         }
 
@@ -288,13 +317,13 @@ final class ActionSnippets
                 // The host, and the pages one literal step below it — its create form, its tabs.
                 $alongside = $host['uri'] === null ? [] : ($children[$host['uri']] ?? []);
 
-                foreach ([$host['name'], ...$alongside] as $page) {
+                foreach ([$host['name'], ...$alongside, ...(self::ALSO[$consoleRoute] ?? [])] as $page) {
                     $hosted[$page][] = $action->name;
                 }
             }
         }
 
-        $this->routeCount = count($routes);
+        $this->routeCount = count($routes->getRoutes());
         $this->hosts = $hosts;
 
         return $this->hosted = array_map(static fn (array $names): array => array_values(array_unique($names)), $hosted);

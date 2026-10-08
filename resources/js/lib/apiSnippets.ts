@@ -43,8 +43,9 @@ export interface ApiAction {
     cli: string;
     /** Whether the CLI has this command today; otherwise it is the name it will have. */
     cliShipped: boolean;
+    /** The `@cboxdk/id-js/management` method: `env.apps.secrets.rotate`. */
     sdk: string;
-    /** id-js has no management client yet, so the SDK call is a preview. */
+    /** Whether the published SDK lacks this call, so the snippet is what it will look like. */
     sdkPreview: boolean;
     fields: ApiField[];
     redact: string[];
@@ -228,11 +229,7 @@ export function curl(action: ApiAction, values: SnippetValues = {}): string {
 
 /** The MCP `tools/call` an agent makes: the tool's name and its arguments, path ids included. */
 export function mcp(action: ApiAction, values: SnippetValues = {}): string {
-    return JSON.stringify(
-        { name: action.tool, arguments: argumentsFor(action, values) },
-        null,
-        2,
-    );
+    return JSON.stringify({ name: action.tool, arguments: argumentsFor(action, values) }, null, 2);
 }
 
 function kebab(name: string): string {
@@ -275,17 +272,47 @@ export function cli(action: ApiAction, values: SnippetValues = {}): string {
     return parts.join(' ');
 }
 
-/** The `@cboxdk/id-js` call — a preview until the SDK ships its management client. */
+const SDK_CLIENTS: Record<ApiPlane, { name: string; variable: string; credential: string }> = {
+    environment: { name: 'EnvironmentClient', variable: 'env', credential: 'apiKey' },
+    workspace: { name: 'WorkspaceClient', variable: 'workspace', credential: 'apiKey' },
+    platform: { name: 'PlatformClient', variable: 'platform', credential: 'accessToken' },
+    account: { name: 'AccountClient', variable: 'account', credential: 'accessToken' },
+};
+
+function origin(url: string): string {
+    try {
+        return new URL(url).origin;
+    } catch {
+        return url.replace(/\/api\/v1.*$/, '');
+    }
+}
+
+/**
+ * The `@cboxdk/id-js/management` call: the plane's client, then the method named after
+ * the action — path ids first, in path order, then the body (or the query, for a read).
+ */
 export function sdk(action: ApiAction, values: SnippetValues = {}): string {
     const args = argumentsFor(action, values);
-    const body = JSON.stringify(args, null, 2).replace(/"\$([A-Z0-9_]+)"/g, 'process.env.$1');
-    const call = Object.keys(args).length === 0 ? '()' : `(${body})`;
+    const { path, rest } = splitArguments(action, args);
+    const client = SDK_CLIENTS[action.plane];
+    const params = Object.values(path).map((value) =>
+        JSON.stringify(isEmpty(value) ? '<id>' : String(value)),
+    );
+
+    if (Object.keys(rest).length > 0) {
+        params.push(
+            JSON.stringify(rest, null, 2).replace(/"\$([A-Z0-9_]+)"/g, 'process.env.$1!'),
+        );
+    }
 
     return [
-        `import { CboxId } from '@cboxdk/id-js'`,
+        `import { ${client.name} } from '@cboxdk/id-js/management'`,
         '',
-        `const id = new CboxId({ token: process.env.${tokenEnv(action.plane)} })`,
+        `const ${client.variable} = new ${client.name}({`,
+        `  baseUrl: '${origin(action.url)}',`,
+        `  ${client.credential}: process.env.${tokenEnv(action.plane)}!,`,
+        '})',
         '',
-        `const result = await ${action.sdk}${call}`,
+        `const { data } = await ${action.sdk}(${params.join(', ')})`,
     ].join('\n');
 }

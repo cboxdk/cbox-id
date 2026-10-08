@@ -53,10 +53,9 @@ final readonly class ApiEquivalentProps implements Prop
             'tool' => $this->action->toolName(),
             'cli' => $this->cli,
             'cliShipped' => $this->cliShipped,
-            // There is no management client in id-js yet: the call is what it will look like,
-            // and the panel says so rather than offering an import that fails.
+            // `@cboxdk/id-js/management`, generated from the same OpenAPI documents.
             'sdk' => $this->sdk,
-            'sdkPreview' => true,
+            'sdkPreview' => false,
             'fields' => $this->fields,
             'redact' => $this->action->redact,
         ];

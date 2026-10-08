@@ -44,10 +44,10 @@ class ConsoleNavigation
         // and what they are called. What is rarely touched after setup is under Advanced,
         // so the areas above it are the ones a team opens every week.
         return new ConsoleNav(...$this->withModulePages([
-            // "Get started" joins this area when the environment console has a guided
-            // first run of its own; today that page is the organization console's only.
             new NavArea('Home', 'home',
                 new NavPage('environment.home', 'Overview'),
+                // The guided first run: framework → app → first sign-in, and the checklist.
+                new NavPage('environment.get-started', 'Get started'),
             ),
             new NavArea('Users & orgs', 'members',
                 new NavPage('environment.users', 'Users'),

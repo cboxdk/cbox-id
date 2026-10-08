@@ -2,7 +2,18 @@ import { Link, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, Panel, RadioGroup, Textarea } from '@/ui';
+import { lines } from '@/lib/apiSnippets';
+import {
+    ApiEquivalent,
+    Button,
+    Checkbox,
+    Field,
+    Icon,
+    Input,
+    Panel,
+    RadioGroup,
+    Textarea,
+} from '@/ui';
 
 interface AppKindOption {
     value: string;
@@ -373,7 +384,7 @@ export default function CreateClient({
                     </Panel>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
                         Create app
                     </Button>
@@ -381,6 +392,23 @@ export default function CreateClient({
                         <Link href={indexHref}>Cancel</Link>
                     </Button>
                 </div>
+
+                {/* The same app, created from code — with what this form holds now. */}
+                <ApiEquivalent
+                    action="apps.create"
+                    values={{
+                        name: form.data.name,
+                        type: form.data.kind,
+                        redirect_uris: lines(form.data.redirectUris),
+                        post_logout_redirect_uris: lines(form.data.postLogoutRedirectUris),
+                        scopes: [
+                            ...form.data.scopes,
+                            ...form.data.customScopes.split(/[\s,]+/).filter(Boolean),
+                        ],
+                        manifest_url: form.data.manifestUrl,
+                        first_party: form.data.firstParty || undefined,
+                    }}
+                />
             </form>
         </>
     );

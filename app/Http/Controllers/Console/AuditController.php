@@ -71,6 +71,14 @@ final readonly class AuditController extends ConsoleController
             $query->where('action', 'like', '%'.$action.'%');
         }
 
+        // One entry by its id — where ⌘K sends a pasted audit id. Within the same bounds as
+        // the rest of the page: another organization's entry is simply not found.
+        $entry = trim($request->string('entry')->toString());
+
+        if ($entry !== '') {
+            $query->whereKey($entry);
+        }
+
         $actor = AuditActorKind::tryFrom($request->string('actor')->toString());
         $actor?->constrain($query);
 

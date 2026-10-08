@@ -179,6 +179,7 @@ export default function RolesIndex({
                     ) : (
                         <EmptyState
                             icon="shield"
+                            equivalent="roles.create"
                             title="No roles yet"
                             help={help}
                             description="Without roles, everyone who can sign in gets whatever an app gives a plain user. A role is how you say “these people are editors, those are support” once, and have every connected app honour it."

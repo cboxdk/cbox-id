@@ -124,6 +124,7 @@ export default function Clients({
                     ) : (
                         <EmptyState
                             icon="clients"
+                            equivalent="apps.create"
                             title="No apps of your own yet"
                             help={help}
                             description={
