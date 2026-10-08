@@ -31,6 +31,7 @@ use Carbon\CarbonImmutable;
     status: 201,
     consoleRoutes: ['environment.keys.store'],
     redact: ['token'],
+    schema: 'ManagementKey',
 )]
 final readonly class CreateKey implements Action
 {

@@ -1256,7 +1256,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/VerificationResend'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         401:
@@ -1543,6 +1543,19 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    VerificationResend:
+      type: object
+      required:
+        - outcome
+        - message
+      properties:
+        outcome:
+          type: string
+          enum:
+            - sent
+            - already_provisioned
+        message:
+          type: string
     Organization:
       type: object
       properties:

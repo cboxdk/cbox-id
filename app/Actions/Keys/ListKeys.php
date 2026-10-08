@@ -21,6 +21,7 @@ use Cbox\Id\Platform\Models\EnvironmentApiKey;
     danger: Danger::Read,
     tag: 'Management keys',
     rest: ['GET', '/keys'],
+    schema: 'ManagementKey',
 )]
 final class ListKeys implements Action
 {

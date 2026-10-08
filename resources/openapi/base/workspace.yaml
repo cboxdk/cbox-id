@@ -466,6 +466,12 @@ components:
           schema: { type: integer }
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    VerificationResend:
+      type: object
+      required: [outcome, message]
+      properties:
+        outcome: { type: string, enum: [sent, already_provisioned] }
+        message: { type: string }
     Organization:
       type: object
       properties:

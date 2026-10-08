@@ -1812,7 +1812,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/ManifestSync'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -5507,7 +5507,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/ManagementKey'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -5569,7 +5569,7 @@ paths:
                   data:
                     type: array
                     items:
-                      type: object
+                      $ref: '#/components/schemas/ManagementKey'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
         202:
@@ -5680,7 +5680,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/ManagementKey'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -5832,7 +5832,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/LegacyLoginProbe'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -9648,7 +9648,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/SelfServiceSignup'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -14196,6 +14196,149 @@ components:
       schema:
         type: string
   schemas:
+    ManagementKey:
+      type: object
+      description: 'A management key of this environment. `token` is present once, on the answer that minted it, and never again.'
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - active
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        prefix:
+          type: string
+          description: "The key's first characters, to recognise it by."
+        scopes:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        parent_key_id:
+          type:
+            - string
+            - 'null'
+          description: 'The key that minted this one, if a key did.'
+        rotated_from_id:
+          type:
+            - string
+            - 'null'
+          description: 'The key this one replaced, if it came from a rotation.'
+        require_approval:
+          description: 'The approval policy: actions held for the person behind the key.'
+          oneOf:
+            -
+              type: object
+              properties:
+                min_danger:
+                  type:
+                    - string
+                    - 'null'
+                  enum:
+                    - read
+                    - write
+                    - destructive
+                    - critical
+                    - null
+                actions:
+                  type: array
+                  items:
+                    type: string
+            - type: 'null'
+        created_by:
+          oneOf:
+            -
+              type: object
+              required:
+                - type
+                - id
+              properties:
+                type:
+                  type: string
+                id:
+                  type:
+                    - string
+                    - 'null'
+            - type: 'null'
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        token:
+          type:
+            - string
+            - 'null'
+          description: "The key's value. Only on the answer that minted it; null on an idempotent replay of that answer, because the value is never stored."
+    LegacyLoginProbe:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: 'What the declared legacy-login endpoint answered for the address, in words.'
+    ManifestSync:
+      type: object
+      required:
+        - unchanged
+        - roles_declared
+        - permissions_declared
+        - orphaned_role_keys
+        - orphaned_permission_keys
+      properties:
+        unchanged:
+          type: boolean
+          description: 'The manifest matched what is already stored.'
+        roles_declared:
+          type: integer
+        permissions_declared:
+          type: integer
+        orphaned_role_keys:
+          type: array
+          items:
+            type: string
+          description: 'Roles stored here that the manifest no longer declares.'
+        orphaned_permission_keys:
+          type: array
+          items:
+            type: string
+    SelfServiceSignup:
+      type: object
+      required:
+        - enabled
+        - decided_here
+      properties:
+        enabled:
+          type: boolean
+        decided_here:
+          type: boolean
+          description: 'False on a single-tenant install, where sign-up follows CBOX_ID_SIGNUP_MODE and the switch changes nothing.'
     Device:
       type: object
       required:

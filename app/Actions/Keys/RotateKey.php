@@ -29,6 +29,7 @@ use App\Platform\Keys\ManagementKeys;
     status: 201,
     consoleRoutes: ['environment.keys.rotate'],
     redact: ['token'],
+    schema: 'ManagementKey',
 )]
 final readonly class RotateKey implements Action
 {
