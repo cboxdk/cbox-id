@@ -174,9 +174,13 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage the token vault',
             'description' => 'Store, rotate and revoke downstream credentials, and grant or withdraw an app\'s right to lease one. Not the vault.manage / vault.lease scopes an app\'s own token carries.',
         ],
+        'portal_links:read' => [
+            'label' => 'Read Admin Portal links',
+            'description' => 'List an organization\'s recent Admin Portal links: what each opens, who minted it, whom it was mailed to and where it stands — never the link itself.',
+        ],
         'portal_links:write' => [
-            'label' => 'Create Admin Portal links',
-            'description' => 'Mint a one-time Admin Portal link that lets an organization\'s IT administrator set up its SSO, domains or directory sync without an account. The link is shown once.',
+            'label' => 'Manage Admin Portal links',
+            'description' => 'Mint a one-time Admin Portal link that lets an organization\'s IT administrator set up its SSO, domains or directory sync without an account, and withdraw one. A new link is shown once.',
         ],
         'approvals:read' => [
             'label' => 'Read approvals',

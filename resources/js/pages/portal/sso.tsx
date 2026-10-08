@@ -16,6 +16,7 @@ import {
     PortalHeader,
     ProviderPicker,
     Step,
+    ValueRow,
 } from './parts';
 
 interface Guide {
@@ -120,6 +121,7 @@ export default function PortalSso({ portal, guides, provider, connections, domai
                                     values={current.values}
                                     lead={t('portal.sso.values_lead', { provider: guide.name })}
                                 />
+                                <MetadataUrl guide={guide} connection={current} />
                                 <GuideSteps
                                     steps={guide.steps}
                                     docs={guide.docs}
@@ -199,6 +201,30 @@ function StartForm({ guide, href }: { guide: Guide; href: string }) {
                 </Button>
             </div>
         </form>
+    );
+}
+
+/**
+ * Our SAML metadata URL — everything above as one document, for an identity provider that
+ * imports service-provider metadata. Under the provider's own name for the field when the
+ * guide knows it (it is then one of the values above); under ours, with a word on when to
+ * use it, for every other SAML provider.
+ */
+function MetadataUrl({ guide, connection }: { guide: Guide; connection: ConnectionRow }) {
+    const { t } = useTranslator();
+    const url = connection.values.metadata_url;
+
+    if (url === undefined || guide.fields.some((field) => field.ours === 'metadata_url')) {
+        return null;
+    }
+
+    return (
+        <div className="card p-4 mb-4">
+            <ValueRow field={t('portal.sso.sp_metadata_url')} value={url} />
+            <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                {t('portal.sso.sp_metadata_url_hint', { provider: guide.name })}
+            </p>
+        </div>
     );
 }
 
@@ -408,7 +434,11 @@ function ManualForm({ connection }: { connection: ConnectionRow }) {
                     </Field>
                     <Field
                         label={t('portal.sso.signing_key')}
-                        hint={keepHint}
+                        hint={
+                            keepHint === undefined
+                                ? t('portal.sso.signing_key_hint')
+                                : `${t('portal.sso.signing_key_hint')} ${keepHint}`
+                        }
                         error={form.errors.signing_key}
                     >
                         <Textarea

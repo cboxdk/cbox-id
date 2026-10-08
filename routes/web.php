@@ -112,6 +112,7 @@ use App\Http\Controllers\Sso\OAuth2RedirectController;
 use App\Http\Controllers\Sso\OidcCallbackController;
 use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
+use App\Http\Controllers\Sso\SamlMetadataController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
@@ -295,6 +296,12 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)
     ->middleware(['throttle:30,1', NoStore::class])
     ->name('sso.saml.acs');
+// Our SP metadata, served from our half alone so a DRAFT's works — the framework's needs the
+// identity provider's half too, which is what an IdP importing it has not handed out yet.
+// The framework's throttle, kept for the same reason the pair above keeps theirs.
+Route::get('/sso/saml/{connection}/metadata', SamlMetadataController::class)
+    ->middleware('throttle:300,1')
+    ->name('sso.saml.metadata');
 // GET AND POST. `response_mode=form_post` means the provider POSTs the callback from
 // its own origin instead of redirecting with a query string, and Apple switches to it by
 // itself once any scope beyond `openid` is requested — so a GET-only redirect URI answers
@@ -1259,6 +1266,8 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 
             // The header's "Admin Portal link": a one-time link for the customer's IT admin.
             Route::post('/portal-links', [OrganizationPortalLinkController::class, 'store'])->name('environment.organizations.portal-links.store');
+            // …and withdrawing one, from the Overview's list of the links still outstanding.
+            Route::delete('/portal-links/{link}', [OrganizationPortalLinkController::class, 'destroy'])->name('environment.organizations.portal-links.revoke');
 
             // The organization's own token vault — a collection separate from the
             // environment's, so it has an address of its own rather than a toggle on the

@@ -159,7 +159,8 @@ final readonly class PortalSsoController extends PortalController
 
     /**
      * A connection as the page draws it: its state, OUR values to paste (with OneLogin's
-     * validator spelled out), and the identity provider's non-secret values once known.
+     * validator spelled out, and the SP metadata URL that carries them all), and the
+     * identity provider's non-secret values once known.
      *
      * @return array<string, mixed>
      */
@@ -181,6 +182,8 @@ final readonly class PortalSsoController extends PortalController
                 'acs_regex' => is_string($acs) ? '^'.preg_quote($acs, '/').'$' : null,
                 'entity_id' => is_string($config['sp_entity_id'] ?? null) ? $config['sp_entity_id'] : ($ours['sp_entity_id'] ?? null),
                 'redirect_uri' => $ours['redirect_uri'] ?? null,
+                // Our half as one document, for an identity provider that imports it.
+                'metadata_url' => $ours['sp_metadata_url'] ?? null,
             ], static fn (?string $value): bool => $value !== null),
             'idp' => array_filter([
                 'idp_entity_id' => $config['idp_entity_id'] ?? null,

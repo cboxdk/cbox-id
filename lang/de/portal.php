@@ -132,6 +132,8 @@ return [
         'start' => 'Mit :provider starten',
         'started' => 'Verbindung gestartet. Erstellen Sie jetzt die App in Ihrem Identitätsanbieter.',
         'values_lead' => 'Kopieren Sie jeden Wert in das gleichnamige Feld in :provider:',
+        'sp_metadata_url' => 'Metadaten-URL des Service Providers',
+        'sp_metadata_url_hint' => 'Wenn :provider Service-Provider-Metadaten importieren kann, geben Sie statt der Werte oben diese URL an (oder die Datei, die sie herunterlädt).',
         'set_to' => 'Festlegen auf',
         'steps_heading' => 'Schritt für Schritt',
         'returns' => [
@@ -150,7 +152,8 @@ return [
         'issuer' => 'Issuer-URL',
         'client_id' => 'Client-ID',
         'client_secret' => 'Geheimer Clientschlüssel',
-        'signing_key' => 'Signaturschlüssel',
+        'signing_key' => 'Signaturschlüssel (optional)',
+        'signing_key_hint' => 'Bei fast allen Anbietern leer lassen: Wir lesen die Signaturschlüssel aus der OpenID-Konfiguration des Anbieters und übernehmen Schlüsselwechsel automatisch. Fügen Sie den öffentlichen Schlüssel (PEM) des Anbieters nur ein, wenn er seine Schlüssel nicht veröffentlicht.',
         'secret_keep' => 'Leer lassen, um den bereits gespeicherten Wert beizubehalten.',
         'save' => 'Speichern',
         'saved' => 'Gespeichert.',

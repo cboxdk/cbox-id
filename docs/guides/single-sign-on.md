@@ -41,18 +41,26 @@ makes easiest.
    this is the step people most often get wrong by hand.
 4. Fill in the service-provider side: the SP entity ID and the ACS URL. Once the
    connection exists, its exact **ACS URL** is shown on the connection card; copy
-   that back into your provider.
+   that back into your provider. A provider that imports service-provider metadata
+   (PingFederate, AD FS, Entra's *Upload metadata file*) can take the connection's
+   **SP metadata URL** instead — `/sso/saml/{connection}/metadata`, shown with a copy
+   button on the connection's page and returned as `service_provider.sp_metadata_url`
+   by the API. It works on a draft, before the provider's half is filled in.
 5. Save. The connection is created as a **draft** — it is not used for anyone yet.
 6. Test a sign-in, then **Activate** it.
 
 ## Connect a provider with OIDC
 
 1. Register a confidential client in your provider and note its client ID and secret.
-2. Choose **New connection → OIDC** and enter the **issuer** URL, client ID, client
-   secret and signing key.
+2. Choose **New connection → OIDC** and enter the **issuer** URL, client ID and client
+   secret.
 3. Cbox ID reads the provider's OpenID configuration from the issuer and fills in
    the endpoints. If that fails, the issuer URL is wrong or unreachable — it is the
-   base URL, not the `.well-known` path.
+   base URL, not the `.well-known` path. ID tokens are verified against the signing
+   keys the configuration publishes at its `jwks_uri`, and a key rotation at the
+   provider is picked up on its own. The **signing key** field is optional: paste the
+   provider's RS256 public key (PEM) there only if its configuration publishes no
+   `jwks_uri` — the save tells you when that is the case.
 4. Save, test, **Activate**.
 
 ## Claim your domains

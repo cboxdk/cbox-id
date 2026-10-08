@@ -13,7 +13,8 @@ use Illuminate\Validation\Rule;
  *
  * WHICH FIELDS ARE REQUIRED DEPENDS ON THE TYPE, and the two sets do not overlap: a SAML
  * connection needs an entity id, an SSO URL and a certificate; an OIDC one needs an issuer,
- * a client id, a secret and a signing key. `required_if` rather than two request classes,
+ * a client id and a secret — and a signing key only for a provider whose discovery document
+ * publishes no key set, which the action finds out and says. `required_if` rather than two request classes,
  * so the form is one form and the refusal lands on the field the person is looking at.
  */
 final class StoreConnectionRequest extends FormRequest
@@ -43,7 +44,9 @@ final class StoreConnectionRequest extends FormRequest
             'issuer' => ['required_if:type,oidc', 'nullable', 'url', 'max:500'],
             'client_id' => ['required_if:type,oidc', 'nullable', 'string', 'max:500'],
             'client_secret' => ['required_if:type,oidc', 'nullable', 'string', 'max:500'],
-            'signing_key' => ['required_if:type,oidc', 'nullable', 'string'],
+            // Optional: the provider's ID tokens are verified against the keys its discovery
+            // document publishes; a pasted key is for one that publishes none.
+            'signing_key' => ['nullable', 'string'],
         ];
     }
 

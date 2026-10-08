@@ -129,6 +129,8 @@ return [
         'start' => 'Start med :provider',
         'started' => 'Forbindelsen er startet. Opret nu appen i jeres identitetsudbyder.',
         'values_lead' => 'Kopier hver værdi til feltet med samme navn i :provider:',
+        'sp_metadata_url' => 'Metadata-URL for tjenesteudbyder',
+        'sp_metadata_url_hint' => 'Hvis :provider kan importere metadata for tjenesteudbydere, så giv den denne URL (eller filen, den henter) i stedet for værdierne ovenfor.',
         'set_to' => 'Sæt til',
         'steps_heading' => 'Trin for trin',
         'returns' => [
@@ -147,7 +149,8 @@ return [
         'issuer' => 'Issuer-URL',
         'client_id' => 'Client ID',
         'client_secret' => 'Client secret',
-        'signing_key' => 'Signeringsnøgle',
+        'signing_key' => 'Signeringsnøgle (valgfri)',
+        'signing_key_hint' => 'Lad feltet stå tomt for næsten alle udbydere: vi henter deres signeringsnøgler fra deres OpenID-konfiguration og følger med, når nøglerne skiftes. Indsæt kun udbyderens offentlige nøgle (PEM), hvis de ikke offentliggør dem.',
         'secret_keep' => 'Lad feltet være tomt for at beholde den værdi, der allerede er gemt.',
         'save' => 'Gem',
         'saved' => 'Gemt.',

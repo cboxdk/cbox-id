@@ -469,6 +469,11 @@ final readonly class ConnectionController extends ConsoleController
                     'client_id' => self::configString($config, 'client_id'),
                 ],
             ],
+            // What to paste into the identity provider: the SAML metadata URL (carrying the
+            // entity id and ACS URL the form edits), or the OIDC redirect URI.
+            'serviceProvider' => in_array($model->type, [ConnectionType::Saml, ConnectionType::Oidc], true)
+                ? SsoFields::serviceProvider($model)
+                : null,
             'organizationName' => $model->organization_id === null
                 ? null
                 : Organization::query()->whereKey($model->organization_id)->value('name'),

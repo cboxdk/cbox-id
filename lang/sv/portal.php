@@ -129,6 +129,8 @@ return [
         'start' => 'Börja med :provider',
         'started' => 'Anslutningen har påbörjats. Skapa nu appen i din identitetsleverantör.',
         'values_lead' => 'Kopiera varje värde till fältet med samma namn i :provider:',
+        'sp_metadata_url' => 'Metadata-URL för tjänsteleverantör',
+        'sp_metadata_url_hint' => 'Om :provider kan importera metadata för tjänsteleverantörer anger du den här adressen (eller filen den laddar ner) i stället för värdena ovan.',
         'set_to' => 'Ange',
         'steps_heading' => 'Steg för steg',
         'returns' => [
@@ -147,7 +149,8 @@ return [
         'issuer' => 'Issuer-URL',
         'client_id' => 'Klient-ID',
         'client_secret' => 'Klienthemlighet',
-        'signing_key' => 'Signeringsnyckel',
+        'signing_key' => 'Signeringsnyckel (valfri)',
+        'signing_key_hint' => 'Lämna tomt för nästan alla leverantörer: vi hämtar deras signeringsnycklar från deras OpenID-konfiguration och följer med när nycklarna byts. Klistra bara in leverantörens publika nyckel (PEM) om de inte publicerar dem.',
         'secret_keep' => 'Lämna tomt för att behålla värdet som redan är sparat.',
         'save' => 'Spara',
         'saved' => 'Sparat.',
