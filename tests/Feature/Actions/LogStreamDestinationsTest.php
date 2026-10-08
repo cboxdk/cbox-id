@@ -118,7 +118,7 @@ it('streams to Datadog: the site picks the intake, the API key is the secret and
 
     [$entry] = array_values(AuditEntry::query()->where('action', 'log_stream.created')->get()->all());
 
-    expect($entry->context['options'])->toBe(['site' => 'datadoghq.eu', 'service' => 'acme-id', 'tags' => 'env:prod,team:security'])
+    expect($entry->context['options'])->toEqual(['site' => 'datadoghq.eu', 'service' => 'acme-id', 'tags' => 'env:prod,team:security'])
         ->and((string) json_encode($entry->context))->not->toContain('dd-api-key');
 });
 
@@ -202,7 +202,7 @@ it('writes to an S3 bucket with an access key, signed, and never echoes the secr
     $replayed = $this->withToken($key)->withHeader('Idempotency-Key', 's3-1')->postJson('/api/v1/log-streams', s3AccessKeyStream())->assertCreated();
 
     expect($created->json('data.endpoint_url'))->toBe('https://s3.eu-west-1.amazonaws.com')
-        ->and($created->json('data.options'))->toBe(['bucket' => 'acme-audit', 'region' => 'eu-west-1', 'prefix' => 'cbox/audit', 'access_key_id' => 'AKIACUSTOMEREXAMPLE', 'gzip' => true])
+        ->and($created->json('data.options'))->toEqual(['bucket' => 'acme-audit', 'region' => 'eu-west-1', 'prefix' => 'cbox/audit', 'access_key_id' => 'AKIACUSTOMEREXAMPLE', 'gzip' => true])
         ->and($created->json('data.external_id'))->toBeNull()
         ->and((string) $created->getContent())->not->toContain('the-secret-access-key')
         ->and((string) $replayed->getContent())->not->toContain('the-secret-access-key');
@@ -293,7 +293,7 @@ it('writes to a GCS bucket with a service-account key, exchanged at Google and n
     ])->assertCreated();
 
     expect($created->json('data.endpoint_url'))->toBe('https://storage.googleapis.com')
-        ->and($created->json('data.options'))->toBe(['bucket' => 'acme-audit', 'prefix' => 'cbox', 'gzip' => false])
+        ->and($created->json('data.options'))->toEqual(['bucket' => 'acme-audit', 'prefix' => 'cbox', 'gzip' => false])
         ->and((string) $created->getContent())->not->toContain('PRIVATE KEY')
         ->and((string) $created->getContent())->not->toContain('siem-writer@');
 

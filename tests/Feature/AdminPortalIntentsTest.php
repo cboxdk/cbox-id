@@ -640,7 +640,7 @@ it('adds a Datadog destination from the portal without ever showing the API key 
     $stream = AuditStream::query()->ownedByOrganization($org)->sole();
 
     expect($stream->endpoint_url)->toBe('https://http-intake.logs.datadoghq.eu/api/v2/logs')
-        ->and($stream->destinationOptions())->toBe(['site' => 'datadoghq.eu', 'service' => 'acme', 'tags' => 'env:prod,team:sec'])
+        ->and($stream->destinationOptions())->toEqual(['site' => 'datadoghq.eu', 'service' => 'acme', 'tags' => 'env:prod,team:sec'])
         ->and(flashed('newSecret'))->toBeNull()
         ->and((string) $this->get(route('portal.log-streams'))->assertOk()->getContent())->not->toContain('dd-api-key-typed-by-them');
 })->group('security');

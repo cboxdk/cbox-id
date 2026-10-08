@@ -136,7 +136,7 @@ it('moves an endpoint to Standard Webhooks without minting a secret, and the hex
 
     expect($entry->actor_type)->toBe(ActorType::Service)
         ->and($entry->target_id)->toBe($created['id'])
-        ->and($entry->context['changes'])->toBe(['signature_scheme' => ['from' => 'cbox', 'to' => 'standard_webhooks']]);
+        ->and($entry->context['changes'])->toEqual(['signature_scheme' => ['from' => 'cbox', 'to' => 'standard_webhooks']]);
 
     // The same scheme again changes nothing and records nothing.
     $this->withToken($key)->postJson("/api/v1/webhooks/{$created['id']}/signature-scheme", ['signature_scheme' => 'standard_webhooks'])->assertOk();
