@@ -92,6 +92,7 @@ return [
             'domain_verification' => 'Verifying your email domains',
             'log_streams' => 'Streaming your audit log to your SIEM',
             'certificate_renewal' => 'Renewing your SAML signing certificate',
+            'audit_logs' => 'Reviewing your audit logs (read-only)',
         ],
         'button' => 'Start setup',
         'expires' => 'The link works once, until :date. If it expires, ask for a new one.',

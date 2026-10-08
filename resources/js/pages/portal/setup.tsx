@@ -5,7 +5,8 @@ import type { PageProps } from '@/types';
 import { Button, type IconName, Icon, PageHeader, Pill, Progress } from '@/ui';
 import type { PortalChrome } from './parts';
 
-type Intent = 'sso' | 'dsync' | 'domain_verification' | 'log_streams' | 'certificate_renewal';
+type Intent =
+    'sso' | 'dsync' | 'domain_verification' | 'log_streams' | 'certificate_renewal' | 'audit_logs';
 
 interface Task {
     intent: Intent;
@@ -48,6 +49,11 @@ const INTENTS: Record<Intent, { title: MessageKey; description: MessageKey; icon
         description: 'portal.intents.certificate_renewal.description',
         icon: 'key',
     },
+    audit_logs: {
+        title: 'portal.intents.audit_logs.title',
+        description: 'portal.intents.audit_logs.description',
+        icon: 'eye',
+    },
 };
 
 const STEPS: Record<string, MessageKey> = {
@@ -61,6 +67,7 @@ const STEPS: Record<string, MessageKey> = {
     stream_delivering: 'portal.setup.steps.stream_delivering',
     certificate_staged: 'portal.setup.steps.certificate_staged',
     certificate_current: 'portal.setup.steps.certificate_current',
+    audit_logs_viewed: 'portal.setup.steps.audit_logs_viewed',
 };
 
 /**

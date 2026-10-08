@@ -91,6 +91,7 @@ tags:
   - name: Governance
   - name: 'Agent requests'
   - name: 'Audit log'
+  - name: 'Audit Logs'
   - name: Branding
   - name: 'Directory sync'
   - name: Domains
@@ -2427,6 +2428,929 @@ paths:
                       $ref: '#/components/schemas/AuditEntry'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/events:
+    post:
+      tags:
+        - 'Audit Logs'
+      summary: "Record 1–100 audit events your app's users caused, each for one of your organizations (customers); checked against the action's schema when it has one and appended to that organization's tamper-evident chain. Send an Idempotency-Key."
+      description: 'Requires scope `audit_logs:write`. Danger: write.'
+      operationId: audit_logs_events_create
+      x-action: audit_logs.events.create
+      x-scope: 'audit_logs:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                events:
+                  type: array
+                  description: '1–100 events, recorded all together or not at all.'
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      organization_id:
+                        type: string
+                        description: 'The organization (your customer) the event happened in.'
+                        maxLength: 64
+                      action:
+                        type: string
+                        description: 'What happened, as dotted words: `invoice.voided`, `user.signed_in`.'
+                        maxLength: 190
+                      occurred_at:
+                        type: string
+                        description: 'When it happened: ISO 8601 with a time zone, to the millisecond.'
+                        format: date-time
+                      actor:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: 'Your id for whoever did it.'
+                            maxLength: 190
+                          type:
+                            type: string
+                            description: 'What kind of actor: `user`, `api_key`, `system`.'
+                            maxLength: 100
+                          name:
+                            type:
+                              - string
+                              - 'null'
+                            description: 'A name a person reads in the log.'
+                            maxLength: 190
+                          metadata:
+                            type: object
+                            description: 'Up to 50 names to strings, numbers, booleans or null.'
+                            properties: {}
+                        required:
+                          - id
+                          - type
+                      targets:
+                        type: array
+                        description: 'What it was done to.'
+                        maxItems: 50
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              maxLength: 190
+                            type:
+                              type: string
+                              description: 'What kind of thing: `invoice`, `user`, `report`.'
+                              maxLength: 100
+                            name:
+                              type:
+                                - string
+                                - 'null'
+                              maxLength: 190
+                            metadata:
+                              type: object
+                              properties: {}
+                          required:
+                            - id
+                            - type
+                      context:
+                        type: object
+                        properties:
+                          location:
+                            type:
+                              - string
+                              - 'null'
+                            description: "Where it came from — usually the client's IP address."
+                            maxLength: 64
+                          user_agent:
+                            type:
+                              - string
+                              - 'null'
+                            maxLength: 512
+                      metadata:
+                        type: object
+                        description: 'Up to 50 names to strings, numbers, booleans or null; values up to 500 characters.'
+                        properties: {}
+                    required:
+                      - organization_id
+                      - action
+                      - occurred_at
+                      - actor
+              required:
+                - events
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogEventBatch'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Audit Logs'
+      summary: 'Read audit events newest first, for one organization or the whole environment, filtered by action, actor, target and time range; pass `next_cursor` as `after` to page.'
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_events_list
+      x-action: audit_logs.events.list
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's events. Required in effect for an organization's own administrator, whose events are the only ones they see."
+            maxLength: 64
+        -
+          name: actions
+          in: query
+          required: false
+          schema:
+            type: array
+            description: 'Only these actions, e.g. `invoice.voided`.'
+            maxItems: 50
+            items:
+              type: string
+              maxLength: 190
+        -
+          name: actor_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events this actor caused.'
+            maxLength: 190
+        -
+          name: target_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events naming this target.'
+            maxLength: 190
+        -
+          name: range_start
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events that occurred at or after this time.'
+            format: date-time
+        -
+          name: range_end
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events that occurred before this time.'
+            format: date-time
+        -
+          name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            description: '`desc` (default) for newest first, `asc` for oldest first.'
+            enum:
+              - desc
+              - asc
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Events per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+            maxLength: 200
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEvent'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/exports:
+    post:
+      tags:
+        - 'Audit Logs'
+      summary: 'Start a CSV export of audit events (same filters as the list). It is written on the queue: poll audit_logs.exports.get until state is ready, then download from its short-lived url.'
+      description: 'Requires scope `audit_logs:export`. Danger: write.'
+      operationId: audit_logs_exports_create
+      x-action: audit_logs.exports.create
+      x-scope: 'audit_logs:export'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: "Only this organization's events. Required in effect for an organization's own administrator, whose events are the only ones they see."
+                  maxLength: 64
+                actions:
+                  type: array
+                  description: 'Only these actions, e.g. `invoice.voided`.'
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 190
+                actor_id:
+                  type: string
+                  description: 'Only events this actor caused.'
+                  maxLength: 190
+                target_id:
+                  type: string
+                  description: 'Only events naming this target.'
+                  maxLength: 190
+                range_start:
+                  type: string
+                  description: 'Only events that occurred at or after this time.'
+                  format: date-time
+                range_end:
+                  type: string
+                  description: 'Only events that occurred before this time.'
+                  format: date-time
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogExport'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/audit-logs/exports/{id}':
+    get:
+      tags:
+        - 'Audit Logs'
+      summary: "Read an audit-log export's state; once ready it carries a signed download url valid for a few minutes (read it again for a fresh one)."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_exports_get
+      x-action: audit_logs.exports.get
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The export id.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogExport'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/schemas:
+    post:
+      tags:
+        - 'Audit Logs'
+      summary: "Define the schema one audit-log action's events must match — allowed target types and metadata schemas (a subset of JSON Schema). Events of that action are then validated on arrival."
+      description: 'Requires scope `audit_logs:manage`. Danger: write.'
+      operationId: audit_logs_schemas_create
+      x-action: audit_logs.schemas.create
+      x-scope: 'audit_logs:manage'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  description: 'The action this schema is for, e.g. `invoice.voided`.'
+                  maxLength: 190
+                targets:
+                  type:
+                    - array
+                    - 'null'
+                  description: "The target types this action's events may name, each with an optional metadata schema. Leave out to allow any."
+                  maxItems: 50
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: 'A target type events of this action may name.'
+                        maxLength: 100
+                      metadata:
+                        type: object
+                        description: 'A metadata schema for targets of this type.'
+                        properties: {}
+                    required:
+                      - type
+                actor_metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the actor's metadata."
+                  properties: {}
+                metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the event's own metadata."
+                  properties: {}
+              required:
+                - action
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Audit Logs'
+      summary: 'List the audit-log schemas this environment validates events against, one per action.'
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_schemas_list
+      x-action: audit_logs.schemas.list
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogSchema'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/audit-logs/schemas/{action}':
+    delete:
+      tags:
+        - 'Audit Logs'
+      summary: "Delete an audit-log action's schema. Its events are then accepted unchecked — or refused, if the environment is in strict mode."
+      description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
+      operationId: audit_logs_schemas_delete
+      x-action: audit_logs.schemas.delete
+      x-scope: 'audit_logs:manage'
+      x-danger: destructive
+      parameters:
+        -
+          name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The action whose schema to delete.'
+            maxLength: 190
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Audit Logs'
+      summary: "Read the schema one audit-log action's events are validated against."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_schemas_get
+      x-action: audit_logs.schemas.get
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The action, e.g. `invoice.voided`.'
+            maxLength: 190
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - 'Audit Logs'
+      summary: "Replace an audit-log action's schema with a new version (omitted parts are removed). Recorded events keep the version they were checked against."
+      description: 'Requires scope `audit_logs:manage`. Danger: write.'
+      operationId: audit_logs_schemas_update
+      x-action: audit_logs.schemas.update
+      x-scope: 'audit_logs:manage'
+      x-danger: write
+      parameters:
+        -
+          name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The action whose schema to replace.'
+            maxLength: 190
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targets:
+                  type:
+                    - array
+                    - 'null'
+                  description: "The target types this action's events may name, each with an optional metadata schema. Leave out to allow any."
+                  maxItems: 50
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: 'A target type events of this action may name.'
+                        maxLength: 100
+                      metadata:
+                        type: object
+                        description: 'A metadata schema for targets of this type.'
+                        properties: {}
+                    required:
+                      - type
+                actor_metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the actor's metadata."
+                  properties: {}
+                metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the event's own metadata."
+                  properties: {}
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/settings:
+    get:
+      tags:
+        - 'Audit Logs'
+      summary: "Read this environment's audit-log settings: retention in days and whether strict schemas are on."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_settings_get
+      x-action: audit_logs.settings.get
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Audit Logs'
+      summary: "Change this environment's audit-log retention (days, 1–3650) and strict mode. Shortening retention deletes older events at the next daily prune — irreversibly."
+      description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
+      operationId: audit_logs_settings_update
+      x-action: audit_logs.settings.update
+      x-scope: 'audit_logs:manage'
+      x-danger: destructive
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retention_days:
+                  type: integer
+                  description: 'Keep events this many days after they arrive.'
+                  minimum: 1
+                  maximum: 3650
+                strict_schemas:
+                  type: boolean
+                  description: 'Refuse events whose action has no schema.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/verify:
+    get:
+      tags:
+        - 'Audit Logs'
+      summary: "Re-hash one organization's audit-event chain (from the oldest event retention kept, or from_sequence) and report whether every event is unchanged and in place."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_verify
+      x-action: audit_logs.verify
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "The organization whose chain to verify. An organization's own administrator may leave it out."
+            maxLength: 64
+        -
+          name: from_sequence
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Start here rather than at the oldest event kept.'
+            minimum: 1
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Verify at most this many events. Default 10,000.'
+            minimum: 1
+            maximum: 10000
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogVerification'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -6895,7 +7819,7 @@ paths:
     post:
       tags:
         - 'Admin Portal'
-      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal without an account. The URL is shown once."
+      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal, or to read its audit logs, without an account. The URL is shown once."
       description: 'Requires scope `portal_links:write`. Danger: critical.'
       operationId: organizations_portal_links_create
       x-action: organizations.portal_links.create
@@ -6929,7 +7853,7 @@ paths:
               properties:
                 intents:
                   type: array
-                  description: "What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection's signing certificate)."
+                  description: "What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection's signing certificate), audit_logs (the organization's audit events, read-only, with CSV export)."
                   minItems: 1
                   items:
                     type: string
@@ -6939,6 +7863,7 @@ paths:
                       - domain_verification
                       - log_streams
                       - certificate_renewal
+                      - audit_logs
                 expires_in_minutes:
                   type:
                     - integer
@@ -15120,6 +16045,7 @@ components:
               - domain_verification
               - log_streams
               - certificate_renewal
+              - audit_logs
         emailed_to:
           type:
             - string
@@ -15137,6 +16063,300 @@ components:
             - string
             - 'null'
           format: date-time
+    AuditLogEvent:
+      type: object
+      description: |
+        One audit event your app sent. `hash` covers `id`, `organization_id`, `sequence`,
+        `action`, `occurred_at`, `actor`, `targets`, `context` and `metadata`, chained to
+        the organization's previous event by `prev_hash` — see the Audit Logs guide for how
+        to verify it yourself.
+      required:
+        - id
+        - organization_id
+        - sequence
+        - action
+        - occurred_at
+        - actor
+        - targets
+        - context
+        - metadata
+        - schema_version
+        - received_at
+        - prev_hash
+        - hash
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        sequence:
+          type: integer
+          description: "The event's place in its organization's chain, from 1."
+        action:
+          type: string
+          description: 'e.g. `invoice.voided`.'
+        occurred_at:
+          type: string
+          format: date-time
+          description: 'When it happened, as the sender said, to the millisecond.'
+        actor:
+          type: object
+          required:
+            - id
+            - type
+            - name
+            - metadata
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+            name:
+              type:
+                - string
+                - 'null'
+            metadata:
+              type:
+                - object
+                - 'null'
+        targets:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - type
+              - name
+              - metadata
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              name:
+                type:
+                  - string
+                  - 'null'
+              metadata:
+                type:
+                  - object
+                  - 'null'
+        context:
+          type: object
+          required:
+            - location
+            - user_agent
+          properties:
+            location:
+              type:
+                - string
+                - 'null'
+            user_agent:
+              type:
+                - string
+                - 'null'
+        metadata:
+          type:
+            - object
+            - 'null'
+        schema_version:
+          type:
+            - integer
+            - 'null'
+          description: "The version of its action's schema it was checked against; null when the action has none."
+        received_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When it arrived. Retention counts from here.'
+        prev_hash:
+          type: string
+          description: "The previous event's hash; 64 zeros for an organization's first."
+        hash:
+          type: string
+    AuditLogEventBatch:
+      type: object
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          description: 'The recorded events, in the order they were sent.'
+          items:
+            $ref: '#/components/schemas/AuditLogEvent'
+    AuditLogSchema:
+      type: object
+      required:
+        - id
+        - action
+        - version
+        - targets
+        - actor_metadata
+        - metadata
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+        version:
+          type: integer
+          description: 'Starts at 1; every replacement is the next.'
+        targets:
+          type:
+            - array
+            - 'null'
+          description: "The target types this action's events may name; null allows any."
+          items:
+            type: object
+            required:
+              - type
+              - metadata
+            properties:
+              type:
+                type: string
+              metadata:
+                type:
+                  - object
+                  - 'null'
+        actor_metadata:
+          type:
+            - object
+            - 'null'
+          description: 'A metadata schema (a subset of JSON Schema).'
+        metadata:
+          type:
+            - object
+            - 'null'
+          description: 'A metadata schema (a subset of JSON Schema).'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    AuditLogExport:
+      type: object
+      required:
+        - id
+        - organization_id
+        - state
+        - filters
+        - row_count
+        - url
+        - created_at
+        - completed_at
+        - expires_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for an export across the whole environment.'
+        state:
+          type: string
+          enum:
+            - pending
+            - ready
+            - failed
+            - expired
+        filters:
+          type: object
+          description: 'The filters it was asked with.'
+        row_count:
+          type:
+            - integer
+            - 'null'
+        url:
+          type:
+            - string
+            - 'null'
+          description: |
+            Where the CSV downloads from once `ready` — signed, and valid for a few minutes;
+            read the export again for a fresh one. null otherwise, and on an idempotent replay.
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        completed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When the file is deleted.'
+    AuditLogSettings:
+      type: object
+      required:
+        - retention_days
+        - strict_schemas
+      properties:
+        retention_days:
+          type: integer
+          description: 'Events are kept this many days after they arrive.'
+        strict_schemas:
+          type: boolean
+          description: 'Whether an action with no schema is refused.'
+    AuditLogVerification:
+      type: object
+      required:
+        - organization_id
+        - valid
+        - complete
+        - verified_count
+        - first_sequence
+        - last_sequence
+        - head_sequence
+        - broken_at_sequence
+        - reason
+      properties:
+        organization_id:
+          type: string
+        valid:
+          type: boolean
+          description: 'Every event checked is unchanged and in place.'
+        complete:
+          type: boolean
+          description: "The check reached the chain's head. When false, continue from last_sequence + 1."
+        verified_count:
+          type: integer
+        first_sequence:
+          type:
+            - integer
+            - 'null'
+        last_sequence:
+          type:
+            - integer
+            - 'null'
+        head_sequence:
+          type: integer
+        broken_at_sequence:
+          type:
+            - integer
+            - 'null'
+        reason:
+          type:
+            - string
+            - 'null'
+          enum:
+            - missing
+            - link
+            - hash
+            - truncated
+            - null
     Directory:
       type: object
       required:

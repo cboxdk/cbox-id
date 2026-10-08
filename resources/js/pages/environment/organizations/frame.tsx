@@ -155,7 +155,7 @@ function PortalLinkDialog({
             open={open}
             onOpenChange={onOpenChange}
             title="Admin Portal link"
-            description={`A single-use link ${name}'s IT administrator opens to set things up themselves, without an account here. It is shown once.`}
+            description={`A single-use link ${name}'s IT administrator opens to set things up — or read its audit logs — themselves, without an account here. It is shown once.`}
             footer={
                 <>
                     <DialogClose asChild>
@@ -180,7 +180,7 @@ function PortalLinkDialog({
                 }}
             >
                 <fieldset>
-                    <legend className="text-sm font-medium mb-2">What it sets up</legend>
+                    <legend className="text-sm font-medium mb-2">What it opens</legend>
                     <div className="space-y-2">
                         {link.intents.map((intent) => (
                             <Checkbox

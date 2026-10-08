@@ -15,6 +15,7 @@ use App\Platform\OAuth\Enums\AuthorizationPrompt;
 use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
 use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
+use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\SignupPolicy;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
@@ -406,6 +407,22 @@ final readonly class OAuthConsentController extends PageController
             }
 
             return $this->interrupt($request, $authorization, route($hold['route']));
+        }
+
+        /*
+         * AT THE PLATFORM ROOT, ONLY THE PEOPLE WHO RUN A WORKSPACE. An MCP client signing a
+         * person in there is connecting to the root's `/mcp` — a workspace's team, an
+         * operator — and the root is nobody else's sign-in ({@see RootMcpOAuth}). Anyone
+         * else is told so here, on the page, rather than shown a consent screen for a
+         * connection that would answer every call with nothing.
+         */
+        if ($this->refusedAtRoot($client, $me)) {
+            if ($silent) {
+                return $this->redirectError($redirectUri, 'access_denied', $state,
+                    'Only a member of a workspace\'s team or an operator can connect an MCP client at the platform root.');
+            }
+
+            return $this->failure(__('oauth.failure.no_workspace'));
         }
 
         if (! $reauthed && $authorization->asks(AuthorizationPrompt::SelectAccount)) {
@@ -929,6 +946,12 @@ final readonly class OAuthConsentController extends PageController
             return $this->failure(__('oauth.failure.stale'));
         }
 
+        // …and at the platform root, still somebody who runs a workspace: a membership ended
+        // or an operator suspended while the screen sat open mints nothing.
+        if ($this->refusedAtRoot($authorizing->client, $me)) {
+            return $this->failure(__('oauth.failure.no_workspace'));
+        }
+
         /*
          * NO ORGANIZATION-STATUS CHECK HERE, and its absence is deliberate.
          *
@@ -995,6 +1018,14 @@ final readonly class OAuthConsentController extends PageController
             sessionId: $session?->id,
         );
 
+        // An MCP client allowed at the platform root is recorded in the person's workspace
+        // trail, where the team sees it — the root's one consent that matters to a team.
+        $root = app(RootMcpOAuth::class);
+
+        if ($root->governs($authorizing->client)) {
+            $root->recordConsent($authorizing->client, $me->id(), $authorization->organizationId ?? $me->organizationId(), $authorization->scopes, $request);
+        }
+
         /*
          * RFC 9207: return the issuer in the authorization response so the client can detect
          * a mix-up (a code minted by a different AS than it expects). Resolved the SAME way
@@ -1009,6 +1040,17 @@ final readonly class OAuthConsentController extends PageController
         }
 
         return $this->leave($this->buildRedirect($authorization->redirectUri, $params));
+    }
+
+    /**
+     * Whether the platform root refuses this person this client: an MCP client that
+     * registered itself, at the root, for somebody on no workspace's team who is no operator.
+     */
+    private function refusedAtRoot(Client $client, CurrentUser $me): bool
+    {
+        $root = app(RootMcpOAuth::class);
+
+        return $root->governs($client) && ! $root->admits($me->id());
     }
 
     /**

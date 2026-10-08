@@ -43,6 +43,15 @@ Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEv
     ->daily()
     ->onOneServer();
 
+// Audit logs — the events an app sends about its own customers — kept for each
+// environment's retention (`cbox-id.audit_logs.retention_days` unless the environment set
+// its own) and cut from the front of each organization's chain, which `model:prune` could
+// not do: the cut has to be recorded on the chain before the rows go. Expired export files
+// are deleted by the same pass. ({@see \App\Platform\AuditLogs\AuditLogPruner})
+Schedule::command('audit-logs:prune')
+    ->daily()
+    ->onOneServer();
+
 // The queue monitor's retention — without these the package's retention settings are
 // only settings. `prune` keeps a week (and at most `retention.max_rows`) of job history
 // AND the autoscaler's scaling and cluster events, which the manager writes every cycle;

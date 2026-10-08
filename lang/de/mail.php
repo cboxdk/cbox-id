@@ -80,6 +80,7 @@ return [
             'domain_verification' => 'Verifizierung Ihrer E-Mail-Domains',
             'log_streams' => 'Streaming Ihres Audit-Logs an Ihr SIEM',
             'certificate_renewal' => 'Erneuerung Ihres SAML-Signaturzertifikats',
+            'audit_logs' => 'Durchsicht Ihrer Audit-Logs (nur lesend)',
         ],
         'button' => 'Einrichtung starten',
         'expires' => 'Der Link kann einmal verwendet werden und gilt bis :date. Wenn er abläuft, fordern Sie einen neuen an.',

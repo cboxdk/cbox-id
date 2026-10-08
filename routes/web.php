@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountApiKeyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\InvitationAcceptController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
 use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
+use App\Http\Controllers\Console\AuditLogController;
 use App\Http\Controllers\Console\AuthPolicyController;
 use App\Http\Controllers\Console\ClientController;
 use App\Http\Controllers\Console\ClientPromotionController;
@@ -101,6 +103,7 @@ use App\Http\Controllers\Portal\PortalDirectoryController;
 use App\Http\Controllers\Portal\PortalDomainController;
 use App\Http\Controllers\Portal\PortalLogStreamController;
 use App\Http\Controllers\Portal\PortalSsoController;
+use App\Http\Controllers\PortalAuditLogController;
 use App\Http\Controllers\PortalSetupController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
@@ -454,8 +457,13 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
      * issues the longest-lived credential of the set: a refresh token that outlives both
      * the impersonation window and the operator's session, attributed to the person being
      * impersonated.
+     *
+     * `plane:mcp-client`, not `plane:first-party`: at the platform root this also serves an
+     * MCP client signing a person in for the root's `/mcp` (App\Platform\OAuth\RootMcpOAuth)
+     * — the root is still nobody's identity provider. `throttle:oauth-authorize` meters that
+     * per address there and nothing anywhere else ({@see \App\Http\WebRateLimiters}).
      */
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize');
 
 /*
@@ -469,11 +477,11 @@ Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class
  * cannot influence any of them.
  */
 Route::post('/oauth/authorize/{authorization}/approve', [OAuthConsentController::class, 'approve'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.approve');
 
 Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::class, 'deny'])
-    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+    ->middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->name('oauth.authorize.deny');
 
 /*
@@ -489,7 +497,7 @@ Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::cl
  * the page would leave the browser on the step's URL, where a reload re-submits a choice
  * that was already spent.
  */
-Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
+Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional', 'locale'])
     ->group(function (): void {
         Route::get('/oauth/authorize/{authorization}', [OAuthConsentController::class, 'review'])
             ->name('oauth.authorize.review');
@@ -566,10 +574,24 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
         Route::post('/setup/certificates/{connection}/activate', [PortalCertificateController::class, 'activate'])->name('portal.certificates.activate');
 
         Route::post('/setup/finish', [PortalSetupController::class, 'finish'])->name('portal.finish');
+
+        // A link covering `audit_logs` opens the organization's audit events instead of a
+        // setup screen: read-only, and a CSV of them streamed straight down (a GET, like
+        // any download — it changes nothing). The organization is the portal session's.
+        Route::get('/setup/audit-logs', [PortalAuditLogController::class, 'index'])->name('portal.audit-logs');
+        Route::get('/setup/audit-logs/export', [PortalAuditLogController::class, 'export'])->name('portal.audit-logs.export');
     });
 
     // The link is pasted into mail, Slack or Teams, and every one of those previews it —
     // so opening it renders a button and only the POST spends it.
+    // An audit-log export's CSV, behind the signed, minutes-long URL the export hands out —
+    // the URL is the credential, so a backend holding only a management key can fetch it.
+    // The export is environment-owned: a URL replayed on another environment's host finds
+    // nothing.
+    Route::get('/audit-logs/exports/{export}/download', AuditLogExportDownloadController::class)
+        ->middleware(['signed', 'throttle:60,1'])
+        ->name('audit-logs.exports.download');
+
     Route::get('/setup/{token}', [AdminPortalController::class, 'show'])->name('portal.enter');
     Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->middleware('throttle:link-token')->name('portal.enter.store');
 });
@@ -936,6 +958,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
     Route::get('/audit', [AuditController::class, 'index'])->name('audit');
+    // Audit logs: the events the app built on this environment sends about THIS
+    // organization — read by its own administrators, exported through the same action the
+    // API runs. Never another organization's: the console scope is the organization.
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs');
+    Route::post('/audit-logs/exports', [AuditLogController::class, 'export'])->name('audit-logs.exports.store');
     // Log streaming was environment-plane-only. It ships an environment's audit trail to
     // a SIEM, which is a compliance obligation the organization carries — so the plane
     // that answers for compliance could not see, let alone configure, the shipping.
@@ -1224,6 +1251,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 
             Route::get('/support', [OrganizationSupportController::class, 'index'])->name('environment.organizations.support');
             Route::get('/audit', [AuditController::class, 'index'])->name('environment.organizations.audit');
+            Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('environment.organizations.audit-logs');
             Route::get('/settings', [OrganizationSettingsController::class, 'show'])->name('environment.organizations.settings');
 
             // The header's "Admin Portal link": a one-time link for the customer's IT admin.
@@ -1507,6 +1535,20 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Activity log — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
         Route::get('/audit', [AuditController::class, 'index'])->name('environment.audit');
+
+        // Audit logs — the app's own events about its customers. The list (every
+        // organization's, with a chip), its export, and the environment's own decisions about
+        // them: the schemas events are checked against and how long they are kept. `new`
+        // before `{action}`, so the create form is never read as a schema called "new".
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('environment.audit-logs');
+        Route::post('/audit-logs/exports', [AuditLogController::class, 'export'])->name('environment.audit-logs.exports.store');
+        Route::get('/audit-logs/schemas', [AuditLogController::class, 'schemas'])->name('environment.audit-logs.schemas');
+        Route::get('/audit-logs/schemas/new', [AuditLogController::class, 'create'])->name('environment.audit-logs.schemas.create');
+        Route::post('/audit-logs/schemas', [AuditLogController::class, 'store'])->name('environment.audit-logs.schemas.store');
+        Route::get('/audit-logs/schemas/{action}', [AuditLogController::class, 'edit'])->name('environment.audit-logs.schemas.edit');
+        Route::put('/audit-logs/schemas/{action}', [AuditLogController::class, 'update'])->name('environment.audit-logs.schemas.update');
+        Route::delete('/audit-logs/schemas/{action}', [AuditLogController::class, 'destroy'])->name('environment.audit-logs.schemas.destroy');
+        Route::patch('/audit-logs/settings', [AuditLogController::class, 'settings'])->name('environment.audit-logs.settings.update');
 
         // Log streaming (SIEM) — routable list → create → detail.
         //

@@ -12,6 +12,7 @@ import { Icon } from '@/ui';
  */
 export default function PortalDone() {
     const organization = usePage().flash.portalOrganization;
+    const auditLogs = usePage().flash.portalAuditLogs === true;
     const { t } = useTranslator();
 
     return (
@@ -34,7 +35,7 @@ export default function PortalDone() {
                 className="mt-2 text-sm leading-relaxed mx-auto"
                 style={{ color: 'var(--muted)', maxWidth: '28rem' }}
             >
-                {t('portal.done.body', {
+                {t(auditLogs ? 'portal.done.audit_logs_body' : 'portal.done.body', {
                     organization: organization ?? t('portal.done.this_organization'),
                 })}
             </p>

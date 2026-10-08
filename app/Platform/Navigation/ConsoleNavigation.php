@@ -100,6 +100,9 @@ class ConsoleNavigation
             ),
             new NavArea('Monitoring', 'chart',
                 new NavPage('environment.audit', 'Audit log'),
+                // The audit events the APP sends about its customers — not this platform's own
+                // trail, one line up — with their schemas and retention.
+                new NavPage('environment.audit-logs', 'App audit logs'),
                 new NavPage('environment.audit-streams', 'Log streams'),
                 new NavPage('environment.usage', 'Usage'),
             ),

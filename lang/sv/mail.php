@@ -79,6 +79,7 @@ return [
             'domain_verification' => 'Verifiering av era e-postdomäner',
             'log_streams' => 'Strömning av er granskningslogg till er SIEM',
             'certificate_renewal' => 'Förnyelse av ert SAML-signeringscertifikat',
+            'audit_logs' => 'Granskning av era granskningsloggar (skrivskyddat)',
         ],
         'button' => 'Börja konfigurera',
         'expires' => 'Länken fungerar en gång, fram till :date. Om den går ut kan du be om en ny.',

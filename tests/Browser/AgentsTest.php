@@ -66,7 +66,7 @@ it('draws Connect with a snippet for each client and no JavaScript errors', func
 
     $page->assertSee('Connect')
         ->assertSee('claude mcp add --transport http cbox-id')
-        ->assertSee('Or sign in with your account')
+        ->assertSee('Or sign in with an account of this environment')
         ->click('button[role=tab]:has-text("Cursor")')
         ->assertSee('.cursor/mcp.json')
         ->click('button[role=tab]:has-text("VS Code")')

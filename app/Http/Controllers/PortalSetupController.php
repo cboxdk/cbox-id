@@ -29,10 +29,16 @@ final readonly class PortalSetupController extends PortalController
         'domain_verification' => 'portal.domains',
         'log_streams' => 'portal.log-streams',
         'certificate_renewal' => 'portal.certificates',
+        'audit_logs' => 'portal.audit-logs',
     ];
 
-    public function show(): Response
+    public function show(): Response|RedirectResponse
     {
+        // A link that covers only the organization's audit logs sets nothing up: it lands on them.
+        if ($this->portal->usableIntents() === [PortalIntent::AuditLogs]) {
+            return redirect()->route('portal.audit-logs');
+        }
+
         $organizationId = $this->organizationId();
 
         $tasks = array_map(function (PortalIntent $intent) use ($organizationId): array {
@@ -65,10 +71,13 @@ final readonly class PortalSetupController extends PortalController
         abort_unless($this->portal->sessionValid(), 403);
 
         $name = $this->organizationName();
+        // "All set" says what was done: a link that only read the audit logs configured nothing.
+        $auditLogs = $this->portal->usableIntents() === [PortalIntent::AuditLogs];
 
         $this->portal->complete();
 
         $this->inertia->flash('portalOrganization', $name);
+        $this->inertia->flash('portalAuditLogs', $auditLogs);
 
         return redirect()->route('portal.done');
     }

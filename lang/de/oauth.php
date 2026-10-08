@@ -52,6 +52,7 @@ return [
         'stale' => 'Diese Autorisierungsanfrage kann nicht mehr abgeschlossen werden. Bitte beginnen Sie erneut.',
         'account_attention' => 'Ihr Konto erfordert Ihre Aufmerksamkeit, bevor Sie fortfahren können. Bitte melden Sie sich erneut an.',
         'step_up' => 'Diese Anwendung erfordert eine aktuellere oder stärkere Anmeldung. Bitte beginnen Sie erneut.',
+        'no_workspace' => 'Diese Anmeldung verbindet einen Agenten mit einem Workspace auf Cbox ID, und Ihr Konto gehört zu keinem Workspace-Team. Bitten Sie einen Workspace-Inhaber, Sie einzuladen, oder verbinden Sie den Agenten stattdessen über die eigene Adresse Ihrer Umgebung.',
     ],
 
     'organization' => [

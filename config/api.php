@@ -65,6 +65,27 @@ return [
          * `cbox` CLI among them) and management keys. See App\Mcp\McpProtectedResources.
          */
         'dynamic_clients' => (bool) env('CBOX_ID_MCP_DYNAMIC_CLIENTS', true),
+
+        /*
+         * Whether the PLATFORM ROOT of a multi-tenant deployment signs MCP clients in for
+         * its own `/mcp` — `claude mcp add --transport http cbox-id https://<root>/mcp`, one
+         * connection for a person's whole workspace. On by default.
+         *
+         * The root is not an identity provider for anybody's app, and this does not make it
+         * one: it serves exactly what an MCP client needs and nothing an app would — the
+         * RFC 8414 document (written for the root, no OpenID Connect in it), registration
+         * in the `mcp` profile, client ID metadata documents, `/oauth/authorize` and the
+         * token endpoints for such a client, and every token it issues audienced to the
+         * root's `/mcp` alone. Discovery, `openid`, ID tokens, UserInfo, SAML and SCIM stay
+         * absent there, and only a workspace's team or an operator can finish the sign-in.
+         * See App\Platform\OAuth\RootMcpOAuth and docs/security/_index.md.
+         *
+         * Needs `dynamic_clients` above as well: with self-registered clients closed out of
+         * `/mcp` there is nothing at the root for one to be signed in to. Off, the root is
+         * back to what it was — its own first-party clients only (the `cbox` CLI) — and
+         * every surface listed above answers 404 there.
+         */
+        'root_oauth' => (bool) env('CBOX_ID_ROOT_MCP_OAUTH', true),
     ],
 
 ];

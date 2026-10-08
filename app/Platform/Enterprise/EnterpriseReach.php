@@ -137,6 +137,7 @@ final class EnterpriseReach
         return match ($feature) {
             'sso' => 'single sign-on',
             'scim' => 'directory sync',
+            'audit_logs' => 'audit logs',
             default => $feature,
         };
     }

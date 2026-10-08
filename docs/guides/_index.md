@@ -48,3 +48,4 @@ console explains itself in two or three sentences; when that is not enough, the
 - [Access reviews](access-reviews.md) — certify who still needs what, staff roles included.
 - [Role conflicts](role-conflicts.md) — roles that must never be combined.
 - [Activity log](activity-log.md) — the tamper-evident record of every change.
+- [Audit logs](audit-logs.md) — your app's own audit events, per customer: send, validate, retain, export, and let each customer read theirs.

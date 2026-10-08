@@ -79,6 +79,7 @@ return [
             'domain_verification' => 'La vérification de vos domaines de messagerie',
             'log_streams' => 'L’envoi de votre journal d’audit vers votre SIEM',
             'certificate_renewal' => 'Le renouvellement de votre certificat de signature SAML',
+            'audit_logs' => 'La consultation de vos journaux d’audit (lecture seule)',
         ],
         'button' => 'Commencer la configuration',
         'expires' => 'Le lien fonctionne une seule fois, jusqu’au :date. S’il expire, demandez-en un nouveau.',

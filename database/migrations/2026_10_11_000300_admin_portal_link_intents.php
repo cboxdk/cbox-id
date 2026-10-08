@@ -31,7 +31,7 @@ return new class extends Migration
             $table->string('emailed_to')->nullable()->after('created_by');
         });
 
-        foreach (['sso' => '["sso"]', 'scim' => '["dsync"]', 'both' => '["sso","dsync"]'] as $scope => $intents) {
+        foreach (['sso' => '["sso"]', 'scim' => '["dsync"]', 'both' => '["sso","dsync"]', 'audit_logs' => '["audit_logs"]'] as $scope => $intents) {
             DB::table('admin_portal_links')->where('scope', $scope)->update(['intents' => $intents]);
         }
 
@@ -52,10 +52,11 @@ return new class extends Migration
             $intents = json_decode(is_string($row->intents) ? $row->intents : '[]', true);
             $intents = is_array($intents) ? $intents : [];
             $sso = in_array('sso', $intents, true);
+            $audit = $intents === ['audit_logs'];
             $scim = in_array('dsync', $intents, true);
 
             DB::table('admin_portal_links')->where('id', $row->id)->update([
-                'scope' => $sso && $scim ? 'both' : ($scim ? 'scim' : 'sso'),
+                'scope' => $audit ? 'audit_logs' : ($sso && $scim ? 'both' : ($scim ? 'scim' : 'sso')),
             ]);
         }
 

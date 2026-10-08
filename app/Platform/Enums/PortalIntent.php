@@ -24,6 +24,10 @@ use App\Platform\Entitlements;
  *  - its stable wire value, which is what the API takes, the link stores and the console
  *    posts.
  *
+ * AUDIT LOGS is the one intent that sets nothing up: the organization's own audit events,
+ * read-only, with a CSV of them. It lists no action — reading is the portal page's own —
+ * and a link covering nothing else opens straight onto them.
+ *
  * Single sign-on also covers the organization's email DOMAINS, as it always has: a
  * connection nobody's address routes to signs nobody in, so a link that may set up SSO but
  * not prove the domain would hand the IT administrator a step they cannot finish.
@@ -35,6 +39,7 @@ enum PortalIntent: string
     case DomainVerification = 'domain_verification';
     case LogStreams = 'log_streams';
     case CertificateRenewal = 'certificate_renewal';
+    case AuditLogs = 'audit_logs';
 
     /** The organization's email domains — claimed, proved and given up — shared by two intents. */
     private const array DOMAIN_ACTIONS = [
@@ -74,6 +79,7 @@ enum PortalIntent: string
                 'sso.connections.certificates.stage',
                 'sso.connections.certificates.activate',
             ],
+            self::AuditLogs => [],
         };
     }
 
@@ -86,6 +92,7 @@ enum PortalIntent: string
         return match ($this) {
             self::Sso, self::CertificateRenewal => 'sso',
             self::Dsync => 'scim',
+            self::AuditLogs => 'audit_logs',
             self::DomainVerification, self::LogStreams => null,
         };
     }
@@ -99,6 +106,7 @@ enum PortalIntent: string
             self::DomainVerification => 'Domain verification',
             self::LogStreams => 'Log streams',
             self::CertificateRenewal => 'SAML certificate renewal',
+            self::AuditLogs => 'Audit logs (read-only)',
         };
     }
 
@@ -111,6 +119,7 @@ enum PortalIntent: string
             self::DomainVerification => 'Prove the email domains they own with a DNS TXT record.',
             self::LogStreams => 'Stream their organization\'s audit trail to their own SIEM.',
             self::CertificateRenewal => 'Upload their identity provider\'s new SAML signing certificate before the old one expires.',
+            self::AuditLogs => 'Read the audit events your app sent about their organization, and export them as CSV.',
         };
     }
 

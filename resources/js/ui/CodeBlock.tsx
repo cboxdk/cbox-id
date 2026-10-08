@@ -39,7 +39,14 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
             )}
 
             <div className="flex items-start gap-2">
-                <pre
+                <section
+                    // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
+
+                    // (WCAG 2.1.1; axe scrollable-region-focusable), which the lint rule does not know.
+
+                    // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                    tabIndex={0}
+                    aria-label="Code"
                     className="rounded-lg p-3 overflow-x-auto text-xs mono flex-1 min-w-0"
                     style={{
                         background: 'var(--surface-2)',
@@ -47,8 +54,8 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
                         lineHeight: 1.6,
                     }}
                 >
-                    <code>{code}</code>
-                </pre>
+                    <pre className="m-0"><code>{code}</code></pre>
+                </section>
                 <CopyButton value={code} aria-label={copyLabel} />
             </div>
 

@@ -49,7 +49,7 @@ use Illuminate\Support\Facades\Mail;
  */
 #[AsAction(
     name: 'organizations.portal_links.create',
-    summary: 'Create a one-time Admin Portal link an organization\'s IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal without an account. The URL is shown once.',
+    summary: 'Create a one-time Admin Portal link an organization\'s IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal, or to read its audit logs, without an account. The URL is shown once.',
     scope: 'portal_links:write',
     danger: Danger::Critical,
     schema: 'PortalLink',
@@ -72,7 +72,7 @@ final readonly class CreatePortalLink implements Action
         return InputSchema::of([
             Field::string('organization_id')->inPath()->max(64)->describe('The organization the link sets up.'),
             Field::list('intents', Field::string('intent')->oneOf(PortalIntent::values()))->required()->min(1)->distinct()
-                ->describe('What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection\'s signing certificate).'),
+                ->describe('What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection\'s signing certificate), audit_logs (the organization\'s audit events, read-only, with CSV export).'),
             Field::integer('expires_in_minutes')->nullable()->min(AdminPortal::MIN_TTL_MINUTES)->max(AdminPortal::MAX_TTL_MINUTES)
                 ->describe('How long the link may wait to be opened, in minutes — 5 to 10080 (a week). Left out, the deployment\'s default (30).'),
             Field::string('email')->nullable()->max(254)->format('email')->describe('Mail the link to this address — the customer\'s IT contact. Left out, nothing is sent.'),

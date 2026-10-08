@@ -51,6 +51,7 @@ return [
         'stale' => 'Denne godkjenningsforespørselen kan ikke lenger fullføres. Start på nytt.',
         'account_attention' => 'Kontoen din må følges opp før du kan fortsette. Logg inn på nytt.',
         'step_up' => 'Denne applikasjonen krever en nyere eller sterkere innlogging. Start på nytt.',
+        'no_workspace' => 'Denne innloggingen kobler en agent til et arbeidsområde på Cbox ID, og kontoen din er ikke med i teamet til noe arbeidsområde. Be en eier av arbeidsområdet om å invitere deg, eller koble agenten til miljøets egen adresse i stedet.',
     ],
 
     'organization' => [

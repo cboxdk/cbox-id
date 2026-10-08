@@ -79,6 +79,7 @@ return [
             'domain_verification' => 'Bekræftelse af jeres e-maildomæner',
             'log_streams' => 'Streaming af revisionsloggen til jeres SIEM',
             'certificate_renewal' => 'Fornyelse af jeres SAML-signeringscertifikat',
+            'audit_logs' => 'Gennemgang af jeres revisionslog (skrivebeskyttet)',
         ],
         'button' => 'Start opsætningen',
         'expires' => 'Linket kan bruges én gang og virker til :date. Hvis det udløber, så bed om et nyt.',

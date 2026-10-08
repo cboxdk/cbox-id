@@ -28,6 +28,9 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final readonly class PortalProgress
 {
+    /** The portal session's note that its holder has opened the audit logs. */
+    public const string AUDIT_LOGS_VIEWED = 'cbox.portal.audit_logs_viewed';
+
     public function __construct(
         private DomainVerification $domains,
         private ConnectionCertificates $certificates,
@@ -44,6 +47,8 @@ final readonly class PortalProgress
             PortalIntent::DomainVerification => $this->domainVerification($organizationId),
             PortalIntent::LogStreams => $this->logStreams($organizationId),
             PortalIntent::CertificateRenewal => $this->certificateRenewal($organizationId),
+            // Nothing to configure: done once the session has opened them.
+            PortalIntent::AuditLogs => [['key' => 'audit_logs_viewed', 'done' => session()->get(self::AUDIT_LOGS_VIEWED) === true]],
         };
 
         $done = array_filter($steps, static fn (array $step): bool => $step['done']);

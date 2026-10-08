@@ -68,6 +68,23 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Read the audit log',
             'description' => 'Read this environment\'s audit trail: who did what, to what, and when.',
         ],
+        'audit_logs:write' => [
+            'label' => 'Send audit log events',
+            'description' => 'Record audit events your app\'s users cause, for the organizations (your customers) they happen in. What a backend that sends events needs, and nothing more.',
+        ],
+        'audit_logs:read' => [
+            'label' => 'Read audit logs',
+            'description' => 'Read the audit events your app sent and the exports made of them, verify an organization\'s chain, and read the schemas and retention they are kept under.',
+        ],
+        'audit_logs:export' => [
+            'label' => 'Export audit logs',
+            'description' => 'Start CSV exports of the audit events your app sent — the same events the read scope lists, in one file.',
+        ],
+        'audit_logs:manage' => [
+            'label' => 'Manage audit log schemas and retention',
+            'description' => 'Define, replace and delete the schemas audit events are validated against, and change how long they are kept — shortening retention deletes older events for good.',
+            'critical' => true,
+        ],
         'signin:read' => [
             'label' => 'Read sign-in rules',
             'description' => 'Read the sign-in rules, the social sign-in providers and the legacy login declaration — never a provider\'s secret.',

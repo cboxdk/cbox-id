@@ -158,6 +158,8 @@ declare module '@inertiajs/core' {
              * true for exactly that one render.
              */
             portalOrganization?: string | null;
+            /** Whether the link that just finished only read the audit logs — "All set" says so. */
+            portalAuditLogs?: boolean;
             /** The name a freshly-minted SCIM directory was given, beside its token. */
             newTokenName?: string;
             /**

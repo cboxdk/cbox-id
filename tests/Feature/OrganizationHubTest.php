@@ -84,6 +84,7 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
         OrganizationTabs::POLICY => 'console/auth-policy',
         OrganizationTabs::SUPPORT => 'environment/organizations/tabs/support',
         OrganizationTabs::AUDIT => 'console/audit',
+        OrganizationTabs::AUDIT_LOGS => 'console/audit-logs/index',
         OrganizationTabs::SETTINGS => 'environment/organizations/tabs/settings',
     ];
 
@@ -94,7 +95,7 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
                 ->component($component)
                 ->where('organizationHub.id', $orgId)
                 ->where('organizationHub.name', 'Tenant Co')
-                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 13
+                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 14
                     && $drawn->firstWhere('current', true)['key'] === $tab));
     }
 })->group('security');

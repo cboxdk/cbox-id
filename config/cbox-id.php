@@ -117,6 +117,13 @@ return [
      *
      * `GET /up` is registered outside this group by the framework — a liveness probe
      * must answer on every host, including a kubelet hitting the pod directly.
+     *
+     * Three routes of the group are registered again in routes/mcp.php behind
+     * `plane:mcp-discovery` instead: `/.well-known/oauth-protected-resource/{path}`,
+     * `/.well-known/oauth-authorization-server` and `POST /oauth/register`. That plane is
+     * this one everywhere except the platform root, where it serves the MCP slice of each
+     * — for the root's own `/mcp` — while `api.mcp.root_oauth` is on. Discovery and the
+     * rest of this surface stay here.
      */
     'api' => [
         'middleware' => ['plane:issuer'],
@@ -142,8 +149,15 @@ return [
          * `issuer: https://cboxid.com` with a real client_id while every endpoint that
          * document implies was absent on that host — so scanning the enrolment QR worked
          * on a tenant subdomain and failed on the root.
+         *
+         * `plane:mcp-client` is `plane:first-party` plus MCP clients at the root: one that
+         * registered itself there in the `mcp` profile, or a client ID metadata document,
+         * while `api.mcp.root_oauth` is on — every token such a client is issued audienced
+         * to the root's `/mcp` and nothing else (App\Platform\OAuth\RootMcpOAuth). An
+         * administrator's client is still refused; the device grant stays `plane:first-party`
+         * (routes/mcp.php).
          */
-        'first_party_middleware' => ['plane:first-party'],
+        'first_party_middleware' => ['plane:mcp-client'],
 
         /*
          * The PUBLIC VERIFICATION KEYS (`/.well-known/jwks.json`), on their own plane —
@@ -285,6 +299,9 @@ return [
         'mode' => env('CBOX_ID_ENTITLEMENTS', 'open'),
         'sso' => env('CBOX_ID_ENTITLEMENT_SSO', 'cbox-id-sso'),
         'scim' => env('CBOX_ID_ENTITLEMENT_SCIM', 'cbox-id-scim'),
+        // The organization's own view of the audit events an app sends about it — in the
+        // hosted Admin Portal, under a link that covers `audit_logs`.
+        'audit_logs' => env('CBOX_ID_ENTITLEMENT_AUDIT_LOGS', 'cbox-id-audit-logs'),
     ],
 
     /*
@@ -307,6 +324,25 @@ return [
             'thresholds' => [30, 7],
             'mail_admins' => (bool) env('CBOX_ID_CERTIFICATE_ALERT_MAIL', true),
         ],
+    ],
+
+    /*
+     * AUDIT LOGS — the audit events an app built on an environment sends about its own
+     * customers (`POST /api/v1/audit-logs/events`), kept per organization in a hash chain
+     * and shown to that organization's administrators. See docs/guides/audit-logs.md.
+     *
+     * `retention_days` is the default an environment keeps events for, counted from when
+     * they were RECEIVED; each environment may set its own (`audit_logs.settings.update`).
+     * The daily `audit-logs:prune` applies it. `export_disk` is the filesystem disk a CSV
+     * export is written to — private, the file is only ever handed out through a signed,
+     * short-lived URL — and `export_ttl_hours` how long a finished export stays there.
+     * `portal_export_limit` bounds the CSV the hosted Admin Portal streams directly.
+     */
+    'audit_logs' => [
+        'retention_days' => (int) env('CBOX_ID_AUDIT_LOGS_RETENTION_DAYS', 365),
+        'export_disk' => env('CBOX_ID_AUDIT_LOGS_EXPORT_DISK', 'local'),
+        'export_ttl_hours' => (int) env('CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS', 72),
+        'portal_export_limit' => (int) env('CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT', 50000),
     ],
 
     /*

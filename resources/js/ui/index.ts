@@ -17,6 +17,7 @@ export {
     usePageActions,
 } from './ApiEquivalent';
 export { type AppApiKey, AppApiKeyList } from './AppApiKeyList';
+export { type AuditEventListLabels, AuditEventList, type AuditEventRow } from './AuditEventList';
 export { Avatar } from './Avatar';
 export { AccessRoleHint, type AccessRoleOption } from './AccessRoleHint';
 export { Badge, type BadgeTone } from './Badge';

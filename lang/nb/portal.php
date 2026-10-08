@@ -49,6 +49,10 @@ return [
             'title' => 'Fornyelse av SAML-sertifikat',
             'description' => 'Last opp identitetsleverandørens nye signeringssertifikat før det gamle utløper.',
         ],
+        'audit_logs' => [
+            'title' => 'Revisjonslogger',
+            'description' => 'Les hva applikasjonen har registrert om organisasjonen din, og eksporter det som CSV.',
+        ],
     ],
 
     'setup' => [
@@ -79,6 +83,7 @@ return [
             'stream_delivering' => 'Oppføringer levert',
             'certificate_staged' => 'Nytt sertifikat lastet opp',
             'certificate_current' => 'Nytt sertifikat aktivt',
+            'audit_logs_viewed' => 'Revisjonsloggene er gjennomgått',
         ],
     ],
 
@@ -415,10 +420,39 @@ return [
         ],
     ],
 
+    // The organization's audit events, under a link that covers `audit_logs` — read-only.
+    'audit_logs' => [
+        'title' => 'Revisjonslogger',
+        'heading' => 'Revisjonslogger',
+        'heading_for' => 'Revisjonslogger · :organization',
+        'description' => 'Det applikasjonen har registrert om organisasjonen din, nyeste først. Visningen er skrivebeskyttet: ingenting her kan endres.',
+        'action' => 'Handling',
+        'actor' => 'Aktør-ID',
+        'target' => 'Mål-ID',
+        'from' => 'Fra',
+        'to' => 'Til',
+        'filter' => 'Filtrer',
+        'clear' => 'Fjern filtre',
+        'export' => 'Eksporter CSV',
+        'export_note' => 'CSV-filen inneholder de nyeste samsvarende hendelsene, opptil :limit.',
+        'empty' => 'Ingen hendelser samsvarer med disse filtrene.',
+        'empty_none' => 'Ingen hendelser er registrert for denne organisasjonen ennå.',
+        'time' => 'Tidspunkt',
+        'targets' => 'Mål',
+        'location' => 'Sted',
+        'metadata' => 'Detaljer',
+        'newer' => 'Nyeste hendelser',
+        'older' => 'Eldre hendelser',
+        'done' => 'Ferdig',
+        'count' => ':count hendelser på denne siden',
+    ],
+
     'done' => [
         'title' => 'Ferdig',
         'heading' => 'Alt er klart',
         'body' => 'Oppsettet for :organization er fullført. Denne lenken er nå brukt og stengt. Du kan lukke dette vinduet.',
+        // For a link that only read the audit logs: nothing was configured.
+        'audit_logs_body' => 'Du er ferdig med å gå gjennom revisjonsloggene for :organization. Lenken er nå brukt og lukket. Du kan lukke dette vinduet.',
         'this_organization' => 'denne organisasjonen',
     ],
 

@@ -69,6 +69,7 @@ enum HelpTopic: string
     case LegacyLogin = 'legacy-login';
     case Connectors = 'connectors';
     case LogStreaming = 'log-streaming';
+    case AuditLogs = 'audit-logs';
     case DataExports = 'data-exports';
     case RiskEvents = 'risk-events';
     case SignInActivity = 'sign-in-activity';
@@ -130,6 +131,7 @@ enum HelpTopic: string
             self::LegacyLogin => 'Signing in through your old system',
             self::Connectors => 'Every connection, in one list',
             self::LogStreaming => 'Sending the activity log to your own tools',
+            self::AuditLogs => 'What your app records about each organization',
             self::DataExports => 'Exports & retention',
             self::RiskEvents => 'Sign-ins that looked suspicious',
             self::SignInActivity => 'Sign-ins over time',
@@ -234,6 +236,7 @@ enum HelpTopic: string
             self::Connectors => 'An overview of the links between Cbox ID and other systems: syncing users out over SCIM, webhooks, and single sign-on federation. The catalog lists the kinds this install supports and Connections lists the ones that are live; each is set up on its own page.',
 
             self::LogStreaming => 'Mirrors every activity log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
+            self::AuditLogs => 'The audit events your app sends about each organization it serves — who did what inside your product, and when — kept per organization in a hash chain and shown to that organization\'s own admins. Use it when an organization you serve asks for an audit log of its account; define schemas to keep the events consistent.',
 
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
@@ -280,6 +283,7 @@ enum HelpTopic: string
             self::AccessReviews => 'guides/access-reviews',
             self::RoleConflicts => 'guides/role-conflicts',
             self::ActivityLog => 'guides/activity-log',
+            self::AuditLogs => 'guides/audit-logs',
             self::AgentApprovals => 'guides/agent-approvals',
             self::TrustedDevices => 'guides/trusted-devices',
             self::ReviewAgentRequests => 'guides/agent-approvals',
