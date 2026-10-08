@@ -21,6 +21,12 @@ use Cbox\Id\Organization\Exceptions\LastOwner;
  * Remove a member — and every access role they held in the organization, which the framework
  * drops with the membership and announces as `membership.deleted`. Refused for the last
  * owner (`last_owner`).
+ *
+ * FROM INSIDE THE ORGANIZATION — its People page, or a token one of its administrators
+ * signed in for — the person acting is on the roster too ({@see TenantRoster}): they
+ * cannot remove themselves (`remove_self` — leaving is its own verb, which says what it
+ * does), only an owner removes an owner, and a customer's roster is administered from
+ * Workspace › Team (`managed_elsewhere`).
  */
 #[AsAction(
     name: 'members.remove',
@@ -30,8 +36,8 @@ use Cbox\Id\Organization\Exceptions\LastOwner;
     tag: 'Members',
     rest: ['DELETE', '/organizations/{organization_id}/members/{user_id}'],
     status: 204,
-    consoleRoutes: ['environment.organizations.members.remove', 'environment.users.organizations.remove'],
-    consoleGate: ConsoleGate::EnvironmentAdmin,
+    consoleRoutes: ['environment.organizations.members.remove', 'environment.users.organizations.remove', 'directory.members.remove'],
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RemoveMember implements Action
 {
@@ -48,7 +54,21 @@ final readonly class RemoveMember implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
+        $confined = TenantRoster::confined($context) !== null;
+
+        if ($confined) {
+            TenantRoster::assertManagedHere($organization->id, 'user_id');
+        }
+
         $member = MemberFields::find($organization->id, $context->string('user_id'));
+
+        if ($confined) {
+            if ($member->user_id === TenantRoster::personId($context->principal)) {
+                throw new ActionRefused('remove_self', 'To remove yourself, use "Leave organization".', 422, 'user_id');
+            }
+
+            TenantRoster::assertMayActOn($context->principal, $organization->id, $member);
+        }
 
         try {
             $this->memberships->remove($organization->id, $member->user_id);

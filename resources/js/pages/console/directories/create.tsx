@@ -1,8 +1,18 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, EmptyState, Field, Icon, Input, Panel, RadioGroup, Textarea } from '@/ui';
+import type { OrganizationPicker, PageProps } from '@/types';
+import {
+    Button,
+    EmptyState,
+    Field,
+    Icon,
+    Input,
+    OrganizationPickerField,
+    Panel,
+    RadioGroup,
+    Textarea,
+} from '@/ui';
 
 interface Credential {
     key: string;
@@ -20,7 +30,8 @@ interface ProviderOption {
 
 type Props = PageProps<{
     providers: ProviderOption[];
-    organizationChosen: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     entitled: boolean;
     indexHref: string;
     urls: { register: string; connect: string };
@@ -28,13 +39,14 @@ type Props = PageProps<{
 
 export default function CreateDirectory({
     providers,
-    organizationChosen,
+    organization,
     entitled,
     indexHref,
     urls,
 }: Props) {
     const form = useForm({
         provider: providers[0]?.value ?? 'scim',
+        organization: organization?.selected?.id ?? '',
         name: '',
         googleServiceAccountJson: '',
         googleAdminEmail: '',
@@ -86,22 +98,7 @@ export default function CreateDirectory({
                 or Microsoft Entra directly and we will pull your people on a schedule.
             </p>
 
-            {!organizationChosen ? (
-                // Not the upsell: this administrator holds every organization here and has
-                // simply not said which one they are acting on.
-                <div className="card mt-6" style={{ maxWidth: '36rem' }}>
-                    <EmptyState
-                        icon="layers"
-                        title="Choose an organization"
-                        description="A directory provisions one organization's users, so there is nothing to connect it to yet. Pick the organization in the bar above."
-                        actions={
-                            <Button asChild>
-                                <Link href={indexHref}>Back to Directory Sync</Link>
-                            </Button>
-                        }
-                    />
-                </div>
-            ) : !entitled ? (
+            {!entitled ? (
                 <div className="card mt-6" style={{ maxWidth: '36rem' }}>
                     <EmptyState
                         icon="directory"
@@ -123,6 +120,17 @@ export default function CreateDirectory({
                         submit();
                     }}
                 >
+                    {organization !== null && (
+                        <Panel>
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="A directory provisions one organization's people."
+                            />
+                        </Panel>
+                    )}
+
                     <Panel>
                         <RadioGroup
                             label="Provider"

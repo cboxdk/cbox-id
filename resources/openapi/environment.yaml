@@ -727,6 +727,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       responses:
         204:
@@ -5806,6 +5808,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       requestBody:
         required: true
@@ -6285,6 +6289,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       requestBody:
         required: true
@@ -6370,6 +6376,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       responses:
         204:
@@ -6411,6 +6419,8 @@ paths:
       security:
         -
           EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
       responses:
@@ -6602,6 +6612,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       requestBody:
         required: true
@@ -6659,6 +6671,8 @@ paths:
       security:
         -
           EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
       responses:
@@ -6754,6 +6768,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       responses:
         200:
@@ -6800,6 +6816,8 @@ paths:
       security:
         -
           EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
       responses:
@@ -12799,7 +12817,13 @@ components:
         could run it on their own console here: an organization administrator, confined to
         the organization the token is bound to. Operations that belong to the environment
         console do not list it. Every critical operation answers `202 approval_required`
-        until the person approves it on their device. A DPoP-bound token is presented as
+        until the person approves it on their device.
+
+        On the organization's own roster (members, their roles, invitations, ownership, its
+        people's API keys) the organization's own rules hold, as on its People page: an
+        admin cannot change or remove an owner, nobody removes themselves, only the owner
+        transfers ownership, a staff-only role is `role_not_assignable`, and a customer
+        workspace's roster — administered under Workspace › Team — is `409 managed_elsewhere`. A DPoP-bound token is presented as
         `Authorization: DPoP <token>` with a proof.
     WorkspaceAccessToken:
       type: http

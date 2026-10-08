@@ -58,9 +58,11 @@ it('never lists a write that is already an action', function (): void {
     expect(array_values(array_intersect(ParityAllowlist::all(), array_keys(claimedConsoleRoutes()))))->toBe([]);
 });
 
-it('only ever shrinks the pending list', function (): void {
-    $pending = count(ParityAllowlist::pending());
-
-    expect($pending)->toBeLessThanOrEqual(ParityAllowlist::BASELINE)
-        ->and($pending)->toBe(ParityAllowlist::BASELINE, 'The pending list shrank — lower ParityAllowlist::BASELINE to '.$pending.' so it cannot grow back.');
+/**
+ * The pending list is CLOSED: every console management write is an action. It shrank to
+ * nothing one area at a time, and a new write cannot reopen it — make it an action instead.
+ */
+it('carries no pending debt at all', function (): void {
+    expect(ParityAllowlist::pending())->toBe([], 'A console write was listed as pending. Make it an action (app/Actions) instead: the list is closed.')
+        ->and(ParityAllowlist::BASELINE)->toBe(0);
 });

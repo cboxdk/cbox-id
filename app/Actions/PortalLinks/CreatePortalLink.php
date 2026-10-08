@@ -41,7 +41,7 @@ use App\Platform\Enums\PortalScope;
     tag: 'Admin Portal',
     rest: ['POST', '/organizations/{organization_id}/portal-links'],
     status: 201,
-    consoleRoutes: ['connections.invite', 'environment.connections.invite', 'directories.invite', 'environment.directories.invite'],
+    consoleRoutes: ['connections.invite', 'environment.connections.invite', 'directories.invite', 'environment.directories.invite', 'environment.organizations.portal-links.store'],
     consoleGate: ConsoleGate::Administer,
     redact: ['url'],
 )]

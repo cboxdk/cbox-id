@@ -1,6 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { OrganizationPicker, PageProps } from '@/types';
 import {
     Badge,
     Button,
@@ -9,6 +9,7 @@ import {
     Field,
     Icon,
     Input,
+    OrganizationPickerField,
     PageHeader,
     Panel,
     Select,
@@ -34,7 +35,8 @@ type Props = PageProps<{
     catalog: CatalogEntry[];
     apps: { id: string; name: string }[];
     holdsEnvironment: boolean;
-    organizationChosen: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     permissionsHref: string | null;
     indexHref: string;
     storeHref: string;
@@ -44,7 +46,7 @@ export default function CreateRole({
     catalog,
     apps,
     holdsEnvironment,
-    organizationChosen,
+    organization,
     permissionsHref,
     indexHref,
     storeHref,
@@ -56,6 +58,7 @@ export default function CreateRole({
            that app's tokens. */
         app: '',
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
         permissions: [] as string[],
     });
 
@@ -67,16 +70,6 @@ export default function CreateRole({
                 : form.data.permissions.filter((held) => held !== id),
         );
     };
-
-    /*
-     * The organization is NOT a field, and never was on either plane — the console chrome
-     * owns that choice. What the environment plane's form encoded implicitly is the one
-     * thing the scope cannot: it always wrote an ENVIRONMENT-wide role, reusable by every
-     * tenant. That is a different KIND of role, not a different organization, so it
-     * survives as an explicit choice — offered, and accepted, only where an administrator
-     * holds the environment.
-     */
-    const needsOrganization = !organizationChosen && !form.data.environmentWide;
 
     return (
         <>
@@ -171,13 +164,13 @@ export default function CreateRole({
                             </div>
                         )}
 
-                        {needsOrganization && (
-                            // Nothing is wrong with this administrator: they simply have
-                            // not said which organization the role is for.
-                            <output className="block text-sm" style={{ color: 'var(--warning-strong)' }}>
-                                Choose an organization in the console header, or define the role for
-                                the whole environment.
-                            </output>
+                        {organization !== null && !form.data.environmentWide && (
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="Whose role it is — or tick the box above to define it for every organization."
+                            />
                         )}
                     </div>
                 </Panel>
@@ -188,7 +181,11 @@ export default function CreateRole({
                 >
                     <div
                         className="space-y-1.5 rounded-lg border p-3"
-                        style={{ borderColor: 'var(--border)', maxHeight: '18rem', overflowY: 'auto' }}
+                        style={{
+                            borderColor: 'var(--border)',
+                            maxHeight: '18rem',
+                            overflowY: 'auto',
+                        }}
                     >
                         {catalog.length === 0 ? (
                             <EmptyState

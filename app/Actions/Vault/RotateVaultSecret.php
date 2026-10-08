@@ -32,7 +32,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
     schema: 'TokenVaultSecret',
     tag: 'Token vault',
     rest: ['POST', '/token-vault/secrets/{id}/rotate'],
-    consoleRoutes: ['vault.rotate', 'environment.vault.rotate'],
+    consoleRoutes: ['vault.rotate', 'environment.vault.rotate', 'environment.organizations.vault.rotate'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RotateVaultSecret implements Action

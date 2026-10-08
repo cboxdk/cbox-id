@@ -26,7 +26,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
     schema: 'TokenVaultSecret',
     tag: 'Token vault',
     rest: ['POST', '/token-vault/secrets/{id}/revoke'],
-    consoleRoutes: ['vault.revoke', 'environment.vault.revoke'],
+    consoleRoutes: ['vault.revoke', 'environment.vault.revoke', 'environment.organizations.vault.revoke'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RevokeVaultSecret implements Action

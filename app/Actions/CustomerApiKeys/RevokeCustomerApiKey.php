@@ -27,6 +27,10 @@ use Cbox\Id\Organization\ValueObjects\ApiKeyActor;
  * binds the lookup to that organization as well — what the console does, so a key id pasted
  * under the wrong organization's page revokes nothing. Idempotent: a key already revoked
  * answers 204 too.
+ *
+ * An organization's own administrators run it from People › Member API keys, and through a
+ * token they signed in for: confined to their organization, which they must name — a key
+ * of any other is not theirs to stop ({@see OrganizationTarget}).
  */
 #[AsAction(
     name: 'api_keys.revoke',
@@ -36,8 +40,8 @@ use Cbox\Id\Organization\ValueObjects\ApiKeyActor;
     tag: 'API keys',
     rest: ['DELETE', '/api-keys/{id}'],
     status: 204,
-    consoleRoutes: ['environment.organizations.api-keys.revoke'],
-    consoleGate: ConsoleGate::EnvironmentAdmin,
+    consoleRoutes: ['environment.organizations.api-keys.revoke', 'directory.api-keys.revoke'],
+    consoleGate: ConsoleGate::Administer,
 )]
 final readonly class RevokeCustomerApiKey implements Action
 {

@@ -237,7 +237,7 @@ enum HelpTopic: string
 
             self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
 
-            self::Branding => 'The palette, logo, app name and email sender your people see on the console and the hosted sign-in page. Set it once for the whole environment and every organization inherits it, or choose an organization to give that one its own look.',
+            self::Branding => 'The palette, logo, app name and email sender your people see on the console and the hosted sign-in page. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its page, under Branding.',
 
             self::Workspaces => 'A workspace is one signed-up company\'s home on this install, holding its projects, environments and team. Open one to walk its products and environments, or suspend it, which signs its members out and stops every environment it owns from serving sign-ins.',
 

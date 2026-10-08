@@ -382,7 +382,7 @@ it('lists and revokes an organization\'s keys on the environment console\'s orga
     $fixture = appKeyFixture('env-keys');
     $key = mintAppKey($fixture, $fixture['ada'], ['returns:read']);
 
-    $keys = $this->get(route('environment.organizations.show', $fixture['org']->id))
+    $keys = $this->get(route('environment.organizations.api-keys', $fixture['org']->id))
         ->assertOk()
         ->inertiaProps('apiKeys');
 

@@ -30,6 +30,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Response;
 
 /**
@@ -63,7 +64,8 @@ final readonly class WebhookController extends ConsoleController
     public function index(Request $request): Response
     {
         $search = trim((string) $request->query('q', ''));
-        $organizationId = $this->actingOrganizationId();
+        $filter = $this->organizationFilter();
+        $organizationId = $filter->id;
 
         $query = WebhookEndpoint::query()
             /*
@@ -73,12 +75,13 @@ final readonly class WebhookController extends ConsoleController
              * even though it is not theirs to change. Hiding it would mean a subscriber
              * to your members' sign-ins with nothing on screen saying so.
              *
-             * With no organization chosen — only possible for an environment
-             * administrator — this is every endpoint in the environment, which is a
-             * deliberate overview and not a leak: the model's environment scope still
-             * bounds it, and an organization member can never reach that branch. See
-             * {@see self::actingOrganizationId()}.
+             * Unfiltered — only possible for an environment administrator — this is every
+             * endpoint in the environment, which is a deliberate overview and not a leak:
+             * the model's environment scope still bounds it, and an organization member can
+             * never reach that branch. See {@see self::organizationFilter()}; a filter
+             * naming no organization here matches nothing.
              */
+            ->when($filter->unknown, fn (Builder $q): Builder => $filter->apply($q))
             ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
                 fn (Builder $scoped): Builder => $scoped
                     ->whereNull('organization_id')
@@ -116,7 +119,8 @@ final readonly class WebhookController extends ConsoleController
              * hidden. `console.admin` on the route is that assertion, and the branch it
              * fed was dead on both planes.
              */
-            'createHref' => $this->url('webhooks.create'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            'createHref' => $this->createUrl('webhooks.create'),
             'help' => HelpProps::for(HelpTopic::Webhooks),
         ]);
     }
@@ -143,6 +147,9 @@ final readonly class WebhookController extends ConsoleController
              * administrator acts on several organizations or implicitly on their own.
              */
             'mayScopeEnvironmentWide' => $this->scope->plane()->choosesOrganization(),
+            // "For which organization?" on the environment console, unless the endpoint is
+            // the whole environment's; prefilled and locked when opened from an organization.
+            'organization' => $this->organizationPicker(),
         ]);
     }
 
@@ -161,14 +168,7 @@ final readonly class WebhookController extends ConsoleController
             app(VerifiedEmailGate::class)->require('create a webhook');
         }
 
-        try {
-            $organizationId = $this->targetOrganizationId($request->boolean('environmentWide'));
-        } catch (AuthorizationException $e) {
-            // Reported on the URL field rather than thrown: on the environment plane
-            // "you have not picked an organization yet" is an ordinary state of the
-            // console, not a failure, and the form must survive to be resubmitted.
-            return back()->withInput()->withErrors(['url' => $e->getMessage()]);
-        }
+        $organizationId = $this->targetOrganizationId($request, $request->boolean('environmentWide'));
 
         // LAST, after authorization and after the refusals above — the same order the
         // re-key uses. Normally a no-op, because create() already asked.
@@ -374,7 +374,7 @@ final readonly class WebhookController extends ConsoleController
      */
     private function endpoint(string $id): WebhookEndpoint
     {
-        $organizationId = $this->actingOrganizationId();
+        $organizationId = $this->routeOrganizationId();
 
         $endpoint = WebhookEndpoint::query()
             ->whereKey($id)
@@ -424,13 +424,15 @@ final readonly class WebhookController extends ConsoleController
     /**
      * The organization an endpoint is registered for, or null for platform-wide.
      *
-     * @throws AuthorizationException when no organization is resolved
+     * @throws AuthorizationException
+     * @throws ValidationException when the form names no organization of this environment
      */
-    private function targetOrganizationId(bool $environmentWide): ?string
+    private function targetOrganizationId(Request $request, bool $environmentWide): ?string
     {
         if (! $environmentWide) {
-            // The organization comes from the scope, not from a field on the form.
-            return $this->scope->requireOrganizationId();
+            // The member's own organization; on the environment console the form's "For
+            // which organization?", checked against this environment.
+            return $this->chosenOrganizationId($request);
         }
 
         /*

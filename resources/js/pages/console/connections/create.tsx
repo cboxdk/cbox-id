@@ -1,7 +1,7 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { OrganizationPicker, PageProps } from '@/types';
 import {
     Button,
     Checkbox,
@@ -9,14 +9,15 @@ import {
     Field,
     Icon,
     Input,
+    OrganizationPickerField,
     Panel,
     RadioGroup,
     Textarea,
 } from '@/ui';
 
 type Props = PageProps<{
-    /** An environment administrator has not chosen an organization yet. */
-    needsOrganization: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     entitled: boolean;
     mayScopeEnvironmentWide: boolean;
     indexHref: string;
@@ -25,7 +26,7 @@ type Props = PageProps<{
 }>;
 
 export default function CreateConnection({
-    needsOrganization,
+    organization,
     entitled,
     mayScopeEnvironmentWide,
     indexHref,
@@ -40,6 +41,7 @@ export default function CreateConnection({
         name: '',
         type: 'saml',
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
         idp_entity_id: '',
         idp_sso_url: '',
         idp_x509cert: '',
@@ -73,10 +75,6 @@ export default function CreateConnection({
 
     const saml = form.data.type === 'saml';
 
-    // The environment may own a connection itself, but an ORGANIZATION-owned one needs an
-    // organization to own it — and on this plane one has to be chosen first.
-    const blocked = needsOrganization && !form.data.environmentWide;
-
     return (
         <>
             <Link
@@ -98,7 +96,7 @@ export default function CreateConnection({
                 draft — nothing changes for anybody until you activate it.
             </p>
 
-            {!needsOrganization && !entitled ? (
+            {!entitled ? (
                 <div className="card mt-6">
                     <EmptyState
                         icon="connections"
@@ -116,6 +114,17 @@ export default function CreateConnection({
                     }}
                 >
                     <Panel>
+                        {organization !== null && !form.data.environmentWide && (
+                            <div className="mb-5">
+                                <OrganizationPickerField
+                                    picker={organization}
+                                    error={form.errors.organization}
+                                    onChange={(id) => form.setData('organization', id)}
+                                    hint="Whose people sign in through it. Its domains and Admin Portal link are on that organization's page."
+                                />
+                            </div>
+                        )}
+
                         <Field
                             label="Name"
                             hint="What your team will see on the sign-in page."
@@ -149,7 +158,7 @@ export default function CreateConnection({
                             />
                         </div>
 
-                        {mayScopeEnvironmentWide && (
+                        {mayScopeEnvironmentWide && !(organization?.locked ?? false) && (
                             <div className="mt-5">
                                 <Checkbox
                                     checked={form.data.environmentWide}
@@ -160,13 +169,6 @@ export default function CreateConnection({
                                     hint="For an environment that does not use organizations — it signs people in and enrols them nowhere."
                                 />
                             </div>
-                        )}
-
-                        {blocked && (
-                            <p className="mt-4 text-sm" style={{ color: 'var(--warning-strong)' }}>
-                                Choose an organization in the bar at the top of the page, or make
-                                this the environment's own connection.
-                            </p>
                         )}
                     </Panel>
 
@@ -344,12 +346,7 @@ export default function CreateConnection({
                     )}
 
                     <div className="flex items-center gap-2">
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            disabled={blocked}
-                            loading={form.processing}
-                        >
+                        <Button type="submit" variant="primary" loading={form.processing}>
                             Create connection
                         </Button>
                         <Button asChild>

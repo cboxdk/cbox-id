@@ -1,7 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu } from '@/chrome/AccountMenu';
-import { ActingOrganization } from '@/chrome/ActingOrganization';
 import { ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { ContextSwitcher } from '@/chrome/ContextSwitcher';
@@ -13,6 +12,7 @@ import { Subnav } from '@/chrome/Subnav';
 import { Toaster } from '@/chrome/Toaster';
 import { useDocumentLanguage } from '@/i18n';
 import { setNavPinned } from '@/lib/theme';
+import { OrganizationFrame } from '@/pages/environment/organizations/frame';
 import type { SharedProps } from '@/types';
 import { Icon, TooltipProvider } from '@/ui';
 import { logout } from '@routes';
@@ -37,12 +37,22 @@ export interface ConsoleLayoutProps {
  * arrives as one shared prop. This file is only the arrangement:
  *
  *  - the rail, left: where you can go in this console;
- *  - the topbar: where you ARE (workspace / project / environment, and on the environment
- *    console which of your customers the pages are filtered to), search, and who you are;
+ *  - the topbar: where you ARE (workspace / project / environment), search, and who you
+ *    are — and nothing that silently narrows the pages: a page about one organization says
+ *    so in its own URL and draws that organization's header itself (`organizationHub`);
  *  - in platform admin, a strip above it all saying so, with the way out.
  */
-export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
-    const { shell, auth, title, environment } = usePage<SharedProps>().props;
+export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
+    const { shell, auth, title, environment, organizationHub } = usePage<SharedProps>().props;
+
+    // A page under `/admin/organizations/{organization}/…` is a tab of that organization's
+    // page: its header and tabs go around it, whichever page it is.
+    const children =
+        organizationHub !== undefined && organizationHub !== null ? (
+            <OrganizationFrame hub={organizationHub}>{page}</OrganizationFrame>
+        ) : (
+            page
+        );
 
     // The console is English, whatever language the sign-in page before it was in.
     useDocumentLanguage('en');
@@ -110,28 +120,9 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
     const workspace = shell.context.workspaces.find((option) => option.current);
     const onEnvironment = shell.altitude === 'environment';
 
-    // The context switcher, and on the environment console the organization the pages are
-    // filtered to — drawn in the topbar, and again in the phone's sheet, where the topbar
-    // has no room for all of it.
-    const context = (
-        <>
-            <ContextSwitcher context={shell.context} />
-            {shell.actingOrganization !== null && (
-                <>
-                    <span className="cbx-ctx-sep" aria-hidden="true">
-                        /
-                    </span>
-                    {/*
-                        TWO DIFFERENT QUESTIONS. The crumbs before this ask which of MY
-                        workspaces and environments — a handful, so menus of options. This
-                        asks which ORGANIZATION of this environment the pages are filtered to —
-                        unbounded, so a search.
-                    */}
-                    <ActingOrganization acting={shell.actingOrganization} />
-                </>
-            )}
-        </>
-    );
+    // The context switcher — drawn in the topbar, and again in the phone's sheet, where the
+    // topbar has no room for all of it.
+    const context = <ContextSwitcher context={shell.context} />;
 
     return (
         <TooltipProvider>

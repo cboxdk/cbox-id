@@ -1,12 +1,13 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { OrganizationPicker, PageProps } from '@/types';
 import {
     Button,
     Checkbox,
     Field,
     Icon,
     Input,
+    OrganizationPickerField,
     PageHeader,
     Panel,
     RadioGroup,
@@ -22,7 +23,8 @@ interface SchemeOption {
 type Props = PageProps<{
     schemes: SchemeOption[];
     mayScopeEnvironmentWide: boolean;
-    organizationChosen: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
     indexHref: string;
     storeHref: string;
 }>;
@@ -30,7 +32,7 @@ type Props = PageProps<{
 export default function CreateOutboundSync({
     schemes,
     mayScopeEnvironmentWide,
-    organizationChosen,
+    organization,
     indexHref,
     storeHref,
 }: Props) {
@@ -40,6 +42,7 @@ export default function CreateOutboundSync({
         scheme: schemes[0]?.value ?? 'bearer',
         secret: '',
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
         tokenUrl: '',
         clientId: '',
         scope: '',
@@ -49,8 +52,6 @@ export default function CreateOutboundSync({
     // asking for them anyway is how a form teaches people to fill in fields that mean
     // nothing. The server requires them for the same scheme and only that one.
     const usesClientCredentials = form.data.scheme === 'oauth2_client_credentials';
-
-    const needsOrganization = !organizationChosen && !form.data.environmentWide;
 
     return (
         <>
@@ -116,14 +117,13 @@ export default function CreateOutboundSync({
                             />
                         )}
 
-                        {needsOrganization && (
-                            <output
-                                className="block text-sm"
-                                style={{ color: 'var(--warning-strong)' }}
-                            >
-                                Choose an organization in the console header, or register the
-                                connection for the whole environment.
-                            </output>
+                        {organization !== null && !form.data.environmentWide && (
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="Whose people are pushed — or tick the box above to send every organization."
+                            />
                         )}
                     </div>
                 </Panel>

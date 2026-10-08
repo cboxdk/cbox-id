@@ -6,7 +6,6 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
@@ -67,13 +66,13 @@ it('reads the organization from the membership on the organization plane', funct
         ->and(scope()->organizationId())->toBe($org->id);
 });
 
-it('refuses to let an organization member choose a different organization', function (): void {
+it('refuses to let an organization member bind a different organization', function (): void {
     // The authorization the plane exists to withhold. If a member could set this, they
     // would be picking which organization to administer.
     actingAsRole(MembershipRole::Owner);
     $other = anOrganization('somebody-else', 'Somebody Else');
 
-    expect(fn () => scope()->chooseOrganization($other))
+    expect(fn () => scope()->bindOrganization($other))
         ->toThrow(AuthorizationException::class);
 })->group('security');
 
@@ -101,10 +100,10 @@ it('lets the subject session win when a browser holds both', function (): void {
         ->and(scope()->organizationId())->toBe($orgId)
         ->and(array_keys(scope()->availableOrganizations()))->toBe([$orgId])
         // And they must not be able to reach across the environment.
-        ->and(fn () => scope()->chooseOrganization($orgId))->toThrow(AuthorizationException::class);
+        ->and(fn () => scope()->bindOrganization($orgId))->toThrow(AuthorizationException::class);
 })->group('security');
 
-it('has no organization on the environment plane until one is chosen', function (): void {
+it('has no organization on the environment plane unless the URL names one', function (): void {
     anOrganization('acme-env');
     actAsRealEnvironmentAdmin();
 
@@ -112,64 +111,54 @@ it('has no organization on the environment plane until one is chosen', function 
         ->and(scope()->organizationId())->toBeNull();
 });
 
-it('refuses a write before an organization is chosen', function (): void {
+it('refuses a write that names no organization', function (): void {
     // Not merely null: a write attempted with nothing resolved would land in whichever
     // organization a downstream default picked.
     actAsRealEnvironmentAdmin();
 
     expect(fn () => scope()->requireOrganizationId())
-        ->toThrow(AuthorizationException::class, 'Choose an organization');
+        ->toThrow(AuthorizationException::class, 'none is named here');
 })->group('security');
 
-it('acts on the organization an environment admin chose', function (): void {
+it('acts on the organization the request names', function (): void {
     actAsRealEnvironmentAdmin();
     $orgId = anOrganization('acme-env');
 
-    scope()->chooseOrganization($orgId);
-
-    expect(scope()->organizationId())->toBe($orgId)
+    expect(scope()->bindOrganization($orgId))->toBeTrue()
+        ->and(scope()->organizationId())->toBe($orgId)
         ->and(scope()->requireOrganizationId())->toBe($orgId);
 });
 
 it('refuses an organization that is not in this environment', function (): void {
     actAsRealEnvironmentAdmin();
 
-    expect(fn () => scope()->chooseOrganization('01JQZZZZZZZZZZZZZZZZZZZZZZ'))
-        ->toThrow(AuthorizationException::class, 'not in this environment');
+    expect(scope()->bindOrganization('01JQZZZZZZZZZZZZZZZZZZZZZZ'))->toBeFalse()
+        ->and(scope()->organizationId())->toBeNull();
 })->group('security');
 
-it('re-validates the chosen organization on every request', function (): void {
-    // Not trusted because it was valid when chosen. A session carried to a different
-    // host must not act on the organization it names — the environment scope on the
-    // model is what makes that true, and this is what consults it.
-    //
-    // PER REQUEST, which is what changed and what this now says out loud. The check used
-    // to run on every READ, and a console page reads it eleven times through entitled();
-    // the answer is memoised for the request now, keyed on the selection AND the
-    // environment. Per-request is the standing this whole platform is built on — a
-    // suspended operator, a deactivated subject and a deleted organization all take effect
-    // on the very next request rather than at the next sign-in — and the memo's key is
-    // what keeps the cross-host half exact rather than merely eventual (below).
+it('remembers no organization from one request to the next', function (): void {
+    // The "acting organization" this replaced lived in the session, so a choice made once
+    // narrowed every page after it. A binding is THIS request's: the next one starts with
+    // none, and only its own URL can name one.
     actAsRealEnvironmentAdmin();
     $orgId = anOrganization('acme-env');
-    scope()->chooseOrganization($orgId);
+    scope()->bindOrganization($orgId);
 
     expect(scope()->organizationId())->toBe($orgId);
 
-    Organization::query()->whereKey($orgId)->delete();
-
-    // The next request, modelled by dropping THIS object rather than by nextRequest().
-    // nextRequest() ends the request wholesale, ambient environment included, and an
-    // Eloquent read with no environment is answered — correctly, and silently — with zero
-    // rows by the tenancy scope. This assertion would then pass against an implementation
-    // with the re-validation deleted, which is the exact mistake tests/Pest.php warns
-    // about on that helper.
+    // The next request, modelled by dropping THIS object.
     app()->forgetInstance(ConsoleScope::class);
+
+    expect(scope()->organizationId())->toBeNull();
+
+    // …and a process that keeps the object (a long-lived worker) has it released at the end.
+    scope()->bindOrganization($orgId);
+    scope()->releaseOrganization();
 
     expect(scope()->organizationId())->toBeNull();
 })->group('security');
 
-it('does not carry a chosen organization into another environment', function (): void {
+it('does not carry a bound organization into another environment', function (): void {
     // The property the re-validation above exists FOR, asserted directly rather than
     // demonstrated by deleting a row. The session cookie is shared across `*.cboxid.com`,
     // so a selection made on one environment's host travels to the next one; what must not
@@ -179,7 +168,7 @@ it('does not carry a chosen organization into another environment', function ():
     // and a memo that ignored it would answer for the environment we just left.
     actAsRealEnvironmentAdmin();
     $orgId = anOrganization('acme-env');
-    scope()->chooseOrganization($orgId);
+    scope()->bindOrganization($orgId);
 
     expect(scope()->organizationId())->toBe($orgId);
 
@@ -209,13 +198,13 @@ it('enforces entitlements on the environment plane too', function (): void {
     // gate entirely. An entitlement belongs to the organization, not to the door.
     actAsRealEnvironmentAdmin();
     $orgId = anOrganization('acme-env');
-    scope()->chooseOrganization($orgId);
+    scope()->bindOrganization($orgId);
 
     expect(scope()->entitled('sso'))->toBeTrue();
 
-    // And with nothing chosen there is no organization to be entitled, so it refuses
-    // rather than defaulting open.
-    session()->forget(ConsoleScope::SELECTION_KEY);
+    // And with none named there is no organization to be entitled, so it refuses rather
+    // than defaulting open.
+    scope()->releaseOrganization();
 
     expect(scope()->entitled('sso'))->toBeFalse();
 })->group('security');
@@ -273,52 +262,4 @@ it('attributes an environment admin to their subject too', function (): void {
     );
 
     expect($exists)->toBeTrue();
-})->group('security');
-
-/**
- * CHOOSING WAS A ONE-WAY DOOR.
- *
- * An unselected environment console is the environment-wide view — every read is written
- * as `when($id !== null, …)`, so null means "no filter" rather than "nothing". That is
- * where an administrator arrives, and once they had picked an organization there was no
- * way back to it: `chooseOrganization()` only ever wrote to the session, and signing out
- * was the only way to see the whole environment again.
- */
-it('goes back to the whole environment after choosing an organization', function (): void {
-    // The environment first: an organization created before the switch belongs to another
-    // one, and choosing it is refused — correctly.
-    actAsRealEnvironmentAdmin();
-    $orgId = anOrganization('acme-clear');
-
-    scope()->chooseOrganization($orgId);
-    expect(scope()->organizationId())->toBe($orgId);
-
-    scope()->clearOrganization();
-
-    expect(scope()->organizationId())->toBeNull();
-});
-
-/**
- * The step-up does not travel with the selection, in either direction. It was made while
- * acting as one organization, and acting as ALL of them is a larger authority than the one
- * it was confirmed against — the same argument that drops it when switching between two.
- */
-it('drops the step-up when going back to the whole environment', function (): void {
-    actAsRealEnvironmentAdmin();
-    $orgId = anOrganization('acme-clear-sudo');
-
-    scope()->chooseOrganization($orgId);
-    app(EnvironmentSudo::class)->confirm();
-
-    scope()->clearOrganization();
-
-    expect(app(EnvironmentSudo::class)->confirmed())->toBeFalse();
-})->group('security');
-
-it('refuses to let an organization member clear a selection they never made', function (): void {
-    // On that plane the organization IS the membership, and answering null would hand the
-    // console the "no filter" reading — every other organization's rows.
-    actingAsRole(MembershipRole::Owner);
-
-    expect(fn () => scope()->clearOrganization())->toThrow(AuthorizationException::class);
 })->group('security');

@@ -1,8 +1,21 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Button, EmptyState, Field, Icon, Input, PageHeader, Table, Td, TdMono, Th } from '@/ui';
+import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
+import {
+    Button,
+    EmptyState,
+    Field,
+    FilterChips,
+    Icon,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Table,
+    Td,
+    TdMono,
+    Th,
+} from '@/ui';
 
 interface Run {
     id: string;
@@ -18,6 +31,8 @@ type Props = PageProps<{
     showsRuns: boolean;
     runs: Run[];
     needsOrganization: boolean;
+    /** On the environment's own page: the chip that goes to one organization's exports. */
+    organizationFilter: OrganizationFilter | null;
     subjectId: string;
     subjectEntryCount: number | null;
     downloadHref: string;
@@ -28,6 +43,7 @@ export default function Exports({
     showsRuns,
     runs,
     needsOrganization,
+    organizationFilter,
     subjectId,
     subjectEntryCount,
     downloadHref,
@@ -158,10 +174,17 @@ export default function Exports({
                 </p>
 
                 {needsOrganization ? (
-                    <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Choose an organization above to run a data-subject export — a bundle is
-                        bounded by the organization whose trail it comes from.
-                    </p>
+                    <div className="space-y-3">
+                        {organizationFilter !== null && (
+                            <FilterChips>
+                                <OrganizationFilterChip filter={organizationFilter} />
+                            </FilterChips>
+                        )}
+                        <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                            A data-subject export is bounded by the organization whose trail it
+                            comes from — pick that organization to run one.
+                        </p>
+                    </div>
                 ) : (
                     <div style={{ maxWidth: '28rem' }}>
                         <Field label="Subject (actor id)">

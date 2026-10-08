@@ -22,8 +22,10 @@ use Cbox\Id\OAuthServer\Contracts\Apis;
 use Cbox\Id\OAuthServer\Models\Api;
 use Cbox\Id\OAuthServer\Models\ApiScope;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Inertia\Response;
 
 /**
@@ -56,13 +58,17 @@ final readonly class ApiController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        $organizationId = $this->scope->organizationId();
+        $filter = $this->organizationFilter();
+        $organizationId = $filter->id;
 
-        // An organization chosen in the switcher narrows the list to what concerns it: its
-        // own APIs, and the environment's — the ones its apps might be given scopes of.
-        $rows = $organizationId === null
-            ? $apis->all()
-            : $apis->ownedBy($organizationId)->concat($apis->ownedBy(null))->sortBy('name')->values();
+        // Filtered to an organization, the list is what concerns it: its own APIs, and the
+        // environment's — the ones its apps might be given scopes of. A filter naming no
+        // organization here is an empty list.
+        $rows = match (true) {
+            $filter->unknown => new Collection,
+            $organizationId === null => $apis->all(),
+            default => $apis->ownedBy($organizationId)->concat($apis->ownedBy(null))->sortBy('name')->values(),
+        };
 
         $owners = $this->scope->organizationNames($rows->pluck('organization_id'));
         $apps = Client::query()
@@ -81,7 +87,8 @@ final readonly class ApiController extends ConsoleController
                 scopeCount: $api->scopes->count(),
                 href: route('environment.apis.show', $api->id),
             ))->values()->all(),
-            'createHref' => route('environment.apis.create'),
+            'organizationFilter' => $this->organizationFilterProps($filter),
+            'createHref' => $this->createUrl('apis.create'),
         ]);
     }
 
@@ -89,23 +96,27 @@ final readonly class ApiController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        $organizationId = $this->scope->organizationId();
+        $organizationId = $this->prefilledOrganizationId();
 
         $owners = [new OptionProps('environment', 'This environment')];
         $apps = ['environment' => $this->linkableApps(null)];
 
-        // An API is given to an organization the way an app is: by choosing the
-        // organization in the console first. The list is never every organization in the
-        // environment — that is unbounded — only the one being administered.
+        /*
+         * An API is given to an organization by naming it — the form's "For which
+         * organization?", which reloads this page with `?organization=` so the apps it can
+         * be linked to are that organization's. The owners offered are never every
+         * organization in the environment — that is unbounded — only the one named.
+         */
         if ($organizationId !== null) {
-            $owners[] = new OptionProps($organizationId, (string) $this->scope->organizationName());
+            $name = Organization::query()->whereKey($organizationId)->value('name');
+            $owners[] = new OptionProps($organizationId, is_string($name) ? $name : $organizationId);
             $apps[$organizationId] = $this->linkableApps($organizationId);
         }
 
         return $this->page('console/apis/create', 'New API', [
             'owners' => $owners,
             'apps' => $apps,
-            'organizationChosen' => $organizationId !== null,
+            'organization' => $this->organizationPicker(),
             'indexHref' => route('environment.apis'),
             'storeHref' => route('environment.apis.store'),
         ]);
@@ -119,10 +130,11 @@ final readonly class ApiController extends ConsoleController
 
         if ($owner === 'environment') {
             $organizationId = null;
-        } elseif ($owner === $this->scope->organizationId()) {
-            $organizationId = $owner;
         } else {
-            return back()->withInput()->withErrors(['owner' => 'Choose the environment, or the organization you are acting on.']);
+            // An organization of THIS environment, or a field error — never a write into
+            // whichever organization a posted id happened to name somewhere else.
+            $request->merge(['organization' => $owner]);
+            $organizationId = $this->chosenOrganizationId($request, field: 'owner');
         }
 
         $result = $this->act(CreateApi::class, [

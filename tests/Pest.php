@@ -71,6 +71,7 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\SessionKey;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Tests\Support\FormOrganization;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
@@ -441,7 +442,7 @@ function mcpTools(string $token): array
  */
 function registerApp(array $changes = [], string $plane = 'clients'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'name' => 'Test App',
         'kind' => 'web',
         'type' => 'confidential',
@@ -455,7 +456,7 @@ function registerApp(array $changes = [], string $plane = 'clients'): TestRespon
         'firstParty' => false,
         'environmentWide' => false,
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1317,7 +1318,7 @@ function createLogStream(array $changes = [], string $plane = 'audit-streams'): 
  */
 function registerOutboundSync(array $changes = [], string $plane = 'provisioning'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'name' => 'Downstream',
         'baseUrl' => 'https://scim.example.test/v2',
         'scheme' => 'bearer',
@@ -1327,7 +1328,7 @@ function registerOutboundSync(array $changes = [], string $plane = 'provisioning
         'clientId' => '',
         'scope' => '',
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1355,13 +1356,13 @@ function storeVaultSecret(array $changes = [], string $plane = 'vault'): TestRes
  */
 function defineRoleConflict(array $changes = [], string $plane = 'sod-policies'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'name' => 'PO vs pay',
         'description' => '',
         'roles' => [],
         'environmentWide' => false,
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1371,10 +1372,10 @@ function defineRoleConflict(array $changes = [], string $plane = 'sod-policies')
  */
 function openAccessReview(array $changes = [], string $plane = 'governance'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'name' => 'Q3 review',
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /** Certify or revoke one item on a review, the way the row's two buttons do. */
@@ -1393,12 +1394,12 @@ function decideAccessItem(string $campaignId, string $itemId, string $decision, 
  */
 function registerHook(array $changes = [], string $plane = 'hooks'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'point' => 'token_minting',
         'url' => 'https://hooks.example.test/token',
         'environmentWide' => false,
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1432,14 +1433,14 @@ function createPermission(array $changes = [], string $plane = 'permissions'): T
  */
 function defineRole(array $changes = [], string $plane = 'roles'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'name' => 'Manager',
         'description' => '',
         'app' => '',
         'environmentWide' => false,
         'permissions' => [],
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1466,7 +1467,7 @@ function setRolePermission(string $roleId, string $permissionId, bool $granted, 
  */
 function createConnection(array $changes = [], string $plane = 'connections'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'name' => 'Corporate SAML',
         'type' => 'saml',
         'environmentWide' => false,
@@ -1476,7 +1477,7 @@ function createConnection(array $changes = [], string $plane = 'connections'): T
         'sp_entity_id' => 'https://sp.acme/metadata',
         'sp_acs_url' => 'https://sp.acme/acs',
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1486,11 +1487,11 @@ function createConnection(array $changes = [], string $plane = 'connections'): T
  */
 function registerDirectory(array $changes = [], string $plane = 'directories'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), FormOrganization::apply([
         'provider' => 'scim',
         'name' => 'HR directory',
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /**
@@ -1504,7 +1505,7 @@ function registerDirectory(array $changes = [], string $plane = 'directories'): 
  */
 function connectDirectory(array $changes = [], string $plane = 'directories'): TestResponse
 {
-    return test()->from(route($plane.'.create'))->post(route($plane.'.connect'), [
+    return test()->from(route($plane.'.create'))->post(route($plane.'.connect'), FormOrganization::apply([
         'provider' => 'google_workspace',
         'googleServiceAccountJson' => '',
         'googleAdminEmail' => '',
@@ -1512,7 +1513,7 @@ function connectDirectory(array $changes = [], string $plane = 'directories'): T
         'entraClientId' => '',
         'entraClientSecret' => '',
         ...$changes,
-    ]);
+    ], $plane));
 }
 
 /** A valid PAM justification for the impersonation start POST. */

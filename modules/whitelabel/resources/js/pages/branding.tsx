@@ -1,7 +1,17 @@
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, Field, Input, PageHeader, Panel, Textarea } from '@/ui';
+import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
+import {
+    Badge,
+    Button,
+    Field,
+    FilterChips,
+    Input,
+    OrganizationFilterChip,
+    PageHeader,
+    Panel,
+    Textarea,
+} from '@/ui';
 
 type Props = PageProps<{
     tokens: string[];
@@ -14,6 +24,8 @@ type Props = PageProps<{
     faviconUrl: string | null;
     /** True when this page is editing the environment default every organization inherits. */
     environmentDefault: boolean;
+    /** On the environment default: the chip that goes to one organization's own brand. */
+    organizationFilter: OrganizationFilter | null;
     saveHref: string;
     help: HelpContent;
 }>;
@@ -27,6 +39,7 @@ export default function Branding({
     logoUrl,
     faviconUrl,
     environmentDefault,
+    organizationFilter,
     saveHref,
     help,
 }: Props) {
@@ -59,10 +72,16 @@ export default function Branding({
                 help={help}
                 description={
                     environmentDefault
-                        ? 'Theme the console and hosted sign-in for this whole environment — palette, logo, app name and email sender. Every organization inherits this unless it sets its own; choose an organization above to brand just that one.'
+                        ? 'Theme the console and hosted sign-in for this whole environment — palette, logo, app name and email sender. Every organization inherits this unless it sets its own — pick one below to brand just that one.'
                         : 'Theme the console and hosted sign-in for this organization — palette, logo, app name and email sender. This overrides the environment default.'
                 }
             />
+
+            {organizationFilter !== null && (
+                <FilterChips>
+                    <OrganizationFilterChip filter={organizationFilter} />
+                </FilterChips>
+            )}
 
             {/* Live preview: the tokens applied to a scoped surface and nowhere else. */}
             <Panel title="Preview">

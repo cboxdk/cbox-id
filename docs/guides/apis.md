@@ -42,7 +42,7 @@ tokens too.
    | Owner | Who may be given its scopes |
    |---|---|
    | **This environment** | Your own apps may hold any of them. An app an organization registered may hold only the scopes marked **Organizations' apps may request this**. |
-   | **An organization** | Only that organization's own apps. To register an API for an organization, choose the organization in the console header first. |
+   | **An organization** | Only that organization's own apps. To register an API for an organization, name it in the form's **For which organization?** field (prefilled when you start from the organization's own page). |
 
 3. Optionally choose **Roles and permissions from** — the app whose declared roles and
    permissions tokens for this API carry. It must have the same owner as the API. Left

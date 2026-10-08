@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
@@ -44,6 +44,8 @@ interface SelfServiceSignup {
 interface OrganizationRow {
     id: string;
     name: string;
+    /** The organization's own Policy tab, where its override is edited. */
+    href: string;
     overridden: boolean;
     minLength: number;
     mfa: string;
@@ -65,7 +67,8 @@ type Props = PageProps<{
     organizations: OrganizationRow[] | null;
     organizationsPagination: PaginationState | null;
     saveHref: string;
-    inheritHref: string;
+    /** Null on the environment baseline, which inherits from nothing. */
+    inheritHref: string | null;
     selfServiceSignup: SelfServiceSignup | null;
     help: HelpContent;
 }>;
@@ -361,7 +364,7 @@ export default function AuthPolicyPage({
                                     organizations.map((row) => (
                                         <tr key={row.id}>
                                             <Td>
-                                                {row.name}{' '}
+                                                <Link href={row.href}>{row.name}</Link>{' '}
                                                 {row.overridden ? (
                                                     <Badge>Override</Badge>
                                                 ) : (
@@ -499,7 +502,10 @@ export default function AuthPolicyPage({
                             variant="danger"
                             onClick={() => {
                                 setConfirming(null);
-                                router.delete(inheritHref, { preserveScroll: true });
+
+                                if (inheritHref !== null) {
+                                    router.delete(inheritHref, { preserveScroll: true });
+                                }
                             }}
                         >
                             Use environment defaults

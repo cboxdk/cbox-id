@@ -265,9 +265,11 @@ it('withdraws only its own organization\'s invitations, and their parked roles w
 
     // Named in the URL of THIS organization's page. The cleanup used to delete by
     // invitation id alone, so it reached across organizations even where the revoke did not.
+    // Another organization's invitation is not found here at all — the `invitations.revoke`
+    // action's answer from every door, where the page used to say "already withdrawn".
     test()->from(route('directory.members'))
         ->delete(route('directory.members.invitations.revoke', $theirs->invitation->id))
-        ->assertSessionHas('error', 'That invitation has already been accepted, withdrawn or has expired.');
+        ->assertNotFound();
 
     expect(app(Invitations::class)->byToken($theirs->token)?->isPending())->toBeTrue()
         ->and(InvitationRoleGrant::query()->where('invitation_id', $theirs->invitation->id)->exists())->toBeTrue();

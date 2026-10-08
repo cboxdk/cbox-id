@@ -2,12 +2,19 @@ import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { absoluteTime, relativeTime } from '@/lib/time';
-import type { HelpContent, PageProps, SimplePagination as SimplePaginationState } from '@/types';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    SimplePagination as SimplePaginationState,
+} from '@/types';
 import {
     Badge,
     EmptyState,
+    FilterChips,
     Icon,
     Input,
+    OrganizationFilterChip,
     PageHeader,
     SimplePagination,
     Table,
@@ -24,6 +31,8 @@ interface Entry {
     actorId: string | null;
     actorName: string | null;
     actorType: string;
+    /** Whose trail the entry is on — named on the list that holds every organization's. */
+    organization: string | null;
     targetId: string | null;
     targetName: string | null;
     targetType: string | null;
@@ -38,6 +47,8 @@ type Props = PageProps<{
     filters: { action: string; q: string };
     /** No organization is chosen: this is the whole environment's trail. */
     environmentWide: boolean;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
 
 /** The filter state, as a URL. Both boxes and the page number live in one place. */
@@ -61,7 +72,14 @@ function filterHref(filters: { action: string; q: string }, page?: number): stri
     return search === '' ? window.location.pathname : `${window.location.pathname}?${search}`;
 }
 
-export default function Audit({ help, entries, pagination, filters, environmentWide }: Props) {
+export default function Audit({
+    help,
+    entries,
+    pagination,
+    filters,
+    environmentWide,
+    organizationFilter,
+}: Props) {
     const [action, setAction] = useState(filters.action);
     const [search, setSearch] = useState(filters.q);
 
@@ -103,7 +121,12 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                 }
             />
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
@@ -129,8 +152,8 @@ export default function Audit({ help, entries, pagination, filters, environmentW
 
                 {environmentWide && (
                     <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                        Every organization in this environment. Choose one above to narrow the trail
-                        to it.
+                        Every organization in this environment. Add the Organization filter to
+                        narrow the trail to one.
                     </p>
                 )}
             </div>
@@ -192,6 +215,9 @@ export default function Audit({ help, entries, pagination, filters, environmentW
                                             >
                                                 {entry.action}
                                             </p>
+                                            {entry.organization !== null && (
+                                                <Badge className="mt-1">{entry.organization}</Badge>
+                                            )}
                                         </Td>
 
                                         {/*

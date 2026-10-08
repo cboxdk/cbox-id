@@ -47,6 +47,10 @@ final class AccountScopes
             'label' => 'Remove your devices',
             'description' => 'Remove one of your trusted devices.',
         ],
+        'account:organizations:write' => [
+            'label' => 'Leave your organizations',
+            'description' => 'Leave an organization you are a member of. Never as its last owner.',
+        ],
     ];
 
     /** @return list<string> */

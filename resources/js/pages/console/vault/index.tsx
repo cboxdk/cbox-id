@@ -1,13 +1,21 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
+import { listHref } from '@/lib/listHref';
+import type {
+    HelpContent,
+    OrganizationFilter,
+    PageProps,
+    Pagination as PaginationState,
+} from '@/types';
 import {
     Badge,
     Button,
     EmptyState,
+    FilterChips,
     Icon,
     Input,
+    OrganizationFilterChip,
     PageHeader,
     Pagination,
     Pill,
@@ -33,23 +41,9 @@ type Props = PageProps<{
     /** True when this is the environment's OWN set, not a wider view of the tenants'. */
     environmentWide: boolean;
     createHref: string;
+    /** The environment-wide list's Organization chip; null where the list is one organization's already. */
+    organizationFilter: OrganizationFilter | null;
 }>;
-
-function listHref(search: string, page?: number): string {
-    const query = new URLSearchParams();
-
-    if (search !== '') {
-        query.set('q', search);
-    }
-
-    if (page !== undefined && page > 1) {
-        query.set('page', String(page));
-    }
-
-    const rest = query.toString();
-
-    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
-}
 
 /** Revoked is permanent; expired is a date that has passed. The next move differs. */
 export function statusTone(status: SecretRow['status']): 'success' | 'warning' | 'destructive' {
@@ -67,6 +61,7 @@ export default function VaultIndex({
     search,
     environmentWide,
     createHref,
+    organizationFilter,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -102,16 +97,21 @@ export default function VaultIndex({
             />
 
             {environmentWide && (
-                // Said out loud: "the vault" meaning two different collections depending
-                // on a picker elsewhere in the chrome is not something an administrator
-                // should have to infer.
+                // Said out loud: "the vault" is two different collections, and which one this
+                // is should not have to be inferred. An organization's own is on its page —
+                // the Organization chip below goes there.
                 <p className="mt-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Showing this environment's own secrets. Choose an organization above to manage
-                    that organization's.
+                    Showing this environment's own secrets. An organization's secrets are kept
+                    apart, on that organization's page — pick it with the Organization filter.
                 </p>
             )}
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+                {organizationFilter !== null && (
+                    <FilterChips>
+                        <OrganizationFilterChip filter={organizationFilter} />
+                    </FilterChips>
+                )}
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}

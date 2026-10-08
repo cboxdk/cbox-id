@@ -3,37 +3,25 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps, Pagination as PaginationState } from '@/types';
 import {
-    type AppApiKey,
-    AppApiKeyList,
+    AccessRoleHint,
+    type AccessRoleOption,
     Badge,
     Button,
     Checkbox,
     ConfirmDelete,
-    CopyButton,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
     EmptyState,
     Field,
-    Icon,
     Input,
-    InviteForm,
-    type MetadataRow,
-    MetadataRows,
     Pagination,
     Panel,
-    type PendingInvitation,
-    PendingInvitations,
     Pill,
-    type ReturnApp,
     type RoleOption,
     roleSelectOptions,
     Select,
-    type SupportSessionRow,
-    SupportSessions,
-    AccessRoleHint,
-    type AccessRoleOption,
 } from '@/ui';
 
 type AccessRole = AccessRoleOption;
@@ -44,258 +32,44 @@ interface Member {
     email: string | null;
     role: string;
     accessRoleIds: string[];
+    /** The person's own page under Users. */
+    href: string;
     urls: { role: string; accessRole: string; remove: string; transfer: string };
 }
 
-interface Domain {
-    id: string;
-    domain: string;
-    verified: boolean;
-    capture: boolean;
-    /** The DNS TXT value to publish — the one thing somebody copies into another tab. */
-    token: string;
-    urls: { verify: string; capture: string; remove: string };
-}
-
 type Props = PageProps<{
-    organization: {
-        id: string;
-        name: string;
-        slug: string;
-        status: string;
-        metadata: MetadataRow[];
-    };
     members: Member[];
     pagination: PaginationState;
-    invitations: PendingInvitation[];
-    domains: Domain[];
     accessRoles: AccessRole[];
-    /**
-     * What an invitation may carry: `accessRoles` without the staff-only ones, which an
-     * organization's own administrators could never hand out either.
-     */
-    inviteAccessRoles: AccessRole[];
-    /** What an invitation or an added member may be given — never Owner. */
+    /** What an added member may be given — never Owner. */
     roleOptions: RoleOption[];
     /** The same plus Owner, disabled, so an owner's row names what it holds. */
     rosterRoleOptions: RoleOption[];
-    apps: ReturnApp[];
-    /** Every API key the organization's people hold for its apps. Seen and revoked, never minted here. */
-    apiKeys: AppApiKey[];
-    /** Somebody signed in to an app as one of its people, right now. */
-    supportSessions: SupportSessionRow[];
-    indexHref: string;
-    urls: {
-        update: string;
-        suspend: string;
-        reactivate: string;
-        destroy: string;
-        addMember: string;
-        invite: string;
-        addDomain: string;
-    };
+    addMemberHref: string;
+    invitationsHref: string;
 }>;
 
-export default function OrganizationDetail({
-    organization,
+/**
+ * AN ORGANIZATION › MEMBERS — who belongs to it, and what they can do. The organization's
+ * header and tabs are drawn around it by the layout (`./frame.tsx`).
+ */
+export default function OrganizationMembers({
     members,
     pagination,
-    invitations,
-    domains,
     accessRoles,
-    inviteAccessRoles,
     roleOptions,
     rosterRoleOptions,
-    apps,
-    apiKeys,
-    supportSessions,
-    indexHref,
-    urls,
+    addMemberHref,
 }: Props) {
-    const [deleting, setDeleting] = useState(false);
-
-    const suspended = organization.status === 'suspended';
-
     return (
-        <div className="space-y-6">
-            <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Organizations
-                </Link>
-                <div className="mt-2 flex items-center gap-3 flex-wrap">
-                    <h1 className="cbx-page-title">{organization.name}</h1>
-                    <Pill tone={suspended ? 'warning' : 'success'}>{organization.status}</Pill>
-                </div>
-                <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
-                    {organization.id}
-                </p>
-            </div>
-
-            <Details organization={organization} href={urls.update} />
-
-            <Members
-                members={members}
-                pagination={pagination}
-                accessRoles={accessRoles}
-                roleOptions={roleOptions}
-                rosterRoleOptions={rosterRoleOptions}
-                addHref={urls.addMember}
-            />
-
-            <Panel
-                title="Invite someone"
-                description="The invitee accepts by email — nobody is added to an organization without saying yes."
-            >
-                <InviteForm
-                    href={urls.invite}
-                    roles={roleOptions}
-                    accessRoles={inviteAccessRoles.map((role) => ({
-                        id: role.id,
-                        name: role.name,
-                        group: role.app ?? 'All apps',
-                    }))}
-                    apps={apps}
-                />
-            </Panel>
-
-            <PendingInvitations invitations={invitations} />
-
-            <Panel
-                title="Support sessions"
-                description="Signed in to an app as one of this organization's people right now. Each one is also on the organization's activity log, with its reason."
-            >
-                {supportSessions.length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        Nobody is signed in to an app as one of its people. Start one from a
-                        person's page under Users.
-                    </p>
-                ) : (
-                    <SupportSessions sessions={supportSessions} lead="user" />
-                )}
-            </Panel>
-
-            <Domains domains={domains} addHref={urls.addDomain} />
-
-            <Panel
-                title="Member API keys"
-                description="Keys this organization's people have created for its apps, with what each may do. People create their own; revoke one that leaked or is no longer used."
-                flush={apiKeys.length > 0}
-            >
-                <AppApiKeyList
-                    keys={apiKeys}
-                    empty={{
-                        title: 'No API keys',
-                        description:
-                            'Nobody in this organization has created a key for one of its apps.',
-                    }}
-                    consequence="Whatever the holder has wired this key into stops working immediately. This cannot be undone."
-                />
-            </Panel>
-
-            <Panel
-                title={suspended ? 'Reactivate organization' : 'Suspend organization'}
-                description={
-                    suspended
-                        ? 'Its people can sign in again, with the access they had.'
-                        : 'Its people are refused at every door — sign-in, the device flow, the consent screen — until it is reactivated. Nothing is deleted.'
-                }
-            >
-                <Button
-                    size="sm"
-                    onClick={() =>
-                        router.post(
-                            suspended ? urls.reactivate : urls.suspend,
-                            {},
-                            { preserveScroll: true },
-                        )
-                    }
-                >
-                    {suspended ? 'Reactivate' : 'Suspend'}
-                </Button>
-            </Panel>
-
-            <Panel
-                title="Delete organization"
-                description="It disappears from every list and its people are refused everywhere, exactly as a suspension does. The records stay."
-            >
-                <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
-                    Delete organization
-                </Button>
-            </Panel>
-
-            <ConfirmDelete
-                open={deleting}
-                onOpenChange={setDeleting}
-                name={organization.name}
-                consequence="Everyone in this organization is refused at every door immediately, and it disappears from every list. This cannot be undone from the console."
-                onConfirm={() => {
-                    setDeleting(false);
-                    router.delete(urls.destroy);
-                }}
-            />
-        </div>
-    );
-}
-
-function Details({ organization, href }: { organization: Props['organization']; href: string }) {
-    const form = useForm({
-        name: organization.name,
-        slug: organization.slug,
-        metadata: organization.metadata,
-    });
-
-    return (
-        <Panel title="Details">
-            <form
-                className="space-y-4"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    form.patch(href, { preserveScroll: true });
-                }}
-            >
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Name" error={form.errors.name}>
-                        <Input
-                            name="name"
-                            value={form.data.name}
-                            onChange={(event) => form.setData('name', event.target.value)}
-                        />
-                    </Field>
-
-                    <Field
-                        label="URL handle"
-                        hint="Other systems may be using this — changing it changes the URLs they hold."
-                        error={form.errors.slug}
-                    >
-                        <Input
-                            name="slug"
-                            className="mono"
-                            value={form.data.slug}
-                            onChange={(event) => form.setData('slug', event.target.value)}
-                        />
-                    </Field>
-                </div>
-
-                <MetadataRows
-                    rows={form.data.metadata}
-                    onChange={(rows) => form.setData('metadata', rows)}
-                    hint="Anything your own systems need to keep against this organization. Rows with no key are dropped."
-                />
-
-                <Button type="submit" variant="primary" loading={form.processing}>
-                    Save changes
-                </Button>
-            </form>
-        </Panel>
+        <Members
+            members={members}
+            pagination={pagination}
+            accessRoles={accessRoles}
+            roleOptions={roleOptions}
+            rosterRoleOptions={rosterRoleOptions}
+            addHref={addMemberHref}
+        />
     );
 }
 
@@ -374,7 +148,12 @@ function Members({
                             >
                                 <div className="flex items-center gap-3 flex-wrap p-4">
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-medium truncate">{member.name}</p>
+                                        <Link
+                                            href={member.href}
+                                            className="font-medium truncate block"
+                                        >
+                                            {member.name}
+                                        </Link>
                                         {member.email !== null && (
                                             <p
                                                 className="text-xs truncate"
@@ -689,146 +468,4 @@ function AccessRolePicker({
     );
 }
 
-/**
- * The email domains this organization claims.
- *
- * CAPTURE IS THE CONSEQUENTIAL SWITCH: it routes everyone on the domain to this
- * organization's SSO connection, so it stays off until the domain is proven — otherwise an
- * organization could claim addresses it does not own.
- */
-function Domains({ domains, addHref }: { domains: Domain[]; addHref: string }) {
-    const form = useForm({ domain: '' });
-    const [removing, setRemoving] = useState<Domain | null>(null);
-
-    return (
-        <Panel
-            title="Email domains"
-            description="Prove the organization owns a domain, then route everyone on it to their own sign-in."
-        >
-            <div className="space-y-4">
-                <form
-                    className="flex flex-wrap items-end gap-2"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        form.post(addHref, {
-                            preserveScroll: true,
-                            onSuccess: () => form.reset(),
-                        });
-                    }}
-                >
-                    <Field label="Domain" className="flex-1" error={form.errors.domain}>
-                        <Input
-                            name="domain"
-                            className="mono"
-                            placeholder="acme.com"
-                            value={form.data.domain}
-                            onChange={(event) => form.setData('domain', event.target.value)}
-                        />
-                    </Field>
-                    <Button type="submit" className="shrink-0" loading={form.processing}>
-                        Add domain
-                    </Button>
-                </form>
-
-                {domains.map((domain) => (
-                    <div
-                        key={domain.id}
-                        className="rounded-xl border p-4 space-y-3"
-                        style={{ borderColor: 'var(--border)' }}
-                    >
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium mono">{domain.domain}</span>
-                            <Pill tone={domain.verified ? 'success' : 'warning'}>
-                                {domain.verified ? 'Verified' : 'Unverified'}
-                            </Pill>
-                            {domain.capture && <Badge>Capturing sign-ins</Badge>}
-                        </div>
-
-                        {!domain.verified && (
-                            <div
-                                className="rounded-lg p-3 space-y-2"
-                                style={{
-                                    background: 'var(--surface-2)',
-                                    border: '1px solid var(--border)',
-                                }}
-                            >
-                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                    Add this DNS <b>TXT</b> record at{' '}
-                                    <span className="mono">{domain.domain}</span>, then verify.
-                                </p>
-                                {/*
-                                    Its own copy button: somebody is about to paste this
-                                    into a DNS panel in another tab, and selecting a value
-                                    out of a sentence by hand is where a truncated record
-                                    comes from.
-                                */}
-                                <div className="flex items-start gap-2">
-                                    <code className="mono text-xs break-all select-all flex-1">
-                                        {domain.token}
-                                    </code>
-                                    <CopyButton value={domain.token} />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {!domain.verified && (
-                                <Button
-                                    size="sm"
-                                    onClick={() =>
-                                        router.post(
-                                            domain.urls.verify,
-                                            {},
-                                            { preserveScroll: true },
-                                        )
-                                    }
-                                >
-                                    Verify
-                                </Button>
-                            )}
-
-                            <Button
-                                size="sm"
-                                disabled={!domain.verified && !domain.capture}
-                                onClick={() =>
-                                    router.post(domain.urls.capture, {}, { preserveScroll: true })
-                                }
-                            >
-                                {domain.capture ? 'Stop capturing' : 'Capture sign-ins'}
-                            </Button>
-
-                            <Button size="sm" variant="danger" onClick={() => setRemoving(domain)}>
-                                Remove
-                            </Button>
-                        </div>
-
-                        {!domain.verified && !domain.capture && (
-                            <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                Verify the domain before turning capture on — until then, this
-                                organization has not proved it owns those addresses.
-                            </p>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            <ConfirmDelete
-                open={removing !== null}
-                onOpenChange={(open) => !open && setRemoving(null)}
-                name={removing?.domain ?? ''}
-                verb="Remove"
-                consequence="The claim is dropped. If capture was on, people on this domain go back to the ordinary sign-in."
-                onConfirm={() => {
-                    const domain = removing;
-                    setRemoving(null);
-
-                    if (domain !== null) {
-                        router.delete(domain.urls.remove, { preserveScroll: true });
-                    }
-                }}
-            />
-        </Panel>
-    );
-}
-
-OrganizationDetail.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+OrganizationMembers.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;

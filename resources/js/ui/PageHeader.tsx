@@ -43,15 +43,12 @@ export interface PageHeaderProps {
  * The page's one h1. Every page has exactly one, and it is here — so no page can ship
  * with two headings competing to be the title, or with none at all.
  */
-export function PageHeader({
-    eyebrow,
-    title,
-    badge,
-    help,
-    description,
-    actions,
-}: PageHeaderProps) {
-    const { shell, title: stated } = usePage<SharedProps>().props;
+export function PageHeader({ eyebrow, title, badge, help, description, actions }: PageHeaderProps) {
+    const { shell, title: stated, organizationHub } = usePage<SharedProps>().props;
+
+    // Inside an organization's page the organization's name is the page's heading, drawn by
+    // the hub's header; this page is one of its tabs, so its own title is the level below.
+    const Heading = organizationHub !== undefined && organizationHub !== null ? 'h2' : 'h1';
 
     const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea)?.label;
     const resolved = eyebrow === undefined ? area : eyebrow;
@@ -61,7 +58,7 @@ export function PageHeader({
             <div style={{ minWidth: 0 }}>
                 {resolved != null && <p className="cbx-page-eyebrow">{resolved}</p>}
                 <div className="cbx-page-title-row">
-                    <h1 className="cbx-page-title">{title ?? stated}</h1>
+                    <Heading className="cbx-page-title">{title ?? stated}</Heading>
                     {help !== undefined && <Help help={help} />}
                     {badge}
                 </div>

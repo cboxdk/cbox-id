@@ -25,7 +25,7 @@ use Inertia\Response;
  * the record an auditor reads.
  *
  * So the scoping is the first thing here and not an afterthought: rows are bounded by the
- * acting organization whenever one is resolved, and only the plane that legitimately holds
+ * organization whenever one is resolved, and only the plane that legitimately holds
  * the environment ever sees the unscoped view. Entries are environment-owned, so even that
  * branch is bounded by the environment — an overview of what this administrator already
  * holds, never a window into another environment.
@@ -45,21 +45,22 @@ final readonly class AuditController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $organizationId = $this->actingOrganizationId();
+        $filter = $this->organizationFilter();
 
-        $query = AuditEntry::query()
-            /*
-             * Strictly this organization's own entries when one is resolved — not its
-             * entries PLUS the environment's, the way a rules list unions in what binds
-             * it. An environment-level action is the control plane's own business, and
-             * the whole point of this page is that one tenant's trail is not another's.
-             *
-             * With none resolved — only reachable by an administrator who holds the
-             * environment, see {@see ConsoleController::actingOrganizationId()} — this is
-             * the environment's whole trail, which is that console's existing and
-             * legitimate view.
-             */
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
+        /*
+         * Strictly this organization's own entries — the member's own, the one an
+         * organization's Audit log tab names, or the one the environment-wide trail is
+         * filtered to — not its entries PLUS the environment's, the way a rules list unions
+         * in what binds it. An environment-level action is the control plane's own
+         * business, and the whole point of this page is that one tenant's trail is not
+         * another's.
+         *
+         * Unfiltered — only reachable by an administrator who holds the environment, see
+         * {@see ConsoleController::organizationFilter()} — this is the environment's whole
+         * trail, which is that console's existing and legitimate view. A filter naming no
+         * organization here is an empty trail, never the whole one.
+         */
+        $query = $filter->apply(AuditEntry::query())
             ->orderByDesc('sequence');
 
         $action = trim($request->string('action')->toString());
@@ -88,6 +89,10 @@ final readonly class AuditController extends ConsoleController
         // Resolved ONCE per page, in three queries — never per row.
         $resolved = $names->for($entries->getCollection());
 
+        // Whose trail each row is, on the list that holds every organization's — one query
+        // for the names this page shows.
+        $owners = $filter->active() ? [] : $this->scope->organizationNames($entries->getCollection()->pluck('organization_id'));
+
         return $this->page('console/audit', 'Audit log', [
             'help' => HelpProps::for(HelpTopic::ActivityLog),
             'entries' => $entries->getCollection()->map(fn (AuditEntry $entry): array => [
@@ -102,6 +107,7 @@ final readonly class AuditController extends ConsoleController
                 'actorId' => $entry->actor_id,
                 'actorName' => $entry->actor_id === null ? null : ($resolved[$entry->actor_id] ?? null),
                 'actorType' => ucfirst($entry->actor_type->value),
+                'organization' => $entry->organization_id === null ? null : ($owners[$entry->organization_id] ?? null),
                 'targetId' => $entry->target_id,
                 'targetName' => $entry->target_id === null ? null : ($resolved[$entry->target_id] ?? null),
                 'targetType' => $entry->target_type === null ? null : str_replace('_', ' ', $entry->target_type),
@@ -128,7 +134,8 @@ final readonly class AuditController extends ConsoleController
             ])->values()->all(),
             'pagination' => SimplePaginationProps::from($entries),
             'filters' => ['action' => $action, 'q' => $term],
-            'environmentWide' => $organizationId === null,
+            'environmentWide' => ! $filter->active(),
+            'organizationFilter' => $this->organizationFilterProps($filter),
         ]);
     }
 }

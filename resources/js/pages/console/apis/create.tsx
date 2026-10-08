@@ -1,7 +1,17 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, Field, Icon, Input, PageHeader, Panel, RadioGroup, Select } from '@/ui';
+import type { OrganizationPicker, PageProps } from '@/types';
+import {
+    Button,
+    Field,
+    Icon,
+    Input,
+    OrganizationField,
+    PageHeader,
+    Panel,
+    RadioGroup,
+    Select,
+} from '@/ui';
 
 interface Option {
     value: string;
@@ -15,26 +25,24 @@ interface Option {
 const NOBODY = 'none';
 
 type Props = PageProps<{
-    /** `environment`, and the organization chosen in the console header when there is one. */
+    /** `environment`, and the organization named on the form (`?organization=`) when there is one. */
     owners: Option[];
     /** The apps an API with each owner may take its roles from, keyed by owner. */
     apps: Record<string, Option[]>;
-    organizationChosen: boolean;
+    /** "For which organization?" — locked when the form was opened from an organization's page. */
+    organization: OrganizationPicker | null;
     indexHref: string;
     storeHref: string;
 }>;
 
-export default function CreateApi({
-    owners,
-    apps,
-    organizationChosen,
-    indexHref,
-    storeHref,
-}: Props) {
+export default function CreateApi({ owners, apps, organization, indexHref, storeHref }: Props) {
     const form = useForm({
         name: '',
         identifier: '',
-        owner: 'environment',
+        owner:
+            organization?.locked === true && organization.selected !== null
+                ? organization.selected.id
+                : 'environment',
         clientId: '',
     });
 
@@ -116,14 +124,37 @@ export default function CreateApi({
                                     {form.errors.owner}
                                 </p>
                             )}
-                            {!organizationChosen && (
-                                <p
-                                    className="mt-2 text-xs"
-                                    style={{ color: 'var(--muted-foreground)' }}
+                            {organization !== null && !organization.locked && (
+                                // The organization is named here, and the page reloads with it
+                                // so the apps it can be linked to are that organization's.
+                                <Field
+                                    label="For which organization?"
+                                    className="mt-4"
+                                    hint="To register an API for one organization, find it here — it is then offered as an owner above."
                                 >
-                                    To register an API for one organization, choose that
-                                    organization in the console header first.
-                                </p>
+                                    <OrganizationField
+                                        lookupHref={organization.lookupHref}
+                                        value={organization.selected}
+                                        allowsEnvironment
+                                        onChange={(chosen) =>
+                                            router.get(
+                                                window.location.pathname,
+                                                chosen === null ? {} : { organization: chosen.id },
+                                                {
+                                                    preserveState: true,
+                                                    preserveScroll: true,
+                                                    replace: true,
+                                                    onSuccess: () =>
+                                                        form.setData((data) => ({
+                                                            ...data,
+                                                            owner: chosen?.id ?? 'environment',
+                                                            clientId: '',
+                                                        })),
+                                                },
+                                            )
+                                        }
+                                    />
+                                </Field>
                             )}
                         </div>
 

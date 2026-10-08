@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, Panel } from '@/ui';
+import type { OrganizationPicker, PageProps } from '@/types';
+import { Button, Checkbox, Field, Icon, Input, OrganizationPickerField, Panel } from '@/ui';
 
 type Props = PageProps<{
     events: string[];
@@ -15,6 +15,8 @@ type Props = PageProps<{
      * merely unrendered is not a control that is enforced.
      */
     mayScopeEnvironmentWide: boolean;
+    /** "For which organization?" — the environment console only; null where the form is about one already. */
+    organization: OrganizationPicker | null;
 }>;
 
 export default function CreateWebhook({
@@ -22,11 +24,13 @@ export default function CreateWebhook({
     indexHref,
     storeHref,
     mayScopeEnvironmentWide,
+    organization,
 }: Props) {
     const form = useForm({
         url: '',
         eventTypes: [] as string[],
         environmentWide: false,
+        organization: organization?.selected?.id ?? '',
     });
 
     const toggle = (event: string, checked: boolean): void => {
@@ -45,7 +49,11 @@ export default function CreateWebhook({
                 className="text-sm inline-flex items-center gap-1"
                 style={{ color: 'var(--muted-foreground)' }}
             >
-                <Icon name="chevron" className="w-3.5 h-3.5" style={{ transform: 'rotate(90deg)' }} />
+                <Icon
+                    name="chevron"
+                    className="w-3.5 h-3.5"
+                    style={{ transform: 'rotate(90deg)' }}
+                />
                 Webhooks
             </Link>
 
@@ -81,7 +89,16 @@ export default function CreateWebhook({
                                     form.setData('environmentWide', checked)
                                 }
                                 label="Environment-wide"
-                                hint="Send this endpoint every organization's events in this environment, not just those of the one selected in the bar above."
+                                hint="Send this endpoint every organization's events in this environment, not just one organization's."
+                            />
+                        )}
+
+                        {organization !== null && !form.data.environmentWide && (
+                            <OrganizationPickerField
+                                picker={organization}
+                                error={form.errors.organization}
+                                onChange={(id) => form.setData('organization', id)}
+                                hint="Whose events it is sent — or tick Environment-wide above."
                             />
                         )}
 
@@ -111,7 +128,11 @@ export default function CreateWebhook({
                                 ))}
                             </div>
 
-                            <p className="field-error" role="alert" hidden={!form.errors.eventTypes}>
+                            <p
+                                className="field-error"
+                                role="alert"
+                                hidden={!form.errors.eventTypes}
+                            >
                                 {form.errors.eventTypes}
                             </p>
                         </fieldset>
