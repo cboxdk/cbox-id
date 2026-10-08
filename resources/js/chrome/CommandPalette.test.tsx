@@ -87,7 +87,7 @@ describe('CommandPalette', () => {
 
         await userEvent.type(await screen.findByRole('combobox'), 'ada');
 
-        expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
+        expect(await screen.findByText('Ada Lovelace')).toBeVisible();
         // One request for the actions on open, one for the pause — not one per keystroke.
         expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
             '/admin/search?q=',

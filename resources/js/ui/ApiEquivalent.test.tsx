@@ -2,9 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ApiAction } from '@/lib/apiSnippets';
 import { setPageProps } from '@/test/page';
-import { ApiEquivalent } from './ApiEquivalent';
+import { ApiEquivalent, PageApiEquivalents } from './ApiEquivalent';
 import { EmptyState } from './EmptyState';
-import { PageHeader } from './PageHeader';
 
 const CREATE: ApiAction = {
     name: 'apps.create',
@@ -65,20 +64,20 @@ describe('ApiEquivalent', () => {
         expect(document.body).toHaveTextContent('Not in the cbox CLI yet');
     });
 
-    it('puts every hosted action behind one button in the page header', async () => {
+    it('puts every action the page hosts behind one button in the top bar', async () => {
         setPageProps({ apiEquivalents: { 'apps.create': CREATE } });
-        render(<PageHeader title="Apps" />);
+        render(<PageApiEquivalents />);
 
-        await userEvent.click(screen.getByRole('button', { name: 'API' }));
+        await userEvent.click(screen.getByRole('button', { name: /^API/ }));
 
         expect(screen.getByRole('dialog', { name: 'Do this from code' })).toBeInTheDocument();
         expect(document.body).toHaveTextContent('/api/v1/apps');
     });
 
     it('draws no API button on a page that hosts no action', () => {
-        render(<PageHeader title="Overview" />);
+        render(<PageApiEquivalents />);
 
-        expect(screen.queryByRole('button', { name: 'API' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^API/ })).not.toBeInTheDocument();
     });
 
     it('offers the first step of an empty list as code too', () => {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\ActionVia;
 use App\Platform\Audit\AuditActorKind;
+use App\Platform\AuditNames;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -168,7 +169,7 @@ it('records who approved an action a key was held on, and the audit log names th
         ->and($entry?->context[ActionTrail::VIA] ?? null)->toBe('rest');
 
     // And the audit log says so, by name, on that row.
-    $names = app(\App\Platform\AuditNames::class)->for([$entry]);
+    $names = app(AuditNames::class)->for([$entry]);
 
     expect($names[$owner] ?? null)->toBe('Ada Approver');
 })->group('security');

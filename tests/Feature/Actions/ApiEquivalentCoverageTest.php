@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Connect\ActionSnippets;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Enums\MembershipRole;
 
 /*
@@ -65,7 +66,7 @@ it('fills the page\'s own id into the path of the actions it hosts', function ()
     confirmEnvironmentStepUp();
 
     registerApp(['name' => 'Filled', 'redirectUris' => 'https://filled.example/cb', 'environmentWide' => true], 'environment.clients')->assertRedirect();
-    $app = Cbox\Id\OAuthServer\Models\Client::query()->where('name', 'Filled')->sole();
+    $app = Client::query()->where('name', 'Filled')->sole();
 
     $actions = (array) $this->get(route('environment.clients.show', $app->id))->assertOk()->inertiaProps('apiEquivalents');
 

@@ -170,8 +170,9 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
 }
 
 /**
- * Every action the page hosts, behind one "</> API" button in the page header — so a page
- * whose forms nobody wired an inline disclosure into still answers "how do I script this?".
+ * Every action the page hosts, behind one "</> API" button in the console's top bar — so a
+ * page whose forms nobody wired an inline disclosure into still answers "how do I script
+ * this?", whatever its own header looks like.
  */
 export function PageApiEquivalents() {
     const actions = usePageActions();
@@ -192,9 +193,10 @@ export function PageApiEquivalents() {
                 variant="ghost"
                 onClick={() => setOpen(true)}
                 data-page-api-equivalents={list.length}
+                aria-label="API: do this page's actions from code"
             >
                 <Icon name="code" className="w-4 h-4" />
-                API
+                <span className="hidden sm:inline">API</span>
             </Button>
 
             <Dialog

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Actions\Apps\CreateApp;
+use App\Http\Props\Shared\HelpProps;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\QuickstartFramework;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Help\HelpTopic;
 use App\Platform\Onboarding\EnvironmentChecklist;
 use App\Support\CliClient;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -46,6 +48,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
         $subject = app(EnvironmentAdminAuth::class)->subjectId();
 
         return $this->page('environment/get-started', 'Get started', [
+            'help' => HelpProps::for(HelpTopic::EnvironmentGetStarted),
             'checklist' => $checklist->toProps($this->workspaceId()),
             'dismissed' => $subject !== null && $checklist->isDismissed($subject),
             'frameworks' => array_map(static fn (QuickstartFramework $option): array => [

@@ -1,7 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import type { HelpContent, SharedProps } from '@/types';
-import { PageApiEquivalents } from './ApiEquivalent';
 import { Help } from './Help';
 
 export interface PageHeaderProps {
@@ -44,10 +43,15 @@ export interface PageHeaderProps {
  * The page's one h1. Every page has exactly one, and it is here — so no page can ship
  * with two headings competing to be the title, or with none at all.
  */
-export function PageHeader({ eyebrow, title, badge, help, description, actions }: PageHeaderProps) {
-    const { shell, title: stated, apiEquivalents } = usePage<SharedProps>().props;
-    // Every page whose forms run actions offers their API twins, wired or not.
-    const hasApi = Object.keys(apiEquivalents ?? {}).length > 0;
+export function PageHeader({
+    eyebrow,
+    title,
+    badge,
+    help,
+    description,
+    actions,
+}: PageHeaderProps) {
+    const { shell, title: stated } = usePage<SharedProps>().props;
 
     const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea)?.label;
     const resolved = eyebrow === undefined ? area : eyebrow;
@@ -63,11 +67,8 @@ export function PageHeader({ eyebrow, title, badge, help, description, actions }
                 </div>
                 {description !== undefined && <p className="cbx-page-desc">{description}</p>}
             </div>
-            {(actions !== undefined || hasApi) && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {hasApi && <PageApiEquivalents />}
-                    {actions}
-                </div>
+            {actions !== undefined && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>{actions}</div>
             )}
         </header>
     );

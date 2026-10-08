@@ -265,7 +265,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                 </Command.Empty>
 
                                 {shown?.jump != null && (
-                                    <Command.Group heading="Jump to">
+                                    <Command.Group forceMount heading="Jump to">
                                         <ResultItem
                                             item={shown.jump}
                                             prefix="Open"
@@ -278,7 +278,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                 )}
 
                                 {query === '' && recent.length > 0 && (
-                                    <Command.Group heading="Recent">
+                                    <Command.Group forceMount heading="Recent">
                                         {recent.map((item) => (
                                             <ResultItem
                                                 key={`recent-${item.href}`}
@@ -290,7 +290,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                 )}
 
                                 {shown?.groups.map((group) => (
-                                    <Command.Group key={group.key} heading={group.label}>
+                                    <Command.Group forceMount key={group.key} heading={group.label}>
                                         {group.items.map((item) => (
                                             <ResultItem
                                                 key={`${group.key}-${item.id}`}

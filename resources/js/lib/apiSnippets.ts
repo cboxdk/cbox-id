@@ -135,6 +135,18 @@ export function argumentsFor(
         }
     }
 
+    // Nothing to send for a write that takes something — the page's own disclosure, an empty
+    // list — reads as a mistake. A `name` is what nearly every create needs; show its slot.
+    const writes = !['GET', 'DELETE'].includes(action.method);
+    const sendsNothing = Object.keys(out).every((name) =>
+        action.fields.some((field) => field.name === name && field.in === 'path'),
+    );
+    const named = action.fields.find((field) => field.name === 'name' && field.in === 'body');
+
+    if (writes && sendsNothing && named !== undefined) {
+        out.name = '<name>';
+    }
+
     return out;
 }
 

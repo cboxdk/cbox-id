@@ -1,7 +1,7 @@
 import { Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     ApiEquivalent,
     Button,
@@ -35,6 +35,7 @@ interface Quickstart {
 }
 
 type Props = PageProps<{
+    help: HelpContent;
     checklist: ChecklistProps;
     dismissed: boolean;
     frameworks: FrameworkOption[];
@@ -54,6 +55,7 @@ type Props = PageProps<{
  * until somebody actually signs in, because "you're set up" is only true once that happens.
  */
 export default function GetStarted({
+    help,
     checklist,
     dismissed,
     frameworks,
@@ -104,6 +106,7 @@ export default function GetStarted({
     return (
         <>
             <PageHeader
+                help={help}
                 description="From nothing to somebody signed in: pick a framework, paste three things, run it."
                 actions={
                     dismissed ? (

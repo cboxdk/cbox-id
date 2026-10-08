@@ -56,6 +56,7 @@ enum HelpTopic: string
     case EnvironmentDomains = 'environment-domains';
     case Billing = 'billing';
     case EnvironmentOverview = 'environment-overview';
+    case EnvironmentGetStarted = 'environment-get-started';
     case ReviewAgentRequests = 'review-agent-requests';
     case Agents = 'agents';
     case ConnectAgent = 'connect-agent';
@@ -116,6 +117,7 @@ enum HelpTopic: string
             self::EnvironmentDomains => 'Sign-in on your own domain',
             self::Billing => 'Plans and what they count',
             self::EnvironmentOverview => 'This environment at a glance',
+            self::EnvironmentGetStarted => 'From nothing to a first sign-in',
             self::ReviewAgentRequests => 'Agent requests across the environment',
             self::Agents => 'Software that acts on this environment',
             self::ConnectAgent => 'Pointing an AI agent at this environment',
@@ -209,6 +211,8 @@ enum HelpTopic: string
 
             self::EnvironmentOverview => 'How many organizations, users, single sign-on connections, apps and user syncs this environment holds, each linking to its own page. The shortcuts underneath start the things people most often come here to create: an organization, a user, a single sign-on connection or an app.',
 
+            self::EnvironmentGetStarted => 'Pick the framework you are building with and an app is created for it, with a redirect to your local dev server, the environment block to paste and the code that signs a person in. The page waits until somebody actually signs in. Underneath, the steps that make it a product — branding, organizations, single sign-on, an agent, a teammate, production — each ticked by what this environment holds, never by hand.',
+
             self::ReviewAgentRequests => 'What agents in this environment are waiting for a person to allow. An agent whose key needs approval for an action stops and asks the person who created the key, who can answer on their phone or here; anyone running this environment can deny one that looks wrong. Below them are requests from apps asking to act as one of your users, which each user approves for themselves.',
 
             self::Agents => 'An agent is any software that acts on this environment with a management key: an AI assistant such as Claude Code or Cursor, an internal bot, or your own backend. Give each its own key with only the scopes it needs, decide which of its actions wait for your approval, and revoke the key the moment the agent is done or anything looks wrong.',
@@ -281,6 +285,7 @@ enum HelpTopic: string
             self::ReviewAgentRequests => 'guides/agent-approvals',
             self::Agents,
             self::ConnectAgent => 'guides/agents-and-mcp',
+            self::EnvironmentGetStarted => 'getting-started/integrate-your-app',
             self::Keys => 'guides/keys',
             self::ApiKeys,
             self::MemberApiKeys => 'guides/api-keys',
