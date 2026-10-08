@@ -163,7 +163,14 @@ export function urlFor(action: ApiAction, args: Record<string, unknown>): string
         const name = (a ?? b) as string;
         const value = args[name];
 
-        return isEmpty(value) ? `<${name}>` : encodeURIComponent(String(value));
+        if (isEmpty(value)) {
+            return `<${name}>`;
+        }
+
+        const text = String(value);
+
+        // A placeholder stays readable: it is what the reader replaces, not a value.
+        return /^<[^>]+>$/.test(text) ? text : encodeURIComponent(text);
     });
 }
 
@@ -300,9 +307,7 @@ export function sdk(action: ApiAction, values: SnippetValues = {}): string {
     );
 
     if (Object.keys(rest).length > 0) {
-        params.push(
-            JSON.stringify(rest, null, 2).replace(/"\$([A-Z0-9_]+)"/g, 'process.env.$1!'),
-        );
+        params.push(JSON.stringify(rest, null, 2).replace(/"\$([A-Z0-9_]+)"/g, 'process.env.$1!'));
     }
 
     return [

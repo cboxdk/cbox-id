@@ -80,7 +80,7 @@ final readonly class PaletteActions
             }
 
             foreach ($action->consoleRoutes as $consoleRoute) {
-                $href = $this->href($consoleRoute, $offered);
+                $href = $this->href($consoleRoute, $offered, $verb === 'Create');
 
                 if ($href !== null) {
                     $out[$action->name] = ['name' => $action->name, 'label' => $this->label($action, $verb), 'href' => $href];
@@ -101,7 +101,7 @@ final readonly class PaletteActions
      *
      * @param  array<string, true>  $offered
      */
-    private function href(string $consoleRoute, array $offered): ?string
+    private function href(string $consoleRoute, array $offered, bool $creates): ?string
     {
         $host = $this->snippets->hostOf($consoleRoute);
 
@@ -116,8 +116,9 @@ final readonly class PaletteActions
             return null;
         }
 
-        // A create form of its own, when the list has one; the list otherwise.
-        foreach ([$list.'.create', $host, $list] as $candidate) {
+        // A create form of its own, when the list has one; the list otherwise — where a verb
+        // that needs a record first picks it.
+        foreach ($creates ? [$list.'.create', $host, $list] : [$list] as $candidate) {
             $route = $this->router->getRoutes()->getByName($candidate);
 
             if ($route instanceof Route && $route->parameterNames() === []) {

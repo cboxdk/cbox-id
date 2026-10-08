@@ -56,7 +56,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
                 'kind' => $option->kind()->label(),
             ], QuickstartFramework::cases()),
             'framework' => $framework?->value,
-            'app' => $app === null ? null : [
+            'createdApp' => $app === null ? null : [
                 'id' => $app->id,
                 'name' => $app->name,
                 'clientId' => $app->client_id,

@@ -72,6 +72,9 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
     const [actions, setActions] = useState<PaletteAction[]>([]);
     const [loading, setLoading] = useState(false);
     const [recent, setRecent] = useState<SearchItem[]>([]);
+    // The highlighted option, held here so an answer that arrives after the keystroke can
+    // put the highlight on it — otherwise Enter on a pasted id selects nothing.
+    const [selected, setSelected] = useState('');
     const inflight = useRef<AbortController | null>(null);
     // The shortcut is bound once; it reads the current state through these.
     const openRef = useRef(open);
@@ -127,6 +130,12 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
 
                 setActions(body.actions);
                 setResponse(term === '' ? null : body);
+
+                const first = body.jump ?? body.groups[0]?.items[0];
+
+                if (term !== '' && first !== undefined) {
+                    setSelected(itemValue(first, body.jump !== null ? 'Open' : undefined));
+                }
             } catch {
                 // Aborted by the next keystroke, or offline: the last answer stands.
             } finally {
@@ -225,7 +234,12 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                             {endpoint === null ? 'Go to a page' : 'Search the console'}
                         </Primitive.Title>
 
-                        <Command loop label="Search the console">
+                        <Command
+                            loop
+                            label="Search the console"
+                            value={selected}
+                            onValueChange={setSelected}
+                        >
                             <div className="cbx-combobox-search">
                                 <Icon name="search" className="w-4 h-4 shrink-0" />
                                 <Command.Input
@@ -341,6 +355,11 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
     );
 }
 
+/** The option's value — unique per record and per group, so the highlight can name it. */
+function itemValue(item: SearchItem, prefix?: string): string {
+    return `${prefix ?? item.kind} ${item.kind} ${item.id} ${item.title}`;
+}
+
 /**
  * A record from the server. FORCE-MOUNTED: the server already matched it — by email, id or
  * client id, none of which need appear in its title — so cmdk's own fuzzy filter must not
@@ -358,7 +377,7 @@ function ResultItem({
     return (
         <Command.Item
             forceMount
-            value={`${prefix ?? item.kind} ${item.kind} ${item.id} ${item.title}`}
+            value={itemValue(item, prefix)}
             className="cbx-menuitem"
             onSelect={onSelect}
         >

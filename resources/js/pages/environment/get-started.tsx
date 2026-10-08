@@ -39,7 +39,7 @@ type Props = PageProps<{
     dismissed: boolean;
     frameworks: FrameworkOption[];
     framework: string | null;
-    app: { id: string; name: string; clientId: string; href: string } | null;
+    createdApp: { id: string; name: string; clientId: string; href: string } | null;
     quickstart: Quickstart | null;
     secretPlaceholder: string;
     signedIn: boolean;
@@ -58,7 +58,7 @@ export default function GetStarted({
     dismissed,
     frameworks,
     framework,
-    app,
+    createdApp: app,
     quickstart,
     secretPlaceholder,
     signedIn,
