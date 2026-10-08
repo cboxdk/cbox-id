@@ -10,7 +10,7 @@ return [
         'default_message' => 'Der opstod en uventet fejl. Prøv igen.',
         'home' => 'Tilbage til oversigten',
         'reload' => 'Genindlæs',
-        'share_trace' => 'Del dette med support, så vi kan spore hvad der skete.',
+        'share_trace' => 'Send dette til support, så vi kan finde ud af hvad der skete.',
         'copy_trace' => 'Kopier sporings-id',
         'trace_id' => 'Sporings-id',
         'copied' => 'Kopieret',
@@ -18,7 +18,7 @@ return [
 
     '403' => [
         'title' => 'Adgang nægtet',
-        'message' => 'Du har ikke tilladelse til at se denne side. Hvis du mener det er en fejl, så kontakt din administrator.',
+        'message' => 'Du har ikke tilladelse til at se denne side. Hvis du mener at det er en fejl, så kontakt din administrator.',
     ],
 
     '404' => [
@@ -38,11 +38,11 @@ return [
 
     '500' => [
         'title' => 'Noget gik galt',
-        'message' => 'Der opstod en uventet fejl hos os. Teamet har fået besked. Det hjælper som regel at genindlæse siden.',
+        'message' => 'Der opstod en uventet fejl hos os, og vi har fået besked. Det hjælper som regel at genindlæse siden.',
     ],
 
     '503' => [
-        'title' => 'Vedligeholdelse i gang',
+        'title' => 'Lukket for vedligeholdelse',
         'message' => ':brand er kortvarigt utilgængelig på grund af vedligeholdelse. Prøv igen om lidt.',
     ],
 ];

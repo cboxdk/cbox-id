@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-// Danish: the sign-in group (see lang/en/auth.php for keys and context).
+// Danish: the sign-in group (see lang/en/auth.php for keys and context). Terminology is
+// fixed in docs/guides/languages.md ("Danish terminology"): "log ind" as the verb, "login"
+// as the noun, "adgangskode", "adgangsnøgle", "totrinsbekræftelse", du-form throughout.
 return [
     'common' => [
         'email' => 'E-mail',
@@ -29,16 +31,16 @@ return [
     'login' => [
         'title' => 'Log ind',
         'purpose' => [
-            'default' => 'Velkommen tilbage. Få adgang til din organisations identitetskonsol.',
+            'default' => 'Velkommen tilbage. Log ind på din organisations identitetskonsol.',
             'device' => 'Log ind for at godkende den enhed der venter.',
         ],
         'pending_link' => [
             'lead' => 'Nogen har logget ind via :provider med denne e-mailadresse.',
-            'body' => 'Der findes allerede en konto med den e-mailadresse. Log ind herunder, så spørger vi, om du vil forbinde :provider til kontoen.',
+            'body' => 'Der findes allerede en konto med den e-mailadresse. Log ind herunder, så spørger vi om du vil forbinde :provider til kontoen.',
         ],
         'magic' => [
             'sent_to' => 'Vi har sendt et loginlink til :email. Det kan kun bruges én gang.',
-            'dev_note' => 'Vises fordi e-mail ikke er sat op i dette miljø.',
+            'dev_note' => 'Vises fordi der ikke er sat e-mail op i dette miljø.',
         ],
         'mandate' => [
             'heading' => ':organization kræver single sign-on',
@@ -47,11 +49,11 @@ return [
             'your_organization' => 'Din organisation',
             'reasons' => [
                 'password' => 'Din adgangskode er korrekt, men den kan ikke længere bruges til at logge ind her. Log i stedet ind via din organisations identitetsudbyder.',
-                'magic_link' => 'Loginlinket virkede, og det er nu brugt. Links sendt på e-mail kan ikke længere bruges til at logge ind her. Log i stedet ind via din organisations identitetsudbyder.',
+                'magic_link' => 'Loginlinket virkede, og det er nu brugt. Loginlinks på e-mail kan ikke længere bruges her. Log i stedet ind via din organisations identitetsudbyder.',
                 'passkey' => 'Din adgangsnøgle virkede, men den kan ikke længere bruges til at logge ind her. Log i stedet ind via din organisations identitetsudbyder.',
-                'social' => 'Det lykkedes at logge ind, men ikke via den identitetsudbyder din organisation har valgt. Log i stedet ind via den.',
+                'social' => 'Du blev logget ind, men ikke via den identitetsudbyder din organisation har valgt. Log i stedet ind via den.',
                 'invitation' => 'Din invitation er accepteret, og du er nu medlem. Log ind via din organisations identitetsudbyder for at komme i gang.',
-                'password_reset' => 'Din nye adgangskode er gemt, men en adgangskode kan ikke længere bruges til at logge ind her. Log i stedet ind via din organisations identitetsudbyder.',
+                'password_reset' => 'Din nye adgangskode er gemt, men adgangskoder kan ikke længere bruges til at logge ind her. Log i stedet ind via din organisations identitetsudbyder.',
             ],
         ],
         'use_different_email' => 'Brug en anden e-mailadresse',
@@ -69,15 +71,15 @@ return [
         'passkey_failed' => 'Login med adgangsnøgle mislykkedes.',
         'new_organization' => 'Ny organisation?',
         'create_one' => 'Opret en',
-        'invalid_credentials' => 'De indtastede loginoplysninger er forkerte.',
+        'invalid_credentials' => 'E-mailadressen eller adgangskoden er forkert.',
         'social' => [
             'failed' => 'Login med :provider blev annulleret eller mislykkedes.',
             'unavailable' => 'Login med :provider er ikke tilgængeligt lige nu.',
         ],
         'passkey_errors' => [
-            'challenge_expired' => 'Loginanmodningen er udløbet. Prøv igen.',
+            'challenge_expired' => 'Loginforsøget er udløbet. Prøv igen.',
             'not_registered' => 'Adgangsnøglen er ikke registreret.',
-            'cloned' => 'Adgangsnøglen er muligvis klonet og blev afvist.',
+            'cloned' => 'Adgangsnøglen blev afvist, fordi den muligvis er blevet kopieret.',
             'unverified' => 'Adgangsnøglen kunne ikke bekræftes.',
             'failed' => 'Noget gik galt under login.',
         ],
@@ -91,7 +93,7 @@ return [
             'default' => 'Opret din organisation',
         ],
         'lead' => [
-            'creates_idp' => 'Et arbejdsområde til din virksomhed og din egen hostede identitetsudbyder. SSO, brugere og login du selv har fuld kontrol over, klar på et minut.',
+            'creates_idp' => 'Et arbejdsområde til din virksomhed og jeres egen hostede identitetsudbyder: SSO, brugere og login som I selv har fuld kontrol over – klar på et minut.',
             'join' => 'Tilmeld dig :name. Du bliver ejer af dit team og kan invitere andre når du er kommet ind.',
             'default' => 'Sæt Cbox ID op til dit team på under et minut.',
         ],
@@ -104,7 +106,7 @@ return [
         'name_label' => 'Dit navn',
         'name_placeholder' => 'Mette Hansen',
         'email_label' => 'Arbejdsmail',
-        'breach_note' => 'Kontrolleres mod kendte datalæk.',
+        'breach_note' => 'Tjekkes mod kendte datalæk.',
         'submit' => [
             'creates_idp' => 'Opret arbejdsområde',
             'for_app' => 'Opret konto og fortsæt',
@@ -112,7 +114,7 @@ return [
         ],
         'have_account' => 'Har du allerede en konto?',
         'complete_verification' => 'Gennemfør bekræftelsen herunder, og send igen.',
-        'sso_required' => 'Din organisation kræver login via SSO.',
+        'sso_required' => 'Din organisation kræver login via single sign-on.',
         'account_exists' => 'Der findes allerede en konto med denne e-mailadresse.',
         'closed' => [
             'tenant' => 'Du skal have en invitation for at blive medlem. Spørg den der står for dit team.',
@@ -124,8 +126,8 @@ return [
     'forgot_password' => [
         'title' => 'Nulstil adgangskode',
         'heading' => 'Nulstil din adgangskode',
-        'lead' => 'Indtast din e-mailadresse, så sender vi dig et link til at nulstille den.',
-        'sent_to' => 'Hvis der findes en konto for :email, er et link til nulstilling på vej.',
+        'lead' => 'Indtast din e-mailadresse, så sender vi dig et link til at nulstille din adgangskode.',
+        'sent_to' => 'Hvis der findes en konto med :email, er et link til nulstilling på vej.',
         'submit' => 'Send link',
         'remembered' => 'Kom du i tanke om den?',
         'throttled' => 'For mange forsøg. Vent et par minutter, og prøv igen.',
@@ -142,7 +144,7 @@ return [
 
     'change_password' => [
         'title' => 'Vælg en ny adgangskode',
-        'lead' => 'Du loggede ind med en adgangskode fra en administrator. Vælg en ny som kun du kender, før du fortsætter.',
+        'lead' => 'Du loggede ind med en adgangskode fra en administrator. Vælg en ny som kun du kender, inden du fortsætter.',
         'submit' => 'Opdater adgangskode',
         'mismatch' => 'Adgangskoderne er ikke ens.',
     ],
@@ -155,7 +157,7 @@ return [
             'switch' => 'Brug en gendannelseskode i stedet',
         ],
         'recovery' => [
-            'lead' => 'Indtast en af de gendannelseskoder du gemte, da du slog totrinsbekræftelse til.',
+            'lead' => 'Indtast en af de gendannelseskoder du gemte da du slog totrinsbekræftelse til.',
             'label' => 'Gendannelseskode',
             'submit' => 'Bekræft gendannelseskode',
             'switch' => 'Brug din godkendelsesapp i stedet',
@@ -186,7 +188,7 @@ return [
         'lead' => 'Vælg en adgangskode for at være med til at administrere :organization med rollen :role. Du logger ind som :email.',
         'organization_fallback' => 'organisationen',
         'password_label' => 'Vælg en adgangskode',
-        'breach_note' => 'Kontrolleres mod kendte datalæk.',
+        'breach_note' => 'Tjekkes mod kendte datalæk.',
         'submit' => 'Accepter og log ind',
         'no_longer_valid' => 'Invitationen er ikke længere gyldig. Prøv at logge ind.',
         'invalid' => 'Invitationen er ugyldig eller udløbet.',
@@ -196,7 +198,7 @@ return [
     'confirm_email' => [
         'title' => 'Bekræft din e-mail',
         'heading' => 'Bekræft din e-mailadresse',
-        'lead' => 'Du har åbnet bekræftelseslinket vi sendte dig. Bekræft adressen for at gøre det færdigt.',
+        'lead' => 'Du har åbnet det bekræftelseslink vi sendte dig. Bekræft adressen for at gøre det færdigt.',
         'action' => 'Bekræft e-mailadresse',
         'invalid' => 'Bekræftelseslinket er ugyldigt eller udløbet.',
         'verified_sign_in' => 'Din e-mail er bekræftet. Log ind for at åbne dit miljø.',
@@ -205,7 +207,7 @@ return [
 
     'confirm_sign_in' => [
         'title' => 'Log ind',
-        'heading' => 'Afslut login',
+        'heading' => 'Gennemfør login',
         'lead' => 'Du har åbnet et loginlink. Fortsæt for at logge ind på denne enhed.',
         'action' => 'Log ind',
         'note' => 'Linket virker kun én gang. Hvis du ikke har bedt om at logge ind, så luk denne side. Der sker ingenting før du trykker på knappen.',
@@ -214,7 +216,7 @@ return [
 
     'first_run' => [
         'title' => 'Sæt Cbox ID op',
-        'lead' => 'Denne installation er tom. Gør krav på den én gang fra den maskine den kører på.',
+        'lead' => 'Denne installation er tom. Tag den i brug fra den maskine den kører på – det kan kun gøres én gang.',
         'unmigrated' => [
             'title' => 'Databasen for denne installation har endnu intet skema.',
             'body' => 'Kør :migrate på serveren (eller :install, som migrerer og installerer i ét trin), og genindlæs derefter siden.',
@@ -227,14 +229,14 @@ return [
             'title' => 'Hvor er opsætningstokenet?',
             'body' => 'Kør :command på serveren — på en hvilken som helst instans af installationen — og indsæt det, der bliver skrevet ud. Hver kørsel skriver et nyt token ud, som gælder i en time. Det vises aldrig på denne side.',
         ],
-        'cli_hint' => 'Foretrækker du kommandolinjen? :install gør det samme og er den eneste vej der også kan vælge og gemme installationens opbygning.',
+        'cli_hint' => 'Foretrækker du kommandolinjen? :install gør det samme og er den eneste måde der også kan vælge og gemme installationens opbygning.',
         'token_label' => 'Opsætningstoken',
         'token_placeholder' => 'Indsæt tokenet fra serveren',
         'name_label' => 'Dit navn',
         'name_placeholder' => 'Driftsansvarlig',
         'email_label' => 'Din e-mail',
         'environment_label' => 'Navngiv dit første miljø',
-        'environment_hint' => 'Et miljø er den skarpe grænse for isolation, med egne brugere, nøgler og udsteder.',
+        'environment_hint' => 'Et miljø er fuldstændig isoleret, med egne brugere, nøgler og udsteder.',
         'environment_default' => 'Produktion',
         'organization_label' => 'Organisationens navn',
         'organization_hint' => 'Installationen er konfigureret som multi-tenant, så den opretter også det første arbejdsområde: den organisation der ejer miljøer og fakturering.',
@@ -277,9 +279,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Administratoropsætning',
-        'heading' => 'Sæt login op for din organisation',
-        'lead' => 'Du har fået et opsætningslink til jeres organisation — single sign-on, katalogsynkronisering, domæner, logstreams eller fornyelse af et certifikat. Fortsæt for at åbne opsætningen.',
+        'title' => 'Opsætning for administratorer',
+        'heading' => 'Sæt login op for jeres organisation',
+        'lead' => 'Du har fået et opsætningslink til jeres organisation – single sign-on, katalogsynkronisering, domæner, logstreaming eller fornyelse af et certifikat. Fortsæt for at åbne opsætningen.',
         'action' => 'Åbn opsætning',
         'note' => 'Linket virker kun én gang, og den opsætningssession det åbner, udløber. Åbn det når du er klar til at gøre opsætningen færdig.',
     ],
