@@ -54,6 +54,9 @@ it('runs Get started from a framework to the first sign-in', function (): void {
         ->assertSee('CBOX_ID_CLIENT_SECRET=csec_')
         ->assertSee('Waiting for your first sign-in')
         ->assertNoJavaScriptErrors()
+        // The "created" toast slides in with an opacity animation; axe measuring it mid-fade
+        // reads a half-transparent foreground as low contrast. Checked once it has landed.
+        ->wait(1)
         ->assertNoAccessibilityIssues();
 
     // Somebody signs in to the app the quickstart made; the page notices on its own.
