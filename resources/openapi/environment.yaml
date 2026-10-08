@@ -13686,6 +13686,12 @@ paths:
                       - vault.grant.revoked
                       - vault.secret.revoked
                       - governance.access.revoked
+                signature_scheme:
+                  type: string
+                  description: 'How deliveries are signed: `cbox` (X-Cbox-Signature, the default) or `standard_webhooks` (webhook-id / webhook-timestamp / webhook-signature, verifiable with any Standard Webhooks library; the secret is a `whsec_` secret).'
+                  enum:
+                    - cbox
+                    - standard_webhooks
                 organization_id:
                   type:
                     - string
@@ -14102,6 +14108,77 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/signature-scheme':
+    post:
+      tags:
+        - Webhooks
+      summary: "Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks). No new secret is issued: a hex secret is used as whsec_ + base64 of itself. Update the receiver first."
+      description: 'Requires scope `webhooks:write`. Danger: destructive.'
+      operationId: webhooks_signature_scheme_change
+      x-action: webhooks.signature_scheme.change
+      x-scope: 'webhooks:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signature_scheme:
+                  type: string
+                  description: 'The scheme deliveries are signed with from the next attempt. The secret is unchanged: under `standard_webhooks` a 64-hex secret is used as `whsec_` + base64 of the hex string. Update the receiver before you switch.'
+                  enum:
+                    - cbox
+                    - standard_webhooks
+              required:
+                - signature_scheme
       responses:
         200:
           description: OK
@@ -15104,6 +15181,7 @@ components:
         - organization_id
         - event_types
         - active
+        - signature_scheme
       properties:
         id:
           type: string
@@ -15121,6 +15199,17 @@ components:
         active:
           type: boolean
           description: 'false while paused.'
+        signature_scheme:
+          type: string
+          enum:
+            - cbox
+            - standard_webhooks
+          description: |
+            How deliveries are signed. `cbox`: `X-Cbox-Timestamp` and
+            `X-Cbox-Signature: t=<ts>,v1=<hex HMAC-SHA256 of "<ts>.<body>">`.
+            `standard_webhooks`: `webhook-id`, `webhook-timestamp` and
+            `webhook-signature: v1,<base64 HMAC-SHA256 of "<id>.<ts>.<body>">`, verifiable
+            with any Standard Webhooks library. Only the chosen scheme's headers are sent.
         consecutive_failures:
           type: integer
         last_success_at:
@@ -15139,7 +15228,8 @@ components:
             - 'null'
           description: |
             The signing secret, on the create and rotate answers only — shown once, never
-            retrievable again. `null` on an idempotent replay of that answer.
+            retrievable again. `null` on an idempotent replay of that answer. 64 hex
+            characters under `cbox`; a `whsec_` secret under `standard_webhooks`.
     InlineHook:
       type: object
       required:

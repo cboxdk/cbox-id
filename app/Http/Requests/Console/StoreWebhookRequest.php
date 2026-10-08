@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Console;
 
+use App\Actions\Webhooks\CreateWebhook;
 use App\Http\Controllers\Console\WebhookController;
 use App\Platform\Console\WebhookEventCatalogue;
 use Illuminate\Foundation\Http\FormRequest;
@@ -46,6 +47,7 @@ final class StoreWebhookRequest extends FormRequest
             'url' => ['required', 'url', 'max:500'],
             'eventTypes' => ['required', 'array', 'min:1'],
             'eventTypes.*' => ['string', Rule::in(WebhookEventCatalogue::offered())],
+            'signatureScheme' => ['nullable', 'string', Rule::in(CreateWebhook::schemes())],
         ];
     }
 
@@ -59,6 +61,14 @@ final class StoreWebhookRequest extends FormRequest
             'eventTypes.min' => 'Choose at least one event for this endpoint to receive.',
             'eventTypes.*.in' => WebhookEventCatalogue::REFUSAL,
         ];
+    }
+
+    /** The scheme deliveries are signed with; `cbox` when the form sent none. */
+    public function signatureScheme(): string
+    {
+        $scheme = (string) $this->string('signatureScheme');
+
+        return $scheme === '' ? 'cbox' : $scheme;
     }
 
     public function url(): string

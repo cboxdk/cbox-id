@@ -25,6 +25,7 @@ final readonly class WebhookRowProps implements Prop
         public bool $active,
         public ?string $owner,
         public int $eventCount,
+        public string $signatureScheme,
     ) {}
 
     /**
@@ -43,11 +44,12 @@ final readonly class WebhookRowProps implements Prop
                 ? ($organizationNames[$organizationId] ?? $organizationId)
                 : null,
             eventCount: count($endpoint->event_types),
+            signatureScheme: $endpoint->signature_scheme->value,
         );
     }
 
     /**
-     * @return array{id: string, url: string, href: string, active: bool, owner: string|null, eventCount: int}
+     * @return array{id: string, url: string, href: string, active: bool, owner: string|null, eventCount: int, signatureScheme: string}
      */
     public function toArray(): array
     {
@@ -58,6 +60,7 @@ final readonly class WebhookRowProps implements Prop
             'active' => $this->active,
             'owner' => $this->owner,
             'eventCount' => $this->eventCount,
+            'signatureScheme' => $this->signatureScheme,
         ];
     }
 }

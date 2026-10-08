@@ -1,7 +1,17 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, OrganizationPickerField, Panel } from '@/ui';
+import {
+    Button,
+    Checkbox,
+    Field,
+    Icon,
+    Input,
+    OrganizationPickerField,
+    Panel,
+    RadioGroup,
+} from '@/ui';
+import { type SignatureScheme, signatureSchemeOptions } from './schemes';
 
 type Props = PageProps<{
     events: string[];
@@ -30,6 +40,7 @@ export default function CreateWebhook({
         url: '',
         eventTypes: [] as string[],
         environmentWide: false,
+        signatureScheme: 'cbox' as SignatureScheme,
         organization: organization?.selected?.id ?? '',
     });
 
@@ -101,6 +112,23 @@ export default function CreateWebhook({
                                 hint="Whose events it is sent — or tick Environment-wide above."
                             />
                         )}
+
+                        <div>
+                            <RadioGroup
+                                label="Signature scheme"
+                                name="signatureScheme"
+                                value={form.data.signatureScheme}
+                                onValueChange={(scheme) => form.setData('signatureScheme', scheme)}
+                                options={signatureSchemeOptions}
+                            />
+                            <p
+                                className="field-error"
+                                role="alert"
+                                hidden={!form.errors.signatureScheme}
+                            >
+                                {form.errors.signatureScheme}
+                            </p>
+                        </div>
 
                         <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
                             {/*
