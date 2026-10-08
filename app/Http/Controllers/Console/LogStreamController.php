@@ -157,10 +157,20 @@ final readonly class LogStreamController extends ConsoleController
         /** @var RegisteredStream $registered */
         $registered = $result->value;
 
-        // A generated HMAC key — or an echoed token — revealed exactly once. Only
-        // ciphertext is persisted, so it can never be retrieved again.
-        if (is_string($registered->secret)) {
-            $this->inertia->flash('newSecret', $registered->secret);
+        /*
+         * A GENERATED HMAC key, revealed exactly once. Only ciphertext is persisted, so it
+         * can never be retrieved again.
+         *
+         * Read off the action's answer, not off the registered stream: the stream hands back
+         * whatever secret it was given, so a bearer or Splunk token the person TYPED came
+         * straight back in a "copy this key" banner — a credential echoed into the flash for
+         * no reason, from a form they could already read it off. The action's answer carries
+         * only a key the platform made ({@see CreateLogStream}).
+         */
+        $generated = $result->payload['secret'] ?? null;
+
+        if (is_string($generated)) {
+            $this->inertia->flash('newSecret', $generated);
         }
 
         return to_route($this->scope->routeName('audit-streams.show'), $registered->stream->id)

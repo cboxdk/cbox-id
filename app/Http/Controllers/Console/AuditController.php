@@ -10,8 +10,11 @@ use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\ActionVia;
 use App\Platform\Audit\AuditActorKind;
 use App\Platform\AuditNames;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
+use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Help\HelpTopic;
+use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -109,6 +112,10 @@ final readonly class AuditController extends ConsoleController
 
         // Resolved ONCE per page, in three queries — never per row.
         $resolved = $names->for($entries->getCollection());
+        $agents = $names->agents($entries->getCollection());
+
+        // Where an agent row links: AI agents › Agents, which only the environment console has.
+        $agentsHref = $this->scope->plane() === ConsolePlane::Environment ? route('environment.agents') : null;
 
         // Whose trail each row is, on the list that holds every organization's — one query
         // for the names this page shows.
@@ -117,6 +124,7 @@ final readonly class AuditController extends ConsoleController
         return $this->page('console/audit', Vocabulary::AUDIT_LOG, [
             'help' => HelpProps::for(HelpTopic::ActivityLog),
             'entries' => $entries->getCollection()->map(fn (AuditEntry $entry): array => [
+                ...self::actor($entry, $resolved, $agents, $agentsHref),
                 'id' => $entry->id,
                 'sequence' => $entry->sequence,
                 'action' => $entry->action,
@@ -125,9 +133,6 @@ final readonly class AuditController extends ConsoleController
                 // or types into the filter — and the environment console only ever showed
                 // that second one.
                 'phrase' => str_replace(['.', '_'], [' · ', ' '], $entry->action),
-                'actorId' => $entry->actor_id,
-                'actorName' => $entry->actor_id === null ? null : ($resolved[$entry->actor_id] ?? null),
-                'actorType' => ucfirst($entry->actor_type->value),
                 'organization' => $entry->organization_id === null ? null : ($owners[$entry->organization_id] ?? null),
                 'targetId' => $entry->target_id,
                 'targetName' => $entry->target_id === null ? null : ($resolved[$entry->target_id] ?? null),
@@ -172,6 +177,43 @@ final readonly class AuditController extends ConsoleController
             'environmentWide' => ! $filter->active(),
             'organizationFilter' => $this->organizationFilterProps($filter),
         ]);
+    }
+
+    /**
+     * WHO DID IT, as the row names them.
+     *
+     * An AGENT — anything an environment management key did — is named by its key, as an
+     * agent, and links to AI agents › Agents. The stored actor is the wrong thing to show
+     * there: it is `service` with the key's id when the entry was claimed for the key, and
+     * it stays whatever the writer said when a framework service named an actor of its own,
+     * which is how a key's work read "System" — the platform's own doing — on the page an
+     * auditor reads to find out which agent did it. The key in the entry's context is the
+     * fact; a PERSON named as the actor keeps the row (an ownership transfer is the outgoing
+     * owner's act), with the key on it as context.
+     *
+     * @param  array<string, string>  $resolved
+     * @param  array<string, string>  $agents
+     * @return array{actorId: string|null, actorName: string|null, actorType: string, actorHref: string|null}
+     */
+    private static function actor(AuditEntry $entry, array $resolved, array $agents, ?string $agentsHref): array
+    {
+        $key = self::contextString($entry, EnvironmentKeyAuditLog::CONTEXT_KEY);
+
+        if ($key !== '' && in_array($entry->actor_type, [ActorType::Service, ActorType::System], true)) {
+            return [
+                'actorId' => $key,
+                'actorName' => $agents[$key] ?? null,
+                'actorType' => AuditActorKind::Agent->label(),
+                'actorHref' => $agentsHref,
+            ];
+        }
+
+        return [
+            'actorId' => $entry->actor_id,
+            'actorName' => $entry->actor_id === null ? null : ($resolved[$entry->actor_id] ?? null),
+            'actorType' => ucfirst($entry->actor_type->value),
+            'actorHref' => null,
+        ];
     }
 
     private static function contextString(AuditEntry $entry, string $key): string

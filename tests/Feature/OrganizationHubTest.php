@@ -7,9 +7,11 @@ use App\Models\AdminPortalLink;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\OrganizationTabs;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -17,6 +19,7 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
@@ -434,3 +437,38 @@ it('answers 404 for revoking another organization\'s Admin Portal link from this
 
     expect($theirs->refresh()->revoked_at)->toBeNull();
 })->group('security');
+
+/*
+ * THE TXT RECORD'S NAME IS THE VERIFIER'S, NOT THE PAGE'S. The Domains tab used to say
+ * "add this TXT record at acme.example" while the check looked it up at
+ * `_cbox-id-challenge.acme.example` — a record published where the page said was never
+ * found. The name now comes from the server, and publishing exactly what the page shows
+ * is what verifies.
+ */
+it('shows the TXT record where the verifier looks for it, and publishing exactly that verifies', function (): void {
+    $dns = new FakeDnsResolver;
+    app()->instance(DnsResolver::class, $dns);
+    app()->forgetInstance(DomainVerification::class);
+
+    $orgId = anEnvironmentAdminWithOrganizations();
+    app(DomainVerification::class)->add($orgId, 'acme.example');
+
+    $row = ((array) $this->get(route(OrganizationTabs::route(OrganizationTabs::DOMAINS), $orgId))->assertOk()->inertiaProps('domains'))[0];
+
+    expect($row['recordName'])->toBe('_cbox-id-challenge.acme.example')
+        ->and($row['token'])->not->toBe('');
+
+    $dns->publish($row['recordName'], $row['token']);
+    $this->post($row['urls']['verify'])->assertSessionHasNoErrors();
+
+    expect(app(DomainVerification::class)->forOrganization($orgId)[0]->isVerified())->toBeTrue();
+});
+
+it('names the TXT record the same way on the organization console\'s own Domains page', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    app(DomainVerification::class)->add($org->id, 'Tenant.Example');
+
+    $row = ((array) $this->get(route('domains'))->assertOk()->inertiaProps('domains'))[0];
+
+    expect($row['recordName'])->toBe('_cbox-id-challenge.tenant.example');
+});

@@ -6,6 +6,7 @@ use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\ActionVia;
 use App\Platform\Audit\AuditActorKind;
 use App\Platform\AuditNames;
+use App\Platform\EnvironmentKeyAuditLog;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -129,6 +130,39 @@ it('narrows the environment trail to agents, to the door they came through', fun
         // Another environment's entries never reach this console, whatever the filter.
         ->and(collect($agents)->pluck('targetName')->filter()->all())->not->toContain('Over MCP')
         ->and(collect($people)->pluck('actorKind')->unique()->all())->not->toContain('agent');
+});
+
+/*
+ * AN AGENT'S WORK IS SIGNED WITH THE AGENT'S NAME. The row showed the stored actor — a
+ * `service` id rendered as "Service", or "System" where a framework service named no one —
+ * so the page an auditor reads to learn WHICH agent did something said the platform did
+ * it. Named by the key, as an agent, linking to where agents are managed, with the door.
+ */
+it('names the agent key that acted, as an agent, linking to AI agents, with the door it came through', function (): void {
+    multiTenantDeployment();
+    $environmentId = actAsEnvironmentAdminOfATenant();
+
+    $tenantKey = app(EnvironmentApiKeys::class)->issue($environmentId, 'Release bot', ['apps:read', 'apps:write', 'organizations:read', 'organizations:write']);
+    $this->withToken($tenantKey->plaintext)->postJson('/api/v1/apps', viaAppBody('Over REST'))->assertCreated();
+    mcpCall($tenantKey->plaintext, 'organizations_create', ['name' => 'Acme', 'slug' => 'acme-agents']);
+    $this->flushHeaders();
+
+    // And one a framework service wrote as the platform's own while the key was acting.
+    app(AuditLog::class)->record(new AuditEvent(
+        action: 'agent.system_side_effect',
+        actorType: ActorType::System,
+        context: [EnvironmentKeyAuditLog::CONTEXT_KEY => $tenantKey->key->id],
+    ));
+
+    $entries = collect((array) $this->get(route('environment.audit'))->assertOk()->inertiaProps('entries'))->keyBy('action');
+
+    foreach (['app.created' => 'REST API', 'organization.created' => 'MCP', 'agent.system_side_effect' => null] as $action => $via) {
+        expect($entries[$action]['actorName'] ?? null)->toBe('Release bot')
+            ->and($entries[$action]['actorType'])->toBe('Agent')
+            ->and($entries[$action]['actorKind'])->toBe('agent')
+            ->and($entries[$action]['actorHref'])->toBe(route('environment.agents'))
+            ->and($entries[$action]['via'])->toBe($via);
+    }
 });
 
 it('records who approved an action a key was held on, and the audit log names them', function (): void {

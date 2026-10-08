@@ -154,7 +154,8 @@ it('creates the app for the framework picked, through apps.create, and waits for
 
     $page = $this->get(route('environment.get-started', ['framework' => 'nextjs', 'app' => $app->id]))->assertOk();
 
-    expect($page->inertiaProps('quickstart.install'))->toBe('npm i @cboxdk/id-js')
+    expect($page->inertiaProps('quickstart.install.0.code'))->toBe('npm install @cboxdk/id-js jose')
+        ->and($page->inertiaProps('quickstartGuide'))->toEndWith('quickstarts/nextjs.md')
         ->and($page->inertiaProps('quickstart.env'))->toContain('CBOX_ID_CLIENT_ID='.$app->client_id)
         ->and($page->inertiaProps('quickstart.env'))->toContain('CBOX_ID_CLIENT_SECRET=<your client secret>')
         ->and($page->inertiaProps('quickstart.env'))->not->toContain('csec_')
@@ -179,7 +180,10 @@ it('makes a browser app public, with no secret anywhere in its snippet', functio
 
     $env = (string) $this->get(route('environment.get-started', ['framework' => 'react', 'app' => $app->id]))->inertiaProps('quickstart.env');
 
-    expect($env)->toContain('VITE_CBOX_ID_CLIENT_ID=')->not->toContain('SECRET');
+    // No secret to fill in: the page's optional line for a Web app stays commented out.
+    expect($env)->toContain('CBOX_ID_CLIENT_ID='.$app->client_id)
+        ->not->toContain('<your client secret>')
+        ->not->toMatch('/^CBOX_ID_CLIENT_SECRET=/m');
 });
 
 it('asks for the step-up before minting a secret, and refuses an unknown framework', function (): void {

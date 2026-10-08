@@ -11,6 +11,7 @@ use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\QuickstartFramework;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Onboarding\EnvironmentChecklist;
 use App\Support\CliClient;
@@ -66,6 +67,9 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
                 'href' => route('environment.clients.show', $app->id),
             ],
             'quickstart' => $app === null || $framework === null ? null : $snippets->quickstart($framework, $app, $issuerUrl)->toArray(),
+            // The framework's whole quickstart page, sign-out included; null on a deployment
+            // with no docs to link to.
+            'quickstartGuide' => $framework === null ? null : app(DocsLinks::class)->page($framework->docsPath()),
             'secretPlaceholder' => ConnectSnippets::SECRET_PLACEHOLDER,
             // Polled by the page as a partial reload until it turns true.
             'signedIn' => $app !== null && $checklist->signedIn($app->client_id),
