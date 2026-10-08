@@ -7,10 +7,12 @@ namespace App\Http\Controllers\Portal;
 use App\Actions\Directories\RegisterScimDirectory;
 use App\Actions\Directories\RotateDirectoryToken;
 use App\Platform\Enums\PortalIntent;
+use App\Platform\Portal\DirectoryUpdates;
 use App\Platform\Portal\PortalGuides;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
+use Cbox\Id\Federation\ValueObjects\ServiceProviderValues;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -29,7 +31,7 @@ use Inertia\Response;
  */
 final readonly class PortalDirectoryController extends PortalController
 {
-    public function show(Request $request): Response
+    public function show(Request $request, DirectoryUpdates $updates): Response
     {
         $this->requireIntent(PortalIntent::Dsync);
 
@@ -39,17 +41,23 @@ final readonly class PortalDirectoryController extends PortalController
             ->orderByDesc('created_at')
             ->get();
 
+        $received = $updates->lastReceived($directories);
         $chosen = $request->string('provider')->toString();
 
         return $this->portalPage('portal/directory-sync', __('portal.directory.title'), [
             'guides' => PortalGuides::directories(),
-            'provider' => in_array($chosen, array_column(PortalGuides::directories(), 'key'), true) ? $chosen : null,
+            'provider' => in_array($chosen, PortalGuides::directoryKeys(), true) ? $chosen : null,
             'scimBaseUrl' => url('/scim/v2'),
+            // Every form of it a guide may ask for — Oracle wants the host and the path as
+            // two fields. The token is the page's own, from the flash that revealed it.
+            'scimValues' => PortalGuides::values(new ServiceProviderValues(scimBaseUrl: url('/scim/v2'))),
             'directories' => $directories->map(static fn (Directory $directory): array => [
                 'id' => $directory->id,
                 'name' => $directory->name,
                 'active' => $directory->status === DirectoryStatus::Active,
-                'lastSyncedAt' => $directory->last_synced_at?->toIso8601String(),
+                // The last write the identity provider made, for a SCIM directory as well as
+                // a pulled one — `last_synced_at` is only ever stamped by a pull.
+                'lastSyncedAt' => ($received[$directory->id] ?? null)?->toIso8601String(),
                 'rotateHref' => route('portal.directories.rotate', $directory->id),
             ])->values()->all(),
             'urls' => [

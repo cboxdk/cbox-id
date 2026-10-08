@@ -124,6 +124,7 @@ final readonly class DelegatedAccess
                 : null,
             customerConsole: $this->planes->onCustomerEnvironment(),
             expiresAt: is_int($expiresAt) ? $expiresAt : null,
+            token: $introspection,
         );
     }
 

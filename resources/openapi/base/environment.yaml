@@ -2444,13 +2444,22 @@ components:
         created_at: { type: ["string", "null"], format: date-time }
     Webhook:
       type: object
-      required: [id, url, organization_id, event_types, active]
+      required: [id, url, organization_id, event_types, active, signature_scheme]
       properties:
         id: { type: string }
         url: { type: string }
         organization_id: { type: ["string", "null"], description: "null when the environment owns it: it receives EVERY organization's events." }
         event_types: { type: array, items: { type: string } }
         active: { type: boolean, description: "false while paused." }
+        signature_scheme:
+          type: string
+          enum: [cbox, standard_webhooks]
+          description: |
+            How deliveries are signed. `cbox`: `X-Cbox-Timestamp` and
+            `X-Cbox-Signature: t=<ts>,v1=<hex HMAC-SHA256 of "<ts>.<body>">`.
+            `standard_webhooks`: `webhook-id`, `webhook-timestamp` and
+            `webhook-signature: v1,<base64 HMAC-SHA256 of "<id>.<ts>.<body>">`, verifiable
+            with any Standard Webhooks library. Only the chosen scheme's headers are sent.
         consecutive_failures: { type: integer }
         last_success_at: { type: ["string", "null"], format: date-time }
         created_at: { type: ["string", "null"], format: date-time }
@@ -2458,7 +2467,8 @@ components:
           type: ["string", "null"]
           description: |
             The signing secret, on the create and rotate answers only — shown once, never
-            retrievable again. `null` on an idempotent replay of that answer.
+            retrievable again. `null` on an idempotent replay of that answer. 64 hex
+            characters under `cbox`; a `whsec_` secret under `standard_webhooks`.
     InlineHook:
       type: object
       required: [id, url, hook_point, organization_id, active]
@@ -2474,21 +2484,50 @@ components:
           description: The signing secret, on the create answer only — shown once. `null` on an idempotent replay.
     LogStream:
       type: object
-      required: [id, name, destination, endpoint_url, auth, organization_id, enabled]
+      required: [id, name, destination, endpoint_url, auth, options, external_id, organization_id, enabled, health]
       properties:
         id: { type: string }
         name: { type: string }
-        destination: { type: string, enum: [splunk_hec, elastic_ecs, graylog_gelf, cef_http, generic_json] }
-        endpoint_url: { type: string }
-        auth: { type: string, enum: [none, bearer, splunk, hmac] }
+        destination: { type: string, enum: [splunk_hec, elastic_ecs, graylog_gelf, cef_http, generic_json, datadog, s3, gcs] }
+        endpoint_url: { type: string, description: "Where entries go. For Datadog, S3 and GCS, derived from the site or region unless a custom endpoint was given." }
+        auth: { type: string, enum: [none, bearer, splunk, hmac], description: "An HTTP collector's scheme; `none` for the cloud destinations, which authenticate their own way." }
+        options:
+          type: ["object", "null"]
+          description: "Datadog, S3 and GCS: the destination's settings, as stored. Never a credential — the API key, secret access key or service-account key is the encrypted secret. null for an HTTP collector."
+          properties:
+            site: { type: string, enum: [datadoghq.com, us3.datadoghq.com, us5.datadoghq.com, datadoghq.eu, ap1.datadoghq.com, ap2.datadoghq.com, ddog-gov.com] }
+            service: { type: string }
+            source: { type: string }
+            hostname: { type: string }
+            tags: { type: string, description: "Comma-separated `key:value` tags (`ddtags`)." }
+            bucket: { type: string }
+            region: { type: string }
+            prefix: { type: string }
+            access_key_id: { type: string }
+            role_arn: { type: string }
+            external_id: { type: string }
+            sse: { type: string, enum: [AES256, "aws:kms"] }
+            kms_key_id: { type: string }
+            path_style: { type: boolean }
+            gzip: { type: boolean }
+        external_id:
+          type: ["string", "null"]
+          description: "An assumed-role S3 stream's external ID, generated for it: the role's trust policy must require it (`sts:ExternalId`). null otherwise."
         organization_id: { type: ["string", "null"], description: "null when the environment owns it: it carries EVERY organization's entries." }
         enabled: { type: boolean }
+        health:
+          type: string
+          enum: [healthy, degraded, paused, action_required]
+          description: "`degraded`: recent transient failures, still retrying. `paused`: the circuit is open after repeated failures and resumes on its own. `action_required`: the destination refused the credential or the settings — update the stream, or run a successful test."
         consecutive_failures: { type: integer }
         last_success_at: { type: ["string", "null"], format: date-time }
+        last_error: { type: ["string", "null"], description: "The latest failure, scrubbed of the stream's secret." }
+        last_failure_kind: { type: ["string", "null"], enum: [transient, authentication, configuration, null] }
+        last_failure_at: { type: ["string", "null"], format: date-time }
         created_at: { type: ["string", "null"], format: date-time }
         secret:
           type: ["string", "null"]
-          description: A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.
+          description: A generated HMAC key, on the answer that generated it only — shown once. `null` on an idempotent replay. A credential the caller supplied is never echoed.
     DomainEvent:
       type: object
       required: [id, type, organization_id, occurred_at, payload]
@@ -2842,10 +2881,14 @@ components:
               passed: { type: boolean }
     LogStreamTest:
       type: object
-      required: [id, delivered, error, tested_at]
+      required: [id, delivered, failure, error, tested_at]
       properties:
         id: { type: string }
-        delivered: { type: boolean, description: "Whether the destination accepted the test entry." }
+        delivered: { type: boolean, description: "Whether the destination accepted the test event (action `siem.stream.test`)." }
+        failure:
+          type: ["string", "null"]
+          enum: [transient, authentication, configuration, null]
+          description: "Why not: `transient` (unreachable, busy — retrying can help) or `authentication` / `configuration` (somebody has to fix the stream). null when delivered."
         error: { type: ["string", "null"], description: "The destination's refusal, scrubbed of the stream's secret." }
         tested_at: { type: string, format: date-time }
     SsoDomain:

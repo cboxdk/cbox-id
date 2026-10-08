@@ -34,6 +34,7 @@ final readonly class PortalProgress
     public function __construct(
         private DomainVerification $domains,
         private ConnectionCertificates $certificates,
+        private DirectoryUpdates $updates,
     ) {}
 
     /**
@@ -75,17 +76,24 @@ final readonly class PortalProgress
     }
 
     /**
+     * "First update received" is the identity provider's first write for a push (SCIM)
+     * directory and the first scheduled run for a pull one ({@see DirectoryUpdates}) —
+     * `last_synced_at` alone is only the second, and left SCIM at "1 of 2" for good.
+     *
      * @return list<array{key: string, done: bool}>
      */
     private function directorySync(string $organizationId): array
     {
-        $directories = Directory::query()->where('organization_id', $organizationId)->get(['id', 'status', 'last_synced_at']);
+        $directories = Directory::query()
+            ->where('organization_id', $organizationId)
+            ->get(['id', 'status', 'last_synced_at']);
+
+        $live = $directories->filter(static fn (Directory $directory): bool => $directory->status === DirectoryStatus::Active);
+        $received = array_filter($this->updates->lastReceived($live), static fn ($at): bool => $at !== null);
 
         return [
             ['key' => 'directory_created', 'done' => $directories->isNotEmpty()],
-            ['key' => 'directory_synced', 'done' => $directories->contains(
-                static fn (Directory $directory): bool => $directory->status === DirectoryStatus::Active && $directory->last_synced_at !== null,
-            )],
+            ['key' => 'directory_synced', 'done' => $received !== []],
         ];
     }
 

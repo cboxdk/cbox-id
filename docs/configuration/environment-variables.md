@@ -154,6 +154,8 @@ Laravel `SESSION_*` keys below).
 | `CBOX_ID_CIMD_ENABLED` | Client ID Metadata Documents: an MCP client may give the https URL of a JSON document describing itself as its `client_id`, and skip registration. The document is fetched through the SSRF guard and cached; nothing is stored. The consent screen leads with the host that published it. | `true` (this app; the framework's default is `false`) | `false` to accept registered clients only. The fetch limits (`CBOX_ID_CIMD_MAX_BYTES`, `CBOX_ID_CIMD_TIMEOUT`, `CBOX_ID_CIMD_CONNECT_TIMEOUT`, `CBOX_ID_CIMD_MIN_TTL`, `CBOX_ID_CIMD_DEFAULT_TTL`, `CBOX_ID_CIMD_MAX_TTL`) keep the framework's defaults. |
 | `CBOX_ID_MCP_DYNAMIC_CLIENTS` | Whether a client that registered itself (above, or by a metadata document) may be issued a token for the management plane at `/mcp`. Read from `config/api.php`. | `true` | `false` to let only clients an administrator registered — the `cbox` CLI among them — and management keys reach `/mcp`. |
 | `CBOX_ID_ROOT_MCP_OAUTH` | Multi-tenant only. Whether the **platform root** signs MCP clients in for its own `/mcp` (`claude mcp add --transport http cbox-id https://<platform-root>/mcp`), one connection for a person's whole workspace. On, the root serves the `/mcp` resource metadata, an RFC 8414 document written for MCP clients, registration in the `mcp` profile (only while `CBOX_ID_DCR_MODE` is `mcp`, without RFC 7592 management), client ID metadata documents, and `/oauth/authorize` and the token endpoints for those clients. Every token they get is audienced to the root's `/mcp` and nothing else, `openid` is refused, and only someone on a workspace's team or an operator can finish signing in. OpenID Connect discovery, UserInfo, SAML and SCIM stay absent on the root either way. Needs `CBOX_ID_MCP_DYNAMIC_CLIENTS` on too. Read from `config/api.php`. | `true` | `false` to keep the root to its own first-party clients (the `cbox` CLI) and workspace keys. Every surface listed here then answers `404` on the root. |
+| `CBOX_ID_MCP_STEP_UP_ACR` | RFC 9470 step-up for a person's token on the management plane (`/mcp` and REST): the authentication class a **critical** action needs. `aal2` (or `mfa`) for a second factor, `aal1` for any sign-in, or the full class (`urn:cbox-id:aal2`). Short of it, the call is answered `401 insufficient_user_authentication`. Management keys are never asked. Read from `config/api.php`. | unset (off) | `aal2` to require that an agent's session was signed in with a second factor. See [agents and MCP](../guides/agents-and-mcp.md#requiring-a-recent-second-factor-optional). |
+| `CBOX_ID_MCP_STEP_UP_MAX_AGE` | The same, for how recent the sign-in must be, in seconds. Either variable may be set alone. Read from `config/api.php`. | unset (off) | `900` |
 | `CBOX_ID_REQUIRE_PAR` | Require Pushed Authorization Requests (RFC 9126) — clients must push params server-side instead of via the front channel. | `false` | Set `true` to harden the authorization endpoint for FAPI-style deployments. |
 | `CBOX_ID_WEBAUTHN_USER_VERIFICATION` | Require user verification (PIN/biometric) during the passkey ceremony. | `true` | Rarely changed; leave on. |
 | `CBOX_ID_EMBED_ENTITLEMENTS` | Embed entitlement claims into issued tokens. | `true` | Disable if consumers resolve entitlements out-of-band. |
@@ -181,6 +183,36 @@ delivered and nothing errors.
 | `CBOX_ID_WEBHOOKS_STRANDED_AFTER_SECONDS` | How long a delivery may sit `Pending` before the retry sweep treats it as stranded (its worker died) and re-drives it. | `900` (15m) | Lower for faster rescue, but keep it comfortably above your longest legitimate delivery. |
 | `CBOX_ID_WEBHOOKS_CB_FAILURE_THRESHOLD` | Consecutive failures against one endpoint before its circuit breaker opens. | `5` | Raise for flaky-but-recovering endpoints. |
 | `CBOX_ID_WEBHOOKS_CB_COOLDOWN_SECONDS` | How long an open breaker stays open before a trial delivery. | `300` | Raise to back off harder from a dead endpoint. |
+
+## Log streams (SIEM)
+
+[Log streams](../guides/log-streams.md) need nothing configured to ship to an HTTP
+collector, Datadog, Google Cloud Storage, or an Amazon S3 bucket with the customer's own
+access key. These three are only for **S3 through an assumed role**, where the customer
+stores no secret with you: their IAM role trusts *your* AWS principal and requires the
+stream's external ID, and the platform calls `sts:AssumeRole` with the identity below.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `SIEM_AWS_ACCESS_KEY_ID` | Access key ID of the platform's own IAM user, used only to sign `sts:AssumeRole`. A secret reference in `cbox.yaml`. | *(none)* | Set to offer **Assume an IAM role** on S3 streams. Without it the option is shown as unavailable and the API refuses `role_arn` (`assumed_role_unavailable`). |
+| `SIEM_AWS_SECRET_ACCESS_KEY` | That user's secret access key. A secret reference in `cbox.yaml`, never a value. | *(none)* | With the key ID. Rotate it in IAM and here; streams are unaffected. |
+| `SIEM_AWS_PRINCIPAL_ARN` | The ARN of that IAM user (`arn:aws:iam::<account>:user/<name>`). Not a secret: it is the `Principal` in the trust policy the console and the Admin Portal hand your customers. | *(none — the policy shows a placeholder)* | Set together with the key, or every customer has to ask you for it. |
+
+The IAM user needs exactly one permission and nothing else, because it can do nothing on
+its own — every write happens as the customer's role:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{ "Effect": "Allow", "Action": "sts:AssumeRole", "Resource": "*" }]
+}
+```
+
+Narrow `Resource` to `arn:aws:iam::*:role/<a naming convention>` if you ask customers to
+name their roles one way. The SIEM package's other settings (`SIEM_AWS_STS_ENDPOINT`,
+`SIEM_AWS_STS_REGION`, `SIEM_AWS_ROLE_DURATION`, `SIEM_GCS_TOKEN_URI`,
+`SIEM_DATADOG_SOURCE`, `SIEM_DATADOG_SERVICE`) default correctly for AWS, Google and
+Datadog; see [laravel-siem's configuration](https://github.com/cboxdk/laravel-siem/blob/main/config/siem.php).
 
 ## Domain-event outbox
 

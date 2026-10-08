@@ -53,6 +53,15 @@ enum QuickstartFramework: string
         };
     }
 
+    /**
+     * The framework's quickstart page under docs/ — the whole walk-through, sign-out included,
+     * whose code the console's blocks are ({@see QuickstartSources}).
+     */
+    public function docsPath(): string
+    {
+        return 'quickstarts/'.$this->value;
+    }
+
     /** How to run it once the snippet is in place — the moment the page starts waiting. */
     public function run(): string
     {

@@ -58,6 +58,29 @@ final class ActionTrail
         }
     }
 
+    /**
+     * Run $callback as no action at all: what the platform does for ITSELF on the way to
+     * running one — registering its own step-up client the first time an approval is asked
+     * for — is not the act of whoever's action happened to need it, nor did it come
+     * through their door.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
+    public function outside(Closure $callback): mixed
+    {
+        $stack = $this->stack;
+        $this->stack = [];
+
+        try {
+            return $callback();
+        } finally {
+            $this->stack = $stack;
+        }
+    }
+
     /** The running action spent $approvalId, given by $approverSubjectId. */
     public function approved(string $approvalId, ?string $approverSubjectId): void
     {

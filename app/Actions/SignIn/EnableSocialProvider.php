@@ -19,6 +19,7 @@ use Cbox\Id\Federation\Enums\ClientSecretKind;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Federation\OidcDiscovery;
+use Cbox\Id\Federation\ValueObjects\DiscoveredOidcProvider;
 use Throwable;
 
 /**
@@ -59,7 +60,7 @@ final readonly class EnableSocialProvider implements Action
     {
         return InputSchema::of([
             Field::string('organization_id')->required()->max(64)->describe('The organization whose sign-in page offers it.'),
-            Field::string('provider')->required()->max(100)->describe('The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook.'),
+            Field::string('provider')->required()->max(100)->describe('The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook, linkedin, bitbucket, xero, intuit.'),
             Field::string('client_id')->required()->max(400)->describe('The client id from your own account with the provider. For Apple, the Services ID.'),
             Field::string('client_secret')->nullable()->max(5000)->describe('The client secret. Write-only. Not used by Apple, which signs its own.'),
             SocialProviderFields::parametersField(),
@@ -123,16 +124,20 @@ final readonly class EnableSocialProvider implements Action
                 throw ActionRefused::because('incomplete_parameters', 'Fill in every field before enabling '.$template->name.'.', 'client_id');
             }
 
-            $config['issuer'] = $issuer;
-
+            /*
+             * Discovered NOW, at the catalogue's own document when it names one (Intuit
+             * publishes its discovery document away from its issuer), and the document is
+             * stored WHOLE ({@see DiscoveredOidcProvider::toConfig()}): the UserInfo endpoint
+             * a provider whose id_token carries no address is read from, and the token
+             * endpoint auth method its document allows — keys a hand-picked subset would drop.
+             */
             try {
-                $document = $this->discovery->fromIssuer($issuer);
-                $config['authorization_endpoint'] = $document->authorizationEndpoint;
-                $config['token_endpoint'] = $document->tokenEndpoint;
-                $config['jwks_uri'] = $document->jwksUri;
+                $document = $this->discovery->fromIssuer($issuer, $template->discoveryUrlFor($values));
             } catch (Throwable $e) {
                 throw ActionRefused::because('discovery_failed', 'We could not reach '.$template->name.' at '.$issuer.' — check the details. ('.$e->getMessage().')', 'client_id');
             }
+
+            $config = [...$config, ...$document->toConfig()];
         }
 
         try {

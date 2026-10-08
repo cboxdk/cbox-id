@@ -63,149 +63,35 @@ class ConnectSnippets
     public const string SECRET_PLACEHOLDER = '<your client secret>';
 
     /**
-     * The quickstart's second step for one framework: install, environment block, code, run.
+     * The quickstart's second step for one framework: install, environment block, code, run —
+     * the code exactly as `docs/quickstarts/{framework}.md` gives it ({@see QuickstartSources}),
+     * with the environment block filled in for $client.
      *
      * THE SECRET IS NEVER HERE. A confidential app's secret exists in plaintext once, on the
      * flash channel of the response that created it; this block names it
      * {@see self::SECRET_PLACEHOLDER} and the page puts the flashed value in its place in the
      * browser — so the secret is not written into the page's props, which the browser keeps
-     * in its history.
+     * in its history. A public app's block keeps the page's commented-out secret line as it
+     * is: there is no secret to put there.
      */
     public function quickstart(QuickstartFramework $framework, Client $client, string $issuer): QuickstartSnippet
     {
-        $clientId = $client->client_id;
+        $source = QuickstartSources::of($framework);
         $redirect = ($client->redirect_uris ?? [])[0] ?? $framework->redirectUri();
-        $secret = $framework->kind()->clientType() === ClientType::Confidential ? self::SECRET_PLACEHOLDER : null;
 
-        $env = static function (string $prefix) use ($issuer, $clientId, $redirect, $secret): string {
-            $lines = [
-                "{$prefix}CBOX_ID_ISSUER={$issuer}",
-                "{$prefix}CBOX_ID_CLIENT_ID={$clientId}",
-            ];
+        $fill = [
+            QuickstartSources::ISSUER_PLACEHOLDER => $issuer,
+            QuickstartSources::CLIENT_ID_PLACEHOLDER => $client->client_id,
+            // The page's localhost callback is the one Get started registers; an app whose
+            // first redirect differs gets its own.
+            $framework->redirectUri() => $redirect,
+        ];
 
-            if ($secret !== null) {
-                $lines[] = "{$prefix}CBOX_ID_CLIENT_SECRET={$secret}";
-            }
+        if ($framework->kind()->clientType() === ClientType::Confidential) {
+            $fill[QuickstartSources::CLIENT_SECRET_PLACEHOLDER] = self::SECRET_PLACEHOLDER;
+        }
 
-            $lines[] = "{$prefix}CBOX_ID_REDIRECT_URI={$redirect}";
-
-            return implode("\n", $lines);
-        };
-
-        return match ($framework) {
-            QuickstartFramework::NextJs => new QuickstartSnippet('npm i @cboxdk/id-js', '.env.local', $env(''), 'app/auth/[action]/route.ts', <<<'TS'
-                import { createCboxId } from '@cboxdk/id-js/nextjs'
-                import type { NextRequest } from 'next/server'
-
-                // Reads CBOX_ID_ISSUER, CBOX_ID_CLIENT_ID, CBOX_ID_CLIENT_SECRET, CBOX_ID_REDIRECT_URI.
-                const cbox = createCboxId()
-
-                // /auth/sign-in starts it; /auth/callback finishes it.
-                export async function GET(request: NextRequest, { params }: { params: Promise<{ action: string }> }) {
-                  if ((await params).action === 'sign-in') return cbox.signIn()
-
-                  const user = await cbox.callback(request)
-                  // Start your own session for user.id here.
-                  return Response.redirect(new URL('/', request.url))
-                }
-                TS, $framework->run()),
-            QuickstartFramework::React => new QuickstartSnippet('npm i @cboxdk/id-js', '.env.local', $env('VITE_'), 'src/auth.ts', <<<'TS'
-                import { CboxIdClient } from '@cboxdk/id-js'
-
-                // A browser app holds no secret: PKCE proves the callback is the one that asked.
-                const cbox = new CboxIdClient({
-                  issuer: import.meta.env.VITE_CBOX_ID_ISSUER,
-                  clientId: import.meta.env.VITE_CBOX_ID_CLIENT_ID,
-                  redirectUri: import.meta.env.VITE_CBOX_ID_REDIRECT_URI,
-                  scopes: ['openid', 'profile', 'email'],
-                })
-
-                export async function signIn() {
-                  const req = await cbox.createAuthorizationRequest()
-                  sessionStorage.setItem('cbox', JSON.stringify(req))
-                  window.location.assign(req.url)
-                }
-
-                // On /callback:
-                export async function finishSignIn() {
-                  const stored = JSON.parse(sessionStorage.getItem('cbox') ?? '{}')
-                  return cbox.authenticate({ params: new URLSearchParams(window.location.search), stored })
-                }
-                TS, $framework->run()),
-            QuickstartFramework::Laravel => new QuickstartSnippet('composer require cboxdk/laravel-id-client', '.env', $env(''), 'routes/web.php', $this->phpCode()->code, $framework->run()),
-            QuickstartFramework::Nuxt => new QuickstartSnippet('npm i @cboxdk/id-js', '.env', $env('NUXT_'), 'server/routes/auth/[action].get.ts', <<<'TS'
-                import { CboxIdClient } from '@cboxdk/id-js'
-
-                const config = useRuntimeConfig()
-                const cbox = new CboxIdClient({
-                  issuer: config.cboxIdIssuer,
-                  clientId: config.cboxIdClientId,
-                  clientSecret: config.cboxIdClientSecret,
-                  redirectUri: config.cboxIdRedirectUri,
-                })
-
-                export default defineEventHandler(async (event) => {
-                  if (getRouterParam(event, 'action') === 'sign-in') {
-                    const req = await cbox.createAuthorizationRequest()
-                    setCookie(event, 'cbox', JSON.stringify(req), { httpOnly: true, sameSite: 'lax', maxAge: 600 })
-                    return sendRedirect(event, req.url)
-                  }
-
-                  const stored = JSON.parse(getCookie(event, 'cbox') ?? '{}')
-                  const user = await cbox.authenticate({ params: getQuery(event), stored })
-                  // Start your own session for user.id here.
-                  return sendRedirect(event, '/')
-                })
-                TS, $framework->run()),
-            QuickstartFramework::Go => new QuickstartSnippet('go get github.com/cboxdk/id-go', '.env', $env(''), 'main.go', <<<'GO'
-                client, _ := cboxid.New(ctx, cboxid.Config{
-                    Issuer:       os.Getenv("CBOX_ID_ISSUER"),
-                    ClientID:     os.Getenv("CBOX_ID_CLIENT_ID"),
-                    ClientSecret: os.Getenv("CBOX_ID_CLIENT_SECRET"),
-                    RedirectURI:  os.Getenv("CBOX_ID_REDIRECT_URI"),
-                })
-
-                http.HandleFunc("/auth/sign-in", func(w http.ResponseWriter, r *http.Request) {
-                    req := client.CreateAuthorizationRequest(cboxid.AuthParams{})
-                    // Persist req.State, req.CodeVerifier and req.Nonce in a cookie, then:
-                    http.Redirect(w, r, req.URL, http.StatusFound)
-                })
-
-                http.HandleFunc("/auth/callback", func(w http.ResponseWriter, r *http.Request) {
-                    user, err := client.Authenticate(r.Context(), r.URL.Query(), stored)
-                    // Start your own session for user.ID here.
-                })
-                GO, $framework->run()),
-            QuickstartFramework::Python => new QuickstartSnippet('pip install flask authlib python-dotenv', '.env', $env(''), 'app.py', <<<'PY'
-                # Cbox ID is standard OpenID Connect: any certified client works. Authlib:
-                import os
-                from authlib.integrations.flask_client import OAuth
-                from dotenv import load_dotenv
-                from flask import Flask, redirect, session
-
-                load_dotenv()
-                app = Flask(__name__)
-                app.secret_key = os.urandom(32)
-
-                oauth = OAuth(app)
-                oauth.register(
-                    "cbox",
-                    server_metadata_url=os.environ["CBOX_ID_ISSUER"] + "/.well-known/openid-configuration",
-                    client_id=os.environ["CBOX_ID_CLIENT_ID"],
-                    client_secret=os.environ["CBOX_ID_CLIENT_SECRET"],
-                    client_kwargs={"scope": "openid profile email", "code_challenge_method": "S256"},
-                )
-
-                @app.route("/auth/sign-in")
-                def sign_in():
-                    return oauth.cbox.authorize_redirect(os.environ["CBOX_ID_REDIRECT_URI"])
-
-                @app.route("/auth/callback")
-                def callback():
-                    session["user"] = oauth.cbox.authorize_access_token()["userinfo"]
-                    return redirect("/")
-                PY, $framework->run()),
-        };
+        return $source->withEnv(strtr($source->env, $fill));
     }
 
     private function jsCode(string $issuer, string $clientId, string $redirect, string $scopes): Snippet
@@ -254,16 +140,21 @@ class ConnectSnippets
     {
         return new Snippet('go', 'Go', <<<GO
             client, _ := cboxid.New(ctx, cboxid.Config{
-                Issuer:      "{$issuer}",
-                ClientID:    "{$clientId}",
-                RedirectURI: "{$redirect}",
+                Issuer:       "{$issuer}",
+                ClientID:     "{$clientId}",
+                ClientSecret: os.Getenv("CBOX_ID_CLIENT_SECRET"), // empty for a public app
+                RedirectURI:  "{$redirect}",
             })
 
-            // Persist req.State, req.CodeVerifier, req.Nonce; send the user to req.URL
-            req := client.CreateAuthorizationRequest(cboxid.AuthParams{})
+            // On your sign-in route: keep req.State, req.CodeVerifier and req.Nonce, then
+            // send the person to req.URL.
+            req, err := client.CreateAuthorizationRequest(cboxid.AuthParams{})
 
-            // On your callback handler:
-            user, err := client.Authenticate(ctx, cb, stored)
+            // On your callback route, with q := r.URL.Query():
+            user, err := client.Authenticate(ctx,
+                cboxid.Callback{Code: q.Get("code"), State: q.Get("state"), Error: q.Get("error"), ErrorDescription: q.Get("error_description")},
+                cboxid.Stored{State: req.State, CodeVerifier: req.CodeVerifier, Nonce: req.Nonce},
+            )
             GO, 'go get github.com/cboxdk/id-go', 'https://github.com/cboxdk/id-go');
     }
 

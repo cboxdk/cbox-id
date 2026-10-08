@@ -51,21 +51,27 @@ abstract readonly class OrganizationTabController extends ConsoleController
     /**
      * The domains this organization claims.
      *
-     * The TXT record is `verification_token` — the ONE value somebody has to copy into a
-     * DNS panel, so it is handed over as its own field rather than left in prose.
+     * The TXT record is `verification_token`, published at `recordName` — the two values
+     * somebody has to copy into a DNS panel, so each is handed over as its own field rather
+     * than left in prose. The name comes from the verifier that will look it up
+     * ({@see DomainVerification::challengeHost()}): composed in the browser, it said "at
+     * acme.com" while the check read `_cbox-id-challenge.acme.com`, and a record published
+     * where the page said was never found.
      *
-     * @return list<array{id: string, domain: string, verified: bool, capture: bool, token: string, urls: array{verify: string, capture: string, remove: string}}>
+     * @return list<array{id: string, domain: string, verified: bool, capture: bool, recordName: string, token: string, urls: array{verify: string, capture: string, remove: string}}>
      */
     protected function domainProps(string $organizationId): array
     {
         $rows = [];
+        $verifier = app(DomainVerification::class);
 
-        foreach (app(DomainVerification::class)->forOrganization($organizationId) as $domain) {
+        foreach ($verifier->forOrganization($organizationId) as $domain) {
             $rows[] = [
                 'id' => $domain->id,
                 'domain' => $domain->domain,
                 'verified' => $domain->isVerified(),
                 'capture' => $domain->capture,
+                'recordName' => $verifier->challengeHost($domain->domain),
                 'token' => $domain->verification_token,
                 'urls' => [
                     'verify' => route('environment.organizations.domains.verify', ['organization' => $organizationId, 'domain' => $domain->id]),

@@ -23,11 +23,11 @@ URI `http://localhost:3000/`.
 and choose one of:
 
 - **Home → Get started.** Pick **Nuxt**, optionally name the app, and create it. The page
-  registers a Web app with the redirect URI above, shows the client secret once, then
-  waits for your first sign-in and tells you when it arrives. Its starter code wires
-  `@cboxdk/id-js` by hand; with the module below you do not need it. It does not set a
-  sign-out URI: open the app under
-  **Developers → Applications** and add `http://localhost:3000/` under **Sign-out URIs**.
+  registers a Web app with the redirect URI above, shows the client secret once, gives
+  you the environment block and the code from steps 2 to 6 below, then waits for your
+  first sign-in and tells you when it arrives. It does not set a sign-out URI: open the
+  app under **Developers → Applications** and add `http://localhost:3000/` under
+  **Sign-out URIs**.
 - **Developers → Applications → New app.** Enter an app name, answer **Web app** to
   *What kind of app is it?*, and fill in **Redirect URIs** and **Sign-out URIs**.
 
@@ -107,9 +107,7 @@ The module reads `CBOX_ID_*` when Nuxt starts or builds. For a production build,
 at build time, or override them at runtime with Nuxt's own runtime-config variables:
 `NUXT_CBOX_ID_ISSUER`, `NUXT_CBOX_ID_CLIENT_ID`, `NUXT_CBOX_ID_CLIENT_SECRET`,
 `NUXT_CBOX_ID_REDIRECT_URI`, `NUXT_CBOX_ID_POST_LOGOUT_REDIRECT_URI` and
-`NUXT_CBOX_ID_SESSION_PASSWORD`. That is also why the `NUXT_`-prefixed block from the
-console's **Get started** page works with the module; add the session password and the
-sign-out URI to it.
+`NUXT_CBOX_ID_SESSION_PASSWORD`.
 
 ## 4. The sign-in route
 

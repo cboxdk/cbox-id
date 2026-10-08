@@ -14,7 +14,9 @@ import {
     Input,
     Panel,
     Pill,
+    RadioGroup,
 } from '@/ui';
+import { type SignatureScheme, signatureSchemeLabels, signatureSchemeOptions } from './schemes';
 
 interface Delivery {
     id: string;
@@ -33,6 +35,7 @@ type Props = PageProps<{
         url: string;
         active: boolean;
         eventTypes: string[];
+        signatureScheme: SignatureScheme;
         /** Null means the ENVIRONMENT owns it and it receives every organization's events. */
         owner: string | null;
     };
@@ -50,6 +53,7 @@ type Props = PageProps<{
         pause: string;
         resume: string;
         rotate: string;
+        scheme: string;
         destroy: string;
     };
 }>;
@@ -72,7 +76,8 @@ export default function WebhookDetail({
      */
     const newSecret = usePage().flash.newSecret;
 
-    const [confirming, setConfirming] = useState<'rotate' | 'delete' | null>(null);
+    const [confirming, setConfirming] = useState<'rotate' | 'scheme' | 'delete' | null>(null);
+    const [scheme, setScheme] = useState<SignatureScheme>(endpoint.signatureScheme);
     const [secretVisible, setSecretVisible] = useState(true);
 
     const form = useForm({
@@ -117,6 +122,7 @@ export default function WebhookDetail({
                             {endpoint.active ? 'Active' : 'Paused'}
                         </Pill>
                         <Badge>{endpoint.owner ?? 'All organizations'}</Badge>
+                        <Badge>{signatureSchemeLabels[endpoint.signatureScheme]}</Badge>
                     </div>
 
                     <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -264,6 +270,40 @@ export default function WebhookDetail({
                             </Button>
                         </Panel>
 
+                        <Panel
+                            title="Signature scheme"
+                            description="Which headers every delivery carries. Changing it issues no new secret: the one you hold signs either way."
+                        >
+                            <div className="space-y-4">
+                                <RadioGroup
+                                    label="Sign deliveries with"
+                                    name="signatureScheme"
+                                    value={scheme}
+                                    onValueChange={setScheme}
+                                    options={signatureSchemeOptions}
+                                />
+                                {scheme !== endpoint.signatureScheme && (
+                                    <p
+                                        className="text-sm"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {scheme === 'standard_webhooks'
+                                            ? 'Your receiver keeps the same secret. A 64-character hex secret becomes whsec_ followed by the base64 of that hex string — "whsec_" + base64(secret) — and a secret that already starts with whsec_ is used as is.'
+                                            : 'Your receiver keeps the same secret, used exactly as written — including the whsec_ prefix — as the HMAC key for X-Cbox-Signature.'}{' '}
+                                        Update your receiver first: from the next attempt it
+                                        rejects every delivery it cannot verify.
+                                    </p>
+                                )}
+                                <Button
+                                    size="sm"
+                                    disabled={scheme === endpoint.signatureScheme}
+                                    onClick={() => setConfirming('scheme')}
+                                >
+                                    Change scheme
+                                </Button>
+                            </div>
+                        </Panel>
+
                         <Panel title="Recent deliveries">
                             {deliveries.length === 0 ? (
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
@@ -361,6 +401,19 @@ export default function WebhookDetail({
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.rotate);
+                }}
+            />
+
+            <ConfirmDelete
+                open={confirming === 'scheme'}
+                onOpenChange={(open) => setConfirming(open ? 'scheme' : null)}
+                name={endpoint.url}
+                verb="Change scheme"
+                title={`Sign this endpoint's deliveries with ${signatureSchemeLabels[scheme]}?`}
+                consequence="No new secret is issued. From the next attempt — retries included — deliveries carry the other scheme's headers, and a receiver that has not been updated rejects every one of them."
+                onConfirm={() => {
+                    setConfirming(null);
+                    router.post(urls.scheme, { signatureScheme: scheme }, { preserveScroll: true });
                 }}
             />
 

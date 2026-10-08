@@ -53,6 +53,8 @@ final readonly class SuspendProject implements Action
 
         $project->refresh();
 
+        InWorkspace::record($context->principal, $workspaceId, 'organization.project_suspended', 'project', $project->id, ['name' => $project->name]);
+
         return ActionResult::item($project, ProjectResource::from($project));
     }
 }

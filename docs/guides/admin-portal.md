@@ -133,15 +133,17 @@ A checklist titled **Set up** *organization*, one card per intent with its progr
 ("Not started", "In progress", "Done") and the steps behind it. Each card opens a guided
 page:
 
-- **Enterprise SSO** — five steps: choose the identity provider (Okta, Microsoft Entra ID,
-  Google Workspace, OneLogin, JumpCloud, PingFederate, or generic SAML 2.0 or OpenID
-  Connect); start the connection, which shows the exact values to paste into the
+- **Enterprise SSO** — five steps: choose the identity provider (one of twenty, from Okta,
+  Microsoft Entra ID and Google Workspace to AD FS, Keycloak and Cloudflare Access, or
+  generic SAML 2.0 or OpenID Connect —
+  [the list](../for-it-admins/idp/_index.md)); start the connection, which shows the exact values to paste into the
   provider, each labelled with that provider's own field name; bring back the
   provider's metadata or its issuer and client credentials; verify a domain; **Turn on
   single sign-on**.
 - **Directory Sync** — choose the directory, **Create directory**, copy the **SCIM base
   URL** and the **Bearer token** (shown once) into the provider, with steps for Okta,
-  Microsoft Entra ID, OneLogin, JumpCloud or any SCIM 2.0 client.
+  Microsoft Entra ID, OneLogin, JumpCloud, PingFederate, PingOne, Duo, CyberArk Identity,
+  Oracle Cloud Infrastructure IAM or any SCIM 2.0 client.
 - **Domain verification** — add a domain, publish the TXT record, **Check DNS**.
 - **Log streams** — add a destination, **Send test entry**, remove one.
 - **SAML certificate renewal** — each SAML connection's certificates with their expiry,

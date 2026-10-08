@@ -177,6 +177,7 @@ final readonly class RootDelegatedAccess
                 scopes: $introspection->scopes,
                 organizationId: is_string($organizationId) && $organizationId !== '' ? $organizationId : null,
                 expiresAt: is_int($expiresAt) ? $expiresAt : null,
+                token: $introspection,
             );
         });
     }

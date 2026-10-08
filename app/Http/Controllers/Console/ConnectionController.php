@@ -174,7 +174,10 @@ final readonly class ConnectionController extends ConsoleController
                     'domain' => $domain->domain,
                     'verified' => $domain->isVerified(),
                     'capture' => $domain->capture,
-                    // The DNS TXT value to publish, for as long as there is one to publish.
+                    // The DNS TXT record to publish, for as long as there is one to publish:
+                    // its exact name from the verifier that will look it up, never composed
+                    // in the browser, and its value.
+                    'recordName' => $domains->challengeHost($domain->domain),
                     'token' => $domain->isVerified() ? '' : (string) $domain->verification_token,
                     'urls' => [
                         'verify' => $this->url('connections.domains.verify', $domain->id),

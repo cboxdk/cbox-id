@@ -2969,3 +2969,29 @@ it('404s a stream belonging to the environment when a tenant asks for it by id',
 
     expect(AuditStream::query()->whereKey($operators->stream->id)->value('enabled'))->toBeTrue();
 })->group('security');
+
+/*
+ * ONLY A KEY THE PLATFORM MADE IS SHOWN ONCE. A bearer or Splunk token is something the
+ * person typed — echoing it back in a "copy this signing key" banner put a credential in
+ * the flash for nothing, labelled as if we had minted it.
+ */
+it('reveals a generated HMAC key once, and never echoes a token somebody supplied', function (): void {
+    config(['siem.http.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-streams-echo');
+    confirmConsoleStepUp();
+
+    createLogStream([
+        'name' => 'Supplied token',
+        'scheme' => 'bearer',
+        'secret' => 'tok-typed-by-a-person-123',
+    ], 'environment.audit-streams')->assertSessionHasNoErrors()->assertInertiaFlashMissing('newSecret');
+
+    $stream = AuditStream::query()->where('name', 'Supplied token')->sole();
+    $page = $this->get(route('environment.audit-streams.show', $stream->id))->assertOk()->assertInertiaFlashMissing('newSecret');
+
+    expect((string) $page->getContent())->not->toContain('tok-typed-by-a-person-123');
+
+    createLogStream(['name' => 'Generated key', 'scheme' => 'hmac'], 'environment.audit-streams')
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('newSecret');
+})->group('security');

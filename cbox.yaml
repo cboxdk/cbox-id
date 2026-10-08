@@ -108,6 +108,14 @@ secrets:
   MAIL_USERNAME: { secret: cbox-id-mail, key: MAIL_USERNAME }
   MAIL_PASSWORD: { secret: cbox-id-mail, key: MAIL_PASSWORD }
   MAIL_FROM_ADDRESS: { secret: cbox-id-mail, key: MAIL_FROM_ADDRESS }
+  # OPTIONAL — log streams to a customer's Amazon S3 bucket through an ASSUMED ROLE, where
+  # the customer stores no secret with us: this platform's own AWS identity, an IAM user
+  # allowed nothing but `sts:AssumeRole`. Uncomment both once the Secret exists (a missing
+  # one fails the pod at start); left out, S3 streams use the customer's access key only.
+  # The user's ARN is not a secret — set SIEM_AWS_PRINCIPAL_ARN under `env` so the trust
+  # policy the console hands the customer names it. docs/guides/log-streams.md.
+  # SIEM_AWS_ACCESS_KEY_ID: { secret: cbox-id-siem, key: SIEM_AWS_ACCESS_KEY_ID }
+  # SIEM_AWS_SECRET_ACCESS_KEY: { secret: cbox-id-siem, key: SIEM_AWS_SECRET_ACCESS_KEY }
 
 # Managed data. A binding names the variables this application reads; the platform
 # resolves each to its own Secret (the database password is a `secretKeyRef`, never a

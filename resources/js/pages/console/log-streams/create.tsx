@@ -1,41 +1,43 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Field, Icon, Input, PageHeader, Panel, Select } from '@/ui';
+import { Button, Field, Icon, Input, PageHeader, Panel } from '@/ui';
+import {
+    DestinationFields,
+    emptyOptions,
+    type StreamChoices,
+    type StreamForm,
+    submittable,
+} from './fields';
 
-interface Option {
-    value: string;
-    label: string;
-}
-
-type Props = PageProps<{
-    destinations: Option[];
-    schemes: Option[];
-    /** True on the environment plane, where a stream carries EVERY organization's trail. */
-    shipsWholeEnvironment: boolean;
-    indexHref: string;
-    storeHref: string;
-}>;
+type Props = PageProps<
+    StreamChoices & {
+        /** True on the environment plane, where a stream carries EVERY organization's trail. */
+        shipsWholeEnvironment: boolean;
+        indexHref: string;
+        storeHref: string;
+    }
+>;
 
 export default function CreateLogStream({
     destinations,
     schemes,
+    datadogSites,
+    assumedRoleAvailable,
     shipsWholeEnvironment,
     indexHref,
     storeHref,
 }: Props) {
-    const form = useForm({
+    const first = destinations[0];
+    const form = useForm<StreamForm>({
         name: '',
-        destination: destinations[0]?.value ?? 'generic_json',
+        destination: first?.value ?? 'generic_json',
         endpointUrl: '',
-        scheme: schemes[0]?.value ?? 'none',
+        scheme: first?.defaultAuth ?? 'none',
         secret: '',
+        credential: 'access_key',
+        options: emptyOptions,
     });
-
-    // Leaving the secret empty on the HMAC scheme is what asks for a generated key, and
-    // that key is shown exactly once. Worth saying beside the field rather than leaving
-    // somebody to discover it by submitting.
-    const generatesKey = form.data.scheme === 'hmac' && form.data.secret === '';
 
     return (
         <>
@@ -61,6 +63,7 @@ export default function CreateLogStream({
                 style={{ maxWidth: '36rem' }}
                 onSubmit={(event) => {
                     event.preventDefault();
+                    form.transform(submittable);
                     form.post(storeHref, { onFinish: () => form.setData('secret', '') });
                 }}
             >
@@ -78,86 +81,20 @@ export default function CreateLogStream({
                             : "This organization's entries, and nothing from any other organization."
                     }
                 >
-                    <div className="space-y-4">
-                        <Field label="Name" error={form.errors.name}>
-                            <Input
-                                name="name"
-                                placeholder="Splunk — production"
-                                value={form.data.name}
-                                onChange={(event) => form.setData('name', event.target.value)}
-                            />
-                        </Field>
-
-                        <Field
-                            label="Destination"
-                            hint="The format your SIEM expects. Generic JSON works with anything that accepts a POST."
-                            error={form.errors.destination}
-                        >
-                            <Select
-                                name="destination"
-                                value={form.data.destination}
-                                onValueChange={(destination) =>
-                                    form.setData('destination', destination)
-                                }
-                                options={destinations.map((destination) => ({
-                                    value: destination.value,
-                                    label: destination.label,
-                                }))}
-                            />
-                        </Field>
-
-                        <Field label="Endpoint URL" error={form.errors.endpointUrl}>
-                            <Input
-                                name="endpointUrl"
-                                type="url"
-                                className="mono"
-                                placeholder="https://siem.example.com/services/collector"
-                                value={form.data.endpointUrl}
-                                onChange={(event) =>
-                                    form.setData('endpointUrl', event.target.value)
-                                }
-                            />
-                        </Field>
-                    </div>
+                    <Field label="Name" error={form.errors.name}>
+                        <Input
+                            name="name"
+                            placeholder="Splunk — production"
+                            value={form.data.name}
+                            onChange={(event) => form.setData('name', event.target.value)}
+                        />
+                    </Field>
                 </Panel>
 
-                <Panel title="How it authenticates">
-                    <div className="space-y-4">
-                        <Field label="Auth scheme" error={form.errors.scheme}>
-                            <Select
-                                name="scheme"
-                                value={form.data.scheme}
-                                onValueChange={(scheme) => form.setData('scheme', scheme)}
-                                options={schemes.map((scheme) => ({
-                                    value: scheme.value,
-                                    label: scheme.label,
-                                }))}
-                            />
-                        </Field>
-
-                        {form.data.scheme !== 'none' && (
-                            <Field
-                                label="Secret"
-                                optional={form.data.scheme === 'hmac'}
-                                hint={
-                                    generatesKey
-                                        ? 'Left empty, a signing key is generated for you and shown once — it is stored encrypted and cannot be retrieved again.'
-                                        : 'The token your SIEM issued you. Stored encrypted and never shown again.'
-                                }
-                                error={form.errors.secret}
-                            >
-                                <Input
-                                    name="secret"
-                                    type="password"
-                                    className="mono"
-                                    autoComplete="off"
-                                    value={form.data.secret}
-                                    onChange={(event) => form.setData('secret', event.target.value)}
-                                />
-                            </Field>
-                        )}
-                    </div>
-                </Panel>
+                <DestinationFields
+                    form={form}
+                    choices={{ destinations, schemes, datadogSites, assumedRoleAvailable }}
+                />
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>

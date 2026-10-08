@@ -78,6 +78,8 @@ paths:
       operationId: workspace_get
       x-action: workspace.get
       description: "Requires scope `workspace:read` (any role). Returns the workspace's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer)."
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -88,6 +90,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Organization'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -96,6 +100,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'workspace:read'
+      x-danger: read
     patch:
       tags:
         - Workspace
@@ -215,6 +221,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -229,6 +236,8 @@ paths:
                       $ref: '#/components/schemas/Environment'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -237,6 +246,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'workspace:read'
+      x-danger: read
     post:
       tags:
         - Environments
@@ -253,6 +264,7 @@ paths:
       x-action: environments.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -307,6 +319,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/CreatedEnvironment'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -333,6 +347,8 @@ paths:
                 message: 'Project [01J…] has reached its plan limit of 2 environment(s).'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'environments:write'
+      x-danger: critical
   '/workspace/environments/{environment_id}/domain':
     delete:
       tags:
@@ -593,6 +609,8 @@ paths:
       operationId: team_invitations_list
       x-action: team.invitations.list
       description: "Requires scope `team:read` and the `read-members` capability. The team's invitations nobody has accepted yet, newest first (at most 100)."
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -605,12 +623,16 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/TeamInvitation'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'team:read'
+      x-danger: read
   '/workspace/invitations/{id}':
     delete:
       tags:
@@ -627,7 +649,10 @@ paths:
           schema:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         204:
           description: Withdrawn
         401:
@@ -638,6 +663,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'team:write'
+      x-danger: destructive
   '/workspace/invitations/{id}/resend':
     post:
       tags:
@@ -657,6 +684,7 @@ paths:
           schema:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: 'Sent again'
@@ -667,6 +695,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Member'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -681,6 +711,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'team:write'
+      x-danger: write
   /workspace/keys:
     post:
       tags:
@@ -816,7 +848,7 @@ paths:
     delete:
       tags:
         - Keys
-      summary: 'Revoke a workspace key, and every key it minted; whatever uses them stops immediately.'
+      summary: 'Revoke a workspace key, and every key it minted on either plane (workspace keys and environment management keys, all the way down); whatever uses them stops immediately.'
       description: 'Requires scope `keys:write` and a role that may `manage-environments` and `manage-members`. Danger: destructive.'
       operationId: keys_workspace_revoke
       x-action: keys.workspace.revoke
@@ -872,6 +904,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -886,6 +919,8 @@ paths:
                       $ref: '#/components/schemas/Member'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -894,6 +929,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'team:read'
+      x-danger: read
     post:
       tags:
         - Team
@@ -909,6 +946,7 @@ paths:
       x-action: team.invite
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -943,6 +981,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Member'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -962,6 +1002,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'team:write'
+      x-danger: write
   '/workspace/members/{id}':
     delete:
       tags:
@@ -1166,6 +1208,8 @@ paths:
       operationId: projects_list
       x-action: projects.list
       description: "Requires scope `workspace:read` (any role). The workspace's projects (IdP products). Each carries its own plan and environment allowance."
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -1178,6 +1222,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Project'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1186,6 +1232,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'workspace:read'
+      x-danger: read
     post:
       tags:
         - Projects
@@ -1195,6 +1243,7 @@ paths:
       x-action: projects.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1222,6 +1271,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Project'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
@@ -1232,6 +1283,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'projects:write'
+      x-danger: write
   /workspace/projects/verification/resend:
     post:
       tags:

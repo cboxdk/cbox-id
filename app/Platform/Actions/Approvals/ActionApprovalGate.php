@@ -35,6 +35,14 @@ use Closure;
  */
 final readonly class ActionApprovalGate
 {
+    /** The framework's floor and ceiling on an approval's life ({@see ActionApprovals::request()}). */
+    private const int MIN_TTL_SECONDS = 30;
+
+    private const int MAX_TTL_SECONDS = 900;
+
+    /** The framework's default, when `CBOX_ID_CIBA_TTL_SECONDS` says nothing usable. */
+    private const int DEFAULT_TTL_SECONDS = 300;
+
     public function __construct(
         private ActionApprovals $approvals,
         private StepUpClient $client,
@@ -79,6 +87,7 @@ final readonly class ActionApprovalGate
             $approver,
             $message,
             $digest,
+            self::ttlSeconds(),
         ));
 
         // The root is where the approving person lives; a deployment without one has
@@ -104,6 +113,39 @@ final readonly class ActionApprovalGate
         ]);
 
         throw new ApprovalRequired($request->requestId, $code, CarbonImmutable::instance($request->expiresAt), $request->interval);
+    }
+
+    /**
+     * How long a held action waits for its person, in seconds — passed to every request
+     * this gate files, and read by the pages that tell people how long they have.
+     *
+     * Said HERE rather than left to the framework's own default, because a page that told
+     * people the wait was "fifteen minutes" while the requests lapsed after five was the
+     * result of two places each holding a number. Now the page reads the one the gate
+     * sends: `cbox-id.oauth.ciba.ttl_seconds` (`CBOX_ID_CIBA_TTL_SECONDS`, five minutes by
+     * default), clamped to the framework's own bounds so the number shown is the number
+     * kept.
+     */
+    public static function ttlSeconds(): int
+    {
+        $configured = config('cbox-id.oauth.ciba.ttl_seconds', self::DEFAULT_TTL_SECONDS);
+        $seconds = is_numeric($configured) && (int) $configured > 0 ? (int) $configured : self::DEFAULT_TTL_SECONDS;
+
+        return max(self::MIN_TTL_SECONDS, min($seconds, self::MAX_TTL_SECONDS));
+    }
+
+    /** The same window, in words for a sentence: "5 minutes", "90 seconds". */
+    public static function window(): string
+    {
+        $seconds = self::ttlSeconds();
+
+        if ($seconds % 60 !== 0) {
+            return $seconds.' seconds';
+        }
+
+        $minutes = intdiv($seconds, 60);
+
+        return $minutes === 1 ? '1 minute' : $minutes.' minutes';
     }
 
     /** Where an approval this principal raised stands; null when it is not theirs. */

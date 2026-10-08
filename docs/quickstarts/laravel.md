@@ -25,8 +25,8 @@ and choose one of:
 
 - **Home → Get started.** Pick **Laravel**, optionally name the app, and create it. The
   page registers a Web app with the redirect URI above, shows the client secret once,
-  gives you the environment block and starter routes, then waits for your first sign-in
-  and tells you when it arrives. It does not set a sign-out URI: open the app under
+  gives you the environment block and the code from steps 2 to 6 below, then waits for
+  your first sign-in and tells you when it arrives. It does not set a sign-out URI: open the app under
   **Developers → Applications** and add `http://localhost:8000/` under **Sign-out URIs**.
 - **Developers → Applications → New app.** Enter an app name, answer **Web app** to
   *What kind of app is it?*, and fill in **Redirect URIs** and **Sign-out URIs**.
@@ -112,8 +112,7 @@ CBOX_ID_CLIENT_SECRET=csec_…
 CBOX_ID_REDIRECT=http://localhost:8000/auth/callback
 ```
 
-The callback variable is `CBOX_ID_REDIRECT`, not `CBOX_ID_REDIRECT_URI`; if you copied
-the block from **Get started**, rename that line. The SDK reads
+The callback variable is `CBOX_ID_REDIRECT`, not `CBOX_ID_REDIRECT_URI`. The SDK reads
 these through `config/cbox-id-client.php` and discovers every endpoint from the issuer. A
 missing issuer, client ID or redirect is refused with `NotConfigured`, which names the
 variable and renders as a 503.

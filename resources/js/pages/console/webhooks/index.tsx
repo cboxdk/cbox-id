@@ -19,6 +19,7 @@ import {
     Pagination,
     Pill,
 } from '@/ui';
+import { type SignatureScheme, signatureSchemeLabels } from './schemes';
 
 interface Endpoint {
     id: string;
@@ -28,6 +29,7 @@ interface Endpoint {
     /** Null means the ENVIRONMENT owns it and it receives every organization's events. */
     owner: string | null;
     eventCount: number;
+    signatureScheme: SignatureScheme;
 }
 
 type Props = PageProps<{
@@ -177,6 +179,7 @@ export default function WebhooksIndex({
                                 </span>
                                 <div className="mt-1 flex items-center gap-2 flex-wrap">
                                     <Badge>{endpoint.owner ?? 'All organizations'}</Badge>
+                                    <Badge>{signatureSchemeLabels[endpoint.signatureScheme]}</Badge>
                                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
                                         {endpoint.eventCount}{' '}
                                         {endpoint.eventCount === 1 ? 'event' : 'events'} subscribed

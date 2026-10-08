@@ -722,6 +722,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -745,6 +746,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'api_keys:write'
+      x-danger: destructive
   /apis:
     get:
       tags:
@@ -754,6 +757,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -777,6 +781,8 @@ paths:
                       $ref: '#/components/schemas/Api'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -787,12 +793,16 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.list
+      x-scope: 'apis:read'
+      x-danger: read
     post:
       tags:
         - APIs
       summary: 'Register an API and its scopes'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -847,6 +857,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -861,6 +873,9 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.create
+      x-scope: 'apis:write'
+      x-danger: write
   '/apis/{id}':
     get:
       tags:
@@ -869,6 +884,7 @@ paths:
       description: 'Requires scope `apis:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -887,6 +903,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -897,6 +915,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.get
+      x-scope: 'apis:read'
+      x-danger: read
     patch:
       tags:
         - APIs
@@ -908,6 +929,7 @@ paths:
         register a new API instead.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -944,6 +966,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Api'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -956,6 +980,9 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.update
+      x-scope: 'apis:write'
+      x-danger: write
     delete:
       tags:
         - APIs
@@ -965,6 +992,7 @@ paths:
         expire; apps holding its scope keys keep them as plain scopes.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -972,6 +1000,8 @@ paths:
         -
           WorkspaceAccessToken: []
       responses:
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         204:
           description: Deleted.
         400:
@@ -984,6 +1014,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.delete
+      x-scope: 'apis:write'
+      x-danger: destructive
   '/apis/{id}/scopes/{key}':
     put:
       tags:
@@ -1250,6 +1283,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1273,6 +1307,8 @@ paths:
                       $ref: '#/components/schemas/App'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1283,6 +1319,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:read'
+      x-danger: read
     post:
       tags:
         - Applications
@@ -1309,6 +1347,7 @@ paths:
       x-action: apps.create
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1392,6 +1431,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/App'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1404,6 +1445,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:write'
+      x-danger: critical
   '/apps/{id}':
     delete:
       tags:
@@ -1595,6 +1638,7 @@ paths:
       x-action: apps.blueprint
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1613,6 +1657,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/AppBlueprint'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1623,6 +1669,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:read'
+      x-danger: read
   '/apps/{id}/copy':
     post:
       tags:
@@ -1913,6 +1961,7 @@ paths:
       x-action: apps.secrets.list
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -1936,6 +1985,8 @@ paths:
                       $ref: '#/components/schemas/AppSecret'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -1946,6 +1997,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:read'
+      x-danger: read
     post:
       tags:
         - Applications
@@ -5900,7 +5953,7 @@ paths:
     post:
       tags:
         - 'Log streams'
-      summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON). A generated HMAC key is returned once.'
+      summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog, or an S3 or GCS bucket. A generated HMAC key is returned once.'
       description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_create
       x-action: log_streams.create
@@ -5935,14 +5988,19 @@ paths:
                     - graylog_gelf
                     - cef_http
                     - generic_json
+                    - datadog
+                    - s3
+                    - gcs
                 endpoint_url:
-                  type: string
-                  description: 'A public URL the entries are POSTed to.'
+                  type:
+                    - string
+                    - 'null'
+                  description: "An HTTP collector: the public URL entries are POSTed to (required). Datadog, S3 and GCS: leave out for the destination's own endpoint, or an https URL of an S3-compatible store (MinIO, R2)."
                   format: uri
                   maxLength: 2048
                 auth:
                   type: string
-                  description: "How the endpoint is authenticated. Left out, the destination's default."
+                  description: "An HTTP collector: how the endpoint is authenticated. Left out, the destination's default. The cloud destinations authenticate their own way."
                   enum:
                     - none
                     - bearer
@@ -5952,8 +6010,106 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'The bearer or Splunk token the endpoint expects. Left out with `hmac`, a key is generated and returned once.'
-                  maxLength: 4096
+                  description: 'The credential, never echoed: the bearer or Splunk token (HTTP collectors; left out with `hmac`, a key is generated and returned once), the Datadog API key, the S3 secret access key (none with `role_arn`), or the GCS service-account JSON key.'
+                  maxLength: 8192
+                options:
+                  type: object
+                  description: "Datadog, S3 and GCS only: the destination's settings. An HTTP collector takes none."
+                  properties:
+                    site:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the site your account lives on — the domain you sign in at, e.g. `datadoghq.eu` for EU1. Default `datadoghq.com` (US1). An API key only works on its own site.'
+                      enum:
+                        - datadoghq.com
+                        - us3.datadoghq.com
+                        - us5.datadoghq.com
+                        - datadoghq.eu
+                        - ap1.datadoghq.com
+                        - ap2.datadoghq.com
+                        - ddog-gov.com
+                    service:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `service` attribute on every entry. Default: this platform's name."
+                      maxLength: 100
+                    source:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the `ddsource` attribute. Default `cbox`.'
+                      maxLength: 100
+                    tags:
+                      type:
+                        - array
+                        - 'null'
+                      description: 'Datadog: `key:value` tags (`ddtags`) on every entry, e.g. `env:prod`.'
+                      maxItems: 100
+                      items:
+                        type: string
+                        maxLength: 200
+                    hostname:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `hostname` attribute. Default: this platform's host."
+                      maxLength: 255
+                    bucket:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the bucket objects are written to.'
+                      maxLength: 222
+                    region:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: the bucket's AWS Region, e.g. `eu-west-1` (`auto` for Cloudflare R2)."
+                      maxLength: 32
+                    prefix:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the object key prefix, e.g. `cbox/audit`. Objects are written to `{prefix}/{yyyy}/{mm}/{dd}/{hh}/{batch}.ndjson.gz`.'
+                      maxLength: 512
+                    access_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an access key: the IAM access key ID. Its secret access key is the stream's `secret`."
+                      maxLength: 128
+                    role_arn:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an assumed role: the IAM role the platform assumes. No secret is stored; the role's trust policy must require the stream's `external_id`."
+                      maxLength: 2048
+                    sse:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: server-side encryption requested on every object. Left out, the bucket's default."
+                      enum:
+                        - AES256
+                        - 'aws:kms'
+                    kms_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 with `aws:kms`: the KMS key ID, alias or ARN.'
+                      maxLength: 2048
+                    path_style:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3: path-style addressing. Default: virtual-hosted on AWS, path-style on a custom endpoint (MinIO, R2).'
+                    gzip:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3 and GCS: gzip each object (`.ndjson.gz`). Default true.'
                 organization_id:
                   type:
                     - string
@@ -5966,7 +6122,6 @@ paths:
               required:
                 - name
                 - destination
-                - endpoint_url
       responses:
         201:
           description: OK
@@ -6161,7 +6316,7 @@ paths:
     patch:
       tags:
         - 'Log streams'
-      summary: 'Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.'
+      summary: "Change an audit log stream's name, destination, endpoint, options or credential (re-validated; resets its circuit breaker), or disable (enabled: false) / resume (enabled: true) it."
       description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_update
       x-action: log_streams.update
@@ -6186,17 +6341,149 @@ paths:
         -
           WorkspaceAccessToken: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
               type: object
               properties:
+                name:
+                  type: string
+                  maxLength: 190
+                destination:
+                  type: string
+                  description: "Changing it starts the stream's options and credential afresh."
+                  enum:
+                    - splunk_hec
+                    - elastic_ecs
+                    - graylog_gelf
+                    - cef_http
+                    - generic_json
+                    - datadog
+                    - s3
+                    - gcs
+                endpoint_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: "An HTTP collector's URL; for Datadog, S3 and GCS empty means the destination's own endpoint."
+                  format: uri
+                  maxLength: 2048
+                auth:
+                  type: string
+                  description: 'An HTTP collector only.'
+                  enum:
+                    - none
+                    - bearer
+                    - splunk
+                    - hmac
+                secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'A new credential (token, API key, secret access key or service-account JSON key). Left out, the current one is kept. Never echoed.'
+                  maxLength: 8192
+                options:
+                  type: object
+                  description: "Datadog, S3 and GCS only: the destination's settings. An HTTP collector takes none."
+                  properties:
+                    site:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the site your account lives on — the domain you sign in at, e.g. `datadoghq.eu` for EU1. Default `datadoghq.com` (US1). An API key only works on its own site.'
+                      enum:
+                        - datadoghq.com
+                        - us3.datadoghq.com
+                        - us5.datadoghq.com
+                        - datadoghq.eu
+                        - ap1.datadoghq.com
+                        - ap2.datadoghq.com
+                        - ddog-gov.com
+                    service:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `service` attribute on every entry. Default: this platform's name."
+                      maxLength: 100
+                    source:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Datadog: the `ddsource` attribute. Default `cbox`.'
+                      maxLength: 100
+                    tags:
+                      type:
+                        - array
+                        - 'null'
+                      description: 'Datadog: `key:value` tags (`ddtags`) on every entry, e.g. `env:prod`.'
+                      maxItems: 100
+                      items:
+                        type: string
+                        maxLength: 200
+                    hostname:
+                      type:
+                        - string
+                        - 'null'
+                      description: "Datadog: the `hostname` attribute. Default: this platform's host."
+                      maxLength: 255
+                    bucket:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the bucket objects are written to.'
+                      maxLength: 222
+                    region:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: the bucket's AWS Region, e.g. `eu-west-1` (`auto` for Cloudflare R2)."
+                      maxLength: 32
+                    prefix:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 and GCS: the object key prefix, e.g. `cbox/audit`. Objects are written to `{prefix}/{yyyy}/{mm}/{dd}/{hh}/{batch}.ndjson.gz`.'
+                      maxLength: 512
+                    access_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an access key: the IAM access key ID. Its secret access key is the stream's `secret`."
+                      maxLength: 128
+                    role_arn:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3 with an assumed role: the IAM role the platform assumes. No secret is stored; the role's trust policy must require the stream's `external_id`."
+                      maxLength: 2048
+                    sse:
+                      type:
+                        - string
+                        - 'null'
+                      description: "S3: server-side encryption requested on every object. Left out, the bucket's default."
+                      enum:
+                        - AES256
+                        - 'aws:kms'
+                    kms_key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'S3 with `aws:kms`: the KMS key ID, alias or ARN.'
+                      maxLength: 2048
+                    path_style:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3: path-style addressing. Default: virtual-hosted on AWS, path-style on a custom endpoint (MinIO, R2).'
+                    gzip:
+                      type:
+                        - boolean
+                        - 'null'
+                      description: 'S3 and GCS: gzip each object (`.ndjson.gz`). Default true.'
                 enabled:
                   type: boolean
                   description: 'True to deliver; false to stop, keeping what is pending.'
-              required:
-                - enabled
       responses:
         200:
           description: OK
@@ -6229,7 +6516,7 @@ paths:
     post:
       tags:
         - 'Log streams'
-      summary: 'Send one test entry to a log stream now and report whether the SIEM accepted it.'
+      summary: 'Send one test event to a log stream now and report whether the destination accepted it, and if not, why.'
       description: 'Requires scope `log_streams:write`. Danger: write.'
       operationId: log_streams_test
       x-action: log_streams.test
@@ -6371,6 +6658,7 @@ paths:
               - active
               - suspended
               - deleted
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6405,6 +6693,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:read'
+      x-danger: read
     post:
       operationId: organizations_create
       x-action: organizations.create
@@ -6414,6 +6704,7 @@ paths:
       description: 'Requires scope `organizations:write`.'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6495,6 +6786,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: write
   '/organizations/{id}':
     get:
       operationId: organizations_get
@@ -6505,6 +6798,7 @@ paths:
       description: 'Requires scope `organizations:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6533,6 +6827,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:read'
+      x-danger: read
     patch:
       operationId: organizations_update
       x-action: organizations.update
@@ -6547,6 +6843,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6605,6 +6902,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: write
     delete:
       operationId: organizations_delete
       x-action: organizations.delete
@@ -6622,6 +6921,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6654,6 +6954,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: destructive
   '/organizations/{id}/reactivate':
     post:
       tags:
@@ -6782,6 +7084,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6829,6 +7132,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: critical
   '/organizations/{organization_id}/api-keys':
     get:
       operationId: api_keys_list
@@ -6849,6 +7154,7 @@ paths:
           required: false
           schema:
             type: string
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6884,6 +7190,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'api_keys:read'
+      x-danger: read
   '/organizations/{organization_id}/domains':
     get:
       operationId: organizations_domains_list
@@ -6896,6 +7204,7 @@ paths:
         that proves it (`record_name`, `record_value`). A handful at most; not paged.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -6928,6 +7237,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:read'
+      x-danger: read
     post:
       tags:
         - Organizations
@@ -7199,6 +7510,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7234,6 +7546,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'invitations:read'
+      x-danger: read
     post:
       operationId: invitations_send
       x-action: invitations.send
@@ -7263,6 +7577,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7336,6 +7651,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'invitations:write'
+      x-danger: write
   '/organizations/{organization_id}/invitations/{invitation_id}':
     delete:
       operationId: invitations_revoke
@@ -7350,6 +7667,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/InvitationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7375,6 +7693,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'invitations:write'
+      x-danger: destructive
   '/organizations/{organization_id}/invitations/{invitation_id}/resend':
     post:
       operationId: invitations_resend
@@ -7394,6 +7714,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/InvitationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7430,6 +7751,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'invitations:write'
+      x-danger: write
   '/organizations/{organization_id}/members':
     get:
       operationId: members_list
@@ -7442,6 +7765,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/After'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7477,6 +7801,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:read'
+      x-danger: read
     post:
       operationId: members_add
       x-action: members.add
@@ -7502,6 +7828,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7572,6 +7899,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:write'
+      x-danger: write
   '/organizations/{organization_id}/members/{user_id}':
     patch:
       operationId: members_update
@@ -7586,6 +7915,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7633,6 +7963,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:write'
+      x-danger: write
     delete:
       operationId: members_remove
       x-action: members.remove
@@ -7646,6 +7978,7 @@ paths:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7671,6 +8004,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:write'
+      x-danger: destructive
   '/organizations/{organization_id}/members/{user_id}/roles':
     get:
       operationId: members_roles_list
@@ -7685,6 +8020,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7717,6 +8053,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
   '/organizations/{organization_id}/members/{user_id}/roles/{role_id}':
     put:
       operationId: members_roles_grant
@@ -7742,6 +8080,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7778,6 +8117,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: write
     delete:
       operationId: members_roles_revoke
       x-action: members.roles.revoke
@@ -7791,6 +8132,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -7814,6 +8156,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: destructive
   '/organizations/{organization_id}/portal-links':
     get:
       operationId: organizations_portal_links_list
@@ -7831,6 +8175,7 @@ paths:
         minted, and only its hash is kept. Not paged.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -8702,6 +9047,7 @@ paths:
           required: false
           schema:
             type: string
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -8734,6 +9080,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
     post:
       tags:
         - Roles
@@ -9873,7 +10221,7 @@ paths:
                   maxLength: 64
                 provider:
                   type: string
-                  description: 'The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook.'
+                  description: 'The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook, linkedin, bitbucket, xero, intuit.'
                   maxLength: 100
                 client_id:
                   type: string
@@ -11696,6 +12044,7 @@ paths:
         one token and are refused before the session starts (`422 invalid_target`).
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -11776,6 +12125,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'support:write'
+      x-danger: critical
   '/support-sessions/{id}':
     delete:
       tags:
@@ -12360,6 +12711,7 @@ paths:
               - active
               - disabled
               - locked
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12394,6 +12746,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:read'
+      x-danger: read
     post:
       operationId: users_create
       x-action: users.create
@@ -12403,6 +12757,7 @@ paths:
       description: 'Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link.'
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12462,6 +12817,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:write'
+      x-danger: write
   '/users/{id}':
     get:
       operationId: users_get
@@ -12472,6 +12829,7 @@ paths:
       description: 'Requires scope `users:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12500,6 +12858,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:read'
+      x-danger: read
     delete:
       operationId: users_deactivate
       x-action: users.deactivate
@@ -12514,6 +12874,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12542,6 +12903,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:write'
+      x-danger: destructive
     patch:
       tags:
         - Users
@@ -12623,6 +12986,7 @@ paths:
       description: 'Requires scope `roles:read`.'
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12655,6 +13019,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
   '/users/{id}/environment-roles/{role_id}':
     get:
       operationId: users_environment_roles_get
@@ -12667,6 +13033,7 @@ paths:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12697,6 +13064,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
     put:
       operationId: users_environment_roles_grant
       x-action: users.environment_roles.grant
@@ -12715,6 +13084,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12749,6 +13119,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: critical
     delete:
       operationId: users_environment_roles_revoke
       x-action: users.environment_roles.revoke
@@ -12761,6 +13133,7 @@ paths:
         - $ref: '#/components/parameters/RoleId'
         - $ref: '#/components/parameters/RoleClientId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -12782,6 +13155,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: destructive
   '/users/{id}/erase':
     post:
       tags:
@@ -13087,6 +13462,7 @@ paths:
         `impersonation` marks a session somebody else opened as this person.
       parameters:
         - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
@@ -13119,6 +13495,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:read'
+      x-danger: read
     delete:
       tags:
         - Users
@@ -13686,6 +14064,12 @@ paths:
                       - vault.grant.revoked
                       - vault.secret.revoked
                       - governance.access.revoked
+                signature_scheme:
+                  type: string
+                  description: 'How deliveries are signed: `cbox` (X-Cbox-Signature, the default) or `standard_webhooks` (webhook-id / webhook-timestamp / webhook-signature, verifiable with any Standard Webhooks library; the secret is a `whsec_` secret).'
+                  enum:
+                    - cbox
+                    - standard_webhooks
                 organization_id:
                   type:
                     - string
@@ -14102,6 +14486,77 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/webhooks/{id}/signature-scheme':
+    post:
+      tags:
+        - Webhooks
+      summary: "Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks). No new secret is issued: a hex secret is used as whsec_ + base64 of itself. Update the receiver first."
+      description: 'Requires scope `webhooks:write`. Danger: destructive.'
+      operationId: webhooks_signature_scheme_change
+      x-action: webhooks.signature_scheme.change
+      x-scope: 'webhooks:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The webhook endpoint id.'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signature_scheme:
+                  type: string
+                  description: 'The scheme deliveries are signed with from the next attempt. The secret is unchanged: under `standard_webhooks` a 64-hex secret is used as `whsec_` + base64 of the hex string. Update the receiver before you switch.'
+                  enum:
+                    - cbox
+                    - standard_webhooks
+              required:
+                - signature_scheme
       responses:
         200:
           description: OK
@@ -15104,6 +15559,7 @@ components:
         - organization_id
         - event_types
         - active
+        - signature_scheme
       properties:
         id:
           type: string
@@ -15121,6 +15577,17 @@ components:
         active:
           type: boolean
           description: 'false while paused.'
+        signature_scheme:
+          type: string
+          enum:
+            - cbox
+            - standard_webhooks
+          description: |
+            How deliveries are signed. `cbox`: `X-Cbox-Timestamp` and
+            `X-Cbox-Signature: t=<ts>,v1=<hex HMAC-SHA256 of "<ts>.<body>">`.
+            `standard_webhooks`: `webhook-id`, `webhook-timestamp` and
+            `webhook-signature: v1,<base64 HMAC-SHA256 of "<id>.<ts>.<body>">`, verifiable
+            with any Standard Webhooks library. Only the chosen scheme's headers are sent.
         consecutive_failures:
           type: integer
         last_success_at:
@@ -15139,7 +15606,8 @@ components:
             - 'null'
           description: |
             The signing secret, on the create and rotate answers only — shown once, never
-            retrievable again. `null` on an idempotent replay of that answer.
+            retrievable again. `null` on an idempotent replay of that answer. 64 hex
+            characters under `cbox`; a `whsec_` secret under `standard_webhooks`.
     InlineHook:
       type: object
       required:
@@ -15187,8 +15655,11 @@ components:
         - destination
         - endpoint_url
         - auth
+        - options
+        - external_id
         - organization_id
         - enabled
+        - health
       properties:
         id:
           type: string
@@ -15202,8 +15673,12 @@ components:
             - graylog_gelf
             - cef_http
             - generic_json
+            - datadog
+            - s3
+            - gcs
         endpoint_url:
           type: string
+          description: 'Where entries go. For Datadog, S3 and GCS, derived from the site or region unless a custom endpoint was given.'
         auth:
           type: string
           enum:
@@ -15211,6 +15686,60 @@ components:
             - bearer
             - splunk
             - hmac
+          description: "An HTTP collector's scheme; `none` for the cloud destinations, which authenticate their own way."
+        options:
+          type:
+            - object
+            - 'null'
+          description: "Datadog, S3 and GCS: the destination's settings, as stored. Never a credential — the API key, secret access key or service-account key is the encrypted secret. null for an HTTP collector."
+          properties:
+            site:
+              type: string
+              enum:
+                - datadoghq.com
+                - us3.datadoghq.com
+                - us5.datadoghq.com
+                - datadoghq.eu
+                - ap1.datadoghq.com
+                - ap2.datadoghq.com
+                - ddog-gov.com
+            service:
+              type: string
+            source:
+              type: string
+            hostname:
+              type: string
+            tags:
+              type: string
+              description: 'Comma-separated `key:value` tags (`ddtags`).'
+            bucket:
+              type: string
+            region:
+              type: string
+            prefix:
+              type: string
+            access_key_id:
+              type: string
+            role_arn:
+              type: string
+            external_id:
+              type: string
+            sse:
+              type: string
+              enum:
+                - AES256
+                - 'aws:kms'
+            kms_key_id:
+              type: string
+            path_style:
+              type: boolean
+            gzip:
+              type: boolean
+        external_id:
+          type:
+            - string
+            - 'null'
+          description: "An assumed-role S3 stream's external ID, generated for it: the role's trust policy must require it (`sts:ExternalId`). null otherwise."
         organization_id:
           type:
             - string
@@ -15218,9 +15747,36 @@ components:
           description: "null when the environment owns it: it carries EVERY organization's entries."
         enabled:
           type: boolean
+        health:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - paused
+            - action_required
+          description: '`degraded`: recent transient failures, still retrying. `paused`: the circuit is open after repeated failures and resumes on its own. `action_required`: the destination refused the credential or the settings — update the stream, or run a successful test.'
         consecutive_failures:
           type: integer
         last_success_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_error:
+          type:
+            - string
+            - 'null'
+          description: "The latest failure, scrubbed of the stream's secret."
+        last_failure_kind:
+          type:
+            - string
+            - 'null'
+          enum:
+            - transient
+            - authentication
+            - configuration
+            - null
+        last_failure_at:
           type:
             - string
             - 'null'
@@ -15234,7 +15790,7 @@ components:
           type:
             - string
             - 'null'
-          description: 'A generated HMAC key, on the create answer only — shown once. `null` on an idempotent replay.'
+          description: 'A generated HMAC key, on the answer that generated it only — shown once. `null` on an idempotent replay. A credential the caller supplied is never echoed.'
     DomainEvent:
       type: object
       required:
@@ -16194,6 +16750,7 @@ components:
       required:
         - id
         - delivered
+        - failure
         - error
         - tested_at
       properties:
@@ -16201,7 +16758,17 @@ components:
           type: string
         delivered:
           type: boolean
-          description: 'Whether the destination accepted the test entry.'
+          description: 'Whether the destination accepted the test event (action `siem.stream.test`).'
+        failure:
+          type:
+            - string
+            - 'null'
+          enum:
+            - transient
+            - authentication
+            - configuration
+            - null
+          description: 'Why not: `transient` (unreachable, busy — retrying can help) or `authentication` / `configuration` (somebody has to fix the stream). null when delivered.'
         error:
           type:
             - string

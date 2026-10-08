@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { absoluteTime, relativeTime } from '@/lib/time';
@@ -32,7 +32,10 @@ interface Entry {
     phrase: string;
     actorId: string | null;
     actorName: string | null;
+    /** `Agent` for anything a management key did — named by the key — else the stored type. */
     actorType: string;
+    /** Where an agent's name links: AI agents › Agents. Null for everyone else. */
+    actorHref: string | null;
     /** Whose trail the entry is on — named on the list that holds every organization's. */
     organization: string | null;
     targetId: string | null;
@@ -303,7 +306,16 @@ export default function Audit({
                                                         className="text-sm truncate"
                                                         title={entry.actorId ?? undefined}
                                                     >
-                                                        {entry.actorName}
+                                                        {entry.actorHref !== null ? (
+                                                            <Link
+                                                                href={entry.actorHref}
+                                                                className="underline"
+                                                            >
+                                                                {entry.actorName}
+                                                            </Link>
+                                                        ) : (
+                                                            entry.actorName
+                                                        )}
                                                     </p>
                                                     <p
                                                         className="text-xs mono truncate"

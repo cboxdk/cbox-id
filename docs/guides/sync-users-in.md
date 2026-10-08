@@ -96,6 +96,31 @@ the group mappings; the people it created stay.
 - **Group mapping is push-based.** Everyone in a mapped group gets the role; remove
   the mapping and the grant goes with it.
 
+## What the SCIM endpoint does
+
+What a provider pushing to `/scim/v2` can rely on, and what changed in Cbox ID's
+framework (laravel-id 1.23):
+
+- **A duplicate `externalId` is `409 uniqueness`**, and so is a duplicate group name.
+  Creating a user used to update the existing one; Entra ID and Okta both expect the `409`
+  and then match the user with a filter. A script that relied on `POST` as an upsert must
+  look the user up (`?filter=externalId eq "…"`) and `PUT` or `PATCH` instead. Changing a
+  provisioned user's `externalId` is refused (`400 mutability`).
+- **Filters** take the full RFC 7644 grammar: every operator, `and`/`or`/`not` with their
+  precedence, grouping, value filters (`emails[type eq "work"].value`) and date
+  comparisons. A filter on something the directory does not store is `400 invalidFilter`,
+  never an unfiltered answer.
+- **Sorting** with `sortBy` and `sortOrder` on `/Users` and `/Groups`.
+- **ETags**: a weak `ETag` and `meta.version` on every resource. `If-Match` on a write
+  answers `412` when the resource changed since it was read; `If-None-Match` on a read
+  answers `304`.
+- **Bulk**: `POST /scim/v2/Bulk`, up to 1,000 operations and 1 MiB per request
+  (`CBOX_ID_SCIM_BULK_MAX_OPERATIONS`, `CBOX_ID_SCIM_BULK_MAX_PAYLOAD_SIZE`), with
+  `bulkId` references and `failOnErrors`. It counts once against the 120-a-minute limit.
+
+The IT administrator's version, with the provider field names, is
+[any SCIM 2.0 provider](../for-it-admins/idp/generic-scim.md#what-the-endpoint-supports).
+
 ## Troubleshooting
 
 **Nothing appears after connecting** — nobody is assigned to the application in your

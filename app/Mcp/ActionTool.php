@@ -17,6 +17,7 @@ use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -278,6 +279,11 @@ final class ActionTool extends Tool
 
             return Response::make([Response::text('Waiting for approval · code '.$held->bindingCode), Response::text(self::json($body))])
                 ->withStructuredContent($body);
+        } catch (StepUpAuthenticationRequired $stepUp) {
+            // Normally answered before the call gets here, as an HTTP 401 the client can act
+            // on (AuthenticateMcp). A tool error says the same thing to a client that did
+            // not go through that door.
+            return self::refusal('insufficient_user_authentication', $stepUp->getMessage());
         } catch (ActionRefused $refused) {
             return self::refusal($refused->error, $refused->getMessage(), $refused->field);
         } catch (ValidationException $invalid) {

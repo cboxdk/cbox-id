@@ -11,7 +11,9 @@ use Cbox\Id\Webhooks\Models\WebhookEndpoint;
  * A webhook endpoint — `Webhook` in the spec. `organization_id` null means the environment
  * owns it and it receives every organization's events. `secret` is present only on the
  * answer that minted it (create, rotate), and is null on an idempotent replay of that
- * answer: only its sealed form persists.
+ * answer: only its sealed form persists. `signature_scheme` says which headers its
+ * deliveries carry — `cbox` (`X-Cbox-Signature`) or `standard_webhooks` (`webhook-id`,
+ * `webhook-timestamp`, `webhook-signature`).
  */
 final class WebhookResource
 {
@@ -26,6 +28,7 @@ final class WebhookResource
             'organization_id' => $endpoint->organization_id,
             'event_types' => array_values($endpoint->event_types),
             'active' => $endpoint->status === EndpointStatus::Active,
+            'signature_scheme' => $endpoint->signature_scheme->value,
             'consecutive_failures' => $endpoint->consecutive_failures,
             'last_success_at' => Timestamp::of($endpoint->last_success_at),
             'created_at' => Timestamp::of($endpoint->getAttribute('created_at')),

@@ -51,7 +51,7 @@ export function ProviderMark({ provider, size = 18 }: ProviderMarkProps) {
             className="shrink-0"
         >
             {mark.shapes.map((shape) => (
-                <path key={shape.d} fill={shape.fill} d={shape.d} />
+                <path key={shape.d} fill={shape.fill} fillRule={shape.rule} d={shape.d} />
             ))}
         </svg>
     );

@@ -16,6 +16,7 @@ use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
+use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -65,12 +66,13 @@ use Illuminate\Auth\Access\AuthorizationException;
  * and every entry the action causes records the client they used
  * ({@see EnvironmentKeyAuditLog}).
  */
-final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedInPerson
+final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedInPerson, TokenAuthenticated
 {
     /**
      * @param  list<string>  $scopes  the scopes the token carries
      * @param  OrganizationChoice|null  $organization  the organization the token is bound to, while the person is an active member of it
      * @param  bool  $customerConsole  whether this is a customer's environment, whose own console is an admin portal
+     * @param  Introspection|null  $token  the token itself, for its `acr` / `auth_time` ({@see TokenAuthenticated})
      */
     public function __construct(
         private string $subjectId,
@@ -82,7 +84,13 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
         private ?OrganizationChoice $organization,
         private bool $customerConsole,
         private ?int $expiresAt = null,
+        private ?Introspection $token = null,
     ) {}
+
+    public function token(): ?Introspection
+    {
+        return $this->token;
+    }
 
     public function kind(): string
     {

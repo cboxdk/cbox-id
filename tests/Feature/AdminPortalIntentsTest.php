@@ -16,11 +16,14 @@ use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use App\Platform\Sso\SamlCertificate;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
+use Cbox\Id\Directory\Enums\DirectoryProvider;
+use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\IdentityProviderGuides;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
@@ -305,6 +308,56 @@ it('shows the link\'s intents as a checklist whose progress is read from the sys
     expect($this->get(route('portal.setup'))->inertiaProps('tasks')[0]['done'])->toBeTrue();
 });
 
+/*
+ * "FIRST UPDATE RECEIVED" FOR BOTH KINDS OF DIRECTORY. The step waited on
+ * `last_synced_at`, which only the pull job stamps, so a SCIM directory — the kind the
+ * portal walks people through — never completed however many people it pushed.
+ */
+it('completes directory sync when a SCIM push lands, and when a pull directory syncs', function (): void {
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::Dsync]);
+
+    $steps = fn (): array => $this->get(route('portal.setup'))->assertOk()->inertiaProps('tasks')[0]['steps'];
+
+    portalWrite('post', route('portal.directories'), route('portal.directories.store'), ['name' => 'Okta SCIM'])->assertSessionHasNoErrors();
+    $token = (string) flashed('newToken');
+
+    expect($steps())->toBe([['key' => 'directory_created', 'done' => true], ['key' => 'directory_synced', 'done' => false]]);
+
+    // The identity provider pushes its first person.
+    $this->withToken($token)->postJson('/scim/v2/Users', [
+        'schemas' => ['urn:ietf:params:scim:schemas:core:2.0:User'],
+        'userName' => 'ada@acme.example',
+        'emails' => [['value' => 'ada@acme.example', 'primary' => true]],
+        'active' => true,
+    ])->assertCreated();
+    $this->flushHeaders();
+
+    expect(Directory::query()->where('organization_id', $org)->sole()->last_synced_at)->toBeNull()
+        ->and($steps()[1])->toBe(['key' => 'directory_synced', 'done' => true])
+        // …and the directory list says an update arrived, rather than "No updates received yet".
+        ->and($this->get(route('portal.directories'))->assertOk()->inertiaProps('directories')[0]['lastSyncedAt'])->toBeString();
+
+    // A pull directory, on its own: done once its scheduled sync has run, not before.
+    $pulled = intentOrg('portal-pull');
+    openPortal($pulled, [PortalIntent::Dsync]);
+    $directory = new Directory;
+    $directory->forceFill([
+        'organization_id' => $pulled,
+        'name' => 'Google',
+        'provider' => DirectoryProvider::GoogleWorkspace,
+        'bearer_token_hash' => hash('sha256', 'unused by a pull directory'),
+        'status' => DirectoryStatus::Active,
+        'mappings' => [],
+    ])->save();
+
+    expect($steps()[1]['done'])->toBeFalse();
+
+    $directory->forceFill(['last_synced_at' => now()])->save();
+
+    expect($steps()[1]['done'])->toBeTrue();
+});
+
 // ── Domain verification ─────────────────────────────────────────────────────
 
 it('walks domain verification end to end: add, publish, check, verified, remove', function (): void {
@@ -358,7 +411,8 @@ it('walks single sign-on end to end: start, paste our values, import metadata, v
 
     // The guides, with the providers an IT administrator actually runs.
     $guides = $this->get(route('portal.sso', ['provider' => 'entra']))->assertOk()->inertiaProps('guides');
-    expect(array_column($guides, 'key'))->toBe(['okta', 'entra', 'google', 'onelogin', 'jumpcloud', 'pingfederate', 'saml', 'oidc']);
+    expect(array_column($guides, 'key'))->toBe(IdentityProviderGuides::keys())
+        ->and(array_slice(array_column($guides, 'key'), -2))->toBe(['saml', 'oidc']);
 
     // Start: a draft with only OUR half — which is what exists to be pasted.
     portalWrite('post', route('portal.sso', ['provider' => 'entra']), route('portal.connections.store'), ['provider' => 'entra', 'name' => 'Entra ID'])
@@ -422,7 +476,7 @@ it('walks directory sync: create a directory, see the token once, rotate it', fu
 
     $props = (array) $this->get(route('portal.directories', ['provider' => 'okta']))->assertOk()->inertiaProps();
 
-    expect(array_column($props['guides'], 'key'))->toBe(['okta', 'entra', 'onelogin', 'jumpcloud', 'scim'])
+    expect(array_column($props['guides'], 'key'))->toBe(['okta', 'entra', 'onelogin', 'jumpcloud', 'pingfederate', 'pingone', 'duo', 'cyberark', 'oracle', 'scim'])
         ->and($props['scimBaseUrl'])->toBe(url('/scim/v2'));
 
     portalWrite('post', route('portal.directories'), route('portal.directories.store'), ['name' => 'Okta SCIM'])
@@ -463,7 +517,7 @@ it('walks log streams: add their own destination, test it, see a failure, remove
 
     portalWrite('post', route('portal.log-streams'), $row['testHref'])->assertSessionHasNoErrors();
     expect(flashed('streamTest'))->toBe(['id' => $stream->id, 'delivered' => true, 'error' => null])
-        ->and($sink->batches()[0]['records'][0] ?? '')->toContain('log_stream.test');
+        ->and($sink->batches()[0]['records'][0] ?? '')->toContain('siem.stream.test');
 
     $sink->failEverything();
     portalWrite('post', route('portal.log-streams'), $row['testHref'])->assertSessionHasNoErrors();
@@ -471,6 +525,32 @@ it('walks log streams: add their own destination, test it, see a failure, remove
 
     portalWrite('delete', route('portal.log-streams'), $row['removeHref'])->assertSessionHasNoErrors();
     expect(AuditStream::query()->whereKey($stream->id)->exists())->toBeFalse();
+});
+
+it('shows a generated signing key once, and never echoes a token the IT admin typed', function (): void {
+    app()->instance(StreamSink::class, new FakeStreamSink);
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::LogStreams]);
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Typed token',
+        'destination' => 'splunk_hec',
+        'endpoint_url' => 'https://splunk.acme.example:8088',
+        'auth' => 'splunk',
+        'secret' => 'hec-token-typed-by-them',
+    ])->assertSessionHasNoErrors();
+
+    expect(flashed('newSecret'))->toBeNull()
+        ->and((string) $this->get(route('portal.log-streams'))->assertOk()->getContent())->not->toContain('hec-token-typed-by-them');
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Signed',
+        'destination' => 'generic_json',
+        'endpoint_url' => 'https://siem.acme.example/collector',
+        'auth' => 'hmac',
+    ])->assertSessionHasNoErrors();
+
+    expect(flashed('newSecret'))->toBeString()->not->toBe('');
 });
 
 it('never shows or touches the environment\'s own streams, or another organization\'s', function (): void {
@@ -489,6 +569,80 @@ it('never shows or touches the environment\'s own streams, or another organizati
     portalWrite('delete', route('portal.log-streams'), route('portal.log-streams.destroy', $environmentWide))->assertNotFound();
 
     expect(AuditStream::query()->whereKey($environmentWide)->exists())->toBeTrue();
+})->group('security');
+
+it('adds an S3 bucket through an assumed role, and hands the IT admin the trust policy with its external ID', function (): void {
+    config([
+        'siem.aws.access_key_id' => 'AKIAPLATFORMEXAMPLE',
+        'siem.aws.secret_access_key' => 'platform-secret',
+        'cbox-id.log_streams.aws_principal_arn' => 'arn:aws:iam::111122223333:user/cbox-siem',
+    ]);
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::LogStreams]);
+
+    $props = $this->get(route('portal.log-streams'))->assertOk()->inertiaProps();
+
+    expect(array_column($props['destinations'], 'value'))->toContain('datadog', 's3', 'gcs')
+        ->and($props['assumedRoleAvailable'])->toBeTrue();
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Audit bucket',
+        'destination' => 's3',
+        'options' => [
+            'bucket' => 'acme-audit',
+            'region' => 'eu-west-1',
+            'prefix' => 'cbox',
+            'role_arn' => 'arn:aws:iam::444455556666:role/cbox-writer',
+            'access_key_id' => '',
+            'gzip' => true,
+        ],
+    ])->assertSessionHasNoErrors();
+
+    $stream = AuditStream::query()->ownedByOrganization($org)->sole();
+    $externalId = $stream->destinationOptions()['external_id'] ?? null;
+
+    expect($externalId)->toBeString()->toMatch('/^[0-9a-f]{32}$/')
+        ->and($stream->secret)->toBeNull()
+        ->and(flashed('awsSetup'))->toBe($stream->id)
+        ->and(flashed('newSecret'))->toBeNull();
+
+    $row = $this->get(route('portal.log-streams'))->inertiaProps('streams')[0];
+
+    expect($row['aws']['externalId'])->toBe($externalId)
+        ->and(json_decode((string) $row['aws']['trustPolicy'], true)['Statement'][0])->toBe([
+            'Effect' => 'Allow',
+            'Principal' => ['AWS' => 'arn:aws:iam::111122223333:user/cbox-siem'],
+            'Action' => 'sts:AssumeRole',
+            'Condition' => ['StringEquals' => ['sts:ExternalId' => $externalId]],
+        ])
+        ->and(json_decode((string) $row['aws']['permissionsPolicy'], true)['Statement'][0]['Resource'])->toBe('arn:aws:s3:::acme-audit/cbox/*');
+});
+
+it('adds a Datadog destination from the portal without ever showing the API key again', function (): void {
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::LogStreams]);
+
+    // A refused setting lands on its own field, in the IT admin's language.
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Datadog',
+        'destination' => 'datadog',
+        'secret' => 'dd-api-key-typed-by-them',
+        'options' => ['site' => 'datadoghq.eu', 'tags' => 'env:prod, 9bad'],
+    ])->assertSessionHasErrors(['options.tags' => __('portal.errors.invalid_stream_configuration')]);
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Datadog',
+        'destination' => 'datadog',
+        'secret' => 'dd-api-key-typed-by-them',
+        'options' => ['site' => 'datadoghq.eu', 'service' => 'acme', 'tags' => 'env:prod, team:sec'],
+    ])->assertSessionHasNoErrors();
+
+    $stream = AuditStream::query()->ownedByOrganization($org)->sole();
+
+    expect($stream->endpoint_url)->toBe('https://http-intake.logs.datadoghq.eu/api/v2/logs')
+        ->and($stream->destinationOptions())->toEqual(['site' => 'datadoghq.eu', 'service' => 'acme', 'tags' => 'env:prod,team:sec'])
+        ->and(flashed('newSecret'))->toBeNull()
+        ->and((string) $this->get(route('portal.log-streams'))->assertOk()->getContent())->not->toContain('dd-api-key-typed-by-them');
 })->group('security');
 
 // ── SAML certificate renewal ────────────────────────────────────────────────

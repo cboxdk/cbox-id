@@ -19,8 +19,9 @@ settings.
 
 ## 1. Choose your directory
 
-Pick yours: Okta, Microsoft Entra ID, OneLogin, JumpCloud, or **SCIM 2.0** for any other
-provider that can provision over SCIM.
+Pick yours: Okta, Microsoft Entra ID, OneLogin, JumpCloud, PingFederate, PingOne, Duo,
+CyberArk Identity, Oracle Cloud Infrastructure IAM, or **SCIM 2.0** for any other provider
+that can provision over SCIM with a bearer token.
 
 Google Workspace does not push over SCIM. If your company uses Google Workspace as its
 directory, the product's administrators can connect it from their side instead; ask the
@@ -39,8 +40,8 @@ The page shows a table of your provider's field names and what goes in each:
 
 | Value | Where it goes, by provider |
 |---|---|
-| **SCIM base URL**, `https://<sign-in host>/scim/v2` | Okta: "SCIM connector base URL". Entra ID: "Tenant URL". OneLogin: "SCIM Base URL". JumpCloud: "Base URL". |
-| **Bearer token** | Okta: "Authorization (Bearer)", with Authentication Mode "HTTP Header". Entra ID: "Secret Token". OneLogin: "SCIM Bearer Token". JumpCloud: "Token Key". |
+| **SCIM base URL**, `https://<sign-in host>/scim/v2` | Okta: "SCIM connector base URL". Entra ID: "Tenant URL". OneLogin: "SCIM Base URL". JumpCloud: "Base URL". PingFederate: "SCIM URL". PingOne: "SCIM Base URL". Duo: "Base URL". CyberArk: "SCIM Service URL". Oracle asks for it in two halves: "Host Name" and "Base URI" (`/scim/v2`). |
+| **Bearer token** | Okta: "Authorization", with Authentication Mode "HTTP Header". Entra ID: "Secret Token". OneLogin: "SCIM Bearer Token". JumpCloud: "Token". PingFederate: "Access Token". PingOne: "OAuth Access Token". Duo: "Token". CyberArk: "Bearer Token". Oracle: "Access Token". |
 
 Okta also asks for the "Unique identifier field for users": set it to `userName`.
 
@@ -63,7 +64,10 @@ update arrived: "Last update received …", or "No updates received yet". The ta
 **First update received** once your provider has sent something.
 
 Nothing arriving usually means nobody is assigned to the app in your provider yet, or
-provisioning is not switched on there. Microsoft Entra ID syncs on a cycle of about 40
+provisioning is not switched on there. A `409` in your provider's provisioning log for a
+user it is creating means somebody with that `externalId` already exists; Entra ID and Okta
+then match and update that user by themselves. What the endpoint supports — filters,
+sorting, ETags and Bulk — is in [any SCIM 2.0 provider](idp/generic-scim.md#what-the-endpoint-supports). Microsoft Entra ID syncs on a cycle of about 40
 minutes, so give it time or use its "Provision on demand" to test one person.
 
 ## Issue a new token
@@ -79,5 +83,5 @@ link.
 ## Related
 
 - [Generic SCIM](idp/generic-scim.md) — what the SCIM endpoint supports, for any provider.
-- [Okta](idp/okta.md) and [Microsoft Entra ID](idp/entra-id.md) — step by step.
+- [Identity provider guides](idp/_index.md) — step by step, for every provider the portal lists.
 - [Enterprise SSO](sso.md) — sign the people Directory Sync creates in with their work account.

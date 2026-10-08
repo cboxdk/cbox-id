@@ -119,10 +119,11 @@ from both sides, is the [Admin Portal guide](../guides/admin-portal.md) and
 - **The checklist.** `/setup` shows one card per intent with its progress, read from what
   is actually configured. Each intent has its own page: SSO walks provider → our ACS URL
   and entity ID (or OIDC redirect URI, or the SAML SP metadata URL for a provider that
-  imports one) to paste, field by field, into Okta, Entra ID,
-  Google Workspace, OneLogin, JumpCloud, PingFederate or any SAML/OIDC provider → their
-  metadata back → a verified domain → activate. Directory sync shows the SCIM base URL and
-  a bearer token (once) with guides for Okta, Entra ID, OneLogin, JumpCloud and generic SCIM.
+  imports one) to paste, field by field, into any of the twenty identity providers
+  laravel-id's `IdentityProviderGuides` covers (Okta, Entra ID, Google Workspace, AD FS,
+  Keycloak, PingOne…) or any SAML/OIDC provider → their metadata back → a verified domain →
+  activate. Directory sync shows the SCIM base URL and a bearer token (once) with guides
+  for the nine of them that push over SCIM, and generic SCIM.
 - **Every write is an action**, run as a `PortalPrincipal`: confined to the link's
   organization (`confinedToOrganization()`), and allowed only the actions its intents
   list. The audit trail names the session — actor `system` with the link's id, plus

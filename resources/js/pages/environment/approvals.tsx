@@ -61,6 +61,8 @@ type Props = PageProps<{
     waiting: ActionApproval[];
     decided: ActionApproval[];
     agentsHref: string;
+    /** How long a held action waits for its person, in words: "5 minutes". */
+    approvalWindow: string;
     requests: ApprovalRow[];
     pagination: PaginationState;
     help: HelpContent;
@@ -70,6 +72,7 @@ export default function AgentApprovals({
     waiting,
     decided,
     agentsHref,
+    approvalWindow,
     requests,
     pagination,
     help,
@@ -94,7 +97,7 @@ export default function AgentApprovals({
                         <EmptyState
                             icon="magic"
                             title="Nothing is waiting"
-                            description="When an agent's key needs approval for an action, the request appears here and on the phone of the person who created the key. It waits up to fifteen minutes."
+                            description={`When an agent's key needs approval for an action, the request appears here and on the phone of the person who created the key. It waits up to ${approvalWindow}.`}
                             actions={
                                 <Button asChild variant="secondary">
                                     <Link href={agentsHref}>Review agents</Link>

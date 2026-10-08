@@ -50,6 +50,8 @@ final readonly class ReactivateProject implements Action
 
         $project->refresh();
 
+        InWorkspace::record($context->principal, $workspaceId, 'organization.project_reactivated', 'project', $project->id, ['name' => $project->name]);
+
         return ActionResult::item($project, ProjectResource::from($project));
     }
 }

@@ -8,6 +8,8 @@ use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Idempotency\IdempotencyGuard;
 use App\Platform\Actions\Principal\AnnotatesTrail;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
+use App\Platform\OAuth\ManagementStepUp;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,9 @@ use Illuminate\Validation\ValidationException;
  * The one way an action runs, whichever door asked.
  *
  *  1. the principal may run this action at all ({@see Principal::authorize()});
+ *  1b. a person's token has signed in recently and strongly enough for a Critical action,
+ *      when the deployment asks that ({@see ManagementStepUp}) — before anything is held
+ *      for an approval the token could not then use;
  *  2. the input is valid against the action's own schema — the same rules for a form, a
  *     JSON body and a tool call, so a refusal is the same `validation_failed` everywhere;
  *  3. a write with an `Idempotency-Key` from a machine principal runs at most once;
@@ -31,7 +36,8 @@ use Illuminate\Validation\ValidationException;
  *     principal itself adds ({@see AnnotatesTrail}).
  *
  * Doors translate the outcome: an {@see ActionResult}, an {@see ActionRefused}, an
- * {@see AuthorizationException} or a {@see ValidationException}. Nothing here knows about
+ * {@see AuthorizationException}, a {@see StepUpAuthenticationRequired} or a
+ * {@see ValidationException}. Nothing here knows about
  * HTTP, redirects or MCP.
  */
 final readonly class ActionRunner
@@ -40,6 +46,7 @@ final readonly class ActionRunner
         private ActionRegistry $registry,
         private IdempotencyGuard $idempotency,
         private ActionApprovalGate $approvals,
+        private ManagementStepUp $stepUp,
         private Container $container,
     ) {}
 
@@ -49,6 +56,7 @@ final readonly class ActionRunner
      *
      * @throws ActionRefused
      * @throws AuthorizationException
+     * @throws StepUpAuthenticationRequired
      * @throws ValidationException
      */
     public function run(string|ActionDefinition $action, Principal $principal, array $input, ?string $idempotencyKey = null, ?string $approvalId = null, ?ActionVia $via = null): ActionResult
@@ -57,6 +65,7 @@ final readonly class ActionRunner
         $via ??= ActionVia::inferredFrom($principal);
 
         $principal->authorize($definition);
+        $this->stepUp->enforce($principal, $definition);
 
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($input, $definition->input()->rules())->validate();

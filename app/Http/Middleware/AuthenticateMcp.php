@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
 use App\Mcp\McpProtectedResources;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
@@ -13,6 +15,7 @@ use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\DelegatedAccess;
+use App\Platform\OAuth\ManagementStepUp;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\WorkspaceApiContext;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
@@ -62,6 +65,14 @@ use Symfony\Component\HttpFoundation\Response;
  * `resource_metadata` pointer, which is how an MCP client discovers where to sign in:
  * the document the framework serves for {@see McpProtectedResources}. `error="invalid_token"` only when a token
  * was presented — §3.1 says a request that carried none gets no error code.
+ *
+ * STEP-UP IS ANSWERED HERE TOO (RFC 9470). When the deployment demands a recent or strong
+ * sign-in for Critical actions ({@see ManagementStepUp}), a `tools/call` of one with a
+ * person's token that falls short is answered `401 insufficient_user_authentication` with
+ * the requirement in `WWW-Authenticate` — at the HTTP layer, because that is the only
+ * place an MCP client re-authorizes from. Inside the server the same refusal would be a
+ * tool result in a 200, which a client reads as the tool failing. The action runner asks
+ * the same question again on the call itself.
  */
 final class AuthenticateMcp
 {
@@ -78,6 +89,8 @@ final class AuthenticateMcp
         private readonly DpopResourceGuard $dpop,
         private readonly DelegatedAccess $delegated,
         private readonly RootDelegatedAccess $root,
+        private readonly ActionRegistry $actions,
+        private readonly ManagementStepUp $stepUp,
     ) {}
 
     /**
@@ -94,6 +107,16 @@ final class AuthenticateMcp
         }
 
         $this->caller->set($principal);
+
+        $stepUp = $this->stepUpFor($request, $principal);
+
+        if ($stepUp !== null) {
+            $this->caller->clear();
+            $this->context->clear();
+            $this->workspace->clear();
+
+            return $stepUp;
+        }
 
         try {
             return $next($request);
@@ -147,6 +170,38 @@ final class AuthenticateMcp
         $this->context->set($key);
 
         return new EnvironmentKeyPrincipal($key);
+    }
+
+    /**
+     * The RFC 9470 401 for a `tools/call` of a Critical action this person's token has not
+     * signed in strongly or recently enough for — or null to let the call through. Only
+     * for a tool this principal may run at all: anything else is refused by the tool as it
+     * always was, and asking somebody to sign in again for a call they could never make
+     * would be a loop.
+     */
+    private function stepUpFor(Request $request, Principal $principal): ?Response
+    {
+        if ($request->json('method') !== 'tools/call' || ManagementStepUp::requirement() === null) {
+            return null;
+        }
+
+        $tool = $request->json('params.name');
+
+        foreach ($this->actions->all() as $action) {
+            if ($action->toolName() !== $tool) {
+                continue;
+            }
+
+            $assessment = ActionTool::permits($principal, $action) ? $this->stepUp->assess($principal, $action) : null;
+
+            return $assessment === null ? null : response()->json(
+                ['error' => 'insufficient_user_authentication', 'message' => $assessment->errorDescription().' Sign in again'.ManagementStepUp::describe($assessment->requirement).' and repeat the call.'],
+                401,
+                $this->stepUp->challenge($assessment)->headers(),
+            );
+        }
+
+        return null;
     }
 
     private function challenge(bool $presented): Response

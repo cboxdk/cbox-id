@@ -16,6 +16,7 @@ use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Closure;
@@ -45,13 +46,19 @@ use Illuminate\Auth\Access\AuthorizationException;
  * CRITICAL WAITS FOR THE PERSON, approved on their device in the platform root, as for
  * every token.
  */
-final readonly class EnvironmentMemberPrincipal implements SignedInPerson
+final readonly class EnvironmentMemberPrincipal implements SignedInPerson, TokenAuthenticated
 {
     public function __construct(
         private RootSignIn $signIn,
         private Environment $environment,
         private RootWorkspace $workspace,
     ) {}
+
+    /** The root-issued token this person signed in with ({@see TokenAuthenticated}). */
+    public function token(): ?Introspection
+    {
+        return $this->signIn->token;
+    }
 
     /** Whether the environment console runs $action at all: its two gates, on its plane. */
     public static function consoleRuns(ActionDefinition $action): bool

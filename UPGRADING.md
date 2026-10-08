@@ -14,7 +14,7 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
-## Unreleased
+## 2.0.0
 
 ### Admin Portal links take `intents`
 

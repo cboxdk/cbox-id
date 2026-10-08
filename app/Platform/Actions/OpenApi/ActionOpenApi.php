@@ -46,8 +46,13 @@ final readonly class ActionOpenApi
             $path = $action->documentedPath();
 
             if (isset($paths[$path][$method])) {
-                // Hand-written, and it wins — but every environment action is reached from
-                // the platform root as well, whoever wrote its operation.
+                // Hand-written, and it wins — but any action can be held for a person's
+                // approval, and every environment action is reached from the platform root
+                // as well, whoever wrote its operation.
+                if (is_array($paths[$path][$method])) {
+                    $paths[$path][$method] = self::described(self::holdable($paths[$path][$method]), $action);
+                }
+
                 if (is_array($paths[$path][$method]) && $plane === ActionPlane::Environment) {
                     $paths[$path][$method] = $this->fromTheRoot($paths[$path][$method], $action);
                 }
@@ -208,6 +213,67 @@ final readonly class ActionOpenApi
         $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
         $responses = self::withResponse($responses, 400, ['$ref' => '#/components/responses/EnvironmentRequired']);
         $operation['responses'] = self::withResponse($responses, 404, ['$ref' => '#/components/responses/NotFound']);
+
+        return $operation;
+    }
+
+    /**
+     * The machine-readable action facts a generated operation carries — `x-action`,
+     * `x-scope`, `x-danger` — on a hand-written one too, so a generated client reads every
+     * operation the same way instead of parsing prose for the ones a person wrote. A value
+     * the base already states is left as written.
+     *
+     * @param  array<mixed>  $operation
+     * @return array<mixed>
+     */
+    private static function described(array $operation, ActionDefinition $action): array
+    {
+        $operation['x-action'] ??= $action->name;
+        $operation['x-scope'] ??= $action->scope;
+        $operation['x-danger'] ??= $action->danger->value;
+
+        return $operation;
+    }
+
+    /**
+     * What a hand-written operation says about approvals, as a generated one does: it takes
+     * `Cbox-Approval`, and it may answer `202 approval_required`.
+     *
+     * ANY action can be held — a key's step-up policy names actions by danger or by name, and
+     * a person's token holds every critical one — so an operation that leaves the 202 out
+     * documents an answer it gives as one it never gives. The 46 hand-written operations
+     * did, and the first held `POST /apps` failed the contract test.
+     *
+     * @param  array<mixed>  $operation  an operation object — its keys are field names
+     * @return array<mixed>
+     */
+    private static function holdable(array $operation): array
+    {
+        $parameters = is_array($operation['parameters'] ?? null) ? array_values($operation['parameters']) : [];
+        $approval = ['$ref' => '#/components/parameters/CboxApproval'];
+
+        if (! in_array($approval, $parameters, true)) {
+            $parameters[] = $approval;
+
+            // Where an operation states its parameters: before its body and its answers.
+            $ordered = [];
+
+            foreach ($operation as $key => $value) {
+                if (! isset($ordered['parameters']) && ($key === 'parameters' || $key === 'requestBody' || $key === 'responses')) {
+                    $ordered['parameters'] = $parameters;
+                }
+
+                if ($key !== 'parameters') {
+                    $ordered[$key] = $value;
+                }
+            }
+
+            $ordered['parameters'] ??= $parameters;
+            $operation = $ordered;
+        }
+
+        $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
+        $operation['responses'] = self::withResponse($responses, 202, ['$ref' => '#/components/responses/ApprovalRequired']);
 
         return $operation;
     }

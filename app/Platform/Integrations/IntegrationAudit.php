@@ -40,6 +40,8 @@ final readonly class IntegrationAudit
 
     public const string WEBHOOK_SECRET_ROTATED = 'webhook.secret_rotated';
 
+    public const string WEBHOOK_SIGNATURE_SCHEME_CHANGED = 'webhook.signature_scheme_changed';
+
     public const string WEBHOOK_DELETED = 'webhook.deleted';
 
     public const string HOOK_CREATED = 'inline_hook.created';
@@ -51,6 +53,8 @@ final readonly class IntegrationAudit
     public const string HOOK_DELETED = 'inline_hook.deleted';
 
     public const string LOG_STREAM_CREATED = 'log_stream.created';
+
+    public const string LOG_STREAM_UPDATED = 'log_stream.updated';
 
     public const string LOG_STREAM_DISABLED = 'log_stream.disabled';
 

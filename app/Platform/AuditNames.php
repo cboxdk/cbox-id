@@ -93,6 +93,40 @@ final readonly class AuditNames
     }
 
     /**
+     * The AGENTS on these entries — the environment management keys named in their context
+     * ({@see EnvironmentKeyAuditLog::CONTEXT_KEY}) — by the name each was given, keyed by
+     * key id. In this environment only, which is the one whose trail is being read; a key
+     * since deleted has no name and is simply absent.
+     *
+     * @param  iterable<int, AuditEntry>  $entries
+     * @return array<string, string>
+     */
+    public function agents(iterable $entries): array
+    {
+        $ids = [];
+
+        foreach ($entries as $entry) {
+            $key = $entry->context[EnvironmentKeyAuditLog::CONTEXT_KEY] ?? null;
+
+            if (is_string($key) && $key !== '') {
+                $ids[] = $key;
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var array<string, string> $names */
+        $names = EnvironmentApiKey::query()
+            ->whereIn('id', array_values(array_unique($ids)))
+            ->pluck('name', 'id')
+            ->all();
+
+        return $names;
+    }
+
+    /**
      * Names for the people this environment does not know: its ADMINISTRATORS, who are
      * subjects of the platform root. A support session is recorded on the organization's
      * trail with the administrator as its actor — "who acted as your member" is the

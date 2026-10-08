@@ -30,8 +30,13 @@ export interface PortalChrome {
 
 export interface GuideField {
     ours: string;
+    /** THEIR label for the field, verbatim from the identity provider's screen — never translated. */
     theirs: string;
     literal?: string;
+    /** A field their screen accepts but does not require — our Single Logout URL, say. */
+    optional?: boolean;
+    /** Where on their screen it sits, when the label alone is ambiguous — also verbatim. */
+    location?: string;
 }
 
 /** The page's heading, under a link back to the checklist. */
@@ -157,7 +162,16 @@ export function GuideValues({
     const { t } = useTranslator();
     const rows = fields
         .map((field) => ({
-            field: field.theirs,
+            /*
+             * Their label, under the tab or section it sits in when the label alone is
+             * ambiguous (PingFederate calls two fields "Endpoint URL"), and marked when
+             * their screen does not require it. The label and the location are the
+             * identity provider's words and stay as they are; only "optional" is ours.
+             */
+            field:
+                (field.location === undefined ? '' : `${field.location} → `) +
+                field.theirs +
+                (field.optional === true ? ` (${t('portal.sso.optional')})` : ''),
             value: field.ours === 'literal' ? field.literal : values[field.ours],
             literal: field.ours === 'literal',
         }))
@@ -169,10 +183,10 @@ export function GuideValues({
     return (
         <div className="card p-4 mb-4">
             <p className="text-sm mb-1">{lead}</p>
-            {rows.map((row) =>
+            {rows.map((row, index) =>
                 row.literal ? (
                     <div
-                        key={row.field}
+                        key={`${index}-${row.field}`}
                         className="py-2.5 border-t flex flex-wrap items-baseline gap-x-2"
                         style={{ borderColor: 'var(--border)' }}
                     >
@@ -188,7 +202,7 @@ export function GuideValues({
                         <code className="mono text-xs break-all">{row.value}</code>
                     </div>
                 ) : (
-                    <ValueRow key={row.field} field={row.field} value={row.value} />
+                    <ValueRow key={`${index}-${row.field}`} field={row.field} value={row.value} />
                 ),
             )}
         </div>

@@ -15,6 +15,8 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Integrations\IntegrationAudit;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Webhooks\Enums\SignatureScheme;
+use Cbox\Id\Webhooks\Support\StandardWebhookSignature;
 use Cbox\Id\Webhooks\ValueObjects\RegisteredEndpoint;
 
 /**
@@ -27,6 +29,10 @@ use Cbox\Id\Webhooks\ValueObjects\RegisteredEndpoint;
  * scoping decides WHOSE secret this is, not whether the person at the keyboard is still
  * the administrator. The secret is in `redact`, so an idempotent replay never repeats it;
  * the trail records that a secret was issued, never the secret.
+ *
+ * The new secret is minted in the form the endpoint's scheme expects: 64 hex characters
+ * for `cbox`, a `whsec_` secret for `standard_webhooks` — so a receiver on a Standard
+ * Webhooks library takes it as is, exactly as it took the one minted at registration.
  */
 #[AsAction(
     name: 'webhooks.secret.rotate',
@@ -58,7 +64,9 @@ final readonly class RotateWebhookSecret implements Action
     {
         $endpoint = WebhookEndpoints::manageable($context);
 
-        $secret = bin2hex(random_bytes(32));
+        $secret = $endpoint->signature_scheme === SignatureScheme::StandardWebhooks
+            ? StandardWebhookSignature::mintSecret()
+            : bin2hex(random_bytes(32));
         $endpoint->secret_encrypted = $this->secretBox->seal($secret, $endpoint->secretContext());
         $endpoint->save();
 

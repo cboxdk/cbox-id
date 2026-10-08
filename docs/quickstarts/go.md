@@ -23,9 +23,8 @@ and choose one of:
 
 - **Home → Get started.** Pick **Go**, optionally name the app, and create it. The page
   registers a Web app with the redirect URI above, shows the client secret once, gives
-  you the environment block and starter code, then waits for your first sign-in and tells
-  you when it arrives. Use the code on this page rather than its starter code, which
-  predates v0.12 of the SDK. It does not set a sign-out URI: open the app under
+  you the environment block and the code from steps 2 to 6 below, then waits for your
+  first sign-in and tells you when it arrives. It does not set a sign-out URI: open the app under
   **Developers → Applications** and add `http://localhost:8080/` under **Sign-out URIs**.
 - **Developers → Applications → New app.** Enter an app name, answer **Web app** to
   *What kind of app is it?*, and fill in **Redirect URIs** and **Sign-out URIs**.
