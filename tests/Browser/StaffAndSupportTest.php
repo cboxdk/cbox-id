@@ -85,7 +85,7 @@ it('lists staff grants per app and grants one from the Staff page', function ():
 
     $page = visit('/admin/staff');
 
-    $page->assertSee('A staff role is a role you grant to your own people')
+    $page->assertSee('An admin & support role is a role you grant to your own people')
         ->assertSee('Parcels')
         ->assertSee('Sam Support')
         ->assertSee('Admins & support only')
@@ -166,7 +166,7 @@ it('opens a review of staff roles', function (): void {
     $page = visit('/admin/access-reviews/new?review=staff');
 
     $page->assertSee('What to review')
-        ->assertSee('Snapshots every staff role')
+        ->assertSee('Snapshots every admin & support role')
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'review-staff-create')
         ->fill('name', 'Q3 staff access')
