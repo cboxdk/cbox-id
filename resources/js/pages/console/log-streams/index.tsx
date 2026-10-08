@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pill } from '@/ui';
+import { HEALTH, type StreamHealth } from './fields';
 
 interface StreamRow {
     id: string;
@@ -10,6 +11,7 @@ interface StreamRow {
     destination: string;
     endpointUrl: string;
     enabled: boolean;
+    health: StreamHealth;
     href: string;
 }
 
@@ -97,8 +99,8 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                             title="No log streams yet"
                             description="The audit trail lives here and your security team's tools live somewhere else. A stream mirrors every entry into them as it is written, so an investigation does not start with somebody asking you to export a CSV."
                             steps={[
-                                'Pick the destination your SIEM speaks — Splunk, Elastic, Graylog, or plain JSON.',
-                                'Paste its endpoint and choose how it authenticates; leave the secret empty for a generated HMAC key.',
+                                'Pick where the trail goes — Splunk, Elastic, Graylog, CEF or any JSON collector, Datadog, or your own Amazon S3 or Google Cloud Storage bucket.',
+                                'Give it the endpoint or bucket and the credential it expects; for an HTTP collector, leave the secret empty for a generated HMAC key.',
                                 'Save it: entries start flowing, at least once each, from the next one written.',
                             ]}
                             actions={
@@ -136,8 +138,8 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                                 </p>
                             </div>
 
-                            <Pill tone={stream.enabled ? 'success' : 'warning'}>
-                                {stream.enabled ? 'Delivering' : 'Disabled'}
+                            <Pill tone={stream.enabled ? HEALTH[stream.health].tone : 'warning'}>
+                                {stream.enabled ? HEALTH[stream.health].label : 'Disabled'}
                             </Pill>
 
                             <Icon

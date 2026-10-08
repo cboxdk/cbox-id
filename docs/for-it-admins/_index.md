@@ -28,7 +28,7 @@ and nothing else in your company's account is reachable from the portal.
 | Enterprise SSO | Connect your identity provider (SAML or OpenID Connect) so your people sign in with their work account | [Enterprise SSO](sso.md) |
 | Directory Sync | Let your directory add, update and remove your people automatically over SCIM | [Directory Sync](directory-sync.md) |
 | Domain verification | Prove you own your company's email domains with a DNS record | [Domain verification](domain-verification.md) |
-| Log streams | Send your organization's audit log to your own SIEM | [Log streams](log-streams.md) |
+| Log streams | Send your organization's audit log to your own SIEM, to Datadog, or to an S3 or Cloud Storage bucket | [Log streams](log-streams.md) |
 | SAML certificate renewal | Upload your identity provider's new signing certificate before the old one expires | [SAML certificate renewal](certificate-renewal.md) |
 | Audit logs | Read what the product recorded about your organization, and export it as CSV | [Audit logs](audit-logs.md) |
 

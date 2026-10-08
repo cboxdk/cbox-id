@@ -7,42 +7,56 @@ import {
     emptyOptions,
     type StreamChoices,
     type StreamForm,
+    type StreamOptionsForm,
     submittable,
 } from './fields';
 
 type Props = PageProps<
     StreamChoices & {
-        /** True on the environment plane, where a stream carries EVERY organization's trail. */
-        shipsWholeEnvironment: boolean;
-        indexHref: string;
-        storeHref: string;
+        stream: {
+            id: string;
+            name: string;
+            destination: string;
+            /** Empty when a cloud destination is on its own endpoint. */
+            endpointUrl: string;
+            scheme: string;
+            options: Partial<StreamOptionsForm>;
+            /** Whether a credential is on file — never the credential. */
+            hasSecret: boolean;
+        };
+        showHref: string;
+        updateHref: string;
     }
 >;
 
-export default function CreateLogStream({
+/**
+ * Edit a stream — where it goes and the credential it uses. Saving re-checks the settings
+ * and resets the stream's failure count, so a stream that needed action is tried again on
+ * the next run. The credential field starts empty and empty keeps the one on file.
+ */
+export default function EditLogStream({
+    stream,
     destinations,
     schemes,
     datadogSites,
     assumedRoleAvailable,
-    shipsWholeEnvironment,
-    indexHref,
-    storeHref,
+    showHref,
+    updateHref,
 }: Props) {
-    const first = destinations[0];
     const form = useForm<StreamForm>({
-        name: '',
-        destination: first?.value ?? 'generic_json',
-        endpointUrl: '',
-        scheme: first?.defaultAuth ?? 'none',
+        name: stream.name,
+        destination: stream.destination,
+        endpointUrl: stream.endpointUrl,
+        scheme: stream.scheme,
         secret: '',
-        credential: 'access_key',
-        options: emptyOptions,
+        credential: stream.options.role_arn ? 'role' : 'access_key',
+        options: { ...emptyOptions, ...stream.options },
     });
 
     return (
         <>
             <Link
-                href={indexHref}
+                href={showHref}
                 className="text-sm inline-flex items-center gap-1"
                 style={{ color: 'var(--muted-foreground)' }}
             >
@@ -51,11 +65,11 @@ export default function CreateLogStream({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Log streams
+                {stream.name}
             </Link>
 
             <div className="mt-2">
-                <PageHeader description="Where a copy of every audit entry is delivered as it is written." />
+                <PageHeader description="Change where this stream delivers, or the credential it uses. Saving checks the settings again and retries delivery on the next run." />
             </div>
 
             <form
@@ -64,27 +78,13 @@ export default function CreateLogStream({
                 onSubmit={(event) => {
                     event.preventDefault();
                     form.transform(submittable);
-                    form.post(storeHref, { onFinish: () => form.setData('secret', '') });
+                    form.patch(updateHref, { onFinish: () => form.setData('secret', '') });
                 }}
             >
-                <Panel
-                    title="What it carries"
-                    description={
-                        /*
-                         * SAID BEFORE IT IS CREATED. The two planes mint materially
-                         * different things from an identical form — one stream receives
-                         * every tenant's entries — and which one you get depends on a
-                         * console you are already inside.
-                         */
-                        shipsWholeEnvironment
-                            ? "Every organization's entries in this environment, including organizations other than your own."
-                            : "This organization's entries, and nothing from any other organization."
-                    }
-                >
+                <Panel title="Name">
                     <Field label="Name" error={form.errors.name}>
                         <Input
                             name="name"
-                            placeholder="Splunk — production"
                             value={form.data.name}
                             onChange={(event) => form.setData('name', event.target.value)}
                         />
@@ -94,14 +94,15 @@ export default function CreateLogStream({
                 <DestinationFields
                     form={form}
                     choices={{ destinations, schemes, datadogSites, assumedRoleAvailable }}
+                    hasSecret={stream.hasSecret && form.data.destination === stream.destination}
                 />
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create stream
+                        Save stream
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={showHref}>Cancel</Link>
                     </Button>
                 </div>
             </form>
@@ -109,4 +110,4 @@ export default function CreateLogStream({
     );
 }
 
-CreateLogStream.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+EditLogStream.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\LogStreams;
 
-use App\Mail\MailText;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionResult;
@@ -14,50 +13,41 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Carbon\CarbonImmutable;
-use Cbox\LaravelSiem\Exceptions\StreamDeliveryFailed;
-use Cbox\LaravelSiem\Support\FormatterFactory;
-use Cbox\LaravelSiem\Support\SecretScrubber;
-use Cbox\Siem\Contracts\StreamSink;
-use Cbox\Siem\Enums\EventCategory;
-use Cbox\Siem\Enums\Outcome;
-use Cbox\Siem\Enums\Severity;
-use Cbox\Siem\ValueObjects\SiemEvent;
-use Cbox\Siem\ValueObjects\StreamTarget;
-use Illuminate\Support\Str;
+use Cbox\LaravelSiem\Contracts\StreamTester;
+use Cbox\LaravelSiem\SinkStreamTester;
 
 /**
- * Send ONE synthetic entry to a log stream now, and say whether it arrived — the question
- * somebody who has just pasted a Splunk token into a form actually has.
+ * Send ONE marked test event to a log stream now, and say whether it arrived — the question
+ * somebody who has just pasted a Splunk token, a Datadog API key or a bucket policy into a
+ * form actually has.
  *
- * Shipped exactly as a real entry is — the destination's own framing and authentication,
- * through the same SSRF-guarded sink the queued pump uses — so a success here means the
- * real entries will land too. Sent synchronously and NOT through the outbox: it is not an
- * audit entry, it must not be retried into the customer's SIEM an hour later, and the
- * answer is only useful while the person is still looking at it.
+ * The package's {@see StreamTester} ships it exactly as a real entry is — the destination's
+ * own framing, credentials and egress guard, the same sink the queued pump uses — so a
+ * success here means the real entries will land too. Synchronous and NOT through the
+ * outbox: it is not an audit entry, it must not be retried into the customer's SIEM an hour
+ * later, and the answer is only useful while the person is still looking at it. Its action
+ * is `siem.stream.test` ({@see SinkStreamTester::ACTION}), so a SIEM rule can drop it.
  *
- * A refusal from the destination is the answer, not an error: `delivered: false` with the
- * destination's reason, scrubbed of the stream's secret.
+ * A refusal from the destination is the answer, not an error: `delivered: false`, `failure`
+ * saying whether retrying could help (`transient`) or somebody has to fix the stream
+ * (`authentication`, `configuration`), and the destination's reason, scrubbed of the
+ * stream's secret. A success also clears an `action_required` stream: it works now, so its
+ * pending entries go out on the next pump instead of waiting out a cooldown.
  */
 #[AsAction(
     name: 'log_streams.test',
-    summary: 'Send one test entry to a log stream now and report whether the SIEM accepted it.',
+    summary: 'Send one test event to a log stream now and report whether the destination accepted it, and if not, why.',
     scope: 'log_streams:write',
     danger: Danger::Write,
     schema: 'LogStreamTest',
     tag: 'Log streams',
     rest: ['POST', '/log-streams/{id}/test'],
+    consoleRoutes: ['audit-streams.test', 'environment.audit-streams.test'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class TestLogStream implements Action
 {
-    /** The action name the test entry carries, so a SIEM rule can drop it. */
-    public const string ACTION = 'log_stream.test';
-
-    public function __construct(
-        private StreamSink $sink,
-        private FormatterFactory $formatters,
-        private SecretScrubber $scrubber,
-    ) {}
+    public function __construct(private StreamTester $tester) {}
 
     public static function input(): InputSchema
     {
@@ -69,44 +59,14 @@ final readonly class TestLogStream implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $stream = OwnedStreams::find($context);
-        $formatter = $this->formatters->for($stream->destination);
-        $now = CarbonImmutable::now();
-
-        $event = new SiemEvent(
-            id: (string) Str::uuid(),
-            occurredAt: $now->toDateTimeImmutable(),
-            action: self::ACTION,
-            category: EventCategory::Configuration,
-            outcome: Outcome::Success,
-            severity: Severity::Info,
-            message: 'Test entry from '.MailText::brand().'. Your log stream is connected.',
-            context: ['log_stream_id' => $stream->id, 'test' => true],
-        );
-
-        $error = null;
-
-        try {
-            $this->sink->send([$formatter->format($event)], new StreamTarget(
-                name: $stream->name,
-                endpoint: $stream->endpoint_url,
-                options: [
-                    'destination' => $stream->destination->value,
-                    'auth' => $stream->auth->value,
-                    // Decrypted in memory only, for the sink to build the auth header.
-                    'secret' => $stream->secret,
-                    'content_type' => $formatter->contentType(),
-                    'gzip' => config('siem.http.gzip', false) === true,
-                ],
-            ));
-        } catch (StreamDeliveryFailed $failed) {
-            $error = $this->scrubber->scrub($failed->getMessage(), $stream->secret);
-        }
+        $result = $this->tester->test($stream);
 
         return ActionResult::item($stream, [
             'id' => $stream->id,
-            'delivered' => $error === null,
-            'error' => $error,
-            'tested_at' => $now->toIso8601ZuluString(),
+            'delivered' => $result->delivered,
+            'failure' => $result->failure?->value,
+            'error' => $result->error,
+            'tested_at' => CarbonImmutable::now()->toIso8601ZuluString(),
         ]);
     }
 }

@@ -52,6 +52,8 @@ final readonly class IntegrationAudit
 
     public const string LOG_STREAM_CREATED = 'log_stream.created';
 
+    public const string LOG_STREAM_UPDATED = 'log_stream.updated';
+
     public const string LOG_STREAM_DISABLED = 'log_stream.disabled';
 
     public const string LOG_STREAM_ENABLED = 'log_stream.enabled';
