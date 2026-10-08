@@ -82,6 +82,7 @@ final class CrossTenantSweep
             'domains:domain_id' => 'organization_domain',
             'permissions:id' => 'permission',
             'permissions:permission_id' => 'permission',
+            'portal-links:id' => 'portal_link',
             'provisioning-targets:id' => 'provisioning_target',
             'saml-apps:id' => 'saml_app',
             'social-providers:id' => 'social_provider',
@@ -225,6 +226,8 @@ final class CrossTenantSweep
             $w['organization'] = $run('organizations.create', ['name' => 'Sweep '.$label, 'slug' => 'sweep-'.$slug])['id'];
             $w['member'] = $run('users.create', ['email' => "member-{$slug}@sweep.example", 'name' => 'Member '.$label])['id'];
             $run('members.add', ['organization_id' => $w['organization'], 'user_id' => $w['member'], 'role' => 'member']);
+            // Domain verification needs no plan, so the link mints on any environment.
+            $w['portal_link'] = $run('organizations.portal_links.create', ['organization_id' => $w['organization'], 'intents' => ['domain_verification']])['id'];
 
             $w['permission'] = $run('permissions.create', ['name' => "sweep:{$slug}", 'organization_id' => $w['organization']])['id'];
             $w['role'] = $run('roles.create', ['name' => 'Sweep role '.$label, 'organization_id' => $w['organization'], 'permissions' => [$w['permission']]])['id'];
