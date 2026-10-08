@@ -1,200 +1,142 @@
 ---
-title: Console action ownership sweep
+title: Cross-tenant id sweep
 weight: 30
-description: Every client-invokable console action that accepts an id, and the ownership predicate that scopes it.
+description: Every action that takes an id answers 404 to somebody else's — how that is guaranteed, how it is tested, and what the sweep has found.
 ---
 
-# Console action ownership sweep
+# Cross-tenant id sweep
 
-> **Historical: this describes the pre-Inertia console.** The inventory below was taken
-> when every console mutation was a Volt component method behind `/livewire/update`. That
-> console is gone. Today the id arrives as a **route parameter**, and the shape that
-> replaces this checklist is the action layer (`app/Platform/Actions`, with actions under
-> `app/Actions`): an action declares its scope and input once and is run by one runner for
-> every door, and its lookups are fenced to the organization or environment the route
-> resolves. The console writes that are **not yet** actions are counted by
-> `tests/Feature/Actions/ActionParityTest.php` against `tests/Support/ParityAllowlist.php`,
-> which fails if the number grows — that count is where the remaining sweep is tracked.
-> Read what follows for the rule and for what was found, not as a map of the code today.
+An id in a URL is the caller's claim, never a fact. Every change and every read the
+platform offers is an **action** (`app/Actions`, run by `App\Platform\Actions\ActionRunner`),
+and the same action serves the console, the REST API and MCP. So the question "can somebody
+reach another tenant's thing by naming its id?" is asked once, of the actions, rather than
+once per controller, endpoint and tool.
 
-An action that takes an id from the client is **directly invokable by the client**. Scoping
-the list a page renders is therefore a display concern, not an authorization control — the
-guarantee has to live in the query that mutates.
+The answer the platform gives is **404** — the answer an id that never existed gets. Not
+403, which confirms the thing exists and is somebody else's. Not 200, which is the breach.
 
-This inventory exists because that distinction was violated five times in materially
-different modules, and no single reviewer found all five. It is a checklist to re-run, not
-a statement that the code is finished — the re-run below found four more, and found that
-the recipe had been pointed at a directory that no longer existed.
+## The guarantee
 
-> **THE SHAPE MOVED, THE RULE DID NOT.** This was the *Livewire action ownership sweep*.
-> Every console mutation used to be a public method on a Volt component, reached over the
-> one `/livewire/update` endpoint, so the recipe read `resources/views/livewire/**` for
-> `public function` signatures taking a string. There are no components. Every mutation is
-> a route with its own verb, its own middleware stack and its own controller method, and
-> the id arrives as a **route parameter** — which changes what to grep for and changes
-> nothing about what the answer has to be. The sections below the recipe describe the tree
-> as it was at `271d8af` and are kept as evidence of what was found, not as a description
-> of the code today; re-running the recipe is the point of this document rather than
-> reading the old counts off it.
+Three fences, from the outside in. Each one alone answers a foreign id with nothing.
 
-## How to re-run it
+1. **The environment.** Every environment-owned model carries the framework's
+   `EnvironmentScope`: a query in one environment cannot see another's rows. It is
+   deny-by-default — with no environment resolved it matches nothing — and it is the hard
+   outer boundary. Another environment's id therefore resolves to nothing in the lookup
+   itself, and the action answers `ActionRefused::notFound()`.
+2. **The organization, for a confined principal.** A principal says whether it acts with
+   the environment's authority or inside one organization:
+   `Principal::confinedToOrganization()`. The organization console, a person's signed-in
+   token (`DelegatedTokenPrincipal`) and an Admin Portal session are confined; a management
+   key and the environment console are not. Every action that reaches into organizations asks
+   that one method — `OrganizationTarget`, `IntegrationReach`, `EnterpriseReach`,
+   `RoleAuthority`, `TenantRoster`, the app and audit-log lookups — never the class of the
+   principal, so a new confined principal is confined everywhere the day it says so.
+   Another organization's id answers exactly like an unknown one: 404 when the URL names
+   it, the same `organization_not_found` field error when the body does. Only the
+   *missing* organization ("the environment's default every tenant inherits") is a 403,
+   because there is no id in that request to keep secret.
+3. **The parent, for a nested id.** `/apps/{id}/secrets/{secret_id}`,
+   `/organizations/{organization_id}/members/{user_id}`, `/roles/{id}/permissions/{permission_id}`:
+   the child is looked up *inside* the parent, in the query, so the caller's own parent with
+   somebody else's child is not found either.
 
-```bash
-# Every controller action that takes an id and can mutate.
-python3 - <<'SWEEP'
-import re, glob
-# BOTH trees. The app's controllers and the in-tree modules' are the same kind of surface,
-# routed the same way; the earlier recipe looked only at the first, so nine module
-# components were never swept at all.
-patterns = [
-    'app/Http/Controllers/**/*.php',
-    'modules/*/src/Http/Controllers/**/*.php',
-]
-for f in sorted({f for p in patterns for f in glob.glob(p, recursive=True)}):
-    s = open(f).read()
-    for m in re.finditer(r'^    public function (\w+)\(([^)]*)\)', s, re.M):
-        name, params = m.group(1), m.group(2)
-        if name in ('__construct', '__invoke'):
-            continue
-        # A route parameter arrives as a bare string; a Request, a FormRequest or a
-        # route-model binding does not count as "an id from the client" here.
-        if not re.search(r'\bstring \$', params):
-            continue
-        print(f"{f}:{s[:m.start()].count(chr(10)) + 1}\t{name}")
-SWEEP
-```
+The lookup carries the fence in the **query** — `whereKey($id)->where('organization_id', …)`
+or a builder that already has it — rather than fetching by id and comparing afterwards in
+PHP. A fetch-then-compare leaks through timing and error shape even when it blocks the
+write, and it is only as safe as the comparison somebody remembered to write.
 
-Then cross-check the hit list against `php artisan route:list --json`: an action nothing
-routes cannot be invoked, and an action routed on **both** planes has to satisfy the
-stricter of the two. `ConsoleRoutes::action()` registers on both; `organizationAction()`
-registers on the organization plane only.
+## The test that holds it
 
-Reads are in scope here too, which they were not before. A detail page that resolves an
-unscoped id leaks existence exactly as a write does — it just leaks it by rendering
-instead of by mutating — so `show` is on the list rather than excluded from it.
+`tests/Feature/Actions/CrossTenantIdSweepTest.php` walks **the registry**, not a list. Every
+action on every plane whose path has an id is swept, so an action added tomorrow is swept
+the day it lands:
 
-For each hit, answer one question: **does the mutation carry an ownership predicate in the
-query?** A pre-fetch `if (...->where('organization_id', $orgId)->exists())` check counts; a
-comparison performed after an unscoped fetch is weaker (it leaks existence through timing
-and error shape) and a bare id lookup fails outright.
+- **Fixtures are built the way a customer builds them** — through the create actions
+  (`tests/Support/CrossTenantSweep.php::world()`), one of every resource an action names by
+  id. A world is built for the caller and another for the stranger.
+- **Each id field is swapped for the stranger's on its own**, the others left the caller's,
+  and then all of them at once. `/organizations/{mine}/members/{theirs}` is the request that
+  finds a lookup fenced on its parent and loose on its child.
+- **A control runs after each action** with every id the caller's own, and must *not* answer
+  404 — otherwise a fixture pointing at nothing would make every 404 a pass for the wrong
+  reason. Each action runs in a savepoint rolled back afterwards, so what one deletes the
+  next still has.
+- **A path field the sweep cannot map fails the test by name**, so a new kind of id cannot
+  slip past it.
 
-## The `271d8af` run — 57 actions across 108 Volt components
+The passes:
 
+| Pass | Caller | Stranger |
+|---|---|---|
+| Environment plane | an environment key holding every scope | the same world in another environment |
+| Environment plane, confined | the organization console, a signed-in token and an Admin Portal session, each confined to one organization | another organization in the same environment |
+| Environment plane, over REST | an environment key, every read | another environment — checks the wire renders the API's `not_found` envelope |
+| Workspace plane | a workspace key | another workspace's environments, projects, members, invitations and keys |
+| Account plane | a person's token | another person's sessions, passkeys, devices and app keys, and an organization they do not belong to |
+| Platform plane | an operator | an organization named under an environment it is not in |
 
-Swept at cbox-id `271d8af`, composing laravel-id **v0.87.2**. Stamp the commit as well as
-the package version when you re-run: the count moves with any console refactor, and a bare
-version told the next reader nothing about which tree it described.
+### What is not swept, and why
 
-> **This table describes the tree at `271d8af` and has not been re-swept since.** Both
-> findings from that run are closed (below), and the paths have moved under it —
-> `livewire/workspace/**` and `livewire/operator/**` are gone, `AccountMember` is
-> `Membership`, `account_id` is `organization_id`. The counts are therefore stale by
-> construction, and re-running the recipe is the point of the document rather than reading
-> the numbers off it.
+Listed in the test (`SWEEP_UNSWEPT`), checked for staleness, each with its reason:
 
-| Plane | Actions | Scoping rule | Status |
-|---|---|---|---|
-| Subject / tenant (`livewire/*.blade.php`) | 11 | `CurrentUser::id()` for self-service, `CurrentUser::organizationId()` for anything org-owned, in the mutating query or passed to a service that applies it | 10 scoped, **1 weak** |
-| Auth (`livewire/auth/**`) | 1 | `CurrentUser::id()` — the multi-account switcher acts only on accounts held by this browser | scoped |
-| Shared console (`livewire/console/**`) | 11 | `ConsoleScope` decides the plane from the session and answers `requireOrganizationId()`; on the environment plane the picked org is re-validated against `availableOrganizations()` on **every** read | all scoped |
-| Environment (`livewire/environment/**`) | 16 | env-admin is the operator *of that environment*, re-checked in `boot()` so it runs on every action; `BelongsToEnvironment` is the outer boundary, org predicates inside it | all scoped |
-| Members / roster (`livewire/console/members.blade.php`) | 8 | `ConsoleScope::requireOrganizationId()`, carried INTO the query — `Membership` is tenant- and environment-owned, and the service verbs take `(organizationId, userId)` so the fence and the write agree by signature | all scoped |
-| Platform (`livewire/platform/**`) | 6 | deployment authority — unscoped lookups are intentional; every component's `boot()` is `abort_unless($scope->isPlatformOperator(), 404)` | by design |
-| Portal (`livewire/portal/**`) | 3 | single-use scoped session + `guardFeature()` + `ownedDomain()`; the org id comes from the portal session, never from input | all scoped |
-| Modules (`modules/*/…/livewire/**`) | 1 | `where('subject_id', CurrentUser::id())` — a device is removed by its owner or by nobody | scoped |
+- **Names, not ids.** `PUT /apis/{id}/scopes/{key}` and `PUT /audit-logs/schemas/{action}`
+  *define* the thing their name names — there is no foreign one. A scope key under an API,
+  a vault grant named by the client it is for, a social provider (`github`) and an app's
+  `client_id` on a person's own account are names too: each sits under a parent the URL
+  already fences, or is keyed to the person acting. The parent is swept; the name is never
+  swapped (`CrossTenantSweep::NAMES`).
+- **The platform plane's single ids.** An operator administers every environment,
+  workspace and operator of the deployment; nothing there is somebody else's to them. What
+  *can* be foreign is a pair — an organization named under an environment it is not in —
+  and that is swept.
+- **A signed-in token's critical actions.** They wait for the person's approval before they
+  run, and so before any lookup; the organization console runs the same lookup unheld and is
+  swept.
 
-The shared `livewire/console/**` components are served on the subject plane **and** the
-environment plane; which one they are on is not a property of the file, so the scope has to
-be asked rather than assumed. That is what `ConsoleScope` is. Note that
-`organizationId()` **throws** rather than returning null when the membership is gone — a
-null would have flowed into a `when($id !== null, …)` and silently widened the query.
+## Findings
 
-### Deliberately unscoped
+The first registry-driven run (October 2026) found, and this change fixed:
 
-The platform section resolves records without a tenant predicate (`Environment::find`,
-`Organization::find`, `PlatformOperator::find`). That is the point of it — these are the
-deployment's own pages. Its protection is `AuthenticateOperator`, registered as persistent
-middleware — see `WriteRouteStackTest`, which now holds the successor invariant: a write is
-guarded at least as tightly as the pages it sits beside — plus the per-page operator gate. The gate answers **404**,
-not 403: whether this deployment has staff pages at all is not something to confirm.
+1. **A person's signed-in token held the environment's authority over roles and
+   permissions.** `RoleAuthority::of()` asked "is this the organization console?" instead of
+   `confinedToOrganization()`, so an organization owner's token could update, re-permission
+   and delete every organization's roles and permissions in the environment. It now asks the
+   principal. **Cross-tenant write — the one finding of that severity.**
+2. **A confined principal got 403 for another organization's id** across invitations,
+   members, the organization itself, portal links and the sign-in policy
+   (`OrganizationTarget::check()`). It now answers as for an unknown organization.
+3. **Another organization's role answered 422 "not offered"** to a confined principal on
+   `members.roles.grant` / `members.roles.revoke`, confirming a peer's private role exists. Now 404.
+4. **Removing an unknown permission from a role answered 200** (`roles.permissions.revoke`),
+   and for a confined principal any permission in the environment was looked up. It is now
+   looked up among the permissions the caller can see, and an unknown one is a 404.
+5. **Another app's client secret answered 422 `secret_not_live`** on
+   `apps.secrets.revoke`. The secret is now looked up among the app's own first: 404.
+6. **An organization the person is not a member of answered 422 `not_a_member`** on
+   `account.api_keys.create`. Now 404.
+7. **A workspace key got 403 `owner_only` for another workspace's member** on
+   `team.transfer_ownership`: the refusal ran before the lookup. The member is resolved
+   first now, so a foreign one is a 404 and the key's own member still gets the 403.
 
-It was `livewire/operator/**` when this document was first written. The directory is
-`livewire/platform/**` now — the staff pages became a section of the one console — so the
-recipe above matched nothing there for as long as the old path stood in this table.
+`EnvironmentDomainController` also stopped picking the selected environment out of a loaded
+list (`->firstWhere()`); it is resolved in a query fenced on the environments the person may
+reach. `PortalSsoController`'s remaining `firstWhere` selects a static setup guide by
+provider name, not a record by id.
 
-### The asymmetry between the two hook / governance / vault consoles
+## Earlier sweeps
 
-The tenant-facing consoles pass the **acting org**; the environment consoles pass the
-**record's own org**. That is not an oversight: the env-admin is the operator above the
-orgs in that environment, and `EnvironmentScope` remains the boundary that matters there.
-Both call sites carry a comment saying so, because it reads like a bug otherwise.
-
-## Findings — the `271d8af` run
-
-Two findings graded **weak**: an unscoped fetch followed by an in-PHP comparison. Nothing
-graded unscoped, and no cross-tenant write was reachable.
-
-**Both are now CLOSED.** The paths and the class names in them are pre-history — there is
-no `livewire/workspace/**` and no `AccountMember`; a customer IS an organization, and the
-roster moved to `livewire/console/members.blade.php`. They are kept as written, because a
-finding rewritten to match the code that fixed it stops being evidence that it happened.
-
-1. **`workspace/members.blade.php` — `changeRole`, `removeMember`, `manageAccess`.**
-   CLOSED. All three went through `manageableTarget()`, whose `AccountMembers::find()` was
-   `AccountMember::query()->whereKey($id)->first()`. `AccountMember` had **no global scope
-   at all** — it sat above tenancy — so that lookup spanned every account on the install,
-   and the only fence was `$target->account_id !== $current->account_id` in PHP. The
-   services behind them took no account id either.
-
-   Today `manageableTarget()` resolves through `resolve($memberId, $organizationId)`, which
-   carries the organization into the query and answers 404 — and `Membership` is both
-   tenant- and environment-owned, so the model's own scopes are a second fence. The service
-   verbs take `(organizationId, userId)` rather than a bare membership id, which is what
-   makes the fence and the write agree without anybody having to remember.
-
-   `workspace/home.blade.php::addEnvironment()` had the same pattern against `Project`,
-   which is likewise globally unscoped. It took no id from the client so the recipe did not
-   surface it, which is worth knowing: the recipe finds a shape, not every instance of the
-   risk.
-
-2. **`social-providers.blade.php` — `disable`.** CLOSED — see
-   `SocialProviderMarketplaceTest`, "it will not remove another tenant provider by id",
-   which asserts a 404 and that the row survives. Recorded as written: `Connections::byId()` is environment-scoped
-   but not organization-scoped, and ownership is settled afterwards in PHP. The delete is
-   then issued on the already-hydrated model, so no ownership predicate ever reaches the
-   database. The write is blocked; what leaks is that a foreign id inside the same
-   environment is distinguishable from a missing one by the work done. `Connections` has no
-   org-scoped fetch verb — the fix is to resolve with one, as
-   `console/connections/index.blade.php::ownedDomain()` already does.
-
-Two more are borderline and grade scoped, recorded so the next run does not re-litigate
-them: `console/governance/show.blade.php`'s `certify`/`revoke` establish ownership with a
-**query** on the campaign rather than in PHP (the residue is error shape only — a foreign
-item and an unknown one throw different exceptions), and `workspace/home.blade.php`'s
-`startCreate` mutates nothing a client could not already set.
-
-## Findings — the first run
-
-Two, both fixed in the same change as this document:
-
-1. **`GroupRoleMappings::map()` accepted a foreign role id.** `RoleService::assign()` blocked
-   the escalation, but only during reconciliation — after the mapping row was committed and
-   outside any transaction. A foreign id left a poison pill: the write stuck, reconciliation
-   threw, and every later reconcile of that group threw on the same row, breaking directory
-   sync for everyone in it. `map()` now calls `Roles::assertAssignableIn()` first.
-
-2. **The environment approvals console could not deny, and should never have approved.**
-   `deny()` was calling the service with one argument after the contract gained a second —
-   an `ArgumentCountError` at runtime, invisible because nothing tested that screen. And
-   `approve()` passed the env-admin's own member id as the approving subject, which can
-   never match the request's user: the button silently did nothing. Approving was removed
-   outright rather than repaired — a CIBA approval is the *user's* consent for an agent to
-   act as them, so an operator granting it is the very bypass the service layer now refuses.
-   Denying is the safe half of the pair and remains.
+Before the action layer, this document was a hand-run inventory of console controller
+methods (and before that, of Volt component methods), graded scoped / weak / unscoped. Every
+finding from those runs was closed — `manageableTarget()` resolving a workspace member
+across every account, `Connections::byId()` settling ownership in PHP,
+`GroupRoleMappings::map()` committing a foreign role id, the environment approvals console
+approving as the wrong subject. They are in this file's history. What replaced the
+inventory is the test above: a list somebody re-runs goes stale; a test that walks the
+registry does not.
 
 ## Standing rule
 
-A component action that takes an id and mutates **must** reach a service that applies an
-ownership predicate. Prefer filtering in the query over fetch-then-compare: a foreign id
-should be indistinguishable from a missing one, so a caller learns nothing about what exists
-outside their scope.
+An action that takes an id resolves it **inside** the caller's reach, in the query, and
+answers a miss with `ActionRefused::notFound()`. A refusal that does not depend on the id —
+"a key can never do this" — comes *after* the lookup, so a foreign id is a 404 there too.

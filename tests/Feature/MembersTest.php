@@ -2,11 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionPlane;
+use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
+use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia;
 
@@ -145,3 +152,57 @@ it('still shows an admin every access role, its permissions and who holds it', f
         ->and($offered[$role->id]['permissions'])->toContain('invoices.approve')
         ->and(collect($props['members'])->keyBy('id')[$colleague->id]['accessRoleIds'])->toBe([$role->id]);
 });
+
+/**
+ * AND NOT THROUGH ANY OTHER DOOR. The People page is one way to read a colleague's access
+ * roles; the management API and MCP are others, and a plain member can sign an agent in.
+ * Every read that names members, their roles or the role catalogue is the environment's or
+ * an administrator's: a plain member's signed-in token — every scope granted — reaches none
+ * of them, over the runner every door shares, the REST API and MCP alike.
+ */
+it('keeps every member, role and permission read away from a plain member\'s signed-in token', function () {
+    [$memberId, $org] = actingAsRole(MembershipRole::Member);
+
+    $role = app(Roles::class)->define($org->id, 'Billing approver');
+    $colleague = app(Subjects::class)->create('colleague@acme.test', 'Colleague');
+    app(Memberships::class)->add($org->id, $colleague->id, MembershipRole::Admin);
+    app(Roles::class)->assign($org->id, $colleague->id, $role->id);
+
+    $everyScope = array_values(array_unique(array_map(
+        static fn (ActionDefinition $action): string => $action->scope,
+        app(ActionRegistry::class)->forPlane(ActionPlane::Environment),
+    )));
+
+    $token = new DelegatedTokenPrincipal(
+        subjectId: $memberId,
+        personName: 'Member',
+        clientId: 'member-cli',
+        clientName: 'Member CLI',
+        environmentId: 'env_test',
+        scopes: $everyScope,
+        organization: new OrganizationChoice($org->id, $org->name, MembershipRole::Member),
+        customerConsole: false,
+    );
+
+    $reachable = [];
+
+    foreach (app(ActionRegistry::class)->forPlane(ActionPlane::Environment) as $action) {
+        try {
+            $token->authorize($action);
+            $reachable[] = $action->name;
+        } catch (AuthorizationException) {
+        }
+    }
+
+    // Not one environment action — so no member list, no member's roles, no role or
+    // permission catalogue, whichever door the token is presented at.
+    expect($reachable)->toBe([]);
+
+    // Over the runner itself, the lock every door shares: the roster and a colleague's roles.
+    $runner = app(ActionRunner::class);
+
+    expect(fn () => $runner->run(app(ActionRegistry::class)->named('members.list'), $token, ['organization_id' => $org->id]))
+        ->toThrow(AuthorizationException::class)
+        ->and(fn () => $runner->run(app(ActionRegistry::class)->named('members.roles.list'), $token, ['organization_id' => $org->id, 'user_id' => $colleague->id]))
+        ->toThrow(AuthorizationException::class);
+})->group('security');

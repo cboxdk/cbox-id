@@ -206,7 +206,7 @@ if (app()->environment('local')) {
  * depend on any of the state being bootstrapped.
  */
 Route::get('/first-run', [FirstRunController::class, 'show'])->middleware('locale')->name('first-run');
-Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware('locale')->name('first-run.claim');
+Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware(['locale', 'throttle:first-run'])->name('first-run.claim');
 
 /*
  * THE LANGUAGE PICKER on the hosted pages' footer. Remembers the choice in a cookie and
@@ -347,7 +347,9 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     // password form is drawn. A server step, because the domain map is the server's.
     Route::post('/login/identify', [LoginController::class, 'identify'])->name('login.identify');
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
-    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->name('login.magic-link');
+    // Mails a sign-in link to whatever address is typed in: metered per (address, email) and
+    // per address in front of the controller's own friendlier refusal ({@see WebRateLimiters}).
+    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->middleware('throttle:magic-link-send')->name('login.magic-link');
 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
@@ -404,8 +406,10 @@ Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->mi
 // Outlook Safe Links and every other mail scanner fetch the link before the invitee does,
 // and on a GET that fetch accepted the invitation and signed the SCANNER in.
 Route::middleware([BlockDuringImpersonation::class, 'locale'])->group(function (): void {
-    Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->name('invitation.accept');
-    Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept.store');
+    // Both verbs look the token up — the page to say who is inviting whom — so both are
+    // metered, per (address, token) and per address ({@see WebRateLimiters}).
+    Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->middleware('throttle:link-token')->name('invitation.accept');
+    Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:link-token')->name('invitation.accept.store');
 
     // Email verification — the token is the proof; clickable while signed in or out. The
     // same two steps, for the same reason: a scanner confirming the address first left the
@@ -772,6 +776,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
     // Before `/projects/{project}`, so the literal segment is never read as an id.
     Route::post('/projects/verification/resend', [ProjectController::class, 'resendVerification'])
+        ->middleware('throttle:verification-resend')
         ->name('projects.verification.resend');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::patch('/projects/{project}', [ProjectController::class, 'rename'])->name('projects.rename');

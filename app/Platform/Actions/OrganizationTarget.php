@@ -22,6 +22,14 @@ use Illuminate\Auth\Access\AuthorizationException;
  * the scope's organization, and an action reached with any other — or with none, meaning
  * the environment's default every tenant inherits — is a forged request, refused here
  * rather than trusted to the page that built it.
+ *
+ * HOW it is refused matters as much as that it is. Another organization's id is answered
+ * exactly as an id that never existed — a 404 when the URL names it, the same field error
+ * as an unknown organization when the body does — never a 403, which would confirm the
+ * organization is there and is somebody else's. Only the missing organization ("the
+ * environment's default") stays a 403: there is no id in that request to keep secret.
+ * The cross-tenant sweep (tests/Feature/Actions/CrossTenantIdSweepTest.php) holds every
+ * action to this.
  */
 final class OrganizationTarget
 {
@@ -35,11 +43,13 @@ final class OrganizationTarget
     {
         $confinedTo = $context->principal->confinedToOrganization();
 
-        if ($confinedTo !== null && $organizationId !== $confinedTo) {
+        if ($confinedTo !== null && $organizationId === null) {
             throw new AuthorizationException('An organization administrator may only change their own organization.');
         }
 
-        if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {
+        $foreign = $confinedTo !== null && $organizationId !== $confinedTo;
+
+        if ($organizationId !== null && ($foreign || Organization::query()->whereKey($organizationId)->doesntExist())) {
             throw $inPath
                 ? ActionRefused::notFound('organization')
                 : ActionRefused::because('organization_not_found', 'No organization with that organization_id exists in this environment.', 'organization_id');

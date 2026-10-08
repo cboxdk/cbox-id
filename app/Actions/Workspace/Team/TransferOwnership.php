@@ -60,12 +60,14 @@ final readonly class TransferOwnership implements Action
         $principal = $context->principal;
         $ownerId = InWorkspace::personId($principal);
 
+        // The member first, inside the workspace: another workspace's member answers 404
+        // like any unknown id, before anything is said about who may transfer.
+        $workspaceId = InWorkspace::id($principal);
+        $target = InWorkspace::member($workspaceId, $context->string('id'));
+
         if (! $principal instanceof ConsoleSessionPrincipal || $ownerId === null || $principal->scope()->membershipRole() !== MembershipRole::Owner) {
             throw new ActionRefused('owner_only', 'Only the workspace\'s owner can hand it over, signed in to the console.', 403);
         }
-
-        $workspaceId = InWorkspace::id($principal);
-        $target = InWorkspace::member($workspaceId, $context->string('id'));
 
         if ($target->user_id === $ownerId) {
             throw ActionRefused::because('already_owner', 'You already own this workspace.');

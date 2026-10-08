@@ -10,6 +10,7 @@ use App\Models\AuditLogs\AuditLogEvent;
 use App\Models\AuditLogs\AuditLogExport;
 use App\Models\AuditLogs\AuditLogSchema;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
@@ -238,12 +239,13 @@ it('never shows or takes one organization\'s events through another\'s reach', f
     $own = $runner->run(ListAuditLogEvents::class, $token, []);
     expect(array_column($own->payload ?? [], 'organization_id'))->toBe([$acme]);
 
+    // Another organization named outright answers as an unknown one: nothing confirms it.
     expect(fn () => $runner->run(ListAuditLogEvents::class, $token, ['organization_id' => $globex]))
-        ->toThrow(AuthorizationException::class)
+        ->toThrow(ActionRefused::class, 'No organization with that organization_id exists in this environment.')
         ->and(fn () => $runner->run(CreateAuditLogEvents::class, $token, ['events' => [auditEvent($globex)]]))
         ->toThrow(AuthorizationException::class)
         ->and(fn () => $runner->run(CreateAuditLogExport::class, $token, ['organization_id' => $globex]))
-        ->toThrow(AuthorizationException::class);
+        ->toThrow(ActionRefused::class, 'No organization with that organization_id exists in this environment.');
 
     // Another environment's key sees none of it, and cannot write into this one's organizations.
     $foreign = app(EnvironmentContext::class)->runAs(GenericEnvironment::of('env_other'), fn (): string => app(EnvironmentApiKeys::class)->issue('env_other', 'Other', AUDIT_ALL)->plaintext);

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\WebRateLimiters;
 use App\Platform\Install\Contracts\SetupTokens;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
@@ -117,3 +118,16 @@ it('refuses to claim a platform that was installed while the form was open', fun
 
     expect(app(PlatformOperators::class)->findByEmail('root@acme.example'))->toBeNull();
 });
+
+/**
+ * The setup token is the whole credential for an unclaimed deployment. The controller locks a
+ * guesser out with a sentence after a few wrong tokens; the named limiter in front of it is
+ * the ceiling for a script that ignores the sentence: a 429 with Retry-After.
+ */
+it('throttles claiming the deployment, whatever token is guessed', function (): void {
+    foreach (range(1, WebRateLimiters::FIRST_RUN_PER_IP) as $guess) {
+        expect(claimDeployment(['token' => 'guess-'.$guess])->status())->not->toBe(429);
+    }
+
+    claimDeployment(['token' => 'one-guess-too-many'])->assertStatus(429)->assertHeader('Retry-After');
+})->group('security');

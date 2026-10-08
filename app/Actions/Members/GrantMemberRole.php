@@ -119,6 +119,10 @@ final readonly class GrantMemberRole implements Action
     {
         $role = RoleFields::reference($context->string('role_id'), $context->nullableString('client_id'));
 
+        // ONE answer for a role that is not there, a staff role and ANOTHER organization's
+        // own: "not offered". A tenant learns nothing about which roles exist outside its
+        // catalogue — the cross-tenant sweep checks a peer's role answers exactly as a
+        // made-up id does.
         if ($role === null || ! $catalog->isTenantAssignable($organizationId, $role->id)) {
             throw ActionRefused::because('role_not_assignable', OrgAccessRoles::NOT_OFFERED, 'role_id');
         }
