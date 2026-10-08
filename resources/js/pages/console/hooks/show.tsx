@@ -170,7 +170,7 @@ function RevealedSecret({ secret, onDismiss }: { secret: string; onDismiss: () =
                         Copy this signing secret now — it won't be shown again.
                     </p>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        There is no rotation on an inline hook: if this is lost, the endpoint has
+                        There is no rotation on a hook: if this is lost, the endpoint has
                         to be registered again.
                     </p>
                 </div>

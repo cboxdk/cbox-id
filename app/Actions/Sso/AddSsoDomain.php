@@ -31,7 +31,7 @@ use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
     scope: 'sso:write',
     danger: Danger::Write,
     schema: 'SsoDomain',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/domains'],
     status: 201,
     consoleRoutes: ['connections.domains.store', 'environment.connections.domains.store'],

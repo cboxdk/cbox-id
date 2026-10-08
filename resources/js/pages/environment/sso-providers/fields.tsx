@@ -55,7 +55,7 @@ export function ServiceProviderFields({
             */}
             <Panel
                 title="Who can sign in"
-                description="Only the active members of the organization you choose are signed in to this application. Everyone else is refused, and the refusal is in the activity log."
+                description="Only the active members of the organization you choose are signed in to this application. Everyone else is refused, and the refusal is in the audit log."
             >
                 <div className="space-y-3">
                     <Field label="For which organization?" error={form.errors.organizationId}>

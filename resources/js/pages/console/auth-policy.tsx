@@ -301,12 +301,12 @@ export default function AuthPolicyPage({
                         />
                     </Field>
 
-                    <Field label={<>Single sign-on {badge('sso')}</>} error={form.errors.sso}>
+                    <Field label={<>Enterprise SSO {badge('sso')}</>} error={form.errors.sso}>
                         <Select
                             value={form.data.sso}
                             onValueChange={(sso) => form.setData('sso', sso)}
                             options={ssoOptions}
-                            aria-label="Single sign-on"
+                            aria-label="Enterprise SSO"
                         />
                     </Field>
                 </div>
@@ -483,7 +483,7 @@ export default function AuthPolicyPage({
                             <code>prompt=create_organization</code>.
                         </li>
                         <li>
-                            Your sign-in rules still apply: password strength, the breach check,
+                            Your authentication policy still applies: password strength, the breach check,
                             email confirmation, rate limits and bot checks.
                         </li>
                     </ul>
@@ -494,7 +494,7 @@ export default function AuthPolicyPage({
                 open={confirming === 'inherit'}
                 onOpenChange={(open) => !open && setConfirming(null)}
                 title={`Use your environment's defaults for ${scopeName}?`}
-                description="This organization's own sign-in rules are dropped, and it is governed by the environment baseline from here on."
+                description="This organization's own authentication policy is dropped, and it is governed by the environment baseline from here on."
                 footer={
                     <>
                         <Button onClick={() => setConfirming(null)}>Cancel</Button>

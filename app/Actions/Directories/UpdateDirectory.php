@@ -26,7 +26,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     scope: 'directory_sync:write',
     danger: Danger::Write,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['PATCH', '/directories/{id}'],
     consoleRoutes: ['directories.update', 'environment.directories.update'],
     consoleGate: ConsoleGate::Administer,

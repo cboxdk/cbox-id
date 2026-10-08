@@ -1,30 +1,37 @@
 ---
-title: Keys
+title: API keys
 weight: 21
-description: The three kinds of key Cbox ID issues (management keys, workspace keys and frontend keys), what each is for, who can see which, and how to create, expire and revoke them.
+description: The three kinds of key Cbox ID issues (secret keys, workspace keys and publishable keys), what each is for, who can see which, and how to create, expire and revoke them.
 ---
 
-# Keys
+# API keys
 
-**Console page:** Workspace › Keys, and Developers › API keys in an environment console
+**Console page:** Workspace › API keys, and Developers › API keys in an environment console
 
-Each console has one Keys page. The kind of key is a tab, and the tab is in the URL, so
+![API keys, the Publishable keys tab](../screenshots/api-keys.png)
+
+Each console has one API keys page. The kind of key is a tab, and the tab is in the URL, so
 a link to one tab opens that tab.
 
 | Tab | Console | URL | What it calls |
 |---|---|---|---|
-| **Management keys** | Workspace | `/keys?environment=…` | One environment's management API |
+| **Secret keys** | Workspace | `/keys?environment=…` | One environment's management API |
 | **Workspace keys** | Workspace | `/keys/workspace` | The workspace API |
-| **Management keys** | Environment | `/admin/keys` | This environment's management API |
-| **Frontend keys** | Environment | `/admin/keys/frontend` | The Frontend API, from a browser |
+| **Secret keys** | Environment | `/admin/agents` (AI agents › Agents) | This environment's management API |
+| **Publishable keys** | Environment | `/admin/keys/frontend` | The Frontend API, from a browser |
+
+In an environment console the **Secret keys** tab leads to AI agents › Agents, which lists
+each secret key as the agent (or backend) that holds it, so the same keys are never listed
+twice. Member API keys, which the people in an organization hold for its apps, have a page
+of their own: Members & roles › Member API keys.
 
 App credentials (a client ID and secret) are not here. They belong to the app and live on
 [Apps](apps-and-api-keys.md). Keys people create for an app's own API are not here either:
 see [API keys](api-keys.md).
 
-## Management keys
+## Secret keys
 
-A management key (`cbid_env_…`) lets your own backend run the tenancy of **one
+A secret key is a **management key** (`cbid_env_…`) lets your own backend run the tenancy of **one
 environment**: organizations and their owners, users, members, invitations, roles, apps,
 APIs, member API keys and support sessions. It carries explicit **scopes** rather
 than a role, and read never implies write. The form opens with read-only scopes ticked;
@@ -56,15 +63,15 @@ a second factor or a person behind it. Owner is not offered.
 Only Owners and Admins see this tab. A Developer opening the Keys page sees Management
 keys alone.
 
-## Frontend keys
+## Publishable keys
 
-A frontend key is a **publishable** key for the Frontend API. It goes into a JavaScript
+A publishable key is a **frontend key** for the Frontend API. It goes into a JavaScript
 bundle and is public on purpose, so the page shows it in full every time. What stops
 anybody else using it is its **list of allowed origins**: the key only works from the
 origins you list. You can edit the list at any time, and the change applies on the next
 request, so adding a staging domain does not mean minting a second key.
 
-Each key is **test** or **live**. Frontend keys belong to the environment, so they are
+Each key is **test** or **live**. Publishable keys belong to the environment, so they are
 only on the environment console.
 
 ## Creating a key
@@ -81,7 +88,7 @@ only on the environment console.
    only a hash, so nobody can show it to you again; if you lose it, create a new one and
    revoke the old one.
 
-Frontend keys skip steps 3 to 5: they have no expiry and no step-up, and they stay
+Publishable keys skip steps 3 to 5: they have no expiry and no step-up, and they stay
 visible.
 
 ## Revoking a key
@@ -96,7 +103,7 @@ prefix, when it was created, when it was last used and when it expires. **Revoke
 only offered on an active key.
 
 Creating and revoking management and workspace keys is recorded on the
-[activity log](activity-log.md).
+[audit log](activity-log.md).
 
 ## Things worth knowing
 

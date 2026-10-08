@@ -105,3 +105,9 @@ frame), `auth`, `oauth`, `portal`, `mail` and `errors`. English is the source:
 In React, use `useTranslator()` from `@/i18n`. It gives you `t(key, params)` for text,
 `rich(key, { name: <b>…</b> })` when a placeholder is a React element, and
 `choice(key, count)` for two-form plurals. A page receives only its own group's text.
+
+## Related
+
+- [Admin Portal](admin-portal.md) — the hosted pages an IT admin opens in their own language.
+- [For your customers' IT admins](../for-it-admins/_index.md) — what those IT admins read.
+- [Enterprise SSO](single-sign-on.md) and [Social login](social-sign-in.md) — the sign-in pages these languages apply to.

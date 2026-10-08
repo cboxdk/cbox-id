@@ -277,9 +277,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Konfigurer single sign-on',
+        'title' => 'Administratoroppsett',
         'heading' => 'Konfigurer innlogging for organisasjonen din',
-        'lead' => 'Du har fått en oppsettslenke for å koble til identitetsleverandøren eller katalogen din. Fortsett for å åpne oppsettsiden.',
+        'lead' => 'Du har fått en oppsettslenke for organisasjonen din — single sign-on, katalogsynkronisering, domener, loggstrømmer eller fornyelse av et sertifikat. Fortsett for å åpne oppsettsiden.',
         'action' => 'Åpne oppsett',
         'note' => 'Lenken virker bare én gang, og oppsettsøkten den åpner, utløper. Åpne den når du er klar til å fullføre.',
     ],

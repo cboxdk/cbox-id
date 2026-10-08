@@ -68,4 +68,31 @@ return [
         'invited_as' => ':inviter har bjudit in dig att administrera :organization som :role på :brand — konsolen för organisationens identitetsleverantörer: miljöer, medlemmar och fakturering. Acceptera för att välja ett lösenord och logga in.',
         'button' => 'Acceptera inbjudan',
     ],
+
+    'portal_link' => [
+        'subject' => 'Konfigurera :organization på :brand',
+        'heading' => 'Konfigurera :organization',
+        'lead' => 'Du har ombetts att konfigurera följande för :organization på :brand. Du behöver inget konto — knappen nedan är allt som krävs.',
+        'intents' => [
+            'sso' => 'Single sign-on med din identitetsleverantör',
+            'dsync' => 'Katalogsynkronisering (SCIM)',
+            'domain_verification' => 'Verifiering av era e-postdomäner',
+            'log_streams' => 'Strömning av er granskningslogg till er SIEM',
+            'certificate_renewal' => 'Förnyelse av ert SAML-signeringscertifikat',
+            'audit_logs' => 'Granskning av era granskningsloggar (skrivskyddat)',
+        ],
+        'button' => 'Börja konfigurera',
+        'expires' => 'Länken fungerar en gång, fram till :date. Om den går ut kan du be om en ny.',
+    ],
+
+    'certificate_expiring' => [
+        'subject' => 'Single sign-on via :connection slutar fungera om :count dag|Single sign-on via :connection slutar fungera om :count dagar',
+        'subject_expired' => 'Single sign-on via :connection har slutat fungera',
+        'heading' => 'Ert SAML-certifikat går snart ut',
+        'heading_expired' => 'Ert SAML-certifikat har gått ut',
+        'lead' => 'Signeringscertifikatet för :connection, single sign-on-anslutningen för :organization, går ut den :date. Efter det kan ingen logga in via den.',
+        'lead_expired' => 'Signeringscertifikatet för :connection, single sign-on-anslutningen för :organization, gick ut den :date. Ingen kan logga in via den förrän det har förnyats.',
+        'what_to_do' => 'Be den som ansvarar för er identitetsleverantör om det nya signeringscertifikatet och ladda sedan upp det i administrationskonsolen — eller be din administratör om en länk till Admin Portal för att ladda upp det.',
+        'why' => 'Du får det här mejlet eftersom du är ägare eller administratör för den här organisationen på :brand.',
+    ],
 ];

@@ -12,6 +12,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\AttributeMappings;
 use App\Http\Requests\Console\SaveServiceProviderRequest;
+use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
@@ -83,7 +84,7 @@ final readonly class ServiceProviderController extends ConsoleController
             static fn (?string $id): bool => $id !== null && $id !== '',
         )));
 
-        return $this->page('environment/sso-providers/index', 'SAML apps', [
+        return $this->page('environment/sso-providers/index', Vocabulary::SAML_APPS, [
             'help' => HelpProps::for(HelpTopic::SamlApplications),
             'providers' => array_map(static fn (ServiceProvider $provider): array => [
                 'id' => $provider->id,
@@ -142,7 +143,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
         // An SP is a trust relationship with somebody else's system, which is exactly the
         // shape this gate holds until an address is confirmed.
-        app(VerifiedEmailGate::class)->require('register a SAML application');
+        app(VerifiedEmailGate::class)->require('register a SAML app');
 
         $result = $this->act(CreateSamlApp::class, [
             'entity_id' => $request->entityId(),
@@ -157,7 +158,7 @@ final readonly class ServiceProviderController extends ConsoleController
         $provider = $result->value;
 
         return to_route('environment.sso-providers.show', $provider->id)
-            ->with('status', 'SAML application registered.');
+            ->with('status', 'SAML app registered.');
     }
 
     public function show(string $provider): Response
@@ -207,7 +208,7 @@ final readonly class ServiceProviderController extends ConsoleController
             ...$this->input($request),
         ], self::FIELDS, 'entityId');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'SAML application updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'SAML app updated.');
     }
 
     public function destroy(string $provider): RedirectResponse
@@ -218,7 +219,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.sso-providers')->with('status', 'SAML application removed.');
+            : to_route('environment.sso-providers')->with('status', 'SAML app removed.');
     }
 
     /**

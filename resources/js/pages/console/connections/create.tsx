@@ -327,7 +327,8 @@ export default function CreateConnection({
 
                                 <Field
                                     label="Signing key"
-                                    hint="The key Cbox ID uses to sign its own requests to this provider."
+                                    optional
+                                    hint="Leave it empty for almost every provider: its ID tokens are verified against the signing keys its discovery document publishes (jwks_uri), rotations included. Paste the provider's PEM public key only if it publishes none."
                                     error={form.errors.signing_key}
                                 >
                                     <Textarea

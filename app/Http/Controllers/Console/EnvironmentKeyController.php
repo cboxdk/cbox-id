@@ -16,6 +16,7 @@ use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\KeyTabs;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyScopes;
@@ -106,7 +107,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // Workspace › Keys — one line from My account › API keys, which is a person's OWN
         // keys and a different page; the same word twice in one rail would send people to
         // the wrong one. (The environment console's keys are its Agents page, above.)
-        return $this->page('console/keys/management', 'Keys', [
+        return $this->page('console/keys/management', Vocabulary::API_KEYS, [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
             // Any environment of the workspace this person may reach.

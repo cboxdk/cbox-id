@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Builder;
     scope: 'sso:read',
     danger: Danger::Read,
     schema: 'SsoDomain',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['GET', '/sso/domains'],
 )]
 final class ListSsoDomains implements Action

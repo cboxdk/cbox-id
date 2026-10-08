@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountApiKeyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\InvitationAcceptController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
 use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
+use App\Http\Controllers\Console\AuditLogController;
 use App\Http\Controllers\Console\AuthPolicyController;
 use App\Http\Controllers\Console\ClientController;
 use App\Http\Controllers\Console\ClientPromotionController;
@@ -96,6 +98,12 @@ use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
+use App\Http\Controllers\Portal\PortalCertificateController;
+use App\Http\Controllers\Portal\PortalDirectoryController;
+use App\Http\Controllers\Portal\PortalDomainController;
+use App\Http\Controllers\Portal\PortalLogStreamController;
+use App\Http\Controllers\Portal\PortalSsoController;
+use App\Http\Controllers\PortalAuditLogController;
 use App\Http\Controllers\PortalSetupController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
@@ -104,6 +112,7 @@ use App\Http\Controllers\Sso\OAuth2RedirectController;
 use App\Http\Controllers\Sso\OidcCallbackController;
 use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
+use App\Http\Controllers\Sso\SamlMetadataController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
@@ -198,7 +207,7 @@ if (app()->environment('local')) {
  * depend on any of the state being bootstrapped.
  */
 Route::get('/first-run', [FirstRunController::class, 'show'])->middleware('locale')->name('first-run');
-Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware('locale')->name('first-run.claim');
+Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware(['locale', 'throttle:first-run'])->name('first-run.claim');
 
 /*
  * THE LANGUAGE PICKER on the hosted pages' footer. Remembers the choice in a cookie and
@@ -287,6 +296,12 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)
     ->middleware(['throttle:30,1', NoStore::class])
     ->name('sso.saml.acs');
+// Our SP metadata, served from our half alone so a DRAFT's works — the framework's needs the
+// identity provider's half too, which is what an IdP importing it has not handed out yet.
+// The framework's throttle, kept for the same reason the pair above keeps theirs.
+Route::get('/sso/saml/{connection}/metadata', SamlMetadataController::class)
+    ->middleware('throttle:300,1')
+    ->name('sso.saml.metadata');
 // GET AND POST. `response_mode=form_post` means the provider POSTs the callback from
 // its own origin instead of redirecting with a query string, and Apple switches to it by
 // itself once any scope beyond `openid` is requested — so a GET-only redirect URI answers
@@ -301,8 +316,16 @@ Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackCon
 // Facebook). Both halves live here rather than in the framework because turning a
 // completed federation into a session cookie is this application's job, and because
 // there is no id_token, `state` alone carries CSRF on the callback.
-Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)->name('sso.oauth2.redirect');
-Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)->name('sso.oauth2.callback');
+//
+// Throttled and NoStore like the OIDC and SAML doors beside them: the redirect carries a
+// fresh `state` and the callback a single-use `code` and then a freshly minted session —
+// no cache, shared or browser, may keep either answer.
+Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)
+    ->middleware(['throttle:30,1', NoStore::class])
+    ->name('sso.oauth2.redirect');
+Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
+    ->middleware(['throttle:30,1', NoStore::class])
+    ->name('sso.oauth2.callback');
 
 /*
  * Signup, which is two things depending on the host ({@see SignupController}).
@@ -339,7 +362,9 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     // password form is drawn. A server step, because the domain map is the server's.
     Route::post('/login/identify', [LoginController::class, 'identify'])->name('login.identify');
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
-    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->name('login.magic-link');
+    // Mails a sign-in link to whatever address is typed in: metered per (address, email) and
+    // per address in front of the controller's own friendlier refusal ({@see WebRateLimiters}).
+    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->middleware('throttle:magic-link-send')->name('login.magic-link');
 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
@@ -369,9 +394,10 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:passkey')->name('passkeys.login.options');
     Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware('throttle:passkey')->name('passkeys.login');
 
-    // Social sign-in (Google, GitHub, Microsoft) over OAuth.
-    Route::get('/auth/{provider}/redirect', [SocialController::class, 'redirect'])->name('social.redirect');
-    Route::get('/auth/{provider}/callback', [SocialController::class, 'callback'])->name('social.callback');
+    // Social sign-in (Google, GitHub, Microsoft) over OAuth. NoStore for the same reason
+    // as the SSO doors: a `state`, then a single-use `code` and a new session.
+    Route::get('/auth/{provider}/redirect', [SocialController::class, 'redirect'])->middleware(NoStore::class)->name('social.redirect');
+    Route::get('/auth/{provider}/callback', [SocialController::class, 'callback'])->middleware(NoStore::class)->name('social.callback');
 });
 
 // The MFA challenge sits between password and a full session, so it is neither
@@ -396,8 +422,10 @@ Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->mi
 // Outlook Safe Links and every other mail scanner fetch the link before the invitee does,
 // and on a GET that fetch accepted the invitation and signed the SCANNER in.
 Route::middleware([BlockDuringImpersonation::class, 'locale'])->group(function (): void {
-    Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->name('invitation.accept');
-    Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept.store');
+    // Both verbs look the token up — the page to say who is inviting whom — so both are
+    // metered, per (address, token) and per address ({@see WebRateLimiters}).
+    Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->middleware('throttle:link-token')->name('invitation.accept');
+    Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:link-token')->name('invitation.accept.store');
 
     // Email verification — the token is the proof; clickable while signed in or out. The
     // same two steps, for the same reason: a scanner confirming the address first left the
@@ -506,9 +534,11 @@ Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpers
 
 /*
  * Admin Portal — a single-use setup link. An external IT admin opens it with
- * NO platform account and configures one org's SSO/SCIM, nothing else. These live
- * in the guest area and must never be reachable via a platform session; the
- * scoped portal session (distinct key) is the only thing that unlocks /setup.
+ * NO platform account and sets up what the link's intents cover for one org —
+ * SSO, directory sync, domains, log streams, SAML certificate renewal — nothing
+ * else. These live in the guest area and must never be reachable via a platform
+ * session; the scoped portal session (distinct key) is the only thing that
+ * unlocks /setup.
  *
  * `plane:console`, which is where the link is minted: /connections is a console page, so
  * the URL is always generated on the host whose console minted it, and redeemed on the
@@ -530,25 +560,58 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
     Route::get('/setup/done', [PortalSetupController::class, 'done'])->name('portal.done');
 
     Route::middleware('portal.session')->group(function (): void {
+        // The checklist: one card per intent the link covers, each with its progress.
         Route::get('/setup', [PortalSetupController::class, 'show'])->name('portal.setup');
 
         /*
-         * Each write its own route, and each re-asks the session AND the link's scope — a
-         * link scoped to SCIM must not be able to add a domain by forming the request.
-         * Under Volt all of these arrived at `/livewire/update`, which is why the component
-         * had to open every action with the same guard by hand.
+         * One page per intent, and each write its own route. Every write is an ACTION run as
+         * the portal session's principal, which refuses whatever the link's intents do not
+         * cover — a link opened for directory sync cannot add a domain by forming the
+         * request — and each page 404s for a session whose link does not cover it.
          */
-        Route::post('/setup/domains', [PortalSetupController::class, 'addDomain'])->name('portal.domains.store');
-        Route::post('/setup/domains/{domain}/verify', [PortalSetupController::class, 'verifyDomain'])->name('portal.domains.verify');
-        Route::delete('/setup/domains/{domain}', [PortalSetupController::class, 'removeDomain'])->name('portal.domains.destroy');
-        Route::post('/setup/connections', [PortalSetupController::class, 'createConnection'])->name('portal.connections.store');
-        Route::post('/setup/connections/{connection}/activate', [PortalSetupController::class, 'activateConnection'])->name('portal.connections.activate');
-        Route::post('/setup/directories', [PortalSetupController::class, 'registerDirectory'])->name('portal.directories.store');
+        Route::get('/setup/single-sign-on', [PortalSsoController::class, 'show'])->name('portal.sso');
+        Route::post('/setup/connections', [PortalSsoController::class, 'store'])->name('portal.connections.store');
+        Route::patch('/setup/connections/{connection}', [PortalSsoController::class, 'update'])->name('portal.connections.update');
+        Route::post('/setup/connections/{connection}/metadata', [PortalSsoController::class, 'metadata'])->name('portal.connections.metadata');
+        Route::post('/setup/connections/{connection}/activate', [PortalSsoController::class, 'activate'])->name('portal.connections.activate');
+
+        Route::get('/setup/domains', [PortalDomainController::class, 'show'])->name('portal.domains');
+        Route::post('/setup/domains', [PortalDomainController::class, 'store'])->name('portal.domains.store');
+        Route::post('/setup/domains/{domain}/verify', [PortalDomainController::class, 'verify'])->name('portal.domains.verify');
+        Route::delete('/setup/domains/{domain}', [PortalDomainController::class, 'destroy'])->name('portal.domains.destroy');
+
+        Route::get('/setup/directory-sync', [PortalDirectoryController::class, 'show'])->name('portal.directories');
+        Route::post('/setup/directories', [PortalDirectoryController::class, 'store'])->name('portal.directories.store');
+        Route::post('/setup/directories/{directory}/rotate', [PortalDirectoryController::class, 'rotate'])->name('portal.directories.rotate');
+
+        Route::get('/setup/log-streams', [PortalLogStreamController::class, 'show'])->name('portal.log-streams');
+        Route::post('/setup/log-streams', [PortalLogStreamController::class, 'store'])->name('portal.log-streams.store');
+        Route::post('/setup/log-streams/{stream}/test', [PortalLogStreamController::class, 'test'])->name('portal.log-streams.test');
+        Route::delete('/setup/log-streams/{stream}', [PortalLogStreamController::class, 'destroy'])->name('portal.log-streams.destroy');
+
+        Route::get('/setup/certificates', [PortalCertificateController::class, 'show'])->name('portal.certificates');
+        Route::post('/setup/certificates/{connection}', [PortalCertificateController::class, 'stage'])->name('portal.certificates.stage');
+        Route::post('/setup/certificates/{connection}/activate', [PortalCertificateController::class, 'activate'])->name('portal.certificates.activate');
+
         Route::post('/setup/finish', [PortalSetupController::class, 'finish'])->name('portal.finish');
+
+        // A link covering `audit_logs` opens the organization's audit events instead of a
+        // setup screen: read-only, and a CSV of them streamed straight down (a GET, like
+        // any download — it changes nothing). The organization is the portal session's.
+        Route::get('/setup/audit-logs', [PortalAuditLogController::class, 'index'])->name('portal.audit-logs');
+        Route::get('/setup/audit-logs/export', [PortalAuditLogController::class, 'export'])->name('portal.audit-logs.export');
     });
 
     // The link is pasted into mail, Slack or Teams, and every one of those previews it —
     // so opening it renders a button and only the POST spends it.
+    // An audit-log export's CSV, behind the signed, minutes-long URL the export hands out —
+    // the URL is the credential, so a backend holding only a management key can fetch it.
+    // The export is environment-owned: a URL replayed on another environment's host finds
+    // nothing.
+    Route::get('/audit-logs/exports/{export}/download', AuditLogExportDownloadController::class)
+        ->middleware(['signed', 'throttle:60,1'])
+        ->name('audit-logs.exports.download');
+
     Route::get('/setup/{token}', [AdminPortalController::class, 'show'])->name('portal.enter');
     Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->middleware('throttle:link-token')->name('portal.enter.store');
 });
@@ -729,6 +792,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
     // Before `/projects/{project}`, so the literal segment is never read as an id.
     Route::post('/projects/verification/resend', [ProjectController::class, 'resendVerification'])
+        ->middleware('throttle:verification-resend')
         ->name('projects.verification.resend');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::patch('/projects/{project}', [ProjectController::class, 'rename'])->name('projects.rename');
@@ -793,6 +857,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // gains the edit, disable and delete it never had, while domain verification and the
     // Admin Portal invite come with it onto the environment plane.
     Route::get('/single-sign-on', [ConnectionController::class, 'index'])->name('connections');
+    // The organization's verified domains on a page of their own; the writes are the SSO
+    // page's, below. See ConnectionController::domains().
+    Route::get('/domains', [ConnectionController::class, 'domains'])->name('domains');
     Route::post('/single-sign-on/invite', [ConnectionController::class, 'invite'])->name('connections.invite');
     Route::post('/single-sign-on/domains', [ConnectionController::class, 'addDomain'])->name('connections.domains.store');
     Route::post('/single-sign-on/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('connections.domains.verify');
@@ -915,6 +982,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
     Route::get('/audit', [AuditController::class, 'index'])->name('audit');
+    // Audit logs: the events the app built on this environment sends about THIS
+    // organization — read by its own administrators, exported through the same action the
+    // API runs. Never another organization's: the console scope is the organization.
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs');
+    Route::post('/audit-logs/exports', [AuditLogController::class, 'export'])->name('audit-logs.exports.store');
     // Log streaming was environment-plane-only. It ships an environment's audit trail to
     // a SIEM, which is a compliance obligation the organization carries — so the plane
     // that answers for compliance could not see, let alone configure, the shipping.
@@ -1203,10 +1275,13 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 
             Route::get('/support', [OrganizationSupportController::class, 'index'])->name('environment.organizations.support');
             Route::get('/audit', [AuditController::class, 'index'])->name('environment.organizations.audit');
+            Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('environment.organizations.audit-logs');
             Route::get('/settings', [OrganizationSettingsController::class, 'show'])->name('environment.organizations.settings');
 
             // The header's "Admin Portal link": a one-time link for the customer's IT admin.
             Route::post('/portal-links', [OrganizationPortalLinkController::class, 'store'])->name('environment.organizations.portal-links.store');
+            // …and withdrawing one, from the Overview's list of the links still outstanding.
+            Route::delete('/portal-links/{link}', [OrganizationPortalLinkController::class, 'destroy'])->name('environment.organizations.portal-links.revoke');
 
             // The organization's own token vault — a collection separate from the
             // environment's, so it has an address of its own rather than a toggle on the
@@ -1486,6 +1561,20 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Activity log — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
         Route::get('/audit', [AuditController::class, 'index'])->name('environment.audit');
+
+        // Audit logs — the app's own events about its customers. The list (every
+        // organization's, with a chip), its export, and the environment's own decisions about
+        // them: the schemas events are checked against and how long they are kept. `new`
+        // before `{action}`, so the create form is never read as a schema called "new".
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('environment.audit-logs');
+        Route::post('/audit-logs/exports', [AuditLogController::class, 'export'])->name('environment.audit-logs.exports.store');
+        Route::get('/audit-logs/schemas', [AuditLogController::class, 'schemas'])->name('environment.audit-logs.schemas');
+        Route::get('/audit-logs/schemas/new', [AuditLogController::class, 'create'])->name('environment.audit-logs.schemas.create');
+        Route::post('/audit-logs/schemas', [AuditLogController::class, 'store'])->name('environment.audit-logs.schemas.store');
+        Route::get('/audit-logs/schemas/{action}', [AuditLogController::class, 'edit'])->name('environment.audit-logs.schemas.edit');
+        Route::put('/audit-logs/schemas/{action}', [AuditLogController::class, 'update'])->name('environment.audit-logs.schemas.update');
+        Route::delete('/audit-logs/schemas/{action}', [AuditLogController::class, 'destroy'])->name('environment.audit-logs.schemas.destroy');
+        Route::patch('/audit-logs/settings', [AuditLogController::class, 'settings'])->name('environment.audit-logs.settings.update');
 
         // Log streaming (SIEM) — routable list → create → detail.
         //

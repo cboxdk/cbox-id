@@ -18,6 +18,7 @@ use App\Http\Requests\Console\StoreWebhookRequest;
 use App\Http\Requests\Console\UpdateWebhookRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
@@ -100,7 +101,7 @@ final readonly class WebhookController extends ConsoleController
         // enumerate the environment's other tenants.
         $names = $this->scope->organizationNames($endpoints->pluck('organization_id'));
 
-        return $this->page('console/webhooks/index', 'Webhooks', [
+        return $this->page('console/webhooks/index', Vocabulary::WEBHOOKS, [
             'endpoints' => array_map(
                 fn (WebhookEndpoint $endpoint): WebhookRowProps => WebhookRowProps::from(
                     $endpoint,

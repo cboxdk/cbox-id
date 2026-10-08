@@ -31,7 +31,7 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
     status: 204,
     consoleRoutes: ['members.invitations.revoke'],
     consoleGate: ConsoleGate::ManageMembers,
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class RevokeInvitation implements Action
 {

@@ -26,7 +26,7 @@ use App\Platform\Enterprise\EnterpriseReach;
     summary: 'Delete an SSO connection and its settings. Where SSO is required, its people cannot sign in until another is activated.',
     scope: 'sso:write',
     danger: Danger::Critical,
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['DELETE', '/sso/connections/{id}'],
     status: 204,
     consoleRoutes: ['connections.destroy', 'environment.connections.destroy'],

@@ -307,17 +307,26 @@ it('keeps a person on the organization console to their own organization, whatev
     $victimKey = mintAppKey($keys, $keys['ada']);
     $runner = app(ActionRunner::class);
 
+    // Another organization answers exactly as one that does not exist: a 404 when the URL
+    // names it, the unknown-organization field error when the body does.
     foreach ([
-        [ChangeMemberRole::class, ['organization_id' => $globex->id, 'user_id' => $victim, 'role' => 'admin']],
-        [RemoveMember::class, ['organization_id' => $globex->id, 'user_id' => $victim]],
-        [SendInvitation::class, ['organization_id' => $globex->id, 'email' => 'mole@globex.test']],
-        [TransferOwnership::class, ['id' => $globex->id, 'user_id' => $victim]],
-        [RevokeCustomerApiKey::class, ['id' => $victimKey->id, 'organization_id' => $keys['org']->id]],
-        // Naming no organization is the environment's whole authority: never theirs.
-        [RevokeCustomerApiKey::class, ['id' => $victimKey->id]],
-    ] as [$action, $input]) {
-        expect(fn () => $runner->run($action, rosterConsole(), $input))->toThrow(AuthorizationException::class);
+        [ChangeMemberRole::class, ['organization_id' => $globex->id, 'user_id' => $victim, 'role' => 'admin'], 404],
+        [RemoveMember::class, ['organization_id' => $globex->id, 'user_id' => $victim], 404],
+        [SendInvitation::class, ['organization_id' => $globex->id, 'email' => 'mole@globex.test'], 404],
+        [TransferOwnership::class, ['id' => $globex->id, 'user_id' => $victim], 404],
+        [RevokeCustomerApiKey::class, ['id' => $victimKey->id, 'organization_id' => $keys['org']->id], 422],
+    ] as [$action, $input, $status]) {
+        try {
+            $runner->run($action, rosterConsole(), $input);
+            $refused = null;
+        } catch (ActionRefused $refused) {
+        }
+
+        expect($refused?->status)->toBe($status);
     }
+
+    // Naming no organization is the environment's whole authority: never theirs.
+    expect(fn () => $runner->run(RevokeCustomerApiKey::class, rosterConsole(), ['id' => $victimKey->id]))->toThrow(AuthorizationException::class);
 
     // A member of another organization named under their own: not found.
     expect(fn () => $runner->run(ChangeMemberRole::class, rosterConsole(), ['organization_id' => $org->id, 'user_id' => $victim, 'role' => 'admin']))
@@ -355,13 +364,13 @@ it('holds a token one of an organization\'s admins signed in for to the same rul
         ->and(fn () => $runner->run(GrantMemberRole::class, $token, ['organization_id' => $acme->id, 'user_id' => $dana, 'role_id' => app(Roles::class)->define(null, 'Support', tenantAssignable: false)->id]))
         ->toThrow(ActionRefused::class, OrgAccessRoles::NOT_OFFERED);
 
-    // Another organization: never, whichever action.
+    // Another organization: never, whichever action — and not found, as an unknown one is.
     foreach ([
         [ChangeMemberRole::class, ['organization_id' => $globex->id, 'user_id' => $victim, 'role' => 'admin']],
         [RemoveMember::class, ['organization_id' => $globex->id, 'user_id' => $victim]],
         [SendInvitation::class, ['organization_id' => $globex->id, 'email' => 'mole@globex.test']],
     ] as [$action, $input]) {
-        expect(fn () => $runner->run($action, $token, $input))->toThrow(AuthorizationException::class);
+        expect(fn () => $runner->run($action, $token, $input))->toThrow(ActionRefused::class, 'Organization not found.');
     }
 
     expect(app(Memberships::class)->of($globex->id, $victim))->not->toBeNull()

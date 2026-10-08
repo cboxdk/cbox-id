@@ -385,7 +385,7 @@ function RecentActivity({ recent, href }: { recent: Props['recent']; href: strin
             title="Recent activity"
             action={
                 <Link href={href} className="text-sm" style={{ color: 'var(--accent-strong)' }}>
-                    View activity log
+                    View audit log
                 </Link>
             }
         >

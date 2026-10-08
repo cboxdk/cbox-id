@@ -92,7 +92,7 @@ export default function ClientScopes({
                 >
                     <Panel
                         title="What this app may ask for"
-                        description="The ceiling on this app's access. Narrowing it takes effect on the next token, and a device or agent request naming a scope you remove is refused rather than quietly given less."
+                        description="The ceiling on this app's access. Narrowing it takes effect on the next token, and a device or an agent asking for a scope you remove is refused rather than quietly given less."
                     >
                         <div className="space-y-4">
                             {Object.entries(scopeGroups).map(([group, scopes]) => (

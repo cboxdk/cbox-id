@@ -20,7 +20,7 @@ use Cbox\Id\OAuthServer\Models\Client;
     scope: 'apps:read',
     danger: Danger::Read,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['GET', '/apps'],
 )]
 final class ListApps implements Action

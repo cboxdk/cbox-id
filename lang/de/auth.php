@@ -279,9 +279,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Single Sign-On einrichten',
+        'title' => 'Admin-Einrichtung',
         'heading' => 'Anmeldung für Ihre Organisation einrichten',
-        'lead' => 'Sie haben einen Einrichtungslink erhalten, um Ihren Identitätsanbieter oder Ihr Verzeichnis zu verbinden. Fahren Sie fort, um die Einrichtung zu öffnen.',
+        'lead' => 'Sie haben einen Einrichtungslink für Ihre Organisation erhalten — Single Sign-On, Verzeichnissynchronisierung, Domains, Log-Streams oder eine Zertifikatserneuerung. Fahren Sie fort, um die Einrichtung zu öffnen.',
         'action' => 'Einrichtung öffnen',
         'note' => 'Der Link funktioniert nur einmal, und die damit geöffnete Einrichtungssitzung läuft ab. Öffnen Sie ihn erst, wenn Sie bereit sind, die Einrichtung abzuschließen.',
     ],

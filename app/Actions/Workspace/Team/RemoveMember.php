@@ -31,7 +31,7 @@ use Cbox\Id\Platform\PlatformRoot;
     status: 204,
     consoleRoutes: ['members.remove'],
     consoleGate: ConsoleGate::ManageMembers,
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class RemoveMember implements Action
 {

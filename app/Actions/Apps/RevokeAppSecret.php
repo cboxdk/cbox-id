@@ -16,6 +16,7 @@ use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientSecretRefusal;
 use Cbox\Id\OAuthServer\Exceptions\ClientSecretRefused;
+use Cbox\Id\OAuthServer\Models\StoredClientSecret;
 use Cbox\Id\OAuthServer\ValueObjects\ClientSecretSummary;
 
 /**
@@ -24,9 +25,12 @@ use Cbox\Id\OAuthServer\ValueObjects\ClientSecretSummary;
  *
  * NEVER THE APP'S LAST LIVE SECRET (`last_live_secret`): that is rotated, or the app
  * deleted — revoking it would leave a confidential app with no way to authenticate, which
- * is a deletion that keeps the row. A secret that has already run out or been revoked is
- * `secret_not_live` rather than a 404: it existed, and "it already stopped working" is the
- * answer the caller needs. Asked here so the refusal reads as a sentence; the registry asks
+ * is a deletion that keeps the row. A secret of this app's that has already run out (its
+ * row stays until it is pruned) is `secret_not_live` rather than a 404: it existed, and "it
+ * already stopped working" is the answer the caller needs. A revoked secret is deleted, and
+ * a secret that was never THIS app's — another app's, another environment's, or none at all
+ * — is a 404, the answer an unknown id gets everywhere: "it already stopped working" would
+ * be a statement about somebody else's secret. Asked here so the refusal reads as a sentence; the registry asks
  * again under its own lock, which is the guard, and a concurrent rotation can still change
  * the answer between the two.
  */
@@ -35,7 +39,7 @@ use Cbox\Id\OAuthServer\ValueObjects\ClientSecretSummary;
     summary: 'Revoke one of an app\'s client secrets immediately. Never its last live secret — rotate that instead.',
     scope: 'apps:write',
     danger: Danger::Critical,
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['DELETE', '/apps/{id}/secrets/{secret_id}'],
     status: 204,
     consoleRoutes: ['clients.secrets.revoke', 'environment.clients.secrets.revoke'],
@@ -61,6 +65,12 @@ final readonly class RevokeAppSecret implements Action
     {
         $client = AppFields::find($context, $context->string('id'));
         $secretId = $context->string('secret_id');
+
+        // Fenced to the app in the query: the id in the URL is only ever looked for among
+        // this app's own secrets (the model is environment-scoped besides).
+        if (StoredClientSecret::query()->where('oauth_client_id', $client->id)->whereKey($secretId)->doesntExist()) {
+            throw ActionRefused::notFound('secret');
+        }
 
         $live = $this->clients->secrets($client);
         $target = array_values(array_filter($live, static fn (ClientSecretSummary $secret): bool => $secret->id === $secretId));

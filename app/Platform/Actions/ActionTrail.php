@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions;
 
+use App\Platform\Actions\Principal\AnnotatesTrail;
 use App\Platform\EnvironmentKeyAuditLog;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Closure;
@@ -35,7 +36,7 @@ final class ActionTrail
     /** Who gave it: the subject id of the person who approved. */
     public const string APPROVED_BY = 'approved_by';
 
-    /** @var list<array{via: ActionVia, approval: ?string, approver: ?string}> */
+    /** @var list<array{via: ActionVia, approval: ?string, approver: ?string, notes: array<string, string>}> */
     private array $stack = [];
 
     /**
@@ -48,7 +49,7 @@ final class ActionTrail
      */
     public function within(ActionVia $via, Closure $callback): mixed
     {
-        $this->stack[] = ['via' => $via, 'approval' => null, 'approver' => null];
+        $this->stack[] = ['via' => $via, 'approval' => null, 'approver' => null, 'notes' => []];
 
         try {
             return $callback();
@@ -68,6 +69,23 @@ final class ActionTrail
 
         $this->stack[$top]['approval'] = $approvalId;
         $this->stack[$top]['approver'] = $approverSubjectId;
+    }
+
+    /**
+     * Whatever the running action's principal adds to every entry it causes
+     * ({@see AnnotatesTrail}) — the Admin Portal's link and its minter.
+     *
+     * @param  array<string, string>  $notes
+     */
+    public function annotate(array $notes): void
+    {
+        $top = array_key_last($this->stack);
+
+        if ($top === null) {
+            return;
+        }
+
+        $this->stack[$top]['notes'] = [...$this->stack[$top]['notes'], ...$notes];
     }
 
     public function via(): ?ActionVia
@@ -95,6 +113,7 @@ final class ActionTrail
         $frame = $this->stack[$top];
 
         return array_filter([
+            ...$frame['notes'],
             self::VIA => $frame['via']->value,
             self::APPROVAL => $frame['approval'],
             self::APPROVED_BY => $frame['approver'],

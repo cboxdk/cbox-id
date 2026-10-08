@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Console\ProjectController;
+use App\Http\WebRateLimiters;
 use App\Mail\EmailVerificationMail;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -274,3 +275,18 @@ it('is a harmless no-op once the environment has been released', function (): vo
     expect(Mail::sent(EmailVerificationMail::class))->toHaveCount($mailedSoFar)
         ->and(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 });
+
+/**
+ * The action limits the MAIL per person mailed and says so on the page; the named limiter in
+ * front of the route is the ceiling for a client that keeps posting past the sentence.
+ */
+it('answers a 429 with Retry-After to a client that keeps pressing resend', function (): void {
+    rootForResend();
+    signUpForResend();
+
+    foreach (range(1, WebRateLimiters::VERIFICATION_RESEND_PER_PERSON) as $ignored) {
+        expect(resend()->status())->not->toBe(429);
+    }
+
+    resend()->assertStatus(429)->assertHeader('Retry-After');
+})->group('security');

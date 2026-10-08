@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Mail\PortalLinkMail;
 use App\Models\AdminPortalLink;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\OrganizationTabs;
@@ -11,6 +12,7 @@ use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -20,6 +22,7 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Support\SessionKey;
 use Inertia\Testing\AssertableInertia;
 
@@ -82,6 +85,7 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
         OrganizationTabs::POLICY => 'console/auth-policy',
         OrganizationTabs::SUPPORT => 'environment/organizations/tabs/support',
         OrganizationTabs::AUDIT => 'console/audit',
+        OrganizationTabs::AUDIT_LOGS => 'console/audit-logs/index',
         OrganizationTabs::SETTINGS => 'environment/organizations/tabs/settings',
     ];
 
@@ -92,7 +96,7 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
                 ->component($component)
                 ->where('organizationHub.id', $orgId)
                 ->where('organizationHub.name', 'Tenant Co')
-                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 13
+                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 14
                     && $drawn->firstWhere('current', true)['key'] === $tab));
     }
 })->group('security');
@@ -108,7 +112,7 @@ it('answers 404 for an organization that is not in this environment, on every ta
 
     // …and the writes that live under the organization's URL too: a foreign id never
     // reaches the action.
-    $this->post(route('environment.organizations.portal-links.store', $foreign), ['covers' => 'sso'])->assertNotFound();
+    $this->post(route('environment.organizations.portal-links.store', $foreign), ['intents' => ['sso']])->assertNotFound();
     $this->post(route('environment.connections.domains.store', $foreign), ['domain' => 'evil.example'])->assertNotFound();
 })->group('security');
 
@@ -171,7 +175,7 @@ it('mints an Admin Portal link from the header, on the flash channel, as the adm
             ->where('organizationHub.portalLink.href', route('environment.organizations.portal-links.store', $orgId)));
 
     $this->from(route('environment.organizations.show', $orgId))
-        ->post(route('environment.organizations.portal-links.store', $orgId), ['covers' => 'sso'])
+        ->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => ['sso']])
         ->assertSessionHasNoErrors()
         ->assertInertiaFlash('portalUrl');
 
@@ -334,3 +338,99 @@ it('carries no acting organization in the console chrome any more', function ():
 
     expect($shell)->not->toHaveKey('actingOrganization');
 });
+
+it('mints a link from the organization hub with intents, lifetime and the IT contact\'s address', function (): void {
+    Mail::fake();
+    $orgId = anEnvironmentAdminWithOrganizations();
+
+    $this->get(route('environment.organizations.show', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('organizationHub.portalLink.intents.0.value', 'sso')
+            ->where('organizationHub.portalLink.intents.4.value', 'certificate_renewal')
+            ->has('organizationHub.portalLink.lifetimes', 5)
+            ->has('organizationHub.portalLink.locales'));
+
+    $this->from(route('environment.organizations.show', $orgId))
+        ->post(route('environment.organizations.portal-links.store', $orgId), [
+            'intents' => ['sso', 'dsync'],
+            'expires_in_minutes' => '4320',
+            'email' => 'it@tenant.example',
+            'locale' => 'fr',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('portalUrl');
+
+    $link = AdminPortalLink::query()->where('organization_id', $orgId)->sole();
+
+    expect($link->intents)->toBe(['sso', 'dsync'])
+        ->and($link->emailed_to)->toBe('it@tenant.example')
+        ->and((int) round(now()->diffInMinutes($link->expires_at)))->toBe(4320);
+
+    Mail::assertSent(PortalLinkMail::class, fn (PortalLinkMail $mail): bool => $mail->locale === 'fr');
+
+    // Nothing ticked is a field error, not a link.
+    $this->from(route('environment.organizations.show', $orgId))
+        ->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => []])
+        ->assertSessionHasErrors('intents');
+});
+
+it('lists the outstanding Admin Portal links on the overview, and revokes one as the administrator', function (): void {
+    $orgId = anEnvironmentAdminWithOrganizations();
+    $actor = app(ConsoleScope::class)->actorId();
+
+    $this->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => ['sso'], 'email' => 'it@tenant.example'])
+        ->assertSessionHasNoErrors();
+    $link = AdminPortalLink::query()->where('organization_id', $orgId)->sole();
+
+    // A finished one is the audit log's to tell, not the overview's.
+    AdminPortalLink::query()->create([
+        'organization_id' => $orgId,
+        'intents' => ['dsync'],
+        'token_hash' => hash('sha256', 'finished'),
+        'expires_at' => now()->addHour(),
+        'consumed_at' => now(),
+        'completed_at' => now(),
+        'created_by' => $actor,
+    ]);
+
+    $this->get(route('environment.organizations.show', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('portalLinks', 1)
+            ->where('portalLinks.0.id', $link->id)
+            ->where('portalLinks.0.intents', ['Enterprise SSO'])
+            ->where('portalLinks.0.inUse', false)
+            ->where('portalLinks.0.emailedTo', 'it@tenant.example')
+            ->where('portalLinks.0.revokeHref', route('environment.organizations.portal-links.revoke', ['organization' => $orgId, 'link' => $link->id]))
+            ->missing('portalLinks.0.url'));
+
+    $this->from(route('environment.organizations.show', $orgId))
+        ->delete(route('environment.organizations.portal-links.revoke', ['organization' => $orgId, 'link' => $link->id]))
+        ->assertRedirect(route('environment.organizations.show', $orgId))
+        ->assertSessionHas('status', 'Admin Portal link revoked.');
+
+    expect($link->refresh()->revoked_at)->not->toBeNull();
+
+    $entry = AuditEntry::query()->where('action', 'portal_link.revoked')->sole();
+
+    expect($entry->actor_id)->toBe($actor)
+        ->and($entry->actor_type)->toBe(ActorType::OrganizationMember)
+        ->and($entry->target_id)->toBe($link->id);
+
+    $this->get(route('environment.organizations.show', $orgId))
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('portalLinks', 0));
+})->group('security');
+
+it('answers 404 for revoking another organization\'s Admin Portal link from this one\'s page', function (): void {
+    $orgId = anEnvironmentAdminWithOrganizations();
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-portal-co'))->id;
+
+    $this->post(route('environment.organizations.portal-links.store', $other), ['intents' => ['sso']])->assertSessionHasNoErrors();
+    $theirs = AdminPortalLink::query()->where('organization_id', $other)->sole();
+
+    $this->delete(route('environment.organizations.portal-links.revoke', ['organization' => $orgId, 'link' => $theirs->id]))->assertNotFound();
+    $this->delete(route('environment.organizations.portal-links.revoke', ['organization' => anOrganizationElsewhere(), 'link' => $theirs->id]))->assertNotFound();
+
+    expect($theirs->refresh()->revoked_at)->toBeNull();
+})->group('security');

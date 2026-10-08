@@ -19,7 +19,7 @@ use Cbox\Id\Federation\Models\Connection;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Stop offering a social sign-in provider. Anyone who signed in with it keeps their account
+ * Stop offering a social login provider. Anyone who signed in with it keeps their account
  * and can still use their password.
  *
  * THE OWNER IS IN THE QUERY, not in an `if` after it — the shape that once shipped a
@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 #[AsAction(
     name: 'signin.social.delete',
-    summary: 'Stop offering a social sign-in provider. People who used it keep their accounts.',
+    summary: 'Stop offering a social login provider. People who used it keep their accounts.',
     scope: 'signin:write',
     danger: Danger::Critical,
     tag: 'Sign-in',

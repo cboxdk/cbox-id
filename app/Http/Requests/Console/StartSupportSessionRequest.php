@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * how long.
  *
  * The reason is required here AND by the framework: it is the only account of the session
- * the organization gets, on its activity log and in its webhook, so a blank one is a
+ * the organization gets, on its audit log and in its webhook, so a blank one is a
  * support session nobody can later explain.
  */
 final class StartSupportSessionRequest extends FormRequest
@@ -42,7 +42,7 @@ final class StartSupportSessionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'reason.required' => 'Say why — the organization sees this on its activity log.',
+            'reason.required' => 'Say why — the organization sees this on its audit log.',
             'minutes.max' => 'A support session lasts at most :max minutes.',
         ];
     }

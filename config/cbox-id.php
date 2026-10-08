@@ -299,16 +299,50 @@ return [
         'mode' => env('CBOX_ID_ENTITLEMENTS', 'open'),
         'sso' => env('CBOX_ID_ENTITLEMENT_SSO', 'cbox-id-sso'),
         'scim' => env('CBOX_ID_ENTITLEMENT_SCIM', 'cbox-id-scim'),
+        // The organization's own view of the audit events an app sends about it — in the
+        // hosted Admin Portal, under a link that covers `audit_logs`.
+        'audit_logs' => env('CBOX_ID_ENTITLEMENT_AUDIT_LOGS', 'cbox-id-audit-logs'),
     ],
 
     /*
      * Admin Portal setup links — the short-lived, single-use URL an entitled org
-     * admin hands to an external IT admin so they can configure that one org's
-     * SSO/SCIM without a platform account. `ttl_minutes` bounds how long a
-     * generated link stays redeemable.
+     * admin hands to an external IT admin so they can set up that one org's SSO,
+     * directory sync, domains, log streams or SAML certificate without a platform
+     * account. `ttl_minutes` is how long a generated link stays redeemable when its
+     * minter does not choose (they may pick 5 minutes to 7 days); `session_minutes`
+     * is how long the setup session it opens lasts, counted from the redemption.
+     *
+     * `certificate_alerts` is the daily scan for SAML signing certificates about to
+     * expire: a `connection.certificate_expiring` webhook at each threshold (days
+     * before expiry), and — unless `mail_admins` is off — a mail to the
+     * organization's owners and admins.
      */
     'portal' => [
         'ttl_minutes' => (int) env('CBOX_ID_PORTAL_TTL_MINUTES', 30),
+        'session_minutes' => (int) env('CBOX_ID_PORTAL_SESSION_MINUTES', 120),
+        'certificate_alerts' => [
+            'thresholds' => [30, 7],
+            'mail_admins' => (bool) env('CBOX_ID_CERTIFICATE_ALERT_MAIL', true),
+        ],
+    ],
+
+    /*
+     * AUDIT LOGS — the audit events an app built on an environment sends about its own
+     * customers (`POST /api/v1/audit-logs/events`), kept per organization in a hash chain
+     * and shown to that organization's administrators. See docs/guides/audit-logs.md.
+     *
+     * `retention_days` is the default an environment keeps events for, counted from when
+     * they were RECEIVED; each environment may set its own (`audit_logs.settings.update`).
+     * The daily `audit-logs:prune` applies it. `export_disk` is the filesystem disk a CSV
+     * export is written to — private, the file is only ever handed out through a signed,
+     * short-lived URL — and `export_ttl_hours` how long a finished export stays there.
+     * `portal_export_limit` bounds the CSV the hosted Admin Portal streams directly.
+     */
+    'audit_logs' => [
+        'retention_days' => (int) env('CBOX_ID_AUDIT_LOGS_RETENTION_DAYS', 365),
+        'export_disk' => env('CBOX_ID_AUDIT_LOGS_EXPORT_DISK', 'local'),
+        'export_ttl_hours' => (int) env('CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS', 72),
+        'portal_export_limit' => (int) env('CBOX_ID_AUDIT_LOGS_PORTAL_EXPORT_LIMIT', 50000),
     ],
 
     /*
@@ -372,6 +406,21 @@ return [
          * Unset falls back to the first base domain, so the subdomain shape needs nothing.
          */
         'account_host' => env('CBOX_ID_CONSOLE_HOST'),
+    ],
+
+    /*
+     * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
+     *
+     * How many copies of the web process run. The application cannot count its siblings,
+     * so the manifest that decides it says it here too (cbox.yaml sets `replicas:` and
+     * `CBOX_ID_REPLICAS` together). It changes nothing at runtime; it is what the doctor
+     * asks before it calls a per-process cache or session store a fault: on one replica
+     * a file cache is a smell, on two it splits every rate limit, single-use token and
+     * replay guard in half. The queue manager's cluster mode
+     * (`QUEUE_AUTOSCALE_CLUSTER_ENABLED`) says the same thing about the workers.
+     */
+    'deployment' => [
+        'replicas' => (int) env('CBOX_ID_REPLICAS', 1),
     ],
 
     'crypto' => [

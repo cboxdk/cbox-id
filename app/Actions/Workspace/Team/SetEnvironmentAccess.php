@@ -40,7 +40,7 @@ use Cbox\Id\Platform\PlatformRoot;
     consoleRoutes: ['members.access'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Member',
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class SetEnvironmentAccess implements Action
 {

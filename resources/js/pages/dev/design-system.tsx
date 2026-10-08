@@ -385,7 +385,7 @@ export default function DesignSystem() {
                     </>
                 }
             >
-                <Field label="Why" hint="Recorded in the activity log.">
+                <Field label="Why" hint="Recorded in the audit log.">
                     <Input placeholder="Rotating after the leak on 24 August" />
                 </Field>
             </Dialog>

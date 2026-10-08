@@ -45,12 +45,12 @@ class AppManagementScopes extends EnumManagementScopes
             'description' => 'Register, repoint, pause, resume, re-key and delete webhook endpoints. A new or rotated signing secret is shown once.',
         ],
         'hooks:read' => [
-            'label' => 'Read inline hooks',
-            'description' => 'List the inline hooks called during sign-in and token issuance, and whether each is active.',
+            'label' => 'Read hooks',
+            'description' => 'List the hooks called during sign-in and token issuance, and whether each is active.',
         ],
         'hooks:write' => [
-            'label' => 'Manage inline hooks',
-            'description' => 'Register, pause, activate and remove inline hooks — endpoints that can add claims to tokens or refuse a sign-in.',
+            'label' => 'Manage hooks',
+            'description' => 'Register, pause, activate and remove hooks — endpoints that can add claims to tokens or refuse a sign-in.',
         ],
         'log_streams:read' => [
             'label' => 'Read log streams',
@@ -68,28 +68,45 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Read the audit log',
             'description' => 'Read this environment\'s audit trail: who did what, to what, and when.',
         ],
+        'audit_logs:write' => [
+            'label' => 'Send audit log events',
+            'description' => 'Record audit events your app\'s users cause, for the organizations (your customers) they happen in. What a backend that sends events needs, and nothing more.',
+        ],
+        'audit_logs:read' => [
+            'label' => 'Read audit logs',
+            'description' => 'Read the audit events your app sent and the exports made of them, verify an organization\'s chain, and read the schemas and retention they are kept under.',
+        ],
+        'audit_logs:export' => [
+            'label' => 'Export audit logs',
+            'description' => 'Start CSV exports of the audit events your app sent — the same events the read scope lists, in one file.',
+        ],
+        'audit_logs:manage' => [
+            'label' => 'Manage audit log schemas and retention',
+            'description' => 'Define, replace and delete the schemas audit events are validated against, and change how long they are kept — shortening retention deletes older events for good.',
+            'critical' => true,
+        ],
         'signin:read' => [
-            'label' => 'Read sign-in rules',
-            'description' => 'Read the sign-in rules, the social sign-in providers and the legacy login declaration — never a provider\'s secret.',
+            'label' => 'Read the authentication policy',
+            'description' => 'Read the authentication policy, the social login providers and the legacy login declaration — never a provider\'s secret.',
         ],
         'signin:write' => [
             'label' => 'Change how people sign in',
-            'description' => 'Change password, MFA and SSO rules, self-service sign-up, social sign-in providers and the legacy login approval.',
+            'description' => 'Change password, MFA and SSO rules, self-service sign-up, social login providers and the legacy login approval.',
         ],
         'frontend_keys:read' => [
-            'label' => 'Read frontend keys',
+            'label' => 'Read publishable keys',
             'description' => 'List the publishable keys browser apps present to the Frontend API, with their allowed origins.',
         ],
         'frontend_keys:write' => [
-            'label' => 'Manage frontend keys',
+            'label' => 'Manage publishable keys',
             'description' => 'Create publishable keys, change which origins may present them, and revoke them.',
         ],
         'saml_apps:read' => [
-            'label' => 'Read SAML applications',
+            'label' => 'Read SAML apps',
             'description' => 'List the applications that trust this environment as their SAML identity provider — never their certificates.',
         ],
         'saml_apps:write' => [
-            'label' => 'Manage SAML applications',
+            'label' => 'Manage SAML apps',
             'description' => 'Register, change and remove the applications people sign in to with their account here.',
         ],
         'branding:read' => [
@@ -157,17 +174,21 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage the token vault',
             'description' => 'Store, rotate and revoke downstream credentials, and grant or withdraw an app\'s right to lease one. Not the vault.manage / vault.lease scopes an app\'s own token carries.',
         ],
+        'portal_links:read' => [
+            'label' => 'Read Admin Portal links',
+            'description' => 'List an organization\'s recent Admin Portal links: what each opens, who minted it, whom it was mailed to and where it stands — never the link itself.',
+        ],
         'portal_links:write' => [
-            'label' => 'Create Admin Portal links',
-            'description' => 'Mint a one-time Admin Portal link that lets an organization\'s IT administrator set up its SSO, domains or directory sync without an account. The link is shown once.',
+            'label' => 'Manage Admin Portal links',
+            'description' => 'Mint a one-time Admin Portal link that lets an organization\'s IT administrator set up its SSO, domains or directory sync without an account, and withdraw one. A new link is shown once.',
         ],
         'approvals:read' => [
-            'label' => 'Read agent requests',
+            'label' => 'Read approvals',
             'description' => 'List the pending requests from agents to act as one of this environment\'s people (OIDC CIBA): which app, for whom, and what it asks.',
         ],
         'approvals:write' => [
-            'label' => 'Deny agent requests',
-            'description' => 'Deny a pending agent request. Denying grants nothing; approving is only ever the person\'s own act.',
+            'label' => 'Deny approvals',
+            'description' => 'Deny a pending approval request. Denying grants nothing; approving is only ever the person\'s own act.',
         ],
     ];
 

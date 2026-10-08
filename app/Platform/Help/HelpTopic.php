@@ -32,6 +32,7 @@ enum HelpTopic: string
     case Roles = 'roles';
     case Permissions = 'permissions';
     case SingleSignOn = 'single-sign-on';
+    case Domains = 'domains';
     case SocialSignIn = 'social-sign-in';
     case SyncUsersIn = 'sync-users-in';
     case SyncUsersOut = 'sync-users-out';
@@ -69,6 +70,7 @@ enum HelpTopic: string
     case LegacyLogin = 'legacy-login';
     case Connectors = 'connectors';
     case LogStreaming = 'log-streaming';
+    case AuditLogs = 'audit-logs';
     case DataExports = 'data-exports';
     case RiskEvents = 'risk-events';
     case SignInActivity = 'sign-in-activity';
@@ -93,6 +95,7 @@ enum HelpTopic: string
             self::Roles => 'What roles do',
             self::Permissions => 'What a role is made of',
             self::SingleSignOn => 'Signing in with your own identity provider',
+            self::Domains => 'Proving which email domains are yours',
             self::SocialSignIn => 'Signing in with an account people already have',
             self::SyncUsersIn => 'Keeping people up to date automatically',
             self::SyncUsersOut => 'Pushing people out to your other apps',
@@ -118,7 +121,7 @@ enum HelpTopic: string
             self::Billing => 'Plans and what they count',
             self::EnvironmentOverview => 'This environment at a glance',
             self::EnvironmentGetStarted => 'From nothing to a first sign-in',
-            self::ReviewAgentRequests => 'Agent requests across the environment',
+            self::ReviewAgentRequests => 'Approvals across the environment',
             self::Agents => 'Software that acts on this environment',
             self::ConnectAgent => 'Pointing an AI agent at this environment',
             self::Organizations => 'The teams using your product',
@@ -129,7 +132,8 @@ enum HelpTopic: string
             self::SamlApplications => 'Applications that trust this environment',
             self::LegacyLogin => 'Signing in through your old system',
             self::Connectors => 'Every connection, in one list',
-            self::LogStreaming => 'Sending the activity log to your own tools',
+            self::LogStreaming => 'Sending the audit log to your own tools',
+            self::AuditLogs => 'What your app records about each organization',
             self::DataExports => 'Exports & retention',
             self::RiskEvents => 'Sign-ins that looked suspicious',
             self::SignInActivity => 'Sign-ins over time',
@@ -162,6 +166,8 @@ enum HelpTopic: string
             self::Permissions => 'A permission is one thing a role is allowed to do — "create invoices", "read reports". You can write your own here, without any code, and then compose them into roles. Apps can also register theirs automatically, so the list stays in step with what the app actually enforces. Permissions you write belong to you; the ones your environment shares are yours to use but not to change.',
 
             self::SingleSignOn => 'Lets your people sign in with the company account they already have — Microsoft Entra ID, Okta, Google Workspace — instead of a separate password here. You connect your identity provider once and claim your email domains; everyone on those domains is then sent to your provider to sign in.',
+
+            self::Domains => 'The email domains this organization owns, each proved with a DNS TXT record. Once a domain is verified you can turn on capture, which sends everyone with an address on it to your Enterprise SSO connection instead of a password — so verify every domain your people have addresses on before you rely on single sign-on.',
 
             self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. You supply the credentials from your own account with each provider; everything else — endpoints, scopes, what to read from the response — is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
 
@@ -203,7 +209,7 @@ enum HelpTopic: string
 
             self::Team => 'Everyone who administers this workspace, the built-in role each one holds (Owner, Admin, Developer, Member or Viewer) and which environments they can reach. Invite people by email, and give each person only the environments their job needs.',
 
-            self::Keys => 'The keys your own code presents to Cbox ID, one tab per kind. A management key lets your backend run one environment\'s organizations, members, invitations, roles and apps, a workspace key calls the workspace API with a built-in role, and a frontend key goes into a browser app and works only from the origins you allow. Management and workspace keys are shown once, so copy them when you create them, and revoke one the moment it leaks.',
+            self::Keys => 'The keys your own code presents to Cbox ID, one tab per kind. A secret key (a management key) lets your backend run one environment\'s organizations, members, invitations, roles and apps, a workspace key calls the workspace API with a built-in role, and a publishable key goes into a browser app and works only from the origins you allow. Secret and workspace keys are shown once, so copy them when you create them, and revoke one the moment it leaks.',
 
             self::EnvironmentDomains => 'Serves an environment\'s identity endpoints on a domain you own, such as login.example.com, instead of ours. You prove the domain is yours with a DNS TXT record; set one up when your people should only ever see your own address while they sign in.',
 
@@ -217,23 +223,24 @@ enum HelpTopic: string
 
             self::Agents => 'An agent is any software that acts on this environment with a management key: an AI assistant such as Claude Code or Cursor, an internal bot, or your own backend. Give each its own key with only the scopes it needs, decide which of its actions wait for your approval, and revoke the key the moment the agent is done or anything looks wrong.',
 
-            self::ConnectAgent => 'This environment serves an MCP server, the standard way AI assistants call tools, next to its REST API. Paste the address and a management key into Claude Code, Cursor or any other MCP client, and the agent can do exactly what the key\'s scopes allow, with the same checks and the same activity log as the console.',
+            self::ConnectAgent => 'This environment serves an MCP server, the standard way AI assistants call tools, next to its REST API. Paste the address and a management key into Claude Code, Cursor or any other MCP client, and the agent can do exactly what the key\'s scopes allow, with the same checks and the same audit log as the console.',
 
             self::Organizations => 'Each organization is a company or team using your product, with its own members, roles, domains and single sign-on. Create one for each company that signs up, and open it to manage its members, invitations and verified domains, or to suspend it.',
 
             self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, change which organizations and roles they hold, or erase them for good on a right-to-erasure request.',
-            self::Staff => 'A staff role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
-            self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s activity log records who did it and why.',
+            self::Staff => 'An admin & support role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
+            self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s audit log records who did it and why.',
 
             self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in. The environment sets a baseline every organization inherits, and an organization can make its own rules stricter but never looser.',
 
-            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Single sign-on under Sign-in.',
+            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Enterprise SSO under Authentication.',
 
             self::LegacyLogin => 'While you move off another system, an app can ask for the email and password of anyone not yet in Cbox ID to be checked against its old login endpoint. Test the endpoint before you approve it: a person it accepts is created here and never sent there again, but while it is down, nobody who has not moved yet can sign in.',
 
             self::Connectors => 'An overview of the links between Cbox ID and other systems: syncing users out over SCIM, webhooks, and single sign-on federation. The catalog lists the kinds this install supports and Connections lists the ones that are live; each is set up on its own page.',
 
-            self::LogStreaming => 'Mirrors every activity log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
+            self::LogStreaming => 'Mirrors every audit log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
+            self::AuditLogs => 'The audit events your app sends about each organization it serves — who did what inside your product, and when — kept per organization in a hash chain and shown to that organization\'s own admins. Use it when an organization you serve asks for an audit log of its account; define schemas to keep the events consistent.',
 
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
@@ -266,6 +273,7 @@ enum HelpTopic: string
     {
         return match ($this) {
             self::SingleSignOn => 'guides/single-sign-on',
+            self::Domains => 'guides/single-sign-on',
             self::SocialSignIn => 'guides/social-sign-in',
             self::SyncUsersIn => 'guides/sync-users-in',
             self::SyncUsersOut => 'guides/sync-users-out',
@@ -280,6 +288,9 @@ enum HelpTopic: string
             self::AccessReviews => 'guides/access-reviews',
             self::RoleConflicts => 'guides/role-conflicts',
             self::ActivityLog => 'guides/activity-log',
+            self::AuditLogs => 'guides/audit-logs',
+            self::LogStreaming => 'guides/log-streams',
+            self::EnvironmentDomains => 'guides/custom-domains',
             self::AgentApprovals => 'guides/agent-approvals',
             self::TrustedDevices => 'guides/trusted-devices',
             self::ReviewAgentRequests => 'guides/agent-approvals',
@@ -308,7 +319,6 @@ enum HelpTopic: string
             self::SessionsAndActivity,
             self::WorkspaceSettings,
             self::Team,
-            self::EnvironmentDomains,
             self::Billing,
             self::EnvironmentOverview,
             self::Users,
@@ -316,7 +326,6 @@ enum HelpTopic: string
             self::SamlApplications,
             self::LegacyLogin,
             self::Connectors,
-            self::LogStreaming,
             self::Branding,
             self::PlatformUsage,
             self::PlatformSearch,

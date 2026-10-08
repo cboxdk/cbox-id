@@ -16,9 +16,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Develop and CI on 8.4 AND 8.5 (cboxdk standard) so an 8.5-only regression
-        # in the deployed app is caught, not just in the library it embeds.
-        php: ['8.4', '8.5']
+        # ONE PHP, the one that ships: the image (Dockerfile), the manifest (cbox.yaml),
+        # composer.json's `require.php` and `config.platform.php` are all 8.5. This is a
+        # deployed application, not a library; a cell for a version it never runs on
+        # tests a deployment nobody has.
+        php: ['8.5']
 
     # The toolchain is the cbox base image's dev tier, not a stack of setup actions: PHP,
     # Composer, Node 22 and Playwright's Chromium are baked in, pinned by the `-v1` release
@@ -53,10 +55,10 @@ jobs:
       - name: Static analysis (PHPStan/Larastan)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
 
-      # `visual` RUNS IN THE 8.5 CELL ONLY, the image `.github/workflows/visual-baselines.yml`
-      # draws the baselines in. A baseline is a picture of one renderer; the 8.4 image may
-      # carry another Chromium build, so judging it there would fail for reasons nobody
-      # can act on. (It once ran on a self-hosted runner for pushes to main while the
+      # `visual` RUNS IN THE IMAGE `.github/workflows/visual-baselines.yml` draws the
+      # baselines in — the same php-cli 8.5 dev image as this job. A baseline is a picture
+      # of one renderer, so judging it in another would fail for reasons nobody can act on.
+      # (It once ran on a self-hosted runner for pushes to main while the
       # baselines were drawn on ubuntu-latest, and failed on every push for that alone.) That is the whole trick: a
       # screenshot baseline is a picture of ONE renderer, and pictures drawn on a
       # maintainer's macOS/arm64 laptop fail on Linux/x64 for reasons nobody can act on
@@ -67,8 +69,14 @@ jobs:
       # baseline because a test failed, without looking, is how a visual suite becomes a
       # rubber stamp. If the new picture is the one you meant, run the Visual baselines
       # workflow and commit what it uploads.
+      #
+      # `docs-screenshots` IS EXCLUDED. It is not a test — it rewrites docs/screenshots/*.png
+      # (tests/Browser/DocsScreenshotsTest.php). phpunit.xml excludes it too, but a
+      # `--exclude-group` on the command line REPLACES the XML's list rather than adding to
+      # it, so naming it here keeps it out if a flag is ever added. One flag per group: Pest
+      # reads `--exclude-group=a,b` as a single group with a comma in its name.
       - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
-        run: vendor/bin/pest ${{ matrix.php != '8.5' && '--exclude-group=visual' || '' }}
+        run: vendor/bin/pest --exclude-group=docs-screenshots
 
   # ---------------------------------------------------------------------------
   # SUPPLY CHAIN — its own job so it ALWAYS runs.

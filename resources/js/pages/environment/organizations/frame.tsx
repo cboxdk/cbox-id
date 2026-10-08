@@ -1,7 +1,19 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { OrganizationHub } from '@/types';
-import { Button, CopyButton, Dialog, DialogClose, Icon, LinkTabs, Pill, RadioGroup } from '@/ui';
+import {
+    Button,
+    Checkbox,
+    CopyButton,
+    Dialog,
+    DialogClose,
+    Field,
+    Icon,
+    Input,
+    LinkTabs,
+    Pill,
+    Select,
+} from '@/ui';
 
 /**
  * WHAT EVERY TAB OF AN ORGANIZATION'S PAGE DRAWS FIRST: the way back to the list, the
@@ -66,39 +78,37 @@ export function OrganizationFrame({
                         </div>
                     </div>
 
-                    {hub.portalLink !== null && (
-                        <Button variant="primary" size="sm" onClick={() => setLinking(true)}>
-                            <Icon name="external" className="w-4 h-4" />
-                            Admin Portal link
-                        </Button>
-                    )}
+                    <Button variant="primary" size="sm" onClick={() => setLinking(true)}>
+                        <Icon name="external" className="w-4 h-4" />
+                        Admin Portal link
+                    </Button>
                 </div>
             </div>
 
-            {portalUrl !== undefined && hub.portalLink !== null && (
-                <PortalLinkRevealed url={portalUrl} />
-            )}
+            {portalUrl !== undefined && <PortalLinkRevealed url={portalUrl} />}
 
             <LinkTabs tabs={hub.tabs} label={`${hub.name} pages`} />
 
             {children}
 
-            {hub.portalLink !== null && (
-                <PortalLinkDialog
-                    open={linking}
-                    onOpenChange={setLinking}
-                    name={hub.name}
-                    link={hub.portalLink}
-                />
-            )}
+            <PortalLinkDialog
+                open={linking}
+                onOpenChange={setLinking}
+                name={hub.name}
+                link={hub.portalLink}
+            />
         </div>
     );
 }
 
 /**
- * "Admin Portal link" — what the link may set up. Only what the organization's plan includes
- * is offered, because the action refuses anything else and a choice that is then refused is
- * the console lying about what it can do.
+ * "Admin Portal link" — WHAT the link sets up (the intents, as checkboxes), HOW LONG it may
+ * wait to be opened, and, optionally, WHO it is mailed to and in which language.
+ *
+ * An intent the organization's plan does not include is shown, disabled, with the reason —
+ * the action refuses it, and a choice offered only to be refused is the console lying about
+ * what it can do; one hidden is a feature nobody learns exists. The mail goes in the
+ * customer's language, because the person reading it is theirs, not ours.
  */
 function PortalLinkDialog({
     open,
@@ -109,14 +119,34 @@ function PortalLinkDialog({
     open: boolean;
     onOpenChange: (open: boolean) => void;
     name: string;
-    link: NonNullable<OrganizationHub['portalLink']>;
+    link: OrganizationHub['portalLink'];
 }) {
-    const form = useForm({ covers: link.covers[0]?.value ?? '' });
+    const form = useForm({
+        intents: link.intents
+            .filter((intent) => intent.available)
+            .slice(0, 1)
+            .map((intent) => intent.value),
+        expires_in_minutes: link.lifetimes[0]?.value ?? '30',
+        email: '',
+        locale: link.defaultLocale,
+    });
+
+    const toggle = (value: string, checked: boolean): void => {
+        form.setData(
+            'intents',
+            checked
+                ? [...form.data.intents, value]
+                : form.data.intents.filter((intent) => intent !== value),
+        );
+    };
 
     const submit = (): void => {
         form.post(link.href, {
             preserveScroll: true,
-            onSuccess: () => onOpenChange(false),
+            onSuccess: () => {
+                onOpenChange(false);
+                form.reset('email');
+            },
         });
     };
 
@@ -125,38 +155,92 @@ function PortalLinkDialog({
             open={open}
             onOpenChange={onOpenChange}
             title="Admin Portal link"
-            description={`A single-use link ${name}'s IT administrator opens to set things up themselves, without an account here. It expires soon and is shown once.`}
+            description={`A single-use link ${name}'s IT administrator opens to set things up — or read its audit logs — themselves, without an account here. It is shown once.`}
             footer={
                 <>
                     <DialogClose asChild>
                         <Button>Cancel</Button>
                     </DialogClose>
-                    <Button variant="primary" loading={form.processing} onClick={submit}>
-                        Create link
+                    <Button
+                        variant="primary"
+                        loading={form.processing}
+                        disabled={form.data.intents.length === 0}
+                        onClick={submit}
+                    >
+                        {form.data.email.trim() === '' ? 'Create link' : 'Create and send link'}
                     </Button>
                 </>
             }
         >
             <form
+                className="space-y-5"
                 onSubmit={(event) => {
                     event.preventDefault();
                     submit();
                 }}
             >
-                <RadioGroup
-                    label="What it sets up"
-                    value={form.data.covers}
-                    onValueChange={(covers) => form.setData('covers', covers)}
-                    options={link.covers.map((option) => ({
-                        value: option.value,
-                        label: option.label,
-                    }))}
-                />
-                {form.errors.covers !== undefined && (
-                    <p role="alert" className="field-error mt-2">
-                        {form.errors.covers}
-                    </p>
-                )}
+                <fieldset>
+                    <legend className="text-sm font-medium mb-2">What it opens</legend>
+                    <div className="space-y-2">
+                        {link.intents.map((intent) => (
+                            <Checkbox
+                                key={intent.value}
+                                name="intents[]"
+                                value={intent.value}
+                                checked={form.data.intents.includes(intent.value)}
+                                disabled={!intent.available}
+                                onCheckedChange={(checked) => toggle(intent.value, checked)}
+                                label={intent.label}
+                                hint={
+                                    intent.available
+                                        ? intent.description
+                                        : `${intent.description} Not included in this organization's plan.`
+                                }
+                            />
+                        ))}
+                    </div>
+                    {form.errors.intents !== undefined && (
+                        <p role="alert" className="field-error mt-2">
+                            {form.errors.intents}
+                        </p>
+                    )}
+                </fieldset>
+
+                <Field label="Link expires after" error={form.errors.expires_in_minutes}>
+                    <Select
+                        name="expires_in_minutes"
+                        value={form.data.expires_in_minutes}
+                        onValueChange={(minutes) => form.setData('expires_in_minutes', minutes)}
+                        options={link.lifetimes}
+                    />
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                        label="Email it to"
+                        optional
+                        hint="Their IT contact. Left blank, you copy the link yourself."
+                        error={form.errors.email}
+                    >
+                        <Input
+                            name="email"
+                            type="email"
+                            autoComplete="off"
+                            placeholder="it@customer.com"
+                            value={form.data.email}
+                            onChange={(event) => form.setData('email', event.target.value)}
+                        />
+                    </Field>
+                    <Field label="Email language" error={form.errors.locale}>
+                        <Select
+                            name="locale"
+                            value={form.data.locale}
+                            disabled={form.data.email.trim() === ''}
+                            onValueChange={(locale) => form.setData('locale', locale)}
+                            options={link.locales}
+                        />
+                    </Field>
+                </div>
             </form>
         </Dialog>
     );
@@ -183,8 +267,9 @@ function PortalLinkRevealed({ url }: { url: string }) {
         >
             <p className="text-sm font-semibold">Setup link for their IT admin</p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Send this single-use link to whoever runs their identity provider. It works without
-                an account and expires soon. Copy it now — it is shown only once.
+                Send this single-use link to whoever runs their identity provider, if it was not
+                mailed to them. It works without an account until it expires. Copy it now — it is
+                shown only once.
             </p>
             <div className="mt-3 flex items-start gap-2">
                 <code

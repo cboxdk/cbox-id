@@ -32,7 +32,7 @@ use Cbox\Id\OAuthServer\Support\BackchannelLogoutUri;
     scope: 'apps:write',
     danger: Danger::Write,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['PUT', '/apps/{id}/settings/backchannel-logout'],
     consoleRoutes: ['clients.settings.logout', 'environment.clients.settings.logout'],
     consoleGate: ConsoleGate::Administer,

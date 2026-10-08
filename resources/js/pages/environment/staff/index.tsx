@@ -69,12 +69,12 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
         <>
             <PageHeader
                 help={help}
-                description="A staff role is a role you grant to your own people across the whole environment: it applies in every organization, and no organization's admins can see or change it."
+                description="An admin & support role is a role you grant to your own people across the whole environment: it applies in every organization, and no organization's admins can see or change it."
                 actions={
                     <Button asChild className="shrink-0">
                         <Link href={reviewHref}>
                             <Icon name="shield" className="w-4 h-4" />
-                            Review staff access
+                            Review admin & support access
                         </Link>
                     </Button>
                 }
@@ -88,7 +88,7 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                         <EmptyState
                             icon="members"
                             equivalent="users.environment_roles.grant"
-                            title="Nobody holds a staff role"
+                            title="Nobody holds an admin & support role"
                             description="Grant one to the people who support or run your apps. An app's own role reaches only that app's tokens; a role for all apps reaches every one of them."
                         />
                     </div>
@@ -138,7 +138,7 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                                         <span className="inline-flex items-center gap-1.5">
                                             <Badge>{grant.role.name}</Badge>
                                             {grant.role.staffOnly && (
-                                                <Badge tone="info">Staff-only</Badge>
+                                                <Badge tone="info">Admins & support only</Badge>
                                             )}
                                         </span>
 
@@ -191,7 +191,7 @@ function GrantForm({
 
     if (roles.length === 0) {
         return (
-            <Panel title="Grant a staff role">
+            <Panel title="Grant an admin & support role">
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     There is no role to grant yet. Define one on the{' '}
                     <Link
@@ -209,7 +209,7 @@ function GrantForm({
 
     return (
         <Panel
-            title="Grant a staff role"
+            title="Grant an admin & support role"
             description="Segregation-of-duties rules are checked in every organization the person belongs to, and a refusal says where."
         >
             <form

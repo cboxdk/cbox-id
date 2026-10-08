@@ -16,11 +16,11 @@ use App\Platform\SignInAudit;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 
 /**
- * Remove a SAML application: nobody can sign in to it with their account here any more.
+ * Remove a SAML app: nobody can sign in to it with their account here any more.
  */
 #[AsAction(
     name: 'saml_apps.delete',
-    summary: 'Remove a SAML application. People can no longer sign in to it with their account here.',
+    summary: 'Remove a SAML app. People can no longer sign in to it with their account here.',
     scope: 'saml_apps:write',
     danger: Danger::Critical,
     tag: 'SAML apps',
@@ -38,13 +38,13 @@ final readonly class DeleteSamlApp implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('id')->inPath()->describe('The SAML application\'s id.'),
+            Field::string('id')->inPath()->describe('The SAML app\'s id.'),
         ]);
     }
 
     public function handle(ActionContext $context): ActionResult
     {
-        $provider = $this->providers->findById($context->string('id')) ?? throw ActionRefused::notFound('SAML application');
+        $provider = $this->providers->findById($context->string('id')) ?? throw ActionRefused::notFound('SAML app');
 
         $provider->delete();
 

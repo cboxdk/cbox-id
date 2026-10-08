@@ -24,11 +24,12 @@ use App\Platform\Keys\ManagementKeys;
     summary: 'Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.',
     scope: 'keys:write',
     danger: Danger::Critical,
-    tag: 'Management keys',
+    tag: 'Secret keys',
     rest: ['POST', '/keys/{id}/rotate'],
     status: 201,
     consoleRoutes: ['environment.keys.rotate'],
     redact: ['token'],
+    schema: 'ManagementKey',
 )]
 final readonly class RotateKey implements Action
 {

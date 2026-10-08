@@ -23,6 +23,7 @@ use App\Platform\Console\ConsoleClients;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\ScopeCatalog;
 use App\Platform\VerifiedEmailGate;
@@ -157,7 +158,7 @@ final readonly class ClientController extends ConsoleController
 
         $showsEveryOrganization = ! $filter->active();
 
-        return $this->page('console/clients/index', 'Applications', [
+        return $this->page('console/clients/index', Vocabulary::APPLICATIONS, [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
                 ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))

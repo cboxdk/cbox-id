@@ -20,7 +20,7 @@ use Cbox\Id\Identity\Contracts\AuthPolicies;
  */
 #[AsAction(
     name: 'signin.policy.get',
-    summary: 'Read the sign-in rules (password, MFA, SSO, lockout): the environment baseline, or one organization\'s effective rules and override.',
+    summary: 'Read the authentication policy (password, MFA, SSO, lockout): the environment baseline, or one organization\'s effective rules and override.',
     scope: 'signin:read',
     danger: Danger::Read,
     schema: 'SignInPolicy',

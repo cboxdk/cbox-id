@@ -34,6 +34,7 @@ use App\Platform\Migration\LegacyLoginProbe;
     tag: 'Legacy login',
     rest: ['POST', '/legacy-login/probe'],
     consoleRoutes: ['environment.legacy-login.probe'],
+    schema: 'LegacyLoginProbe',
 )]
 final readonly class ProbeLegacyLogin implements Action
 {

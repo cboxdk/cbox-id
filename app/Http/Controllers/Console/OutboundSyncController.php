@@ -11,6 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\RegisterOutboundSyncRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
@@ -70,7 +71,7 @@ final readonly class OutboundSyncController extends ConsoleController
 
         $owners = $this->organizationNames($page->getCollection()->pluck('organization_id')->all());
 
-        return $this->page('console/outbound-sync/index', 'Outbound provisioning', [
+        return $this->page('console/outbound-sync/index', Vocabulary::OUTBOUND_PROVISIONING, [
             'help' => HelpProps::for(HelpTopic::SyncUsersOut),
             'connections' => array_map(fn (ProvisioningConnection $connection): array => [
                 'id' => $connection->id,

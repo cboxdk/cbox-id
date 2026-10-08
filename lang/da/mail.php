@@ -68,4 +68,31 @@ return [
         'invited_as' => ':inviter har inviteret dig til at administrere :organization med rollen :role på :brand — konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
         'button' => 'Accepter invitation',
     ],
+
+    'portal_link' => [
+        'subject' => 'Sæt :organization op på :brand',
+        'heading' => 'Sæt :organization op',
+        'lead' => 'Du er blevet bedt om at sætte følgende op for :organization på :brand. Du behøver ikke en konto — knappen herunder er alt, hvad der skal til.',
+        'intents' => [
+            'sso' => 'Single sign-on med jeres identitetsudbyder',
+            'dsync' => 'Katalogsynkronisering (SCIM)',
+            'domain_verification' => 'Bekræftelse af jeres e-maildomæner',
+            'log_streams' => 'Streaming af revisionsloggen til jeres SIEM',
+            'certificate_renewal' => 'Fornyelse af jeres SAML-signeringscertifikat',
+            'audit_logs' => 'Gennemgang af jeres revisionslog (skrivebeskyttet)',
+        ],
+        'button' => 'Start opsætningen',
+        'expires' => 'Linket kan bruges én gang og virker til :date. Hvis det udløber, så bed om et nyt.',
+    ],
+
+    'certificate_expiring' => [
+        'subject' => 'Single sign-on via :connection holder op med at virke om :count dag|Single sign-on via :connection holder op med at virke om :count dage',
+        'subject_expired' => 'Single sign-on via :connection er holdt op med at virke',
+        'heading' => 'Jeres SAML-certifikat udløber snart',
+        'heading_expired' => 'Jeres SAML-certifikat er udløbet',
+        'lead' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløber :date. Derefter kan ingen logge ind gennem den.',
+        'lead_expired' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløb :date. Ingen kan logge ind gennem den, før certifikatet er fornyet.',
+        'what_to_do' => 'Bed den, der administrerer jeres identitetsudbyder, om det nye signeringscertifikat, og upload det derefter i jeres administrationskonsol — eller bed jeres administrator om et link til Admin Portal, så du kan uploade det der.',
+        'why' => 'Du modtager denne e-mail, fordi du er ejer eller administrator af denne organisation på :brand.',
+    ],
 ];

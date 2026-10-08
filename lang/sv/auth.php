@@ -277,9 +277,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Konfigurera single sign-on',
+        'title' => 'Administratörskonfiguration',
         'heading' => 'Konfigurera inloggning för din organisation',
-        'lead' => 'Du har fått en konfigurationslänk för att ansluta din identitetsleverantör eller katalog. Fortsätt för att öppna konfigurationssidan.',
+        'lead' => 'Du har fått en konfigurationslänk för din organisation — single sign-on, katalogsynkronisering, domäner, loggströmmar eller förnyelse av ett certifikat. Fortsätt för att öppna konfigurationssidan.',
         'action' => 'Öppna konfigurationen',
         'note' => 'Länken fungerar en gång, och konfigurationssessionen som den öppnar har en tidsgräns. Öppna den när du är redo att slutföra.',
     ],

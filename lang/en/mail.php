@@ -80,4 +80,34 @@ return [
         'invited_as' => ':inviter invited you to administer :organization as :role on :brand — the console for its identity providers: environments, members and billing. Accept to set a password and sign in.',
         'button' => 'Accept invitation',
     ],
+
+    // An Admin Portal link, mailed to the customer's IT contact. :organization is bold in the lead.
+    'portal_link' => [
+        'subject' => 'Set up :organization on :brand',
+        'heading' => 'Set up :organization',
+        'lead' => 'You have been asked to set up the following for :organization on :brand. You don\'t need an account — the button below is all it takes.',
+        'intents' => [
+            'sso' => 'Single sign-on with your identity provider',
+            'dsync' => 'Directory sync (SCIM)',
+            'domain_verification' => 'Verifying your email domains',
+            'log_streams' => 'Streaming your audit log to your SIEM',
+            'certificate_renewal' => 'Renewing your SAML signing certificate',
+            'audit_logs' => 'Reviewing your audit logs (read-only)',
+        ],
+        'button' => 'Start setup',
+        'expires' => 'The link works once, until :date. If it expires, ask for a new one.',
+    ],
+
+    // From the daily certificate scan, to an organization's owners and admins. :connection
+    // and :organization are bold in the lead; :date is already in the reader's format.
+    'certificate_expiring' => [
+        'subject' => 'Single sign-on through :connection stops working in :count day|Single sign-on through :connection stops working in :count days',
+        'subject_expired' => 'Single sign-on through :connection has stopped working',
+        'heading' => 'Your SAML certificate expires soon',
+        'heading_expired' => 'Your SAML certificate has expired',
+        'lead' => 'The signing certificate of :connection, the single sign-on connection for :organization, expires on :date. After that, nobody can sign in through it.',
+        'lead_expired' => 'The signing certificate of :connection, the single sign-on connection for :organization, expired on :date. Nobody can sign in through it until it is renewed.',
+        'what_to_do' => 'Ask whoever runs your identity provider for its new signing certificate, then upload it in your admin console — or ask your administrator for an Admin Portal link to upload it.',
+        'why' => 'You are receiving this because you are an owner or administrator of this organization on :brand.',
+    ],
 ];

@@ -16,11 +16,11 @@ use App\Platform\Actions\Input\InputSchema;
 
 #[AsAction(
     name: 'hooks.get',
-    summary: 'Get one inline hook: its URL, hook point, owner and whether it is active. Never its signing secret.',
+    summary: 'Get one hook: its URL, hook point, owner and whether it is active. Never its signing secret.',
     scope: 'hooks:read',
     danger: Danger::Read,
     schema: 'InlineHook',
-    tag: 'Inline hooks',
+    tag: 'Hooks',
     rest: ['GET', '/hooks/{id}'],
     consoleGate: ConsoleGate::Administer,
 )]
@@ -29,7 +29,7 @@ final class ShowHook implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('id')->inPath()->describe('The inline hook id.'),
+            Field::string('id')->inPath()->describe('The hook id.'),
         ]);
     }
 

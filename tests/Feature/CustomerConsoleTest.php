@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnforceCustomerConsole;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\CustomerConsole;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -9,8 +10,10 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 uses(RefreshDatabase::class);
 
@@ -18,8 +21,9 @@ uses(RefreshDatabase::class);
  * A CUSTOMER'S OWN CONSOLE — the organization console on a customer's environment host.
  *
  * The person signed in there administers their company's organization inside somebody
- * else's product. They get an admin portal (members, single sign-on and its domains,
- * directory sync, roles and permissions, the audit log) and their own pages; the product's
+ * else's product. They get an admin portal — Members, Enterprise SSO, Domains, Directory
+ * Sync, Roles and the Audit log, and App audit logs where their plan has them — and their
+ * own pages; the product's
  * administration — apps, webhooks, the vault, branding and the rest — belongs to the
  * environment console at `/admin`, and is not there rather than unlinked.
  *
@@ -92,9 +96,12 @@ function productAdministration(): array
         'access reviews' => ['governance'],
         'role conflicts' => ['sod-policies'],
         'outbound provisioning' => ['provisioning'],
-        'log streaming' => ['audit-streams'],
-        'social sign-in' => ['social-providers'],
-        'sign-in rules' => ['auth-policy'],
+        'log streams' => ['audit-streams'],
+        'social login' => ['social-providers'],
+        'authentication policy' => ['auth-policy'],
+        // Permissions are what an app enforces; writing new ones is the vendor's job. A
+        // customer composes roles from the ones that exist, on the Roles page.
+        'permissions' => ['permissions'],
         'appearance' => ['appearance'],
         'settings' => ['settings'],
         'usage' => ['usage'],
@@ -120,24 +127,61 @@ it('draws a customer\'s console as an admin portal and the person\'s own pages',
     $rail = customerRail('dashboard');
 
     expect(array_keys($rail))->toBe(['overview', 'directory', 'authentication', 'audit', 'account'])
+        // The landing page and the Approvals waiting on this person — their own.
         ->and($rail['overview'])->toBe(['dashboard', 'approvals'])
-        ->and($rail['directory'])->toBe(['directory.members', 'roles', 'permissions'])
-        // Single sign-on carries its domains on the same page; "Sync users in" is
-        // directory sync. Social sign-in, sign-in rules and outbound sync are the product's.
-        ->and($rail['authentication'])->toBe(['connections', 'directories'])
-        ->and($rail['audit'])->toBe(['audit'])
+        // EXACTLY the admin portal: Members, Enterprise SSO, Domains, Directory Sync,
+        // Roles, the Audit log — and App audit logs, which an open install grants.
+        ->and($rail['directory'])->toBe(['directory.members', 'roles'])
+        ->and($rail['authentication'])->toBe(['connections', 'domains', 'directories'])
+        ->and($rail['audit'])->toBe(['audit', 'audit-logs'])
         // The person's own pages, a module's personal one among them.
         ->and($rail['account'])->toContain('account', 'account.activity', 'devices.mine');
 })->group('ux');
+
+it('names a customer\'s console in the console\'s own words', function (): void {
+    aCustomerAdministrator();
+
+    $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
+
+    $labels = collect($shell['areas'])
+        ->mapWithKeys(fn (array $area): array => [$area['label'] => array_column($area['pages'], 'label')])
+        ->all();
+
+    expect($labels)->toMatchArray([
+        'Overview' => ['Overview', 'Approvals'],
+        'Members & roles' => ['Members', 'Roles'],
+        'Sign-in' => ['Enterprise SSO', 'Domains', 'Directory Sync'],
+        'Audit log' => ['Audit log', 'App audit logs'],
+    ]);
+})->group('ux');
+
+/**
+ * APP AUDIT LOGS ARE SOLD PER ORGANIZATION. Where the plan does not include them, the page
+ * is not on a customer's rail and its routes answer 404 — the same list deciding both — and
+ * the moment the entitlement lands, both open.
+ */
+it('offers a customer App audit logs only when their plan includes them', function (): void {
+    config(['cbox-id.entitlements.mode' => 'metered']);
+    ['organizationId' => $organizationId] = aCustomerAdministrator();
+
+    expect(customerRail('dashboard')['audit'])->toBe(['audit']);
+    $this->get(route('audit-logs'))->assertNotFound();
+    $this->post(route('audit-logs.exports.store'))->assertNotFound();
+
+    grantFeature($organizationId, (string) config('cbox-id.entitlements.audit_logs'));
+
+    expect(customerRail('dashboard')['audit'])->toBe(['audit', 'audit-logs']);
+    $this->get(route('audit-logs'))->assertOk();
+});
 
 it('serves every page a customer\'s console keeps', function (string $route): void {
     aCustomerAdministrator();
 
     $this->get(route($route))->assertOk();
 })->with([
-    'dashboard', 'approvals', 'directory.members', 'roles', 'permissions', 'connections',
-    'connections.create', 'directories', 'audit', 'account', 'account.activity',
-    'account.api-keys', 'device',
+    'dashboard', 'approvals', 'directory.members', 'roles', 'connections',
+    'connections.create', 'domains', 'directories', 'audit', 'audit-logs', 'account',
+    'account.activity', 'account.api-keys', 'device',
 ]);
 
 it('answers 404 for the product\'s administration on a customer\'s console', function (string $route): void {
@@ -239,5 +283,105 @@ it('judges a route by the most specific rail page it belongs to', function (): v
         ->and(CustomerConsole::servesRoute('settings.organization.destroy'))->toBeFalse()
         // `audit-streams` is not a page of `audit`'s, whatever the spelling suggests.
         ->and(CustomerConsole::servesRoute('audit-streams.create'))->toBeFalse()
-        ->and(CustomerConsole::servesRoute('audit'))->toBeTrue();
+        ->and(CustomerConsole::servesRoute('audit'))->toBeTrue()
+        // A role is composed of permissions on the Roles page; writing a permission is not.
+        ->and(CustomerConsole::servesRoute('roles.permissions'))->toBeTrue()
+        ->and(CustomerConsole::servesRoute('permissions.store'))->toBeFalse();
 });
+
+/**
+ * THE ROUTE WALK — every organization-console route, asked at the door on a customer's
+ * environment, and the whole of what gets through accounted for.
+ *
+ * The rail tests above read the rail; this reads the DOOR, which is what actually stops a
+ * request. Each route is handed to {@see EnforceCustomerConsole} exactly as the router would
+ * hand it, and what it lets through must be one of two things:
+ *
+ *  - a route of a page the admin portal keeps — Members, Roles, Enterprise SSO, Domains,
+ *    Directory Sync, Audit log, App audit logs — or of the person's own (the landing page,
+ *    their Approvals, My account);
+ *  - a CEREMONY no rail page owns, named below one by one: signing in again, a step-up,
+ *    approving a device, switching account. The door serves those because every console
+ *    needs them, which is exactly why a route that belongs to no page must be listed here
+ *    by name: an organization write added without a page would otherwise walk through.
+ *
+ * Then every write the door refuses is SENT, and must answer 404 — so the refusal is the
+ * door's, ahead of validation and the controller, not a test-side opinion of it.
+ */
+it('lets nothing through on a customer\'s console but the admin portal, the person\'s own pages and named ceremonies', function (): void {
+    everyConsoleModuleOn();
+    aCustomerAdministrator();
+
+    $keptPages = [
+        'dashboard', 'approvals',
+        'directory.members', 'roles',
+        'connections', 'domains', 'directories',
+        'audit', 'audit-logs',
+    ];
+
+    $ceremonies = [
+        'accounts', 'accounts.add', 'accounts.switch',
+        'activity',
+        'device', 'device.lookup', 'device.approve', 'device.deny',
+        'environment.open',
+        'link.confirm', 'link.connect', 'link.decline',
+        'organization.switch',
+        'passkeys.register', 'passkeys.register.options',
+        'password.change', 'password.change.update',
+        'search',
+        'social.connect', 'social.connect.callback',
+        'sudo', 'sudo.confirm',
+    ];
+
+    $door = app(EnforceCustomerConsole::class);
+    $routes = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn (RoutingRoute $route): bool => in_array('console.customer', $route->middleware(), true));
+
+    // A walk over nothing proves nothing.
+    expect($routes->count())->toBeGreaterThan(200);
+
+    $through = [];
+    $refusedWrites = [];
+
+    foreach ($routes as $route) {
+        $name = (string) $route->getName();
+        $method = collect($route->methods())->first(fn (string $m): bool => $m !== 'HEAD') ?? 'GET';
+        $uri = '/'.ltrim((string) preg_replace('/\{[^}]+\}/', '01hzzzzzzzzzzzzzzzzzzzzzzz', $route->uri()), '/');
+
+        $request = Request::create($uri, $method);
+        $request->setRouteResolver(fn (): RoutingRoute => $route);
+
+        try {
+            $door->handle($request, fn () => response('through'));
+            $through[] = $name;
+        } catch (HttpExceptionInterface $refusal) {
+            expect($refusal->getStatusCode())->toBe(404);
+
+            if (! in_array($method, ['GET', 'HEAD'], true)) {
+                $refusedWrites[] = [$method, $uri, $name];
+            }
+        }
+    }
+
+    $unaccounted = collect($through)
+        ->reject(function (string $name) use ($keptPages, $ceremonies): bool {
+            $owner = CustomerConsole::pageOf($name);
+
+            return $owner === null
+                ? in_array($name, $ceremonies, true)
+                : in_array($owner[1], $keptPages, true) || $owner[0] === 'account';
+        })
+        ->values()
+        ->all();
+
+    expect($unaccounted)->toBe([], "a customer's console lets through routes no admin-portal page owns:\n".implode("\n", $unaccounted))
+        // Every ceremony named is a real route the door serves — a stale name here would
+        // be an exemption for nothing.
+        ->and(array_values(array_diff($ceremonies, $through)))->toBe([])
+        // …and the product's administration really is on the other side of it.
+        ->and($refusedWrites)->not->toBe([]);
+
+    foreach ($refusedWrites as [$method, $uri, $name]) {
+        expect($this->call($method, $uri)->status())->toBe(404, "{$method} {$uri} ({$name}) reached past the door");
+    }
+})->group('security');

@@ -305,6 +305,10 @@ it('lets an operator on no workspace sign an MCP client in, for the deployment',
 it('meters /oauth/authorize per address at the root', function (): void {
     $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
 
+    // One minute's budget, spent inside one minute: frozen, so a slow run under load cannot
+    // cross the window's edge and get a fresh budget half way.
+    $this->freezeTime();
+
     // Signed out, each answer is a hop to the sign-in page: cheap, and still counted.
     for ($i = 0; $i < WebRateLimiters::ROOT_AUTHORIZE_PER_IP; $i++) {
         rootOAuthAuthorize($clientId)->assertRedirect();

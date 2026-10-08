@@ -6,6 +6,7 @@ namespace App\Actions\Roles;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
@@ -13,12 +14,13 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\AccessControl\Contracts\Roles;
-use Cbox\Id\AccessControl\Models\Permission;
 
 /**
  * Take one permission off a role, so everybody who holds the role loses it — through
  * {@see Roles::revokePermission()}, audited and announced. Idempotent: taking off one the
- * role does not carry changes nothing.
+ * role does not carry changes nothing. A permission this environment cannot see at all —
+ * another environment's, or none — is a 404, as an unknown id is everywhere: "nothing
+ * changed" would be an answer about somebody else's permission.
  */
 #[AsAction(
     name: 'roles.permissions.revoke',
@@ -49,11 +51,10 @@ final readonly class RevokeRolePermission implements Action
 
         // Any permission this environment can see — one that has since been orphaned, or
         // left the catalogue this caller composes from, must still be removable.
-        $permission = Permission::query()->whereKey($context->string('permission_id'))->first();
+        $permission = $authority->visiblePermissions()->whereKey($context->string('permission_id'))->first()
+            ?? throw ActionRefused::notFound('permission');
 
-        if ($permission !== null) {
-            $this->roles->revokePermission($role->id, $permission->id, $authority->fence());
-        }
+        $this->roles->revokePermission($role->id, $permission->id, $authority->fence());
 
         $fresh = $role->fresh() ?? $role;
 

@@ -19,6 +19,7 @@ use App\Platform\Actions\Input\InputSchema;
 use App\Platform\ApiKeys\HolderApiKeys;
 use App\Platform\ApiKeys\KeyApps;
 use App\Platform\ApiKeys\ValueObjects\RefusalExplanation;
+use Cbox\Id\Organization\Enums\ApiKeyRefusal;
 use Cbox\Id\Organization\Exceptions\CustomerApiKeyRefused;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 
@@ -79,6 +80,12 @@ final readonly class CreateMyApiKey implements Action
                 expiresAt: EnvironmentKeyIssuer::expiry($context, 'expires_at'),
             );
         } catch (CustomerApiKeyRefused $refused) {
+            // An organization the person is not a member of is not theirs to name: the same
+            // 404 as one that does not exist, never a statement that it does.
+            if ($refused->reason === ApiKeyRefusal::NotAMember) {
+                throw ActionRefused::notFound('organization');
+            }
+
             $explanation = RefusalExplanation::of($refused, $this->apps->offered($organizationId, $clientId)?->name);
 
             throw ActionRefused::because($refused->reason->value, $explanation->message, $explanation->field === 'expiresOn' ? 'expires_at' : $explanation->field);

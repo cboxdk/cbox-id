@@ -212,7 +212,7 @@ it('requires a reason, and never runs longer than the configured maximum', funct
     confirmEnvironmentStepUp();
 
     startSupport($user, ['app' => $parcels, 'organization' => $org, 'reason' => '   '])
-        ->assertSessionHasErrors(['reason' => 'Say why — the organization sees this on its activity log.']);
+        ->assertSessionHasErrors(['reason' => 'Say why — the organization sees this on its audit log.']);
 
     startSupport($user, ['app' => $parcels, 'organization' => $org, 'minutes' => 30])
         ->assertSessionHasErrors(['minutes' => 'A support session lasts at most 15 minutes.']);

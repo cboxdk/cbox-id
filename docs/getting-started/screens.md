@@ -1,7 +1,7 @@
 ---
 title: Screens
 weight: 3
-description: A tour of the three consoles (workspace, organization and environment), their areas and topbar, and the sign-in surface, with screenshots dated 2026-07-13.
+description: A tour of the three consoles (workspace, organization and environment), their areas and topbar, and the sign-in surface, with screenshots of a seeded demo environment.
 ---
 
 # Screens
@@ -11,12 +11,11 @@ console's own structure, with areas declared once in
 [`ConsoleArea`](https://github.com/cboxdk/cbox-id/blob/main/app/Platform/Console/ConsoleArea.php)
 and rendered by the same components on every console.
 
-> **The screenshots below are dated 2026-07-13 and are stale.** They were taken against a
-> flat page list (Members / SSO connections / Directory sync / Roles / API clients /
-> Webhooks / Audit / Settings) that the console no longer has, and most pages have since
-> been renamed and moved. The prose is current; the images are not, and nothing here has
-> been re-shot. There is also **no screenshot of the Platform areas** at all, which is
-> the part of the console the person who runs the deployment spends their time in.
+The screenshots are of a seeded demo environment (the "Lovelace Labs" workspace and its
+"Ledger" product), taken in the light theme at 1440×900 by
+`vendor/bin/pest --group=docs-screenshots`; see [Screenshots](../screenshots/_index.md) to
+regenerate them. Most of them show an **environment** console, where the organization
+pages appear as tabs of each organization. There is no screenshot of the Platform areas.
 
 ## Three consoles, one shell
 
@@ -88,7 +87,7 @@ Password sign-in, plus **passwordless options**: email magic link and **passkey*
 (WebAuthn) sign-in. Social buttons appear when a provider is configured. Organizations
 get a branded variant at `/o/{slug}/login`.
 
-![Login screen](../screenshots/login.png)
+![Login screen](../screenshots/hosted-sign-in.png)
 
 ### Signup
 
@@ -96,7 +95,7 @@ Create a new organization and its first owner. Risk scoring runs on submit
 (monitor mode by default). Availability depends on `CBOX_ID_SIGNUP_MODE` — see
 [Security](../security/_index.md#self-service-signup-modes).
 
-![Signup screen](../screenshots/signup.png)
+![Signup screen](../screenshots/workspace-sign-up.png)
 
 ### Whose name is on the door
 
@@ -140,46 +139,50 @@ environment's console; everyone else lands on **Projects**, where each environme
 ## The organization console, area by area
 
 The full organization console, as a single-tenant install (and an operator) sees it. On a
-customer's environment host it keeps Overview and Approve agent requests, People (Members,
-Roles, Permissions), Enterprise SSO and Directory Sync, the Audit log, and My account;
-every other page below is on the environment console instead.
+customer's environment host it keeps the admin portal — Members, Roles, Enterprise SSO,
+Domains, Directory Sync, the Audit log, and App audit logs where the organization's plan
+includes them — beside the person's own Overview, Approvals and My account; every other
+page below is on the environment console instead.
 
 ### Overview
 
-*Overview · Usage · Approve agent requests.* The home page: member count, enterprise-SSO
+*Overview · Usage · Approvals.* The home page: member count, enterprise-SSO
 status, your role, a live **recent activity** feed from the tamper-evident audit log, and
-an onboarding checklist. **Approve agent requests** is where you approve or deny a
-request from an app or agent to act as you.
+an onboarding checklist. **Approvals** is where you approve or deny a request from an app
+or agent to act as you.
 
-![Dashboard / overview](../screenshots/dashboard.png)
+![Environment overview](../screenshots/environment-overview.png)
+![An organization's overview](../screenshots/organization-overview.png)
 
-### People
+### Members & roles
 
-*Members · Roles · Permissions.* The people in this organization and what they may do:
+*Members · Roles · Permissions · Member API keys.* The people in this organization and what they may do:
 invite, change roles, remove, every change audited. Each person's **Roles** control holds
 exactly one built-in role (what they may administer in the console) and any number of
 roles your apps understand. The role and permission model itself is org-scoped and
 hierarchy-aware.
 
-![Members](../screenshots/members.png)
+![Members](../screenshots/organization-members.png)
 ![Roles](../screenshots/roles.png)
 
 ### Sign-in
 
-*Enterprise SSO · Social login · Authentication policy · Directory Sync · Outbound
-provisioning.* Everything about how people get in and how their accounts arrive.
-Enterprise SSO connects an organization's own IdP (SAML / OIDC); social login is picked
+*Enterprise SSO · Domains · Social login · Authentication policy · Directory Sync ·
+Outbound provisioning.* Everything about how people get in and how their accounts arrive.
+Enterprise SSO connects an organization's own IdP (SAML / OIDC), and **Domains** proves
+the email domains that route people to it; social login is picked
 from a catalogue rather than described from memory; **Authentication policy** is the
 password, MFA and session policy; **Directory Sync** is inbound SCIM provisioning
 (deprovision revokes sessions immediately) and **Outbound provisioning** pushes the same
 directory to downstream apps.
 
 These are the names other identity platforms use for the same pages, so somebody who has
-used one finds them by the word they already know. The screenshots below predate the
-rename.
+used one finds them by the word they already know. In an environment console the same
+pages are tabs of each organization.
 
-![Enterprise SSO](../screenshots/connections.png)
-![Directory Sync](../screenshots/directories.png)
+![Enterprise SSO](../screenshots/organization-enterprise-sso.png)
+![Domains](../screenshots/organization-domains.png)
+![Directory Sync](../screenshots/organization-directory-sync.png)
 
 ### Access control
 
@@ -194,13 +197,11 @@ No screenshot.
 instance (including MCP clients self-registering through Dynamic Client Registration);
 HMAC-signed event delivery with retries and delivery history; synchronous hooks that run
 *during* a flow rather than after it; and the vault holding third-party tokens.
-Machine keys are on the [Keys](../guides/keys.md) page of the workspace and environment
-consoles.
+Machine keys are on the [API keys](../guides/keys.md) page of the workspace and
+environment consoles.
 
-The screenshots below are from when this area was "API clients" and "Webhooks" as two
-separate top-level pages.
-
-![Applications](../screenshots/clients.png)
+![Applications](../screenshots/applications.png)
+![An application](../screenshots/application-detail.png)
 ![Webhooks](../screenshots/webhooks.png)
 
 ### Connectors
@@ -208,24 +209,24 @@ separate top-level pages.
 Third-party integrations, contributed by the connectors module rather than written into
 the console. No screenshot.
 
-### Logs
+### Audit log
 
-*Audit log · Log streams.* The append-only, hash-chained audit trail, filterable and
+*Audit log · App audit logs · Log streams.* The append-only, hash-chained audit trail, filterable and
 exportable to your SIEM. The compliance and risk modules append their pages here rather
 than minting areas of their own.
 
-![Audit log](../screenshots/audit.png)
+![Audit log](../screenshots/audit-log.png)
 
 ### Settings
 
 *Settings · Appearance.* Organization details, and the branding an organization's own
 sign-in page inherits.
 
-![Settings](../screenshots/settings.png)
+![Settings](../screenshots/environment-settings.png)
 
 ### My account
 
-*Security · Sessions & activity.* The signed-in person's own credentials: two-factor
+*Security · Sessions & activity · My API keys.* The signed-in person's own credentials: two-factor
 authentication, **passkey** enrolment, and sessions (auth methods, expiry,
 sign-out-everywhere). Shown to members and admins alike; every area above is role-gated,
 this one is not.
@@ -240,7 +241,7 @@ a whole environment, filed by task in the words the market uses:
 
 - **Home:** Overview.
 - **Users & orgs:** Users, Organizations (your customers), Roles, Permissions. A user's
-  page has **Staff roles**: roles granted across the whole environment. An organization
+  page has **Admin & support roles**: roles granted across the whole environment. An organization
   opens on its own page, `/admin/organizations/{id}`, with a tab for each thing that is
   its: Overview (is SSO connected, a domain verified, a directory syncing — and its latest
   audit entries), Members, Invitations, SSO, Directory Sync, Domains, Roles, API keys,
@@ -251,8 +252,8 @@ a whole environment, filed by task in the words the market uses:
 - **Authentication:** Authentication policy, Social login, Enterprise SSO, Directory Sync:
   every way people come in.
 - **Developers:** Applications, APIs, API keys, Webhooks, Hooks.
-- **AI agents:** Approvals (every pending agent request in the environment, so an
-  administrator can deny one that looks like abuse).
+- **AI agents:** Agents, Approvals (every pending approval request in the environment,
+  so an administrator can deny one that looks like abuse), Connect.
 - **Branding:** Appearance, and Branding when the white-label module is on.
 - **Monitoring:** Audit log, Log streams, Usage, and the analytics, compliance and risk
   modules' pages.
@@ -291,7 +292,7 @@ the top says **Platform admin** with **Exit platform admin** beside it. The topb
 "target environment" menu is gone; re-point the platform pages from **Platform ›
 Environments**.
 
-![Organization switcher](../screenshots/org-switcher.png)
+![The context switcher](../screenshots/context-switcher.png)
 
 ### Switch user
 
@@ -306,7 +307,7 @@ toggle and sign-out; content stacks to a single column and wide tables scroll wi
 The sign-in split-screen collapses to a centered form. Verified at phone (390px) and
 tablet (768px) widths.
 
-![Console on mobile](../screenshots/mobile-dashboard.png)
+![Console on mobile](../screenshots/mobile-overview.png)
 
 ## Notes
 
@@ -316,5 +317,6 @@ tablet (768px) widths.
 - **Accessibility:** the auth and console pages pass an automated axe-core
   WCAG 2.1 A/AA audit (guarded by a regression test); keyboard-navigable with a
   skip link, labelled landmarks and controls.
-- To reproduce these locally: `php artisan migrate`, seed a demo org
-  (`php artisan db:seed --class=DemoSeeder`), then sign in.
+- To reproduce these locally: `php artisan migrate`, seed the demo environment
+  (`php artisan db:seed --class=DemoEnvironmentSeeder`), then sign in as
+  `ada@lovelace-labs.example`. The password is in the seeder.

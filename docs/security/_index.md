@@ -115,6 +115,33 @@ the person who signed in and nothing more, and the person sees the consent scree
 time, with the client marked as one that registered itself. `CBOX_ID_ROOT_MCP_OAUTH=false`
 returns every surface above to `404`.
 
+### Rate limits on the anonymous browser doors
+
+Every door a stranger can reach without signing in, that sends mail, mints a challenge or
+looks a secret up, sits behind a named limiter (`App\Http\WebRateLimiters`) answering a
+**429 with `Retry-After`**. Each key starts with the route and the environment, so one
+door's budget never spends another's and one tenant's office NAT never locks out another
+tenant:
+
+| Door | Limiter | Keyed on |
+|---|---|---|
+| Sign-in link request (`/login/magic-link`) | `magic-link-send` | address + email typed in (fingerprinted), and address alone |
+| Sign-in, invitation, email-confirmation and Admin Portal links | `link-token` | address + token (fingerprinted), and address alone |
+| Passkey sign-in and enrolment challenges, hosted and Frontend API | `passkey` | address, and the signed-in person for enrolment |
+| Signup confirmation resend | `verification-resend` | address + the signed-in person |
+| First-run claim (`/first-run`) | `first-run` | address |
+
+Several of these also refuse with a sentence from inside — "try again in a minute" on
+the form. That is what a person reads; the limiter is the ceiling for a script that does
+not read it.
+
+### Somebody else's id answers 404
+
+Every action that takes an id — on the console, the REST API and MCP alike — answers
+another environment's, another organization's or another person's id exactly as it
+answers an id that never existed. A registry-driven test sweeps every one; see
+[Cross-tenant id sweep](console-action-sweep.md).
+
 ## End-user consent surfaces
 
 - **OAuth consent (`/oauth/authorize`)** — registered clients requesting access are

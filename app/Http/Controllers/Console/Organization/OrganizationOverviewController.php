@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console\Organization;
 
 use App\Http\Props\Shared\HelpProps;
+use App\Models\AdminPortalLink;
+use App\Platform\AdminPortal;
 use App\Platform\AuditNames;
 use App\Platform\Entitlements;
+use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Sso\CertificateExpiryAlerts;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -36,7 +40,7 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
     /** How many trail entries the overview shows before handing over to the Audit log tab. */
     private const RECENT = 8;
 
-    public function show(DomainVerification $domains, Memberships $memberships, OrganizationInvitations $invitations, Entitlements $entitlements, AuditNames $names): Response
+    public function show(DomainVerification $domains, Memberships $memberships, OrganizationInvitations $invitations, Entitlements $entitlements, AuditNames $names, CertificateExpiryAlerts $certificates, AdminPortal $portal): Response
     {
         $organization = $this->organization();
         $ids = ['organization' => $organization->id];
@@ -111,11 +115,66 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
                 'actorName' => $entry->actor_id === null ? null : ($resolved[$entry->actor_id] ?? $entry->actor_id),
                 'recordedAt' => $entry->recorded_at?->toIso8601String(),
             ])->values()->all(),
+            // The daily certificate scan's warnings, read live: a SAML connection that stops
+            // working within 30 days is the one thing on this page that will break by itself.
+            'certificateWarnings' => array_map(static fn (array $warning): array => [
+                ...$warning,
+                'href' => route('environment.connections.show', $warning['connection_id']),
+            ], $certificates->warningsFor($organization->id)),
+            'portalLinks' => $this->outstandingPortalLinks($organization->id, $portal),
             'hrefs' => [
                 'members' => route('environment.organizations.members', $ids),
                 'invitations' => route('environment.organizations.invitations', $ids),
                 'audit' => route('environment.organizations.audit', $ids),
             ],
         ]);
+    }
+
+    /**
+     * THE ADMIN PORTAL LINKS THAT STILL OPEN SOMETHING — not yet opened, or opened with a
+     * setup session that may still be running — each with the way to withdraw it. A link is
+     * a credential handed to somebody outside; one minted by mistake, or mailed to the wrong
+     * address, has to be visible to be taken back. The finished, expired and withdrawn ones
+     * are the audit log's to tell, and the API's list (`organizations.portal_links.list`).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function outstandingPortalLinks(string $organizationId, AdminPortal $portal): array
+    {
+        $minutes = $portal->sessionMinutes();
+        $rows = [];
+
+        $links = AdminPortalLink::query()
+            ->where('organization_id', $organizationId)
+            ->whereNull('revoked_at')
+            ->whereNull('completed_at')
+            // A link waits a week at most, and its session a few hours after that: nothing
+            // older can still be open.
+            ->where('created_at', '>=', now()->subMinutes(AdminPortal::MAX_TTL_MINUTES + $minutes))
+            ->orderByDesc('created_at')
+            ->get();
+
+        foreach ($links as $link) {
+            $status = $link->status($minutes);
+
+            if (! in_array($status, [AdminPortalLink::PENDING, AdminPortalLink::IN_USE], true)) {
+                continue;
+            }
+
+            $rows[] = [
+                'id' => $link->id,
+                'intents' => array_map(
+                    static fn (PortalIntent $intent): string => $intent->label(),
+                    $link->portalScope()->intents ?? [],
+                ),
+                'inUse' => $status === AdminPortalLink::IN_USE,
+                'emailedTo' => $link->emailed_to,
+                'createdAt' => $link->created_at?->toIso8601String(),
+                'expiresAt' => $link->expires_at->toIso8601String(),
+                'revokeHref' => route('environment.organizations.portal-links.revoke', ['organization' => $organizationId, 'link' => $link->id]),
+            ];
+        }
+
+        return $rows;
     }
 }

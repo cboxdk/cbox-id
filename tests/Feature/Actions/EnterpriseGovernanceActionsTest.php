@@ -396,7 +396,7 @@ it('holds every Critical enterprise change for its owner\'s approval, and change
 })->with([
     'a SCIM directory and its token' => ['POST', '/api/v1/directories', ['name' => 'Okta'], ['directory_sync:write']],
     'a downstream target for people\'s data' => ['POST', '/api/v1/provisioning-targets', ['name' => 'Slack', 'base_url' => 'https://scim.slack.example/v2', 'auth_scheme' => 'bearer', 'secret' => 't'], ['provisioning:write']],
-    'an Admin Portal link' => ['POST', '/api/v1/organizations/{org}/portal-links', ['covers' => 'sso'], ['portal_links:write']],
+    'an Admin Portal link' => ['POST', '/api/v1/organizations/{org}/portal-links', ['intents' => ['sso']], ['portal_links:write']],
 ])->group('security');
 
 it('holds a change to how an organization signs in, and lets a Write through', function (): void {

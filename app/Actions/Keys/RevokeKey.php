@@ -21,7 +21,7 @@ use App\Platform\Keys\ManagementKeys;
     summary: 'Revoke a management key and every key it minted, immediately.',
     scope: 'keys:write',
     danger: Danger::Destructive,
-    tag: 'Management keys',
+    tag: 'Secret keys',
     rest: ['DELETE', '/keys/{id}'],
     status: 204,
     consoleRoutes: ['environment.keys.destroy'],

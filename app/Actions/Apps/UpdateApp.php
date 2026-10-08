@@ -37,7 +37,7 @@ use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
     scope: 'apps:write',
     danger: Danger::Write,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['PATCH', '/apps/{id}'],
     consoleRoutes: ['clients.update', 'environment.clients.update'],
     consoleGate: ConsoleGate::Administer,

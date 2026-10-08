@@ -64,45 +64,91 @@ The gate is enforced in **two** places, never just the UI:
 
 ## The Admin Portal setup link
 
-An entitled org admin rarely wants to paste X.509 certificates themselves. The
-**"Invite your IT admin"** action mints a **single-use, short-lived** link that an
-external IT admin opens **with no account** to configure that one org's SSO/SCIM —
-and nothing else.
+An entitled org admin rarely wants to paste X.509 certificates themselves. An **Admin
+Portal link** is a **single-use, time-limited** link that an external IT admin opens
+**with no account** to set up what the link covers for that one org — and nothing else.
 
-How it holds together:
+### What a link covers: intents
 
-- **Minting.** A cryptographically random 32-byte token is generated; only its
-  SHA-256 hash is stored (`admin_portal_links`). The full URL
-  (`route('portal.enter', $token)`) is shown to the admin **once**. Minting records
-  a `portal_link.created` audit event on the org's trail. Links expire after
-  `cbox-id.portal.ttl_minutes` (default 30).
-- **Redemption.** `GET /setup/{token}` hashes the token, looks up a link that is
-  neither expired nor consumed, and **re-checks the org is still entitled** (a
-  lapsed plan refuses redemption). On success it establishes a **scoped portal
-  session** under a dedicated key (`cbox.portal`) — never the platform login key —
-  and redirects to the setup screen. The link is *not* consumed yet. Any failure
-  shows a friendly "expired or already used" page with no enumeration detail.
-- **The setup screen** (`/setup`, guarded by the `portal.session` middleware) reads
-  the bound org id and scope **only from the portal session**, never from request
-  input, and renders the SSO and/or SCIM forms for that one org — reusing the exact
-  same package contracts the console uses. Because the org id is never
-  client-supplied, a redeemer cannot pivot to another tenant.
-- **Finishing** marks the link `consumed_at`, records `portal_link.completed`, and
-  clears the portal session.
+A link carries a set of **intents**, chosen when it is minted:
+
+| Intent | What the IT admin does | Plan entitlement |
+|---|---|---|
+| `sso` | Connect their identity provider (SAML or OIDC), guided per provider, and prove the email domains that route to it | `sso` |
+| `dsync` | Create a SCIM directory and connect their directory to it | `scim` |
+| `domain_verification` | Add domains, publish the DNS TXT record, verify | none |
+| `log_streams` | Stream their organization's audit trail to their own SIEM, send a test entry | none |
+| `certificate_renewal` | Upload their IdP's new SAML signing certificate, then activate it | `sso` |
+| `audit_logs` | Read their organization's app audit events and export them (read-only) | `audit_logs` |
+
+Mint one from an organization's page (**Admin Portal link** in the header: tick the
+intents, choose how long it may wait — 30 minutes, 4 hours, 24 hours, 3 days or 7 days —
+and optionally email it to their IT contact in their language), or with
+`organizations.portal_links.create`, where `expires_in_minutes` may be anything from 5 to
+10080 (a week) and defaults to `CBOX_ID_PORTAL_TTL_MINUTES` (30):
+
+```bash
+curl -X POST https://<env-host>/api/v1/organizations/$ORG/portal-links \
+  -H "Authorization: Bearer $CBOX_ID_KEY" -H 'Content-Type: application/json' \
+  -d '{"intents":["sso","domain_verification"],"expires_in_minutes":1440,"email":"it@customer.com","locale":"da"}'
+```
+
+The answer's `url` is shown once. A link covering an intent the organization's plan lacks
+is refused (`403 not_entitled`). `organizations.portal_links.list` shows where each recent
+link stands and `organizations.portal_links.revoke` withdraws one before it is used or
+expires (see below). The full walkthrough,
+from both sides, is the [Admin Portal guide](../guides/admin-portal.md) and
+[For your customers' IT admins](../for-it-admins/_index.md).
+
+### How it holds together
+
+- **Minting.** A random 32-byte token is generated; only its SHA-256 hash is stored
+  (`admin_portal_links`, with the `intents` and, when mailed, `emailed_to`). Minting
+  records `portal_link.created` with who minted it.
+- **Redemption.** Opening `/setup/{token}` shows a button; only the POST spends the link
+  (mail and chat previews would otherwise burn it). It re-checks the plan, consumes the
+  link, and opens a **portal session** under its own key (`cbox.portal`) that lasts
+  `cbox-id.portal.session_minutes` (default 120) from that moment.
+- **Revoking.** `organizations.portal_links.list` (`GET …/portal-links`, scope
+  `portal_links:read`) shows an organization's links from the last 30 days and where each
+  stands — `pending`, `in_use`, `completed`, `expired`, `revoked` — never the URL.
+  `organizations.portal_links.revoke` (`DELETE …/portal-links/{id}`) withdraws one: it can
+  no longer be opened, and a session it already opened ends on its next request. The
+  organization's Overview in the console lists the outstanding links with a **Revoke**
+  button. Recorded as `portal_link.revoked`.
+- **The checklist.** `/setup` shows one card per intent with its progress, read from what
+  is actually configured. Each intent has its own page: SSO walks provider → our ACS URL
+  and entity ID (or OIDC redirect URI, or the SAML SP metadata URL for a provider that
+  imports one) to paste, field by field, into Okta, Entra ID,
+  Google Workspace, OneLogin, JumpCloud, PingFederate or any SAML/OIDC provider → their
+  metadata back → a verified domain → activate. Directory sync shows the SCIM base URL and
+  a bearer token (once) with guides for Okta, Entra ID, OneLogin, JumpCloud and generic SCIM.
+- **Every write is an action**, run as a `PortalPrincipal`: confined to the link's
+  organization (`confinedToOrganization()`), and allowed only the actions its intents
+  list. The audit trail names the session — actor `system` with the link's id, plus
+  `via: portal`, `portal_link_id` and `portal_link_created_by`.
+- **Finishing** records `portal_link.completed` and ends the session.
+
+### SAML certificate renewal and expiry alerts
+
+A SAML connection trusts its primary certificate and any **staged** beside it, so renewal
+has no outage: stage the new certificate (`sso.connections.certificates.stage`, from PEM or
+the IdP's metadata — checked before it is trusted), switch the IdP over, then activate it
+(`sso.connections.certificates.activate`), which retires the old one. The daily
+`cbox-id:sso:certificate-expiry` scan sends a `connection.certificate_expiring` webhook, a
+trail entry and a mail to the organization's owners and admins when an active connection's
+certificates stop working within 30 and again within 7 days (once each), and the
+organization's Overview and SSO tab show a warning.
 
 ### Isolation invariants
 
-The portal session is deliberately a *different* thing from a platform login:
-
-- It is stored under `cbox.portal`, so it **never** satisfies `platform.auth` — a
-  portal holder hitting `/dashboard`, `/directory/members`, `/single-sign-on`, … is bounced to
-  login like any guest.
-- The bound org id lives only in the server session; the setup screen feeds it to
-  the org-scoped package contracts, so the portal can only ever configure its own
-  org.
-- Expiry and entitlement are re-checked on **every** portal request (middleware
-  *and* the component's own guard), so an expired link or a mid-session plan lapse
-  is caught immediately.
+- The portal session never satisfies `platform.auth` — a portal holder hitting
+  `/dashboard` is bounced to login like any guest.
+- The bound org id lives only in the server session and is handed to every action; the
+  principal refuses any other organization and any action its intents do not list, so a
+  link for directory sync cannot add a domain by forming the request.
+- Expiry and entitlement are re-checked on **every** portal request; an intent the plan
+  stops including disappears from the session at once.
 
 ## Configuration
 
@@ -110,6 +156,8 @@ The portal session is deliberately a *different* thing from a platform login:
 |---|---|---|
 | `CBOX_ID_ENTITLEMENT_SSO` | Entitlement key that unlocks self-serve SSO. | `cbox-id-sso` |
 | `CBOX_ID_ENTITLEMENT_SCIM` | Entitlement key that unlocks self-serve SCIM. | `cbox-id-scim` |
-| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal link stays redeemable. | `30` |
+| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal link stays redeemable when its minter does not choose. | `30` |
+| `CBOX_ID_PORTAL_SESSION_MINUTES` | How long the setup session a redeemed link opens lasts. | `120` |
+| `CBOX_ID_CERTIFICATE_ALERT_MAIL` | Mail an organization's owners and admins when a SAML certificate is about to expire. | `true` |
 
 See the full [environment-variable reference](../configuration/environment-variables.md).

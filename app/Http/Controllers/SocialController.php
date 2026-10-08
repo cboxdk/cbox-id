@@ -232,7 +232,7 @@ final class SocialController extends Controller
         try {
             return $this->flow->principal($operator, $code, $redirectUri, $expectedNonce);
         } catch (Throwable $e) {
-            Log::warning('cbox-id: operator social sign-in rejected.', [
+            Log::warning('cbox-id: operator social login rejected.', [
                 'provider' => $operator->key(),
                 'reason' => $e->getMessage(),
             ]);

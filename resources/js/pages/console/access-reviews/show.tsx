@@ -55,7 +55,7 @@ export default function AccessReviewDetail({
                     <Pill tone={review.open ? 'warning' : 'success'}>
                         {review.open ? 'Open' : 'Closed'}
                     </Pill>
-                    {review.staff && <Badge tone="info">Staff roles</Badge>}
+                    {review.staff && <Badge tone="info">Admin & support roles</Badge>}
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
                     {review.id}
@@ -67,7 +67,7 @@ export default function AccessReviewDetail({
                 description={
                     review.open
                         ? review.staff
-                            ? 'Certify what is still needed, revoke what is not. Nothing takes effect until the review is closed; a revoked staff role then goes in every organization at once.'
+                            ? 'Certify what is still needed, revoke what is not. Nothing takes effect until the review is closed; a revoked admin & support role then goes in every organization at once.'
                             : 'Certify what is still needed, revoke what is not. Nothing takes effect until the review is closed.'
                         : 'This review is closed. Its revokes have been applied.'
                 }
@@ -91,7 +91,7 @@ export default function AccessReviewDetail({
                         title="No access in scope"
                         description={
                             review.staff
-                                ? 'Nobody held a staff role when this review was opened.'
+                                ? 'Nobody held an admin & support role when this review was opened.'
                                 : 'This organization has no direct role or membership grants to certify.'
                         }
                     />

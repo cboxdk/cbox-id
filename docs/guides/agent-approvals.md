@@ -1,19 +1,21 @@
 ---
-title: Agent approvals
+title: Approvals
 weight: 120
 description: What it means when an app or AI agent asks to act on your behalf, how to check the request is really yours, when to deny, and how an administrator reviews every pending request in an environment.
 ---
 
-# Agent approvals
+# Approvals
 
-**Console page:** Overview › Approve agent requests (`/approvals`), and Overview ›
-Review agent requests in an environment console (`/admin/approvals`)
+**Console page:** Overview › Approvals (`/approvals`), and AI agents › Approvals in an
+environment console (`/admin/approvals`)
+
+![AI agents, Approvals, in an environment console](../screenshots/approvals.png)
 
 The two pages are named for what each does:
 
-- **Approve agent requests** is yours: the requests to act as *you*, which only you can
+- **Approvals** in the organization console is yours: the requests to act as *you*, which only you can
   approve or deny. Most of this guide is about it.
-- **Review agent requests** is for an environment administrator: every pending request in
+- **Approvals** in an environment console is for an environment administrator: every pending request in
   the environment, so one that looks like abuse can be denied. See
   [Reviewing requests across an environment](#reviewing-requests-across-an-environment).
 
@@ -44,7 +46,7 @@ were doing needs an explanation before it gets an approval.
   belong to you is refused rather than silently approved.
 - **Requests expire.** If one has been sitting here a while, deny it and start over
   rather than approving something stale.
-- **Every decision is recorded** in the [activity log](activity-log.md), including
+- **Every decision is recorded** in the [audit log](activity-log.md), including
   denials.
 
 ## Reviewing requests across an environment
@@ -102,6 +104,9 @@ there is no browser in front of it to notice a smaller grant.
 
 ## Related
 
+- [Step-up approvals](step-up-approvals.md) — the agent's side: why a call is held, and how it retries once approved.
+- [Trusted devices](trusted-devices.md) — the phone that answers these requests.
+- [Agents and MCP](agents-and-mcp.md) — connecting the agents that ask.
 - [Token vault](token-vault.md) — the credentials agents use once approved.
 - [Apps](apps-and-api-keys.md).
 - [Sign in from a CLI](../getting-started/sign-in-from-a-cli.md) — the same idea when

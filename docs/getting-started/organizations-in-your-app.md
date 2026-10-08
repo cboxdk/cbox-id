@@ -75,7 +75,7 @@ When the environment lets people create organizations (below), the picker also o
 
 `prompt=create_organization` asks for a name, creates the organization through the same
 services the console uses (so `organization.created` and the membership webhook fire and
-the activity log records it), makes the person its **Owner**, and finishes the sign-in bound
+the audit log records it), makes the person its **Owner**, and finishes the sign-in bound
 to it — your app receives `org_role: owner`.
 
 It is offered only where self-service sign-up is on for the environment, and a person can
@@ -90,7 +90,7 @@ organization they just created, as its Owner — "Anna signs up for your app and
 team" in one round trip. Somebody already signed in is not given a second account: the
 sign-in continues as them. Send `prompt=login create` if you want a fresh sign-in first.
 
-Sign-up applies everything the environment's sign-in rules already apply: password length
+Sign-up applies everything the environment's authentication policy already applies: password length
 and the breach check, the confirmation email (the account works at once and the address is
 confirmed out of band, as for any sign-up), the per-environment rate limit, the bot and risk
 checks with a challenge when they are unsure, and home-realm capture — an address on a

@@ -6,6 +6,7 @@ namespace App\Platform\Actions;
 
 use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Idempotency\IdempotencyGuard;
+use App\Platform\Actions\Principal\AnnotatesTrail;
 use App\Platform\Actions\Principal\Principal;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Container\Container;
@@ -26,7 +27,8 @@ use Illuminate\Validation\ValidationException;
  *     nor an audit line claiming one;
  *  5. every audit entry it causes names the door it came through (`via`) and, when it
  *     waited for one, the approval it spent — said once here, through {@see ActionTrail},
- *     rather than by each action and each framework service it calls.
+ *     rather than by each action and each framework service it calls — and whatever the
+ *     principal itself adds ({@see AnnotatesTrail}).
  *
  * Doors translate the outcome: an {@see ActionResult}, an {@see ActionRefused}, an
  * {@see AuthorizationException} or a {@see ValidationException}. Nothing here knows about
@@ -71,6 +73,10 @@ final readonly class ActionRunner
 
             if ($spent !== null) {
                 $trail->approved($spent, $principal->approverSubjectId());
+            }
+
+            if ($principal instanceof AnnotatesTrail) {
+                $trail->annotate($principal->trailContext());
             }
 
             /** @var Action $handler */

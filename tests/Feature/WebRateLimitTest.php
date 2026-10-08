@@ -27,7 +27,7 @@ beforeEach(function (): void {
 it('registers the named limiters the browser doors use', function (): void {
     // An unregistered name is parsed as a NUMERIC limit of zero — every mailed link would
     // answer 429 on its first press, which is a worse outage than the one this prevents.
-    foreach (['link-token', 'passkey'] as $limiter) {
+    foreach (['link-token', 'passkey', 'magic-link-send', 'verification-resend', 'first-run'] as $limiter) {
         expect(RateLimiter::limiter($limiter))->not->toBeNull("The `{$limiter}` limiter is not registered.");
     }
 });
@@ -103,7 +103,7 @@ it('throttles minting passkey sign-in challenges', function (): void {
         $this->postJson(route('passkeys.login.options'))->assertOk();
     }
 
-    $this->postJson(route('passkeys.login.options'))->assertStatus(429);
+    $this->postJson(route('passkeys.login.options'))->assertStatus(429)->assertHeader('Retry-After');
 });
 
 it('throttles minting passkey enrolment challenges', function (): void {
@@ -117,7 +117,7 @@ it('throttles minting passkey enrolment challenges', function (): void {
         $this->postJson(route('passkeys.register.options'))->assertOk();
     }
 
-    $this->postJson(route('passkeys.register.options'))->assertStatus(429);
+    $this->postJson(route('passkeys.register.options'))->assertStatus(429)->assertHeader('Retry-After');
 });
 
 it('throttles the Frontend API passkey ceremony per address, under the per-key ceiling', function (): void {
@@ -146,5 +146,44 @@ it('throttles the Frontend API passkey ceremony per address, under the per-key c
         expect($this->withHeaders($page)->postJson('/frontend/v1/sign-in/passkey')->status())->not->toBe(429);
     }
 
-    $this->withHeaders($page)->postJson('/frontend/v1/sign-in/passkey')->assertStatus(429);
+    $this->withHeaders($page)->postJson('/frontend/v1/sign-in/passkey')->assertStatus(429)->assertHeader('Retry-After');
+});
+
+/*
+|--------------------------------------------------------------------------
+| The doors that send mail, accept an invitation or claim the deployment
+|--------------------------------------------------------------------------
+|
+| Each already answers its own friendly "try again shortly" from inside — the sentence a
+| person reads. The named limiter is the ceiling in front of it, for the script that does
+| not read: a 429 with Retry-After, the answer a client backs off on.
+*/
+
+it('throttles asking for sign-in links for one address, then for any address', function (): void {
+    foreach (range(1, WebRateLimiters::MAGIC_LINK_PER_EMAIL) as $ignored) {
+        expect($this->post(route('login.magic-link'), ['email' => 'dana@acme.test'])->status())->not->toBe(429);
+    }
+
+    $this->post(route('login.magic-link'), ['email' => 'dana@acme.test'])->assertStatus(429)->assertHeader('Retry-After');
+
+    // Cycling the address typed in buys nothing past the per-address ceiling.
+    foreach (range(1, WebRateLimiters::MAGIC_LINK_PER_IP - WebRateLimiters::MAGIC_LINK_PER_EMAIL) as $n) {
+        expect($this->post(route('login.magic-link'), ['email' => "guess-{$n}@acme.test"])->status())->not->toBe(429);
+    }
+
+    $this->post(route('login.magic-link'), ['email' => 'one-more@acme.test'])->assertStatus(429)->assertHeader('Retry-After');
+});
+
+it('throttles pressing an environment invitation, on the page and the accept', function (): void {
+    foreach (range(1, WebRateLimiters::LINK_PER_TOKEN) as $ignored) {
+        expect($this->get(route('invitation.accept', 'not-a-live-token'))->status())->not->toBe(429);
+    }
+
+    $this->get(route('invitation.accept', 'not-a-live-token'))->assertStatus(429)->assertHeader('Retry-After');
+
+    foreach (range(1, WebRateLimiters::LINK_PER_TOKEN) as $ignored) {
+        expect($this->post(route('invitation.accept.store', 'another-dead-token'))->status())->not->toBe(429);
+    }
+
+    $this->post(route('invitation.accept.store', 'another-dead-token'))->assertStatus(429)->assertHeader('Retry-After');
 });

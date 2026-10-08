@@ -16,6 +16,17 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Admin Portal links take `intents`
+
+`POST /api/v1/organizations/{id}/portal-links` (`organizations.portal_links.create`, and
+its MCP tool) takes `intents` — a list of `sso`, `dsync`, `domain_verification`,
+`log_streams`, `certificate_renewal`, `audit_logs` — instead of `covers`, and its answer
+carries `intents` instead of `covers`. Replace `{"covers": "sso"}` with
+`{"intents": ["sso"]}`, `"scim"` with `["dsync"]`, `"both"` with `["sso", "dsync"]` and
+`"audit_logs"` with `["audit_logs"]`. A request still sending `covers` is `422`.
+
+Run the migrations: links already minted are carried across to the same intents.
+
 ### The platform root signs MCP clients in
 
 Multi-tenant deployments only. The platform root now answers an MCP client the way an

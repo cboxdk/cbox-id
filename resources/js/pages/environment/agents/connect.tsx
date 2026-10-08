@@ -62,7 +62,7 @@ export default function ConnectAgent({
         <>
             <PageHeader
                 help={help}
-                description="This environment serves an MCP server next to its REST API. Point an agent at it with a management key, and it can do exactly what the key's scopes allow — with the same checks, approvals and activity log as the console."
+                description="This environment serves an MCP server next to its REST API. Point an agent at it with a management key, and it can do exactly what the key's scopes allow — with the same checks, approvals and audit log as the console."
                 actions={
                     <Button asChild size="sm" variant="primary" icon="plus">
                         <Link href={urls.createAgent}>Create a key for this agent</Link>

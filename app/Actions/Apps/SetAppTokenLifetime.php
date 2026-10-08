@@ -33,7 +33,7 @@ use Cbox\Id\OAuthServer\Support\AccessTokenLifetime;
     scope: 'apps:write',
     danger: Danger::Write,
     schema: 'App',
-    tag: 'Apps',
+    tag: 'Applications',
     rest: ['PUT', '/apps/{id}/settings/token-lifetime'],
     consoleRoutes: ['clients.settings.lifetime', 'environment.clients.settings.lifetime'],
     consoleGate: ConsoleGate::Administer,

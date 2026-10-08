@@ -31,7 +31,7 @@ use Cbox\Id\Directory\Contracts\Directories;
     scope: 'directory_sync:write',
     danger: Danger::Critical,
     schema: 'Directory',
-    tag: 'Directory sync',
+    tag: 'Directory Sync',
     rest: ['POST', '/directories'],
     status: 201,
     consoleRoutes: ['directories.store', 'environment.directories.store'],

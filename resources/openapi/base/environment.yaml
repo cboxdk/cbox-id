@@ -77,7 +77,7 @@ tags:
   - name: Invitations
   - name: Roles
   - name: Users
-  - name: Apps
+  - name: Applications
   - name: APIs
   - name: API keys
   - name: Support sessions
@@ -760,6 +760,39 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{organization_id}/portal-links:
+    get:
+      operationId: organizations_portal_links_list
+      x-action: organizations.portal_links.list
+      x-scope: portal_links:read
+      x-danger: read
+      tags: [Admin Portal]
+      summary: List an organization's Admin Portal links
+      description: |
+        Requires scope `portal_links:read`. Danger: read. The links minted in the last 30
+        days, newest first — every link that can still be opened is among them, since a link
+        waits a week at most. Each says what it opens, who minted it, whom it was mailed to
+        and where it stands (`status`). Never the link itself: it was shown once, when it was
+        minted, and only its hash is kept. Not paged.
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PortalLinkRecord" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /organizations/{organization_id}/domains:
     get:
       operationId: organizations_domains_list
@@ -1114,7 +1147,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apps:
     get:
-      tags: [Apps]
+      tags: [Applications]
       summary: List apps
       description: "Requires scope `apps:read`. Never a secret."
       operationId: apps_list
@@ -1139,7 +1172,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
-      tags: [Apps]
+      tags: [Applications]
       summary: Register an app
       description: |
         Requires scope `apps:write`. Two ways to describe it:
@@ -1198,7 +1231,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apps/{id}/blueprint:
     get:
-      tags: [Apps]
+      tags: [Applications]
       summary: Export an app's configuration as a blueprint
       description: |
         Requires scope `apps:read`. `{id}` is the app's id or its `client_id`. The document
@@ -1225,7 +1258,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /apps/{id}/secrets:
     get:
-      tags: [Apps]
+      tags: [Applications]
       summary: List an app's live client secrets
       description: |
         Requires scope `apps:read`. Every live secret, newest first: its id (what
@@ -2099,6 +2132,60 @@ components:
       description: Opaque cursor — the `meta.next_cursor` from the previous page.
       schema: { type: string }
   schemas:
+    ManagementKey:
+      type: object
+      description: "A management key of this environment. `token` is present once, on the answer that minted it, and never again."
+      required: [id, name, prefix, scopes, active, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        prefix: { type: string, description: "The key's first characters, to recognise it by." }
+        scopes: { type: array, items: { type: string } }
+        active: { type: boolean }
+        parent_key_id: { type: ["string", "null"], description: "The key that minted this one, if a key did." }
+        rotated_from_id: { type: ["string", "null"], description: "The key this one replaced, if it came from a rotation." }
+        require_approval:
+          description: "The approval policy: actions held for the person behind the key."
+          oneOf:
+            - type: object
+              properties:
+                min_danger: { type: ["string", "null"], enum: [read, write, destructive, critical, null] }
+                actions: { type: array, items: { type: string } }
+            - { type: "null" }
+        created_by:
+          oneOf:
+            - type: object
+              required: [type, id]
+              properties:
+                type: { type: string }
+                id: { type: ["string", "null"] }
+            - { type: "null" }
+        expires_at: { type: ["string", "null"], format: date-time }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        revoked_at: { type: ["string", "null"], format: date-time }
+        created_at: { type: ["string", "null"], format: date-time }
+        token: { type: ["string", "null"], description: "The key's value. Only on the answer that minted it; null on an idempotent replay of that answer, because the value is never stored." }
+    LegacyLoginProbe:
+      type: object
+      required: [result]
+      properties:
+        result: { type: string, description: "What the declared legacy-login endpoint answered for the address, in words." }
+    ManifestSync:
+      type: object
+      required: [unchanged, roles_declared, permissions_declared, orphaned_role_keys, orphaned_permission_keys]
+      properties:
+        unchanged: { type: boolean, description: "The manifest matched what is already stored." }
+        roles_declared: { type: integer }
+        permissions_declared: { type: integer }
+        orphaned_role_keys: { type: array, items: { type: string }, description: "Roles stored here that the manifest no longer declares." }
+        orphaned_permission_keys: { type: array, items: { type: string } }
+    SelfServiceSignup:
+      type: object
+      required: [enabled, decided_here]
+      properties:
+        enabled: { type: boolean }
+        decided_here: { type: boolean, description: "False on a single-tenant install, where sign-up follows CBOX_ID_SIGNUP_MODE and the switch changes nothing." }
     Device:
       type: object
       required: [id, install_id, platform, name, status]
@@ -2696,6 +2783,7 @@ components:
         provider: { type: ["string", "null"], description: "The catalogue provider a social sign-in connection came from; null for an organization's own identity provider." }
         status: { type: string, enum: [draft, active, inactive] }
         active: { type: boolean }
+        complete: { type: boolean, description: "false for a draft created with pending_idp whose identity-provider details are still missing. Activation refuses it." }
         config:
           type: object
           description: "The settings that are not secrets."
@@ -2706,8 +2794,60 @@ components:
             sp_acs_url: { type: string }
             issuer: { type: string }
             client_id: { type: string }
+        service_provider:
+          type: ["object", "null"]
+          description: "What to paste into the identity provider: this connection's own entity id, ACS URL and SP metadata URL (SAML), or its redirect URI (OIDC). null for a social sign-in connection."
+          properties:
+            sp_entity_id: { type: string }
+            sp_acs_url: { type: string, format: uri }
+            sp_metadata_url:
+              type: string
+              format: uri
+              description: "SAML: this connection's service-provider metadata (entity id and ACS URL as one XML document), for an identity provider that imports SP metadata. Served for a draft too, before the identity provider's half is known."
+            redirect_uri: { type: string, format: uri }
         created_at: { type: ["string", "null"], format: date-time }
         updated_at: { type: ["string", "null"], format: date-time }
+    SsoCertificates:
+      type: object
+      required: [connection_id, organization_id, expires_at, days_remaining, certificates]
+      description: "A SAML connection's signing certificates. The certificates themselves are never returned."
+      properties:
+        connection_id: { type: string }
+        organization_id: { type: ["string", "null"] }
+        expires_at: { type: ["string", "null"], format: date-time, description: "When the connection stops working if nothing is done: the latest expiry among the certificates it trusts." }
+        days_remaining: { type: ["integer", "null"] }
+        certificates:
+          type: array
+          items:
+            type: object
+            required: [role, readable, fingerprint_sha256, subject, issuer, not_before, not_after, days_remaining, expired]
+            properties:
+              role: { type: string, enum: [primary, staged], description: "primary signs today; staged is trusted beside it until activated." }
+              readable: { type: boolean, description: "false for a certificate on file that could not be parsed — still trusted." }
+              fingerprint_sha256: { type: ["string", "null"] }
+              subject: { type: ["string", "null"] }
+              issuer: { type: ["string", "null"] }
+              not_before: { type: ["string", "null"], format: date-time }
+              not_after: { type: ["string", "null"], format: date-time }
+              days_remaining: { type: ["integer", "null"] }
+              expired: { type: ["boolean", "null"] }
+        checks:
+          type: array
+          description: "On the stage answer only: what the new certificate was tested for."
+          items:
+            type: object
+            required: [check, passed]
+            properties:
+              check: { type: string, enum: [readable, not_expired, key_strength, not_on_file, valid_now] }
+              passed: { type: boolean }
+    LogStreamTest:
+      type: object
+      required: [id, delivered, error, tested_at]
+      properties:
+        id: { type: string }
+        delivered: { type: boolean, description: "Whether the destination accepted the test entry." }
+        error: { type: ["string", "null"], description: "The destination's refusal, scrubbed of the stream's secret." }
+        tested_at: { type: string, format: date-time }
     SsoDomain:
       type: object
       required: [id, organization_id, domain, verified, capture, verification]
@@ -2738,17 +2878,153 @@ components:
         idp_x509cert: { type: string, description: "The IdP's public signing certificate, from its own metadata." }
     PortalLink:
       type: object
-      required: [id, organization_id, covers, url, expires_at]
+      required: [id, organization_id, intents, url, expires_at, emailed_to]
       properties:
         id: { type: string }
         organization_id: { type: string }
-        covers: { type: string, enum: [sso, scim, both] }
+        intents:
+          type: array
+          description: "What the link may set up."
+          items: { type: string, enum: [sso, dsync, domain_verification, log_streams, certificate_renewal, audit_logs] }
+        emailed_to: { type: ["string", "null"], description: "The address the link was mailed to, or null when it was not sent." }
         url:
           type: ["string", "null"]
           description: |
             The one-time setup link — the whole credential. Shown once; `null` on an
             idempotent replay of this answer.
         expires_at: { type: ["string", "null"], format: date-time }
+    PortalLinkRecord:
+      type: object
+      description: "An Admin Portal link as a list shows it. Never its URL: that was shown once, when it was minted, and only its hash is kept."
+      required: [id, organization_id, intents, status, created_at, created_by, emailed_to, expires_at, consumed_at, completed_at, revoked_at]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        intents:
+          type: array
+          description: "What the link may set up."
+          items: { type: string, enum: [sso, dsync, domain_verification, log_streams, certificate_renewal, audit_logs] }
+        status:
+          type: string
+          enum: [pending, in_use, completed, expired, revoked]
+          description: |
+            `pending`: not opened yet, and it still can be. `in_use`: opened, and the setup
+            session it started may still be running. `completed`: its setup was finished.
+            `expired`: never opened in time, or its setup session ran out. `revoked`: withdrawn.
+        created_at: { type: ["string", "null"], format: date-time }
+        created_by: { type: string, description: "Who minted it: the console person's id, or the management key's." }
+        emailed_to: { type: ["string", "null"], description: "The address it was mailed to, or null when it was not sent." }
+        expires_at: { type: ["string", "null"], format: date-time, description: "How long it could wait to be opened." }
+        consumed_at: { type: ["string", "null"], format: date-time, description: "When it was opened. It is single-use." }
+        completed_at: { type: ["string", "null"], format: date-time, description: "When its setup was finished." }
+        revoked_at: { type: ["string", "null"], format: date-time, description: "When it was withdrawn." }
+    AuditLogEvent:
+      type: object
+      description: |
+        One audit event your app sent. `hash` covers `id`, `organization_id`, `sequence`,
+        `action`, `occurred_at`, `actor`, `targets`, `context` and `metadata`, chained to
+        the organization's previous event by `prev_hash` — see the Audit Logs guide for how
+        to verify it yourself.
+      required: [id, organization_id, sequence, action, occurred_at, actor, targets, context, metadata, schema_version, received_at, prev_hash, hash]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        sequence: { type: integer, description: "The event's place in its organization's chain, from 1." }
+        action: { type: string, description: "e.g. `invoice.voided`." }
+        occurred_at: { type: string, format: date-time, description: "When it happened, as the sender said, to the millisecond." }
+        actor:
+          type: object
+          required: [id, type, name, metadata]
+          properties:
+            id: { type: string }
+            type: { type: string }
+            name: { type: ["string", "null"] }
+            metadata: { type: ["object", "null"] }
+        targets:
+          type: array
+          items:
+            type: object
+            required: [id, type, name, metadata]
+            properties:
+              id: { type: string }
+              type: { type: string }
+              name: { type: ["string", "null"] }
+              metadata: { type: ["object", "null"] }
+        context:
+          type: object
+          required: [location, user_agent]
+          properties:
+            location: { type: ["string", "null"] }
+            user_agent: { type: ["string", "null"] }
+        metadata: { type: ["object", "null"] }
+        schema_version: { type: ["integer", "null"], description: "The version of its action's schema it was checked against; null when the action has none." }
+        received_at: { type: ["string", "null"], format: date-time, description: "When it arrived. Retention counts from here." }
+        prev_hash: { type: string, description: "The previous event's hash; 64 zeros for an organization's first." }
+        hash: { type: string }
+    AuditLogEventBatch:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          description: The recorded events, in the order they were sent.
+          items: { $ref: "#/components/schemas/AuditLogEvent" }
+    AuditLogSchema:
+      type: object
+      required: [id, action, version, targets, actor_metadata, metadata, created_at, updated_at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        version: { type: integer, description: "Starts at 1; every replacement is the next." }
+        targets:
+          type: ["array", "null"]
+          description: The target types this action's events may name; null allows any.
+          items:
+            type: object
+            required: [type, metadata]
+            properties:
+              type: { type: string }
+              metadata: { type: ["object", "null"] }
+        actor_metadata: { type: ["object", "null"], description: "A metadata schema (a subset of JSON Schema)." }
+        metadata: { type: ["object", "null"], description: "A metadata schema (a subset of JSON Schema)." }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    AuditLogExport:
+      type: object
+      required: [id, organization_id, state, filters, row_count, url, created_at, completed_at, expires_at]
+      properties:
+        id: { type: string }
+        organization_id: { type: ["string", "null"], description: "null for an export across the whole environment." }
+        state: { type: string, enum: [pending, ready, failed, expired] }
+        filters: { type: object, description: The filters it was asked with. }
+        row_count: { type: ["integer", "null"] }
+        url:
+          type: ["string", "null"]
+          description: |
+            Where the CSV downloads from once `ready` — signed, and valid for a few minutes;
+            read the export again for a fresh one. null otherwise, and on an idempotent replay.
+        created_at: { type: ["string", "null"], format: date-time }
+        completed_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: ["string", "null"], format: date-time, description: "When the file is deleted." }
+    AuditLogSettings:
+      type: object
+      required: [retention_days, strict_schemas]
+      properties:
+        retention_days: { type: integer, description: "Events are kept this many days after they arrive." }
+        strict_schemas: { type: boolean, description: "Whether an action with no schema is refused." }
+    AuditLogVerification:
+      type: object
+      required: [organization_id, valid, complete, verified_count, first_sequence, last_sequence, head_sequence, broken_at_sequence, reason]
+      properties:
+        organization_id: { type: string }
+        valid: { type: boolean, description: "Every event checked is unchanged and in place." }
+        complete: { type: boolean, description: "The check reached the chain's head. When false, continue from last_sequence + 1." }
+        verified_count: { type: integer }
+        first_sequence: { type: ["integer", "null"] }
+        last_sequence: { type: ["integer", "null"] }
+        head_sequence: { type: integer }
+        broken_at_sequence: { type: ["integer", "null"] }
+        reason: { type: ["string", "null"], enum: [missing, link, hash, truncated, null] }
     Directory:
       type: object
       required: [id, organization_id, name, provider, pull, active, status]

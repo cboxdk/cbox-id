@@ -68,7 +68,7 @@ it('warns before requiring SSO, and writes nothing until the warning is answered
         ->assertDontSee('This will sign people out of');
 
     // Choose the mandate and submit. The dialog interrupts.
-    $page->click('[aria-label="Single sign-on"]')
+    $page->click('[aria-label="Enterprise SSO"]')
         // The option is a Radix listbox row rather than a button, so it is named by its
         // role: clicking on text alone looks only at the controls a person can tab to.
         ->click('[role="option"]:has-text("Require SSO")')
@@ -97,7 +97,7 @@ it('applies the mandate when the warning is accepted', function (): void {
     $organizationId = anOwnerOfSignInRules();
 
     visit('/sign-in-rules')
-        ->click('[aria-label="Single sign-on"]')
+        ->click('[aria-label="Enterprise SSO"]')
         // The option is a Radix listbox row rather than a button, so it is named by its
         // role: clicking on text alone looks only at the controls a person can tab to.
         ->click('[role="option"]:has-text("Require SSO")')

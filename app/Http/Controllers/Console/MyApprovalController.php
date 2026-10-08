@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\HelpProps;
+use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
@@ -68,7 +69,7 @@ final readonly class MyApprovalController extends ConsoleController
             $names[(string) $client->client_id] = (string) $client->name;
         }
 
-        return $this->page('console/approvals', 'Approve agent requests', [
+        return $this->page('console/approvals', Vocabulary::APPROVALS, [
             'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names): array {
                 $clientId = (string) $request->client_id;
 

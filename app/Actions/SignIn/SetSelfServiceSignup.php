@@ -37,6 +37,7 @@ use Illuminate\Auth\Access\AuthorizationException;
     tag: 'Sign-in',
     rest: ['PUT', '/sign-in/self-service-signup'],
     consoleRoutes: ['environment.auth-policy.self-service-signup'],
+    schema: 'SelfServiceSignup',
 )]
 final readonly class SetSelfServiceSignup implements Action
 {

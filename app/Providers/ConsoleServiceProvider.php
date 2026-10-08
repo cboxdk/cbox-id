@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Platform\ApiKeys\ApiKeyPresence;
+use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\Vocabulary;
 use App\Platform\ConsoleCurrentContext;
 use App\Platform\CurrentUser;
 use App\Platform\OrganizationCapabilities;
@@ -29,7 +31,7 @@ use Illuminate\Support\ServiceProvider;
  * rail silently reorders itself when a module is enabled, disabled, or the config cache
  * is rebuilt. The console shipped two such ties (Logs/Security at 60, Settings/
  * Connectors at 70). Reserved: 10 Overview · 15 Workspace · 20 People · 30
- * Sign-in · 40 Access control · 50 Developers · 60 Connectors · 70 Logs · 80 Settings ·
+ * Sign-in · 40 Access control · 50 Developers · 60 Connectors · 70 Audit log · 80 Settings ·
  * 90 My account · 100 Platform · 110 Insights · 120 Administration.
  */
 final class ConsoleServiceProvider extends ServiceProvider
@@ -72,11 +74,12 @@ final class ConsoleServiceProvider extends ServiceProvider
         $nav->area('overview', 'Overview', 'dashboard', 10)
             ->page('dashboard', 'Overview', order: 10)
             ->page('usage', 'Usage', feature: 'organization.usage', order: 20)
-            // NAMED FOR WHAT IT DOES HERE. Both consoles had an "Agent approvals" page and
-            // they are not the same page: this one is where the signed-in person approves
-            // or denies a request to act as THEM; the environment console's lists every
-            // pending request in the environment so an administrator can deny abuse.
-            ->page('approvals', 'Approve agent requests', order: 30);
+            // ONE WORD ON BOTH CONSOLES, for two pages. This one is where the signed-in
+            // person approves or denies a request to act as THEM; the environment console's
+            // lists every pending request in the environment so an administrator can deny
+            // abuse. They were "Approve agent requests" and "Review agent requests" — two
+            // phrases to learn for one queue — and the page header says whose it is.
+            ->page('approvals', Vocabulary::APPROVALS, order: 30);
 
         // THE WORKSPACE — the customer's own Cbox account: the projects it runs, the
         // environments under them, the team that administers them, the keys and domains
@@ -97,11 +100,12 @@ final class ConsoleServiceProvider extends ServiceProvider
             // TEAM — the people who administer the workspace. Not "Members", which is the
             // People page of every organization, and not "Administrators", which a Viewer on
             // the list is not.
-            ->page('members', 'Team', feature: 'organization.members', order: 20)
-            // One page, the key type as a tab: this environment's management keys first,
-            // the workspace's own API keys second. Gated on the first tab's capability,
-            // which every role that may see the second also holds.
-            ->page('keys', 'Keys', feature: 'organization.environments', order: 30)
+            ->page('members', Vocabulary::TEAM, feature: 'organization.members', order: 20)
+            // One page, the kind of key as a tab: secret keys for an environment first, the
+            // workspace's own keys second. Gated on the first tab's capability, which every
+            // role that may see the second also holds. My account's page is "My API keys",
+            // so the same words never sit twice on one rail.
+            ->page('keys', Vocabulary::API_KEYS, feature: 'organization.environments', order: 30)
             ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
             // 70 is the BILLING module's, added by its own provider — see modules/billing.
             // Left as a gap rather than closed up: the orders in this area are unique
@@ -110,24 +114,30 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('organization-settings', 'Workspace settings', feature: 'organization.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
-        // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.
+        // header, not the nav). "Directory" → Members & roles, "Authentication" → Sign-in.
+        //
+        // MEMBERS & ROLES, not "People": the people in ONE organization are its members,
+        // which is the word every page here uses, and the rest of the area is what they
+        // hold — the environment console's "Users & orgs" is the same shape. The
+        // workspace's own colleagues are its Team, one area up; "People" named neither and
+        // was read as both.
         //
         // A LABEL HERE IS A PROMISE: it must be the same string as the page's own <h1>
         // and browser title. Clicking "Stored tokens" and landing on a page titled
         // "Token vault" makes a user doubt they arrived where they aimed — the console
         // shipped six such mismatches, and they read as the product being confusing
         // rather than merely inconsistent. Rename in both places, or in neither.
-        $nav->area('directory', 'People', 'members', 20)
-            ->page('directory.members', 'Members', order: 10)
-            ->page('roles', 'Roles', order: 20)
+        $nav->area('directory', ConsoleArea::Directory->organizationLabel(), 'members', 20)
+            ->page('directory.members', Vocabulary::MEMBERS, order: 10)
+            ->page('roles', Vocabulary::ROLES, order: 20)
             // Roles are made OF permissions, so a plane that offers one and hides the
             // other asks an administrator to assign a thing they cannot inspect. It was
             // environment-plane-only — the same component, reachable from one console.
-            ->page('permissions', 'Permissions', order: 30)
+            ->page('permissions', Vocabulary::PERMISSIONS, order: 30)
             // Every API key the organization's people hold for its apps. Only where an app
             // offers keys here, or somebody already holds one: on every other organization
             // it would be an empty page about a feature nobody turned on.
-            ->page('directory.api-keys', 'Member API keys', feature: 'organization.api-keys', order: 40);
+            ->page('directory.api-keys', Vocabulary::MEMBER_API_KEYS, feature: 'organization.api-keys', order: 40);
 
         // THE MARKET'S WORDS for the pages both consoles share — "Enterprise SSO",
         // "Directory Sync", "Outbound provisioning" — because one component serves both
@@ -140,12 +150,19 @@ final class ConsoleServiceProvider extends ServiceProvider
         // session policy — a sign-in question — and on a workspace's own console they are
         // half of the only sign-in administration it has (the other half is single
         // sign-on for its team), so the two have to be one area to be found together.
+        //
+        // DOMAINS beside Enterprise SSO. A verified domain belongs to the organization, not
+        // to one connection — it is how an email address finds whichever connection is
+        // active — and it is one of the half-dozen things a customer's IT department owns
+        // ({@see \App\Platform\Console\CustomerConsole}), so it has a page of its own.
+        // The Enterprise SSO page still lists them beside its connections.
         $nav->area('authentication', 'Sign-in', 'fingerprint', 30)
-            ->page('connections', 'Enterprise SSO', order: 10)
-            ->page('social-providers', 'Social login', order: 20)
-            ->page('auth-policy', 'Authentication policy', order: 25)
-            ->page('directories', 'Directory Sync', order: 30)
-            ->page('provisioning', 'Outbound provisioning', order: 40);
+            ->page('connections', Vocabulary::ENTERPRISE_SSO, order: 10)
+            ->page('domains', Vocabulary::DOMAINS, order: 15)
+            ->page('social-providers', Vocabulary::SOCIAL_LOGIN, order: 20)
+            ->page('auth-policy', Vocabulary::AUTHENTICATION_POLICY, order: 25)
+            ->page('directories', Vocabulary::DIRECTORY_SYNC, order: 30)
+            ->page('provisioning', Vocabulary::OUTBOUND_PROVISIONING, order: 40);
 
         $nav->area('governance', 'Access control', 'scale', 40)
             ->page('governance', 'Access reviews', order: 10)
@@ -154,23 +171,30 @@ final class ConsoleServiceProvider extends ServiceProvider
         $nav->area('developers', 'Developers', 'code', 50)
             // "Apps", not "Apps & API keys": the page registers apps, and keys have a page
             // of their own. The ampersand promised a second thing the page did not hold.
-            ->page('clients', 'Applications', order: 10)
-            // Frontend keys and Legacy login are on the environment plane only: both are
+            ->page('clients', Vocabulary::APPLICATIONS, order: 10)
+            // Publishable keys and Legacy login are on the environment plane only: both are
             // owned by the environment with no organization column, so listing them here
             // would put every organization's administrator in charge of every other
             // organization's. See ConsoleScope::assertMayAdministerEnvironment().
-            ->page('webhooks', 'Webhooks', order: 20)
-            ->page('hooks', 'Hooks', order: 30)
+            ->page('webhooks', Vocabulary::WEBHOOKS, order: 20)
+            ->page('hooks', Vocabulary::HOOKS, order: 30)
             ->page('vault', 'Token vault', order: 40);
 
         // 60 is left to the connectors module; the compliance and risk modules append
         // their pages to this area rather than minting their own (see below).
-        $nav->area('audit', 'Logs', 'audit', 70)
-            ->page('audit', 'Audit log', order: 10)
+        //
+        // AUDIT LOG, not "Logs": everything in it is the trail — the trail itself, the
+        // events an app records about its customers, and where the trail is streamed. "Logs"
+        // read as somewhere to find application output.
+        $nav->area('audit', ConsoleArea::Logs->organizationLabel(), 'audit', 70)
+            ->page('audit', Vocabulary::AUDIT_LOG, order: 10)
+            // The audit events the app built on this environment sends about this
+            // organization — the customer's view of its own product's activity.
+            ->page('audit-logs', Vocabulary::APP_AUDIT_LOGS, order: 15)
             // Where this console is the environment's own administration — a single-tenant
             // install, the platform root. Not on a customer's console: there shipping the
             // trail to a SIEM is the vendor's job, done from the environment console.
-            ->page('audit-streams', 'Log streams', order: 20);
+            ->page('audit-streams', Vocabulary::LOG_STREAMS, order: 20);
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)
@@ -184,8 +208,9 @@ final class ConsoleServiceProvider extends ServiceProvider
             // two halves of the same worry and people arrive looking for either.
             ->page('account.activity', 'Sessions & activity', order: 20)
             // Keys for the APIs of the apps built on this environment — present only where
-            // one offers them, or the person already holds a key (see HolderApiKeys).
-            ->page('account.api-keys', 'API keys', feature: 'account.api-keys', order: 30);
+            // one offers them, or the person already holds a key (see HolderApiKeys). "My API
+            // keys" because the workspace's own page, two areas up, is "API keys".
+            ->page('account.api-keys', Vocabulary::MY_API_KEYS, feature: 'account.api-keys', order: 30);
 
         $this->platformAreas($nav);
     }
@@ -229,7 +254,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         $nav->area('platform', 'Platform', 'rocket', 100)
             ->page('platform.workspaces', 'Workspaces', feature: 'platform.operator', order: 10)
             ->page('platform.environments', 'Environments', feature: 'platform.operator', order: 20)
-            ->page('platform.organizations', 'Organizations', feature: 'platform.operator', order: 30);
+            ->page('platform.organizations', Vocabulary::ORGANIZATIONS, feature: 'platform.operator', order: 30);
 
         $nav->area('platform-insights', 'Insights', 'chart', 110)
             ->page('platform.usage', 'Usage', feature: 'platform.operator', order: 10)
@@ -250,11 +275,11 @@ final class ConsoleServiceProvider extends ServiceProvider
         // The real factor is the subject's own, on `/account`, which `PlatformAuth`
         // actually checks at sign-in. One person, one identity, one second factor.
         $nav->area('platform-admin', 'Administration', 'lock', 120)
-            ->page('platform.operators', 'Operators', feature: 'platform.operator', order: 10);
+            ->page('platform.operators', Vocabulary::OPERATORS, feature: 'platform.operator', order: 10);
     }
 
     /**
-     * The gates on the Identity platform area, each one an ACCOUNT capability.
+     * The gates on the Workspace area, each one an ACCOUNT capability.
      *
      * Registered as console-kit features rather than checked in the layout because that
      * is the hook a page already has: the rail drops a page whose feature is inactive,

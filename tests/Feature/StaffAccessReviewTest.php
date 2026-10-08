@@ -64,7 +64,7 @@ it('opens a review of staff roles from the environment console, and a revoke tak
     $props = $this->get(route('environment.governance.show', $campaign->id))->assertOk()->inertiaProps();
 
     expect($props['review']['staff'])->toBeTrue()
-        ->and($props['items'][0]['kind'])->toBe('Staff role')
+        ->and($props['items'][0]['kind'])->toBe('Admin & support role')
         ->and($props['items'][0]['access'])->toBe('Support')
         ->and($props['items'][0]['subject'])->toBe('Sam Support');
 

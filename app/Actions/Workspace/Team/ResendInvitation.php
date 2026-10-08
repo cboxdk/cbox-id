@@ -32,7 +32,7 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
     consoleRoutes: ['members.invitations.resend'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Member',
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class ResendInvitation implements Action
 {

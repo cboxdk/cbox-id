@@ -22,7 +22,7 @@ use Cbox\Id\Federation\OidcDiscovery;
 use Throwable;
 
 /**
- * Offer a social sign-in provider on one organization's sign-in page, from the catalogue.
+ * Offer a social login provider on one organization's sign-in page, from the catalogue.
  *
  * Everything an administrator used to have to know — Google's issuer, that Entra's names the
  * directory, that GitHub is not an OpenID Provider at all — is catalogue data. What is left
@@ -38,7 +38,7 @@ use Throwable;
  */
 #[AsAction(
     name: 'signin.social.set',
-    summary: 'Enable a social sign-in provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.',
+    summary: 'Enable a social login provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.',
     scope: 'signin:write',
     danger: Danger::Critical,
     schema: 'SocialProvider',

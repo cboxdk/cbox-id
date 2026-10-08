@@ -6,7 +6,9 @@ description: How roles work in Cbox ID — you assign them, each app decides wha
 
 # Roles
 
-**Console page:** People › Roles
+**Console page:** Members & roles › Roles
+
+![Roles in an environment console](../screenshots/roles.png)
 
 A role is a job title your apps understand: `Editor`, `Support agent`,
 `Read-only`. You assign roles to people here; **each app decides for itself what
@@ -46,7 +48,7 @@ them yourself on the Permissions page without any integration at all.
 - Person by person on the **Members** page, in the same **Roles** control that holds
   their built-in role.
 - Automatically, by mapping a group from your identity provider onto a role — see
-  [Sync users in](sync-users-in.md). For anything above a handful of people this is
+  [Directory Sync](sync-users-in.md). For anything above a handful of people this is
   the one to use: access follows the group, and the group is already someone else's
   job to maintain.
 - At invite time, so someone has the right access the moment they accept rather
@@ -59,11 +61,12 @@ Members page, in an invitation or in a group mapping, and a request that names i
 refused. Only an environment administrator can grant it: as a staff role (below), or
 inside one organization from that organization's page in the environment console.
 
-## Staff roles
+## Admin and support roles
 
 **Console page (environment console):** Advanced › Admins & support
 
-A **staff role** is a role you grant to your own people across the whole environment. It
+An **admin & support role** (a *staff role* in the API and in app manifests) is a role
+you grant to your own people across the whole environment. It
 applies in every organization, and to a person who belongs to none. No organization's
 administrators can see it, grant it or take it back.
 
@@ -77,7 +80,7 @@ inside one. It cannot describe three others:
   there is no organization to hang a grant on, and it should not have to invent one.
 
 Grant one on the **Staff** page (the person's email address and the role), or from the
-person's own page under **Staff roles**. Both lists show the same grants.
+person's own page under **Admin & support roles**. Both lists show the same grants.
 
 Which roles can be staff roles:
 
@@ -105,10 +108,10 @@ Granting or taking back a staff role refreshes the person's claims everywhere: t
 refresh tokens are revoked, so each app gets the new roles the next time it refreshes.
 Nobody is signed out.
 
-### Reviewing staff roles
+### Reviewing admin and support roles
 
-Staff roles are the largest grants in an environment, so they have their own
-[access review](access-reviews.md#staff-roles). An organization's own review never lists
+Admin & support roles are the largest grants in an environment, so they have their own
+[access review](access-reviews.md#admin-and-support-roles). An organization's own review never lists
 them.
 
 ### Signing in to an app as somebody
@@ -150,7 +153,7 @@ under the name that software already looks for:
 So name the role whatever the consuming app expects to see, assign people to it, and it
 arrives. Nothing else to create.
 
-> **Not to be confused with directory groups.** The *Sync users in* page also talks about
+> **Not to be confused with directory groups.** The *Directory Sync* page also talks about
 > groups, and those go the other way: an organization's own identity provider pushes its groups
 > to Cbox ID over SCIM, and you map each one **onto** a role. They never reach a token
 > themselves. That page is for when somebody *else* is the identity provider. When Cbox ID

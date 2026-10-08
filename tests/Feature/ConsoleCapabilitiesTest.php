@@ -874,9 +874,12 @@ it('offers the same event catalogue on both planes', function (): void {
     expect($environment)->toBe(WebhookEventCatalogue::offered())
         ->and($organization)->toBe(WebhookEventCatalogue::offered());
 
-    // The framework's offered set, so the assertion above cannot pass by both planes
-    // having quietly shrunk to the same shorter list.
-    $offered = array_map(static fn (WebhookEventType $type): string => $type->value, WebhookEventType::offered());
+    // The framework's offered set and this app's own events, so the assertion above cannot
+    // pass by both planes having quietly shrunk to the same shorter list.
+    $offered = [
+        ...array_map(static fn (WebhookEventType $type): string => $type->value, WebhookEventType::offered()),
+        ...array_keys(WebhookEventCatalogue::APP_EVENTS),
+    ];
     sort($offered);
     $shown = $organization;
     sort($shown);

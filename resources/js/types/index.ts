@@ -273,8 +273,27 @@ export interface OrganizationHub {
     status: string;
     tabs: LinkTab[];
     indexHref: string;
-    /** Null when the organization's plan includes neither single sign-on nor directory sync. */
-    portalLink: { href: string; covers: { value: string; label: string }[] } | null;
+    /** What the "Admin Portal link" dialog asks: which intents, how long, whom to mail it to. */
+    portalLink: {
+        href: string;
+        /** Every intent; one the organization's plan does not include is `available: false`. */
+        intents: { value: string; label: string; description: string; available: boolean }[];
+        /** How long the link may wait to be opened, in minutes. */
+        lifetimes: { value: string; label: string }[];
+        /** The languages it can be mailed in. */
+        locales: { value: string; label: string }[];
+        defaultLocale: string;
+    };
+}
+
+/** A SAML connection of an organization whose signing certificate stops working soon. */
+export interface CertificateWarning {
+    connection_id: string;
+    name: string;
+    expires_at: string;
+    days_remaining: number;
+    expired: boolean;
+    href: string;
 }
 
 /** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */

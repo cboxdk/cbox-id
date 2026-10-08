@@ -1,7 +1,9 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
-import { Help, Icon, Panel, Pill, Stat } from '@/ui';
+import { absoluteTime, relativeTime } from '@/lib/time';
+import type { CertificateWarning, HelpContent, PageProps } from '@/types';
+import { Button, CertificateWarnings, Help, Icon, Panel, Pill, Stat } from '@/ui';
 
 interface SetupStep {
     key: string;
@@ -21,12 +23,28 @@ interface RecentEntry {
     recordedAt: string | null;
 }
 
+/** An Admin Portal link that still opens something — never its URL, which was shown once. */
+interface OutstandingPortalLink {
+    id: string;
+    /** What it opens, as the "Admin Portal link" dialog names them. */
+    intents: string[];
+    /** Opened, and its setup session may still be running. */
+    inUse: boolean;
+    emailedTo: string | null;
+    createdAt: string | null;
+    expiresAt: string;
+    revokeHref: string;
+}
+
 type Props = PageProps<{
     help: HelpContent;
     setup: SetupStep[];
     counts: { members: number; invitations: number };
     recent: RecentEntry[];
     hrefs: { members: string; invitations: string; audit: string };
+    /** SAML connections whose signing certificates stop working within 30 days. */
+    certificateWarnings: CertificateWarning[];
+    portalLinks: OutstandingPortalLink[];
 }>;
 
 /**
@@ -36,9 +54,19 @@ type Props = PageProps<{
  * checklist anybody ticked, and each links to the tab where it is done. The header and tabs
  * are the layout's (`../frame.tsx`).
  */
-export default function OrganizationOverview({ help, setup, counts, recent, hrefs }: Props) {
+export default function OrganizationOverview({
+    help,
+    setup,
+    counts,
+    recent,
+    hrefs,
+    certificateWarnings,
+    portalLinks,
+}: Props) {
     return (
         <div className="space-y-6">
+            <CertificateWarnings warnings={certificateWarnings} />
+
             <div className="grid gap-4 sm:grid-cols-2">
                 <Stat
                     icon="members"
@@ -100,6 +128,8 @@ export default function OrganizationOverview({ help, setup, counts, recent, href
                 </ul>
             </Panel>
 
+            <PortalLinks links={portalLinks} />
+
             <Panel
                 title="Recent activity"
                 description="The newest entries on this organization's audit log."
@@ -145,6 +175,91 @@ export default function OrganizationOverview({ help, setup, counts, recent, href
                 )}
             </Panel>
         </div>
+    );
+}
+
+/**
+ * THE ADMIN PORTAL LINKS STILL OUT THERE — not yet opened, or opened with a setup session
+ * that may still be running — and the way to take each back. A link is a credential handed
+ * to somebody outside this console; one mailed to the wrong address has to be visible to be
+ * withdrawn. Revoking one that is in use ends that session on its next click.
+ */
+function PortalLinks({ links }: { links: OutstandingPortalLink[] }) {
+    const [revoking, setRevoking] = useState<string | null>(null);
+
+    return (
+        <Panel
+            title="Admin Portal links"
+            description="Links handed to this organization's IT administrator that still open something. Revoke one and it stops working at once — what was already set up through it stays."
+        >
+            {links.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                    No link is outstanding.
+                </p>
+            ) : (
+                <ul className="space-y-3">
+                    {links.map((link) => (
+                        <li
+                            key={link.id}
+                            className="flex items-start justify-between gap-3 flex-wrap"
+                        >
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">{link.intents.join(', ')}</span>
+                                    {link.inUse ? (
+                                        <Pill tone="warning">In use</Pill>
+                                    ) : (
+                                        <Pill>Not opened</Pill>
+                                    )}
+                                </div>
+                                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                                    {link.emailedTo !== null
+                                        ? `Mailed to ${link.emailedTo}`
+                                        : 'Copied by hand'}
+                                    {link.createdAt !== null && (
+                                        <>
+                                            {' · created '}
+                                            <time
+                                                dateTime={link.createdAt}
+                                                title={absoluteTime(link.createdAt)}
+                                            >
+                                                {relativeTime(link.createdAt)}
+                                            </time>
+                                        </>
+                                    )}
+                                    {!link.inUse && (
+                                        <>
+                                            {' · expires '}
+                                            <time
+                                                dateTime={link.expiresAt}
+                                                title={absoluteTime(link.expiresAt)}
+                                            >
+                                                {relativeTime(link.expiresAt)}
+                                            </time>
+                                        </>
+                                    )}
+                                </p>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="danger"
+                                loading={revoking === link.id}
+                                aria-label={`Revoke the ${link.intents.join(', ')} link`}
+                                onClick={() =>
+                                    router.delete(link.revokeHref, {
+                                        preserveScroll: true,
+                                        onStart: () => setRevoking(link.id),
+                                        onFinish: () => setRevoking(null),
+                                    })
+                                }
+                            >
+                                Revoke
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Panel>
     );
 }
 

@@ -29,7 +29,7 @@ use App\Platform\Invitations\Contracts\TeamInvitations;
     rest: ['GET', '/invitations'],
     consoleGate: ConsoleGate::ReadMembers,
     schema: 'TeamInvitation',
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class ListInvitations implements Action
 {

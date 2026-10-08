@@ -82,29 +82,29 @@ tags:
   - name: Invitations
   - name: Roles
   - name: Users
-  - name: Apps
+  - name: Applications
   - name: APIs
   - name: 'API keys'
   - name: 'Support sessions'
   - name: Devices
   - name: Approvals
   - name: Governance
-  - name: 'Agent requests'
   - name: 'Audit log'
+  - name: 'App audit logs'
   - name: Branding
-  - name: 'Directory sync'
+  - name: 'Directory Sync'
   - name: Domains
   - name: Events
-  - name: 'Frontend keys'
-  - name: 'Inline hooks'
-  - name: 'Management keys'
+  - name: 'Publishable keys'
+  - name: Hooks
+  - name: 'Secret keys'
   - name: 'Legacy login'
   - name: 'Log streams'
   - name: 'Admin Portal'
-  - name: Provisioning
+  - name: 'Outbound provisioning'
   - name: 'SAML apps'
   - name: Sign-in
-  - name: 'Single sign-on'
+  - name: 'Enterprise SSO'
   - name: 'Token vault'
   - name: Webhooks
 paths:
@@ -604,7 +604,7 @@ paths:
   /agent-requests:
     get:
       tags:
-        - 'Agent requests'
+        - Approvals
       summary: "List the pending requests from agents to act as one of this environment's people (CIBA): which app, for whom, and what it asks."
       description: 'Requires scope `approvals:read`. Danger: read.'
       operationId: approvals_list
@@ -667,8 +667,8 @@ paths:
   '/agent-requests/{request_id}/deny':
     post:
       tags:
-        - 'Agent requests'
-      summary: 'Deny a pending agent request (CIBA) for the person it was raised for: the agent gets access_denied and no token.'
+        - Approvals
+      summary: 'Deny a pending approval request (CIBA) for the person it was raised for: the agent gets access_denied and no token.'
       description: 'Requires scope `approvals:write`. Danger: destructive.'
       operationId: approvals_deny
       x-action: approvals.deny
@@ -1242,7 +1242,7 @@ paths:
   /apps:
     get:
       tags:
-        - Apps
+        - Applications
       summary: 'List apps'
       description: 'Requires scope `apps:read`. Never a secret.'
       operationId: apps_list
@@ -1285,7 +1285,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
-        - Apps
+        - Applications
       summary: 'Register an app'
       description: |
         Requires scope `apps:write`. Two ways to describe it:
@@ -1407,7 +1407,7 @@ paths:
   '/apps/{id}':
     delete:
       tags:
-        - Apps
+        - Applications
       summary: 'Delete an app and every secret it holds. Anything signing in as it stops working immediately.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_delete
@@ -1453,7 +1453,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - Apps
+        - Applications
       summary: 'Get one app (OAuth client) by its id or its client_id: its kind, grants, redirect URIs, scopes and settings. Never a secret.'
       description: 'Requires scope `apps:read`. Danger: read.'
       operationId: apps_get
@@ -1503,7 +1503,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - Apps
+        - Applications
       summary: 'Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields left out are unchanged.'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_update
@@ -1584,7 +1584,7 @@ paths:
   '/apps/{id}/blueprint':
     get:
       tags:
-        - Apps
+        - Applications
       summary: "Export an app's configuration as a blueprint"
       description: |
         Requires scope `apps:read`. `{id}` is the app's id or its `client_id`. The document
@@ -1626,7 +1626,7 @@ paths:
   '/apps/{id}/copy':
     post:
       tags:
-        - Apps
+        - Applications
       summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_copy
@@ -1706,7 +1706,7 @@ paths:
   '/apps/{id}/manifest':
     put:
       tags:
-        - Apps
+        - Applications
       summary: 'Set or clear the URL an app publishes its roles-and-permissions manifest at. Does not fetch it; apps.manifest.sync does.'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_manifest_set
@@ -1776,7 +1776,7 @@ paths:
   '/apps/{id}/manifest/sync':
     post:
       tags:
-        - Apps
+        - Applications
       summary: "Fetch an app's published manifest now and sync the roles and permissions it declares."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_manifest_sync
@@ -1812,7 +1812,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/ManifestSync'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -1832,7 +1832,7 @@ paths:
   '/apps/{id}/scopes':
     put:
       tags:
-        - Apps
+        - Applications
       summary: "Replace an app's complete scope set — the ceiling of what it may request, applied from its next token."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_scopes_set
@@ -1902,7 +1902,7 @@ paths:
   '/apps/{id}/secrets':
     get:
       tags:
-        - Apps
+        - Applications
       summary: "List an app's live client secrets"
       description: |
         Requires scope `apps:read`. Every live secret, newest first: its id (what
@@ -1948,7 +1948,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
-        - Apps
+        - Applications
       summary: 'Mint a new client secret for an app and retire the current ones after grace_seconds (0 = at once). The new secret is returned once.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_secrets_rotate
@@ -2018,7 +2018,7 @@ paths:
   '/apps/{id}/secrets/{secret_id}':
     delete:
       tags:
-        - Apps
+        - Applications
       summary: "Revoke one of an app's client secrets immediately. Never its last live secret — rotate that instead."
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_secrets_revoke
@@ -2073,7 +2073,7 @@ paths:
   '/apps/{id}/settings/api-key-prefix':
     put:
       tags:
-        - Apps
+        - Applications
       summary: "Set the prefix of an app's customer API keys (acme_live), which lets its users create keys for it, or null to stop new keys."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_api_key_prefix
@@ -2142,7 +2142,7 @@ paths:
   '/apps/{id}/settings/backchannel-logout':
     put:
       tags:
-        - Apps
+        - Applications
       summary: 'Set or clear the URI an app is sent a logout token at when somebody signs out (OIDC Back-Channel Logout).'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_backchannel_logout
@@ -2215,7 +2215,7 @@ paths:
   '/apps/{id}/settings/token-exchange':
     put:
       tags:
-        - Apps
+        - Applications
       summary: 'Turn token exchange (RFC 8693) on or off for a confidential app.'
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_token_exchange
@@ -2282,7 +2282,7 @@ paths:
   '/apps/{id}/settings/token-lifetime':
     put:
       tags:
-        - Apps
+        - Applications
       summary: "Set how long an app's access tokens live, in seconds, or null for the install's default."
       description: 'Requires scope `apps:write`. Danger: write.'
       operationId: apps_settings_token_lifetime
@@ -2427,6 +2427,929 @@ paths:
                       $ref: '#/components/schemas/AuditEntry'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/events:
+    post:
+      tags:
+        - 'App audit logs'
+      summary: "Record 1–100 audit events your app's users caused, each for one of your organizations (customers); checked against the action's schema when it has one and appended to that organization's tamper-evident chain. Send an Idempotency-Key."
+      description: 'Requires scope `audit_logs:write`. Danger: write.'
+      operationId: audit_logs_events_create
+      x-action: audit_logs.events.create
+      x-scope: 'audit_logs:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                events:
+                  type: array
+                  description: '1–100 events, recorded all together or not at all.'
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      organization_id:
+                        type: string
+                        description: 'The organization (your customer) the event happened in.'
+                        maxLength: 64
+                      action:
+                        type: string
+                        description: 'What happened, as dotted words: `invoice.voided`, `user.signed_in`.'
+                        maxLength: 190
+                      occurred_at:
+                        type: string
+                        description: 'When it happened: ISO 8601 with a time zone, to the millisecond.'
+                        format: date-time
+                      actor:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: 'Your id for whoever did it.'
+                            maxLength: 190
+                          type:
+                            type: string
+                            description: 'What kind of actor: `user`, `api_key`, `system`.'
+                            maxLength: 100
+                          name:
+                            type:
+                              - string
+                              - 'null'
+                            description: 'A name a person reads in the log.'
+                            maxLength: 190
+                          metadata:
+                            type: object
+                            description: 'Up to 50 names to strings, numbers, booleans or null.'
+                            properties: {}
+                        required:
+                          - id
+                          - type
+                      targets:
+                        type: array
+                        description: 'What it was done to.'
+                        maxItems: 50
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              maxLength: 190
+                            type:
+                              type: string
+                              description: 'What kind of thing: `invoice`, `user`, `report`.'
+                              maxLength: 100
+                            name:
+                              type:
+                                - string
+                                - 'null'
+                              maxLength: 190
+                            metadata:
+                              type: object
+                              properties: {}
+                          required:
+                            - id
+                            - type
+                      context:
+                        type: object
+                        properties:
+                          location:
+                            type:
+                              - string
+                              - 'null'
+                            description: "Where it came from — usually the client's IP address."
+                            maxLength: 64
+                          user_agent:
+                            type:
+                              - string
+                              - 'null'
+                            maxLength: 512
+                      metadata:
+                        type: object
+                        description: 'Up to 50 names to strings, numbers, booleans or null; values up to 500 characters.'
+                        properties: {}
+                    required:
+                      - organization_id
+                      - action
+                      - occurred_at
+                      - actor
+              required:
+                - events
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogEventBatch'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'App audit logs'
+      summary: 'Read audit events newest first, for one organization or the whole environment, filtered by action, actor, target and time range; pass `next_cursor` as `after` to page.'
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_events_list
+      x-action: audit_logs.events.list
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this organization's events. Required in effect for an organization's own administrator, whose events are the only ones they see."
+            maxLength: 64
+        -
+          name: actions
+          in: query
+          required: false
+          schema:
+            type: array
+            description: 'Only these actions, e.g. `invoice.voided`.'
+            maxItems: 50
+            items:
+              type: string
+              maxLength: 190
+        -
+          name: actor_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events this actor caused.'
+            maxLength: 190
+        -
+          name: target_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events naming this target.'
+            maxLength: 190
+        -
+          name: range_start
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events that occurred at or after this time.'
+            format: date-time
+        -
+          name: range_end
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only events that occurred before this time.'
+            format: date-time
+        -
+          name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            description: '`desc` (default) for newest first, `asc` for oldest first.'
+            enum:
+              - desc
+              - asc
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Events per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+            maxLength: 200
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEvent'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/exports:
+    post:
+      tags:
+        - 'App audit logs'
+      summary: 'Start a CSV export of audit events (same filters as the list). It is written on the queue: poll audit_logs.exports.get until state is ready, then download from its short-lived url.'
+      description: 'Requires scope `audit_logs:export`. Danger: write.'
+      operationId: audit_logs_exports_create
+      x-action: audit_logs.exports.create
+      x-scope: 'audit_logs:export'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: "Only this organization's events. Required in effect for an organization's own administrator, whose events are the only ones they see."
+                  maxLength: 64
+                actions:
+                  type: array
+                  description: 'Only these actions, e.g. `invoice.voided`.'
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 190
+                actor_id:
+                  type: string
+                  description: 'Only events this actor caused.'
+                  maxLength: 190
+                target_id:
+                  type: string
+                  description: 'Only events naming this target.'
+                  maxLength: 190
+                range_start:
+                  type: string
+                  description: 'Only events that occurred at or after this time.'
+                  format: date-time
+                range_end:
+                  type: string
+                  description: 'Only events that occurred before this time.'
+                  format: date-time
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogExport'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/audit-logs/exports/{id}':
+    get:
+      tags:
+        - 'App audit logs'
+      summary: "Read an audit-log export's state; once ready it carries a signed download url valid for a few minutes (read it again for a fresh one)."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_exports_get
+      x-action: audit_logs.exports.get
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The export id.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogExport'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/schemas:
+    post:
+      tags:
+        - 'App audit logs'
+      summary: "Define the schema one audit-log action's events must match — allowed target types and metadata schemas (a subset of JSON Schema). Events of that action are then validated on arrival."
+      description: 'Requires scope `audit_logs:manage`. Danger: write.'
+      operationId: audit_logs_schemas_create
+      x-action: audit_logs.schemas.create
+      x-scope: 'audit_logs:manage'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  description: 'The action this schema is for, e.g. `invoice.voided`.'
+                  maxLength: 190
+                targets:
+                  type:
+                    - array
+                    - 'null'
+                  description: "The target types this action's events may name, each with an optional metadata schema. Leave out to allow any."
+                  maxItems: 50
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: 'A target type events of this action may name.'
+                        maxLength: 100
+                      metadata:
+                        type: object
+                        description: 'A metadata schema for targets of this type.'
+                        properties: {}
+                    required:
+                      - type
+                actor_metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the actor's metadata."
+                  properties: {}
+                metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the event's own metadata."
+                  properties: {}
+              required:
+                - action
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'App audit logs'
+      summary: 'List the audit-log schemas this environment validates events against, one per action.'
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_schemas_list
+      x-action: audit_logs.schemas.list
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogSchema'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/audit-logs/schemas/{action}':
+    delete:
+      tags:
+        - 'App audit logs'
+      summary: "Delete an audit-log action's schema. Its events are then accepted unchecked — or refused, if the environment is in strict mode."
+      description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
+      operationId: audit_logs_schemas_delete
+      x-action: audit_logs.schemas.delete
+      x-scope: 'audit_logs:manage'
+      x-danger: destructive
+      parameters:
+        -
+          name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The action whose schema to delete.'
+            maxLength: 190
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'App audit logs'
+      summary: "Read the schema one audit-log action's events are validated against."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_schemas_get
+      x-action: audit_logs.schemas.get
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The action, e.g. `invoice.voided`.'
+            maxLength: 190
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - 'App audit logs'
+      summary: "Replace an audit-log action's schema with a new version (omitted parts are removed). Recorded events keep the version they were checked against."
+      description: 'Requires scope `audit_logs:manage`. Danger: write.'
+      operationId: audit_logs_schemas_update
+      x-action: audit_logs.schemas.update
+      x-scope: 'audit_logs:manage'
+      x-danger: write
+      parameters:
+        -
+          name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The action whose schema to replace.'
+            maxLength: 190
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targets:
+                  type:
+                    - array
+                    - 'null'
+                  description: "The target types this action's events may name, each with an optional metadata schema. Leave out to allow any."
+                  maxItems: 50
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: 'A target type events of this action may name.'
+                        maxLength: 100
+                      metadata:
+                        type: object
+                        description: 'A metadata schema for targets of this type.'
+                        properties: {}
+                    required:
+                      - type
+                actor_metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the actor's metadata."
+                  properties: {}
+                metadata:
+                  type: object
+                  description: "A metadata schema (a subset of JSON Schema) for the event's own metadata."
+                  properties: {}
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/settings:
+    get:
+      tags:
+        - 'App audit logs'
+      summary: "Read this environment's audit-log settings: retention in days and whether strict schemas are on."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_settings_get
+      x-action: audit_logs.settings.get
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'App audit logs'
+      summary: "Change this environment's audit-log retention (days, 1–3650) and strict mode. Shortening retention deletes older events at the next daily prune — irreversibly."
+      description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
+      operationId: audit_logs_settings_update
+      x-action: audit_logs.settings.update
+      x-scope: 'audit_logs:manage'
+      x-danger: destructive
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retention_days:
+                  type: integer
+                  description: 'Keep events this many days after they arrive.'
+                  minimum: 1
+                  maximum: 3650
+                strict_schemas:
+                  type: boolean
+                  description: 'Refuse events whose action has no schema.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /audit-logs/verify:
+    get:
+      tags:
+        - 'App audit logs'
+      summary: "Re-hash one organization's audit-event chain (from the oldest event retention kept, or from_sequence) and report whether every event is unchanged and in place."
+      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      operationId: audit_logs_verify
+      x-action: audit_logs.verify
+      x-scope: 'audit_logs:read'
+      x-danger: read
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "The organization whose chain to verify. An organization's own administrator may leave it out."
+            maxLength: 64
+        -
+          name: from_sequence
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Start here rather than at the oldest event kept.'
+            minimum: 1
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Verify at most this many events. Default 10,000.'
+            minimum: 1
+            maximum: 10000
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogVerification'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -2932,7 +3855,7 @@ paths:
   /directories:
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Register a SCIM directory for an organization. Answers the SCIM base URL and a bearer token, shown once.'
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_create
@@ -2998,7 +3921,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in, optionally for one organization, with their last sync error.'
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_list
@@ -3071,7 +3994,7 @@ paths:
   /directories/connect:
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: "Connect a Google Workspace or Microsoft Entra directory to sync an organization's people from, verifying the credentials first. Runs the first sync."
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_connect
@@ -3165,7 +4088,7 @@ paths:
   '/directories/{id}':
     delete:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Delete an inbound directory. Its token stops working; the people it provisioned keep their accounts.'
       description: 'Requires scope `directory_sync:write`. Danger: destructive.'
       operationId: directories_delete
@@ -3224,7 +4147,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Read one inbound directory: its provider, status, SCIM base URL and last sync error. Never its token or credentials.'
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_get
@@ -3284,7 +4207,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Rename an inbound directory.'
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_update
@@ -3359,7 +4282,7 @@ paths:
   '/directories/{id}/group-roles':
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Map a directory group onto a role (everyone in the group holds it as membership syncs), or unmap it.'
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_groups_map
@@ -3443,7 +4366,7 @@ paths:
   '/directories/{id}/groups':
     get:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'List the groups a directory has synced, with the role ids each group is mapped onto.'
       description: 'Requires scope `directory_sync:read`. Danger: read.'
       operationId: directories_groups_list
@@ -3523,7 +4446,7 @@ paths:
   '/directories/{id}/rotate':
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: 'Issue a new bearer token for a SCIM directory, returned once. The old token stops working immediately.'
       description: 'Requires scope `directory_sync:write`. Danger: critical.'
       operationId: directories_token_rotate
@@ -3592,7 +4515,7 @@ paths:
   '/directories/{id}/status':
     post:
       tags:
-        - 'Directory sync'
+        - 'Directory Sync'
       summary: "Pause or resume an inbound directory's provisioning."
       description: 'Requires scope `directory_sync:write`. Danger: write.'
       operationId: directories_status_set
@@ -3937,7 +4860,7 @@ paths:
   /frontend-keys:
     post:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'Create a publishable frontend key for a browser app, usable only from the origins listed. The key is public by design.'
       description: 'Requires scope `frontend_keys:write`. Danger: write.'
       operationId: frontend_keys_create
@@ -4012,7 +4935,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'List the publishable frontend keys browser apps present to the Frontend API, in full, with their allowed origins.'
       description: 'Requires scope `frontend_keys:read`. Danger: read.'
       operationId: frontend_keys_list
@@ -4075,7 +4998,7 @@ paths:
   '/frontend-keys/{id}':
     delete:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'Revoke a publishable frontend key. Pages still holding it stop working immediately.'
       description: 'Requires scope `frontend_keys:write`. Danger: destructive.'
       operationId: frontend_keys_revoke
@@ -4120,7 +5043,7 @@ paths:
   '/frontend-keys/{id}/origins':
     put:
       tags:
-        - 'Frontend keys'
+        - 'Publishable keys'
       summary: 'Replace the exact list of origins allowed to present a publishable frontend key. Live on the next request.'
       description: 'Requires scope `frontend_keys:write`. Danger: write.'
       operationId: frontend_keys_set_origins
@@ -4191,8 +5114,8 @@ paths:
   /hooks:
     post:
       tags:
-        - 'Inline hooks'
-      summary: 'Register an inline hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
+        - Hooks
+      summary: 'Register a hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
       description: 'Requires scope `hooks:write`. Danger: critical.'
       operationId: hooks_create
       x-action: hooks.create
@@ -4273,8 +5196,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Inline hooks'
-      summary: 'List the inline hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
+        - Hooks
+      summary: 'List the hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
       description: 'Requires scope `hooks:read`. Danger: read.'
       operationId: hooks_list
       x-action: hooks.list
@@ -4338,8 +5261,8 @@ paths:
   '/hooks/{id}':
     delete:
       tags:
-        - 'Inline hooks'
-      summary: 'Remove an inline hook. It is no longer called at its hook point.'
+        - Hooks
+      summary: 'Remove a hook. It is no longer called at its hook point.'
       description: 'Requires scope `hooks:write`. Danger: destructive.'
       operationId: hooks_delete
       x-action: hooks.delete
@@ -4352,7 +5275,7 @@ paths:
           required: true
           schema:
             type: string
-            description: 'The inline hook id.'
+            description: 'The hook id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -4384,8 +5307,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Inline hooks'
-      summary: 'Get one inline hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
+        - Hooks
+      summary: 'Get one hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
       description: 'Requires scope `hooks:read`. Danger: read.'
       operationId: hooks_get
       x-action: hooks.get
@@ -4398,7 +5321,7 @@ paths:
           required: true
           schema:
             type: string
-            description: 'The inline hook id.'
+            description: 'The hook id.'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
@@ -4436,8 +5359,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Inline hooks'
-      summary: 'Pause (active: false) or activate (active: true) an inline hook.'
+        - Hooks
+      summary: 'Pause (active: false) or activate (active: true) a hook.'
       description: 'Requires scope `hooks:write`. Danger: critical.'
       operationId: hooks_update
       x-action: hooks.update
@@ -4450,7 +5373,7 @@ paths:
           required: true
           schema:
             type: string
-            description: 'The inline hook id.'
+            description: 'The hook id.'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -4504,7 +5427,7 @@ paths:
   /keys:
     post:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: 'Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.'
       description: 'Requires scope `keys:write`. Danger: critical.'
       operationId: keys_create
@@ -4584,7 +5507,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/ManagementKey'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -4603,7 +5526,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: "List this environment's management keys (names, scopes, parents, expiry, last use — never their values)."
       description: 'Requires scope `keys:read`. Danger: read.'
       operationId: keys_list
@@ -4646,7 +5569,7 @@ paths:
                   data:
                     type: array
                     items:
-                      type: object
+                      $ref: '#/components/schemas/ManagementKey'
                   meta:
                     $ref: '#/components/schemas/PageMeta'
         202:
@@ -4666,7 +5589,7 @@ paths:
   '/keys/{id}':
     delete:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: 'Revoke a management key and every key it minted, immediately.'
       description: 'Requires scope `keys:write`. Danger: destructive.'
       operationId: keys_revoke
@@ -4711,7 +5634,7 @@ paths:
   '/keys/{id}/rotate':
     post:
       tags:
-        - 'Management keys'
+        - 'Secret keys'
       summary: 'Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.'
       description: 'Requires scope `keys:write`. Danger: critical.'
       operationId: keys_rotate
@@ -4757,7 +5680,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/ManagementKey'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -4909,7 +5832,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/LegacyLoginProbe'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -5286,6 +6209,62 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/LogStream'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/log-streams/{id}/test':
+    post:
+      tags:
+        - 'Log streams'
+      summary: 'Send one test entry to a log stream now and report whether the SIEM accepted it.'
+      description: 'Requires scope `log_streams:write`. Danger: write.'
+      operationId: log_streams_test
+      x-action: log_streams.test
+      x-scope: 'log_streams:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The log stream's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LogStreamTest'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -6836,10 +7815,58 @@ paths:
         429:
           $ref: '#/components/responses/TooManyRequests'
   '/organizations/{organization_id}/portal-links':
+    get:
+      operationId: organizations_portal_links_list
+      x-action: organizations.portal_links.list
+      x-scope: 'portal_links:read'
+      x-danger: read
+      tags:
+        - 'Admin Portal'
+      summary: "List an organization's Admin Portal links"
+      description: |
+        Requires scope `portal_links:read`. Danger: read. The links minted in the last 30
+        days, newest first — every link that can still be opened is among them, since a link
+        waits a week at most. Each says what it opens, who minted it, whom it was mailed to
+        and where it stands (`status`). Never the link itself: it was shown once, when it was
+        minted, and only its hash is kept. Not paged.
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalLinkRecord'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
         - 'Admin Portal'
-      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up its SSO and domains, or its directory sync, without an account. The URL is shown once."
+      summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal, or to read its audit logs, without an account. The URL is shown once."
       description: 'Requires scope `portal_links:write`. Danger: critical.'
       operationId: organizations_portal_links_create
       x-action: organizations.portal_links.create
@@ -6871,15 +7898,47 @@ paths:
             schema:
               type: object
               properties:
-                covers:
-                  type: string
-                  description: 'What the link may configure: sso (connection and email domains), scim (directory sync), or both.'
+                intents:
+                  type: array
+                  description: "What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection's signing certificate), audit_logs (the organization's audit events, read-only, with CSV export)."
+                  minItems: 1
+                  items:
+                    type: string
+                    enum:
+                      - sso
+                      - dsync
+                      - domain_verification
+                      - log_streams
+                      - certificate_renewal
+                      - audit_logs
+                expires_in_minutes:
+                  type:
+                    - integer
+                    - 'null'
+                  description: "How long the link may wait to be opened, in minutes — 5 to 10080 (a week). Left out, the deployment's default (30)."
+                  minimum: 5
+                  maximum: 10080
+                email:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Mail the link to this address — the customer's IT contact. Left out, nothing is sent."
+                  format: email
+                  maxLength: 254
+                locale:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The language of that mail. Left out, the environment's default language."
                   enum:
-                    - sso
-                    - scim
-                    - both
+                    - en
+                    - da
+                    - de
+                    - sv
+                    - nb
+                    - fr
               required:
-                - covers
+                - intents
       responses:
         201:
           description: OK
@@ -6892,6 +7951,62 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/PortalLink'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/organizations/{organization_id}/portal-links/{id}':
+    delete:
+      tags:
+        - 'Admin Portal'
+      summary: 'Withdraw an Admin Portal link: it can no longer be opened, and a setup session it already opened ends on its next request. What was already set up through it stays.'
+      description: 'Requires scope `portal_links:write`. Danger: destructive.'
+      operationId: organizations_portal_links_revoke
+      x-action: organizations.portal_links.revoke
+      x-scope: 'portal_links:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization id.'
+            maxLength: 64
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The portal link's id."
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -7192,7 +8307,7 @@ paths:
   /provisioning-targets:
     post:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: "Register a downstream app this platform pushes an organization's people to over SCIM, or every organization's with environment_wide."
       description: 'Requires scope `provisioning:write`. Danger: critical.'
       operationId: provisioning_targets_create
@@ -7299,7 +8414,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'List the downstream SCIM targets people are provisioned to, optionally for one organization, with their failures. Never their credentials.'
       description: 'Requires scope `provisioning:read`. Danger: read.'
       operationId: provisioning_targets_list
@@ -7372,7 +8487,7 @@ paths:
   '/provisioning-targets/{id}':
     delete:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'Delete a downstream SCIM target. Nothing more is pushed to it.'
       description: 'Requires scope `provisioning:write`. Danger: destructive.'
       operationId: provisioning_targets_delete
@@ -7431,7 +8546,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'Read one downstream SCIM target: its URL, auth scheme, status and last error. Never its credential.'
       description: 'Requires scope `provisioning:read`. Danger: read.'
       operationId: provisioning_targets_get
@@ -7492,7 +8607,7 @@ paths:
   '/provisioning-targets/{id}/status':
     post:
       tags:
-        - Provisioning
+        - 'Outbound provisioning'
       summary: 'Pause or resume pushing people to a downstream SCIM target.'
       description: 'Requires scope `provisioning:write`. Danger: write.'
       operationId: provisioning_targets_status_set
@@ -8015,7 +9130,7 @@ paths:
     post:
       tags:
         - 'SAML apps'
-      summary: 'Register a SAML application that signs people in with their account here. Decides where assertions — and their attributes — are sent.'
+      summary: 'Register a SAML app that signs people in with their account here. Decides where assertions — and their attributes — are sent.'
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_create
       x-action: saml_apps.create
@@ -8125,7 +9240,7 @@ paths:
     get:
       tags:
         - 'SAML apps'
-      summary: 'List the SAML applications that trust this environment as their identity provider.'
+      summary: 'List the SAML apps that trust this environment as their identity provider.'
       description: 'Requires scope `saml_apps:read`. Danger: read.'
       operationId: saml_apps_list
       x-action: saml_apps.list
@@ -8188,7 +9303,7 @@ paths:
     delete:
       tags:
         - 'SAML apps'
-      summary: 'Remove a SAML application. People can no longer sign in to it with their account here.'
+      summary: 'Remove a SAML app. People can no longer sign in to it with their account here.'
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_delete
       x-action: saml_apps.delete
@@ -8201,7 +9316,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The SAML application's id."
+            description: "The SAML app's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -8232,7 +9347,7 @@ paths:
     get:
       tags:
         - 'SAML apps'
-      summary: 'Read one SAML application: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.'
+      summary: 'Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.'
       description: 'Requires scope `saml_apps:read`. Danger: read.'
       operationId: saml_apps_get
       x-action: saml_apps.get
@@ -8245,7 +9360,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The SAML application's id."
+            description: "The SAML app's id."
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
       security:
@@ -8282,7 +9397,7 @@ paths:
     patch:
       tags:
         - 'SAML apps'
-      summary: "Change a SAML application's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization."
+      summary: "Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization."
       description: 'Requires scope `saml_apps:write`. Danger: critical.'
       operationId: saml_apps_update
       x-action: saml_apps.update
@@ -8295,7 +9410,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The SAML application's id."
+            description: "The SAML app's id."
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
         - $ref: '#/components/parameters/CboxEnvironment'
@@ -8397,7 +9512,7 @@ paths:
     get:
       tags:
         - Sign-in
-      summary: "Read the sign-in rules (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override."
+      summary: "Read the authentication policy (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override."
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_policy_get
       x-action: signin.policy.get
@@ -8448,7 +9563,7 @@ paths:
     patch:
       tags:
         - Sign-in
-      summary: "Change the sign-in rules of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions."
+      summary: "Change the authentication policy of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions."
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_update
       x-action: signin.policy.update
@@ -8551,7 +9666,7 @@ paths:
     delete:
       tags:
         - Sign-in
-      summary: "Drop one organization's sign-in rules override, so it inherits the environment baseline again."
+      summary: "Drop one organization's authentication policy override, so it inherits the environment baseline again."
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_inherit
       x-action: signin.policy.inherit
@@ -8637,7 +9752,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    $ref: '#/components/schemas/SelfServiceSignup'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -8658,7 +9773,7 @@ paths:
     get:
       tags:
         - Sign-in
-      summary: 'List the social sign-in providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.'
+      summary: 'List the social login providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.'
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_social_list
       x-action: signin.social.list
@@ -8728,7 +9843,7 @@ paths:
     post:
       tags:
         - Sign-in
-      summary: 'Enable a social sign-in provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.'
+      summary: 'Enable a social login provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.'
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_set
       x-action: signin.social.set
@@ -8852,7 +9967,7 @@ paths:
     delete:
       tags:
         - Sign-in
-      summary: 'Stop offering a social sign-in provider. People who used it keep their accounts.'
+      summary: 'Stop offering a social login provider. People who used it keep their accounts.'
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_delete
       x-action: signin.social.delete
@@ -9263,7 +10378,7 @@ paths:
   /sso/connections:
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Connect an organization's SAML or OIDC identity provider as a draft. Activate it to start signing people in through it."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_connections_create
@@ -9303,10 +10418,13 @@ paths:
                   maxLength: 120
                 type:
                   type: string
-                  description: 'saml or oidc. The config fields of that type are required.'
+                  description: 'saml or oidc. The config fields of that type are required, unless pending_idp.'
                   enum:
                     - saml
                     - oidc
+                pending_idp:
+                  type: boolean
+                  description: "True to create the draft before the identity provider's details are known: the answer's service_provider is what to paste into it. Complete it with update before activating."
                 idp_entity_id:
                   type:
                     - string
@@ -9330,13 +10448,13 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: the entity id this environment presents as the service provider.'
+                  description: "SAML: the entity id this environment presents as the service provider. Left out on create, this connection's own."
                   maxLength: 500
                 sp_acs_url:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: where the identity provider posts its assertions.'
+                  description: "SAML: where the identity provider posts its assertions. Left out on create, this connection's own ACS URL."
                   format: uri
                   maxLength: 500
                 issuer:
@@ -9362,7 +10480,7 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'OIDC: the signing key. Write-only.'
+                  description: "OIDC, optional: the provider's ID-token signing key (an RS256 public key, PEM). Leave it out for any provider whose discovery document publishes a jwks_uri — the keys are read from there and follow its rotations. Needed only when it does not. Write-only."
                   maxLength: 20000
               required:
                 - name
@@ -9397,7 +10515,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'List the SAML and OIDC connections organizations sign in through, optionally for one organization. Never a certificate or secret.'
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_list
@@ -9470,7 +10588,7 @@ paths:
   '/sso/connections/{id}':
     delete:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Delete an SSO connection and its settings. Where SSO is required, its people cannot sign in until another is activated.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_delete
@@ -9529,7 +10647,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Read one SSO connection: its type, status, entity ids, URLs, issuer and client id. Never a certificate or secret.'
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_connections_get
@@ -9589,7 +10707,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     patch:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Change an SSO connection's name or identity-provider settings. Secrets left out keep the ones on file."
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_update
@@ -9654,13 +10772,13 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: the entity id this environment presents as the service provider.'
+                  description: "SAML: the entity id this environment presents as the service provider. Left out on create, this connection's own."
                   maxLength: 500
                 sp_acs_url:
                   type:
                     - string
                     - 'null'
-                  description: 'SAML: where the identity provider posts its assertions.'
+                  description: "SAML: where the identity provider posts its assertions. Left out on create, this connection's own ACS URL."
                   format: uri
                   maxLength: 500
                 issuer:
@@ -9686,7 +10804,7 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'OIDC: the signing key. Write-only.'
+                  description: "OIDC, optional: the provider's ID-token signing key (an RS256 public key, PEM). Leave it out for any provider whose discovery document publishes a jwks_uri — the keys are read from there and follow its rotations. Needed only when it does not. Write-only."
                   maxLength: 20000
       responses:
         200:
@@ -9719,7 +10837,7 @@ paths:
   '/sso/connections/{id}/activate':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Activate an SSO connection: people whose email domain routes to it start signing in through it.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_activate
@@ -9785,10 +10903,228 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/certificates':
+    get:
+      tags:
+        - 'Enterprise SSO'
+      summary: "List a SAML connection's signing certificates — primary and staged — with each one's fingerprint and expiry."
+      description: 'Requires scope `sso:read`. Danger: read.'
+      operationId: sso_connections_certificates_list
+      x-action: sso.connections.certificates.list
+      x-scope: 'sso:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: "Only if it is this organization's; anything else is a 404."
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoCertificates'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - 'Enterprise SSO'
+      summary: "Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) beside the current one, so a renewal has no outage. Activate it once the IdP signs with it."
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_certificates_stage
+      x-action: sso.connections.certificates.stage
+      x-scope: 'sso:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                certificate:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The new signing certificate, PEM. Send this or metadata.'
+                  maxLength: 20000
+                metadata:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The identity provider's metadata XML, or the https URL it is published at. Send this or certificate."
+                  maxLength: 500000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoCertificates'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sso/connections/{id}/certificates/activate':
+    post:
+      tags:
+        - 'Enterprise SSO'
+      summary: "Make a staged SAML signing certificate the connection's primary. The certificate it replaces stops being trusted."
+      description: 'Requires scope `sso:write`. Danger: critical.'
+      operationId: sso_connections_certificates_activate
+      x-action: sso.connections.certificates.activate
+      x-scope: 'sso:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                fingerprint_sha256:
+                  type: string
+                  description: "The staged certificate's SHA-256 fingerprint, as the certificate list gives it."
+                  maxLength: 200
+              required:
+                - fingerprint_sha256
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SsoCertificates'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/sso/connections/{id}/disable':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Disable an SSO connection without deleting it. Where SSO is required, its people cannot sign in until it is re-activated.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_disable
@@ -9857,7 +11193,7 @@ paths:
   '/sso/connections/{id}/require-sso':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'Require single sign-on for the organization an SSO connection belongs to. Ends every password session there.'
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_connections_require_sso
@@ -9926,7 +11262,7 @@ paths:
   /sso/domains:
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Claim an email domain for an organization's single sign-on, and get the DNS TXT record to publish to prove it."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_domains_create
@@ -9992,7 +11328,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
     get:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: 'List the email domains organizations claimed for single sign-on, whether each is verified and captured, and the DNS record that proves an unverified one.'
       description: 'Requires scope `sso:read`. Danger: read.'
       operationId: sso_domains_list
@@ -10065,7 +11401,7 @@ paths:
   '/sso/domains/{id}':
     delete:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Remove a claimed email domain. Its people stop being routed to the organization's SSO connection."
       description: 'Requires scope `sso:write`. Danger: destructive.'
       operationId: sso_domains_delete
@@ -10125,7 +11461,7 @@ paths:
   '/sso/domains/{id}/capture':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Turn capture on or off for a verified domain: captured, everyone with an address at it must sign in through the organization's SSO."
       description: 'Requires scope `sso:write`. Danger: critical.'
       operationId: sso_domains_capture
@@ -10199,7 +11535,7 @@ paths:
   '/sso/domains/{id}/verify':
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Check a claimed domain's DNS TXT record now. Answers the domain, with verified true once the record is found."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_domains_verify
@@ -10268,7 +11604,7 @@ paths:
   /sso/saml-metadata:
     post:
       tags:
-        - 'Single sign-on'
+        - 'Enterprise SSO'
       summary: "Parse an identity provider's SAML metadata (XML or a metadata URL) into the entity id, SSO URL and certificate a SAML connection needs. Stores nothing."
       description: 'Requires scope `sso:write`. Danger: write.'
       operationId: sso_saml_metadata_import
@@ -12342,6 +13678,7 @@ paths:
                       - domain.removed
                       - domain.verified
                       - connection.activated
+                      - connection.certificate_expiring
                       - entitlement.set
                       - entitlement.updated
                       - entitlement.revoked
@@ -12963,6 +14300,149 @@ components:
       schema:
         type: string
   schemas:
+    ManagementKey:
+      type: object
+      description: 'A management key of this environment. `token` is present once, on the answer that minted it, and never again.'
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - active
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        prefix:
+          type: string
+          description: "The key's first characters, to recognise it by."
+        scopes:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        parent_key_id:
+          type:
+            - string
+            - 'null'
+          description: 'The key that minted this one, if a key did.'
+        rotated_from_id:
+          type:
+            - string
+            - 'null'
+          description: 'The key this one replaced, if it came from a rotation.'
+        require_approval:
+          description: 'The approval policy: actions held for the person behind the key.'
+          oneOf:
+            -
+              type: object
+              properties:
+                min_danger:
+                  type:
+                    - string
+                    - 'null'
+                  enum:
+                    - read
+                    - write
+                    - destructive
+                    - critical
+                    - null
+                actions:
+                  type: array
+                  items:
+                    type: string
+            - type: 'null'
+        created_by:
+          oneOf:
+            -
+              type: object
+              required:
+                - type
+                - id
+              properties:
+                type:
+                  type: string
+                id:
+                  type:
+                    - string
+                    - 'null'
+            - type: 'null'
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        token:
+          type:
+            - string
+            - 'null'
+          description: "The key's value. Only on the answer that minted it; null on an idempotent replay of that answer, because the value is never stored."
+    LegacyLoginProbe:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: 'What the declared legacy-login endpoint answered for the address, in words.'
+    ManifestSync:
+      type: object
+      required:
+        - unchanged
+        - roles_declared
+        - permissions_declared
+        - orphaned_role_keys
+        - orphaned_permission_keys
+      properties:
+        unchanged:
+          type: boolean
+          description: 'The manifest matched what is already stored.'
+        roles_declared:
+          type: integer
+        permissions_declared:
+          type: integer
+        orphaned_role_keys:
+          type: array
+          items:
+            type: string
+          description: 'Roles stored here that the manifest no longer declares.'
+        orphaned_permission_keys:
+          type: array
+          items:
+            type: string
+    SelfServiceSignup:
+      type: object
+      required:
+        - enabled
+        - decided_here
+      properties:
+        enabled:
+          type: boolean
+        decided_here:
+          type: boolean
+          description: 'False on a single-tenant install, where sign-up follows CBOX_ID_SIGNUP_MODE and the switch changes nothing.'
     Device:
       type: object
       required:
@@ -14563,6 +16043,9 @@ components:
             - inactive
         active:
           type: boolean
+        complete:
+          type: boolean
+          description: 'false for a draft created with pending_idp whose identity-provider details are still missing. Activation refuses it.'
         config:
           type: object
           description: 'The settings that are not secrets.'
@@ -14579,6 +16062,24 @@ components:
               type: string
             client_id:
               type: string
+        service_provider:
+          type:
+            - object
+            - 'null'
+          description: "What to paste into the identity provider: this connection's own entity id, ACS URL and SP metadata URL (SAML), or its redirect URI (OIDC). null for a social sign-in connection."
+          properties:
+            sp_entity_id:
+              type: string
+            sp_acs_url:
+              type: string
+              format: uri
+            sp_metadata_url:
+              type: string
+              format: uri
+              description: "SAML: this connection's service-provider metadata (entity id and ACS URL as one XML document), for an identity provider that imports SP metadata. Served for a draft too, before the identity provider's half is known."
+            redirect_uri:
+              type: string
+              format: uri
         created_at:
           type:
             - string
@@ -14588,6 +16089,126 @@ components:
           type:
             - string
             - 'null'
+          format: date-time
+    SsoCertificates:
+      type: object
+      required:
+        - connection_id
+        - organization_id
+        - expires_at
+        - days_remaining
+        - certificates
+      description: "A SAML connection's signing certificates. The certificates themselves are never returned."
+      properties:
+        connection_id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When the connection stops working if nothing is done: the latest expiry among the certificates it trusts.'
+        days_remaining:
+          type:
+            - integer
+            - 'null'
+        certificates:
+          type: array
+          items:
+            type: object
+            required:
+              - role
+              - readable
+              - fingerprint_sha256
+              - subject
+              - issuer
+              - not_before
+              - not_after
+              - days_remaining
+              - expired
+            properties:
+              role:
+                type: string
+                enum:
+                  - primary
+                  - staged
+                description: 'primary signs today; staged is trusted beside it until activated.'
+              readable:
+                type: boolean
+                description: 'false for a certificate on file that could not be parsed — still trusted.'
+              fingerprint_sha256:
+                type:
+                  - string
+                  - 'null'
+              subject:
+                type:
+                  - string
+                  - 'null'
+              issuer:
+                type:
+                  - string
+                  - 'null'
+              not_before:
+                type:
+                  - string
+                  - 'null'
+                format: date-time
+              not_after:
+                type:
+                  - string
+                  - 'null'
+                format: date-time
+              days_remaining:
+                type:
+                  - integer
+                  - 'null'
+              expired:
+                type:
+                  - boolean
+                  - 'null'
+        checks:
+          type: array
+          description: 'On the stage answer only: what the new certificate was tested for.'
+          items:
+            type: object
+            required:
+              - check
+              - passed
+            properties:
+              check:
+                type: string
+                enum:
+                  - readable
+                  - not_expired
+                  - key_strength
+                  - not_on_file
+                  - valid_now
+              passed:
+                type: boolean
+    LogStreamTest:
+      type: object
+      required:
+        - id
+        - delivered
+        - error
+        - tested_at
+      properties:
+        id:
+          type: string
+        delivered:
+          type: boolean
+          description: 'Whether the destination accepted the test entry.'
+        error:
+          type:
+            - string
+            - 'null'
+          description: "The destination's refusal, scrubbed of the stream's secret."
+        tested_at:
+          type: string
           format: date-time
     SsoDomain:
       type: object
@@ -14654,20 +16275,32 @@ components:
       required:
         - id
         - organization_id
-        - covers
+        - intents
         - url
         - expires_at
+        - emailed_to
       properties:
         id:
           type: string
         organization_id:
           type: string
-        covers:
-          type: string
-          enum:
-            - sso
-            - scim
-            - both
+        intents:
+          type: array
+          description: 'What the link may set up.'
+          items:
+            type: string
+            enum:
+              - sso
+              - dsync
+              - domain_verification
+              - log_streams
+              - certificate_renewal
+              - audit_logs
+        emailed_to:
+          type:
+            - string
+            - 'null'
+          description: 'The address the link was mailed to, or null when it was not sent.'
         url:
           type:
             - string
@@ -14680,6 +16313,381 @@ components:
             - string
             - 'null'
           format: date-time
+    PortalLinkRecord:
+      type: object
+      description: 'An Admin Portal link as a list shows it. Never its URL: that was shown once, when it was minted, and only its hash is kept.'
+      required:
+        - id
+        - organization_id
+        - intents
+        - status
+        - created_at
+        - created_by
+        - emailed_to
+        - expires_at
+        - consumed_at
+        - completed_at
+        - revoked_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        intents:
+          type: array
+          description: 'What the link may set up.'
+          items:
+            type: string
+            enum:
+              - sso
+              - dsync
+              - domain_verification
+              - log_streams
+              - certificate_renewal
+              - audit_logs
+        status:
+          type: string
+          enum:
+            - pending
+            - in_use
+            - completed
+            - expired
+            - revoked
+          description: |
+            `pending`: not opened yet, and it still can be. `in_use`: opened, and the setup
+            session it started may still be running. `completed`: its setup was finished.
+            `expired`: never opened in time, or its setup session ran out. `revoked`: withdrawn.
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_by:
+          type: string
+          description: "Who minted it: the console person's id, or the management key's."
+        emailed_to:
+          type:
+            - string
+            - 'null'
+          description: 'The address it was mailed to, or null when it was not sent.'
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'How long it could wait to be opened.'
+        consumed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When it was opened. It is single-use.'
+        completed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When its setup was finished.'
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When it was withdrawn.'
+    AuditLogEvent:
+      type: object
+      description: |
+        One audit event your app sent. `hash` covers `id`, `organization_id`, `sequence`,
+        `action`, `occurred_at`, `actor`, `targets`, `context` and `metadata`, chained to
+        the organization's previous event by `prev_hash` — see the Audit Logs guide for how
+        to verify it yourself.
+      required:
+        - id
+        - organization_id
+        - sequence
+        - action
+        - occurred_at
+        - actor
+        - targets
+        - context
+        - metadata
+        - schema_version
+        - received_at
+        - prev_hash
+        - hash
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        sequence:
+          type: integer
+          description: "The event's place in its organization's chain, from 1."
+        action:
+          type: string
+          description: 'e.g. `invoice.voided`.'
+        occurred_at:
+          type: string
+          format: date-time
+          description: 'When it happened, as the sender said, to the millisecond.'
+        actor:
+          type: object
+          required:
+            - id
+            - type
+            - name
+            - metadata
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+            name:
+              type:
+                - string
+                - 'null'
+            metadata:
+              type:
+                - object
+                - 'null'
+        targets:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - type
+              - name
+              - metadata
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              name:
+                type:
+                  - string
+                  - 'null'
+              metadata:
+                type:
+                  - object
+                  - 'null'
+        context:
+          type: object
+          required:
+            - location
+            - user_agent
+          properties:
+            location:
+              type:
+                - string
+                - 'null'
+            user_agent:
+              type:
+                - string
+                - 'null'
+        metadata:
+          type:
+            - object
+            - 'null'
+        schema_version:
+          type:
+            - integer
+            - 'null'
+          description: "The version of its action's schema it was checked against; null when the action has none."
+        received_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When it arrived. Retention counts from here.'
+        prev_hash:
+          type: string
+          description: "The previous event's hash; 64 zeros for an organization's first."
+        hash:
+          type: string
+    AuditLogEventBatch:
+      type: object
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          description: 'The recorded events, in the order they were sent.'
+          items:
+            $ref: '#/components/schemas/AuditLogEvent'
+    AuditLogSchema:
+      type: object
+      required:
+        - id
+        - action
+        - version
+        - targets
+        - actor_metadata
+        - metadata
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+        version:
+          type: integer
+          description: 'Starts at 1; every replacement is the next.'
+        targets:
+          type:
+            - array
+            - 'null'
+          description: "The target types this action's events may name; null allows any."
+          items:
+            type: object
+            required:
+              - type
+              - metadata
+            properties:
+              type:
+                type: string
+              metadata:
+                type:
+                  - object
+                  - 'null'
+        actor_metadata:
+          type:
+            - object
+            - 'null'
+          description: 'A metadata schema (a subset of JSON Schema).'
+        metadata:
+          type:
+            - object
+            - 'null'
+          description: 'A metadata schema (a subset of JSON Schema).'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    AuditLogExport:
+      type: object
+      required:
+        - id
+        - organization_id
+        - state
+        - filters
+        - row_count
+        - url
+        - created_at
+        - completed_at
+        - expires_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for an export across the whole environment.'
+        state:
+          type: string
+          enum:
+            - pending
+            - ready
+            - failed
+            - expired
+        filters:
+          type: object
+          description: 'The filters it was asked with.'
+        row_count:
+          type:
+            - integer
+            - 'null'
+        url:
+          type:
+            - string
+            - 'null'
+          description: |
+            Where the CSV downloads from once `ready` — signed, and valid for a few minutes;
+            read the export again for a fresh one. null otherwise, and on an idempotent replay.
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        completed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When the file is deleted.'
+    AuditLogSettings:
+      type: object
+      required:
+        - retention_days
+        - strict_schemas
+      properties:
+        retention_days:
+          type: integer
+          description: 'Events are kept this many days after they arrive.'
+        strict_schemas:
+          type: boolean
+          description: 'Whether an action with no schema is refused.'
+    AuditLogVerification:
+      type: object
+      required:
+        - organization_id
+        - valid
+        - complete
+        - verified_count
+        - first_sequence
+        - last_sequence
+        - head_sequence
+        - broken_at_sequence
+        - reason
+      properties:
+        organization_id:
+          type: string
+        valid:
+          type: boolean
+          description: 'Every event checked is unchanged and in place.'
+        complete:
+          type: boolean
+          description: "The check reached the chain's head. When false, continue from last_sequence + 1."
+        verified_count:
+          type: integer
+        first_sequence:
+          type:
+            - integer
+            - 'null'
+        last_sequence:
+          type:
+            - integer
+            - 'null'
+        head_sequence:
+          type: integer
+        broken_at_sequence:
+          type:
+            - integer
+            - 'null'
+        reason:
+          type:
+            - string
+            - 'null'
+          enum:
+            - missing
+            - link
+            - hash
+            - truncated
+            - null
     Directory:
       type: object
       required:

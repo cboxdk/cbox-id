@@ -119,7 +119,7 @@ it('opens a drawer that can actually reach the rest of the console', function ()
         ->assertSee('Toggle theme')
         // …and the navigation itself, grouped by AREA the way the rail is. A flat list of
         // every page is the failure mode this replaces.
-        ->assertSee('People')
+        ->assertSee('Members & roles')
         ->assertSee('Members')
         ->assertNoJavaScriptErrors();
 })->group('a11y');

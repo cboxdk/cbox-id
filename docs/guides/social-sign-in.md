@@ -1,14 +1,14 @@
 ---
-title: Social sign-in and connected accounts
+title: Social login and connected accounts
 weight: 35
 description: Let people sign in with Google, Microsoft, GitHub, Discord, Apple, Facebook and others, connect a provider to an account they already have, and understand why we never merge two accounts because their email addresses match.
 ---
 
-# Social sign-in and connected accounts
+# Social login and connected accounts
 
 **Console page:** Sign-in › Social login (Authentication › Social login in an environment console)
 
-Single sign-on connects your *company's* identity provider. Social sign-in is the
+Enterprise SSO connects your *company's* identity provider. Social login is the
 other case: individual people arriving with an account they already hold somewhere
 else. Both run through the same connection machinery, so what you learn here applies
 to either.
@@ -132,7 +132,7 @@ If you cannot complete the sign-in, use password reset on the existing account.
 
 ## Signing up with a provider
 
-When the address is *not* already taken, a social sign-in creates the account there and
+When the address is *not* already taken, a social login creates the account there and
 then — that is the point of one-click sign-in.
 
 That account is a signup like any other, so it carries the same obligations:

@@ -277,9 +277,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Configurer le SSO',
+        'title' => 'Configuration administrateur',
         'heading' => 'Configurez la connexion pour votre organisation',
-        'lead' => 'Vous avez reçu un lien de configuration pour connecter votre fournisseur d’identité ou votre annuaire. Continuez pour ouvrir l’écran de configuration.',
+        'lead' => 'Vous avez reçu un lien de configuration pour votre organisation — SSO, synchronisation d’annuaire, domaines, flux de journaux ou renouvellement d’un certificat. Continuez pour ouvrir l’écran de configuration.',
         'action' => 'Ouvrir la configuration',
         'note' => 'Le lien ne fonctionne qu’une seule fois, et la session de configuration qu’il ouvre expire. Ouvrez-le au moment où vous pourrez terminer.',
     ],

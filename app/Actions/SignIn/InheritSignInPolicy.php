@@ -25,7 +25,7 @@ use Cbox\Id\Identity\Contracts\AuthPolicies;
  */
 #[AsAction(
     name: 'signin.policy.inherit',
-    summary: 'Drop one organization\'s sign-in rules override, so it inherits the environment baseline again.',
+    summary: 'Drop one organization\'s authentication policy override, so it inherits the environment baseline again.',
     scope: 'signin:write',
     danger: Danger::Critical,
     tag: 'Sign-in',

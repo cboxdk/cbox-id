@@ -58,7 +58,11 @@ final readonly class EnvironmentDomainController extends ConsoleController
             $selected = (string) ($environments->first()->id ?? '');
         }
 
-        $environment = $environments->firstWhere('id', $selected);
+        // Resolved in the query, fenced on what this person may reach — never picked out of a
+        // loaded list, which is only as safe as the query that happened to build it.
+        $environment = $selected === ''
+            ? null
+            : Environment::query()->whereIn('id', $reachable)->whereKey($selected)->first(['id', 'name', 'domain']);
         $challenge = $environment === null ? null : $domains->challenge($environment->id);
 
         return $this->page('console/environment-domains', 'Environment domains', [

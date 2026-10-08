@@ -70,7 +70,9 @@ story.
 |---|---|---|---|
 | `CBOX_ID_ENTITLEMENT_SSO` | The **namespaced** entitlement key whose `enabled` flag unlocks self-serve SAML/OIDC SSO for an org. Deny-by-default: without it, the SSO screen shows an upsell and its actions `abort(403)`. | `cbox-id-sso` | Change only to align with the key your billing system pushes. The `cbox-id-` prefix keeps it from clashing with entitlements your tenant products push through the same projection. |
 | `CBOX_ID_ENTITLEMENT_SCIM` | The namespaced entitlement key whose `enabled` flag unlocks self-serve SCIM directory sync. Deny-by-default, same as SSO. | `cbox-id-scim` | As above. |
-| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal setup link stays redeemable, in minutes. Links are single-use and only their token hash is stored. | `30` | Lower it for a tighter window; raise it if your customers' IT teams need longer to act. |
+| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal setup link stays redeemable, in minutes, when whoever minted it did not choose (they may pick 5 minutes to 7 days). Links are single-use and only their token hash is stored. | `30` | Lower it for a tighter window; raise it if your customers' IT teams need longer to act. |
+| `CBOX_ID_PORTAL_SESSION_MINUTES` | How long the setup session a redeemed Admin Portal link opens lasts, counted from redemption. | `120` | Raise it if setting up an identity provider routinely takes longer. |
+| `CBOX_ID_CERTIFICATE_ALERT_MAIL` | Whether the daily SAML certificate scan mails an organization's owners and admins. The `connection.certificate_expiring` webhook and the trail entry are always written. | `true` | Turn off if you relay the webhook to your customers yourself. |
 
 ## Branding
 
@@ -100,7 +102,7 @@ in its own settings. See the [languages guide](../guides/languages.md).
 On by default since laravel-id 1.22: a person whose password is guessed wrong too often
 inside the window is locked out for a while, then unlocked on their own — never until an
 administrator intervenes, which would hand anyone who knows an address a way to lock its
-owner out. A threshold set in the console's **Sign-in rules** (`lockoutThreshold` on the
+owner out. A threshold set in the console's **Authentication policy** (`lockoutThreshold` on the
 environment or an organization) wins over the default; the window and duration are
 deployment-wide only.
 
@@ -210,7 +212,7 @@ outbound provisioning, token revocation on role change. The relay itself is sche
 |---|---|---|---|
 | `CBOX_ID_FEDERATION_VERIFY_URL` | SSRF-guard + verify the URLs on an SSO connection (issuer, endpoints, JWKS) before they are fetched. Connections are tenant-supplied, so this is the guard against a customer pointing the server at your internal network. | `true` | Keep on. Relax only in an isolated test network. |
 
-## External actions (inline hooks)
+## External actions (hooks)
 
 Synchronous HTTP callouts during a flow — a host-owned decision point inside token
 issuance and login.
@@ -433,7 +435,8 @@ variables; these are the ones a deployment sets. See
 | Variable | Purpose | Default | Set it when |
 |---|---|---|---|
 | `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` | Hard cap on `queue:work` processes per host. | `2` | The workers get more memory than a 512 MB instance shared with the web tier. |
-| `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. |
+| `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. `cbox-id:doctor` then fails a per-process cache or session store. |
+| `CBOX_ID_REPLICAS` | How many web replicas the deployment runs — the number its manifest gives the platform (`replicas:` in `cbox.yaml`), told to the app, which cannot count its siblings. Changes nothing at runtime. | `1` | Always, beside `replicas:`. Above 1, `cbox-id:doctor` **fails** a `file`, `array` or `apc` cache or session store instead of warning: every replica would hold its own rate limits, single-use tokens, replay guards and sessions. |
 | `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The `queue_workers` health check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |
 | `QUEUE_METRICS_STORAGE` | Where the metrics the manager scales on are kept. | `redis` | Leave it. |
 | `QUEUE_MONITOR_MAX_ROWS` | Most job rows the monitor keeps, on top of its 7-day window. | `100000` | A very busy install. |

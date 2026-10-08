@@ -68,4 +68,32 @@ return [
         'invited_as' => ':inviter har invitert deg til å administrere :organization som :role på :brand – konsollen for organisasjonens identitetsleverandører: miljøer, medlemmer og fakturering. Godta for å angi et passord og logge inn.',
         'button' => 'Godta invitasjonen',
     ],
+
+    'portal_link' => [
+        'subject' => 'Sett opp :organization på :brand',
+        'heading' => 'Sett opp :organization',
+        'lead' => 'Du er bedt om å sette opp følgende for :organization på :brand. Du trenger ingen konto – knappen nedenfor er alt som skal til.',
+        'intents' => [
+            'sso' => 'Single sign-on med identitetsleverandøren din',
+            'dsync' => 'Katalogsynkronisering (SCIM)',
+            'domain_verification' => 'Bekreftelse av e-postdomenene dine',
+            'log_streams' => 'Strømming av revisjonsloggen til SIEM-en din',
+            'certificate_renewal' => 'Fornyelse av SAML-signeringssertifikatet ditt',
+            'audit_logs' => 'Gjennomgang av revisjonsloggene deres (skrivebeskyttet)',
+        ],
+        'button' => 'Start oppsettet',
+        'expires' => 'Lenken kan brukes én gang, frem til :date. Hvis den utløper, ber du om en ny.',
+    ],
+
+    // From the daily certificate scan, to an organization's owners and admins.
+    'certificate_expiring' => [
+        'subject' => 'Single sign-on via :connection slutter å virke om :count dag|Single sign-on via :connection slutter å virke om :count dager',
+        'subject_expired' => 'Single sign-on via :connection har sluttet å virke',
+        'heading' => 'SAML-sertifikatet ditt utløper snart',
+        'heading_expired' => 'SAML-sertifikatet ditt har utløpt',
+        'lead' => 'Signeringssertifikatet til :connection, single sign-on-tilkoblingen for :organization, utløper :date. Etter det kan ingen logge inn via den.',
+        'lead_expired' => 'Signeringssertifikatet til :connection, single sign-on-tilkoblingen for :organization, utløp :date. Ingen kan logge inn via den før det er fornyet.',
+        'what_to_do' => 'Be den som drifter identitetsleverandøren din, om det nye signeringssertifikatet, og last det deretter opp i administrasjonskonsollen – eller be administratoren din om en lenke til Admin Portal for å laste det opp.',
+        'why' => 'Du mottar denne e-posten fordi du er eier eller administrator for denne organisasjonen på :brand.',
+    ],
 ];

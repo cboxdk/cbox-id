@@ -7,6 +7,7 @@ namespace App\Platform\Navigation;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\Vocabulary;
 use App\Platform\ConsoleLocation;
 use App\Providers\ConsoleServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -50,57 +51,60 @@ class ConsoleNavigation
                 new NavPage('environment.get-started', 'Get started'),
             ),
             new NavArea('Users & orgs', 'members',
-                new NavPage('environment.users', 'Users'),
+                new NavPage('environment.users', Vocabulary::USERS),
                 // Not "Tenants": that is the word other platforms use for what we call an
                 // environment, so it pointed the wrong way for exactly the readers most
                 // likely to need it.
-                new NavPage('environment.organizations', 'Organizations'),
-                new NavPage('environment.roles', 'Roles'),
+                new NavPage('environment.organizations', Vocabulary::ORGANIZATIONS),
+                new NavPage('environment.roles', Vocabulary::ROLES),
                 // Roles are made OF permissions, so a console that offers one and hides
                 // the other asks an administrator to assign a thing they cannot inspect.
-                new NavPage('environment.permissions', 'Permissions'),
+                new NavPage('environment.permissions', Vocabulary::PERMISSIONS),
             ),
             // How people arrive — every page here is a way IN. The outbound halves (SAML
             // apps that trust this environment, provisioning out to other systems) are
             // under Advanced, so "SSO" and "sync" each mean one direction on this rail.
             new NavArea('Authentication', 'fingerprint',
                 // The password, MFA and session policy.
-                new NavPage('environment.auth-policy', 'Authentication policy'),
-                new NavPage('environment.social-providers', 'Social login'),
-                new NavPage('environment.connections', 'Enterprise SSO'),
-                new NavPage('environment.directories', 'Directory Sync'),
+                new NavPage('environment.auth-policy', Vocabulary::AUTHENTICATION_POLICY),
+                new NavPage('environment.social-providers', Vocabulary::SOCIAL_LOGIN),
+                new NavPage('environment.connections', Vocabulary::ENTERPRISE_SSO),
+                new NavPage('environment.directories', Vocabulary::DIRECTORY_SYNC),
                 // "Admin Portal" joins this area when the environment console can mint a
                 // portal link of its own; today a link is minted from an organization.
             ),
             new NavArea('Developers', 'code',
-                new NavPage('environment.clients', 'Applications'),
+                new NavPage('environment.clients', Vocabulary::APPLICATIONS),
                 // The resource servers apps get tokens FOR, and the scopes each owns.
                 new NavPage('environment.apis', 'APIs'),
-                // This environment's frontend keys, with its management keys as the other
-                // tab. The management keys themselves are listed under AI agents › Agents —
-                // one page per credential, so the two cannot disagree — and the tab leads
-                // there, which is where a developer looking under "API keys" is sent.
-                new NavPage('environment.keys.frontend', 'API keys'),
-                new NavPage('environment.webhooks', 'Webhooks'),
+                // This environment's publishable keys, with its secret keys as the other
+                // tab. The secret keys themselves are listed under AI agents › Agents — one
+                // page per credential, so the two cannot disagree — and the tab leads there,
+                // which is where a developer looking under "API keys" is sent.
+                new NavPage('environment.keys.frontend', Vocabulary::API_KEYS),
+                new NavPage('environment.webhooks', Vocabulary::WEBHOOKS),
                 // Synchronous: they run INSIDE a sign-in or a token issuance and can change
                 // its outcome. Webhooks, one line up, are told after the fact.
-                new NavPage('environment.hooks', 'Hooks'),
+                new NavPage('environment.hooks', Vocabulary::HOOKS),
             ),
             // Where software acting on this environment is handed access and governed: the
             // agents holding its management keys, what they are waiting for a person to
             // allow, and how to point one at the environment's MCP server. Connected
             // accounts land here when they exist.
             new NavArea('AI agents', 'magic',
-                new NavPage('environment.agents', 'Agents'),
-                new NavPage('environment.approvals', 'Approvals'),
+                new NavPage('environment.agents', Vocabulary::AGENTS),
+                new NavPage('environment.approvals', Vocabulary::APPROVALS),
                 new NavPage('environment.agent-connect', 'Connect'),
             ),
             new NavArea('Branding', 'palette',
                 new NavPage('environment.appearance', 'Appearance'),
             ),
             new NavArea('Monitoring', 'chart',
-                new NavPage('environment.audit', 'Audit log'),
-                new NavPage('environment.audit-streams', 'Log streams'),
+                new NavPage('environment.audit', Vocabulary::AUDIT_LOG),
+                // The audit events the APP sends about its customers — not this platform's own
+                // trail, one line up — with their schemas and retention.
+                new NavPage('environment.audit-logs', Vocabulary::APP_AUDIT_LOGS),
+                new NavPage('environment.audit-streams', Vocabulary::LOG_STREAMS),
                 new NavPage('environment.usage', 'Usage'),
             ),
             // Set up once and rarely revisited, or needed by few: the environment's own
@@ -108,15 +112,15 @@ class ConsoleNavigation
             new NavArea('Advanced', 'sliders',
                 // Roles held across the whole environment by its own people — support,
                 // operations. Organizations never grant one.
-                new NavPage('environment.staff', 'Admins & support'),
+                new NavPage('environment.staff', Vocabulary::ADMINS_AND_SUPPORT),
                 new NavPage('environment.governance', 'Access reviews'),
                 new NavPage('environment.sod-policies', 'Role conflicts'),
                 new NavPage('environment.vault', 'Token vault'),
-                new NavPage('environment.provisioning', 'Outbound provisioning'),
+                new NavPage('environment.provisioning', Vocabulary::OUTBOUND_PROVISIONING),
                 // Outbound SAML: the applications that trust THIS environment as their
                 // identity provider. Enterprise SSO, under Authentication, is the inbound
                 // direction — people arriving with a company account they already have.
-                new NavPage('environment.sso-providers', 'SAML apps'),
+                new NavPage('environment.sso-providers', Vocabulary::SAML_APPS),
                 new NavPage('environment.legacy-login', 'Legacy login'),
             ),
             new NavArea('Settings', 'settings',

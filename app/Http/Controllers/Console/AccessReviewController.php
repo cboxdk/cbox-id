@@ -213,7 +213,7 @@ final readonly class AccessReviewController extends ConsoleController
                 'kind' => match ($item->access_type) {
                     AccessKind::Role => 'Role',
                     AccessKind::Membership => 'Membership',
-                    AccessKind::EnvironmentRole => 'Staff role',
+                    AccessKind::EnvironmentRole => 'Admin & support role',
                 },
                 'access' => $roles[$item->access_ref] ?? $item->access_ref,
                 'decision' => $item->decision->value,

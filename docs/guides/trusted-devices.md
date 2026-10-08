@@ -10,7 +10,7 @@ A trusted device is a phone running the Cbox ID authenticator app, enrolled agai
 user in one environment. Once enrolled it does two things:
 
 - **Answers approvals.** When an app or an agent starts a sign-in on the user's behalf
-  ([Agent approvals](agent-approvals.md)), the phone gets a push and the person taps
+  ([Approvals](agent-approvals.md)), the phone gets a push and the person taps
   approve or deny.
 - **Receives security alerts.** Chosen account events — a sign-in, a new session —
   arrive as a notification, so an unexpected one is noticed by the person it happened to
@@ -196,3 +196,9 @@ running; see [Scheduled work](../operations/operations.md).
 
 See [Trusted devices](../configuration/environment-variables.md#trusted-devices-push) in
 the environment-variable reference.
+
+## Related
+
+- [Approvals](agent-approvals.md) — what the person sees and decides on the phone.
+- [Step-up approvals](step-up-approvals.md) — the agent's side of a held call, and how it retries.
+- [Agents and MCP](agents-and-mcp.md) — the agents whose calls end up on the phone.

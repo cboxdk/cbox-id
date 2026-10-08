@@ -1,7 +1,7 @@
 ---
 title: Support access
 weight: 15
-description: Sign in to one of your apps as one of its users, for a stated reason and at most an hour, with every token naming who is really there and the organization's activity log recording it.
+description: Sign in to one of your apps as one of its users, for a stated reason and at most an hour, with every token naming who is really there and the organization's audit log recording it.
 ---
 
 # Support access
@@ -68,12 +68,12 @@ A session also ends by itself when its time is up.
 
 ## Who sees it
 
-- **The organization.** Its activity log records `support_session.started` and
+- **The organization.** Its audit log records `support_session.started` and
   `support_session.ended`, with your name, the person, the app and the reason, and its
   webhooks receive `support_session.started`.
 - **The person.** Their own **Sessions & activity** page shows that support signed in to
   an app as them, which app, and why.
-- **The environment.** The environment's activity log records the same two entries.
+- **The environment.** The environment's audit log records the same two entries.
 
 ## What an app should do with `act`
 
@@ -86,7 +86,7 @@ decides what they may do.
 
 An app can let its own support people start sessions without making them environment
 administrators. It declares a `support:impersonate` permission in its manifest, and you
-put that permission in a [staff role](roles.md#staff-roles) for the app. The framework then
+put that permission in a [admin & support role](roles.md#admin-and-support-roles) for the app. The framework then
 lets holders of that role start a session for that app only. See the framework's
 [staff roles & support access](https://github.com/cboxdk/laravel-id/blob/main/docs/core-concepts/staff-and-support-access.md).
 
@@ -99,5 +99,5 @@ console** as the person, to see their account settings. Support access signs you
 ## Related
 
 - [Roles](roles.md) — staff roles, and the `support:impersonate` permission.
-- [Activity log](activity-log.md) — where the organization reads the session back.
+- [Audit log](activity-log.md) — where the organization reads the session back.
 - The framework's [threat model for support sessions](https://github.com/cboxdk/laravel-id/blob/main/docs/security/support-sessions.md).

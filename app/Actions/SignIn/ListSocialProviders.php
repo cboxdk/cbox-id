@@ -17,13 +17,13 @@ use Cbox\Id\Federation\Models\Connection;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * The social sign-in providers enabled in this environment — catalogue connections only
+ * The social login providers enabled in this environment — catalogue connections only
  * (Google, GitHub, Apple…), never a company's own SSO connection, which is a different job
  * on a different page.
  */
 #[AsAction(
     name: 'signin.social.list',
-    summary: 'List the social sign-in providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.',
+    summary: 'List the social login providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.',
     scope: 'signin:read',
     danger: Danger::Read,
     schema: 'SocialProvider',

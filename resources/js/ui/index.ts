@@ -17,10 +17,12 @@ export {
     usePageActions,
 } from './ApiEquivalent';
 export { type AppApiKey, AppApiKeyList } from './AppApiKeyList';
+export { type AuditEventListLabels, AuditEventList, type AuditEventRow } from './AuditEventList';
 export { Avatar } from './Avatar';
 export { AccessRoleHint, type AccessRoleOption } from './AccessRoleHint';
 export { Badge, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
+export { CertificateWarnings } from './CertificateWarnings';
 export { Checkbox } from './Checkbox';
 export { CodeBlock, type CodeBlockProps } from './CodeBlock';
 export { Combobox, type ComboboxOption } from './Combobox';
@@ -28,6 +30,7 @@ export { ConfirmDelete } from './ConfirmDelete';
 export { CopyButton } from './CopyButton';
 export { Dialog, DialogClose } from './Dialog';
 export { Divider } from './Divider';
+export { type DomainClaim, DomainClaims } from './DomainClaims';
 export {
     DropdownMenu,
     DropdownMenuContent,

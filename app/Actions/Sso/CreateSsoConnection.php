@@ -16,6 +16,8 @@ use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 
 /**
  * Connect an organization's identity provider — SAML or OIDC — as a DRAFT. Nobody signs in
@@ -25,10 +27,20 @@ use Cbox\Id\Federation\Enums\ConnectionType;
  * The owner is said out loud: one organization, or — the environment's authority only —
  * the environment itself, a connection that signs people in and enrols them nowhere. An
  * organization's connection needs its plan to include SSO. An OIDC provider is discovered
- * NOW, so a mistyped issuer fails while somebody is still looking at it.
+ * NOW, so a mistyped issuer fails while somebody is still looking at it — and its discovery
+ * document's `jwks_uri` is where its ID tokens are verified from, so the signing key is
+ * optional: asked for only of a provider that publishes none.
  *
  * The certificate, client secret and signing key are input only: sealed into the
  * connection, never returned, never on the trail.
+ *
+ * THE SERVICE PROVIDER'S HALF IS OURS. A SAML connection's entity id and ACS URL left out are
+ * this connection's own ({@see SsoFields::serviceProvider()}) — the ACS route is keyed by the
+ * connection's id, so nobody could have typed it before the connection existed. And because
+ * an identity provider wants those values BEFORE it hands out its own, `pending_idp` creates
+ * the draft with the identity provider's half still to come: the answer's
+ * `service_provider` is what to paste into the IdP, `update` fills in what it gives back,
+ * and activation refuses a connection that is still missing any of it.
  */
 #[AsAction(
     name: 'sso.connections.create',
@@ -36,7 +48,7 @@ use Cbox\Id\Federation\Enums\ConnectionType;
     scope: 'sso:write',
     danger: Danger::Write,
     schema: 'SsoConnection',
-    tag: 'Single sign-on',
+    tag: 'Enterprise SSO',
     rest: ['POST', '/sso/connections'],
     status: 201,
     consoleRoutes: ['connections.store', 'environment.connections.store'],
@@ -47,6 +59,7 @@ final readonly class CreateSsoConnection implements Action
     public function __construct(
         private Connections $connections,
         private EnterpriseAudit $audit,
+        private SecretBox $secretBox,
     ) {}
 
     public static function input(): InputSchema
@@ -54,7 +67,8 @@ final readonly class CreateSsoConnection implements Action
         return InputSchema::of([
             ...EnterpriseReach::ownerFields('the connection'),
             Field::string('name')->required()->max(120)->describe('What administrators call it: "Okta", "Entra ID".'),
-            Field::string('type')->required()->oneOf([ConnectionType::Saml->value, ConnectionType::Oidc->value])->describe('saml or oidc. The config fields of that type are required.'),
+            Field::string('type')->required()->oneOf([ConnectionType::Saml->value, ConnectionType::Oidc->value])->describe('saml or oidc. The config fields of that type are required, unless pending_idp.'),
+            Field::boolean('pending_idp')->describe('True to create the draft before the identity provider\'s details are known: the answer\'s service_provider is what to paste into it. Complete it with update before activating.'),
             ...SsoFields::configFields(),
         ]);
     }
@@ -66,25 +80,76 @@ final readonly class CreateSsoConnection implements Action
         EnterpriseReach::assertEntitled($organizationId, 'sso');
 
         $type = ConnectionType::from($context->string('type'));
-        $config = SsoFields::configFrom($context, $type);
+        $pending = $context->boolean('pending_idp');
 
-        SsoFields::assertComplete($config);
+        // Ours, when left out: filled in from the connection once it has an id, below. And
+        // an optional value left out is not on file at all, rather than on file as blank.
+        $config = array_filter(
+            SsoFields::configFrom($context, $type),
+            static fn (string $value, string $key): bool => $value !== '' || ! in_array($key, [...SsoFields::SERVICE_PROVIDER, ...SsoFields::OPTIONAL], true),
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        if ($pending) {
+            // Nothing of the identity provider's yet — only what was sent, and nothing blank.
+            $config = array_filter($config, static fn (string $value): bool => $value !== '');
+        } else {
+            SsoFields::assertComplete($config);
+        }
+
+        $stored = $config;
+
+        if ($type === ConnectionType::Oidc && ! $pending) {
+            // The provider's endpoints, and where it publishes its signing keys — which is
+            // what verifies its ID tokens unless a key was pasted.
+            $stored = SsoFields::discovered($config);
+            SsoFields::assertVerifiable($stored);
+        }
 
         $connection = $this->connections->create(
             $organizationId,
             $type,
             trim($context->string('name')),
-            $type === ConnectionType::Oidc ? SsoFields::discovered($config) : $config,
+            $stored,
         );
+
+        if ($type === ConnectionType::Saml) {
+            $this->withServiceProvider($connection, $config);
+        }
 
         $this->audit->record(EnterpriseAudit::SSO_CONNECTION_CREATED, $context->actor(), $organizationId, 'connection', $connection->id, [
             'name' => $connection->name,
             'type' => $type->value,
+            ...$pending ? ['pending_idp' => true] : [],
         ]);
 
         // Re-read, so the answer carries what the columns defaulted as well as what was set.
         $connection->refresh();
 
         return ActionResult::item($connection, SsoFields::present($connection));
+    }
+
+    /**
+     * Fill in the service provider's half this connection was created without — its own
+     * entity id and ACS URL, known only now that it has an id — and re-seal. A value the
+     * caller sent is kept as sent.
+     *
+     * @param  array<string, string>  $config
+     */
+    private function withServiceProvider(Connection $connection, array $config): void
+    {
+        // The entity id and ACS URL only: the metadata URL is where they are served from,
+        // not a setting of the connection.
+        $missing = array_diff_key(
+            array_intersect_key(SsoFields::serviceProvider($connection), array_flip(SsoFields::SERVICE_PROVIDER)),
+            $config,
+        );
+
+        if ($missing === []) {
+            return;
+        }
+
+        $connection->config_encrypted = $this->secretBox->seal(json_encode([...$config, ...$missing], JSON_THROW_ON_ERROR), $connection->secretContext());
+        $connection->save();
     }
 }

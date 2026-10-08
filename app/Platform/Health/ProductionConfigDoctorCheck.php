@@ -16,13 +16,22 @@ use Cbox\Id\Console\ValueObjects\HealthResult;
  * replay guards; logs written to a file vanish with the pod. Nothing errors in any of
  * these cases, so the doctor is where they are said out loud.
  *
+ * SHARED STATE IS A QUESTION OF HOW MANY. A cache or session store that lives in one
+ * process (`array`), on one pod's disk (`file`) or in one PHP-FPM pool's memory (`apc`) is
+ * merely a smell on a single replica — and a fault the moment there are two: every replica
+ * gets its own rate-limit buckets, its own single-use handoff and magic-link tokens, its own
+ * replay guards, and a session that exists on one pod and not the next. So it FAILS when the
+ * deployment declares more than one web replica (`cbox-id.deployment.replicas`, set by the
+ * manifest beside `replicas:`) or runs the queue manager as a cluster
+ * (`queue-autoscale.cluster.enabled`, which coordinates through the cache), and WARNS on one.
+ *
  * Outside production it reports nothing to fix: a developer's laptop is supposed to look
  * like this.
  */
 class ProductionConfigDoctorCheck implements HealthCheck
 {
-    /** Stores that live inside one process or one pod's disk. */
-    private const array LOCAL_STORES = ['array', 'file'];
+    /** Stores that live inside one process, one pod's disk or one PHP-FPM pool's memory. */
+    private const array LOCAL_STORES = ['array', 'file', 'apc'];
 
     /** Log drivers that write to the container's own disk. */
     private const array FILE_LOG_DRIVERS = ['single', 'daily'];
@@ -62,26 +71,50 @@ class ProductionConfigDoctorCheck implements HealthCheck
         $store = $this->string('cache.default');
         $driver = $this->string("cache.stores.{$store}.driver") ?? $store;
 
-        return in_array($driver, self::LOCAL_STORES, true)
-            ? HealthResult::fail(
-                'Cache is local to one process',
-                "CACHE_STORE uses `{$driver}`. Rate limits, single-use handoff tokens and replay guards then hold per "
-                .'process, not per deployment. Use redis or database.',
-            )
-            : HealthResult::ok('Cache', "shared `{$driver}` store");
+        if (! in_array($driver, self::LOCAL_STORES, true)) {
+            return HealthResult::ok('Cache', "shared `{$driver}` store");
+        }
+
+        $detail = "CACHE_STORE uses `{$driver}`. Rate limits, single-use handoff tokens and replay guards then hold per "
+            .'process, not per deployment';
+
+        return $this->scaledOut() !== null
+            ? HealthResult::fail('Cache is local to one process', "{$detail} — and this deployment {$this->scaledOut()}. Use redis.")
+            : HealthResult::warn('Cache is local to one process', "{$detail}. Fine for exactly one replica; use redis before adding a second.");
     }
 
     private function session(): HealthResult
     {
         $driver = $this->string('session.driver');
 
-        return in_array($driver, self::LOCAL_STORES, true)
-            ? HealthResult::fail(
-                'Sessions are local to one process',
-                "SESSION_DRIVER is `{$driver}`, so a person is signed out whenever a request lands on another replica "
-                .'or the pod restarts. Use redis or database.',
-            )
-            : HealthResult::ok('Sessions', "`{$driver}`");
+        if (! in_array($driver, self::LOCAL_STORES, true)) {
+            return HealthResult::ok('Sessions', "`{$driver}`");
+        }
+
+        $detail = "SESSION_DRIVER is `{$driver}`, so a person is signed out whenever a request lands on another replica "
+            .'or the pod restarts';
+
+        return $this->scaledOut() !== null
+            ? HealthResult::fail('Sessions are local to one process', "{$detail} — and this deployment {$this->scaledOut()}. Use redis or database.")
+            : HealthResult::warn('Sessions are local to one process', "{$detail}. Use redis or database.");
+    }
+
+    /**
+     * Why this deployment is more than one process sharing nothing, or null when it is one
+     * web replica with an unclustered queue manager.
+     */
+    private function scaledOut(): ?string
+    {
+        $replicas = config('cbox-id.deployment.replicas', 1);
+        $replicas = is_numeric($replicas) ? (int) $replicas : 1;
+
+        if ($replicas > 1) {
+            return "declares {$replicas} web replicas (CBOX_ID_REPLICAS)";
+        }
+
+        return filter_var(config('queue-autoscale.cluster.enabled', false), FILTER_VALIDATE_BOOLEAN)
+            ? 'runs the queue manager as a cluster (QUEUE_AUTOSCALE_CLUSTER_ENABLED)'
+            : null;
     }
 
     private function queue(): HealthResult

@@ -37,11 +37,22 @@ final class SsoFields
 
     public const array OIDC = ['issuer', 'client_id', 'client_secret', 'signing_key'];
 
+    /**
+     * Asked for, never required. An OIDC provider publishes the keys its ID tokens are signed
+     * with at the `jwks_uri` its discovery document names, and the framework verifies against
+     * that live set — picking up a key rotation on its own. A pasted key is only for a
+     * provider whose discovery document names none.
+     */
+    public const array OPTIONAL = ['signing_key'];
+
     /** Never returned, never on the trail. */
     public const array SECRETS = ['idp_x509cert', 'client_secret', 'signing_key'];
 
     /** The URLs among them, refused when they are not one. */
     private const array URLS = ['idp_sso_url', 'sp_acs_url', 'issuer'];
+
+    /** The SAML keys this environment knows for itself — derived from the connection when left blank. */
+    public const array SERVICE_PROVIDER = ['sp_entity_id', 'sp_acs_url'];
 
     /**
      * The config inputs of both types. Which set applies is the connection's type.
@@ -54,12 +65,12 @@ final class SsoFields
             Field::string('idp_entity_id')->nullable()->max(500)->describe('SAML: the identity provider\'s entity id.'),
             Field::string('idp_sso_url')->nullable()->max(500)->format('uri')->describe('SAML: the identity provider\'s single sign-on URL.'),
             Field::string('idp_x509cert')->nullable()->max(20000)->describe('SAML: the identity provider\'s signing certificate (PEM). Write-only.'),
-            Field::string('sp_entity_id')->nullable()->max(500)->describe('SAML: the entity id this environment presents as the service provider.'),
-            Field::string('sp_acs_url')->nullable()->max(500)->format('uri')->describe('SAML: where the identity provider posts its assertions.'),
+            Field::string('sp_entity_id')->nullable()->max(500)->describe('SAML: the entity id this environment presents as the service provider. Left out on create, this connection\'s own.'),
+            Field::string('sp_acs_url')->nullable()->max(500)->format('uri')->describe('SAML: where the identity provider posts its assertions. Left out on create, this connection\'s own ACS URL.'),
             Field::string('issuer')->nullable()->max(500)->format('uri')->describe('OIDC: the provider\'s issuer URL; its endpoints are discovered from it.'),
             Field::string('client_id')->nullable()->max(500)->describe('OIDC: the client id registered at the provider.'),
             Field::string('client_secret')->nullable()->max(500)->describe('OIDC: the client secret. Write-only.'),
-            Field::string('signing_key')->nullable()->max(20000)->describe('OIDC: the signing key. Write-only.'),
+            Field::string('signing_key')->nullable()->max(20000)->describe('OIDC, optional: the provider\'s ID-token signing key (an RS256 public key, PEM). Leave it out for any provider whose discovery document publishes a jwks_uri — the keys are read from there and follow its rotations. Needed only when it does not. Write-only.'),
         ];
     }
 
@@ -81,6 +92,91 @@ final class SsoFields
     }
 
     /**
+     * What this environment presents to the identity provider for $connection — the values
+     * an administrator pastes into their IdP's setup screen: for SAML the entity id, the ACS
+     * URL and the metadata URL that carries both, for OIDC the redirect URI. Keyed by the connection's id, because the route
+     * that receives the assertion is.
+     *
+     * @return array<string, string>
+     */
+    public static function serviceProvider(Connection $connection): array
+    {
+        return $connection->type === ConnectionType::Saml
+            ? [
+                'sp_entity_id' => url('/sso/saml/'.$connection->id),
+                'sp_acs_url' => route('sso.saml.acs', $connection->id),
+                'sp_metadata_url' => self::metadataUrl($connection),
+            ]
+            : ['redirect_uri' => route('sso.oidc.callback', $connection->id)];
+    }
+
+    /**
+     * This connection's SAML service-provider metadata — entity id, ACS URL and the rest in
+     * one XML document at `/sso/saml/{connection}/metadata`, a draft's included. An identity
+     * provider that imports SP metadata (PingFederate, AD FS, Entra's upload) takes this
+     * instead of the values one at a time.
+     */
+    public static function metadataUrl(Connection $connection): string
+    {
+        return route('sso.saml.metadata', $connection->id);
+    }
+
+    /**
+     * Whether every value the connection's type requires is on file — what activation asks
+     * before anybody is routed to it. For OIDC that includes something to verify an ID token
+     * WITH: the discovered `jwks_uri`, or a pasted key.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public static function isComplete(ConnectionType $type, array $config): bool
+    {
+        foreach ($type === ConnectionType::Saml ? self::SAML : self::OIDC as $key) {
+            $value = $config[$key] ?? null;
+
+            if (! in_array($key, self::OPTIONAL, true) && (! is_string($value) || trim($value) === '')) {
+                return false;
+            }
+        }
+
+        return $type !== ConnectionType::Oidc || self::verifiable($config);
+    }
+
+    /**
+     * Refuse an OIDC config — discovered already — that leaves nothing to check an ID token's
+     * signature against: no `jwks_uri` in the provider's discovery document, and no key
+     * pasted. Saved, it would be a connection whose every sign-in fails.
+     *
+     * @param  array<string, mixed>  $config
+     *
+     * @throws ActionRefused
+     */
+    public static function assertVerifiable(array $config): void
+    {
+        if (! self::verifiable($config)) {
+            throw ActionRefused::onFields('incomplete_connection', [
+                'signing_key' => 'This provider\'s discovery document publishes no signing keys (jwks_uri). Paste its ID-token signing key (PEM public key).',
+            ]);
+        }
+    }
+
+    /**
+     * Whether an OIDC config carries something to verify an ID token's signature with — what
+     * the framework's validator reads, in its order: the live key set, then pasted keys.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private static function verifiable(array $config): bool
+    {
+        foreach (['jwks_uri', 'signing_key'] as $key) {
+            if (is_string($config[$key] ?? null) && trim($config[$key]) !== '') {
+                return true;
+            }
+        }
+
+        return is_array($config['signing_keys'] ?? null) && $config['signing_keys'] !== [];
+    }
+
+    /**
      * Refuse a config with a blank required value or a URL that is not one — every problem
      * at once, so nobody fixes the first and is refused for the second.
      *
@@ -93,6 +189,10 @@ final class SsoFields
         $problems = [];
 
         foreach ($config as $key => $value) {
+            if ($value === '' && in_array($key, self::OPTIONAL, true)) {
+                continue;
+            }
+
             if ($value === '') {
                 $problems[$key] = self::label($key).' is required.';
             } elseif (in_array($key, self::URLS, true) && ! self::isUrl($value)) {
@@ -205,6 +305,8 @@ final class SsoFields
             }
         }
 
+        $configurable = in_array($connection->type, [ConnectionType::Saml, ConnectionType::Oidc], true);
+
         return [
             'id' => $connection->id,
             'organization_id' => $connection->organization_id,
@@ -213,7 +315,11 @@ final class SsoFields
             'provider' => $connection->provider,
             'status' => $connection->status->value,
             'active' => $connection->isActive(),
+            // A draft created before its identity provider's details were known is not.
+            'complete' => ! $configurable || self::isComplete($connection->type, $config),
             'config' => $public === [] ? (object) [] : $public,
+            // What to paste into the identity provider; null for a social sign-in connection.
+            'service_provider' => $configurable ? self::serviceProvider($connection) : null,
             'created_at' => Timestamp::of($connection->getAttribute('created_at')),
             'updated_at' => Timestamp::of($connection->getAttribute('updated_at')),
         ];

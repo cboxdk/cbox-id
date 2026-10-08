@@ -8,13 +8,15 @@ description: Register an app so people can sign in to it with their Cbox ID acco
 
 **Console page:** Developers › Applications (`/apps`, or `/admin/apps` in an environment console)
 
+![Applications in an environment console](../screenshots/applications.png)
+
 Every app that signs people in through Cbox ID, or calls its API, is registered
 here and gets its own credentials. Registering an app is what turns Cbox ID from a
 directory into something your colleagues actually use — it is the step that gives
 them a thing to sign in *to*.
 
-Machine keys that are not tied to an app (management keys, workspace keys and the
-publishable frontend keys) are on the [Keys](keys.md) page.
+Machine keys that are not tied to an app (secret keys, workspace keys and publishable
+keys) are on the [API keys](keys.md) page.
 
 ## Register one
 
@@ -28,7 +30,7 @@ publishable frontend keys) are on the [Keys](keys.md) page.
    | **Single-page or mobile app** | Runs on the device: React, Vue, iOS, Android. | No secret (it could not keep one), sign-in with PKCE, redirect URIs. |
    | **CLI or device** | No browser of its own: a terminal, a CI job, a TV. | No secret, no redirect URI, the device grant. See [Sign in from a CLI](../getting-started/sign-in-from-a-cli.md). |
    | **Service or background job** | Calls the API as itself, no person involved. | A secret, client credentials, no redirect URI. |
-   | **AI agent** | Acts on somebody's behalf, and asks them first. | A secret, and the approval flow behind [agent approvals](agent-approvals.md). |
+   | **AI agent** | Acts on somebody's behalf, and asks them first. | A secret, and the approval flow behind [Approvals](agent-approvals.md). |
    | **Something else** | A combination none of the above describes. | You pick the grants and whether it holds a secret. |
 
 3. Copy the **client ID**, and the **client secret** if the kind you chose has one.
@@ -117,7 +119,7 @@ and revoking both ask for your password first.
   environment; `cbid` is reserved. Clearing it stops new keys; keys already created keep
   working until revoked.
 
-Each setting saves on its own and is recorded on the activity log as one change.
+Each setting saves on its own and is recorded on the audit log as one change.
 
 ## Take an app to another environment
 
@@ -142,12 +144,12 @@ Two buttons at the top of every tab, for whoever manages the app:
 
 - **One registration per app, per environment.** Sharing credentials between a
   staging and a production deployment means you cannot revoke one without taking
-  down the other, and the activity log can no longer tell you which one did what.
+  down the other, and the audit log can no longer tell you which one did what.
   **Copy to another environment** makes the second registration for you.
 - **The secret cannot be recovered, only replaced.** That is deliberate. If it is
   lost, or has ever been pasted somewhere it should not have been, rotate it.
   Registering, editing, rotating, revoking and deleting an app are all recorded on the
-  activity log.
+  audit log.
 - **Redirect URIs are a security control, not configuration.** They are the reason
   an attacker cannot have your app's sign-in send the resulting code to their
   server. Keep the list exact and short.
@@ -184,5 +186,5 @@ organizations' apps request it.
 ## Related
 
 - [APIs](apis.md) — the services your apps call, and who owns their scopes.
-- [Keys](keys.md) — management, workspace and frontend keys.
+- [API keys](keys.md) — secret, workspace and publishable keys.
 - [Roles](roles.md), [Webhooks](webhooks.md), [Token vault](token-vault.md).

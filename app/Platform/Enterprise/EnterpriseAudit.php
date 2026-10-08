@@ -40,6 +40,15 @@ final readonly class EnterpriseAudit
 
     public const string SSO_REQUIRED = 'sso_connection.sso_required';
 
+    /** A new SAML signing certificate trusted beside the current one, for a rollover. */
+    public const string SSO_CERTIFICATE_STAGED = 'sso_connection.certificate_staged';
+
+    /** A staged certificate made the primary; the one it replaced stops being trusted. */
+    public const string SSO_CERTIFICATE_ACTIVATED = 'sso_connection.certificate_activated';
+
+    /** A connection's signing certificates are about to expire — the daily scan said so. */
+    public const string SSO_CERTIFICATE_EXPIRING = 'connection.certificate_expiring';
+
     public const string DIRECTORY_REGISTERED = 'directory.registered';
 
     public const string DIRECTORY_CONNECTED = 'directory.connected';

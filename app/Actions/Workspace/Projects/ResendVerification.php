@@ -45,6 +45,7 @@ use Illuminate\Support\Facades\RateLimiter;
     consoleRoutes: ['projects.verification.resend'],
     consoleGate: ConsoleGate::WorkspaceMember,
     tag: 'Projects',
+    schema: 'VerificationResend',
 )]
 final readonly class ResendVerification implements Action
 {

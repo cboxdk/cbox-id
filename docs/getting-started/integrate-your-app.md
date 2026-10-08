@@ -21,7 +21,7 @@ Sign in to your workspace. If it has exactly one environment you may administer,
 land in that environment's console straight away; otherwise open **Projects** and choose
 **Open console** beside the environment. The environment console is `/admin` on the
 environment's own host, `https://<environment>.cboxid.com/admin`. If you have not created
-an environment yet, see [Quickstart](../quickstart.md) first.
+an environment yet, sign up at cboxid.com (or, self-hosting, follow the [self-hosting quickstart](../self-hosting/quickstart.md)) first.
 
 Hosted environments live under `cboxid.com`, one subdomain per environment. If you run
 Cbox ID yourself, substitute your own host everywhere this page writes
@@ -34,7 +34,7 @@ does not exist in the other.
 
 ## 2. Register the application
 
-**Developers → Apps → New app.**
+**Developers → Applications → New app.** (A new environment's **Get started** page does the same in one step, for a framework you pick.)
 
 The form asks one question — **what kind of app is this?** — and everything the
 specification would have you decide separately follows from the answer:
@@ -82,18 +82,24 @@ a conformant client compares it against the `iss` it receives and refuses a mism
 
 ## 5. Point an SDK at it
 
-```bash
-npm install @cboxdk/id-js      # browser / Next.js
-npm install @cboxdk/id-react   # React components
-composer require cboxdk/laravel-id-client
-go get github.com/cboxdk/id-go
-```
+| Stack | Install | Walkthrough |
+|---|---|---|
+| Next.js, or any Node server | `npm install @cboxdk/id-js` | [Next.js quickstart](../quickstarts/nextjs.md) |
+| React (widgets, with id-js on a server) | `npm install @cboxdk/id-js @cboxdk/id-react` | [React quickstart](../quickstarts/react.md) |
+| Nuxt | `npm install @cboxdk/id-nuxt` | [Nuxt quickstart](../quickstarts/nuxt.md) |
+| Laravel | `composer require cboxdk/laravel-id-client` | [Laravel quickstart](../quickstarts/laravel.md) |
+| Go | `go get github.com/cboxdk/id-go` | [Go quickstart](../quickstarts/go.md) |
+| Python | `pip install "cbox-id-client @ git+https://github.com/cboxdk/id-python@v0.9.0"` | [Python quickstart](../quickstarts/python.md) |
 
-Python is not on this list: `cbox-id-client` has never been published, so
-`pip install cbox-id-client` installs nothing. The source is at
-[cboxdk/id-python](https://github.com/cboxdk/id-python) and a Python service can vendor it
-or install from the tag, but it is unsupported — treat this platform's Python story as
-"use the HTTP API directly" until that changes.
+Python installs from a git tag because `cbox-id-client` is not on PyPI:
+`pip install cbox-id-client` finds no such package. It has never been published, and its
+README says no release pipeline is planned. The SDK itself works; pin the tag so an
+install is repeatable.
+
+A React app needs a server for the sign-in itself. Cbox ID's discovery document, token
+endpoint and JWKS send no CORS headers, so a browser on another origin cannot complete
+the code exchange; the [React quickstart](../quickstarts/react.md) shows the small server
+that does it.
 
 ```js
 import { createCboxId } from '@cboxdk/id-js/nextjs';
@@ -115,7 +121,7 @@ A **publishable key** removes that middle step. It is public on purpose — it g
 JS bundle, it is visible in devtools, and it is safe there because it only works from the
 origins you register.
 
-Create one under **Developers → Keys**, on the **Frontend keys** tab
+Create one under **Developers → API keys**, on the **Publishable keys** tab
 (`/admin/keys/frontend`). See [Keys](../guides/keys.md). Add every origin your app is served
 from, one per line:
 

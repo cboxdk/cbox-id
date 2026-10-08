@@ -153,7 +153,7 @@ export default function AccessReviewsIndex({
                                 )}
                                 {review.staff && (
                                     <Badge tone="info" className="ml-2">
-                                        Staff roles
+                                        Admin & support roles
                                     </Badge>
                                 )}
                                 {review.dueAt !== null && (

@@ -36,7 +36,7 @@ use Cbox\Id\Platform\PlatformRoot;
     consoleRoutes: ['members.role'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Member',
-    tag: 'Members',
+    tag: 'Team',
 )]
 final readonly class ChangeMemberRole implements Action
 {

@@ -277,9 +277,9 @@ return [
     ],
 
     'open_portal_setup' => [
-        'title' => 'Sæt single sign-on op',
+        'title' => 'Administratoropsætning',
         'heading' => 'Sæt login op for din organisation',
-        'lead' => 'Du har fået et opsætningslink til at forbinde jeres identitetsudbyder eller brugerkatalog. Fortsæt for at åbne opsætningen.',
+        'lead' => 'Du har fået et opsætningslink til jeres organisation — single sign-on, katalogsynkronisering, domæner, logstreams eller fornyelse af et certifikat. Fortsæt for at åbne opsætningen.',
         'action' => 'Åbn opsætning',
         'note' => 'Linket virker kun én gang, og den opsætningssession det åbner, udløber. Åbn det når du er klar til at gøre opsætningen færdig.',
     ],

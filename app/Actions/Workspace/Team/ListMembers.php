@@ -39,7 +39,7 @@ use Illuminate\Pagination\Paginator;
     rest: ['GET', '/members'],
     consoleGate: ConsoleGate::ReadMembers,
     schema: 'Member',
-    tag: 'Members',
+    tag: 'Team',
 )]
 final class ListMembers implements Action
 {

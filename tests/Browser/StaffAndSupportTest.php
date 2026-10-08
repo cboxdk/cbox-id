@@ -85,10 +85,10 @@ it('lists staff grants per app and grants one from the Staff page', function ():
 
     $page = visit('/admin/staff');
 
-    $page->assertSee('A staff role is a role you grant to your own people')
+    $page->assertSee('An admin & support role is a role you grant to your own people')
         ->assertSee('Parcels')
         ->assertSee('Sam Support')
-        ->assertSee('Staff-only')
+        ->assertSee('Admins & support only')
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'staff-page')
         ->fill('email', 'grace@globex.test')
@@ -109,10 +109,10 @@ it('draws a user\'s staff roles and the support access form', function (): void 
     $world = staffAndSupportWorld();
 
     visit('/admin/users/'.$world['sam'])
-        ->assertSee('Staff roles')
+        ->assertSee('Admin & support roles')
         ->assertSee('Support')
         ->assertSee('Take back')
-        ->screenshotElement('section:has(h2:has-text("Staff roles"))', 'user-staff-roles');
+        ->screenshotElement('section:has(h2:has-text("Admin & support roles"))', 'user-staff-roles');
 
     $page = visit('/admin/users/'.$world['grace']);
 
@@ -166,16 +166,16 @@ it('opens a review of staff roles', function (): void {
     $page = visit('/admin/access-reviews/new?review=staff');
 
     $page->assertSee('What to review')
-        ->assertSee('Snapshots every staff role')
+        ->assertSee('Snapshots every admin & support role')
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'review-staff-create')
         ->fill('name', 'Q3 staff access')
         ->click('Open review')
         ->assertSee('Q3 staff access')
-        ->assertSee('Staff role')
+        ->assertSee('Admin & support role')
         ->assertSee('Sam Support')
         ->screenshot(filename: 'review-staff-show')
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/access-reviews')->inDarkMode()->assertSee('Staff roles')->screenshot(filename: 'review-list-dark');
+    visit('/admin/access-reviews')->inDarkMode()->assertSee('Admin & support roles')->screenshot(filename: 'review-list-dark');
 });

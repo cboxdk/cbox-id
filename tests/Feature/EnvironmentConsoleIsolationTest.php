@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AuditLogs\AuditLogIngest;
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -155,6 +156,15 @@ function seedTenantData(string $environmentId, string $marker): array
                 actorType: ActorType::System,
                 organizationId: $org->id,
             ));
+
+            // An audit event the environment's APP sent about the organization — the App
+            // audit logs page prints its action, so the marker is the action again.
+            app(AuditLogIngest::class)->record([[
+                'organization_id' => $org->id,
+                'action' => strtolower($marker).'.app_event',
+                'occurred_at' => now()->utc()->format('Y-m-d\\TH:i:s.v\\Z'),
+                'actor' => ['id' => 'usr_'.strtolower($marker), 'type' => 'user'],
+            ]], null);
 
             // An API, owned by the organization so its owner's name is on the list too.
             // The identifier carries the marker as a HOST: it is the one thing the APIs page
