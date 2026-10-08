@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Branding\SetAppearance;
-use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Console\ConsoleScope;

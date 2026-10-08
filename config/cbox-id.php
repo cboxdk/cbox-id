@@ -408,6 +408,21 @@ return [
         'account_host' => env('CBOX_ID_CONSOLE_HOST'),
     ],
 
+    /*
+     * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
+     *
+     * How many copies of the web process run. The application cannot count its siblings,
+     * so the manifest that decides it says it here too (cbox.yaml sets `replicas:` and
+     * `CBOX_ID_REPLICAS` together). It changes nothing at runtime; it is what the doctor
+     * asks before it calls a per-process cache or session store a fault: on one replica
+     * a file cache is a smell, on two it splits every rate limit, single-use token and
+     * replay guard in half. The queue manager's cluster mode
+     * (`QUEUE_AUTOSCALE_CLUSTER_ENABLED`) says the same thing about the workers.
+     */
+    'deployment' => [
+        'replicas' => (int) env('CBOX_ID_REPLICAS', 1),
+    ],
+
     'crypto' => [
 
         /*

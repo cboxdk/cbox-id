@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
-# Image for cboxdk/cbox-id — Laravel 13 + Inertia/React/Tailwind v4 identity app,
-# built FROM the public cbox php-fpm-nginx base image. Built + pushed by
-# .github/workflows/build-image.yml on the self-hosted runners.
+# Image for cboxdk/cbox-id — the Laravel 13 + Inertia/React/Tailwind v4 identity app on
+# PHP 8.5, built FROM the public cbox php-fpm-nginx base image (8.5-bookworm-v1, the same
+# tag cbox.yaml runs and CI tests in). Built and pushed to ghcr.io/cboxdk/cbox-id by
+# .github/workflows/build-image.yml on GitHub-hosted runners (linux/amd64), for pushes to
+# main and `v*` tags.
 #
-# No build secrets: every composer dependency is public on Packagist (incl.
-# cboxdk/laravel-id, laravel-risk, laravel-ssrf, laravel-queue-autoscale), and
-# the base image is a public GHCR package. The local dev workspace wires the
-# cboxdk/* packages as ../packages/* path repos, but the committed composer.lock
-# resolves them to their published Packagist releases, so a clean checkout builds
-# with a plain `composer install`.
+# No build secrets: every composer dependency — the cboxdk/* packages included — is
+# public on Packagist, every npm dependency is public on the npm registry, and the base
+# image is a public GHCR package. composer.json declares no path or VCS repositories, so a
+# clean checkout builds from the committed composer.lock with a plain `composer install`.
 
 # ---- build stage: composer + frontend (vite) ----
 # Runs on the build host's native arch; vendor/ + public/build are arch-neutral,

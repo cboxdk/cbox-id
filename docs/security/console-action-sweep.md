@@ -90,6 +90,14 @@ Listed in the test (`SWEEP_UNSWEPT`), checked for staleness, each with its reaso
   workspace and operator of the deployment; nothing there is somebody else's to them. What
   *can* be foreign is a pair — an organization named under an environment it is not in —
   and that is swept.
+- **Answers that are not a 404 on purpose** (`SWEEP_AS_UNKNOWN`). From inside an
+  organization, `members.roles.grant` and `members.roles.revoke` answer a role the tenant
+  is not offered — one that does not exist, a staff role, or a peer organization's own —
+  with one sentence, `role_not_assignable`, on the form's field, so a tenant cannot
+  enumerate the roles outside its catalogue. For these the sweep asks the action about a
+  made-up id on every run and requires the foreign id to get exactly that answer — never a
+  403 or a 2xx. The property is "indistinguishable from no id"; 404 is how almost every
+  action says it.
 - **A signed-in token's critical actions.** They wait for the person's approval before they
   run, and so before any lookup; the organization console runs the same lookup unheld and is
   swept.
@@ -106,16 +114,14 @@ The first registry-driven run (October 2026) found, and this change fixed:
 2. **A confined principal got 403 for another organization's id** across invitations,
    members, the organization itself, portal links and the sign-in policy
    (`OrganizationTarget::check()`). It now answers as for an unknown organization.
-3. **Another organization's role answered 422 "not offered"** to a confined principal on
-   `members.roles.grant` / `members.roles.revoke`, confirming a peer's private role exists. Now 404.
-4. **Removing an unknown permission from a role answered 200** (`roles.permissions.revoke`),
+3. **Removing an unknown permission from a role answered 200** (`roles.permissions.revoke`),
    and for a confined principal any permission in the environment was looked up. It is now
    looked up among the permissions the caller can see, and an unknown one is a 404.
-5. **Another app's client secret answered 422 `secret_not_live`** on
+4. **Another app's client secret answered 422 `secret_not_live`** on
    `apps.secrets.revoke`. The secret is now looked up among the app's own first: 404.
-6. **An organization the person is not a member of answered 422 `not_a_member`** on
+5. **An organization the person is not a member of answered 422 `not_a_member`** on
    `account.api_keys.create`. Now 404.
-7. **A workspace key got 403 `owner_only` for another workspace's member** on
+6. **A workspace key got 403 `owner_only` for another workspace's member** on
    `team.transfer_ownership`: the refusal ran before the lookup. The member is resolved
    first now, so a foreign one is a 404 and the key's own member still gets the 403.
 

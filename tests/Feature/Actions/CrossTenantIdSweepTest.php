@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\AccountScopes;
+use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
-use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
@@ -16,9 +15,11 @@ use App\Platform\Actions\Principal\PortalPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\CurrentUser;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -34,8 +35,6 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
-use App\Platform\CurrentUser;
-use App\Platform\PlatformAuth;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -53,10 +52,11 @@ use Tests\Support\FakePersonToken;
 |
 | An id in a URL is the caller's claim, never a fact. Every action that takes one is walked
 | here from the registry, so an action added tomorrow is swept the day it lands: it is sent
-| an id that exists — in ANOTHER ENVIRONMENT, and for a principal confined to one
-| organization, in ANOTHER ORGANIZATION of the same environment — and it must answer the
-| way it answers an id that never existed. 404. Not 403, which confirms the thing is there
-| and is somebody else's; not 200, which is the breach itself.
+| an id that exists — in ANOTHER ENVIRONMENT; for a principal confined to one organization,
+| in ANOTHER ORGANIZATION of the same environment; on the workspace plane, another
+| WORKSPACE's; on the account plane, another PERSON's — and it must answer the way it
+| answers an id that never existed. 404. Not 403, which confirms the thing is there and is
+| somebody else's; not 200, which is the breach itself.
 |
 | Each id field is swapped on its own, the others left the caller's own, and then all of
 | them at once: `/organizations/{mine}/members/{theirs}` is the request that finds a lookup

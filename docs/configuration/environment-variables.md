@@ -435,7 +435,8 @@ variables; these are the ones a deployment sets. See
 | Variable | Purpose | Default | Set it when |
 |---|---|---|---|
 | `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` | Hard cap on `queue:work` processes per host. | `2` | The workers get more memory than a 512 MB instance shared with the web tier. |
-| `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. |
+| `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. `cbox-id:doctor` then fails a per-process cache or session store. |
+| `CBOX_ID_REPLICAS` | How many web replicas the deployment runs — the number its manifest gives the platform (`replicas:` in `cbox.yaml`), told to the app, which cannot count its siblings. Changes nothing at runtime. | `1` | Always, beside `replicas:`. Above 1, `cbox-id:doctor` **fails** a `file`, `array` or `apc` cache or session store instead of warning: every replica would hold its own rate limits, single-use tokens, replay guards and sessions. |
 | `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The `queue_workers` health check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |
 | `QUEUE_METRICS_STORAGE` | Where the metrics the manager scales on are kept. | `redis` | Leave it. |
 | `QUEUE_MONITOR_MAX_ROWS` | Most job rows the monitor keeps, on top of its 7-day window. | `100000` | A very busy install. |

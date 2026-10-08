@@ -5,21 +5,23 @@
 #   open http://localhost:8080
 #
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ DEV ONLY. The APP_KEY and CBOX_ID_CRYPTO_KEY defaults below are PUBLIC —     │
-# │ they are in this repository, so anything sealed under them is readable by   │
-# │ anyone who has read this file. They exist so `docker compose up` works with │
-# │ no setup. NEVER run a deployment that holds real data on them.              │
+# │ THE KEYS COME FROM YOUR `.env`, NEVER FROM THIS FILE. APP_KEY and            │
+# │ CBOX_ID_CRYPTO_KEY have no default here: a key written in a repository is a  │
+# │ key everybody who has read it holds, and everything sealed under it is       │
+# │ theirs. `docker compose up` refuses to start until both are set.             │
 # └─────────────────────────────────────────────────────────────────────────────┘
 #
-# Each is `${VAR:-throwaway}`: export your own, or set them in the `.env` beside this
-# file (compose reads it for interpolation — so a Laravel `.env` that already sets
-# them wins), and every service picks them up:
+# Compose reads the `.env` beside this file for interpolation — the Laravel `.env` you
+# already have — so `php artisan key:generate` plus one line is all it takes:
 #
-#   export APP_KEY="base64:$(openssl rand -base64 32)"
-#   export CBOX_ID_CRYPTO_KEY="$(openssl rand -base64 32)"   # RAW base64, no base64: prefix
+#   php artisan key:generate                                   # writes APP_KEY to .env
+#   echo "CBOX_ID_CRYPTO_KEY=$(openssl rand -base64 32)" >> .env  # RAW base64, no base64: prefix
+#
+# (Or export them in the shell; an exported value wins over `.env`.)
 #
 # The crypto key seals every stored secret; change it on an existing database and
-# those secrets cannot be opened again. The DB/Valkey passwords are dev-only too.
+# those secrets cannot be opened again. The DB/Valkey passwords below are for these
+# throwaway local containers only and guard nothing but them.
 # For a prod-shaped smoke test, also `image:` a pushed tag instead of building.
 # Valkey is a drop-in, wire-compatible Redis replacement, so the app's REDIS_*
 # config points straight at it.
@@ -34,11 +36,11 @@ services:
       APP_NAME: "Cbox ID (dev)"
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_KEY: ${APP_KEY:-base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=}
+      APP_KEY: ${APP_KEY:?Set APP_KEY in .env (php artisan key:generate)}
       APP_URL: http://localhost:8080
       LOG_CHANNEL: stderr
 
-      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:-OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=}  # RAW base64, no base64: prefix
+      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:?Set CBOX_ID_CRYPTO_KEY in .env (openssl rand -base64 32)}  # RAW base64, no base64: prefix
       CBOX_ID_ISSUER: http://localhost:8080
       CBOX_ID_WEBAUTHN_RP_ID: localhost
       CBOX_ID_WEBAUTHN_ORIGIN: http://localhost:8080
@@ -85,8 +87,8 @@ services:
     stop_grace_period: 60s
     environment:
       APP_ENV: local
-      APP_KEY: ${APP_KEY:-base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=}
-      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:-OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=}  # RAW base64, no base64: prefix
+      APP_KEY: ${APP_KEY:?Set APP_KEY in .env (php artisan key:generate)}
+      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:?Set CBOX_ID_CRYPTO_KEY in .env (openssl rand -base64 32)}  # RAW base64, no base64: prefix
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: postgres
@@ -115,8 +117,8 @@ services:
     command: ["php", "artisan", "schedule:work"]
     environment:
       APP_ENV: local
-      APP_KEY: ${APP_KEY:-base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=}
-      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:-OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=}  # RAW base64, no base64: prefix
+      APP_KEY: ${APP_KEY:?Set APP_KEY in .env (php artisan key:generate)}
+      CBOX_ID_CRYPTO_KEY: ${CBOX_ID_CRYPTO_KEY:?Set CBOX_ID_CRYPTO_KEY in .env (openssl rand -base64 32)}  # RAW base64, no base64: prefix
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: postgres

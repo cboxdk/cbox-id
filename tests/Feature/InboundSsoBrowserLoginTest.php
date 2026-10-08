@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -280,3 +281,42 @@ it('reads the flow state from the stash the redirect leg wrote', function (): vo
     expect($source)->toContain('FederationFlowStash')
         ->and($source)->not->toContain("session()->pull('oidc.");
 });
+
+/*
+ * WHAT A SIGN-IN RESPONSE MAY CARRY. laravel-id 1.22 stopped its own SSO callbacks handing
+ * back the raw `auth_sessions` row key and made its browser SSO routes `no-store`. This app
+ * shadows the callbacks with its own controllers — and once already lost the package's
+ * middleware doing so — so both properties are held here, on the app's routes.
+ */
+it('answers a SAML sign-in no-store, without the session row key anywhere in the response', function (): void {
+    $fixture = ssoConnection();
+    fakeAssertionFor('opaque.user@acme.example');
+
+    $response = $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'faked']);
+
+    $sessionId = (string) session(PlatformAuth::SESSION_KEY);
+
+    expect($sessionId)->not->toBe('')
+        ->and((string) $response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and((string) $response->headers->get('Location'))->not->toContain($sessionId)
+        ->and((string) $response->getContent())->not->toContain($sessionId);
+
+    // Nor in any header but the encrypted session cookie the browser holds.
+    foreach ($response->headers->allPreserveCaseWithoutCookies() as $values) {
+        expect(implode(' ', array_map('strval', $values)))->not->toContain($sessionId);
+    }
+})->group('security');
+
+it('sends every browser SSO and social sign-in route no-store', function (string $name): void {
+    $route = Route::getRoutes()->getByName($name);
+
+    expect($route)->not->toBeNull()
+        ->and($route?->gatherMiddleware())->toContain(NoStore::class);
+})->with([
+    'sso.saml.acs',
+    'sso.oidc.callback',
+    'sso.oauth2.redirect',
+    'sso.oauth2.callback',
+    'social.redirect',
+    'social.callback',
+])->group('security');

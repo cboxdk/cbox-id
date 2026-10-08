@@ -309,8 +309,16 @@ Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackCon
 // Facebook). Both halves live here rather than in the framework because turning a
 // completed federation into a session cookie is this application's job, and because
 // there is no id_token, `state` alone carries CSRF on the callback.
-Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)->name('sso.oauth2.redirect');
-Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)->name('sso.oauth2.callback');
+//
+// Throttled and NoStore like the OIDC and SAML doors beside them: the redirect carries a
+// fresh `state` and the callback a single-use `code` and then a freshly minted session —
+// no cache, shared or browser, may keep either answer.
+Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)
+    ->middleware(['throttle:30,1', NoStore::class])
+    ->name('sso.oauth2.redirect');
+Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
+    ->middleware(['throttle:30,1', NoStore::class])
+    ->name('sso.oauth2.callback');
 
 /*
  * Signup, which is two things depending on the host ({@see SignupController}).
@@ -379,9 +387,10 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:passkey')->name('passkeys.login.options');
     Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware('throttle:passkey')->name('passkeys.login');
 
-    // Social sign-in (Google, GitHub, Microsoft) over OAuth.
-    Route::get('/auth/{provider}/redirect', [SocialController::class, 'redirect'])->name('social.redirect');
-    Route::get('/auth/{provider}/callback', [SocialController::class, 'callback'])->name('social.callback');
+    // Social sign-in (Google, GitHub, Microsoft) over OAuth. NoStore for the same reason
+    // as the SSO doors: a `state`, then a single-use `code` and a new session.
+    Route::get('/auth/{provider}/redirect', [SocialController::class, 'redirect'])->middleware(NoStore::class)->name('social.redirect');
+    Route::get('/auth/{provider}/callback', [SocialController::class, 'callback'])->middleware(NoStore::class)->name('social.callback');
 });
 
 // The MFA challenge sits between password and a full session, so it is neither

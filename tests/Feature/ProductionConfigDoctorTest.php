@@ -50,11 +50,30 @@ it('fails production when mail goes to a log file', function (): void {
         ->toHaveKey('Mail is not sent', 'fail');
 });
 
-it('fails production when the cache or sessions live in one process', function (): void {
-    $verdicts = productionVerdicts([...soundProductionConfig(), 'cache.default' => 'file', 'session.driver' => 'file']);
+it('fails production when the cache or sessions live in one process and there is more than one replica', function (string $store): void {
+    $verdicts = productionVerdicts([...soundProductionConfig(), 'cache.default' => $store, 'session.driver' => $store, 'cbox-id.deployment.replicas' => 3]);
 
     expect($verdicts)->toHaveKey('Cache is local to one process', 'fail')
         ->and($verdicts)->toHaveKey('Sessions are local to one process', 'fail');
+})->with(['file', 'array', 'apc']);
+
+it('fails production when the cache or sessions live in one process and the queue manager runs as a cluster', function (): void {
+    $verdicts = productionVerdicts([...soundProductionConfig(), 'cache.default' => 'file', 'session.driver' => 'file', 'queue-autoscale.cluster.enabled' => true]);
+
+    expect($verdicts)->toHaveKey('Cache is local to one process', 'fail')
+        ->and($verdicts)->toHaveKey('Sessions are local to one process', 'fail');
+});
+
+it('only warns about a per-process cache or session store on exactly one replica', function (): void {
+    $verdicts = productionVerdicts([...soundProductionConfig(), 'cache.default' => 'file', 'session.driver' => 'file', 'cbox-id.deployment.replicas' => 1, 'queue-autoscale.cluster.enabled' => false]);
+
+    expect($verdicts)->toHaveKey('Cache is local to one process', 'warn')
+        ->and($verdicts)->toHaveKey('Sessions are local to one process', 'warn');
+});
+
+it('passes shared stores whatever the replica count', function (): void {
+    expect(array_unique(array_values(productionVerdicts([...soundProductionConfig(), 'cbox-id.deployment.replicas' => 4, 'queue-autoscale.cluster.enabled' => true]))))
+        ->toBe(['ok']);
 });
 
 it('fails production with no health token', function (): void {

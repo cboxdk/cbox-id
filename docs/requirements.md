@@ -15,7 +15,7 @@ guidance**, not hard requirements.
 
 | Requirement | Version | Enforced by | Why |
 |---|---|---|---|
-| PHP | `^8.4` | `composer.json` | Uses PHP 8.4 language features throughout. |
+| PHP | `^8.5` | `composer.json` (`require.php`, and `config.platform.php` for the lock) | The one version the image (`Dockerfile`), the manifest (`cbox.yaml`) and CI run. |
 | ext-openssl | * | `cboxdk/laravel-id` + `cbox-id:doctor` | RSA/EC key generation and JWT/SAML signing. |
 | ext-sodium | * | `cboxdk/laravel-id` + `cbox-id:doctor` | Ed25519 signing and AEAD sealing of secrets at rest. |
 | ext-pcntl | * | `cboxdk/laravel-queue-autoscale` + `cbox-id:doctor` | The queue manager (`queue:autoscale`) handles signals to drain its workers. |
