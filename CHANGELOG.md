@@ -8,6 +8,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Upgrade rehearsal.** `scripts/upgrade-path-check.sh --from v1.1.1 --engine mysql|pgsql` builds a database with the previous release's own code (install, then `scripts/upgrade-path/seed-v1.php`: people with passwords, TOTP and a passkey, apps with secrets, sessions, webhooks, SSO connections, a SCIM directory, vault and management keys, portal links, audit entries), upgrades it with this checkout, compares row counts, checks every old credential with the new code (`scripts/upgrade-path/verify.php`), runs `audit-chain:verify`, `cbox-id:doctor` and an HTTP smoke test, then rolls the new migrations back and requires the previous release's schema exactly. The *Upgrade path* workflow (`.github/workflows/upgrade-path.yml`) runs it on MySQL 8.4 and PostgreSQL 17 for every release tag and on demand. `docs/operations/upgrade-rehearsal.md` covers it and the rehearsal against a restored copy of an operator's own data.
+
+### Fixed
+
+- **Rolling 2.0.0's migrations back now restores 1.1.x's schema exactly.** `onboarding_dismissals.organization_id` is `NOT NULL` again (the environment checklist's dismissals, which name no organization, are removed), and `admin_portal_links.scope` comes back without the `default 'sso'` it never had. An Admin Portal link whose intents the old `scope` cannot name (domain verification, log streams, certificate renewal) is expired on the way down instead of coming back as an SSO link.
+
 ## [2.0.0] - 2026-10-08
 
 ### Security

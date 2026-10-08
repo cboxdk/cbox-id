@@ -1,0 +1,101 @@
+name: Upgrade path
+
+# Rehearses an upgrade from a previous release to this commit on the engines production
+# runs: the previous release migrates, installs and seeds a database through its own
+# services, this commit migrates it, then every 1.x credential is checked with the new code,
+# an HTTP smoke test runs, and `migrate:rollback` must hand back the previous release's
+# schema exactly. All of it is scripts/upgrade-path-check.sh; the same command runs on a
+# laptop with Docker (docs/operations/upgrade-rehearsal.md).
+#
+# On a release tag it rehearses from v1.1.1, the last 1.x: every 1.x deployment upgrades
+# through that release, so each 2.x has to keep accepting it. Run it by hand to rehearse
+# from another tag (the seed script must exist for that tag's major version).
+#
+# GITHUB-HOSTED and no secrets: the repository is public, and the job runs the previous
+# tag's `composer install` as well as this commit's.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      from:
+        description: Release to upgrade from
+        required: true
+        default: v1.1.1
+
+concurrency:
+  group: upgrade-path-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - driver: mysql
+            image: mysql:8.4
+            port: 3306
+            health: mysqladmin ping -h 127.0.0.1 -u root -proot
+          - driver: pgsql
+            image: postgres:17
+            port: 5432
+            health: pg_isready -U cbox_id -d cbox_id
+    name: ${{ inputs.from || 'v1.1.1' }} -> ${{ github.ref_name }} on ${{ matrix.image }}
+    services:
+      db:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cbox_id
+          MYSQL_USER: cbox_id
+          MYSQL_PASSWORD: secret
+          POSTGRES_DB: cbox_id
+          POSTGRES_USER: cbox_id
+          POSTGRES_PASSWORD: secret
+        options: >-
+          --health-cmd "${{ matrix.health }}"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+    env:
+      DB_HOST: db
+      DB_PORT: ${{ matrix.port }}
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The previous release is read out of git by its tag.
+          fetch-depth: 0
+
+      # The checkout belongs to another uid than the container's user; without this git
+      # refuses to read the repository and `git archive <tag>` fails.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # The HTTP smoke test renders /login, which resolves the Vite manifest.
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      # The tag arrives through the environment, never spliced into the script text.
+      - name: Rehearse the upgrade
+        env:
+          FROM: ${{ inputs.from || 'v1.1.1' }}
+          ENGINE: ${{ matrix.driver }}
+        run: scripts/upgrade-path-check.sh --from "$FROM" --engine "$ENGINE" --external-db

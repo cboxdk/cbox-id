@@ -11,6 +11,9 @@ Deploying and running a live identity provider.
 - [Deployment](deployment.md) — from a fresh server to a running, hardened instance.
 - [Day-2 operations](operations.md) — **backing up the crypto key**, signing-key
   rotation, health checks, audit/monitoring, upgrades, and the break-glass runbook.
+- [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your
+  database: the seeded check on MySQL and PostgreSQL, and a rehearsal on a copy of your
+  own data.
 - [Queue workers](queue-workers.md) — running the queue manager on Laravel Cloud and
   self-hosted, the operator-only job monitor, and the readiness signal for both.
 - [Analytics storage](analytics.md) — where authentication analytics are stored

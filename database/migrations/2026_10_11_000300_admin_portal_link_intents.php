@@ -42,23 +42,39 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Added nullable and tightened once filled: a NOT NULL column cannot be added to a
+        // table with rows on PostgreSQL without a default, and a default left behind is a
+        // schema the old migrations never produced.
         Schema::table('admin_portal_links', function (Blueprint $table): void {
-            $table->string('scope')->default('sso')->after('organization_id');
+            $table->string('scope')->nullable()->after('organization_id');
         });
 
         // Read in PHP rather than compared in SQL: MySQL's JSON column does not equal its
         // own text, and the old column has no word for the intents it never had.
-        foreach (DB::table('admin_portal_links')->get(['id', 'intents']) as $row) {
+        foreach (DB::table('admin_portal_links')->get(['id', 'intents', 'expires_at']) as $row) {
             $intents = json_decode(is_string($row->intents) ? $row->intents : '[]', true);
             $intents = is_array($intents) ? $intents : [];
             $sso = in_array('sso', $intents, true);
             $audit = $intents === ['audit_logs'];
             $scim = in_array('dsync', $intents, true);
+            $scope = $audit ? 'audit_logs' : ($sso && $scim ? 'both' : ($scim ? 'scim' : ($sso ? 'sso' : null)));
 
-            DB::table('admin_portal_links')->where('id', $row->id)->update([
-                'scope' => $audit ? 'audit_logs' : ($sso && $scim ? 'both' : ($scim ? 'scim' : 'sso')),
-            ]);
+            $update = ['scope' => $scope ?? 'sso'];
+
+            // A link for intents the old column cannot name (domain verification, log
+            // streams, certificate renewal) would come back as an `sso` link — handing the
+            // customer's administrator the single sign-on screens nobody gave them. It is
+            // expired instead; whoever needs it is sent a new one.
+            if ($scope === null && is_string($row->expires_at) && now()->lt($row->expires_at)) {
+                $update['expires_at'] = now();
+            }
+
+            DB::table('admin_portal_links')->where('id', $row->id)->update($update);
         }
+
+        Schema::table('admin_portal_links', function (Blueprint $table): void {
+            $table->string('scope')->nullable(false)->change();
+        });
 
         Schema::table('admin_portal_links', function (Blueprint $table): void {
             $table->dropColumn(['intents', 'emailed_to']);
