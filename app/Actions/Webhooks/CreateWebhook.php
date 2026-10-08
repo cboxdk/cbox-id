@@ -14,9 +14,11 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Preflight;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\IntegrationReach;
+use App\Platform\Integrations\OutboundUrl;
 use Cbox\Id\Webhooks\Contracts\WebhookSigningSchemes;
 use Cbox\Id\Webhooks\Enums\SignatureScheme;
 use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
@@ -56,7 +58,7 @@ use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
     consoleGate: ConsoleGate::Administer,
     redact: ['secret'],
 )]
-final readonly class CreateWebhook implements Action
+final readonly class CreateWebhook implements Action, Preflight
 {
     public function __construct(
         private WebhookSigningSchemes $webhooks,
@@ -81,6 +83,16 @@ final readonly class CreateWebhook implements Action
     public static function schemes(): array
     {
         return array_map(static fn (SignatureScheme $scheme): string => $scheme->value, SignatureScheme::cases());
+    }
+
+    /**
+     * Whose it is and whether the URL may be dialled — before a key's owner is asked to
+     * approve an endpoint the SSRF guard would then refuse.
+     */
+    public function preflight(ActionContext $context): void
+    {
+        IntegrationReach::owner($context);
+        OutboundUrl::assertWebhook(trim($context->string('url')));
     }
 
     public function handle(ActionContext $context): ActionResult

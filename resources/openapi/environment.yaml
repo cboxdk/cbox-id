@@ -16846,6 +16846,7 @@ components:
         - url
         - expires_at
         - emailed_to
+        - email_suppressed
       properties:
         id:
           type: string
@@ -16867,7 +16868,13 @@ components:
           type:
             - string
             - 'null'
-          description: 'The address the link was mailed to, or null when it was not sent.'
+          description: 'The address the link was mailed to, or null when it was not sent — none was asked for, or the mail was suppressed (see email_suppressed).'
+        email_suppressed:
+          type: boolean
+          description: |
+            True when an `email` was asked for and NOT sent because this is a sandbox
+            environment, which sends no mail. `emailed_to` is then null, and the `url` in this
+            answer is the only way to the link — share it yourself.
         url:
           type:
             - string

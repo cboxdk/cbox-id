@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Version
+    |--------------------------------------------------------------------------
+    |
+    | The release this deployment runs — the ONE place the application knows
+    | its own version (the MCP server's `serverInfo` reads it). The image build
+    | stamps it from the git tag (`git describe`: `2.0.0`, or
+    | `2.0.0-3-gabc1234` for a commit after it) as APP_VERSION; a checkout that
+    | was not built that way says `dev` rather than inventing a number.
+    |
+    */
+
+    'version' => env('APP_VERSION', 'dev'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

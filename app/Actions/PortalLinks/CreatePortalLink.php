@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\PortalLinks;
 
 use App\Http\Resources\Environment\Timestamp;
+use App\Listeners\SuppressSandboxMail;
 use App\Mail\PortalLinkMail;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
@@ -42,7 +43,10 @@ use Illuminate\Support\Facades\Mail;
  *
  * AND WHERE IT GOES: `email` mails it to the customer's IT contact, in `locale` — a hosted
  * mail, so it is written in their language rather than the console's. The link and the
- * trail both record the address.
+ * trail both record the address. A SANDBOX environment sends no mail
+ * ({@see SuppressSandboxMail}): the answer then says `emailed_to: null` and
+ * `email_suppressed: true`, the link records no address, and the URL in the answer is the
+ * only way to it.
  *
  * {@see AdminPortal::issue()} records `portal_link.created` with whoever minted it: the
  * person in the console, the key over the API.
@@ -65,6 +69,7 @@ final readonly class CreatePortalLink implements Action
     public function __construct(
         private AdminPortal $portal,
         private HostedLocales $locales,
+        private SuppressSandboxMail $sandboxMail,
     ) {}
 
     public static function input(): InputSchema
@@ -101,11 +106,19 @@ final readonly class CreatePortalLink implements Action
             ? $context->input['expires_in_minutes']
             : null;
 
-        ['link' => $link, 'token' => $token] = $this->portal->issue($organizationId, $scope, $context->principal->id(), $minutes, $email);
+        // A sandbox environment sends no mail ({@see SuppressSandboxMail}). The answer and the
+        // link's record say what HAPPENED — not mailed, and why — so nobody waits for an IT
+        // contact to use a link that never reached them.
+        $suppressed = $email !== null && $this->sandboxMail->suppresses();
+        $emailedTo = $suppressed ? null : $email;
+
+        ['link' => $link, 'token' => $token] = $this->portal->issue($organizationId, $scope, $context->principal->id(), $minutes, $emailedTo);
 
         $url = route('portal.enter', $token);
 
         if ($email !== null) {
+            // Sent even when it will be suppressed: the listener logs the attempt, which is
+            // how a sandbox's mail stays observable during development.
             $this->mail($email, $organizationId, $scope, $url, $link->expires_at->toImmutable(), $context->nullableString('locale'));
         }
 
@@ -115,7 +128,8 @@ final readonly class CreatePortalLink implements Action
             'intents' => $scope->values(),
             'url' => $url,
             'expires_at' => Timestamp::of($link->expires_at),
-            'emailed_to' => $email,
+            'emailed_to' => $emailedTo,
+            'email_suppressed' => $suppressed,
         ]);
     }
 
