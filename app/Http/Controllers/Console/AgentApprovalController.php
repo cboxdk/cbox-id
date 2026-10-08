@@ -140,6 +140,8 @@ final readonly class AgentApprovalController extends ConsoleController
             'waiting' => array_values(array_filter($actions, static fn (array $row): bool => $row['status'] === ActionApprovalStatus::Pending->value)),
             'decided' => array_slice(array_values(array_filter($actions, static fn (array $row): bool => $row['status'] !== ActionApprovalStatus::Pending->value)), 0, 20),
             'agentsHref' => route('environment.agents'),
+            // How long a held action waits — the gate's own number, never a sentence's.
+            'approvalWindow' => ActionApprovalGate::window(),
             'requests' => array_map(function (BackchannelAuthRequest $request) use ($names, $subjects): array {
                 $clientId = (string) $request->client_id;
 

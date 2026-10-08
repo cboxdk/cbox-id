@@ -16,6 +16,8 @@ use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use App\Platform\Sso\SamlCertificate;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
+use Cbox\Id\Directory\Enums\DirectoryProvider;
+use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -305,6 +307,56 @@ it('shows the link\'s intents as a checklist whose progress is read from the sys
     expect($this->get(route('portal.setup'))->inertiaProps('tasks')[0]['done'])->toBeTrue();
 });
 
+/*
+ * "FIRST UPDATE RECEIVED" FOR BOTH KINDS OF DIRECTORY. The step waited on
+ * `last_synced_at`, which only the pull job stamps, so a SCIM directory — the kind the
+ * portal walks people through — never completed however many people it pushed.
+ */
+it('completes directory sync when a SCIM push lands, and when a pull directory syncs', function (): void {
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::Dsync]);
+
+    $steps = fn (): array => $this->get(route('portal.setup'))->assertOk()->inertiaProps('tasks')[0]['steps'];
+
+    portalWrite('post', route('portal.directories'), route('portal.directories.store'), ['name' => 'Okta SCIM'])->assertSessionHasNoErrors();
+    $token = (string) flashed('newToken');
+
+    expect($steps())->toBe([['key' => 'directory_created', 'done' => true], ['key' => 'directory_synced', 'done' => false]]);
+
+    // The identity provider pushes its first person.
+    $this->withToken($token)->postJson('/scim/v2/Users', [
+        'schemas' => ['urn:ietf:params:scim:schemas:core:2.0:User'],
+        'userName' => 'ada@acme.example',
+        'emails' => [['value' => 'ada@acme.example', 'primary' => true]],
+        'active' => true,
+    ])->assertCreated();
+    $this->flushHeaders();
+
+    expect(Directory::query()->where('organization_id', $org)->sole()->last_synced_at)->toBeNull()
+        ->and($steps()[1])->toBe(['key' => 'directory_synced', 'done' => true])
+        // …and the directory list says an update arrived, rather than "No updates received yet".
+        ->and($this->get(route('portal.directories'))->assertOk()->inertiaProps('directories')[0]['lastSyncedAt'])->toBeString();
+
+    // A pull directory, on its own: done once its scheduled sync has run, not before.
+    $pulled = intentOrg('portal-pull');
+    openPortal($pulled, [PortalIntent::Dsync]);
+    $directory = new Directory;
+    $directory->forceFill([
+        'organization_id' => $pulled,
+        'name' => 'Google',
+        'provider' => DirectoryProvider::GoogleWorkspace,
+        'bearer_token_hash' => hash('sha256', 'unused by a pull directory'),
+        'status' => DirectoryStatus::Active,
+        'mappings' => [],
+    ])->save();
+
+    expect($steps()[1]['done'])->toBeFalse();
+
+    $directory->forceFill(['last_synced_at' => now()])->save();
+
+    expect($steps()[1]['done'])->toBeTrue();
+});
+
 // ── Domain verification ─────────────────────────────────────────────────────
 
 it('walks domain verification end to end: add, publish, check, verified, remove', function (): void {
@@ -471,6 +523,32 @@ it('walks log streams: add their own destination, test it, see a failure, remove
 
     portalWrite('delete', route('portal.log-streams'), $row['removeHref'])->assertSessionHasNoErrors();
     expect(AuditStream::query()->whereKey($stream->id)->exists())->toBeFalse();
+});
+
+it('shows a generated signing key once, and never echoes a token the IT admin typed', function (): void {
+    app()->instance(StreamSink::class, new FakeStreamSink);
+    $org = intentOrg();
+    openPortal($org, [PortalIntent::LogStreams]);
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Typed token',
+        'destination' => 'splunk_hec',
+        'endpoint_url' => 'https://splunk.acme.example:8088',
+        'auth' => 'splunk',
+        'secret' => 'hec-token-typed-by-them',
+    ])->assertSessionHasNoErrors();
+
+    expect(flashed('newSecret'))->toBeNull()
+        ->and((string) $this->get(route('portal.log-streams'))->assertOk()->getContent())->not->toContain('hec-token-typed-by-them');
+
+    portalWrite('post', route('portal.log-streams'), route('portal.log-streams.store'), [
+        'name' => 'Signed',
+        'destination' => 'generic_json',
+        'endpoint_url' => 'https://siem.acme.example/collector',
+        'auth' => 'hmac',
+    ])->assertSessionHasNoErrors();
+
+    expect(flashed('newSecret'))->toBeString()->not->toBe('');
 });
 
 it('never shows or touches the environment\'s own streams, or another organization\'s', function (): void {

@@ -19,10 +19,12 @@ final readonly class DocsLinks
     {
         $path = $topic->docsPath();
 
-        if ($path === null) {
-            return null;
-        }
+        return $path === null ? null : $this->page($path);
+    }
 
+    /** A page under docs/ by its path (`quickstarts/laravel`), on the same terms. */
+    public function page(string $path): ?string
+    {
         $base = config('docs.base_url');
 
         if (! is_string($base) || trim($base) === '') {

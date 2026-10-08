@@ -28,9 +28,9 @@ The portal walks you through these step by step. The fields it fills in:
 
 | Provider | The portal's entity ID goes in | The portal's ACS URL goes in | Fixed settings | You bring back |
 |---|---|---|---|---|
-| OneLogin ("SAML Custom Connector (Advanced)") | Audience (EntityID) | Recipient, and ACS (Consumer) URL; the portal also gives the value for **ACS (Consumer) URL Validator** | SAML nameID format: Email; SAML initiator: Service Provider | The SSO tab's **Issuer URL** |
+| OneLogin ("SAML Custom Connector (Advanced)") | Audience (EntityID) | Recipient, and ACS (Consumer) URL; the portal also gives the value for **ACS (Consumer) URL Validator** | SAML nameID format: Email; SAML initiator: Service Provider; a parameter `email` (value Email, included in the SAML assertion) | The SSO tab's **Issuer URL** |
 | JumpCloud (Custom Application) | SP Entity ID | ACS URLs | SAMLSubject NameID: `email`; SAMLSubject NameID Format: `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` | The file from **Export Metadata** |
-| PingFederate (SP Connection) | Partner's Entity ID (Connection ID) | Assertion Consumer Service URL, binding POST | SAML_SUBJECT: `mail` | The connection's metadata export |
+| PingFederate (SP Connection) | Partner's Entity ID (Connection ID) | Assertion Consumer Service URL, binding POST | SAML_SUBJECT: `mail`; an `email` attribute in the attribute contract; **Always sign the SAML Assertion** | The connection's metadata export |
 
 For Directory Sync, OneLogin takes the **SCIM Base URL** and **SCIM Bearer Token** in its
 "SCIM Provisioner with SAML (SCIM v2 Enterprise)" app, and JumpCloud takes the **Base URL**

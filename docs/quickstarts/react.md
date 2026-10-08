@@ -19,8 +19,7 @@ You need Node 20 or later and the three things in
 A sign-in that runs entirely in the browser does not work against Cbox ID today. The
 discovery document, the token endpoint and the JWKS send no CORS headers, so a page served
 from another origin cannot read them: `CboxIdClient` called from React fails on its first
-request with a CORS error in the console. If you used the console's **Get started** page,
-skip its browser-only `src/auth.ts` snippet for this reason.
+request with a CORS error in the console.
 
 So the two steps that talk to Cbox ID, starting the sign-in and finishing it, run in a
 server of about forty lines. Vite's dev server proxies `/auth`, `/callback` and `/api` to
@@ -39,8 +38,9 @@ Because a server now finishes the sign-in, you can register a **Web app** instea
 and choose one of:
 
 - **Home → Get started.** Pick **React**, optionally name the app, and create it. The page
-  registers a Single-page or mobile app with the redirect URI above, then waits for your
-  first sign-in and tells you when it arrives. It does not set a sign-out URI: open the
+  registers a Single-page or mobile app with the redirect URI above, gives you the
+  environment block and the code from steps 2 to 5 below, then waits for your first
+  sign-in and tells you when it arrives. It does not set a sign-out URI: open the
   app under **Developers → Applications** and add `http://localhost:5173/` under
   **Sign-out URIs**.
 - **Developers → Applications → New app.** Enter an app name, answer **Single-page or

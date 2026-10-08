@@ -15,7 +15,12 @@ export interface DomainClaim {
     domain: string;
     verified: boolean;
     capture: boolean;
-    /** The DNS TXT value to publish — the one thing somebody copies into another tab. */
+    /**
+     * Where the TXT record goes (`_cbox-id-challenge.acme.com`), exactly as the verifier
+     * looks it up — sent by the server, never composed here.
+     */
+    recordName: string;
+    /** The DNS TXT value to publish. */
     token: string;
     urls: { verify: string; capture: string; remove: string };
 }
@@ -93,21 +98,16 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                                 }}
                             >
                                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                    Add this DNS <b>TXT</b> record at{' '}
-                                    <span className="mono">{domain.domain}</span>, then verify.
+                                    Add this DNS <b>TXT</b> record, then verify.
                                 </p>
                                 {/*
-                                    Its own copy button: somebody is about to paste this
-                                    into a DNS panel in another tab, and selecting a value
-                                    out of a sentence by hand is where a truncated record
-                                    comes from.
+                                    Name and value each with its own copy button: somebody
+                                    is about to paste them into a DNS panel in another tab,
+                                    and selecting a value out of a sentence by hand is where
+                                    a truncated record comes from.
                                 */}
-                                <div className="flex items-start gap-2">
-                                    <code className="mono text-xs break-all select-all flex-1">
-                                        {domain.token}
-                                    </code>
-                                    <CopyButton value={domain.token} />
-                                </div>
+                                <RecordRow label="Name" value={domain.recordName} />
+                                <RecordRow label="Value" value={domain.token} />
                             </div>
                         )}
 
@@ -168,5 +168,17 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                 }}
             />
         </Panel>
+    );
+}
+
+function RecordRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex items-start gap-2">
+            <span className="text-xs w-12 shrink-0" style={{ color: 'var(--muted-foreground)' }}>
+                {label}
+            </span>
+            <code className="mono text-xs break-all select-all flex-1">{value}</code>
+            <CopyButton value={value} />
+        </div>
     );
 }

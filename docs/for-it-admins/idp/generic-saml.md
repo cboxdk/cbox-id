@@ -27,14 +27,15 @@ hand.
 The response must:
 
 - **have a signed assertion.** Sign the assertion itself, or both the assertion and the
-  response. A response that is signed while its assertion is not is refused, although the
-  portal's own steps say either works.
+  response. A response that is signed while its assertion is not is refused.
 - **carry a NameID**, ideally the person's email address. It identifies the person, so it
   must not change.
-- **send the email address as an attribute**, named `email`, `mail`, `emailAddress`, or
-  `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress`.
-- optionally send a display name as `name` or `displayName`. The portal's steps also
-  mention first and last name; those are accepted and ignored.
+- **send the email address as an attribute**, named `email`, `mail`, `emailAddress`,
+  `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` or
+  `urn:oid:0.9.2342.19200300.100.1.3`. The NameID is not read as the email address, even
+  in the `emailAddress` format, so send it in both places.
+- optionally send a display name as `name` or `displayName`. First and last name are
+  accepted and ignored.
 
 Give the application to the people who should sign in this way.
 

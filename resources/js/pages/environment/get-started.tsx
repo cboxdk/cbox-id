@@ -25,13 +25,20 @@ interface FrameworkOption {
     kind: string;
 }
 
+/** One copyable block: a command, or code that goes in `file`. */
+interface QuickstartBlock {
+    code: string;
+    file: string | null;
+    note: string | null;
+}
+
+/** `App\Platform\Connect\QuickstartSnippet` — block for block the framework's quickstart page. */
 interface Quickstart {
-    install: string;
+    install: QuickstartBlock[];
     envFile: string;
     env: string;
-    codeFile: string;
-    code: string;
-    run: string;
+    code: QuickstartBlock[];
+    run: QuickstartBlock[];
 }
 
 type Props = PageProps<{
@@ -42,6 +49,8 @@ type Props = PageProps<{
     framework: string | null;
     createdApp: { id: string; name: string; clientId: string; href: string } | null;
     quickstart: Quickstart | null;
+    /** The framework's whole quickstart page, sign-out included; null with no docs to link. */
+    quickstartGuide: string | null;
     secretPlaceholder: string;
     signedIn: boolean;
     urls: { createApp: string; dismiss: string; restore: string; home: string };
@@ -62,6 +71,7 @@ export default function GetStarted({
     framework,
     createdApp: app,
     quickstart,
+    quickstartGuide,
     secretPlaceholder,
     signedIn,
     urls,
@@ -186,15 +196,11 @@ export default function GetStarted({
                         description={`${app.name} — client ID ${app.clientId}.`}
                     >
                         <div className="space-y-4">
-                            <div>
-                                <h3 className="text-sm font-medium">Install</h3>
-                                <div className="mt-2">
-                                    <CodeBlock
-                                        code={quickstart.install}
-                                        copyLabel="Copy install command"
-                                    />
-                                </div>
-                            </div>
+                            <QuickstartBlocks
+                                title="Install"
+                                blocks={quickstart.install}
+                                copyLabel="Copy install command"
+                            />
 
                             <div>
                                 <h3 className="text-sm font-medium">
@@ -228,21 +234,33 @@ export default function GetStarted({
                                 </div>
                             </div>
 
-                            <div>
-                                <h3 className="text-sm font-medium">
-                                    <code className="mono">{quickstart.codeFile}</code>
-                                </h3>
-                                <div className="mt-2">
-                                    <CodeBlock code={quickstart.code} copyLabel="Copy code" />
-                                </div>
-                            </div>
+                            <QuickstartBlocks
+                                title="Code"
+                                blocks={quickstart.code}
+                                copyLabel="Copy code"
+                            />
 
-                            <div>
-                                <h3 className="text-sm font-medium">Run it, then sign in</h3>
-                                <div className="mt-2">
-                                    <CodeBlock code={quickstart.run} copyLabel="Copy run command" />
-                                </div>
-                            </div>
+                            <QuickstartBlocks
+                                title="Run it, then sign in"
+                                blocks={quickstart.run}
+                                copyLabel="Copy run command"
+                            />
+
+                            {quickstartGuide !== null && (
+                                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                                    The same code, step by step, with sign-out:{' '}
+                                    <a
+                                        href={quickstartGuide}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="underline"
+                                        style={{ color: 'var(--accent-strong)' }}
+                                    >
+                                        the full quickstart
+                                    </a>
+                                    .
+                                </p>
+                            )}
                         </div>
                     </Panel>
                 )}
@@ -299,3 +317,40 @@ export default function GetStarted({
 }
 
 GetStarted.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+
+/**
+ * A titled run of copyable blocks — the commands to install, the files to write, the
+ * command to run — each under the file it goes in, in the quickstart page's order.
+ */
+function QuickstartBlocks({
+    title,
+    blocks,
+    copyLabel,
+}: {
+    title: string;
+    blocks: QuickstartBlock[];
+    copyLabel: string;
+}) {
+    return (
+        <div>
+            <h3 className="text-sm font-medium">{title}</h3>
+            <div className="mt-2 space-y-3">
+                {blocks.map((block) => (
+                    // No two blocks of one list are the same text.
+                    <div key={block.code}>
+                        {block.file !== null && (
+                            <p className="text-xs mb-1">
+                                <code className="mono">{block.file}</code>
+                            </p>
+                        )}
+                        <CodeBlock
+                            code={block.code}
+                            copyLabel={copyLabel}
+                            caption={block.note ?? undefined}
+                        />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
