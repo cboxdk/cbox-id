@@ -175,12 +175,19 @@ function Snippet({ snippet }: { snippet: ClientSnippet }) {
         <div>
             <p className="label">{snippet.where}</p>
             <div className="mt-1.5 relative">
-                <pre
+                <section
+                    // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
+
+                    // (WCAG 2.1.1; axe scrollable-region-focusable), which the lint rule does not know.
+
+                    // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                    tabIndex={0}
+                    aria-label={snippet.where}
                     className="mono text-xs rounded-lg px-3.5 py-3 overflow-x-auto"
                     style={{ background: 'var(--surface-2)', whiteSpace: 'pre' }}
                 >
-                    <code>{snippet.code}</code>
-                </pre>
+                    <pre className="m-0"><code>{snippet.code}</code></pre>
+                </section>
                 <div className="mt-2">
                     <CopyButton value={snippet.code} size="sm" label="Copy" />
                 </div>

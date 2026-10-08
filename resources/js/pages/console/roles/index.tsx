@@ -470,7 +470,14 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
 
 function Snippet({ children }: { children: string }) {
     return (
-        <pre
+        <section
+            // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
+
+            // (WCAG 2.1.1; axe scrollable-region-focusable), which the lint rule does not know.
+
+            // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+            tabIndex={0}
+            aria-label="Permissions as code"
             className="mt-3 rounded-lg p-3 overflow-x-auto text-xs mono"
             style={{
                 background: 'var(--surface-2)',
@@ -478,8 +485,8 @@ function Snippet({ children }: { children: string }) {
                 lineHeight: 1.6,
             }}
         >
-            {children}
-        </pre>
+            <pre className="m-0">{children}</pre>
+        </section>
     );
 }
 
