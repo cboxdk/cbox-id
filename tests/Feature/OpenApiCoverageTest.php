@@ -163,6 +163,7 @@ function undocumentedByDesign(): array
         'POST /oauth/userinfo',
 
         // SCIM 2.0 — RFC 7644-specified. DEBT: same.
+        'POST /scim/v2/Bulk',
         'GET /scim/v2/Groups',
         'POST /scim/v2/Groups',
         'GET /scim/v2/Groups/{id}',

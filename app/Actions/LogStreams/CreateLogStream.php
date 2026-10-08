@@ -61,7 +61,7 @@ final readonly class CreateLogStream implements Action
     {
         return InputSchema::of([
             Field::string('name')->required()->max(190),
-            Field::string('destination')->required()->oneOf(array_map(static fn (Destination $destination): string => $destination->value, Destination::cases())),
+            Field::string('destination')->required()->oneOf(array_map(static fn (Destination $destination): string => $destination->value, Destination::httpCollectors())),
             Field::string('endpoint_url')->required()->max(2048)->format('uri')->describe('A public URL the entries are POSTed to.'),
             Field::string('auth')->oneOf(array_map(static fn (AuthScheme $scheme): string => $scheme->value, AuthScheme::cases()))->describe('How the endpoint is authenticated. Left out, the destination\'s default.'),
             Field::string('secret')->nullable()->max(4096)->describe('The bearer or Splunk token the endpoint expects. Left out with `hmac`, a key is generated and returned once.'),

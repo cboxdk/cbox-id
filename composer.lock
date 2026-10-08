@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "62e43a945511907eb6b01b6baa7f2d2e",
+    "content-hash": "d2e3124b476e9c5910c25a3f87d3e421",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -567,21 +567,21 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v1.22.0",
+            "version": "v1.23.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "e12600320f06ab51b1884c5fce32f2cfc0ad63ed"
+                "reference": "deca61c7726c407ce615b30f3729d12e2c330bdf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/e12600320f06ab51b1884c5fce32f2cfc0ad63ed",
-                "reference": "e12600320f06ab51b1884c5fce32f2cfc0ad63ed",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/deca61c7726c407ce615b30f3729d12e2c330bdf",
+                "reference": "deca61c7726c407ce615b30f3729d12e2c330bdf",
                 "shasum": ""
             },
             "require": {
                 "cboxdk/laravel-audit-chain": "^0.1",
-                "cboxdk/laravel-siem": "^0.1",
+                "cboxdk/laravel-siem": "^0.1 || ^0.2",
                 "cboxdk/laravel-ssrf": "^1.1.1",
                 "cboxdk/siem": "^0.1",
                 "ext-openssl": "*",
@@ -639,9 +639,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v1.22.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.23.0"
             },
-            "time": "2026-10-07T22:01:59+00:00"
+            "time": "2026-10-08T11:59:20+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",
@@ -1066,21 +1066,22 @@
         },
         {
             "name": "cboxdk/laravel-siem",
-            "version": "v0.1.1",
+            "version": "v0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-siem.git",
-                "reference": "0161f19bd1806cfc4e28f6c3cb466d4b0c1acbc1"
+                "reference": "634c303a27611956d37d900b1af054ed99f9aafa"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-siem/zipball/0161f19bd1806cfc4e28f6c3cb466d4b0c1acbc1",
-                "reference": "0161f19bd1806cfc4e28f6c3cb466d4b0c1acbc1",
+                "url": "https://api.github.com/repos/cboxdk/laravel-siem/zipball/634c303a27611956d37d900b1af054ed99f9aafa",
+                "reference": "634c303a27611956d37d900b1af054ed99f9aafa",
                 "shasum": ""
             },
             "require": {
                 "cboxdk/laravel-ssrf": "^1.0",
                 "cboxdk/siem": "^0.1",
+                "ext-openssl": "*",
                 "illuminate/bus": "^12.0 || ^13.0",
                 "illuminate/contracts": "^12.0 || ^13.0",
                 "illuminate/database": "^12.0 || ^13.0",
@@ -1124,30 +1125,33 @@
                     "role": "Developer"
                 }
             ],
-            "description": "The SIEM log-streaming delivery engine for Laravel — a durable transactional outbox, queued batched delivery with retry/backoff/dead-letter/circuit-breaker, SSRF-guarded HTTP egress, encrypted destination secrets, and PII redaction, on top of the framework-agnostic cboxdk/siem core.",
+            "description": "The SIEM log-streaming delivery engine for Laravel — a durable transactional outbox, queued batched delivery with retry/backoff/dead-letter/circuit-breaker, SSRF-guarded egress to HTTP collectors, Datadog, Amazon S3 and Google Cloud Storage, encrypted destination secrets, and PII redaction, on top of the framework-agnostic cboxdk/siem core.",
             "homepage": "https://github.com/cboxdk/laravel-siem",
             "keywords": [
                 "Audit",
+                "DataDog",
                 "SIEM",
                 "cef",
                 "circuit-breaker",
                 "dead-letter",
                 "delivery",
                 "elastic-ecs",
+                "gcs",
                 "graylog-gelf",
                 "laravel",
                 "log-streaming",
                 "outbox",
                 "redaction",
+                "s3",
                 "security-events",
                 "splunk-hec",
                 "ssrf"
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-siem/issues",
-                "source": "https://github.com/cboxdk/laravel-siem/tree/v0.1.1"
+                "source": "https://github.com/cboxdk/laravel-siem/tree/v0.2.0"
             },
-            "time": "2026-07-15T18:50:16+00:00"
+            "time": "2026-10-08T11:59:02+00:00"
         },
         {
             "name": "cboxdk/laravel-ssrf",

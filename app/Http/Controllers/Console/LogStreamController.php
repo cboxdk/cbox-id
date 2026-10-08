@@ -61,6 +61,9 @@ final readonly class LogStreamController extends ConsoleController
         'graylog_gelf' => 'Graylog (GELF)',
         'cef_http' => 'CEF over HTTP',
         'generic_json' => 'Generic JSON',
+        'datadog' => 'Datadog',
+        's3' => 'Amazon S3',
+        'gcs' => 'Google Cloud Storage',
     ];
 
     /** Auth scheme value => what the endpoint is presented with. */
@@ -110,7 +113,7 @@ final readonly class LogStreamController extends ConsoleController
                     'value' => $destination->value,
                     'label' => self::DESTINATIONS[$destination->value],
                 ],
-                Destination::cases(),
+                Destination::httpCollectors(),
             ),
             'schemes' => array_map(
                 static fn (AuthScheme $scheme): array => [

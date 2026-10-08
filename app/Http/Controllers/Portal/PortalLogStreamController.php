@@ -55,7 +55,7 @@ final readonly class PortalLogStreamController extends PortalController
             'destinations' => array_map(static fn (Destination $destination): array => [
                 'value' => $destination->value,
                 'defaultAuth' => $destination->defaultAuth()->value,
-            ], Destination::cases()),
+            ], Destination::httpCollectors()),
             'urls' => ['create' => route('portal.log-streams.store')],
         ]);
     }
