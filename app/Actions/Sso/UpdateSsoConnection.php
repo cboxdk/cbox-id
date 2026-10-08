@@ -76,13 +76,28 @@ final readonly class UpdateSsoConnection implements Action
 
         SsoFields::assertComplete($config);
 
+        // An optional value neither sent nor on file is not on file as blank.
+        $config = array_filter(
+            $config,
+            static fn (string $value, string $key): bool => $value !== '' || ! in_array($key, SsoFields::OPTIONAL, true),
+            ARRAY_FILTER_USE_BOTH,
+        );
+
         if ($connection->type === ConnectionType::Oidc) {
             $config = SsoFields::discovered($config);
+
+            // Re-discovered, the key set's address is the document's — one it no longer
+            // names is not kept from before.
+            unset($current['jwks_uri']);
         }
 
         // Everything else on file stays: the certificates staged for a rollover, the
         // logout URL, the IdP-initiated switch — none of them is a field of this form.
         $config = [...$current, ...$config];
+
+        if ($connection->type === ConnectionType::Oidc) {
+            SsoFields::assertVerifiable($config);
+        }
 
         $name = $context->nullableString('name');
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console\Organization;
 
 use App\Actions\PortalLinks\CreatePortalLink;
+use App\Actions\PortalLinks\RevokePortalLink;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -57,5 +58,25 @@ final readonly class OrganizationPortalLinkController extends OrganizationTabCon
         return is_string($sentTo)
             ? back()->with('status', "Setup link sent to {$sentTo}.")
             : back();
+    }
+
+    /**
+     * THE OVERVIEW'S "Revoke" — withdraw a link that is still outstanding, through the action
+     * a management key withdraws it with (`organizations.portal_links.revoke`): the link is
+     * looked up inside this organization, and a setup session it opened ends on its next
+     * request.
+     */
+    public function destroy(string $link): RedirectResponse
+    {
+        $organization = $this->organization();
+
+        $result = $this->act(RevokePortalLink::class, [
+            'organization_id' => $organization->id,
+            'id' => $link,
+        ]);
+
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Admin Portal link revoked.');
     }
 }

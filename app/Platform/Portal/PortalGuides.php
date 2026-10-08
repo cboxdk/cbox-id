@@ -23,9 +23,12 @@ use Cbox\Id\Federation\ProviderCatalog;
  * names are NOT — "Audience URI (SP Entity ID)" is what the person will find on Okta's
  * screen, whatever language this page is in.
  *
- * `fields` maps each of OUR values to THEIR field: `acs_url`, `entity_id`, `redirect_uri`,
- * `scim_base_url`, `scim_token`, plus `acs_regex` for OneLogin's validator and a `literal`
- * for a value that is the same for everybody. `returns` names what they bring back from
+ * `fields` maps each of OUR values to THEIR field: `acs_url`, `entity_id`, `metadata_url`,
+ * `redirect_uri`, `scim_base_url`, `scim_token`, plus `acs_regex` for OneLogin's validator
+ * and a `literal` for a value that is the same for everybody. `metadata_url` is listed only
+ * where the provider's screen has a field that takes one by URL (PingFederate's Import
+ * Metadata step); every other SAML guide still shows it, under our own name for it, for
+ * whoever's provider imports a file or a URL somewhere the guide does not cover. `returns` names what they bring back from
  * their screen: a metadata URL or file, or an issuer and client credentials.
  */
 final class PortalGuides
@@ -105,6 +108,7 @@ final class PortalGuides
             'protocol' => 'saml',
             'fields' => [
                 ['ours' => 'entity_id', 'theirs' => 'Partner\'s Entity ID (Connection ID)'],
+                ['ours' => 'metadata_url', 'theirs' => 'Import Metadata — URL'],
                 ['ours' => 'acs_url', 'theirs' => 'Assertion Consumer Service URL — Endpoint URL (binding POST)'],
                 ['ours' => 'literal', 'theirs' => 'SAML_SUBJECT', 'literal' => 'mail'],
             ],

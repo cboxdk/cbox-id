@@ -12,6 +12,7 @@ use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -373,3 +374,63 @@ it('mints a link from the organization hub with intents, lifetime and the IT con
         ->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => []])
         ->assertSessionHasErrors('intents');
 });
+
+it('lists the outstanding Admin Portal links on the overview, and revokes one as the administrator', function (): void {
+    $orgId = anEnvironmentAdminWithOrganizations();
+    $actor = app(ConsoleScope::class)->actorId();
+
+    $this->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => ['sso'], 'email' => 'it@tenant.example'])
+        ->assertSessionHasNoErrors();
+    $link = AdminPortalLink::query()->where('organization_id', $orgId)->sole();
+
+    // A finished one is the audit log's to tell, not the overview's.
+    AdminPortalLink::query()->create([
+        'organization_id' => $orgId,
+        'intents' => ['dsync'],
+        'token_hash' => hash('sha256', 'finished'),
+        'expires_at' => now()->addHour(),
+        'consumed_at' => now(),
+        'completed_at' => now(),
+        'created_by' => $actor,
+    ]);
+
+    $this->get(route('environment.organizations.show', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('portalLinks', 1)
+            ->where('portalLinks.0.id', $link->id)
+            ->where('portalLinks.0.intents', ['Enterprise SSO'])
+            ->where('portalLinks.0.inUse', false)
+            ->where('portalLinks.0.emailedTo', 'it@tenant.example')
+            ->where('portalLinks.0.revokeHref', route('environment.organizations.portal-links.revoke', ['organization' => $orgId, 'link' => $link->id]))
+            ->missing('portalLinks.0.url'));
+
+    $this->from(route('environment.organizations.show', $orgId))
+        ->delete(route('environment.organizations.portal-links.revoke', ['organization' => $orgId, 'link' => $link->id]))
+        ->assertRedirect(route('environment.organizations.show', $orgId))
+        ->assertSessionHas('status', 'Admin Portal link revoked.');
+
+    expect($link->refresh()->revoked_at)->not->toBeNull();
+
+    $entry = AuditEntry::query()->where('action', 'portal_link.revoked')->sole();
+
+    expect($entry->actor_id)->toBe($actor)
+        ->and($entry->actor_type)->toBe(ActorType::OrganizationMember)
+        ->and($entry->target_id)->toBe($link->id);
+
+    $this->get(route('environment.organizations.show', $orgId))
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('portalLinks', 0));
+})->group('security');
+
+it('answers 404 for revoking another organization\'s Admin Portal link from this one\'s page', function (): void {
+    $orgId = anEnvironmentAdminWithOrganizations();
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-portal-co'))->id;
+
+    $this->post(route('environment.organizations.portal-links.store', $other), ['intents' => ['sso']])->assertSessionHasNoErrors();
+    $theirs = AdminPortalLink::query()->where('organization_id', $other)->sole();
+
+    $this->delete(route('environment.organizations.portal-links.revoke', ['organization' => $orgId, 'link' => $theirs->id]))->assertNotFound();
+    $this->delete(route('environment.organizations.portal-links.revoke', ['organization' => anOrganizationElsewhere(), 'link' => $theirs->id]))->assertNotFound();
+
+    expect($theirs->refresh()->revoked_at)->toBeNull();
+})->group('security');

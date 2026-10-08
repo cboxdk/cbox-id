@@ -142,6 +142,8 @@ return [
         'start' => 'Start with :provider',
         'started' => 'Connection started. Now create the app in your identity provider.',
         'values_lead' => 'Copy each value into the field with the same name in :provider:',
+        'sp_metadata_url' => 'Service provider metadata URL',
+        'sp_metadata_url_hint' => 'If :provider can import service provider metadata, give it this URL (or the file it downloads) instead of the values above.',
         'set_to' => 'Set to',
         'steps_heading' => 'Step by step',
         'returns' => [
@@ -160,7 +162,8 @@ return [
         'issuer' => 'Issuer URL',
         'client_id' => 'Client ID',
         'client_secret' => 'Client secret',
-        'signing_key' => 'Signing key',
+        'signing_key' => 'Signing key (optional)',
+        'signing_key_hint' => 'Leave this blank for almost every provider: we read its signing keys from its OpenID configuration and follow its key rotations. Paste the provider\'s public key (PEM) only if it does not publish them.',
         'secret_keep' => 'Leave blank to keep the value already saved.',
         'save' => 'Save',
         'saved' => 'Saved.',

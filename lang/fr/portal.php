@@ -129,6 +129,8 @@ return [
         'start' => 'Commencer avec :provider',
         'started' => 'Connexion lancée. Créez maintenant l’application dans votre fournisseur d’identité.',
         'values_lead' => 'Copiez chaque valeur dans le champ portant le même nom dans :provider :',
+        'sp_metadata_url' => 'URL des métadonnées du fournisseur de services',
+        'sp_metadata_url_hint' => 'Si :provider peut importer les métadonnées d\'un fournisseur de services, donnez-lui cette URL (ou le fichier qu\'elle télécharge) au lieu des valeurs ci-dessus.',
         'set_to' => 'Définir sur',
         'steps_heading' => 'Étape par étape',
         'returns' => [
@@ -147,7 +149,8 @@ return [
         'issuer' => 'URL de l’émetteur (Issuer)',
         'client_id' => 'ID client',
         'client_secret' => 'Secret client',
-        'signing_key' => 'Clé de signature',
+        'signing_key' => 'Clé de signature (facultatif)',
+        'signing_key_hint' => 'Laissez ce champ vide pour presque tous les fournisseurs : nous lisons leurs clés de signature dans leur configuration OpenID et suivons leurs rotations de clés. Ne collez la clé publique (PEM) du fournisseur que s\'il ne les publie pas.',
         'secret_keep' => 'Laissez vide pour conserver la valeur déjà enregistrée.',
         'save' => 'Enregistrer',
         'saved' => 'Enregistré.',

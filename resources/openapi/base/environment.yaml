@@ -760,6 +760,39 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{organization_id}/portal-links:
+    get:
+      operationId: organizations_portal_links_list
+      x-action: organizations.portal_links.list
+      x-scope: portal_links:read
+      x-danger: read
+      tags: [Admin Portal]
+      summary: List an organization's Admin Portal links
+      description: |
+        Requires scope `portal_links:read`. Danger: read. The links minted in the last 30
+        days, newest first — every link that can still be opened is among them, since a link
+        waits a week at most. Each says what it opens, who minted it, whom it was mailed to
+        and where it stands (`status`). Never the link itself: it was shown once, when it was
+        minted, and only its hash is kept. Not paged.
+      parameters:
+        - $ref: "#/components/parameters/OrganizationId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PortalLinkRecord" }
+        "202": { $ref: "#/components/responses/ApprovalRequired" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /organizations/{organization_id}/domains:
     get:
       operationId: organizations_domains_list
@@ -2709,10 +2742,14 @@ components:
             client_id: { type: string }
         service_provider:
           type: ["object", "null"]
-          description: "What to paste into the identity provider: this connection's own entity id and ACS URL (SAML), or its redirect URI (OIDC). null for a social sign-in connection."
+          description: "What to paste into the identity provider: this connection's own entity id, ACS URL and SP metadata URL (SAML), or its redirect URI (OIDC). null for a social sign-in connection."
           properties:
             sp_entity_id: { type: string }
             sp_acs_url: { type: string, format: uri }
+            sp_metadata_url:
+              type: string
+              format: uri
+              description: "SAML: this connection's service-provider metadata (entity id and ACS URL as one XML document), for an identity provider that imports SP metadata. Served for a draft too, before the identity provider's half is known."
             redirect_uri: { type: string, format: uri }
         created_at: { type: ["string", "null"], format: date-time }
         updated_at: { type: ["string", "null"], format: date-time }
@@ -2802,6 +2839,31 @@ components:
             The one-time setup link — the whole credential. Shown once; `null` on an
             idempotent replay of this answer.
         expires_at: { type: ["string", "null"], format: date-time }
+    PortalLinkRecord:
+      type: object
+      description: "An Admin Portal link as a list shows it. Never its URL: that was shown once, when it was minted, and only its hash is kept."
+      required: [id, organization_id, intents, status, created_at, created_by, emailed_to, expires_at, consumed_at, completed_at, revoked_at]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        intents:
+          type: array
+          description: "What the link may set up."
+          items: { type: string, enum: [sso, dsync, domain_verification, log_streams, certificate_renewal, audit_logs] }
+        status:
+          type: string
+          enum: [pending, in_use, completed, expired, revoked]
+          description: |
+            `pending`: not opened yet, and it still can be. `in_use`: opened, and the setup
+            session it started may still be running. `completed`: its setup was finished.
+            `expired`: never opened in time, or its setup session ran out. `revoked`: withdrawn.
+        created_at: { type: ["string", "null"], format: date-time }
+        created_by: { type: string, description: "Who minted it: the console person's id, or the management key's." }
+        emailed_to: { type: ["string", "null"], description: "The address it was mailed to, or null when it was not sent." }
+        expires_at: { type: ["string", "null"], format: date-time, description: "How long it could wait to be opened." }
+        consumed_at: { type: ["string", "null"], format: date-time, description: "When it was opened. It is single-use." }
+        completed_at: { type: ["string", "null"], format: date-time, description: "When its setup was finished." }
+        revoked_at: { type: ["string", "null"], format: date-time, description: "When it was withdrawn." }
     AuditLogEvent:
       type: object
       description: |

@@ -6,6 +6,7 @@ import {
     Badge,
     Button,
     ConfirmDelete,
+    CopyButton,
     EmptyState,
     Field,
     Icon,
@@ -33,6 +34,16 @@ type Props = PageProps<{
             client_id: string;
         };
     };
+    /**
+     * What to paste into the identity provider: `sp_metadata_url` (with the entity id and ACS
+     * URL it carries) for SAML, `redirect_uri` for OIDC.
+     */
+    serviceProvider: {
+        sp_entity_id?: string;
+        sp_acs_url?: string;
+        sp_metadata_url?: string;
+        redirect_uri?: string;
+    } | null;
     organizationName: string | null;
     organizationHref: string | null;
     /** The connection was just activated and passwords still work — so the offer stands. */
@@ -51,6 +62,7 @@ type Props = PageProps<{
 
 export default function ConnectionDetail({
     connection,
+    serviceProvider,
     organizationName,
     organizationHref,
     offeringMandate,
@@ -130,6 +142,24 @@ export default function ConnectionDetail({
                 )}
             </Panel>
 
+            {serviceProvider !== null && (
+                <Panel
+                    title="For the identity provider"
+                    description={
+                        saml
+                            ? "An identity provider that imports service provider metadata takes this URL instead of the entity ID and ACS URL one at a time. It works before the identity provider's half is filled in."
+                            : 'Register this as an allowed redirect URI at the provider, exactly as shown.'
+                    }
+                >
+                    {saml && serviceProvider.sp_metadata_url !== undefined && (
+                        <CopyRow label="SP metadata URL" value={serviceProvider.sp_metadata_url} />
+                    )}
+                    {!saml && serviceProvider.redirect_uri !== undefined && (
+                        <CopyRow label="Redirect URI" value={serviceProvider.redirect_uri} />
+                    )}
+                </Panel>
+            )}
+
             {!entitled ? (
                 <div className="card">
                     <EmptyState
@@ -186,8 +216,8 @@ export default function ConnectionDetail({
                                     <strong>including yours</strong>.
                                 </li>
                                 <li>
-                                    You can turn it off again on Authentication policy; sessions that ended
-                                    stay ended.
+                                    You can turn it off again on Authentication policy; sessions
+                                    that ended stay ended.
                                 </li>
                             </ul>
                             <div className="mt-4 flex flex-wrap gap-2">
@@ -356,6 +386,8 @@ export default function ConnectionDetail({
 
                                     <SecretField
                                         label="Signing key"
+                                        optional
+                                        hint="Only for a provider that does not publish its signing keys (jwks_uri) in its discovery document — they are read from there otherwise, rotations included. A PEM public key. Stored sealed and never shown again; leave it empty to keep the current one."
                                         name="signing_key"
                                         rows={3}
                                         value={form.data.signing_key}
@@ -432,6 +464,8 @@ function SecretField({
     rows,
     value,
     error,
+    optional = false,
+    hint = 'Stored sealed and never shown again. Leave it empty to keep the current one.',
     onChange,
 }: {
     label: string;
@@ -439,14 +473,12 @@ function SecretField({
     rows?: number;
     value: string;
     error?: string;
+    optional?: boolean;
+    hint?: string;
     onChange: (value: string) => void;
 }) {
     return (
-        <Field
-            label={label}
-            hint="Stored sealed and never shown again. Leave it empty to keep the current one."
-            error={error}
-        >
+        <Field label={label} optional={optional} hint={hint} error={error}>
             {rows === undefined ? (
                 <Input
                     name={name}
@@ -469,6 +501,26 @@ function SecretField({
                 />
             )}
         </Field>
+    );
+}
+
+/** A value somebody carries into another admin screen: named, in full, with a copy button. */
+function CopyRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div>
+            <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                {label}
+            </p>
+            <div className="mt-1 flex items-start gap-2">
+                <code
+                    className="mono text-xs rounded-lg px-3 py-2 select-all break-all flex-1 min-w-0"
+                    style={{ background: 'var(--secondary)', border: '1px solid var(--border)' }}
+                >
+                    {value}
+                </code>
+                <CopyButton value={value} aria-label={`Copy ${label}`} />
+            </div>
+        </div>
     );
 }
 
