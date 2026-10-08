@@ -746,6 +746,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'api_keys:write'
+      x-danger: destructive
   /apis:
     get:
       tags:
@@ -791,6 +793,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.list
+      x-scope: 'apis:read'
+      x-danger: read
     post:
       tags:
         - APIs
@@ -868,6 +873,9 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.create
+      x-scope: 'apis:write'
+      x-danger: write
   '/apis/{id}':
     get:
       tags:
@@ -907,6 +915,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.get
+      x-scope: 'apis:read'
+      x-danger: read
     patch:
       tags:
         - APIs
@@ -969,6 +980,9 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.update
+      x-scope: 'apis:write'
+      x-danger: write
     delete:
       tags:
         - APIs
@@ -1000,6 +1014,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-action: apis.delete
+      x-scope: 'apis:write'
+      x-danger: destructive
   '/apis/{id}/scopes/{key}':
     put:
       tags:
@@ -1302,6 +1319,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:read'
+      x-danger: read
     post:
       tags:
         - Applications
@@ -1426,6 +1445,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:write'
+      x-danger: critical
   '/apps/{id}':
     delete:
       tags:
@@ -1648,6 +1669,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:read'
+      x-danger: read
   '/apps/{id}/copy':
     post:
       tags:
@@ -1974,6 +1997,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'apps:read'
+      x-danger: read
     post:
       tags:
         - Applications
@@ -6668,6 +6693,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:read'
+      x-danger: read
     post:
       operationId: organizations_create
       x-action: organizations.create
@@ -6759,6 +6786,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: write
   '/organizations/{id}':
     get:
       operationId: organizations_get
@@ -6798,6 +6827,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:read'
+      x-danger: read
     patch:
       operationId: organizations_update
       x-action: organizations.update
@@ -6871,6 +6902,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: write
     delete:
       operationId: organizations_delete
       x-action: organizations.delete
@@ -6921,6 +6954,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: destructive
   '/organizations/{id}/reactivate':
     post:
       tags:
@@ -7097,6 +7132,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:write'
+      x-danger: critical
   '/organizations/{organization_id}/api-keys':
     get:
       operationId: api_keys_list
@@ -7153,6 +7190,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'api_keys:read'
+      x-danger: read
   '/organizations/{organization_id}/domains':
     get:
       operationId: organizations_domains_list
@@ -7198,6 +7237,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'organizations:read'
+      x-danger: read
     post:
       tags:
         - Organizations
@@ -7505,6 +7546,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'invitations:read'
+      x-danger: read
     post:
       operationId: invitations_send
       x-action: invitations.send
@@ -7608,6 +7651,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'invitations:write'
+      x-danger: write
   '/organizations/{organization_id}/invitations/{invitation_id}':
     delete:
       operationId: invitations_revoke
@@ -7648,6 +7693,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'invitations:write'
+      x-danger: destructive
   '/organizations/{organization_id}/invitations/{invitation_id}/resend':
     post:
       operationId: invitations_resend
@@ -7704,6 +7751,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'invitations:write'
+      x-danger: write
   '/organizations/{organization_id}/members':
     get:
       operationId: members_list
@@ -7752,6 +7801,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:read'
+      x-danger: read
     post:
       operationId: members_add
       x-action: members.add
@@ -7848,6 +7899,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:write'
+      x-danger: write
   '/organizations/{organization_id}/members/{user_id}':
     patch:
       operationId: members_update
@@ -7910,6 +7963,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:write'
+      x-danger: write
     delete:
       operationId: members_remove
       x-action: members.remove
@@ -7949,6 +8004,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'members:write'
+      x-danger: destructive
   '/organizations/{organization_id}/members/{user_id}/roles':
     get:
       operationId: members_roles_list
@@ -7996,6 +8053,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
   '/organizations/{organization_id}/members/{user_id}/roles/{role_id}':
     put:
       operationId: members_roles_grant
@@ -8058,6 +8117,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: write
     delete:
       operationId: members_roles_revoke
       x-action: members.roles.revoke
@@ -8095,6 +8156,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: destructive
   '/organizations/{organization_id}/portal-links':
     get:
       operationId: organizations_portal_links_list
@@ -9017,6 +9080,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
     post:
       tags:
         - Roles
@@ -12060,6 +12125,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'support:write'
+      x-danger: critical
   '/support-sessions/{id}':
     delete:
       tags:
@@ -12679,6 +12746,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:read'
+      x-danger: read
     post:
       operationId: users_create
       x-action: users.create
@@ -12748,6 +12817,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:write'
+      x-danger: write
   '/users/{id}':
     get:
       operationId: users_get
@@ -12787,6 +12858,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:read'
+      x-danger: read
     delete:
       operationId: users_deactivate
       x-action: users.deactivate
@@ -12830,6 +12903,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:write'
+      x-danger: destructive
     patch:
       tags:
         - Users
@@ -12944,6 +13019,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
   '/users/{id}/environment-roles/{role_id}':
     get:
       operationId: users_environment_roles_get
@@ -12987,6 +13064,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:read'
+      x-danger: read
     put:
       operationId: users_environment_roles_grant
       x-action: users.environment_roles.grant
@@ -13040,6 +13119,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: critical
     delete:
       operationId: users_environment_roles_revoke
       x-action: users.environment_roles.revoke
@@ -13074,6 +13155,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'roles:write'
+      x-danger: destructive
   '/users/{id}/erase':
     post:
       tags:
@@ -13412,6 +13495,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'users:read'
+      x-danger: read
     delete:
       tags:
         - Users

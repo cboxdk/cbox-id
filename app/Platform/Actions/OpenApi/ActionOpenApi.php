@@ -50,7 +50,7 @@ final readonly class ActionOpenApi
                 // approval, and every environment action is reached from the platform root
                 // as well, whoever wrote its operation.
                 if (is_array($paths[$path][$method])) {
-                    $paths[$path][$method] = self::holdable($paths[$path][$method]);
+                    $paths[$path][$method] = self::described(self::holdable($paths[$path][$method]), $action);
                 }
 
                 if (is_array($paths[$path][$method]) && $plane === ActionPlane::Environment) {
@@ -213,6 +213,24 @@ final readonly class ActionOpenApi
         $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
         $responses = self::withResponse($responses, 400, ['$ref' => '#/components/responses/EnvironmentRequired']);
         $operation['responses'] = self::withResponse($responses, 404, ['$ref' => '#/components/responses/NotFound']);
+
+        return $operation;
+    }
+
+    /**
+     * The machine-readable action facts a generated operation carries — `x-action`,
+     * `x-scope`, `x-danger` — on a hand-written one too, so a generated client reads every
+     * operation the same way instead of parsing prose for the ones a person wrote. A value
+     * the base already states is left as written.
+     *
+     * @param  array<mixed>  $operation
+     * @return array<mixed>
+     */
+    private static function described(array $operation, ActionDefinition $action): array
+    {
+        $operation['x-action'] ??= $action->name;
+        $operation['x-scope'] ??= $action->scope;
+        $operation['x-danger'] ??= $action->danger->value;
 
         return $operation;
     }

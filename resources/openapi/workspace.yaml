@@ -100,6 +100,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'workspace:read'
+      x-danger: read
     patch:
       tags:
         - Workspace
@@ -244,6 +246,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'workspace:read'
+      x-danger: read
     post:
       tags:
         - Environments
@@ -343,6 +347,8 @@ paths:
                 message: 'Project [01J…] has reached its plan limit of 2 environment(s).'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'environments:write'
+      x-danger: critical
   '/workspace/environments/{environment_id}/domain':
     delete:
       tags:
@@ -625,6 +631,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'team:read'
+      x-danger: read
   '/workspace/invitations/{id}':
     delete:
       tags:
@@ -655,6 +663,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'team:write'
+      x-danger: destructive
   '/workspace/invitations/{id}/resend':
     post:
       tags:
@@ -701,6 +711,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'team:write'
+      x-danger: write
   /workspace/keys:
     post:
       tags:
@@ -917,6 +929,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'team:read'
+      x-danger: read
     post:
       tags:
         - Team
@@ -988,6 +1002,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
+      x-scope: 'team:write'
+      x-danger: write
   '/workspace/members/{id}':
     delete:
       tags:
@@ -1216,6 +1232,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'workspace:read'
+      x-danger: read
     post:
       tags:
         - Projects
@@ -1265,6 +1283,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope: 'projects:write'
+      x-danger: write
   /workspace/projects/verification/resend:
     post:
       tags:
