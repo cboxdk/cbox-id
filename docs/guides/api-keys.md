@@ -1,10 +1,10 @@
 ---
-title: API keys
+title: My API keys and Member API keys
 weight: 22
 description: Keys people create for the APIs of the apps they use — creating your own under My account, and seeing and revoking everybody's as an organization admin.
 ---
 
-# API keys
+# My API keys and Member API keys
 
 **Console pages:** My account › My API keys, Members & roles › Member API keys, and each
 organization's page in an environment console
@@ -13,8 +13,8 @@ Some apps that sign you in through Cbox ID have an API of their own. An API key 
 your scripts and integrations call that API as you, without signing in. You create the
 key here; the app checks it with Cbox ID every time it is used.
 
-These are not the [Keys](keys.md) under Workspace, which are for your own code calling
-Cbox ID.
+These are not the [API keys](keys.md) page under Workspace, whose keys are for your own
+code calling Cbox ID.
 
 ## Creating a key
 
@@ -72,3 +72,9 @@ it. An admin revoking somebody else's key is recorded as the admin.
 An app offers keys once it has a key prefix: **Developers › Applications ›** *the app* **›
 Settings › API keys**. For the whole integration, verifying keys included, see
 [Let your customers create API keys](../getting-started/let-your-customers-create-api-keys.md).
+
+## Related
+
+- [API keys](keys.md) — the keys your own code presents to Cbox ID, which are a different thing.
+- [Members and invitations](members.md) — a key stops working when its holder leaves.
+- [Audit log](activity-log.md) — every key created and revoked.

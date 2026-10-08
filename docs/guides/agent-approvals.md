@@ -1,10 +1,10 @@
 ---
-title: Agent approvals
+title: Approvals
 weight: 120
 description: What it means when an app or AI agent asks to act on your behalf, how to check the request is really yours, when to deny, and how an administrator reviews every pending request in an environment.
 ---
 
-# Agent approvals
+# Approvals
 
 **Console page:** Overview › Approvals (`/approvals`), and AI agents › Approvals in an
 environment console (`/admin/approvals`)
@@ -102,6 +102,9 @@ there is no browser in front of it to notice a smaller grant.
 
 ## Related
 
+- [Step-up approvals](step-up-approvals.md) — the agent's side: why a call is held, and how it retries once approved.
+- [Trusted devices](trusted-devices.md) — the phone that answers these requests.
+- [Agents and MCP](agents-and-mcp.md) — connecting the agents that ask.
 - [Token vault](token-vault.md) — the credentials agents use once approved.
 - [Apps](apps-and-api-keys.md).
 - [Sign in from a CLI](../getting-started/sign-in-from-a-cli.md) — the same idea when

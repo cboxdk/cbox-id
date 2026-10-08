@@ -22,7 +22,7 @@ Both refuse to run on a platform that is not empty. That is not an oversight: a
 second install would mint a second platform root and hand out a credential on a live
 deployment, so there is deliberately no flag to force it.
 
-For the two-minute version see [Quickstart](../quickstart.md); for production
+For the two-minute version see the [self-hosting quickstart](../self-hosting/quickstart.md); for production
 hardening see [Deployment](../operations/deployment.md).
 
 ## 1. Install the code

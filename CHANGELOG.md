@@ -10,6 +10,18 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Documentation overhaul.** Framework quickstarts (`docs/quickstarts/`: Next.js, React, Laravel, Nuxt, Go, Python) from zero to a first sign-in; a Concepts section (planes and hosts, keys and tokens, actions — "one action, four doors" —, approvals, Audit log versus App audit logs); new guides for the Admin Portal, Log streams, Custom domains and Step-up approvals; a section for customers' IT admins (`docs/for-it-admins/`) per portal intent with identity-provider setup guides; a Self-hosting landing page. `docs/quickstart.md` is now a stub pointing at the quickstarts and at `docs/self-hosting/quickstart.md`, where the operator walkthrough moved.
+- **`php artisan docs:actions`** writes `docs/reference/actions-<plane>.md` from the action registry — every action's REST method and path, scope, danger, MCP tool, CLI command, summary and input fields — and `--check` fails when a committed page is stale (`tests/Feature/Actions/ActionsReferenceTest.php`), the same gate `openapi:build --check` is for the OpenAPI documents.
+- **A docs link checker** (`tests/Feature/DocsLinksTest.php`): every relative link and `#anchor` under `docs/`, and in the README and UPGRADING, resolves case-sensitively; a link out of `docs/` must be a canonical URL. It replaces the narrower `.md`-only sweep that lived in `ConsoleHelpTest`.
+- **Docs screenshots on demand**: `DemoEnvironmentSeeder` seeds a realistic demo environment and `tests/Browser/DocsScreenshotsTest.php` (group `docs-screenshots`, excluded from every normal and CI run) saves the key pages to `docs/screenshots/`. Run `vendor/bin/pest --group=docs-screenshots`.
+
+### Changed
+
+- **OpenAPI tags use the console's nouns.** Environment: Apps → Applications, Audit Logs → App audit logs, Frontend keys → Publishable keys, Management keys → Secret keys, Provisioning → Outbound provisioning. Workspace: Organization → Workspace, Members → Team, and the workspace document's prose says workspace where it still said organization. Operation ids, paths and `x-action` are unchanged; only the grouping a generated client or a docs viewer shows differs.
+- README rewritten: what the platform is, the hierarchy, the two kinds of host, the action layer and its four doors, the planes, quick links, and the licence stated as source-available (Elastic-2.0).
+
+### Added
+
 - **Domains in the organization console** (Sign-in › Domains, `/domains`): the email domains the organization claims, each proved with a DNS TXT record and, once verified, able to send everyone on it to the organization's Enterprise SSO. The same domains and the same writes as the Enterprise SSO page, which keeps listing them; gated on the same plan feature.
 
 ### Changed

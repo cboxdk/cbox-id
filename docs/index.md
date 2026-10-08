@@ -1,68 +1,65 @@
 ---
-title: Cbox ID — operator documentation
+title: Cbox ID documentation
 weight: 1
-description: The operator manual for deploying, configuring, and running the self-hostable Cbox ID app.
+description: Sign people in to your app, run your customers' organizations, wire agents to the management plane, and run Cbox ID yourself.
 ---
 
-# Cbox ID — operator documentation
+# Cbox ID documentation
 
-This is the **operator manual** for running the deployable Cbox ID app — the thing
-you self-host. It covers deploying, configuring, and operating the platform.
-
-> Building *against* Cbox ID (integrating an app, OAuth/OIDC/SCIM, entitlements)?
-> That's the **framework** documentation, which ships inside the
-> `cboxdk/laravel-id` package
-> ([github.com/cboxdk/laravel-id](https://github.com/cboxdk/laravel-id/blob/main/docs/index.md)) —
-> start with its
-> [Start here](https://github.com/cboxdk/laravel-id/blob/main/docs/getting-started/start-here.md)
-> guide.
-
-## Cross-repo links
-
-Cbox ID is a separate repository from the framework it composes. Because there is
-no shared checkout, references into the framework docs use **canonical public URLs**
-on `github.com/cboxdk/laravel-id`, never relative `../` paths. If you have the
-package installed, the same files live under `vendor/cboxdk/laravel-id/docs/`.
+Cbox ID is an identity platform: sign-in, organizations, Enterprise SSO, Directory Sync,
+API keys, App audit logs and an Admin Portal for your customers' IT admins, with every
+change reachable from the console, a REST API, an MCP server and the `cbox` CLI.
 
 ## Start here
 
-- [Workspaces & organizations](core-concepts/workspaces-and-organizations.md) — the five
-  layers, the difference between your workspace and the organizations in your product,
-  and which console you are in. Read this before the rest.
-- [Quickstart](quickstart.md) — operator zero-to-running in a few commands.
-- [Requirements](requirements.md) — exactly what `composer.json` enforces.
-- [Getting started](getting-started/_index.md) — installation and the first-run flow.
-- [Integrate your app](getting-started/integrate-your-app.md) — where a `client_id` comes from, and the first SDK call.
-- [Admin guides](guides/_index.md) — for the person administering an organization in
-  the console: single sign-on, user sync, roles, access reviews. These are what the
-  "?" beside each console page title links to.
+**Sign in to your first app in under ten minutes.** Pick your framework:
+[Next.js](quickstarts/nextjs.md) · [React](quickstarts/react.md) ·
+[Laravel](quickstarts/laravel.md) · [Nuxt](quickstarts/nuxt.md) · [Go](quickstarts/go.md)
+· [Python](quickstarts/python.md). Each one creates the app, installs the SDK, and walks
+through sign-in, the callback, a protected route and sign-out.
 
-## Configure and run
+Then read [Workspaces & organizations](core-concepts/workspaces-and-organizations.md):
+five minutes on how your workspace, projects, environments and your customers'
+organizations fit together saves an afternoon later.
 
-- [Configuration](configuration/_index.md) — every environment variable that
-  matters, and the secure defaults this app ships with.
-- [Operations](operations/_index.md) — deployment and day-2: **backing up the
-  crypto key**, key rotation, the health check, audit/monitoring, upgrades, and
-  break-glass.
-- [Security](security/_index.md) — the operator-facing security surfaces and the
-  system-level compliance view.
+## By what you are doing
 
-## The two-minute version
+| You are… | Go to |
+|---|---|
+| **building an app** that signs people in | [Quickstarts](quickstarts/_index.md), then [Getting started](getting-started/_index.md) |
+| **selling to enterprises**: SSO, SCIM, audit logs | [Enterprise SSO](guides/single-sign-on.md), [Directory Sync](guides/sync-users-in.md), [App audit logs](guides/audit-logs.md), [Admin Portal](guides/admin-portal.md) |
+| **wiring an AI agent** to Cbox ID | [Agents and MCP](guides/agents-and-mcp.md), [Actions](core-concepts/actions.md), [Step-up approvals](guides/step-up-approvals.md), [Actions reference](reference/_index.md) |
+| **automating** from a backend or CI | [Keys and tokens](core-concepts/keys-and-tokens.md), [Run your tenancy from your backend](getting-started/management-api.md), [Actions reference](reference/_index.md) |
+| **administering** an environment in the console | [Admin guides](guides/_index.md) |
+| **a customer's IT admin** holding an Admin Portal link | [For IT admins](for-it-admins/_index.md) |
+| **running Cbox ID yourself** | [Self-hosting](self-hosting/_index.md) |
 
-```bash
-composer install --no-dev --optimize-autoloader
-php artisan cbox-id:install     # keys, migrations, the first operator + environment
-php artisan cbox-id:doctor      # confirms everything is healthy, in plain language
-```
+## Sections
 
-Then serve behind TLS, run the queue worker and scheduler, and **back up
-`CBOX_ID_CRYPTO_KEY` somewhere separate from the database** — losing it makes
-sealed secrets unrecoverable. Details in [Operations](operations/_index.md).
+- [Quickstarts](quickstarts/_index.md) — zero to first sign-in, per framework.
+- [Concepts](core-concepts/_index.md) — the hierarchy, planes and hosts, keys versus
+  delegated tokens, actions ("one action, four doors"), approvals, and the two audit
+  records.
+- [Getting started](getting-started/_index.md) — the next layer after the first sign-in:
+  registering apps, organizations in your app, CLIs, customer API keys, the management API.
+- [Admin guides](guides/_index.md) — one per console page, linked from the "?" beside each
+  page title.
+- [For IT admins](for-it-admins/_index.md) — for your customers' IT administrators: what
+  an Admin Portal link lets them do, with setup guides for Okta, Microsoft Entra ID, Google
+  Workspace and generic SAML, OIDC and SCIM.
+- [Reference](reference/_index.md) — every action per plane, and the OpenAPI documents.
+- [Self-hosting](self-hosting/_index.md) — install, configure, deploy and operate it.
+  [Configuration](configuration/_index.md), [Operations](operations/_index.md) and
+  [Security](security/_index.md) are the operator manual.
 
-## What this app is
+## The framework underneath
 
-The deployable app built on `cboxdk/laravel-id`. The framework package provides the
-identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit); this app adds the
-admin console, onboarding, and hosted-cloud concerns. The console is Inertia +
-React over server-rendered props: session-cookie auth, and no tokens in the
-browser — because it *is* the login surface.
+Cbox ID is the deployable app built on the `cboxdk/laravel-id` framework, which provides the
+identity engine: crypto, tenancy, OAuth and OpenID Connect, SAML, SCIM, audit. The protocol
+level is documented with the framework, at
+[github.com/cboxdk/laravel-id](https://github.com/cboxdk/laravel-id/blob/main/docs/index.md).
+References into it are canonical URLs, never relative paths: the two are separate
+repositories.
+
+The console is Inertia and React over server-rendered props, with session-cookie auth and
+no tokens in the browser, because it *is* the sign-in surface.

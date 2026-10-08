@@ -1,112 +1,126 @@
 # Cbox ID
 
-The hosted, self-hostable identity platform — the deployable app built on
-[`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id). Central login, enterprise SSO
-(SAML/OIDC), directory sync (SCIM), RBAC, billing-driven entitlements, and a
-tamper-evident audit trail.
+The identity platform behind [cboxid.com](https://cboxid.com), and the app you can run
+yourself. Sign-in for your apps, your customers' organizations, Enterprise SSO (SAML and
+OIDC), Directory Sync (SCIM), roles and permissions, API keys, App audit logs, an Admin
+Portal for your customers' IT admins, and a tamper-evident Audit log — every change
+reachable from the console, a REST API, an MCP server and the `cbox` CLI.
 
-Repo: `cboxdk/cbox-id` (public; Elastic-2.0). This app composes the framework package and
-adds the admin console + hosted-cloud concerns (UI, onboarding, billing).
+It is the deployable app built on the [`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id)
+framework, which provides the identity engine (crypto, tenancy, OAuth 2.1 and OpenID
+Connect, SAML, SCIM, CIBA, audit). This repository adds the consoles, the hosted pages,
+onboarding, the action layer and the hosted-cloud concerns.
+
+**Source-available** under the Elastic License 2.0 (see [License](#license)).
+
+## Quick links
+
+| | |
+|---|---|
+| Sign in to your first app | [Quickstarts](docs/quickstarts/_index.md): Next.js, React, Laravel, Nuxt, Go, Python |
+| Understand the model | [Concepts](docs/core-concepts/_index.md), starting with [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md) |
+| Wire up an AI agent | [Agents and MCP](docs/guides/agents-and-mcp.md), [Actions reference](docs/reference/_index.md) |
+| Administer an environment | [Admin guides](docs/guides/_index.md) |
+| Hand a customer's IT admin a setup link | [Admin Portal](docs/guides/admin-portal.md), [For IT admins](docs/for-it-admins/_index.md) |
+| Run it yourself | [Self-hosting](docs/self-hosting/_index.md), [Upgrading](UPGRADING.md) |
+| Report a vulnerability | [SECURITY.md](SECURITY.md) |
+
+All documentation starts at [`docs/index.md`](docs/index.md).
+
+## How it is put together
+
+**Workspace → project → environment → organizations → users.** Your workspace is your own
+Cbox account; it owns projects (one identity product each), each project has environments
+(production, sandbox), and each environment is a fully isolated identity provider on its
+own host, holding your customers' organizations and their people.
+[More](docs/core-concepts/workspaces-and-organizations.md).
+
+**Two kinds of host.** The platform root (`cboxid.com`) serves the workspace console, the
+workspace and platform APIs, and one MCP server for your whole workspace. Each
+environment's own host (`<environment>.cboxid.com`, or a custom domain) is the OpenID
+Connect issuer your apps use, with its hosted sign-in pages, its console at `/admin`, its
+management API and its own MCP server. [More](docs/core-concepts/planes-and-hosts.md).
+
+**One action, four doors.** Every change the console can make is an *action*: one class in
+`app/Actions` declaring its name, REST route, scope, danger and input. The console, the
+REST API (generated from the registry), the MCP server (one tool per action at `/mcp`) and
+the `cbox` CLI (one command per action, built from the OpenAPI documents) all run it
+through the same runner: same authorization, validation, approvals, idempotency and audit
+entry. A key's creator can require a person's approval on their device before its
+dangerous actions run, and a token a person delegated always waits for them on critical
+ones. [More](docs/core-concepts/actions.md).
+
+**Four planes.** The management API is split by who acts over what: environment
+(`/api/v1`), workspace (`/api/v1/workspace`), account (`/api/v1/me`) and platform
+(`/api/v1/platform`). Each publishes a public OpenAPI 3.1 document, and the
+[actions reference](docs/reference/_index.md) is generated from the same registry.
 
 ## Stack
 
-- **Laravel 13**, PHP 8.4+ (argon2id password hashing is the configured default).
-- **Inertia + React + Tailwind v4** — server-routed UI: every page and every write is
-  a Laravel route with its own middleware, and React renders what the controller hands
-  it. Chosen for security: session-cookie auth (no tokens in the browser), one
-  same-origin Vite bundle, and a `script-src` with no `unsafe-inline` or `unsafe-eval` suit
-  an identity console.
-- Depends on **`cboxdk/laravel-id`** (Composer/Packagist) plus the first-party
-  observability stack (`laravel-telemetry`, `laravel-health`, `laravel-queue-metrics`,
-  `laravel-queue-autoscale`).
+- **Laravel 13**, PHP 8.4+, argon2id password hashing.
+- **Inertia + React 19 + Tailwind v4.** Every page and every write is a Laravel route with
+  its own middleware, and React renders the props the controller hands it. Chosen for an
+  identity console: session-cookie auth with no tokens in the browser, one same-origin
+  bundle, and a `script-src` without `unsafe-inline` or `unsafe-eval`. The console is in
+  English; the hosted pages (sign-in, consent, the Admin Portal and their emails) are
+  translated into six languages.
+- **`laravel/mcp`** for the MCP server; **`cboxdk/laravel-id`** for the identity engine; the
+  first-party observability stack (`laravel-telemetry`, `laravel-health`,
+  `laravel-queue-metrics`, `laravel-queue-autoscale`).
 
-## Quickstart
+## Run it locally
 
 ```bash
-git clone … && cd cbox-id
-composer setup          # installs deps, copies .env, creates the sqlite db,
-                        # then runs `cbox-id:install` (guided: mints the crypto
-                        # master key, sets issuer/WebAuthn, runs migrations)
+git clone https://github.com/cboxdk/cbox-id.git && cd cbox-id
+composer setup          # installs deps, copies .env, creates the sqlite db, then runs
+                        # `cbox-id:install`: mints the crypto master key, migrates, and
+                        # creates the first operator and environment (and, in the
+                        # SaaS shape, the first workspace)
 composer run dev        # serve + queue + vite + logs
 ```
 
-`cbox-id:install` is what creates the first **platform operator** — the identity
-above every environment — along with the platform-root environment and, in the SaaS
-shape, the first workspace. It prints where to sign in, and the generated password if
-it invented one. Sign in at **`/login`** on the console host; the deployment pages —
-workspaces, environments, organizations, operators — are the **Platform** area of that
-console (`/platform`),
-where you create environments and provision each one's first organization + admin.
-End users then sign in at `/login`.
-
-No shell on the box? An empty deployment serves one page, at **`/first-run`**, and
-points every other page at it. It requires the setup token the deployment writes to
-`storage/app/private/cbox-id-first-run.token` and to the application log, so reaching
-the URL is not enough to claim the platform. See [Quickstart](docs/quickstart.md).
-
-Required env (all in `.env.example`, keep secrets out of git): `CBOX_ID_CRYPTO_KEY`
-(base64 32 bytes — **back it up**), `CBOX_ID_ISSUER`, `CBOX_ID_WEBAUTHN_RP_ID`,
-`CBOX_ID_WEBAUTHN_ORIGIN`. Brand the console without editing code via
-`CBOX_ID_BRAND_*`; gate self-service signup with `CBOX_ID_SIGNUP_MODE`.
-
-Live platform endpoints (from the package): `/.well-known/openid-configuration`,
-`/.well-known/jwks.json`, `POST /oauth/token`, `POST /oauth/introspect`,
-`/scim/v2/Users`, `POST /sso/saml/{connection}/acs`.
-
-## Operator documentation
-
-Running or self-hosting this app? See [`docs/`](docs/index.md):
-
-- [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md) — the five layers and which console you are in. Read this first.
-- [Quickstart](docs/quickstart.md) — operator zero-to-running.
-- [Deployment](docs/operations/deployment.md) — fresh server to a hardened instance.
-- [Configuration](docs/configuration/environment-variables.md) — env reference + secure defaults.
-- [Operations](docs/operations/operations.md) — crypto-key backup, key rotation, upgrades, break-glass.
-- [**Upgrading**](UPGRADING.md) — breaking changes and the pre-deploy checklist for each. Read it before crossing a version; two of the current entries fail silently.
-- [Security](docs/security/_index.md) — operator security surfaces + compliance view.
-
-Integrating *against* the platform (OAuth/OIDC/SCIM, entitlements, existing users)
-is the framework documentation in the [`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id/blob/main/docs/index.md) package.
-
-Security disclosures: see [`SECURITY.md`](SECURITY.md).
+Sign in at `/login`. **Back up `CBOX_ID_CRYPTO_KEY`** somewhere separate from the database:
+losing it makes sealed secrets unrecoverable. The required variables are `CBOX_ID_CRYPTO_KEY`,
+`CBOX_ID_ISSUER`, `CBOX_ID_WEBAUTHN_RP_ID` and `CBOX_ID_WEBAUTHN_ORIGIN`, all in
+`.env.example`. No shell on the box? An empty deployment serves one page, `/first-run`,
+guarded by a setup token. See the [self-hosting quickstart](docs/self-hosting/quickstart.md)
+and, for production, [Deployment](docs/operations/deployment.md).
 
 ## Develop
 
 ```bash
-composer run dev     # serve + queue + vite + logs
+composer run dev                                  # the app, the queue, vite and logs
+vendor/bin/pest --parallel --testsuite=Unit,Feature
+vendor/bin/pest --testsuite=Browser               # real-browser tests (Playwright)
+vendor/bin/pint --test
+vendor/bin/phpstan analyse --memory-limit=2G
+php artisan openapi:build --check                 # the OpenAPI documents are current
+php artisan docs:actions --check                  # so is docs/reference
 ```
+
+Adding an action: write the class in `app/Actions/<Area>/`, then run
+`php artisan openapi:build` and `php artisan docs:actions` and commit what they write.
 
 ## Status
 
-Actively developed and dogfooded. It composes `cboxdk/laravel-id` 1.x (see
-[`composer.json`](composer.json) for the exact constraint) and has open security
-follow-ups. Review the
-[security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before
-running it in production. Shipped: full auth (password + magic-link + TOTP MFA +
-passkeys + social), signup → org onboarding with signup-mode lockdown, the admin
-console in nine areas (Overview, People, Sign-in, Access control, Developers,
-Connectors, Logs, Settings, My account — see
-[`ConsoleArea`](app/Platform/Console/ConsoleArea.php)) served by one set of
-components on both the organization and the environment console, a workspace console
-(Projects, Team, Keys, Billing, Workspace settings) for the team that owns the projects,
-the **Platform** areas (workspaces, environments, organizations, operators) for
-whoever has authority over the deployment, guided install (`cbox-id:install` or `/first-run`), branded error
-screens with telemetry trace IDs, and health/metrics endpoints. Session-cookie
-auth, strict CSP, rate limiting, and argon2id throughout.
+Actively developed and dogfooded on [cboxid.com](https://cboxid.com). It composes
+`cboxdk/laravel-id` 1.x (see [`composer.json`](composer.json) for the constraint). Review the
+[security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before running it in
+production, and [UPGRADING.md](UPGRADING.md) before crossing a version.
 
 ## License
 
-Cbox ID (this application) is licensed under the **Elastic License 2.0** — see
-[LICENSE](LICENSE). In short, you may use, copy, modify and redistribute it, with
-three limitations:
+Cbox ID (this application) is **source-available** under the **Elastic License 2.0** — see
+[LICENSE](LICENSE). It is not open source. You may use, copy, modify and redistribute it,
+with three limitations:
 
-- you may **not provide it to third parties as a hosted or managed service** that
-  gives them substantial access to its features;
-- you may not circumvent the licence-key functionality or remove/obscure protected
+- you may **not provide it to third parties as a hosted or managed service** that gives them
+  substantial access to its features;
+- you may not circumvent the licence-key functionality or remove or obscure protected
   features;
 - you may not remove or alter any licensing, copyright or other notices.
 
-Note the split: the framework it is built on, [`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id),
-is **MIT** — so building your own identity product on the framework is unrestricted.
-The Elastic-2.0 terms apply to this deployable app. If you want to run Cbox ID as a
-managed service for your own customers, get in touch about a commercial licence.
+The framework it is built on, [`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id), is
+**MIT**, so building your own identity product on the framework is unrestricted. The
+Elastic-2.0 terms apply to this deployable app. To run Cbox ID as a managed service for your
+own customers, get in touch about a commercial licence.

@@ -48,4 +48,4 @@ ticket, a screen share, a laptop that left.
 ## Related
 
 - [Apps](apps-and-api-keys.md) — the apps you grant.
-- [Agent approvals](agent-approvals.md).
+- [Approvals](agent-approvals.md).

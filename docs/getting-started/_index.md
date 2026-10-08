@@ -1,24 +1,43 @@
 ---
 title: Getting started
 weight: 10
-description: Install Cbox ID, complete the first-run flow, and see the shipped screens.
+description: Building on Cbox ID beyond the first sign-in — register apps, run your tenancy from your backend, organizations, CLIs, customer API keys and enterprise self-serve.
 ---
 
 # Getting started
 
-Everything you need to go from a checkout to a working identity provider you can
-sign into.
+The [quickstarts](../quickstarts/_index.md) get one framework to a first sign-in. These
+pages are the next layer: the decisions behind that first app, and the things most
+products add next.
 
-- [Installation & first run](installation.md) — set up the app, create the first
-  platform operator, and provision your first environment and organization.
+## Your app
+
+- [Integrate your app](integrate-your-app.md) — where a `client_id` comes from: register an
+  application, copy its credentials, find your issuer, point an SDK at them; publishable
+  keys and drawing your own sign-in form.
+- [Organizations in your app](organizations-in-your-app.md) — ask for an organization, let
+  people pick, switch or create one, and let strangers sign themselves up.
+- [Sign in from a CLI](sign-in-from-a-cli.md) — the device grant, for a terminal, a CI job
+  or anything without a browser of its own.
+- [Let your customers create API keys](let-your-customers-create-api-keys.md) — keys for
+  your own app's API, created on a hosted page and verified with your app's credentials.
+
+## Your backend
+
+- [Run your tenancy from your backend](management-api.md) — the environment management
+  API by task: organizations with owners, members, invitations with your app's roles,
+  admin & support roles, apps, APIs and support sessions.
+- [Enterprise self-serve](enterprise-self-serve.md) — hand a customer's IT admin an Admin
+  Portal link so they set up Enterprise SSO and Directory Sync themselves.
+
+## The console
+
 - [Screens](screens.md) — the workspace, organization and environment consoles and the
-  sign-in surface, area by area. The screenshots in it are dated and stale; the prose is
-  current.
+  sign-in surface, area by area.
 
-For the fast path, see the top-level [Quickstart](../quickstart.md). For production
-hardening, see [Deployment](../operations/deployment.md).
-- [Integrate your app](integrate-your-app.md) — where a `client_id` comes from: register an application, copy its credentials, point an SDK at them.
-- [Run your tenancy from your backend](management-api.md) — the environment management API: teams with owners, members, invitations with your app's roles, staff roles, apps, APIs and support sessions.
-- [Organizations in your app](organizations-in-your-app.md) — ask for an organization, let people pick, switch or create one, and let strangers sign themselves up.
-- [Sign in from a CLI](sign-in-from-a-cli.md) — the device grant, for a terminal, a CI job or anything without a browser of its own.
-- [Let your customers create API keys](let-your-customers-create-api-keys.md) — keys for your own app's API, created on a hosted page and verified with your app's credentials.
+## Running Cbox ID yourself
+
+- [Installation & first run](installation.md) — set up the app, create the first platform
+  operator, and provision your first environment and organization. The short version is
+  the [self-hosting quickstart](../self-hosting/quickstart.md); for production hardening,
+  see [Deployment](../operations/deployment.md).

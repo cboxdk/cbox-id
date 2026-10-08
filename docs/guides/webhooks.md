@@ -6,13 +6,13 @@ description: Receive signed notifications when something happens in your organiz
 
 # Webhooks
 
-**Console page:** Developers › Webhooks
+**Console page:** Developers › Webhooks, in an organization's console and in an environment console
 
 A webhook endpoint is a URL of yours that Cbox ID posts to **after** something
 happens: a member was added, a user signed in, a directory deactivated somebody.
 Your systems find out as it happens instead of polling, and — importantly — a
 webhook is a notification, not a vote. Your endpoint is told; it cannot hold
-anything up or refuse. If you need a say in the outcome, you want an
+anything up or refuse. If you need a say in the outcome, you want a
 [hook](inline-hooks.md) instead.
 
 ## Events you can subscribe to
@@ -44,14 +44,36 @@ subscribed to `*` receives both names for the same change, so count on one famil
 1. **Add endpoint**, give it your HTTPS URL, and tick the events it should receive.
 2. Copy the **signing secret**. It is shown once.
 3. Verify every delivery against that secret before acting on it (below).
-4. Send yourself a test event and confirm the whole path works before you rely on it.
+4. Make something happen that the endpoint subscribes to, such as inviting a test
+   member, and confirm the delivery arrives and verifies before you rely on it. There is
+   no "send test event" button.
 
-From your backend or an agent, the same lifecycle is on the management API
-(`webhooks:write`): `POST /api/v1/webhooks` with `url`, `event_types` and an
-`organization_id` (or `"environment_wide": true`). The answer carries the signing secret
-once; `POST /api/v1/webhooks/{id}/rotate` issues a new one the same way. Every change —
-from the console or the API — is on the [audit log](activity-log.md) as `webhook.*`,
-naming who made it. See [the management API](../getting-started/management-api.md#webhooks-hooks-log-streams-and-the-trail).
+An endpoint in an organization's console carries that organization's events only. One
+created in an environment console can instead be **environment-wide**, carrying every
+organization's events, which is why the API makes you say which you mean.
+
+From your backend or an agent, the same lifecycle is a set of [actions](../core-concepts/actions.md),
+on the management API, MCP and the CLI alike:
+
+| Action | REST | Scope | Danger |
+|---|---|---|---|
+| `webhooks.list`, `webhooks.get` | `GET /api/v1/webhooks`, `GET /api/v1/webhooks/{id}` | `webhooks:read` | read |
+| `webhooks.create` | `POST /api/v1/webhooks` | `webhooks:write` | critical |
+| `webhooks.update` | `PATCH /api/v1/webhooks/{id}` | `webhooks:write` | write |
+| `webhooks.pause`, `webhooks.resume` | `POST /api/v1/webhooks/{id}/pause`, `…/resume` | `webhooks:write` | write |
+| `webhooks.secret.rotate` | `POST /api/v1/webhooks/{id}/rotate` | `webhooks:write` | critical |
+| `webhooks.delete` | `DELETE /api/v1/webhooks/{id}` | `webhooks:write` | destructive |
+
+`webhooks.create` takes `url`, `event_types` and either `organization_id` or
+`"environment_wide": true`, never neither. Its answer carries the signing secret once;
+`webhooks.secret.rotate` issues a new one the same way. Creating an endpoint and rotating
+its secret are critical, so a key with an approval policy may have to wait for a person
+([step-up approvals](step-up-approvals.md)). Every change, from the console or the API, is
+on the [audit log](activity-log.md) as `webhook.*`, naming who made it. See
+[the management API](../getting-started/management-api.md#webhooks-hooks-log-streams-and-the-trail).
+
+**Pause** an endpoint to stop deliveries while you work on the receiver without losing
+its configuration; **Resume** picks up again.
 
 Can't accept inbound requests? Poll `GET /api/v1/events?after=<last id>` (`events:read`)
 for the same events instead.
@@ -76,10 +98,12 @@ with your endpoint's signing secret. To verify:
 
 ## Delivery behaviour
 
-- **Answer quickly.** Cbox ID allows a short timeout; do the real work in the
-  background and return `2xx` immediately.
-- **Retries use exponential backoff**, and a repeatedly failing endpoint is
-  circuit-broken rather than hammered.
+- **Answer quickly.** Cbox ID waits 5 seconds to connect and 10 seconds for the answer;
+  do the real work in the background and return `2xx` immediately.
+- **Retries use exponential backoff**, up to 12 attempts by default
+  (`CBOX_ID_WEBHOOKS_MAX_ATTEMPTS`). After 5 consecutive failures an endpoint is
+  circuit-broken and skipped for 5 minutes rather than hammered. That is recorded on
+  the endpoint's health, not as a pause: **Paused** is only ever your own choice.
 - **Handle repeats safely.** A delivery can arrive more than once — make your
   handler idempotent rather than assuming exactly-once.
 - **Redirects are not followed**, and the endpoint must be publicly resolvable.
@@ -88,5 +112,8 @@ with your endpoint's signing secret. To verify:
 ## Related
 
 - [Hooks](inline-hooks.md) — when you need to influence the outcome.
+- [Log streams](log-streams.md) — the audit log itself, mirrored to your SIEM.
 - [Audit log](activity-log.md) — the authoritative record, whatever your
   endpoint did or did not receive.
+- [Step-up approvals](step-up-approvals.md) — why `webhooks.create` from a key may wait for a person.
+- [Webhook events reference](https://github.com/cboxdk/laravel-id/blob/main/docs/reference/webhook-events.md) — every event and its payload.

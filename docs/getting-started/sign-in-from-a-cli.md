@@ -118,7 +118,7 @@ the one you registered, exactly so a native app can bind an ephemeral one (RFC 8
 ## Related
 
 - [Integrate your app](integrate-your-app.md) — where the `client_id` comes from.
-- [Agent approvals](../guides/agent-approvals.md) — the same idea for software that acts
+- [Approvals](../guides/agent-approvals.md) — the same idea for software that acts
   on somebody's behalf and needs a yes first (CIBA).
 - [Trusted devices](../guides/trusted-devices.md) — approving from a phone that is
   already enrolled.
