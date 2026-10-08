@@ -59,6 +59,38 @@ if (!window.ResizeObserver) {
     };
 }
 
+/**
+ * Web Storage, whatever the Node version. Node 25+ defines its own global `localStorage`
+ * that is unusable without `--localstorage-file` (every method missing), and it shadows
+ * jsdom's — so a test that reads or clears storage failed on a newer Node and passed on
+ * an older one. An in-memory Storage, the shape the browser has, for both.
+ */
+function memoryStorage(): Storage {
+    const items = new Map<string, string>();
+
+    return {
+        get length(): number {
+            return items.size;
+        },
+        clear: (): void => items.clear(),
+        getItem: (key: string): string | null => items.get(key) ?? null,
+        key: (index: number): string | null => Array.from(items.keys())[index] ?? null,
+        removeItem: (key: string): void => {
+            items.delete(key);
+        },
+        setItem: (key: string, value: string): void => {
+            items.set(key, String(value));
+        },
+    };
+}
+
+for (const name of ['localStorage', 'sessionStorage'] as const) {
+    if (typeof window[name]?.clear !== 'function') {
+        Object.defineProperty(window, name, { configurable: true, value: memoryStorage() });
+        Object.defineProperty(globalThis, name, { configurable: true, value: window[name] });
+    }
+}
+
 if (!Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = vi.fn<() => void>();
 }
