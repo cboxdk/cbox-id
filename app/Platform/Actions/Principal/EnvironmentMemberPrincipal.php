@@ -12,6 +12,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentOrigin;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -194,6 +195,10 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
      * runs must run, so that its lookups, its writes and its audit entries are this
      * environment's and no other's.
      *
+     * And with every URL it mints on this environment's own host ({@see EnvironmentOrigin}):
+     * the request arrived on the platform root, which serves none of the pages those URLs
+     * name — a SAML connection's ACS URL, an Admin Portal link, an invitation.
+     *
      * @template TReturn
      *
      * @param  Closure(): TReturn  $callback
@@ -201,6 +206,11 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
      */
     public function within(Closure $callback): mixed
     {
-        return app(EnvironmentContext::class)->runAs($this->environment, $callback);
+        $environmentId = (string) $this->environment->id;
+
+        return app(EnvironmentContext::class)->runAs(
+            $this->environment,
+            static fn (): mixed => app(EnvironmentOrigin::class)->run($environmentId, $callback),
+        );
     }
 }

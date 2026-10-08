@@ -13,6 +13,8 @@ Deploying and running a live identity provider.
   rotation, health checks, audit/monitoring, upgrades, and the break-glass runbook.
 - [Queue workers](queue-workers.md) — running the queue manager on Laravel Cloud and
   self-hosted, the operator-only job monitor, and the readiness signal for both.
+- [Live smoke test](live-smoke-test.md) — a reproducible end-to-end run with the real
+  clients (cbox CLI, an MCP client, both SDKs) against a live deployment.
 - [Analytics storage](analytics.md) — where authentication analytics are stored
   (nothing, the app's own database, or ClickHouse) and the retention each needs.
 

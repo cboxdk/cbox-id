@@ -98,23 +98,35 @@ final class MailLinks
         try {
             return $mint();
         } finally {
-            $this->url->forceRootUrl(null);
-            $this->url->forceScheme(null);
+            // Back to what was pinned before — an environment's origin while one of its
+            // actions runs from the platform root, else the request's own.
+            EnvironmentOrigin::apply($this->url, EnvironmentOrigin::pinned());
         }
     }
 
     /**
      * The origin a mailed link must carry, or null to let the request's own host stand.
      *
-     * Null when the request host RESOLVED to an environment. That is the whole test: a
-     * host that resolves is one this deployment was configured to answer on — a tenant's
-     * custom domain or its `{slug}.{base_domain}` subdomain — and mailing a tenant's
-     * users a link on the platform apex instead of on their own IdP host would be a
-     * regression, not a fix. A host that resolves to nothing is the poisoning case, and
+     * The pinned environment origin, while an environment's action runs from the platform
+     * root ({@see EnvironmentOrigin}). Otherwise null when the request host RESOLVED to an
+     * environment. That is the test: a host that resolves is one this deployment was
+     * configured to answer on — a tenant's custom domain or its `{slug}.{base_domain}`
+     * subdomain — and mailing a tenant's users a link on the platform apex instead of on
+     * their own IdP host would be a regression, not a fix. A host that resolves to nothing is the poisoning case, and
      * `app.url` is the only origin this deployment states about ITSELF.
      */
     private function canonicalRoot(): ?string
     {
+        // An environment's action running on the platform root: its links belong on the
+        // environment's own host, which is its issuer — configuration, not the Host header.
+        // The root resolves to no environment, so without this the `app.url` fallback
+        // below mailed an invitation to the environment's organization on the root.
+        $pinned = EnvironmentOrigin::pinned();
+
+        if ($pinned !== null) {
+            return $pinned;
+        }
+
         if ($this->environments->resolveForHost($this->url->getRequest()->getHost()) !== null) {
             return null;
         }

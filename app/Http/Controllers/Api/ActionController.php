@@ -76,7 +76,11 @@ final readonly class ActionController
                     'status' => 'pending',
                     'binding_code' => $held->bindingCode,
                     'expires_at' => $held->expiresAt->toIso8601String(),
-                    'poll_url' => url('/api/v1'.$action->plane->mount().'/action-approvals/'.$held->approvalId),
+                    // The REQUEST's origin, never url(): from the platform root an
+                    // environment action runs with URLs pinned to the environment's own
+                    // host (EnvironmentOrigin), and the root's token that must poll this
+                    // is refused there. The poll belongs where the credential was taken.
+                    'poll_url' => $request->getSchemeAndHttpHost().'/api/v1'.$action->plane->mount().'/action-approvals/'.$held->approvalId,
                 ],
             ], 202, ['Retry-After' => (string) $held->interval]);
         } catch (StepUpAuthenticationRequired $stepUp) {
