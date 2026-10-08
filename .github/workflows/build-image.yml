@@ -1,9 +1,15 @@
 name: Build Image
 
 # Builds the cbox-id runtime image FROM the public cbox php-fpm-nginx base and
-# pushes it to ghcr.io/cboxdk/cbox-id. Runs on GitHub-hosted runners: the repository is
-# public, so they cost nothing, and the org's own runners are for private repositories.
+# pushes it to ghcr.io/cboxdk/cbox-id for linux/amd64 and linux/arm64. Runs on
+# GitHub-hosted runners: the repository is public, so they cost nothing, and the
+# org's own runners are for private repositories. Each architecture builds natively
+# (QEMU-emulated arm64 blew the timeout) and is pushed by digest; `merge` joins
+# them into one multi-arch manifest under the tags.
 # No secrets: all deps are public, push uses the built-in GITHUB_TOKEN.
+#
+# cboxid.com runs on arm64 (Cbox's cluster cbox-hel1, which releases the `main`
+# image once every check on its commit has passed).
 
 on:
   push:
@@ -18,12 +24,24 @@ concurrency:
   group: build-image-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  IMAGE: ghcr.io/cboxdk/cbox-id
+
 jobs:
   build:
-    # Native amd64. Guarded so it never runs for a fork pull_request or a
-    # non-canonical repo: this job holds `packages: write`.
+    # Guarded so it never runs for a fork pull_request or a non-canonical repo:
+    # this job holds `packages: write`.
     if: github.repository == 'cboxdk/cbox-id' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    name: build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -37,12 +55,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/cboxdk/cbox-id
-          tags: |
-            type=sha
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
+          images: ${{ env.IMAGE }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -61,16 +74,73 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
-          # amd64 only: QEMU-emulated arm64 blows the timeout. GitHub's native
-          # `ubuntu-24.04-arm` runners are free for public repositories, so arm64 can
-          # come back as a second native job merged into one manifest.
-          platforms: linux/amd64
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=cbox-id
-          cache-to: type=gha,mode=max,scope=cbox-id
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=cbox-id-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=cbox-id-${{ matrix.arch }}
+
+      - name: Record the digest
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Multi-arch manifest
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          mapfile -t tags < <(jq -r '.tags[] | "--tag=" + .' <<<"$DOCKER_METADATA_OUTPUT_JSON")
+          sources=()
+          for digest in *; do sources+=("${IMAGE}@sha256:${digest}"); done
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+          docker buildx imagetools inspect "${IMAGE}:sha-${GITHUB_SHA::7}"
