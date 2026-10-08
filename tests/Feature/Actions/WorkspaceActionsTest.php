@@ -408,3 +408,39 @@ it('holds a supervised workspace key\'s critical act for its person, polled on t
 
     expect(OrganizationApiKey::query()->where('name', 'Child')->exists())->toBeFalse();
 });
+
+it('revokes, with a workspace key, every environment key it minted and their own descendants', function (): void {
+    $account = provisionAccount();
+    $workspace = $account['organization'];
+    $agent = workspaceKey($workspace, MembershipRole::Admin, ['workspace:read', 'projects:write', 'environments:write', 'keys:write']);
+    $agentId = OrganizationApiKey::query()->where('organization_id', $workspace->id)->sole()->id;
+    $owner = workspaceKey($workspace, MembershipRole::Owner);
+
+    $project = $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Cascade', 'environment_limit' => 2])->assertCreated()->json('data.id');
+    $created = $this->withToken($agent)->postJson('/api/v1/workspace/environments', [
+        'name' => 'Production',
+        'project_id' => $project,
+        'initial_key' => ['name' => 'Bootstrap', 'scopes' => ['keys:read', 'keys:write', 'apis:read']],
+    ])->assertCreated();
+
+    $environment = Environment::query()->findOrFail($created->json('data.id'));
+    $initial = (string) $created->json('data.initial_key.token');
+
+    serveOnTestHost($environment);
+
+    // The bootstrap key mints a narrower one of its own.
+    $child = (string) $this->withToken($initial)->postJson('/api/v1/keys', ['name' => 'Narrow', 'scopes' => ['apis:read']])
+        ->assertCreated()->json('data.token');
+
+    $this->withToken($child)->getJson('/api/v1/apis')->assertOk();
+
+    // Revoking the workspace key stops everything it put into the world, on either plane.
+    $this->withToken($owner)->deleteJson("/api/v1/workspace/keys/{$agentId}")->assertNoContent();
+
+    $this->withToken($initial)->getJson('/api/v1/apis')->assertUnauthorized();
+    $this->withToken($child)->getJson('/api/v1/apis')->assertUnauthorized();
+
+    expect(collect(workspaceLog($workspace->id, 'organization.environment_key_revoked'))
+        ->filter(static fn (AuditEntry $entry): bool => ($entry->context['because_parent_revoked'] ?? false) === true))
+        ->toHaveCount(2);
+});

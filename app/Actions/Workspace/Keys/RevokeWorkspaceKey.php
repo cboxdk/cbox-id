@@ -15,12 +15,18 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
+use Cbox\Id\Platform\Models\Project;
 
 /**
- * Revoke a workspace key — and every key it minted, all the way down. Whatever uses them
- * stops immediately.
+ * Revoke a workspace key — and every key it minted, all the way down, on BOTH planes: the
+ * workspace keys it minted, and the management keys it minted for the workspace's
+ * environments (an `initial_key`, a `keys.environment.create`) with everything those keys
+ * minted in turn. Whatever uses them stops immediately. A credential an agent was handed by
+ * a key outlives that key nowhere.
  *
  * Only a key of THIS workspace: the id comes from the URL, and a revoke by id alone would
  * let one workspace stop another's automation. An already-revoked key in the tree is passed
@@ -28,7 +34,7 @@ use Cbox\Id\Platform\Models\OrganizationApiKey;
  */
 #[AsAction(
     name: 'keys.workspace.revoke',
-    summary: 'Revoke a workspace key, and every key it minted; whatever uses them stops immediately.',
+    summary: 'Revoke a workspace key, and every key it minted on either plane (workspace keys and environment management keys, all the way down); whatever uses them stops immediately.',
     scope: 'keys:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Workspace,
@@ -40,7 +46,10 @@ use Cbox\Id\Platform\Models\OrganizationApiKey;
 )]
 final readonly class RevokeWorkspaceKey implements Action
 {
-    public function __construct(private OrganizationApiKeys $keys) {}
+    public function __construct(
+        private OrganizationApiKeys $keys,
+        private EnvironmentApiKeys $environmentKeys,
+    ) {}
 
     public static function input(): InputSchema
     {
@@ -56,9 +65,11 @@ final readonly class RevokeWorkspaceKey implements Action
             ->first() ?? throw ActionRefused::notFound('key');
 
         $queue = [$key];
+        $tree = [];
 
         while ($queue !== []) {
             $current = array_shift($queue);
+            $tree[] = $current->id;
 
             if ($current->revoked_at === null) {
                 $this->keys->revoke($current->id);
@@ -75,6 +86,49 @@ final readonly class RevokeWorkspaceKey implements Action
             }
         }
 
+        $this->revokeMintedEnvironmentKeys($context, $workspaceId, $tree);
+
         return ActionResult::none($key);
+    }
+
+    /**
+     * The environment management keys any key in the revoked tree minted, and their own
+     * descendants — walked even when already revoked, so a child that outlived its parent is
+     * stopped now; only what changes is recorded.
+     *
+     * @param  list<string>  $workspaceKeyIds
+     */
+    private function revokeMintedEnvironmentKeys(ActionContext $context, string $workspaceId, array $workspaceKeyIds): void
+    {
+        $environments = Environment::query()
+            ->whereIn('project_id', Project::query()->where('organization_id', $workspaceId)->pluck('id'))
+            ->get(['id']);
+
+        foreach ($environments as $environment) {
+            $environmentId = $environment->id;
+            $keys = $this->environmentKeys->forEnvironment($environmentId);
+            $queue = $keys
+                ->filter(static fn ($key): bool => $key->created_by_type === 'workspace_key' && in_array($key->created_by_id, $workspaceKeyIds, true))
+                ->values()
+                ->all();
+
+            while ($queue !== []) {
+                $current = array_shift($queue);
+
+                if ($current->revoked_at === null) {
+                    $this->environmentKeys->revoke($environmentId, $current->id);
+
+                    InWorkspace::record($context->principal, $workspaceId, 'organization.environment_key_revoked', 'environment', $environmentId, [
+                        'key_id' => $current->id,
+                        'name' => $current->name,
+                        'because_parent_revoked' => true,
+                    ]);
+                }
+
+                foreach ($keys->where('parent_key_id', $current->id) as $child) {
+                    $queue[] = $child;
+                }
+            }
+        }
     }
 }

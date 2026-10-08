@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Security
+
+- Revoking a workspace key now also revokes the environment management keys it minted (an environment's `initial_key`, `keys.environment.create`) and everything those keys minted in turn. A credential an agent was handed by a key no longer outlives that key on the other plane.
+
 ### Fixed
 
 - **Every held action is documented as one.** Any action can answer `202 approval_required` when a key's policy (or a person's token, for a critical action) holds it, but the 46 hand-written operations in the OpenAPI documents named neither the `202` nor the `Cbox-Approval` header, so a held `POST /apps` broke the contract. `ActionOpenApi` now adds both to a hand-written operation as it does to a generated one.

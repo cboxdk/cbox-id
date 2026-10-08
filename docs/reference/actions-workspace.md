@@ -201,7 +201,7 @@ List the workspace's keys, newest first, revoked ones included — names, roles,
 
 ### keys.workspace.revoke
 
-Revoke a workspace key, and every key it minted; whatever uses them stops immediately.
+Revoke a workspace key, and every key it minted on either plane (workspace keys and environment management keys, all the way down); whatever uses them stops immediately.
 
 | | |
 |---|---|
