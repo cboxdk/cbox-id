@@ -22,7 +22,11 @@ export default function OrganizationSupport({ supportSessions, usersHref }: Prop
             {supportSessions.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--faint)' }}>
                     Nobody is signed in to an app as one of its people. Start one from a person's
-                    page under <Link href={usersHref} className="underline underline-offset-2">Users</Link>.
+                    page under{' '}
+                    <Link href={usersHref} className="underline underline-offset-2">
+                        Users
+                    </Link>
+                    .
                 </p>
             ) : (
                 <SupportSessions sessions={supportSessions} lead="user" />
