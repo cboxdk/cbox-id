@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\PlatformAuth;
+use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\Passkeys;
@@ -107,7 +108,7 @@ final class PasskeyController extends Controller
     {
         // Hard-block a Reject before establishing the session. (A passkey is
         // phishing-resistant, so an elevated-but-not-reject outcome needs no step-up.)
-        if ($risk->shouldBlock($risk->assess($request, 'login'))) {
+        if ($risk->shouldBlock($risk->assess($request, 'login', method: RadarMethod::Passkey))) {
             return $this->error(__('auth.common.could_not_process'));
         }
 

@@ -3061,6 +3061,101 @@ components:
       properties:
         retention_days: { type: integer, description: "Events are kept this many days after they arrive." }
         strict_schemas: { type: boolean, description: "Whether an action with no schema is refused." }
+    RadarSettings:
+      type: object
+      required: [mode, mode_inherited, deployment_mode, ip_intelligence, builtin_rules]
+      properties:
+        mode: { type: string, enum: [monitor, enforce], description: "monitor records every verdict and acts on none; enforce blocks and challenges." }
+        mode_inherited: { type: boolean, description: "True while the environment follows the deployment's default (RISK_MODE) rather than a mode it chose." }
+        deployment_mode: { type: string, enum: [monitor, enforce] }
+        ip_intelligence: { type: string, enum: [none, maxmind, ipinfo], description: "The configured IP intelligence source. With none, country, network and travel facts are unknown and the rules on them never fire." }
+        builtin_rules:
+          type: array
+          items:
+            type: object
+            required: [key, name, description, applies_to, enabled, action, threshold, threshold_unit, threshold_min, threshold_max]
+            properties:
+              key: { type: string, enum: [credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated] }
+              name: { type: string }
+              description: { type: string }
+              applies_to: { type: string, enum: [all, sign_in, sign_up] }
+              enabled: { type: boolean }
+              action: { type: string, enum: [allow, challenge, block] }
+              threshold: { type: ["integer", "null"], description: "null for a rule that counts nothing." }
+              threshold_unit: { type: ["string", "null"] }
+              threshold_min: { type: ["integer", "null"] }
+              threshold_max: { type: ["integer", "null"] }
+    RadarRule:
+      type: object
+      required: [id, name, description, position, enabled, applies_to, action, conditions, summary, created_at, updated_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        position: { type: integer, description: "1 is evaluated first; the first rule whose conditions all hold decides." }
+        enabled: { type: boolean }
+        applies_to: { type: string, enum: [all, sign_in, sign_up] }
+        action: { type: string, enum: [allow, challenge, block] }
+        conditions:
+          type: array
+          items:
+            type: object
+            required: [field, operator, value]
+            properties:
+              field: { type: string }
+              operator: { type: string, enum: [eq, neq, in, not_in, gt, gte, lt, lte, contains, not_contains, starts_with, ends_with, in_cidr, not_in_cidr] }
+              value:
+                description: "Normalised: a string, a number, true/false, or a list for the list operators."
+                oneOf:
+                  - { type: string }
+                  - { type: number }
+                  - { type: boolean }
+                  - { type: array, items: { oneOf: [{ type: string }, { type: number }] } }
+        summary: { type: string, description: "The conditions as a person reads them." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    RadarListEntry:
+      type: object
+      required: [id, list, kind, value, note, expires_at, active, created_at]
+      properties:
+        id: { type: string }
+        list: { type: string, enum: [allow, deny] }
+        kind: { type: string, enum: [ip, email, email_domain, device] }
+        value: { type: string, description: "Normalised: an IP or CIDR range, a lower-case address or domain, or a device id." }
+        note: { type: ["string", "null"] }
+        expires_at: { type: ["string", "null"], format: date-time }
+        active: { type: boolean }
+        created_at: { type: string, format: date-time }
+    RadarDecision:
+      type: object
+      required: [id, assessed_at, flow, method, verdict, enforced, mode, rule, rule_name, triggered, reasons, risk_score, risk_outcome, country, asn, email_domain, device, facts]
+      properties:
+        id: { type: string }
+        assessed_at: { type: string, format: date-time }
+        flow: { type: string, enum: [sign_in, sign_up] }
+        method: { type: ["string", "null"], enum: [password, magic_link, passkey, sign_up, null] }
+        verdict: { type: string, enum: [allow, challenge, block] }
+        enforced: { type: boolean, description: "Whether the verdict was acted on; false under monitor." }
+        mode: { type: string, enum: [monitor, enforce] }
+        rule: { type: ["string", "null"], description: "What decided it: deny_list:<kind>, allow_list:<kind>, rule:<id>, builtin:<key>; null when nothing matched." }
+        rule_name: { type: ["string", "null"] }
+        triggered:
+          type: array
+          description: Every rule that fired, the deciding one included.
+          items:
+            type: object
+            required: [rule, name]
+            properties:
+              rule: { type: string }
+              name: { type: string }
+        reasons: { type: array, items: { type: string } }
+        risk_score: { type: number }
+        risk_outcome: { type: string, enum: [allow, flag, challenge, step_up, reject] }
+        country: { type: ["string", "null"] }
+        asn: { type: ["integer", "null"] }
+        email_domain: { type: ["string", "null"] }
+        device: { type: ["string", "null"], description: "The device id (a pseudonym of the device cookie), for a returning device." }
+        facts: { type: object, description: "The facts the rules were evaluated on — never the IP, the address or the user agent." }
     AuditLogVerification:
       type: object
       required: [organization_id, valid, complete, verified_count, first_sequence, last_sequence, head_sequence, broken_at_sequence, reason]

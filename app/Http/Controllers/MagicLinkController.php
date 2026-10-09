@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Props\Auth\LinkConfirmationProps;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\PlatformAuth;
+use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\MagicLink;
@@ -51,7 +52,7 @@ final readonly class MagicLinkController extends PageController
         // Hard-block a Reject before consuming the single-use token, so a risky
         // context can be retried from a safer one. (Magic-link is already an
         // email-possession factor, so a step-up on top would be redundant.)
-        if ($risk->shouldBlock($risk->assess($request, 'login'))) {
+        if ($risk->shouldBlock($risk->assess($request, 'login', method: RadarMethod::MagicLink))) {
             return redirect()->route('login')->with('error', __('auth.common.could_not_process'));
         }
 

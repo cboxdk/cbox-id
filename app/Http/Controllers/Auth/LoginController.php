@@ -142,9 +142,11 @@ final readonly class LoginController extends PageController
                 trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)));
         }
 
-        // Risk-score the attempt: credential stuffing, bot velocity, IP reputation, Tor.
-        // Logged for review. Under enforcement a Reject hard-blocks, and an
-        // elevated-but-not-reject outcome demands the emailed step-up below.
+        // Risk-score the attempt and let Radar decide: credential stuffing, bot velocity,
+        // IP reputation, Tor, impossible travel, the environment's own rules and lists.
+        // Recorded for review. Under enforcement a block refuses with the generic sentence
+        // (telling an attacker WHICH rule fired is telling them what to change), and a
+        // challenge demands a second factor below.
         $assessment = $risk->assess($request, 'login', $request->email());
 
         if ($risk->shouldBlock($assessment)) {
@@ -160,6 +162,9 @@ final readonly class LoginController extends PageController
 
         if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
+            // Counted for Radar too: repeated failures on one address, from anywhere, are
+            // what its account-attack rule watches.
+            $risk->failed($request, $request->email());
 
             return $this->refuse($request, __('auth.login.invalid_credentials'));
         }

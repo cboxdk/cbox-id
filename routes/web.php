@@ -72,6 +72,7 @@ use App\Http\Controllers\Console\PlatformQueuesController;
 use App\Http\Controllers\Console\PlatformSearchController;
 use App\Http\Controllers\Console\PlatformUsageController;
 use App\Http\Controllers\Console\ProjectController;
+use App\Http\Controllers\Console\RadarController;
 use App\Http\Controllers\Console\RoleConflictController;
 use App\Http\Controllers\Console\RoleController;
 use App\Http\Controllers\Console\ServiceProviderController;
@@ -1582,6 +1583,25 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::put('/audit-logs/schemas/{action}', [AuditLogController::class, 'update'])->name('environment.audit-logs.schemas.update');
         Route::delete('/audit-logs/schemas/{action}', [AuditLogController::class, 'destroy'])->name('environment.audit-logs.schemas.destroy');
         Route::patch('/audit-logs/settings', [AuditLogController::class, 'settings'])->name('environment.audit-logs.settings.update');
+
+        // Radar — adaptive protection at sign-in and sign-up: the decisions explorer, the
+        // rules (built-in and the environment's own, in order) and the allow and deny lists.
+        // `new` and `order` before `{rule}`, so neither is read as a rule id. The mode switch
+        // is behind `env.sudo`: turning enforcement on or off is the environment's security
+        // posture, the same reason the action is Critical.
+        Route::get('/radar', [RadarController::class, 'index'])->name('environment.radar');
+        Route::get('/radar/rules', [RadarController::class, 'rules'])->name('environment.radar.rules');
+        Route::get('/radar/rules/new', [RadarController::class, 'create'])->name('environment.radar.rules.create');
+        Route::post('/radar/rules', [RadarController::class, 'store'])->name('environment.radar.rules.store');
+        Route::put('/radar/rules/order', [RadarController::class, 'order'])->name('environment.radar.rules.order');
+        Route::get('/radar/rules/{rule}', [RadarController::class, 'edit'])->name('environment.radar.rules.edit');
+        Route::patch('/radar/rules/{rule}', [RadarController::class, 'update'])->name('environment.radar.rules.update');
+        Route::delete('/radar/rules/{rule}', [RadarController::class, 'destroy'])->name('environment.radar.rules.destroy');
+        Route::patch('/radar/settings', [RadarController::class, 'settings'])->name('environment.radar.settings.update');
+        Route::get('/radar/lists', [RadarController::class, 'lists'])->name('environment.radar.lists');
+        Route::post('/radar/lists', [RadarController::class, 'addEntry'])->name('environment.radar.lists.store');
+        Route::delete('/radar/lists/{entry}', [RadarController::class, 'removeEntry'])->name('environment.radar.lists.destroy');
+        Route::put('/radar/mode', [RadarController::class, 'mode'])->middleware('env.sudo')->name('environment.radar.mode.update');
 
         // Log streaming (SIEM) — routable list → create → detail.
         //

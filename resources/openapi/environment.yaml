@@ -102,6 +102,7 @@ tags:
   - name: 'Log streams'
   - name: 'Admin Portal'
   - name: 'Outbound provisioning'
+  - name: Radar
   - name: 'SAML apps'
   - name: Sign-in
   - name: 'Enterprise SSO'
@@ -9023,6 +9024,1122 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /radar/decisions:
+    get:
+      tags:
+        - Radar
+      summary: "List this environment's Radar decisions newest first — verdict, deciding rule, every rule that fired, reasons and facts — filtered by verdict, flow, rule, country, email, IP, device or time; pass `next_cursor` as `after` to page. Email and IP are matched by keyed pseudonym and never returned."
+      description: 'Requires scope `radar:read`. Danger: read.'
+      operationId: radar_decisions_list
+      x-action: radar.decisions.list
+      x-scope: 'radar:read'
+      x-danger: read
+      parameters:
+        -
+          name: verdict
+          in: query
+          required: false
+          schema:
+            type: string
+            description: '`allow`, `challenge` or `block`.'
+            enum:
+              - allow
+              - challenge
+              - block
+        -
+          name: flow
+          in: query
+          required: false
+          schema:
+            type: string
+            description: '`sign_in` or `sign_up`.'
+            enum:
+              - sign_in
+              - sign_up
+        -
+          name: rule
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'A rule key — `builtin:credential_stuffing`, `rule:<id>`, `deny_list:ip` — that decided or fired.'
+            maxLength: 64
+        -
+          name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Two-letter country code.'
+            maxLength: 2
+        -
+          name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Attempts with this address (matched by pseudonym).'
+            maxLength: 255
+        -
+          name: ip
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Attempts from this IP (matched by pseudonym).'
+            maxLength: 64
+        -
+          name: device
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Attempts from this device id.'
+            maxLength: 64
+        -
+          name: enforced
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: 'Only decisions that were (true) or were not (false) acted on.'
+        -
+          name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'On or after this time (ISO 8601).'
+            format: date-time
+        -
+          name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'On or before this time (ISO 8601).'
+            format: date-time
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Decisions per page, 1–100. Default 50.'
+            minimum: 1
+            maximum: 100
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page: the decisions older than it.'
+            maxLength: 26
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RadarDecision'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/radar/decisions/{id}':
+    get:
+      tags:
+        - Radar
+      summary: 'Read one Radar decision: the verdict, whether it was enforced, the deciding rule, every rule that fired, the reasons, the risk score and the facts it was decided on.'
+      description: 'Requires scope `radar:read`. Danger: read.'
+      operationId: radar_decisions_get
+      x-action: radar.decisions.get
+      x-scope: 'radar:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The decision's id."
+            maxLength: 26
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarDecision'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /radar/lists:
+    post:
+      tags:
+        - Radar
+      summary: "Add an entry to this environment's Radar allow or deny list: an IP or CIDR range, an email address, a mail domain (and its subdomains), or a device id from the decisions explorer. Deny blocks before every rule; allow skips every rule."
+      description: 'Requires scope `radar:write`. Danger: write.'
+      operationId: radar_lists_add
+      x-action: radar.lists.add
+      x-scope: 'radar:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                list:
+                  type: string
+                  description: '`allow` or `deny`.'
+                  enum:
+                    - allow
+                    - deny
+                kind:
+                  type: string
+                  description: '`ip` (an address or CIDR range), `email`, `email_domain` or `device`.'
+                  enum:
+                    - ip
+                    - email
+                    - email_domain
+                    - device
+                value:
+                  type: string
+                  description: 'The IP, range, address, domain or device id.'
+                  maxLength: 255
+                note:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Why it is listed.'
+                  maxLength: 255
+                expires_at:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'When the entry stops applying (ISO 8601). Never, when omitted.'
+                  format: date-time
+              required:
+                - list
+                - kind
+                - value
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarListEntry'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Radar
+      summary: "List this environment's Radar allow and deny entries — IPs and CIDR ranges, addresses, mail domains, devices — optionally one list or one kind."
+      description: 'Requires scope `radar:read`. Danger: read.'
+      operationId: radar_lists_list
+      x-action: radar.lists.list
+      x-scope: 'radar:read'
+      x-danger: read
+      parameters:
+        -
+          name: list
+          in: query
+          required: false
+          schema:
+            type: string
+            description: '`allow` or `deny`; both when omitted.'
+            enum:
+              - allow
+              - deny
+        -
+          name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only entries of this kind.'
+            enum:
+              - ip
+              - email
+              - email_domain
+              - device
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RadarListEntry'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/radar/lists/{id}':
+    delete:
+      tags:
+        - Radar
+      summary: "Remove an entry from this environment's Radar allow or deny list."
+      description: 'Requires scope `radar:write`. Danger: destructive.'
+      operationId: radar_lists_remove
+      x-action: radar.lists.remove
+      x-scope: 'radar:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The entry's id."
+            maxLength: 26
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /radar/mode:
+    put:
+      tags:
+        - Radar
+      summary: "Switch this environment's Radar between `monitor` (verdicts recorded, never acted on) and `enforce` (blocks refuse sign-ins and sign-ups, challenges demand a second factor). Changes the environment's security posture."
+      description: 'Requires scope `radar:manage`. Danger: critical.'
+      operationId: radar_mode_set
+      x-action: radar.mode.set
+      x-scope: 'radar:manage'
+      x-danger: critical
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  description: '`monitor` or `enforce`.'
+                  enum:
+                    - monitor
+                    - enforce
+              required:
+                - mode
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /radar/rules:
+    post:
+      tags:
+        - Radar
+      summary: 'Add a Radar rule: when EVERY condition (field, operator, value) holds, allow, challenge or block. Rules run in order after the allow/deny lists and before the built-in rules; the first match decides. Example: country not_in [DK, SE] → challenge.'
+      description: 'Requires scope `radar:write`. Danger: write.'
+      operationId: radar_rules_create
+      x-action: radar.rules.create
+      x-scope: 'radar:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 'What the rule is for, as the console lists it.'
+                  maxLength: 120
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Why the rule exists, for whoever reads it next.'
+                  maxLength: 500
+                action:
+                  type: string
+                  description: 'What happens when every condition holds: `allow` (skip every rule after this one), `challenge` (a second factor on sign-in; a CAPTCHA or an emailed code on sign-up) or `block`.'
+                  enum:
+                    - allow
+                    - challenge
+                    - block
+                applies_to:
+                  type: string
+                  description: '`all` (the default), `sign_in` or `sign_up`.'
+                  enum:
+                    - all
+                    - sign_in
+                    - sign_up
+                conditions:
+                  type: array
+                  description: 'Up to 10 conditions; the rule matches when EVERY one holds. A fact that is unknown (no IP intelligence, no address on a passkey sign-in) matches no condition.'
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    properties:
+                      field:
+                        type: string
+                        description: 'The fact to test.'
+                        enum:
+                          - ip
+                          - country
+                          - asn
+                          - as_organization
+                          - is_hosting
+                          - is_vpn
+                          - is_proxy
+                          - is_tor
+                          - email
+                          - email_domain
+                          - disposable_email
+                          - user_agent
+                          - method
+                          - new_device
+                          - impossible_travel
+                          - travel_kmh
+                          - risk_score
+                          - ip_attempts_1m
+                          - ip_attempts_1h
+                          - ip_distinct_emails_10m
+                          - ip_failures_1h
+                          - email_attempts_1h
+                          - email_failures_1h
+                          - device_attempts_1h
+                      operator:
+                        type: string
+                        description: 'How to compare it. Which operators a field takes depends on its type.'
+                        enum:
+                          - eq
+                          - neq
+                          - in
+                          - not_in
+                          - gt
+                          - gte
+                          - lt
+                          - lte
+                          - contains
+                          - not_contains
+                          - starts_with
+                          - ends_with
+                          - in_cidr
+                          - not_in_cidr
+                      value:
+                        type: string
+                        description: 'The one value to compare with, as text — `DK`, `20`, `true`. For every operator except the list ones.'
+                        maxLength: 255
+                      values:
+                        type: array
+                        description: 'The values to compare with, for `in`, `not_in`, `in_cidr` and `not_in_cidr`.'
+                        maxItems: 100
+                        items:
+                          type: string
+                          maxLength: 255
+                    required:
+                      - field
+                      - operator
+                enabled:
+                  type: boolean
+                  description: 'Whether the rule is evaluated. Default true.'
+                position:
+                  type: integer
+                  description: 'Where in the order to put it: 1 is evaluated first. Default: last.'
+                  minimum: 1
+              required:
+                - name
+                - action
+                - conditions
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarRule'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Radar
+      summary: "List this environment's own Radar rules in evaluation order (the first whose conditions all hold decides), with their conditions and a readable summary of each."
+      description: 'Requires scope `radar:read`. Danger: read.'
+      operationId: radar_rules_list
+      x-action: radar.rules.list
+      x-scope: 'radar:read'
+      x-danger: read
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Rules per page, 1–100. Default 100 — an environment holds at most 100, so one page is all of them.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+            maxLength: 26
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RadarRule'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /radar/rules/order:
+    put:
+      tags:
+        - Radar
+      summary: 'Set the order Radar rules are evaluated in: `rule_ids` lists every rule of the environment exactly once, first evaluated first.'
+      description: 'Requires scope `radar:write`. Danger: write.'
+      operationId: radar_rules_reorder
+      x-action: radar.rules.reorder
+      x-scope: 'radar:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rule_ids:
+                  type: array
+                  description: 'Every rule id, in the new order.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 26
+              required:
+                - rule_ids
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/radar/rules/{id}':
+    delete:
+      tags:
+        - Radar
+      summary: 'Delete a Radar rule. Attempts it decided are decided by the next matching rule, or the built-in rules, from then on.'
+      description: 'Requires scope `radar:write`. Danger: destructive.'
+      operationId: radar_rules_delete
+      x-action: radar.rules.delete
+      x-scope: 'radar:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The rule's id."
+            maxLength: 26
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Radar
+      summary: 'Read one Radar rule: its action, the flows it applies to, its position and its conditions.'
+      description: 'Requires scope `radar:read`. Danger: read.'
+      operationId: radar_rules_get
+      x-action: radar.rules.get
+      x-scope: 'radar:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The rule's id."
+            maxLength: 26
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarRule'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Radar
+      summary: 'Change a Radar rule: its name, description, action, flows, enabled state, position, or (replaced whole) its conditions.'
+      description: 'Requires scope `radar:write`. Danger: write.'
+      operationId: radar_rules_update
+      x-action: radar.rules.update
+      x-scope: 'radar:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The rule's id."
+            maxLength: 26
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 'What the rule is for, as the console lists it.'
+                  maxLength: 120
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Why the rule exists, for whoever reads it next.'
+                  maxLength: 500
+                action:
+                  type: string
+                  description: 'What happens when every condition holds: `allow` (skip every rule after this one), `challenge` (a second factor on sign-in; a CAPTCHA or an emailed code on sign-up) or `block`.'
+                  enum:
+                    - allow
+                    - challenge
+                    - block
+                applies_to:
+                  type: string
+                  description: '`all` (the default), `sign_in` or `sign_up`.'
+                  enum:
+                    - all
+                    - sign_in
+                    - sign_up
+                conditions:
+                  type: array
+                  description: 'Up to 10 conditions; the rule matches when EVERY one holds. A fact that is unknown (no IP intelligence, no address on a passkey sign-in) matches no condition.'
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    properties:
+                      field:
+                        type: string
+                        description: 'The fact to test.'
+                        enum:
+                          - ip
+                          - country
+                          - asn
+                          - as_organization
+                          - is_hosting
+                          - is_vpn
+                          - is_proxy
+                          - is_tor
+                          - email
+                          - email_domain
+                          - disposable_email
+                          - user_agent
+                          - method
+                          - new_device
+                          - impossible_travel
+                          - travel_kmh
+                          - risk_score
+                          - ip_attempts_1m
+                          - ip_attempts_1h
+                          - ip_distinct_emails_10m
+                          - ip_failures_1h
+                          - email_attempts_1h
+                          - email_failures_1h
+                          - device_attempts_1h
+                      operator:
+                        type: string
+                        description: 'How to compare it. Which operators a field takes depends on its type.'
+                        enum:
+                          - eq
+                          - neq
+                          - in
+                          - not_in
+                          - gt
+                          - gte
+                          - lt
+                          - lte
+                          - contains
+                          - not_contains
+                          - starts_with
+                          - ends_with
+                          - in_cidr
+                          - not_in_cidr
+                      value:
+                        type: string
+                        description: 'The one value to compare with, as text — `DK`, `20`, `true`. For every operator except the list ones.'
+                        maxLength: 255
+                      values:
+                        type: array
+                        description: 'The values to compare with, for `in`, `not_in`, `in_cidr` and `not_in_cidr`.'
+                        maxItems: 100
+                        items:
+                          type: string
+                          maxLength: 255
+                    required:
+                      - field
+                      - operator
+                enabled:
+                  type: boolean
+                  description: 'Whether the rule is evaluated. Default true.'
+                position:
+                  type: integer
+                  description: 'Where in the order to put it: 1 is evaluated first. Default: last.'
+                  minimum: 1
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarRule'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /radar/settings:
+    get:
+      tags:
+        - Radar
+      summary: "Read this environment's Radar settings: the mode (monitor or enforce, and whether it is inherited from the deployment), the IP intelligence source, and every built-in rule with its action and threshold."
+      description: 'Requires scope `radar:read`. Danger: read.'
+      operationId: radar_settings_get
+      x-action: radar.settings.get
+      x-scope: 'radar:read'
+      x-danger: read
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Radar
+      summary: "Tune this environment's built-in Radar rules: `builtin_rules` maps a rule key (credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated) to any of enabled, action and threshold."
+      description: 'Requires scope `radar:write`. Danger: write.'
+      operationId: radar_settings_update
+      x-action: radar.settings.update
+      x-scope: 'radar:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                builtin_rules:
+                  type: object
+                  description: 'Rule key => `{"enabled": bool, "action": "allow"|"challenge"|"block", "threshold": int}`, each part optional. Keys: credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated.'
+                  properties: {}
+              required:
+                - builtin_rules
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RadarSettings'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /roles:
     get:
       operationId: roles_list
@@ -17215,6 +18332,344 @@ components:
         strict_schemas:
           type: boolean
           description: 'Whether an action with no schema is refused.'
+    RadarSettings:
+      type: object
+      required:
+        - mode
+        - mode_inherited
+        - deployment_mode
+        - ip_intelligence
+        - builtin_rules
+      properties:
+        mode:
+          type: string
+          enum:
+            - monitor
+            - enforce
+          description: 'monitor records every verdict and acts on none; enforce blocks and challenges.'
+        mode_inherited:
+          type: boolean
+          description: "True while the environment follows the deployment's default (RISK_MODE) rather than a mode it chose."
+        deployment_mode:
+          type: string
+          enum:
+            - monitor
+            - enforce
+        ip_intelligence:
+          type: string
+          enum:
+            - none
+            - maxmind
+            - ipinfo
+          description: 'The configured IP intelligence source. With none, country, network and travel facts are unknown and the rules on them never fire.'
+        builtin_rules:
+          type: array
+          items:
+            type: object
+            required:
+              - key
+              - name
+              - description
+              - applies_to
+              - enabled
+              - action
+              - threshold
+              - threshold_unit
+              - threshold_min
+              - threshold_max
+            properties:
+              key:
+                type: string
+                enum:
+                  - credential_stuffing
+                  - bot_velocity
+                  - account_attack
+                  - impossible_travel
+                  - new_device
+                  - anonymous_network
+                  - hosting_network
+                  - disposable_email
+                  - risk_score_reject
+                  - risk_score_elevated
+              name:
+                type: string
+              description:
+                type: string
+              applies_to:
+                type: string
+                enum:
+                  - all
+                  - sign_in
+                  - sign_up
+              enabled:
+                type: boolean
+              action:
+                type: string
+                enum:
+                  - allow
+                  - challenge
+                  - block
+              threshold:
+                type:
+                  - integer
+                  - 'null'
+                description: 'null for a rule that counts nothing.'
+              threshold_unit:
+                type:
+                  - string
+                  - 'null'
+              threshold_min:
+                type:
+                  - integer
+                  - 'null'
+              threshold_max:
+                type:
+                  - integer
+                  - 'null'
+    RadarRule:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - position
+        - enabled
+        - applies_to
+        - action
+        - conditions
+        - summary
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        position:
+          type: integer
+          description: '1 is evaluated first; the first rule whose conditions all hold decides.'
+        enabled:
+          type: boolean
+        applies_to:
+          type: string
+          enum:
+            - all
+            - sign_in
+            - sign_up
+        action:
+          type: string
+          enum:
+            - allow
+            - challenge
+            - block
+        conditions:
+          type: array
+          items:
+            type: object
+            required:
+              - field
+              - operator
+              - value
+            properties:
+              field:
+                type: string
+              operator:
+                type: string
+                enum:
+                  - eq
+                  - neq
+                  - in
+                  - not_in
+                  - gt
+                  - gte
+                  - lt
+                  - lte
+                  - contains
+                  - not_contains
+                  - starts_with
+                  - ends_with
+                  - in_cidr
+                  - not_in_cidr
+              value:
+                description: 'Normalised: a string, a number, true/false, or a list for the list operators.'
+                oneOf:
+                  - type: string
+                  - type: number
+                  - type: boolean
+                  -
+                    type: array
+                    items:
+                      oneOf:
+                        - type: string
+                        - type: number
+        summary:
+          type: string
+          description: 'The conditions as a person reads them.'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RadarListEntry:
+      type: object
+      required:
+        - id
+        - list
+        - kind
+        - value
+        - note
+        - expires_at
+        - active
+        - created_at
+      properties:
+        id:
+          type: string
+        list:
+          type: string
+          enum:
+            - allow
+            - deny
+        kind:
+          type: string
+          enum:
+            - ip
+            - email
+            - email_domain
+            - device
+        value:
+          type: string
+          description: 'Normalised: an IP or CIDR range, a lower-case address or domain, or a device id.'
+        note:
+          type:
+            - string
+            - 'null'
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    RadarDecision:
+      type: object
+      required:
+        - id
+        - assessed_at
+        - flow
+        - method
+        - verdict
+        - enforced
+        - mode
+        - rule
+        - rule_name
+        - triggered
+        - reasons
+        - risk_score
+        - risk_outcome
+        - country
+        - asn
+        - email_domain
+        - device
+        - facts
+      properties:
+        id:
+          type: string
+        assessed_at:
+          type: string
+          format: date-time
+        flow:
+          type: string
+          enum:
+            - sign_in
+            - sign_up
+        method:
+          type:
+            - string
+            - 'null'
+          enum:
+            - password
+            - magic_link
+            - passkey
+            - sign_up
+            - null
+        verdict:
+          type: string
+          enum:
+            - allow
+            - challenge
+            - block
+        enforced:
+          type: boolean
+          description: 'Whether the verdict was acted on; false under monitor.'
+        mode:
+          type: string
+          enum:
+            - monitor
+            - enforce
+        rule:
+          type:
+            - string
+            - 'null'
+          description: 'What decided it: deny_list:<kind>, allow_list:<kind>, rule:<id>, builtin:<key>; null when nothing matched.'
+        rule_name:
+          type:
+            - string
+            - 'null'
+        triggered:
+          type: array
+          description: 'Every rule that fired, the deciding one included.'
+          items:
+            type: object
+            required:
+              - rule
+              - name
+            properties:
+              rule:
+                type: string
+              name:
+                type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        risk_score:
+          type: number
+        risk_outcome:
+          type: string
+          enum:
+            - allow
+            - flag
+            - challenge
+            - step_up
+            - reject
+        country:
+          type:
+            - string
+            - 'null'
+        asn:
+          type:
+            - integer
+            - 'null'
+        email_domain:
+          type:
+            - string
+            - 'null'
+        device:
+          type:
+            - string
+            - 'null'
+          description: 'The device id (a pseudonym of the device cookie), for a returning device.'
+        facts:
+          type: object
+          description: 'The facts the rules were evaluated on — never the IP, the address or the user agent.'
     AuditLogVerification:
       type: object
       required:

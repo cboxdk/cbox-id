@@ -26,6 +26,8 @@ use Illuminate\Contracts\Foundation\Application;
  *  - {@see OnboardingErasureStep}: which setup checklists the person put away.
  *  - {@see RiskDecisionsErasureStep}: the keyed pseudonym of their address on the risk
  *    trail, unlinked (the decision rows stay, they are what thresholds are tuned on).
+ *  - {@see RadarErasureStep}: the devices Radar remembers them signing in from, and the
+ *    coarse location of the last sign-in on each.
  *
  * The modules register their own beside the tables they add — the devices module its
  * handsets and enrolment codes, risk-plus its review trail — the same way the framework's
@@ -49,6 +51,7 @@ final class AppErasureSteps
         LoginTicketsErasureStep::class,
         OnboardingErasureStep::class,
         RiskDecisionsErasureStep::class,
+        RadarErasureStep::class,
     ];
 
     public static function register(ErasureSteps $steps, Application $app): void

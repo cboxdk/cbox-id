@@ -44,6 +44,9 @@ use App\Providers\ConsoleServiceProvider;
  *    app built on an environment sends about its own customers.
  *  - Approvals: what an agent is waiting for a person to allow.
  *  - API keys: one page, the kind of key a tab — Secret, Publishable, Workspace.
+ *  - Radar: adaptive protection at sign-in and sign-up — the rules that allow, challenge or
+ *    block an attempt, and the decisions they made. Not "Risk events": that is the
+ *    risk-plus module's feed of elevated scores, a narrower thing.
  */
 final class Vocabulary
 {
@@ -88,6 +91,9 @@ final class Vocabulary
     public const string SOCIAL_LOGIN = 'Social login';
 
     public const string SAML_APPS = 'SAML apps';
+
+    /** Adaptive protection at sign-in and sign-up: rules, lists, and the decisions it made. */
+    public const string RADAR = 'Radar';
 
     // Building on an environment.
     public const string APPLICATIONS = 'Applications';

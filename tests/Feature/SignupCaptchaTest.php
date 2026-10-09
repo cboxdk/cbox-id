@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Risk\Contracts\RiskScorer;
 use Cbox\Risk\Enums\Outcome;
@@ -122,19 +123,26 @@ it('never challenges a low-risk signup', function (): void {
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'siteverify'));
 });
 
-it('is inert when no Turnstile keys are configured', function (): void {
+it('confirms the address by emailed code when no Turnstile keys are configured', function (): void {
     fakeHttp(captchaPasses: false);
     config(['services.turnstile.site_key' => null, 'services.turnstile.secret_key' => null]);
     scoreEvery(Outcome::Challenge);
 
-    // Same challenged outcome as the first test — but with no keys, signup behaves
-    // exactly as it did before the feature existed.
-    // NOT CHALLENGED, which is proved by the two facts either side of it: the account
-    // exists, and Cloudflare was never consulted. There is no page left to read the flash
-    // off — registering signs the person in, and `/signup` is guest-only.
-    attemptSignup(['email' => 'dana@acme.example'])->assertSessionHasNoErrors();
+    // Same challenged outcome as the first test — but with no keys there is no CAPTCHA to
+    // ask, so the challenge is the inbox: the account is created and its first session
+    // waits for the code. Before Radar this let a challenged signup straight in.
+    attemptSignup(['email' => 'dana@acme.example'])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('login.step-up'));
 
-    expect(app(Subjects::class)->findByEmail('dana@acme.example'))->not->toBeNull();
+    expect(app(Subjects::class)->findByEmail('dana@acme.example'))->not->toBeNull()
+        ->and(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
+        ->and(app(PlatformAuth::class)->pendingOtpStepUp(request())['purpose'] ?? null)->toBe('sign_up');
+
+    test()->get(route('login.step-up'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('purpose', 'sign_up'));
+
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'siteverify'));
 });
 

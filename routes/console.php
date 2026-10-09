@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Radar\RadarDevice;
 use App\Models\RiskDecision;
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\FrontendApi\LoginTicket;
@@ -39,7 +40,11 @@ Artisan::command('inspire', function () {
 // IdempotencyRecord is the fifth: the first answer to an `Idempotency-Key` request, kept a
 // day so a retry gets it back, and useless after that.
 // ({@see \App\Platform\Actions\Idempotency\IdempotencyRecord::prunable()})
-Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class, EnrolmentCode::class, IdempotencyRecord::class]])
+// RadarDevice is the sixth: the browsers each account has signed in from, and the coarse
+// location of the last sign-in on each — what Radar's "new device" and "impossible travel"
+// are measured against. Kept `cbox-id.radar.device_retention_days` (180) past the last
+// sign-in on it, across every environment ({@see RadarDevice::prunable()}).
+Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class, EnrolmentCode::class, IdempotencyRecord::class, RadarDevice::class]])
     ->daily()
     ->onOneServer();
 

@@ -35,6 +35,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Directory Sync](sync-users-in.md) — the company's directory creates and deactivates people for you, over SCIM.
 - [Admin Portal](admin-portal.md) — hand Enterprise SSO, Directory Sync, Domains, Log streams and more to the customer's own IT admin with a single-use link.
 - [Social login](social-sign-in.md) — Google, GitHub, Apple and the rest, and how connecting one to an existing account works.
+- [Radar](radar.md) — allow, challenge or block each sign-in and sign-up: credential stuffing, impossible travel, new devices, throwaway addresses, your own rules and lists, monitor before you enforce.
 - [Outbound provisioning](sync-users-out.md) — push your people into your other SaaS products.
 - [Custom domains](custom-domains.md) — serve an environment's sign-in on your own address, such as `login.example.com`.
 - [Languages](languages.md) — which language sign-in, consent, the Admin Portal and their emails are shown in.

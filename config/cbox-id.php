@@ -384,6 +384,55 @@ return [
     ],
 
     /*
+     * RADAR — adaptive protection at sign-in and sign-up, on top of the risk score:
+     * IP intelligence, a first-party device cookie, velocity counters, impossible travel,
+     * disposable mail domains, built-in and custom rules, allow/deny lists, and a
+     * monitor/enforce switch per environment. See docs/guides/radar.md.
+     *
+     * `ip_intelligence.driver` is `none` (the default — geo, ASN and network flags are
+     * simply unknown, and the rules that need them never fire), `maxmind` (local GeoLite2 /
+     * GeoIP2 database FILES the operator downloads under MaxMind's licence; nothing is
+     * fetched at runtime) or `ipinfo` (one HTTPS call per uncached address to IPinfo with
+     * the operator's token). Lookups are cached for `cache_ttl` seconds under a keyed
+     * pseudonym of the address, never the address itself.
+     *
+     * `cache_store` is where the velocity counters and the lookup cache live. It must be
+     * SHARED between replicas (redis, database) or every pod counts only its own traffic;
+     * null is the application's default store.
+     *
+     * `device_cookie` is the first-party, HttpOnly cookie that recognises a browser. It
+     * holds a random identifier and nothing else; only a keyed pseudonym of it is stored.
+     *
+     * `device_retention_days` bounds the remembered devices (and the coarse location of
+     * the last successful sign-in on each), swept by `model:prune`.
+     *
+     * `disposable_domains_path` is the refreshed list `radar:refresh-disposable-domains`
+     * writes (merged with the bundled one); `disposable_domains_url` is where it reads from.
+     */
+    'radar' => [
+        'ip_intelligence' => [
+            'driver' => env('CBOX_ID_RADAR_IP_INTELLIGENCE', 'none'),
+            'cache_ttl' => (int) env('CBOX_ID_RADAR_IP_CACHE_TTL', 86400),
+            'maxmind' => [
+                'city_database' => env('CBOX_ID_RADAR_MAXMIND_CITY_DB'),
+                'asn_database' => env('CBOX_ID_RADAR_MAXMIND_ASN_DB'),
+                'anonymous_database' => env('CBOX_ID_RADAR_MAXMIND_ANONYMOUS_DB'),
+            ],
+            'ipinfo' => [
+                'token' => env('CBOX_ID_RADAR_IPINFO_TOKEN'),
+                'base_url' => env('CBOX_ID_RADAR_IPINFO_URL', 'https://ipinfo.io'),
+                'timeout' => (float) env('CBOX_ID_RADAR_IPINFO_TIMEOUT', 1.5),
+            ],
+        ],
+        'cache_store' => env('CBOX_ID_RADAR_CACHE_STORE'),
+        'device_cookie' => env('CBOX_ID_RADAR_DEVICE_COOKIE', 'cbox_device'),
+        'device_retention_days' => env('CBOX_ID_RADAR_DEVICE_RETENTION_DAYS', 180),
+        'impossible_travel_min_km' => (int) env('CBOX_ID_RADAR_TRAVEL_MIN_KM', 300),
+        'disposable_domains_path' => env('CBOX_ID_RADAR_DISPOSABLE_DOMAINS_PATH', storage_path('app/radar/disposable-domains.txt')),
+        'disposable_domains_url' => env('CBOX_ID_RADAR_DISPOSABLE_DOMAINS_URL', 'https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf'),
+    ],
+
+    /*
      * Whether this deployment is MULTI-TENANT, stated rather than inferred.
      *
      * The default shape of this product is a single-tenant identity provider: one

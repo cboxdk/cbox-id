@@ -6,16 +6,21 @@ import { Button, Field, Icon, Input } from '@/ui';
 import { logout } from '@routes';
 import { resend, verify } from '@routes/login/step-up';
 
-type Props = PageProps<{ maskedEmail: string }>;
+type Props = PageProps<{
+    maskedEmail: string;
+    /** `sign_up` when a new account is confirming its address before its first session. */
+    purpose?: 'sign_in' | 'sign_up';
+}>;
 
 /**
- * A ONE-TIME CODE, EMAILED, because this sign-in looked unusual.
+ * A ONE-TIME CODE, EMAILED, because this sign-in looked unusual — or because a new account
+ * Radar challenged confirms its address before its first session.
  *
  * The address is masked. The person already knows their own; the point of showing it is
  * to say which inbox to look in, and an unmasked address on a page reachable without a
  * session is one an onlooker over a shoulder learns too.
  */
-export default function OtpStepUp({ maskedEmail }: Props) {
+export default function OtpStepUp({ maskedEmail, purpose = 'sign_in' }: Props) {
     const resentMessage = usePage().flash.resent;
     const { t, rich } = useTranslator();
 
@@ -24,10 +29,21 @@ export default function OtpStepUp({ maskedEmail }: Props) {
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.otp_step_up.title')}
+                {t(
+                    purpose === 'sign_up'
+                        ? 'auth.otp_step_up.signup_title'
+                        : 'auth.otp_step_up.title',
+                )}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {rich('auth.otp_step_up.lead', { email: <b>{maskedEmail}</b> })}
+                {rich(
+                    purpose === 'sign_up'
+                        ? 'auth.otp_step_up.signup_lead'
+                        : 'auth.otp_step_up.lead',
+                    {
+                        email: <b>{maskedEmail}</b>,
+                    },
+                )}
             </p>
 
             {resentMessage !== undefined && (

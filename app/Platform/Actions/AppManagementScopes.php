@@ -93,6 +93,19 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Change how people sign in',
             'description' => 'Change password, MFA and SSO rules, self-service sign-up, social login providers and the legacy login approval.',
         ],
+        'radar:read' => [
+            'label' => 'Read Radar',
+            'description' => 'Read Radar\'s mode, built-in and custom rules, allow and deny lists, and the decisions explorer — why a sign-in or sign-up was allowed, challenged or blocked. Never an IP or address from a decision.',
+        ],
+        'radar:write' => [
+            'label' => 'Change Radar rules and lists',
+            'description' => 'Write, reorder and delete Radar rules, tune the built-in ones, and add to or remove from the allow and deny lists.',
+        ],
+        'radar:manage' => [
+            'label' => 'Switch Radar enforcement',
+            'description' => 'Switch Radar between monitor (record only) and enforce (block and challenge) — the environment\'s sign-in protection, on or off.',
+            'critical' => true,
+        ],
         'frontend_keys:read' => [
             'label' => 'Read publishable keys',
             'description' => 'List the publishable keys browser apps present to the Frontend API, with their allowed origins.',

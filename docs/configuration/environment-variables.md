@@ -53,13 +53,32 @@ Optional. Wires [Cloudflare Turnstile](https://developers.cloudflare.com/turnsti
 as the CAPTCHA for a signup the risk scorer **challenges** (it is never shown to
 everyone). Both keys must be set for the feature to exist at all: with either missing,
 no widget renders, no Cloudflare script is loaded, the CSP keeps its strict same-origin
-`script-src`, and signup behaves exactly as it does without the feature. The challenge
-only bites when `RISK_MODE=enforce`.
+`script-src`, and a challenged signup is confirmed with an emailed code instead. The
+challenge only bites when the environment's Radar mode is enforce (`RISK_MODE=enforce`
+until the environment chooses).
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_TURNSTILE_SITE_KEY` | The Turnstile **site key** (public) — rendered into the widget on a challenged signup, and what opens the CSP to `https://challenges.cloudflare.com`. | *(empty — feature off)* | Set both keys to switch bot protection on. Get them from the Cloudflare dashboard (Turnstile → add a widget for your signup hostname). |
 | `CBOX_ID_TURNSTILE_SECRET_KEY` | The Turnstile **secret key** — used server-side to verify the widget's token against Cloudflare's `siteverify`. Never sent to the browser. | *(empty — feature off)* | As above. Treat it like any other secret; a leaked secret lets someone else validate tokens against your widget. |
+
+### Radar
+
+Adaptive sign-in and sign-up protection — see [Radar](../guides/radar.md). Each environment
+chooses monitor or enforce in the console; `RISK_MODE` is the default until it does.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_RADAR_IP_INTELLIGENCE` | Where geo, network and VPN/hosting facts come from: `none`, `maxmind` (local database files) or `ipinfo` (the IPinfo API — the address is sent to IPinfo). | `none` | To switch on country, network and travel rules. |
+| `CBOX_ID_RADAR_MAXMIND_CITY_DB` / `_ASN_DB` / `_ANONYMOUS_DB` | Paths to GeoLite2-City, GeoLite2-ASN and (paid) GeoIP2-Anonymous-IP `.mmdb` files. Each is optional. | *(empty)* | With `maxmind`. Keep them current with `geoipupdate`. |
+| `CBOX_ID_RADAR_IPINFO_TOKEN` | Your IPinfo token, sent as a bearer header. | *(empty)* | With `ipinfo`. |
+| `CBOX_ID_RADAR_IPINFO_URL` / `_TIMEOUT` | IPinfo's base URL and the per-lookup timeout in seconds. | `https://ipinfo.io` / `1.5` | Rarely. |
+| `CBOX_ID_RADAR_IP_CACHE_TTL` | Seconds a lookup is cached (under a pseudonym of the address). | `86400` | Rarely. |
+| `CBOX_ID_RADAR_CACHE_STORE` | The cache store the velocity counters and lookups share. | the default store | On more than one replica, when the default store is not shared. |
+| `CBOX_ID_RADAR_DEVICE_COOKIE` | The first-party device cookie's name. | `cbox_device` | Only on a clash. |
+| `CBOX_ID_RADAR_DEVICE_RETENTION_DAYS` | Days a remembered device is kept after the last sign-in on it. Empty keeps them. | `180` | To match your privacy notice. |
+| `CBOX_ID_RADAR_TRAVEL_MIN_KM` | Hops shorter than this are not travel. | `300` | Raise it if mobile or VPN users trip impossible travel. |
+| `CBOX_ID_RADAR_DISPOSABLE_DOMAINS_PATH` / `_URL` | Where `radar:refresh-disposable-domains` writes the refreshed list, and where it fetches it from. | `storage/app/radar/disposable-domains.txt` / the disposable-email-domains blocklist | To use your own list. |
 
 ## Enterprise self-serve (SSO, SCIM & Admin Portal)
 

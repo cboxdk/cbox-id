@@ -70,6 +70,10 @@ class ConsoleNavigation
                 new NavPage('environment.social-providers', Vocabulary::SOCIAL_LOGIN),
                 new NavPage('environment.connections', Vocabulary::ENTERPRISE_SSO),
                 new NavPage('environment.directories', Vocabulary::DIRECTORY_SYNC),
+                // Adaptive protection at the doors above: what is allowed, challenged or
+                // blocked, and why. Filed here rather than under Monitoring because its rules
+                // and lists are written, not only read.
+                new NavPage('environment.radar', Vocabulary::RADAR),
                 // "Admin Portal" joins this area when the environment console can mint a
                 // portal link of its own; today a link is minted from an organization.
             ),

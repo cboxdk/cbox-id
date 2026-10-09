@@ -73,6 +73,7 @@ enum HelpTopic: string
     case AuditLogs = 'audit-logs';
     case DataExports = 'data-exports';
     case RiskEvents = 'risk-events';
+    case Radar = 'radar';
     case SignInActivity = 'sign-in-activity';
     case Branding = 'branding';
     case Workspaces = 'workspaces';
@@ -136,6 +137,7 @@ enum HelpTopic: string
             self::AuditLogs => 'What your app records about each organization',
             self::DataExports => 'Exports & retention',
             self::RiskEvents => 'Sign-ins that looked suspicious',
+            self::Radar => 'Allowing, challenging and blocking sign-ins',
             self::SignInActivity => 'Sign-ins over time',
             self::Branding => 'Your look on the console and sign-in',
             self::Workspaces => 'Every workspace on this install',
@@ -245,6 +247,7 @@ enum HelpTopic: string
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
             self::RiskEvents => 'Sign-ins and requests that Cbox ID scored as risky enough to flag, newest first, with the score and the reasons behind it. Look here after a spike in failed sign-ins, or when someone reports a sign-in they did not make.',
+            self::Radar => 'Radar judges every sign-in and sign-up: credential stuffing, bot-like speed, impossible travel, new devices, anonymising networks and throwaway addresses, plus rules and allow and deny lists of your own. It records every verdict and, once you switch it to enforce, blocks or asks for a second factor. Read the decisions here before you enforce, and when someone says they cannot sign in.',
 
             self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
 
@@ -309,6 +312,7 @@ enum HelpTopic: string
             self::PlatformOrganizations => 'core-concepts/workspaces-and-organizations',
             self::DataExports => 'security/compliance',
             self::RiskEvents => 'security/adaptive-risk',
+            self::Radar => 'guides/radar',
             self::SignInActivity => 'operations/analytics',
             self::PlatformQueues => 'operations/queue-workers',
             self::Overview,

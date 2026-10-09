@@ -65,6 +65,7 @@ Pulled in automatically by `composer install`:
 |---|---|---|
 | `laravel/mcp` | `^1.0` | The MCP server at `/mcp` on each environment host. See [Agents and MCP](guides/agents-and-mcp.md). |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
+| `maxmind-db/reader` | `^1.12` | Reads MaxMind GeoLite2/GeoIP2 database files locally for Radar's IP intelligence, when `CBOX_ID_RADAR_IP_INTELLIGENCE=maxmind`. Pure PHP; inert otherwise. |
 
 > Social and enterprise sign-in needs **no third-party package**. Google, Entra, Okta,
 > GitHub, Apple and the rest are the framework's own `Federation` stack in

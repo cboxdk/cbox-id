@@ -192,6 +192,8 @@ return [
     'otp_step_up' => [
         'title' => 'Additional verification',
         'lead' => 'This sign-in looked unusual, so we emailed a one-time code to :email. Enter it to continue.',
+        'signup_title' => 'Confirm your email address',
+        'signup_lead' => 'To finish creating your account, enter the one-time code we emailed to :email.',
         'code_label' => 'Verification code',
         'resend' => "Didn't get it? Resend code",
         'resent' => 'We sent a new code to :email.',
