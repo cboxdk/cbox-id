@@ -179,7 +179,7 @@ the webhook to tell the person before they hit it.
 | Salesforce | Call the API at `metadata.instance_url`. Use `test.salesforce.com` as the login domain for sandboxes. |
 | HubSpot | Tokens live 30 minutes; they are refreshed for you. |
 | Linear | Scopes are comma-separated at Linear; enter them as usual here. |
-| Notion | No scopes: the person picks pages on Notion's screen. Tokens do not expire, and Notion has no revocation endpoint. |
+| Notion | No scopes: the person picks pages on Notion's screen. The token response names no lifetime; Notion's rotating refresh token is kept, and disconnecting revokes the token at Notion. Send `Notion-Version` on your own API calls too. |
 
 ## Disconnecting
 
