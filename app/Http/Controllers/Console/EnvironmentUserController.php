@@ -15,6 +15,7 @@ use App\Actions\Users\EraseUser;
 use App\Actions\Users\GrantStaffRole;
 use App\Actions\Users\MarkEmailVerified;
 use App\Actions\Users\ReactivateUser;
+use App\Actions\Users\RemoveUserSmsFactor;
 use App\Actions\Users\ResetMfa;
 use App\Actions\Users\RevokeAllUserSessions;
 use App\Actions\Users\RevokeStaffRole;
@@ -46,6 +47,7 @@ use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\Mfa;
+use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -198,6 +200,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         Mfa $mfa,
         StaffRoles $staff,
         SupportAccess $support,
+        SmsFactors $sms,
     ): Response {
         $this->assertEnvironmentAdmin();
 
@@ -259,7 +262,19 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'email' => $model->email,
                 'status' => $model->status->value,
                 'verified' => $model->email_verified_at !== null,
-                'hasMfa' => $mfa->hasConfirmedTotp($model->id),
+                'hasMfa' => $mfa->hasConfirmedTotp($model->id) || $sms->isEnrolled($model->id),
+                /*
+                 * The phone number for text-message codes, MASKED — an administrator helping
+                 * somebody who lost their number needs to recognise it, not to be able to
+                 * text it. Pending (not yet confirmed) numbers are shown as such: removing
+                 * one is how an administrator clears a half-finished enrolment.
+                 */
+                'smsFactor' => ($details = $sms->details($model->id)) === null ? null : [
+                    'maskedNumber' => $details->maskedNumber,
+                    'country' => $details->country,
+                    'confirmed' => $details->confirmed,
+                    'usable' => $sms->isUsable($model->id),
+                ],
                 'requiresPasswordChange' => app(AdminPasswords::class)->requiresChange($model->id),
             ],
             'memberships' => $rows,
@@ -312,6 +327,7 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'resendVerification' => route('environment.users.verification', $model->id),
                 'markVerified' => route('environment.users.verify', $model->id),
                 'resetMfa' => route('environment.users.mfa', $model->id),
+                'removeSms' => route('environment.users.mfa.sms', $model->id),
                 'deactivate' => route('environment.users.deactivate', $model->id),
                 'reactivate' => route('environment.users.reactivate', $model->id),
                 'erase' => route('environment.users.erase', $model->id),
@@ -470,6 +486,33 @@ final readonly class EnvironmentUserController extends ConsoleController
         return $result instanceof RedirectResponse
             ? $result
             : back()->with('status', 'Two-factor authentication reset — the user must re-enroll.');
+    }
+
+    /**
+     * Remove only the person's phone number — the lost or ported one — through
+     * {@see RemoveUserSmsFactor}. Behind the same step-up as the full reset: for somebody
+     * whose only factor it was, the outcome is the same.
+     */
+    public function removeSms(string $user): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        $model = $this->resolve($user);
+
+        $challenge = $this->stepUp(
+            $model->id,
+            'Removing this phone number may leave the user protected by their password alone.',
+        );
+
+        if ($challenge !== null) {
+            return $challenge;
+        }
+
+        $result = $this->act(RemoveUserSmsFactor::class, ['id' => $model->id]);
+
+        return $result instanceof RedirectResponse
+            ? $result
+            : back()->with('status', 'Phone number removed. Their other factors and recovery codes are unchanged.');
     }
 
     public function deactivate(string $user): RedirectResponse

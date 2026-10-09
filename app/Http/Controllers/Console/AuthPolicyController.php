@@ -7,11 +7,14 @@ namespace App\Http\Controllers\Console;
 use App\Actions\SignIn\AuthPolicyFields;
 use App\Actions\SignIn\InheritSignInPolicy;
 use App\Actions\SignIn\SetSelfServiceSignup;
+use App\Actions\SignIn\SmsFactorPolicyFields;
 use App\Actions\SignIn\UpdateSignInPolicy;
+use App\Actions\SignIn\UpdateSmsFactorPolicy;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
 use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
+use App\Http\Requests\Console\SaveSmsFactorPolicyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
@@ -20,15 +23,18 @@ use App\Platform\LockoutDefaults;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
 use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Otp\Sms\CallingCodes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Response;
+use Locale;
 
 /**
  * CONSOLE › SIGN-IN RULES — one page, both planes.
@@ -145,6 +151,7 @@ final readonly class AuthPolicyController extends ConsoleController
                 : $this->url('auth-policy.update'),
             'inheritHref' => $onEnvironmentPlane ? null : $this->url('auth-policy.inherit'),
             'selfServiceSignup' => $onEnvironmentPlane ? $this->selfServiceProps() : null,
+            'smsFactor' => $onEnvironmentPlane ? $this->smsFactorProps() : null,
         ]);
     }
 
@@ -176,6 +183,33 @@ final readonly class AuthPolicyController extends ConsoleController
         return back()->with('status', $enabled
             ? 'Self-service sign-up is on. People can create an account and their own organization.'
             : 'Self-service sign-up is off. People join by invitation.');
+    }
+
+    /**
+     * `PUT /admin/sign-in-rules/sms` — text-message codes as a second factor, through the
+     * action the management API runs ({@see UpdateSmsFactorPolicy}). Environment plane only,
+     * like self-service sign-up: which countries the environment texts is a cost and fraud
+     * decision for the environment, not for one organization in it.
+     */
+    public function sms(SaveSmsFactorPolicyRequest $request): RedirectResponse
+    {
+        $this->scope->assertMayAdministerEnvironment();
+
+        $input = $request->policyInput();
+
+        $result = $this->act(UpdateSmsFactorPolicy::class, $input, [
+            'enabled' => 'enabled',
+            'allowed_countries' => 'allowedCountries',
+            'privileged_need_stronger_factor' => 'privilegedNeedStrongerFactor',
+        ], 'allowedCountries');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return back()->with('status', $input['enabled']
+            ? 'Text-message codes are on for '.count($input['allowed_countries']).' '.(count($input['allowed_countries']) === 1 ? 'country' : 'countries').'.'
+            : 'Text-message codes are off.');
     }
 
     /**
@@ -309,6 +343,42 @@ final readonly class AuthPolicyController extends ConsoleController
             'mode' => $policy->mode(),
             'href' => $this->url('auth-policy.self-service-signup'),
         ];
+    }
+
+    /**
+     * The SMS policy as the page draws it, with every country a number can be placed in —
+     * named in English, the console's language — so the picker offers only what the
+     * platform can actually text. `deploymentCountries` is the operator's ceiling, shown so
+     * the page does not promise a country the deployment will refuse.
+     *
+     * @return array{enabled: bool, allowedCountries: list<string>, privilegedNeedStrongerFactor: bool, deploymentCountries: list<string>, countries: list<array{value: string, label: string}>, href: string}
+     */
+    private function smsFactorProps(): array
+    {
+        $policy = app(SmsFactorPolicies::class)->forEnvironment();
+
+        $countries = array_map(static fn (string $code): array => [
+            'value' => $code,
+            'label' => self::countryName($code),
+        ], CallingCodes::countries());
+
+        usort($countries, static fn (array $a, array $b): int => strcmp($a['label'], $b['label']));
+
+        return [
+            'enabled' => $policy->enabled,
+            'allowedCountries' => $policy->allowedCountries,
+            'privilegedNeedStrongerFactor' => $policy->privilegedNeedStrongerFactor,
+            'deploymentCountries' => SmsFactorPolicyFields::deploymentCountries(),
+            'countries' => $countries,
+            'href' => $this->url('auth-policy.sms'),
+        ];
+    }
+
+    private static function countryName(string $code): string
+    {
+        $name = Locale::getDisplayRegion('-'.$code, 'en');
+
+        return is_string($name) && $name !== '' && $name !== $code ? $name : $code;
     }
 
     private function currentEnvironment(): ?Environment

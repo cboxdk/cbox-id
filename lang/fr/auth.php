@@ -153,6 +153,7 @@ return [
             'lead' => 'Saisissez le code à 6 chiffres de votre application d’authentification.',
             'label' => 'Code d’authentification',
             'switch' => 'Utiliser plutôt un code de récupération',
+            'sms_switch' => 'Recevoir plutôt un code par SMS',
         ],
         'recovery' => [
             'lead' => 'Saisissez l’un des codes de récupération que vous avez enregistrés lors de l’activation de l’authentification à deux facteurs.',
@@ -160,6 +161,18 @@ return [
             'submit' => 'Vérifier le code',
             'switch' => 'Utiliser plutôt votre application d’authentification',
             'invalid' => 'Ce code de récupération est invalide ou a déjà été utilisé.',
+            'back' => 'Utiliser une autre méthode',
+        ],
+        'sms' => [
+            'lead' => 'Nous enverrons un code par SMS au numéro de téléphone de votre compte.',
+            'send' => 'M’envoyer un code par SMS',
+            'sent' => 'Nous avons envoyé un code au :number. Il expire dans quelques minutes.',
+            'resend' => 'Envoyer un nouveau code',
+            'label' => 'Code reçu par SMS',
+            'switch' => 'Utiliser plutôt votre application d’authentification',
+            'wait' => 'Un code vient d’être envoyé. Patientez un instant avant d’en demander un autre.',
+            'failed' => 'Nous n’avons pas pu envoyer le SMS. Réessayez dans un instant ou utilisez un code de récupération.',
+            'unavailable' => 'Les codes par SMS ne sont pas disponibles pour ce compte.',
         ],
     ],
 

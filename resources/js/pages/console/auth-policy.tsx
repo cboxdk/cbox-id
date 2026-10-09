@@ -6,6 +6,7 @@ import {
     Badge,
     Button,
     Checkbox,
+    Combobox,
     Dialog,
     Field,
     Input,
@@ -41,6 +42,17 @@ interface SelfServiceSignup {
     href: string;
 }
 
+/** Text-message codes as a second factor. Environment plane only. */
+interface SmsFactorSetting {
+    enabled: boolean;
+    allowedCountries: string[];
+    privilegedNeedStrongerFactor: boolean;
+    /** The deployment's own ceiling (CBOX_ID_SMS_ALLOWED_COUNTRIES); empty means none. */
+    deploymentCountries: string[];
+    countries: { value: string; label: string }[];
+    href: string;
+}
+
 interface OrganizationRow {
     id: string;
     name: string;
@@ -70,6 +82,7 @@ type Props = PageProps<{
     /** Null on the environment baseline, which inherits from nothing. */
     inheritHref: string | null;
     selfServiceSignup: SelfServiceSignup | null;
+    smsFactor: SmsFactorSetting | null;
     help: HelpContent;
 }>;
 
@@ -89,6 +102,7 @@ export default function AuthPolicyPage({
     saveHref,
     inheritHref,
     selfServiceSignup,
+    smsFactor,
     help,
 }: Props) {
     const form = useForm<Policy>(policy);
@@ -336,6 +350,8 @@ export default function AuthPolicyPage({
                     onEnable={() => setConfirming('signup')}
                 />
             )}
+
+            {smsFactor !== null && <SmsFactorPanel setting={smsFactor} scopeName={scopeName} />}
 
             {/* What each organization actually ends up with. */}
             {onEnvironmentPlane && organizations !== null && (
@@ -587,6 +603,150 @@ function SelfServiceSignupPanel({
                 person to create an organization with <code>prompt=create_organization</code>. Both
                 are offered only while this is on.
             </p>
+        </Panel>
+    );
+}
+
+/**
+ * TEXT-MESSAGE CODES — SMS as a second factor, off until an environment turns it on.
+ *
+ * The trade-off is written on the panel rather than in a help page, because it is the
+ * whole decision: SMS is better than a password alone and worse than every other factor
+ * here, and each country on the list is a place the environment pays to send texts to.
+ * Turning it on needs at least one country — the action refuses SMS with none, so the
+ * page cannot show "on" for a setting nobody can enrol under.
+ */
+function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; scopeName: string }) {
+    const form = useForm({
+        enabled: setting.enabled,
+        allowedCountries: setting.allowedCountries,
+        privilegedNeedStrongerFactor: setting.privilegedNeedStrongerFactor,
+    });
+    const [adding, setAdding] = useState<string | undefined>(undefined);
+
+    const label = (code: string) =>
+        setting.countries.find((country) => country.value === code)?.label ?? code;
+
+    const outsideDeployment = form.data.allowedCountries.filter(
+        (code) =>
+            setting.deploymentCountries.length > 0 && !setting.deploymentCountries.includes(code),
+    );
+
+    const options = setting.countries.filter(
+        (country) => !form.data.allowedCountries.includes(country.value),
+    );
+
+    return (
+        <Panel
+            title="Text-message codes"
+            description={
+                setting.enabled
+                    ? `People in ${scopeName} can add a phone number and receive sign-in codes by SMS.`
+                    : `Off. People in ${scopeName} use an authenticator app, a passkey or recovery codes.`
+            }
+        >
+            <form
+                className="space-y-5"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    form.put(setting.href, { preserveScroll: true });
+                }}
+            >
+                <div
+                    className="rounded-lg p-3 text-sm space-y-1.5"
+                    style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+                >
+                    <p>
+                        <b>SMS is the weakest second factor offered here.</b> A code can be taken by
+                        a SIM swap or number port-out, intercepted in the phone network, or typed
+                        into a convincing fake sign-in page. It is still far better than a password
+                        alone — turn it on for people who cannot use an authenticator app or a
+                        passkey.
+                    </p>
+                    <p>
+                        Every text costs money. Codes go only to the countries listed below, and
+                        each number, network address and this environment have daily limits.
+                    </p>
+                </div>
+
+                <Checkbox
+                    label="Accept text-message codes as a second factor"
+                    checked={form.data.enabled}
+                    onCheckedChange={(checked) => form.setData('enabled', checked)}
+                />
+
+                <Field
+                    label="Countries"
+                    hint="Only numbers in these countries can be added and texted. Removing a country stops texts to it at once."
+                    error={form.errors.allowedCountries}
+                >
+                    <Combobox
+                        aria-label="Add a country"
+                        value={adding}
+                        placeholder="Add a country…"
+                        searchPlaceholder="Search countries…"
+                        options={options}
+                        onValueChange={(code) => {
+                            setAdding(undefined);
+                            form.setData('allowedCountries', [...form.data.allowedCountries, code]);
+                        }}
+                    />
+                </Field>
+
+                {form.data.allowedCountries.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2" aria-label="Allowed countries">
+                        {form.data.allowedCountries.map((code) => (
+                            <li key={code}>
+                                <Badge>
+                                    {label(code)} <span className="mono">{code}</span>
+                                    <button
+                                        type="button"
+                                        className="ml-1.5"
+                                        aria-label={`Remove ${label(code)}`}
+                                        onClick={() =>
+                                            form.setData(
+                                                'allowedCountries',
+                                                form.data.allowedCountries.filter(
+                                                    (other) => other !== code,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        ×
+                                    </button>
+                                </Badge>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                        No countries yet. Add at least one before turning text-message codes on.
+                    </p>
+                )}
+
+                {outsideDeployment.length > 0 && (
+                    <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
+                        This deployment only texts {setting.deploymentCountries.join(', ')}, so
+                        numbers in {outsideDeployment.map(label).join(', ')} cannot receive codes
+                        until CBOX_ID_SMS_ALLOWED_COUNTRIES includes them.
+                    </p>
+                )}
+
+                <Checkbox
+                    label="Owners and admins need an authenticator app or a passkey too"
+                    hint="An owner or admin can add SMS only next to a stronger factor, and is asked to add one if SMS is all they have."
+                    checked={form.data.privilegedNeedStrongerFactor}
+                    onCheckedChange={(checked) =>
+                        form.setData('privilegedNeedStrongerFactor', checked)
+                    }
+                />
+
+                <div>
+                    <Button type="submit" variant="primary" loading={form.processing}>
+                        Save text-message settings
+                    </Button>
+                </div>
+            </form>
         </Panel>
     );
 }

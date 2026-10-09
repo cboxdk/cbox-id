@@ -311,6 +311,38 @@ issuance and login.
 | `CBOX_ID_OTP_EMAIL_FROM_ADDRESS` | From address for the code email. | *(none — falls back to the app's `MAIL_FROM_ADDRESS`)* | Set to send codes from a different, well-aligned sender than the rest of your mail. |
 | `CBOX_ID_OTP_EMAIL_FROM_NAME` | From name for the code email. | *(none — falls back to `MAIL_FROM_NAME`)* | As above. |
 
+## Text messages (SMS)
+
+Text-message codes — SMS as a second factor, and any OTP sent by text. **Nothing is ever
+texted until an environment turns SMS on** in its Authentication policy, so these do
+nothing on a deployment that never does. Read [SMS as a second factor](../guides/sms-mfa.md)
+before turning it on: it explains what SMS does not protect against.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_SMS_DRIVER` | The provider: `twilio`, `messagebird` (legacy REST API), `bird` (Bird Channels API), `46elks`, `log` or `array`. `log` writes the message — code included — to the log and **refuses to send when `APP_ENV=production`**, so a deployment that turned SMS on without a provider fails loudly instead of logging codes. `array` keeps messages in memory, for tests. | `log` | Set it before any environment turns SMS on. |
+| `CBOX_ID_SMS_ALLOWED_COUNTRIES` | Comma-separated ISO country codes (`DK,SE,NO,FI`) the deployment will text at all. Each environment's own list can only narrow it. Empty means no deployment-wide restriction. Non-geographic ranges (`+881`, `+882`, `+979`, …) are refused regardless. | *(empty)* | **Set it.** It is the operator's toll-fraud ceiling. |
+| `CBOX_ID_SMS_APP_NAME` | The product name in the text ("123456 is your … verification code"). | `APP_NAME` | Match the name people know. |
+| `CBOX_ID_SMS_TIMEOUT` | Seconds before a provider request gives up. Senders never retry — a retry can deliver and bill twice. | `10` | Rarely. |
+| `CBOX_ID_SMS_COOLDOWN_SECONDS` | Minimum gap between two texts to the same number. | `30` | Raise if people hammer "resend". |
+| `CBOX_ID_SMS_PER_NUMBER_PER_DAY` | Texts one number can receive per day, per environment. | `10` | Lower to blunt pumping at one number. |
+| `CBOX_ID_SMS_PER_IP_PER_HOUR` | Texts one network address can cause per hour, per environment. | `10` | Lower on consumer traffic; raise behind a corporate NAT. |
+| `CBOX_ID_SMS_PER_ENVIRONMENT_PER_DAY` | Texts one environment can send per day, so one tenant cannot spend the deployment's budget. | `1000` | Size to the environment's real daily sign-ins. |
+| `CBOX_ID_SMS_DAILY_CAP` | Texts the whole deployment can send per day — the circuit breaker that bounds the worst day's bill. | `5000` | Set well above a normal day and below a bill you would notice too late. |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio credentials (or `TWILIO_API_KEY` + `TWILIO_API_SECRET`). | *(none)* | With `CBOX_ID_SMS_DRIVER=twilio`. |
+| `TWILIO_MESSAGING_SERVICE_SID` / `TWILIO_FROM` | Send through a Messaging Service (preferred: Twilio picks the sender per country and applies its geo-permissions) or from one number or sender id. | *(none)* | One of the two. |
+| `MESSAGEBIRD_ACCESS_KEY`, `MESSAGEBIRD_ORIGINATOR` | MessageBird REST API key and sender. | *(none)* | With `messagebird`. |
+| `BIRD_ACCESS_KEY`, `BIRD_WORKSPACE_ID`, `BIRD_CHANNEL_ID` | Bird access key, workspace and SMS channel. | *(none)* | With `bird`. |
+| `ELKS_API_USERNAME`, `ELKS_API_PASSWORD`, `ELKS_FROM` | 46elks API credentials and sender (a number, or up to 11 letters). | *(none)* | With `46elks`. |
+| `ELKS_DRY_RUN` | 46elks validates and prices each message without sending it. | `false` | A staging environment pointed at the real API. |
+| `TWILIO_BASE_URL`, `MESSAGEBIRD_BASE_URL`, `BIRD_BASE_URL`, `ELKS_BASE_URL` | Override the provider's API host (a regional edge, a test double). | *(provider default)* | Rarely. |
+
+The limits are counted in the **cache store**, which must be shared between replicas
+(`CACHE_STORE=redis` or `database`) — with a per-replica cache, every replica has its own
+budget. Code length, lifetime and attempt caps are the OTP variables above: a texted code
+is an OTP like an emailed one. Set spend limits and geo-permissions at the provider as well;
+they are the last line, and they do not depend on this deployment being configured right.
+
 ## SAML identity provider (this platform AS the IdP)
 
 Published in `/sso/saml/idp/metadata` and consumed by every downstream service provider

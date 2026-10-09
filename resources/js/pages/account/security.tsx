@@ -17,6 +17,7 @@ import {
     PasswordField,
     PasswordManagerIdentity,
     Pill,
+    Select,
 } from '@/ui';
 
 interface PasskeyRow {
@@ -50,6 +51,16 @@ type Props = PageProps<{
         offered: boolean;
         recoveryRemaining: number;
     };
+    /** Null when this environment does not offer text-message codes and none is on file. */
+    smsFactor: {
+        enrolled: boolean;
+        pending: boolean;
+        maskedNumber: string | null;
+        countries: string[];
+        /** An administrator with no authenticator app or passkey: SMS cannot come first. */
+        blocked: boolean;
+        needsStrongerFactor: boolean;
+    } | null;
     passkeys: PasskeyRow[];
     socialProviders: SocialProvider[];
     session: { id: string; methods: string[]; signedIn: string | null } | null;
@@ -60,6 +71,9 @@ type Props = PageProps<{
         enrolMfa: string;
         confirmMfa: string;
         recoveryCodes: string;
+        enrolSms: string;
+        confirmSms: string;
+        removeSms: string;
         signOutOthers: string;
         logout: string;
         activity: string;
@@ -72,6 +86,7 @@ export default function Security({
     profile,
     hasPassword,
     twoFactor,
+    smsFactor,
     passkeys,
     socialProviders,
     session,
@@ -114,6 +129,10 @@ export default function Security({
             />
 
             <TwoFactorPanel twoFactor={twoFactor} urls={urls} />
+
+            {smsFactor !== null && (
+                <SmsPanel sms={smsFactor} totpEnabled={twoFactor.enabled} urls={urls} />
+            )}
 
             <PasskeyPanel passkeys={passkeys} name={profile.name} />
 
@@ -795,3 +814,192 @@ function SessionPanel({
 }
 
 Security.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+
+/**
+ * TEXT-MESSAGE CODES — a phone number as a second factor, where the environment offers it.
+ *
+ * Adding one is a ceremony like the authenticator app's: the number is texted a code and
+ * the code proves it. The number is shown masked even here — it is stored sealed, and the
+ * page has no reason to hold more of it than the person needs to recognise it.
+ *
+ * The trade-off is said on the panel: this is the factor a SIM swap defeats, so it is
+ * offered next to the stronger ones rather than instead of them.
+ */
+function SmsPanel({
+    sms,
+    totpEnabled,
+    urls,
+}: {
+    sms: NonNullable<Props['smsFactor']>;
+    totpEnabled: boolean;
+    urls: Props['urls'];
+}) {
+    const { smsEnrolmentSentTo, recoveryCodes } = usePage().flash;
+    const enrol = useForm({ phone: '', country: sms.countries[0] ?? '' });
+    const confirm = useForm({ smsCode: '' });
+    const [removing, setRemoving] = useState(false);
+
+    // The flash lives one render; a mistyped code must not lose the confirmation step.
+    const awaitingCode = smsEnrolmentSentTo !== undefined || sms.pending;
+    const codes = !totpEnabled && Array.isArray(recoveryCodes) ? (recoveryCodes as string[]) : null;
+
+    return (
+        <Panel
+            title="Text-message codes"
+            description="A code sent to your phone by SMS, as a second step when you sign in."
+            action={sms.enrolled && <Pill tone="success">On</Pill>}
+        >
+            {sms.needsStrongerFactor && (
+                <p className="mb-4 text-sm" style={{ color: 'var(--warning-strong)' }}>
+                    As an administrator, add an authenticator app or a passkey too. Text messages
+                    can be taken over with your phone number, so they cannot be your only second
+                    step.
+                </p>
+            )}
+
+            {sms.enrolled ? (
+                <>
+                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                        Codes are sent to <b className="mono">{sms.maskedNumber}</b>.
+                    </p>
+
+                    {codes !== null && <RecoveryCodes codes={codes} />}
+
+                    <Button className="mt-4" variant="danger" onClick={() => setRemoving(true)}>
+                        Remove phone number
+                    </Button>
+
+                    <Dialog
+                        open={removing}
+                        onOpenChange={setRemoving}
+                        title="Remove your phone number?"
+                        description="You will no longer be able to sign in with a texted code. Your authenticator app, passkeys and recovery codes are not affected."
+                        footer={
+                            <>
+                                <Button onClick={() => setRemoving(false)}>Cancel</Button>
+                                <Button
+                                    variant="danger"
+                                    onClick={() => {
+                                        setRemoving(false);
+                                        router.delete(urls.removeSms, { preserveScroll: true });
+                                    }}
+                                >
+                                    Remove
+                                </Button>
+                            </>
+                        }
+                    />
+                </>
+            ) : sms.blocked ? (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                    As an administrator, set up an authenticator app or a passkey first. A phone
+                    number can then be added as a backup.
+                </p>
+            ) : sms.countries.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                    Text-message codes are no longer offered here. Use an authenticator app or a
+                    passkey instead.
+                </p>
+            ) : (
+                <div className="space-y-4">
+                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                        Text messages are the weakest second step: someone who takes over your phone
+                        number receives your codes. Prefer an authenticator app or a passkey, and
+                        use this if you cannot.
+                    </p>
+
+                    <form
+                        className="space-y-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            enrol.post(urls.enrolSms, { preserveScroll: true });
+                        }}
+                    >
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            {sms.countries.length > 1 && (
+                                <Field label="Country" error={enrol.errors.country}>
+                                    <Select
+                                        name="country"
+                                        aria-label="Country"
+                                        value={enrol.data.country}
+                                        onValueChange={(code) => enrol.setData('country', code)}
+                                        options={sms.countries.map((code) => ({
+                                            value: code,
+                                            label: code,
+                                        }))}
+                                    />
+                                </Field>
+                            )}
+                            <Field
+                                label="Phone number"
+                                hint="International format works anywhere, e.g. +45 12 34 56 78."
+                                error={enrol.errors.phone}
+                                className="flex-1"
+                            >
+                                <Input
+                                    name="phone"
+                                    type="tel"
+                                    inputMode="tel"
+                                    autoComplete="tel"
+                                    maxLength={32}
+                                    value={enrol.data.phone}
+                                    onChange={(event) => enrol.setData('phone', event.target.value)}
+                                />
+                            </Field>
+                        </div>
+
+                        <Button
+                            type="submit"
+                            variant={awaitingCode ? 'secondary' : 'primary'}
+                            loading={enrol.processing}
+                        >
+                            {awaitingCode ? 'Send a new code' : 'Text me a code'}
+                        </Button>
+                    </form>
+
+                    {awaitingCode && (
+                        <form
+                            className="space-y-4 pt-4"
+                            style={{ borderTop: '1px solid var(--border)' }}
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                confirm.post(urls.confirmSms, { preserveScroll: true });
+                            }}
+                        >
+                            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                                {smsEnrolmentSentTo !== undefined ? (
+                                    <>
+                                        We sent a code to{' '}
+                                        <b className="mono">{smsEnrolmentSentTo}</b>.
+                                    </>
+                                ) : (
+                                    <>
+                                        A code was sent to{' '}
+                                        <b className="mono">{sms.maskedNumber}</b>.
+                                    </>
+                                )}{' '}
+                                Enter it to turn on text-message codes.
+                            </p>
+                            <Field label="Code" error={confirm.errors.smsCode}>
+                                <Input
+                                    name="smsCode"
+                                    className="mono"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    maxLength={10}
+                                    value={confirm.data.smsCode}
+                                    onChange={(event) =>
+                                        confirm.setData('smsCode', event.target.value)
+                                    }
+                                />
+                            </Field>
+                            <Button type="submit" variant="primary" loading={confirm.processing}>
+                                Confirm phone number
+                            </Button>
+                        </form>
+                    )}
+                </div>
+            )}
+        </Panel>
+    );
+}

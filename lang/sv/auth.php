@@ -153,6 +153,7 @@ return [
             'lead' => 'Ange den 6-siffriga koden från din autentiseringsapp.',
             'label' => 'Autentiseringskod',
             'switch' => 'Använd en återställningskod i stället',
+            'sms_switch' => 'Skicka en kod via sms i stället',
         ],
         'recovery' => [
             'lead' => 'Ange en av de återställningskoder som du sparade när du aktiverade tvåfaktorsautentisering.',
@@ -160,6 +161,18 @@ return [
             'submit' => 'Verifiera återställningskod',
             'switch' => 'Använd din autentiseringsapp i stället',
             'invalid' => 'Återställningskoden är ogiltig eller har redan använts.',
+            'back' => 'Använd en annan metod',
+        ],
+        'sms' => [
+            'lead' => 'Vi skickar en kod via sms till telefonnumret på ditt konto.',
+            'send' => 'Skicka en kod till mig',
+            'sent' => 'Vi har skickat en kod till :number. Den går ut om några minuter.',
+            'resend' => 'Skicka en ny kod',
+            'label' => 'Koden från sms-meddelandet',
+            'switch' => 'Använd din autentiseringsapp i stället',
+            'wait' => 'En kod skickades nyss. Vänta en stund innan du ber om en ny.',
+            'failed' => 'Vi kunde inte skicka sms-meddelandet. Försök igen om en stund eller använd en återställningskod.',
+            'unavailable' => 'Sms-koder är inte tillgängliga för det här kontot.',
         ],
     ],
 

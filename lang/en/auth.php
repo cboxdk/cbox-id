@@ -179,6 +179,7 @@ return [
             'lead' => 'Enter the 6-digit code from your authenticator app.',
             'label' => 'Authentication code',
             'switch' => 'Use a recovery code instead',
+            'sms_switch' => 'Text me a code instead',
         ],
         'recovery' => [
             'lead' => 'Enter one of the recovery codes you saved when enabling two-factor.',
@@ -186,6 +187,18 @@ return [
             'submit' => 'Verify recovery code',
             'switch' => 'Use your authenticator app instead',
             'invalid' => 'That recovery code is invalid or already used.',
+            'back' => 'Use another method',
+        ],
+        'sms' => [
+            'lead' => 'We\'ll text a code to the phone number on your account.',
+            'send' => 'Text me a code',
+            'sent' => 'We sent a code to :number. It expires in a few minutes.',
+            'resend' => 'Send a new code',
+            'label' => 'Code from the text message',
+            'switch' => 'Use your authenticator app instead',
+            'wait' => 'A code was sent recently. Wait a moment before asking for another.',
+            'failed' => 'We couldn\'t send the text message. Try again in a moment, or use a recovery code.',
+            'unavailable' => 'Text-message codes aren\'t available for this account.',
         ],
     ],
 

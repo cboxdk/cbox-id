@@ -93,6 +93,7 @@ use App\Http\Controllers\FirstRunController;
 use App\Http\Controllers\FrontendApi\PasskeySignInController;
 use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
+use App\Http\Controllers\FrontendApi\SmsChallengeController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LocaleController;
@@ -160,6 +161,9 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // session cookie from the first request to this one.
         Route::match(['post', 'options'], '/sign-in/factor', SecondFactorController::class)
             ->name('frontend.sign-in.factor');
+        // Text the code for `method: sms`. Spends one of the ticket's attempts per send.
+        Route::match(['post', 'options'], '/sign-in/factor/sms', SmsChallengeController::class)
+            ->name('frontend.sign-in.factor.sms');
 
         // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
         // handle rather than in a session cookie, for the same reason everything else here
@@ -408,6 +412,10 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
 Route::get('/mfa', [MfaController::class, 'show'])->middleware('locale')->name('mfa');
 Route::post('/mfa', [MfaController::class, 'verify'])->middleware('locale')->name('mfa.verify');
 Route::post('/mfa/recovery', [MfaController::class, 'recover'])->middleware('locale')->name('mfa.recover');
+// A texted code: one request to send it, one to check it. Sending is bounded by the SMS
+// toll-fraud guard and the OTP issue caps; checking shares the challenge's throttle.
+Route::post('/mfa/sms/send', [MfaController::class, 'sendSms'])->middleware('locale')->name('mfa.sms.send');
+Route::post('/mfa/sms', [MfaController::class, 'verifySms'])->middleware('locale')->name('mfa.sms.verify');
 
 // The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
 // state: primary auth passed, but an elevated risk assessment demands a second
@@ -701,6 +709,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::post('/account/two-factor/enrol', [AccountController::class, 'enrolMfa'])->name('account.mfa.enrol');
         Route::post('/account/two-factor/confirm', [AccountController::class, 'confirmMfa'])->name('account.mfa.confirm');
         Route::post('/account/two-factor/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.mfa.recovery-codes');
+        // A phone number as a second factor: enrol (text a code), confirm, remove.
+        Route::post('/account/two-factor/sms', [AccountController::class, 'enrolSms'])->name('account.mfa.sms.enrol');
+        Route::post('/account/two-factor/sms/confirm', [AccountController::class, 'confirmSms'])->name('account.mfa.sms.confirm');
+        Route::delete('/account/two-factor/sms', [AccountController::class, 'removeSms'])->name('account.mfa.sms.destroy');
         Route::delete('/account/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
         Route::delete('/account/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
     });
@@ -1320,6 +1332,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/users/{user}/verification', [EnvironmentUserController::class, 'resendVerification'])->name('environment.users.verification');
         Route::post('/users/{user}/verify', [EnvironmentUserController::class, 'markVerified'])->name('environment.users.verify');
         Route::post('/users/{user}/two-factor/reset', [EnvironmentUserController::class, 'resetMfa'])->name('environment.users.mfa');
+        Route::post('/users/{user}/two-factor/sms/remove', [EnvironmentUserController::class, 'removeSms'])->name('environment.users.mfa.sms');
         Route::post('/users/{user}/deactivate', [EnvironmentUserController::class, 'deactivate'])->name('environment.users.deactivate');
         Route::post('/users/{user}/reactivate', [EnvironmentUserController::class, 'reactivate'])->name('environment.users.reactivate');
         Route::post('/users/{user}/erase', [EnvironmentUserController::class, 'erase'])->name('environment.users.erase');
@@ -1666,6 +1679,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // The environment's self-service sign-up switch — environment plane only: it
         // decides who may create an account anywhere in the environment.
         Route::put('/sign-in-rules/self-service-signup', [AuthPolicyController::class, 'selfServiceSignup'])->name('environment.auth-policy.self-service-signup');
+        // Text-message codes as a second factor — environment plane only, like sign-up: the
+        // countries an environment texts are a cost and fraud decision for the environment.
+        Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('environment.auth-policy.sms');
         // Appearance — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.appearance');

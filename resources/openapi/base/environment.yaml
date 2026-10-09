@@ -2180,6 +2180,20 @@ components:
         permissions_declared: { type: integer }
         orphaned_role_keys: { type: array, items: { type: string }, description: "Roles stored here that the manifest no longer declares." }
         orphaned_permission_keys: { type: array, items: { type: string } }
+    SmsFactorPolicy:
+      type: object
+      required: [enabled, allowed_countries, privileged_need_stronger_factor, deployment_countries]
+      properties:
+        enabled: { type: boolean, description: "Text-message codes are accepted as a second factor. Off by default." }
+        allowed_countries:
+          type: array
+          items: { type: string, pattern: "^[A-Z]{2}$" }
+          description: "ISO 3166-1 alpha-2 countries whose numbers may enrol and be texted. Re-checked at every send."
+        privileged_need_stronger_factor: { type: boolean, description: "Administrators may add SMS only beside an authenticator app or a passkey." }
+        deployment_countries:
+          type: array
+          items: { type: string, pattern: "^[A-Z]{2}$" }
+          description: "The deployment's ceiling (CBOX_ID_SMS_ALLOWED_COUNTRIES). Empty: no deployment restriction. A listed country outside it is never texted."
     SelfServiceSignup:
       type: object
       required: [enabled, decided_here]

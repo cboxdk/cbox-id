@@ -70,6 +70,14 @@ type Props = PageProps<{
         status: string;
         verified: boolean;
         hasMfa: boolean;
+        /** The phone number for text-message codes, masked; null when there is none. */
+        smsFactor: {
+            maskedNumber: string;
+            country: string;
+            confirmed: boolean;
+            /** Whether this environment's SMS policy accepts it right now. */
+            usable: boolean;
+        } | null;
         requiresPasswordChange: boolean;
     };
     memberships: MembershipRow[];
@@ -93,6 +101,7 @@ type Props = PageProps<{
         resendVerification: string;
         markVerified: string;
         resetMfa: string;
+        removeSms: string;
         deactivate: string;
         reactivate: string;
         erase: string;
@@ -256,6 +265,7 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
     const [dismissed, setDismissed] = useState(false);
     const [setting, setSetting] = useState(false);
     const [resettingMfa, setResettingMfa] = useState(false);
+    const [removingSms, setRemovingSms] = useState(false);
     const [deactivating, setDeactivating] = useState(false);
 
     return (
@@ -337,6 +347,12 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                         </Button>
                     )}
 
+                    {user.smsFactor !== null && (
+                        <Button size="sm" onClick={() => setRemovingSms(true)}>
+                            Remove phone number
+                        </Button>
+                    )}
+
                     {user.status === 'active' ? (
                         <Button size="sm" variant="danger" onClick={() => setDeactivating(true)}>
                             Deactivate
@@ -355,6 +371,19 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
 
                 <p className="text-xs" style={{ color: 'var(--faint)' }}>
                     Two-factor: {user.hasMfa ? 'enabled' : 'not enrolled'}.
+                    {user.smsFactor !== null && (
+                        <>
+                            {' '}
+                            Text-message codes to{' '}
+                            <span className="mono">{user.smsFactor.maskedNumber}</span>
+                            {!user.smsFactor.confirmed
+                                ? ' (not yet confirmed)'
+                                : !user.smsFactor.usable
+                                  ? " (not accepted by this environment's SMS policy)"
+                                  : ''}
+                            .
+                        </>
+                    )}
                 </p>
 
                 {/*
@@ -392,6 +421,20 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                     router.post(urls.resetMfa, {}, { preserveScroll: true });
                 }}
             />
+
+            {user.smsFactor !== null && (
+                <ConfirmDelete
+                    open={removingSms}
+                    onOpenChange={setRemovingSms}
+                    name={user.email}
+                    verb="Remove the phone number of"
+                    consequence={`Text-message codes to ${user.smsFactor.maskedNumber} stop working. Their authenticator app, passkeys and recovery codes are not affected — if the phone number was their only second factor, the account is protected by its password alone until they enrol again.`}
+                    onConfirm={() => {
+                        setRemovingSms(false);
+                        router.post(urls.removeSms, {}, { preserveScroll: true });
+                    }}
+                />
+            )}
 
             <ConfirmDelete
                 open={deactivating}

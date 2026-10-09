@@ -42,6 +42,10 @@ final class ParityAllowlist
             'account.mfa.enrol',
             // New recovery codes are shown once, to the person, behind a fresh password.
             'account.mfa.recovery-codes',
+            // Adding a phone number as a second factor: the phone itself has to receive the
+            // code that proves it. (Removing it is `account.mfa.sms.remove`.)
+            'account.mfa.sms.confirm',
+            'account.mfa.sms.enrol',
             // A password is only ever typed by its owner.
             'account.password.update',
             // The person's own answer to an agent asking to act as them (CIBA): approving IS
@@ -80,6 +84,7 @@ final class ParityAllowlist
             // The hosted sign-in for frontend apps: a person proving who they are.
             'frontend.sign-in',
             'frontend.sign-in.factor',
+            'frontend.sign-in.factor.sms',
             'frontend.sign-in.passkey',
             'frontend.sign-in.passkey.options',
             // Accepting an invitation is the invitee's own act, proved by the link they hold.
@@ -97,6 +102,8 @@ final class ParityAllowlist
             'logout',
             'magic.redeem.store',
             'mfa.recover',
+            'mfa.sms.send',
+            'mfa.sms.verify',
             'mfa.verify',
             'passkeys.login',
             'passkeys.login.options',

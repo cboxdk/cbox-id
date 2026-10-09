@@ -41,7 +41,7 @@ final class AccountScopes
         ],
         'account:sign_in:write' => [
             'label' => 'Remove sign-in methods',
-            'description' => 'Remove one of your passkeys, or disconnect a social account — never the last way you can sign in.',
+            'description' => 'Remove one of your passkeys or your phone number for text-message codes, or disconnect a social account — never the last way you can sign in.',
         ],
         'account:devices:write' => [
             'label' => 'Remove your devices',
