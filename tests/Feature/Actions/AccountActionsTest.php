@@ -66,7 +66,7 @@ it('refuses every management key, and every bearer it does not know', function (
     $workspaceKey = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Owner key', MembershipRole::Owner)->plaintext;
     $environmentKey = app(EnvironmentApiKeys::class)->issue($account['environment']->id, 'Env key', ['users:write'])->plaintext;
 
-    expect(accountRoutes())->toHaveCount(11);
+    expect(accountRoutes())->toHaveCount(12);
 
     foreach (accountRoutes() as [$method, $path]) {
         $this->json($method, $path)->assertUnauthorized();

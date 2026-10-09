@@ -340,14 +340,17 @@ final class ConsoleServiceProvider extends ServiceProvider
                 && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthHolderPage();
         });
         // Connected services: offered when the environment has an enabled pipe, or the
-        // person still holds a connection they may want to remove.
+        // person still holds a connection they may want to remove. One statement: this
+        // runs on every console page, so the two questions share a single round trip.
         $features->register('account.pipes', static function (): bool {
             $me = app(CurrentUser::class);
 
-            return $me->check() && (
-                Pipe::query()->where('enabled', true)->exists()
-                || PipeConnection::query()->where('user_id', $me->id())->exists()
-            );
+            return $me->check() && Pipe::query()
+                ->where('enabled', true)
+                ->select('id')
+                ->toBase()
+                ->unionAll(PipeConnection::query()->where('user_id', $me->id())->select('id')->toBase())
+                ->exists();
         });
         $features->register('organization.api-keys', static function (): bool {
             $me = app(CurrentUser::class);
