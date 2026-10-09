@@ -25,6 +25,15 @@ use Cbox\Id\Console\ValueObjects\HealthResult;
  * manifest beside `replicas:`) or runs the queue manager as a cluster
  * (`queue-autoscale.cluster.enabled`, which coordinates through the cache), and WARNS on one.
  *
+ * FILES ARE THE SAME QUESTION, asked of the disks one process writes and another reads. An
+ * audit-log export is written by a queue worker and downloaded through a web replica; a brand
+ * logo is uploaded through one web replica and fetched through all of them. On one server
+ * that is one disk. On Kubernetes it is a disk per pod that disappears with the pod — the
+ * worker's CSV is not on the web pod that streams the download, and a logo uploaded on one
+ * replica 404s on the other — so a `local` disk for any of them FAILS once the deployment is
+ * scaled out. And a brand asset on a local disk is only reachable through the `public/storage`
+ * link, which `php artisan storage:link` makes and the production image does not have.
+ *
  * Outside production it reports nothing to fix: a developer's laptop is supposed to look
  * like this.
  */
@@ -49,7 +58,81 @@ class ProductionConfigDoctorCheck implements HealthCheck
             $this->queue(),
             $this->log(),
             $this->healthToken(),
+            $this->files(),
+            $this->brandAssetLinks(),
         ];
+    }
+
+    /**
+     * Every disk one process writes and another reads, by what it holds.
+     *
+     * @return array<string, string> disk name keyed by what is on it
+     */
+    private function sharedDisks(): array
+    {
+        $disks = [
+            'audit-log exports (CBOX_ID_AUDIT_LOGS_EXPORT_DISK: written by a queue worker, downloaded through a web replica)' => $this->string('cbox-id.audit_logs.export_disk') ?? 'local',
+            'brand assets (WHITELABEL_ASSETS_DISK: uploaded through one web replica, served by all of them)' => $this->string('whitelabel.assets.disk') ?? 'public',
+        ];
+
+        if ($this->string('compliance.export.sink') === 'jsonl') {
+            $disks['the compliance archive (CBOX_ID_COMPLIANCE_JSONL_DISK: appended by a queue worker)'] = $this->string('compliance.export.jsonl.disk') ?? 'local';
+        }
+
+        return $disks;
+    }
+
+    private function files(): HealthResult
+    {
+        $local = [];
+
+        foreach ($this->sharedDisks() as $what => $disk) {
+            if ($this->diskDriver($disk) === 'local') {
+                $local[] = "{$what} on `{$disk}`";
+            }
+        }
+
+        if ($local === []) {
+            return HealthResult::ok('Shared files', 'exports and brand assets are on shared storage');
+        }
+
+        $detail = 'These live on the local disk of whichever process wrote them: '.implode('; ', $local);
+
+        return $this->scaledOut() !== null
+            ? HealthResult::fail(
+                'Files are local to one pod',
+                "{$detail}. This deployment {$this->scaledOut()}, so a download or a logo is missing on every pod but the one "
+                .'that wrote it, and gone when that pod is replaced. Point these disks at shared storage (an s3 disk).',
+            )
+            : HealthResult::ok('Shared files', "{$detail} — one server, one disk. Move them to shared storage before adding a second.");
+    }
+
+    /**
+     * A brand asset on a local disk is served from `public/storage`, the link `storage:link`
+     * makes. Without it every uploaded logo and favicon is a dead link on the sign-in page.
+     */
+    private function brandAssetLinks(): HealthResult
+    {
+        $disk = $this->string('whitelabel.assets.disk') ?? 'public';
+        $url = $this->string("filesystems.disks.{$disk}.url") ?? '';
+
+        if ($this->diskDriver($disk) !== 'local' || ! str_contains($url, '/storage')) {
+            return HealthResult::ok('Brand asset links', "served by the `{$disk}` disk itself");
+        }
+
+        return is_dir(public_path('storage'))
+            ? HealthResult::ok('Brand asset links', 'public/storage is linked')
+            : HealthResult::fail(
+                'Brand asset links are dead',
+                "Brand assets are written to the local `{$disk}` disk and linked as {$url}/…, but public/storage does not exist, "
+                .'so every uploaded logo and favicon answers 404. Run `php artisan storage:link` where the files are written, or '
+                .'point WHITELABEL_ASSETS_DISK at shared storage with its own URL.',
+            );
+    }
+
+    private function diskDriver(string $disk): ?string
+    {
+        return $this->string("filesystems.disks.{$disk}.driver");
     }
 
     private function mail(): HealthResult

@@ -57,7 +57,6 @@ class ConnectorsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'connectors');
         $this->loadRoutesFrom(__DIR__.'/../routes/connectors.php');
 
         // Console — present whenever the plugin is installed and not switched off.

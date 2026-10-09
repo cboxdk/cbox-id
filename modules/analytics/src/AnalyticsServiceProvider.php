@@ -74,7 +74,6 @@ class AnalyticsServiceProvider extends ServiceProvider
         // deployment needs a migration run nobody scheduled.
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'id-analytics');
         $this->loadRoutesFrom(__DIR__.'/../routes/analytics.php');
 
         // The seam: project every delivered outbox event onto the bound sink.

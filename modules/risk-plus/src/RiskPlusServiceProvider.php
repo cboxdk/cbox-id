@@ -74,7 +74,6 @@ class RiskPlusServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'risk-plus');
         $this->loadRoutesFrom(__DIR__.'/../routes/risk-plus.php');
 
         // The hook that makes this a plugin: contribute premium signals to the risk

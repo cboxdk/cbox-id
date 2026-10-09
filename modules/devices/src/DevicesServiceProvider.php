@@ -171,7 +171,6 @@ class DevicesServiceProvider extends ServiceProvider
         DeviceRateLimiter::register();
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'devices');
         $this->loadRoutesFrom(__DIR__.'/../routes/devices.php');
 
         // The push token is sealed under the crypto master key, so a key rotation has to
