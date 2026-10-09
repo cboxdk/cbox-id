@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -58,6 +61,25 @@ dataset('moved pages', [
 ]);
 
 it('answers every old console URL with a permanent redirect to its one page', function (string $from, string $to): void {
+    // The environment console's old addresses answer only where the environment console
+    // does — an environment's own host on a multi-tenant deployment — and 404 everywhere
+    // else (MovedPageRedirectsTest), so that is where they are asked.
+    if (str_starts_with($from, '/admin/')) {
+        multiTenantDeployment();
+        config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
+        platformRootEnvironment();
+        Environment::query()->create([
+            'name' => 'Acme',
+            'slug' => 'acme',
+            'type' => EnvironmentType::Production,
+            'status' => EnvironmentStatus::Active,
+            'is_default' => false,
+            'settings' => [],
+        ]);
+
+        $from = 'https://acme.cboxid.com'.$from;
+    }
+
     $response = $this->get($from);
 
     $response->assertStatus(301);
