@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Platform\Portal;
 
+use Cbox\Id\Directory\Hris\HrisCatalog;
+use Cbox\Id\Directory\Hris\ValueObjects\HrisCredential;
+use Cbox\Id\Directory\Hris\ValueObjects\HrisSetup;
 use Cbox\Id\Federation\Enums\SpValue;
 use Cbox\Id\Federation\IdentityProviderGuides;
 use Cbox\Id\Federation\ProviderCatalog;
@@ -88,6 +91,45 @@ final class PortalGuides
         return $guides;
     }
 
+    /**
+     * The HR-system guides — Workday, BambooHR, Rippling, HiBob, Personio — from the
+     * framework's {@see HrisCatalog}, which is checked against the connectors: the fields a
+     * guide asks for are exactly the ones the sync reads.
+     *
+     * The opposite of the SCIM guides in one respect: here the customer gives US values
+     * (an API key, a report address) rather than taking ours, so a guide is its steps plus
+     * the fields to fill in. Steps, field labels and help are translated
+     * (`portal.guides.hris.{key}`, `portal.hris.fields.{field}`, `portal.hris.help.{key}.{field}`),
+     * each falling back to the framework's English, so an HR system the framework adds is
+     * offered at once.
+     *
+     * @return list<array{key: string, name: string, docs: string, incremental: bool, steps: list<string>, credentials: list<array{key: string, label: string, help: string, example: string, secret: bool, required: bool}>}>
+     */
+    public static function hris(): array
+    {
+        return array_map(static fn (HrisSetup $setup): array => [
+            'key' => $setup->provider->value,
+            'name' => $setup->name,
+            'docs' => $setup->documentationUrl,
+            'incremental' => $setup->incremental,
+            'steps' => self::steps('hris', $setup->provider->value, $setup->setupSteps),
+            'credentials' => array_map(static fn (HrisCredential $credential): array => [
+                'key' => $credential->key,
+                'label' => self::line("portal.hris.fields.{$credential->key}", $credential->label),
+                'help' => self::line("portal.hris.help.{$setup->provider->value}.{$credential->key}", $credential->help),
+                'example' => $credential->example,
+                'secret' => $credential->secret,
+                'required' => $credential->required,
+            ], $setup->credentials),
+        ], HrisCatalog::all());
+    }
+
+    /** @return list<string> */
+    public static function hrisKeys(): array
+    {
+        return array_column(self::hris(), 'key');
+    }
+
     /** @return list<string> */
     public static function ssoKeys(): array
     {
@@ -157,6 +199,14 @@ final class PortalGuides
             'optional' => $field->optional ?: null,
             'location' => $field->location,
         ], static fn (string|bool|null $value): bool => $value !== null), $fields);
+    }
+
+    /** One translated line, or the framework's English when nobody has translated it yet. */
+    private static function line(string $key, string $english): string
+    {
+        $line = __($key);
+
+        return is_string($line) && $line !== $key ? $line : $english;
     }
 
     /**

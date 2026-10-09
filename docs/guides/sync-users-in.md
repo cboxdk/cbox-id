@@ -1,7 +1,7 @@
 ---
 title: Directory Sync
 weight: 40
-description: Let Microsoft Entra ID, Okta or Google Workspace create, update and deactivate people in Cbox ID automatically over SCIM, and map their groups onto your roles.
+description: Let Microsoft Entra ID, Okta, Google Workspace or an HR system create, update and deactivate people in Cbox ID automatically, and map their groups onto your roles.
 ---
 
 # Directory Sync
@@ -20,14 +20,19 @@ answers *"should this person exist at all?"* continuously — which is what clos
 the gap where a leaver still has a working account somewhere because no one filed a
 ticket.
 
-## Two ways to connect
+## Three ways to connect
 
 **Cbox ID pulls** — for Google Workspace and Microsoft Entra, connect the directory
-directly on the page with admin credentials. Cbox ID reads users and groups **hourly**,
+directly on the page with admin credentials. Cbox ID reads users and groups **hourly** by
+default — each directory can set its own pace, from every 15 minutes to once a day —
 via `cbox-id:directory:sync`, which is scheduled for you — so this needs the platform's
 scheduler to be running (`php artisan schedule:work`, or a cron entry calling
 `schedule:run`). Without it a directory syncs once, when you connect it, and never again.
 Nothing to configure on the provider side beyond consent.
+
+**Cbox ID pulls from your HR system** — Workday, BambooHR, Rippling, HiBob or Personio.
+Accounts follow employment: created on the start date, deactivated after the last day,
+with departments as groups. See [HR system sync](hris.md).
 
 **Your provider pushes** — for Okta, OneLogin, or anything else that speaks SCIM.
 Register a directory here to get a bearer token, then point your provider at the
@@ -71,6 +76,10 @@ CLI alike:
 | `directories.list`, `directories.get` | `GET /api/v1/directories`, `GET /api/v1/directories/{id}` | `directory_sync:read` | read |
 | `directories.create` (a SCIM directory) | `POST /api/v1/directories` | `directory_sync:write` | critical |
 | `directories.connect` (Google Workspace or Entra) | `POST /api/v1/directories/connect` | `directory_sync:write` | critical |
+| `directories.hris.connect` (an HR system) | `POST /api/v1/directories/hris` | `directory_sync:write` | critical |
+| `directories.sync` (pull now) | `POST /api/v1/directories/{id}/sync` | `directory_sync:write` | write |
+| `directories.sync_settings.update` | `PATCH /api/v1/directories/{id}/sync-settings` | `directory_sync:write` | write |
+| `directories.credentials.replace` (a pull directory) | `PUT /api/v1/directories/{id}/credentials` | `directory_sync:write` | critical |
 | `directories.update` | `PATCH /api/v1/directories/{id}` | `directory_sync:write` | write |
 | `directories.status.set` (pause or resume) | `POST /api/v1/directories/{id}/status` | `directory_sync:write` | write |
 | `directories.token.rotate` | `POST /api/v1/directories/{id}/rotate` | `directory_sync:write` | critical |
@@ -138,6 +147,7 @@ anything. Map their group onto a role, or assign one on the Members page.
 - [Enterprise SSO](single-sign-on.md) — signing in the people Directory Sync creates.
 - [Admin Portal](admin-portal.md) — let the customer's IT admin connect their directory.
 - [Directory Sync, for IT admins](../for-it-admins/directory-sync.md) — what that IT admin is shown.
+- [HR system sync](hris.md) — Workday, BambooHR, Rippling, HiBob and Personio.
 - [Outbound provisioning](sync-users-out.md) — the same idea in the other direction.
 - [Roles](roles.md) — what group mappings actually grant.
 - [SCIM in the framework](https://github.com/cboxdk/laravel-id/blob/main/docs/core-concepts/scim.md) — the protocol details.

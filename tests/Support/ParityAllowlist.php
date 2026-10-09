@@ -156,6 +156,8 @@ final class ParityAllowlist
             'portal.domains.destroy',
             'portal.domains.store',
             'portal.domains.verify',
+            'portal.hris.store',
+            'portal.hris.sync',
             'portal.log-streams.destroy',
             'portal.log-streams.store',
             'portal.log-streams.test',
