@@ -112,6 +112,15 @@ final class Vocabulary
 
     /** Switches an app asks about per user and organization (Developers › Feature flags). */
     public const string FEATURE_FLAGS = 'Feature flags';
+    /**
+     * A third-party provider people connect their OWN account at (GitHub, Google, Slack…)
+     * so an app here can call that API as them. Not a sign-in method: Social login is how
+     * people get IN; a pipe is how an app reaches OUT on their behalf.
+     */
+    public const string PIPES = 'Pipes';
+
+    /** What a person calls their pipe connections on My account. */
+    public const string CONNECTED_SERVICES = 'Connected services';
 
     public const string API_KEYS = 'API keys';
 

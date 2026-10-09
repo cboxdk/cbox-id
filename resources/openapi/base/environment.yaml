@@ -1714,6 +1714,94 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /vault/pipes/{provider}/token:
+    post:
+      tags: [Token Vault]
+      summary: Lease a fresh access token for a person's connected account (Pipes)
+      description: |
+        Returns a working access token for one person's connected account at a
+        third-party provider (GitHub, Google, Microsoft 365, Slack, Salesforce, HubSpot,
+        Linear, Notion), refreshing it first when it is about to expire. The app must be
+        granted the provider's pipe (Developers › Pipes); an app an organization owns may
+        only lease for that organization's members.
+
+        Whose token: a token issued to the app FOR a person leases that person's
+        connection, and `user_id` may only repeat it; a client-credentials token names the
+        person in `user_id`. The response is `Cache-Control: no-store`. Drop the token
+        when you are done and lease again next time.
+      security: [{ AgentToken: [] }]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: The provider's key.
+          schema: { type: string, enum: [github, google, microsoft, slack, salesforce, hubspot, linear, notion] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose]
+              properties:
+                purpose: { type: string, maxLength: 200, description: Recorded on the audit trail. }
+                user_id: { type: string, maxLength: 128, description: "The person, for a token not issued for one. With a person's token, may only name that person." }
+      responses:
+        '200':
+          description: A fresh access token.
+          headers:
+            Cache-Control: { schema: { type: string, example: no-store } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, provider, user_id, connection_id, scopes, lease_expires_at, metadata]
+                properties:
+                  access_token: { type: string, description: The provider's access token. Use it as a bearer token against the provider's API. }
+                  token_type: { type: string, enum: [Bearer] }
+                  provider: { type: string }
+                  user_id: { type: string }
+                  connection_id: { type: string }
+                  scopes: { type: array, items: { type: string }, description: What the person consented to. }
+                  expires_at: { type: ["string", "null"], format: date-time, description: "When the PROVIDER stops accepting it. Null for tokens that do not expire." }
+                  lease_expires_at: { type: string, format: date-time, description: When to drop it and lease again. }
+                  metadata:
+                    type: object
+                    additionalProperties: { type: string }
+                    description: "What the app needs to call the API at all — Salesforce's `instance_url`, Slack's `team.id`, Notion's `workspace_id`. Never a credential."
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403':
+          description: |
+            Lease denied — the app is not granted this pipe, there is no such (enabled)
+            pipe, the person is not a member of the app's organization, or `user_id` names
+            someone other than the token's person. One response, with a constant message.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - $ref: '#/components/schemas/BearerChallenge'
+              example: { error: lease_denied, message: "The lease was denied." }
+        '404':
+          description: The app is granted the pipe, and the person has not connected the provider. Send them to `connect_url`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipeConnectRequired' }
+              example: { error: not_connected, message: "This person has not connected the provider.", connect_url: "https://id.example.com/account/connected-services/github/connect" }
+        '409':
+          description: The person must connect the provider again — it refused the refresh token, or the token expired with none. Send them to `connect_url`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipeConnectRequired' }
+              example: { error: reauthorization_required, message: "This person must connect the provider again.", connect_url: "https://id.example.com/account/connected-services/github/connect" }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503':
+          description: A needed refresh could not complete right now. Retry after the `Retry-After` header.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /devices:
     post:
       tags: [Devices]
@@ -3441,6 +3529,49 @@ components:
         rotated_at: { type: ["string", "null"], format: date-time }
         created_at: { type: ["string", "null"], format: date-time }
         grants: { type: array, items: { type: string }, description: "The OAuth client ids that may lease it. Not on lists." }
+    Pipe:
+      type: object
+      required: [id, provider, name, client_id, scopes, enabled, redirect_uri, grants, connections]
+      description: "A pipe: this environment's OAuth app at a third-party provider, through which people connect their own accounts. The client secret is write-only."
+      properties:
+        id: { type: string }
+        provider: { type: string, enum: [github, google, microsoft, slack, salesforce, hubspot, linear, notion] }
+        name: { type: string }
+        client_id: { type: string, description: "Your app's OAuth client id at the provider." }
+        scopes: { type: array, items: { type: string }, description: What people are asked for when they connect. }
+        parameters: { type: object, additionalProperties: { type: string }, description: "Per-installation values: Microsoft's `tenant`, Salesforce's `domain`." }
+        enabled: { type: boolean }
+        redirect_uri: { type: string, format: uri, description: The callback URL to register at the provider. }
+        grants: { type: array, items: { type: string }, description: The OAuth client ids of the apps that may lease its tokens. }
+        connections: { type: integer, description: How many people have connected an account through it. }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    PipeConnection:
+      type: object
+      required: [id, pipe_id, provider, user_id, status, scopes]
+      description: "One person's connected account at a pipe's provider. Never a token."
+      properties:
+        id: { type: string }
+        pipe_id: { type: string }
+        provider: { type: string }
+        user_id: { type: string }
+        status: { type: string, enum: [active, needs_reauth] }
+        account: { type: ["string", "null"], description: "The account's name at the provider, when it says (a GitHub login, an email, a workspace)." }
+        scopes: { type: array, items: { type: string } }
+        metadata: { type: object, additionalProperties: { type: string } }
+        expires_at: { type: ["string", "null"], format: date-time, description: When the current access token expires. Null when it does not. }
+        connected_at: { type: ["string", "null"], format: date-time }
+        last_refreshed_at: { type: ["string", "null"], format: date-time }
+        refresh_failures: { type: integer, description: Consecutive transient refresh failures. }
+        last_error: { type: ["string", "null"] }
+        reauth_reason: { type: ["string", "null"], description: "Why it needs reconnecting: the provider's error code, or `no_refresh_token`." }
+    PipeConnectRequired:
+      type: object
+      required: [error, message, connect_url]
+      properties:
+        error: { type: string, enum: [not_connected, reauthorization_required] }
+        message: { type: string }
+        connect_url: { type: string, format: uri, description: "Where to send the person to connect. Add `?client_id=…&return_to=…` to bring them back to your app." }
     AgentRequest:
       type: object
       description: A pending request from an agent to act as one of this environment's people (OIDC CIBA).

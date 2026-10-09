@@ -15,6 +15,8 @@ use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Contracts\NavRegistry;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Pipes\Models\Pipe;
+use Cbox\Id\Pipes\Models\PipeConnection;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -210,7 +212,11 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Keys for the APIs of the apps built on this environment — present only where
             // one offers them, or the person already holds a key (see HolderApiKeys). "My API
             // keys" because the workspace's own page, two areas up, is "API keys".
-            ->page('account.api-keys', Vocabulary::MY_API_KEYS, feature: 'account.api-keys', order: 30);
+            ->page('account.api-keys', Vocabulary::MY_API_KEYS, feature: 'account.api-keys', order: 30)
+            // The third-party accounts (GitHub, Google…) the person connected so an app here
+            // may act through them — present only where the environment offers a pipe or the
+            // person still holds a connection.
+            ->page('account.pipes', Vocabulary::CONNECTED_SERVICES, feature: 'account.pipes', order: 40);
 
         $this->platformAreas($nav);
     }
@@ -332,6 +338,16 @@ final class ConsoleServiceProvider extends ServiceProvider
 
             return $organizationId !== null
                 && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthHolderPage();
+        });
+        // Connected services: offered when the environment has an enabled pipe, or the
+        // person still holds a connection they may want to remove.
+        $features->register('account.pipes', static function (): bool {
+            $me = app(CurrentUser::class);
+
+            return $me->check() && (
+                Pipe::query()->where('enabled', true)->exists()
+                || PipeConnection::query()->where('user_id', $me->id())->exists()
+            );
         });
         $features->register('organization.api-keys', static function (): bool {
             $me = app(CurrentUser::class);

@@ -102,6 +102,7 @@ tags:
   - name: 'Legacy login'
   - name: 'Log streams'
   - name: 'Admin Portal'
+  - name: Pipes
   - name: 'Outbound provisioning'
   - name: Radar
   - name: 'SAML apps'
@@ -9089,6 +9090,598 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /pipes:
+    post:
+      tags:
+        - Pipes
+      summary: "Configure a pipe: the environment's OAuth app at a third-party provider (GitHub, Google, Microsoft 365, Slack, Salesforce, HubSpot, Linear, Notion), so people can connect their accounts. The client secret is sealed and never returned."
+      description: 'Requires scope `pipes:write`. Danger: write.'
+      operationId: pipes_create
+      x-action: pipes.create
+      x-scope: 'pipes:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:
+                  type: string
+                  description: "The provider's key."
+                  enum:
+                    - github
+                    - google
+                    - microsoft
+                    - slack
+                    - salesforce
+                    - hubspot
+                    - linear
+                    - notion
+                client_id:
+                  type: string
+                  description: 'The OAuth client id of your app at the provider.'
+                  maxLength: 500
+                client_secret:
+                  type: string
+                  description: 'Its client secret. Write-only: sealed, never returned.'
+                  maxLength: 4000
+                scopes:
+                  type: array
+                  description: "The OAuth scopes to ask people for. Left out: the provider's defaults."
+                  items:
+                    type: string
+                    maxLength: 190
+                parameters:
+                  type: object
+                  description: "Per-installation values some providers need. Left out: the provider's defaults."
+                  properties:
+                    tenant:
+                      type: string
+                      description: "Microsoft 365 only: `common` (default), `organizations`, or one directory's tenant id or domain."
+                      maxLength: 253
+                    domain:
+                      type: string
+                      description: 'Salesforce only: `login.salesforce.com` (default), `test.salesforce.com`, or your My Domain host.'
+                      maxLength: 253
+              required:
+                - provider
+                - client_id
+                - client_secret
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipe'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Pipes
+      summary: 'List the pipes — the third-party providers people can connect their accounts to — with their scopes and the apps granted their tokens. Never a client secret.'
+      description: 'Requires scope `pipes:read`. Danger: read.'
+      operationId: pipes_list
+      x-action: pipes.list
+      x-scope: 'pipes:read'
+      x-danger: read
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pipe'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/pipes/{id}':
+    delete:
+      tags:
+        - Pipes
+      summary: 'Remove a pipe and every connection through it. Their tokens are revoked here, not at the provider — disconnect people first if that matters.'
+      description: 'Requires scope `pipes:write`. Danger: destructive.'
+      operationId: pipes_delete
+      x-action: pipes.delete
+      x-scope: 'pipes:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - Pipes
+      summary: 'Show one pipe: its provider, OAuth client id, scopes, the redirect URI to register at the provider, and the apps granted its tokens.'
+      description: 'Requires scope `pipes:read`. Danger: read.'
+      operationId: pipes_get
+      x-action: pipes.get
+      x-scope: 'pipes:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipe'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Pipes
+      summary: 'Change a pipe — client id, client secret (sealed), scopes, parameters, or whether it is enabled. Only what is sent changes.'
+      description: 'Requires scope `pipes:write`. Danger: write.'
+      operationId: pipes_update
+      x-action: pipes.update
+      x-scope: 'pipes:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  description: 'A new OAuth client id. Left out, unchanged.'
+                  maxLength: 500
+                client_secret:
+                  type: string
+                  description: 'A new client secret, sealed. Left out, unchanged.'
+                  maxLength: 4000
+                scopes:
+                  type: array
+                  description: "The OAuth scopes to ask people for. Left out: the provider's defaults."
+                  items:
+                    type: string
+                    maxLength: 190
+                parameters:
+                  type: object
+                  description: "Per-installation values some providers need. Left out: the provider's defaults."
+                  properties:
+                    tenant:
+                      type: string
+                      description: "Microsoft 365 only: `common` (default), `organizations`, or one directory's tenant id or domain."
+                      maxLength: 253
+                    domain:
+                      type: string
+                      description: 'Salesforce only: `login.salesforce.com` (default), `test.salesforce.com`, or your My Domain host.'
+                      maxLength: 253
+                enabled:
+                  type: boolean
+                  description: 'False refuses new connections and every lease. Left out, unchanged.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipe'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/pipes/{id}/connections':
+    get:
+      tags:
+        - Pipes
+      summary: 'List the accounts people connected through a pipe: who, which account, granted scopes, status (active / needs_reauth) and when the token expires. Never a token.'
+      description: 'Requires scope `pipes:read`. Danger: read.'
+      operationId: pipes_connections_list
+      x-action: pipes.connections.list
+      x-scope: 'pipes:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        -
+          name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only this person's connection."
+            maxLength: 128
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PipeConnection'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/pipes/{id}/connections/{connection_id}':
+    delete:
+      tags:
+        - Pipes
+      summary: "Disconnect a person's connected account: revoke it at the provider where supported, revoke its tokens here, and forget it."
+      description: 'Requires scope `pipes:write`. Danger: destructive.'
+      operationId: pipes_connections_delete
+      x-action: pipes.connections.delete
+      x-scope: 'pipes:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        -
+          name: connection_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The connection's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/pipes/{id}/grants':
+    post:
+      tags:
+        - Pipes
+      summary: 'Grant an app (by OAuth client id) the right to lease fresh access tokens for the accounts people connected through this pipe.'
+      description: 'Requires scope `pipes:write`. Danger: critical.'
+      operationId: pipes_grants_create
+      x-action: pipes.grants.create
+      x-scope: 'pipes:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  description: 'The OAuth client id of an app in this environment.'
+                  maxLength: 190
+              required:
+                - client_id
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipe'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/pipes/{id}/grants/{client_id}':
+    delete:
+      tags:
+        - Pipes
+      summary: "Withdraw an app's right to lease the tokens people connected through this pipe."
+      description: 'Requires scope `pipes:write`. Danger: destructive.'
+      operationId: pipes_grants_delete
+      x-action: pipes.grants.delete
+      x-scope: 'pipes:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The pipe's id."
+        -
+          name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The OAuth client id whose grant is withdrawn.'
+            maxLength: 190
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /provisioning-targets:
     post:
       tags:
@@ -15641,6 +16234,160 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/vault/pipes/{provider}/token':
+    post:
+      tags:
+        - 'Token Vault'
+      summary: "Lease a fresh access token for a person's connected account (Pipes)"
+      description: |
+        Returns a working access token for one person's connected account at a
+        third-party provider (GitHub, Google, Microsoft 365, Slack, Salesforce, HubSpot,
+        Linear, Notion), refreshing it first when it is about to expire. The app must be
+        granted the provider's pipe (Developers › Pipes); an app an organization owns may
+        only lease for that organization's members.
+
+        Whose token: a token issued to the app FOR a person leases that person's
+        connection, and `user_id` may only repeat it; a client-credentials token names the
+        person in `user_id`. The response is `Cache-Control: no-store`. Drop the token
+        when you are done and lease again next time.
+      security:
+        -
+          AgentToken: []
+      parameters:
+        -
+          name: provider
+          in: path
+          required: true
+          description: "The provider's key."
+          schema:
+            type: string
+            enum:
+              - github
+              - google
+              - microsoft
+              - slack
+              - salesforce
+              - hubspot
+              - linear
+              - notion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - purpose
+              properties:
+                purpose:
+                  type: string
+                  maxLength: 200
+                  description: 'Recorded on the audit trail.'
+                user_id:
+                  type: string
+                  maxLength: 128
+                  description: "The person, for a token not issued for one. With a person's token, may only name that person."
+      responses:
+        200:
+          description: 'A fresh access token.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - access_token
+                  - token_type
+                  - provider
+                  - user_id
+                  - connection_id
+                  - scopes
+                  - lease_expires_at
+                  - metadata
+                properties:
+                  access_token:
+                    type: string
+                    description: "The provider's access token. Use it as a bearer token against the provider's API."
+                  token_type:
+                    type: string
+                    enum:
+                      - Bearer
+                  provider:
+                    type: string
+                  user_id:
+                    type: string
+                  connection_id:
+                    type: string
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                    description: 'What the person consented to.'
+                  expires_at:
+                    type:
+                      - string
+                      - 'null'
+                    format: date-time
+                    description: 'When the PROVIDER stops accepting it. Null for tokens that do not expire.'
+                  lease_expires_at:
+                    type: string
+                    format: date-time
+                    description: 'When to drop it and lease again.'
+                  metadata:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: "What the app needs to call the API at all — Salesforce's `instance_url`, Slack's `team.id`, Notion's `workspace_id`. Never a credential."
+        401:
+          $ref: '#/components/responses/BearerUnauthorized'
+        403:
+          description: |
+            Lease denied — the app is not granted this pipe, there is no such (enabled)
+            pipe, the person is not a member of the app's organization, or `user_id` names
+            someone other than the token's person. One response, with a constant message.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - $ref: '#/components/schemas/BearerChallenge'
+              example:
+                error: lease_denied
+                message: 'The lease was denied.'
+        404:
+          description: 'The app is granted the pipe, and the person has not connected the provider. Send them to `connect_url`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipeConnectRequired'
+              example:
+                error: not_connected
+                message: 'This person has not connected the provider.'
+                connect_url: 'https://id.example.com/account/connected-services/github/connect'
+        409:
+          description: 'The person must connect the provider again — it refused the refresh token, or the token expired with none. Send them to `connect_url`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipeConnectRequired'
+              example:
+                error: reauthorization_required
+                message: 'This person must connect the provider again.'
+                connect_url: 'https://id.example.com/account/connected-services/github/connect'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'A needed refresh could not complete right now. Retry after the `Retry-After` header.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /vault/secrets:
     post:
       tags:
@@ -16007,6 +16754,9 @@ paths:
                       - vault.grant.created
                       - vault.grant.revoked
                       - vault.secret.revoked
+                      - pipe.connection.connected
+                      - pipe.connection.needs_reauth
+                      - pipe.connection.disconnected
                       - governance.access.revoked
                       - feature_flag.created
                       - feature_flag.updated
@@ -20018,6 +20768,155 @@ components:
           items:
             type: string
           description: 'The OAuth client ids that may lease it. Not on lists.'
+    Pipe:
+      type: object
+      required:
+        - id
+        - provider
+        - name
+        - client_id
+        - scopes
+        - enabled
+        - redirect_uri
+        - grants
+        - connections
+      description: "A pipe: this environment's OAuth app at a third-party provider, through which people connect their own accounts. The client secret is write-only."
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+          enum:
+            - github
+            - google
+            - microsoft
+            - slack
+            - salesforce
+            - hubspot
+            - linear
+            - notion
+        name:
+          type: string
+        client_id:
+          type: string
+          description: "Your app's OAuth client id at the provider."
+        scopes:
+          type: array
+          items:
+            type: string
+          description: 'What people are asked for when they connect.'
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Per-installation values: Microsoft's `tenant`, Salesforce's `domain`."
+        enabled:
+          type: boolean
+        redirect_uri:
+          type: string
+          format: uri
+          description: 'The callback URL to register at the provider.'
+        grants:
+          type: array
+          items:
+            type: string
+          description: 'The OAuth client ids of the apps that may lease its tokens.'
+        connections:
+          type: integer
+          description: 'How many people have connected an account through it.'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    PipeConnection:
+      type: object
+      required:
+        - id
+        - pipe_id
+        - provider
+        - user_id
+        - status
+        - scopes
+      description: "One person's connected account at a pipe's provider. Never a token."
+      properties:
+        id:
+          type: string
+        pipe_id:
+          type: string
+        provider:
+          type: string
+        user_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - needs_reauth
+        account:
+          type:
+            - string
+            - 'null'
+          description: "The account's name at the provider, when it says (a GitHub login, an email, a workspace)."
+        scopes:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When the current access token expires. Null when it does not.'
+        connected_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_refreshed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        refresh_failures:
+          type: integer
+          description: 'Consecutive transient refresh failures.'
+        last_error:
+          type:
+            - string
+            - 'null'
+        reauth_reason:
+          type:
+            - string
+            - 'null'
+          description: "Why it needs reconnecting: the provider's error code, or `no_refresh_token`."
+    PipeConnectRequired:
+      type: object
+      required:
+        - error
+        - message
+        - connect_url
+      properties:
+        error:
+          type: string
+          enum:
+            - not_connected
+            - reauthorization_required
+        message:
+          type: string
+        connect_url:
+          type: string
+          format: uri
+          description: 'Where to send the person to connect. Add `?client_id=…&return_to=…` to bring them back to your app.'
     AgentRequest:
       type: object
       description: "A pending request from an agent to act as one of this environment's people (OIDC CIBA)."

@@ -52,6 +52,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Hooks](inline-hooks.md) — have a say while it happens.
 - [Feature flags](feature-flags.md) — turn a feature on for named customers, people or a share of everyone, read in the token or from the API.
 - [Token vault](token-vault.md) — credentials your apps use elsewhere.
+- [Pipes](pipes.md) — let people connect their GitHub, Google or Slack account, and call those APIs as them.
 
 ## Agents
 

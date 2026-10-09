@@ -548,6 +548,8 @@ function sweepAccount(string $subjectId, array $fixture, string $organizationId)
         'customer_api_key' => (string) mintAppKey($fixture, $subjectId)->id,
         'application' => $fixture['clientId'],
         'social_provider' => 'github',
+        'pipe_provider' => 'github',
+        'pipe_connection' => CrossTenantSweep::pipeConnection(CrossTenantSweep::pipe(), $subjectId),
     ];
 }
 

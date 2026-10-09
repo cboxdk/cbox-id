@@ -96,11 +96,14 @@ class ConsoleNavigation
                 // What the apps built on this environment switch on per user and
                 // organization; delivered in the token's `feature_flags` claim.
                 new NavPage('environment.feature-flags', Vocabulary::FEATURE_FLAGS),
+                // People's own third-party accounts (GitHub, Google…) that apps here may
+                // act through — reach OUT, where Social login under Authentication is IN.
+                new NavPage('environment.pipes', Vocabulary::PIPES),
             ),
             // Where software acting on this environment is handed access and governed: the
             // agents holding its management keys, what they are waiting for a person to
-            // allow, and how to point one at the environment's MCP server. Connected
-            // accounts land here when they exist.
+            // allow, and how to point one at the environment's MCP server. People's
+            // connected third-party accounts are Developers › Pipes.
             new NavArea('AI agents', 'magic',
                 new NavPage('environment.agents', Vocabulary::AGENTS),
                 new NavPage('environment.approvals', Vocabulary::APPROVALS),

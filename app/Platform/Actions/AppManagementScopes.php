@@ -208,6 +208,14 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage feature flags',
             'description' => 'Define, switch, retarget and delete feature flags — which features which users and organizations get.',
         ],
+        'pipes:read' => [
+            'label' => 'Read pipes',
+            'description' => 'List the third-party providers people can connect their accounts to, which apps may lease those tokens, and who has connected — never a client secret or a token.',
+        ],
+        'pipes:write' => [
+            'label' => 'Manage pipes',
+            'description' => 'Configure, change and remove pipes, grant or withdraw an app\'s right to lease people\'s connected-account tokens, and disconnect a person\'s account.',
+        ],
         'portal_links:read' => [
             'label' => 'Read Admin Portal links',
             'description' => 'List an organization\'s recent Admin Portal links: what each opens, who minted it, whom it was mailed to and where it stands — never the link itself.',
