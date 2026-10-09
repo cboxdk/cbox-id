@@ -84,7 +84,7 @@ it('writes, reads, reorders and deletes rules over the API, every write on the t
     $this->withToken($key)->patchJson("/api/v1/radar/rules/{$nordics['id']}", ['action' => 'block', 'enabled' => false])->assertOk()
         ->assertJsonPath('data.action', 'block')
         ->assertJsonPath('data.enabled', false);
-    expect(radarAudit('radar_rule.updated')?->context['changes']['action'] ?? null)->toBe(['from' => 'challenge', 'to' => 'block']);
+    expect(radarAudit('radar_rule.updated')?->context['changes']['action'] ?? null)->toEqual(['from' => 'challenge', 'to' => 'block']);
 
     $this->withToken($key)->getJson("/api/v1/radar/rules/{$office['id']}")->assertOk()->assertJsonPath('data.name', 'Office network');
     $this->withToken($key)->deleteJson("/api/v1/radar/rules/{$office['id']}")->assertNoContent();
@@ -136,7 +136,7 @@ it('tunes the built-in rules and switches the mode, the switch being critical', 
         ->assertJsonPath('data.mode_inherited', false);
 
     expect(app(RadarPolicy::class)->mode())->toBe(RadarMode::Enforce)
-        ->and(radarAudit('radar.mode_changed')?->context['changes']['mode'] ?? null)->toBe(['from' => 'monitor', 'to' => 'enforce'])
+        ->and(radarAudit('radar.mode_changed')?->context['changes']['mode'] ?? null)->toEqual(['from' => 'monitor', 'to' => 'enforce'])
         ->and(radarAudit('radar.builtin_rules_updated'))->not->toBeNull();
 
     // Tuning thresholds does not hand out the switch.
@@ -257,7 +257,7 @@ it('runs the same actions from the console, as the person, with the mode switch 
 
     $rule = RadarRule::query()->sole();
 
-    expect($rule->conditions)->toBe([['field' => 'country', 'operator' => 'not_in', 'value' => ['DK', 'SE']]])
+    expect($rule->conditions)->toEqual([['field' => 'country', 'operator' => 'not_in', 'value' => ['DK', 'SE']]])
         ->and(radarAudit('radar_rule.created')?->actor_type)->not->toBe(ActorType::Service);
 
     $this->get(route('environment.radar.rules.edit', $rule->id))->assertOk();

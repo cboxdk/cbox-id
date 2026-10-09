@@ -13,6 +13,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Risk\Enums\Outcome;
 use Cbox\Risk\ValueObjects\RiskAssessment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -42,8 +43,16 @@ final readonly class Radar
     public function assess(Request $request, RadarFlow $flow, RadarMethod $method, ?string $email, RiskAssessment $assessment): RadarDecision
     {
         try {
-            $policy = $this->policy->snapshot();
-            $collected = $this->signals->collect($request, $flow, $method, $email, $assessment, $policy);
+            // In a savepoint. On PostgreSQL a failed statement poisons the transaction it
+            // ran in, so a Radar read that fails inside a caller's transaction (a missing
+            // table mid-deploy, a lock timeout) would take every later statement of that
+            // sign-in down with it — the fallback below would answer, and the next query
+            // would not. Rolling back to the savepoint keeps the caller's transaction usable.
+            [$policy, $collected] = DB::transaction(function () use ($request, $flow, $method, $email, $assessment): array {
+                $policy = $this->policy->snapshot();
+
+                return [$policy, $this->signals->collect($request, $flow, $method, $email, $assessment, $policy)];
+            });
 
             return new RadarDecision(
                 $assessment,
@@ -84,7 +93,8 @@ final readonly class Radar
             $ip = $request->ip();
             $profile = is_string($ip) ? $this->intelligence->lookup($ip) : null;
 
-            $this->devices->remember($this->pseudonyms->subject($email), $this->devices->identify($request), $profile);
+            // In a savepoint, for the same reason as assess().
+            DB::transaction(fn () => $this->devices->remember($this->pseudonyms->subject($email), $this->devices->identify($request), $profile));
         } catch (Throwable $e) {
             Log::warning('radar could not remember a successful sign-in', ['error' => $e->getMessage()]);
         }
