@@ -26,39 +26,39 @@ Danger is how much harm the action can do in the wrong hands: `read` only reads;
 
 | Area | Actions |
 |---|---|
-| [Admin Portal](#admin-portal) | [`organizations.portal_links.create`](#organizationsportal_linkscreate), [`organizations.portal_links.list`](#organizationsportal_linkslist), [`organizations.portal_links.revoke`](#organizationsportal_linksrevoke) |
-| [API keys](#api-keys) | [`api_keys.list`](#api_keyslist), [`api_keys.revoke`](#api_keysrevoke) |
-| [APIs](#apis) | [`apis.create`](#apiscreate), [`apis.delete`](#apisdelete), [`apis.get`](#apisget), [`apis.list`](#apislist), [`apis.scopes.define`](#apisscopesdefine), [`apis.scopes.remove`](#apisscopesremove), [`apis.update`](#apisupdate) |
-| [App audit logs](#app-audit-logs) | [`audit_logs.events.create`](#audit_logseventscreate), [`audit_logs.events.list`](#audit_logseventslist), [`audit_logs.exports.create`](#audit_logsexportscreate), [`audit_logs.exports.get`](#audit_logsexportsget), [`audit_logs.schemas.create`](#audit_logsschemascreate), [`audit_logs.schemas.delete`](#audit_logsschemasdelete), [`audit_logs.schemas.get`](#audit_logsschemasget), [`audit_logs.schemas.list`](#audit_logsschemaslist), [`audit_logs.schemas.update`](#audit_logsschemasupdate), [`audit_logs.settings.get`](#audit_logssettingsget), [`audit_logs.settings.update`](#audit_logssettingsupdate), [`audit_logs.verify`](#audit_logsverify) |
-| [Applications](#applications) | [`apps.blueprint`](#appsblueprint), [`apps.copy`](#appscopy), [`apps.create`](#appscreate), [`apps.delete`](#appsdelete), [`apps.get`](#appsget), [`apps.list`](#appslist), [`apps.manifest.set`](#appsmanifestset), [`apps.manifest.sync`](#appsmanifestsync), [`apps.scopes.set`](#appsscopesset), [`apps.secrets.list`](#appssecretslist), [`apps.secrets.revoke`](#appssecretsrevoke), [`apps.secrets.rotate`](#appssecretsrotate), [`apps.settings.api_key_prefix`](#appssettingsapi_key_prefix), [`apps.settings.backchannel_logout`](#appssettingsbackchannel_logout), [`apps.settings.token_exchange`](#appssettingstoken_exchange), [`apps.settings.token_lifetime`](#appssettingstoken_lifetime), [`apps.update`](#appsupdate) |
-| [Approvals](#approvals) | [`approvals.deny`](#approvalsdeny), [`approvals.list`](#approvalslist) |
-| [Audit log](#audit-log) | [`audit.list`](#auditlist) |
-| [Branding](#branding) | [`branding.appearance.get`](#brandingappearanceget), [`branding.appearance.set`](#brandingappearanceset), [`branding.whitelabel.get`](#brandingwhitelabelget), [`branding.whitelabel.set`](#brandingwhitelabelset) |
-| [Directory Sync](#directory-sync) | [`directories.connect`](#directoriesconnect), [`directories.create`](#directoriescreate), [`directories.delete`](#directoriesdelete), [`directories.get`](#directoriesget), [`directories.groups.list`](#directoriesgroupslist), [`directories.groups.map`](#directoriesgroupsmap), [`directories.list`](#directorieslist), [`directories.status.set`](#directoriesstatusset), [`directories.token.rotate`](#directoriestokenrotate), [`directories.update`](#directoriesupdate) |
-| [Domains](#domains) | [`domains.add`](#domainsadd), [`domains.get`](#domainsget), [`domains.remove`](#domainsremove), [`domains.verify`](#domainsverify) |
-| [Enterprise SSO](#enterprise-sso) | [`sso.connections.activate`](#ssoconnectionsactivate), [`sso.connections.certificates.activate`](#ssoconnectionscertificatesactivate), [`sso.connections.certificates.list`](#ssoconnectionscertificateslist), [`sso.connections.certificates.stage`](#ssoconnectionscertificatesstage), [`sso.connections.create`](#ssoconnectionscreate), [`sso.connections.delete`](#ssoconnectionsdelete), [`sso.connections.disable`](#ssoconnectionsdisable), [`sso.connections.get`](#ssoconnectionsget), [`sso.connections.list`](#ssoconnectionslist), [`sso.connections.require_sso`](#ssoconnectionsrequire_sso), [`sso.connections.update`](#ssoconnectionsupdate), [`sso.domains.capture`](#ssodomainscapture), [`sso.domains.create`](#ssodomainscreate), [`sso.domains.delete`](#ssodomainsdelete), [`sso.domains.list`](#ssodomainslist), [`sso.domains.verify`](#ssodomainsverify), [`sso.saml_metadata.import`](#ssosaml_metadataimport) |
-| [Events](#events) | [`events.list`](#eventslist) |
-| [Governance](#governance) | [`access_reviews.close`](#access_reviewsclose), [`access_reviews.create`](#access_reviewscreate), [`access_reviews.get`](#access_reviewsget), [`access_reviews.items.decide`](#access_reviewsitemsdecide), [`access_reviews.items.list`](#access_reviewsitemslist), [`access_reviews.list`](#access_reviewslist), [`sod_policies.create`](#sod_policiescreate), [`sod_policies.delete`](#sod_policiesdelete), [`sod_policies.get`](#sod_policiesget), [`sod_policies.list`](#sod_policieslist), [`sod_policies.status.set`](#sod_policiesstatusset) |
-| [Hooks](#hooks) | [`hooks.create`](#hookscreate), [`hooks.delete`](#hooksdelete), [`hooks.get`](#hooksget), [`hooks.list`](#hookslist), [`hooks.update`](#hooksupdate) |
-| [Invitations](#invitations) | [`invitations.list`](#invitationslist), [`invitations.resend`](#invitationsresend), [`invitations.revoke`](#invitationsrevoke), [`invitations.send`](#invitationssend) |
-| [Legacy login](#legacy-login) | [`legacy_login.approve`](#legacy_loginapprove), [`legacy_login.get`](#legacy_loginget), [`legacy_login.probe`](#legacy_loginprobe), [`legacy_login.revoke`](#legacy_loginrevoke) |
-| [Log streams](#log-streams) | [`log_streams.create`](#log_streamscreate), [`log_streams.delete`](#log_streamsdelete), [`log_streams.get`](#log_streamsget), [`log_streams.list`](#log_streamslist), [`log_streams.test`](#log_streamstest), [`log_streams.update`](#log_streamsupdate) |
-| [Members](#members) | [`members.add`](#membersadd), [`members.list`](#memberslist), [`members.remove`](#membersremove), [`members.update`](#membersupdate) |
-| [Organizations](#organizations) | [`organizations.create`](#organizationscreate), [`organizations.delete`](#organizationsdelete), [`organizations.domains.add`](#organizationsdomainsadd), [`organizations.domains.capture`](#organizationsdomainscapture), [`organizations.domains.list`](#organizationsdomainslist), [`organizations.domains.remove`](#organizationsdomainsremove), [`organizations.domains.verify`](#organizationsdomainsverify), [`organizations.get`](#organizationsget), [`organizations.list`](#organizationslist), [`organizations.reactivate`](#organizationsreactivate), [`organizations.suspend`](#organizationssuspend), [`organizations.transfer_ownership`](#organizationstransfer_ownership), [`organizations.update`](#organizationsupdate) |
-| [Outbound provisioning](#outbound-provisioning) | [`provisioning.targets.create`](#provisioningtargetscreate), [`provisioning.targets.delete`](#provisioningtargetsdelete), [`provisioning.targets.get`](#provisioningtargetsget), [`provisioning.targets.list`](#provisioningtargetslist), [`provisioning.targets.status.set`](#provisioningtargetsstatusset) |
-| [Publishable keys](#publishable-keys) | [`frontend_keys.create`](#frontend_keyscreate), [`frontend_keys.list`](#frontend_keyslist), [`frontend_keys.revoke`](#frontend_keysrevoke), [`frontend_keys.set_origins`](#frontend_keysset_origins) |
-| [Roles](#roles) | [`members.roles.grant`](#membersrolesgrant), [`members.roles.list`](#membersroleslist), [`members.roles.revoke`](#membersrolesrevoke), [`permissions.create`](#permissionscreate), [`permissions.delete`](#permissionsdelete), [`permissions.list`](#permissionslist), [`permissions.update`](#permissionsupdate), [`roles.create`](#rolescreate), [`roles.delete`](#rolesdelete), [`roles.get`](#rolesget), [`roles.list`](#roleslist), [`roles.permissions.grant`](#rolespermissionsgrant), [`roles.permissions.revoke`](#rolespermissionsrevoke), [`roles.update`](#rolesupdate), [`users.environment_roles.get`](#usersenvironment_rolesget), [`users.environment_roles.grant`](#usersenvironment_rolesgrant), [`users.environment_roles.list`](#usersenvironment_roleslist), [`users.environment_roles.revoke`](#usersenvironment_rolesrevoke) |
-| [SAML apps](#saml-apps) | [`saml_apps.create`](#saml_appscreate), [`saml_apps.delete`](#saml_appsdelete), [`saml_apps.get`](#saml_appsget), [`saml_apps.list`](#saml_appslist), [`saml_apps.update`](#saml_appsupdate) |
-| [Secret keys](#secret-keys) | [`keys.create`](#keyscreate), [`keys.list`](#keyslist), [`keys.revoke`](#keysrevoke), [`keys.rotate`](#keysrotate) |
-| [Sign-in](#sign-in) | [`signin.policy.get`](#signinpolicyget), [`signin.policy.inherit`](#signinpolicyinherit), [`signin.policy.update`](#signinpolicyupdate), [`signin.self_service_signup.set`](#signinself_service_signupset), [`signin.social.delete`](#signinsocialdelete), [`signin.social.list`](#signinsociallist), [`signin.social.set`](#signinsocialset) |
-| [Support sessions](#support-sessions) | [`support_sessions.end`](#support_sessionsend), [`support_sessions.start`](#support_sessionsstart) |
-| [Token vault](#token-vault) | [`token_vault.grants.create`](#token_vaultgrantscreate), [`token_vault.grants.delete`](#token_vaultgrantsdelete), [`token_vault.secrets.create`](#token_vaultsecretscreate), [`token_vault.secrets.get`](#token_vaultsecretsget), [`token_vault.secrets.list`](#token_vaultsecretslist), [`token_vault.secrets.revoke`](#token_vaultsecretsrevoke), [`token_vault.secrets.rotate`](#token_vaultsecretsrotate) |
-| [Users](#users) | [`users.create`](#userscreate), [`users.deactivate`](#usersdeactivate), [`users.erase`](#userserase), [`users.get`](#usersget), [`users.list`](#userslist), [`users.mfa.reset`](#usersmfareset), [`users.password.set`](#userspasswordset), [`users.password_reset.send`](#userspassword_resetsend), [`users.reactivate`](#usersreactivate), [`users.sessions.list`](#userssessionslist), [`users.sessions.revoke`](#userssessionsrevoke), [`users.sessions.revoke_all`](#userssessionsrevoke_all), [`users.update`](#usersupdate), [`users.verification.send`](#usersverificationsend), [`users.verify`](#usersverify) |
-| [Webhooks](#webhooks) | [`webhooks.create`](#webhookscreate), [`webhooks.delete`](#webhooksdelete), [`webhooks.get`](#webhooksget), [`webhooks.list`](#webhookslist), [`webhooks.pause`](#webhookspause), [`webhooks.resume`](#webhooksresume), [`webhooks.secret.rotate`](#webhookssecretrotate), [`webhooks.signature_scheme.change`](#webhookssignature_schemechange), [`webhooks.update`](#webhooksupdate) |
+| [Admin Portal](#admin-portal) | [`organizations.portal_links.create`](#organizations.portal_links.create), [`organizations.portal_links.list`](#organizations.portal_links.list), [`organizations.portal_links.revoke`](#organizations.portal_links.revoke) |
+| [API keys](#api-keys) | [`api_keys.list`](#api_keys.list), [`api_keys.revoke`](#api_keys.revoke) |
+| [APIs](#apis) | [`apis.create`](#apis.create), [`apis.delete`](#apis.delete), [`apis.get`](#apis.get), [`apis.list`](#apis.list), [`apis.scopes.define`](#apis.scopes.define), [`apis.scopes.remove`](#apis.scopes.remove), [`apis.update`](#apis.update) |
+| [App audit logs](#app-audit-logs) | [`audit_logs.events.create`](#audit_logs.events.create), [`audit_logs.events.list`](#audit_logs.events.list), [`audit_logs.exports.create`](#audit_logs.exports.create), [`audit_logs.exports.get`](#audit_logs.exports.get), [`audit_logs.schemas.create`](#audit_logs.schemas.create), [`audit_logs.schemas.delete`](#audit_logs.schemas.delete), [`audit_logs.schemas.get`](#audit_logs.schemas.get), [`audit_logs.schemas.list`](#audit_logs.schemas.list), [`audit_logs.schemas.update`](#audit_logs.schemas.update), [`audit_logs.settings.get`](#audit_logs.settings.get), [`audit_logs.settings.update`](#audit_logs.settings.update), [`audit_logs.verify`](#audit_logs.verify) |
+| [Applications](#applications) | [`apps.blueprint`](#apps.blueprint), [`apps.copy`](#apps.copy), [`apps.create`](#apps.create), [`apps.delete`](#apps.delete), [`apps.get`](#apps.get), [`apps.list`](#apps.list), [`apps.manifest.set`](#apps.manifest.set), [`apps.manifest.sync`](#apps.manifest.sync), [`apps.scopes.set`](#apps.scopes.set), [`apps.secrets.list`](#apps.secrets.list), [`apps.secrets.revoke`](#apps.secrets.revoke), [`apps.secrets.rotate`](#apps.secrets.rotate), [`apps.settings.api_key_prefix`](#apps.settings.api_key_prefix), [`apps.settings.backchannel_logout`](#apps.settings.backchannel_logout), [`apps.settings.token_exchange`](#apps.settings.token_exchange), [`apps.settings.token_lifetime`](#apps.settings.token_lifetime), [`apps.update`](#apps.update) |
+| [Approvals](#approvals) | [`approvals.deny`](#approvals.deny), [`approvals.list`](#approvals.list) |
+| [Audit log](#audit-log) | [`audit.list`](#audit.list) |
+| [Branding](#branding) | [`branding.appearance.get`](#branding.appearance.get), [`branding.appearance.set`](#branding.appearance.set), [`branding.whitelabel.get`](#branding.whitelabel.get), [`branding.whitelabel.set`](#branding.whitelabel.set) |
+| [Directory Sync](#directory-sync) | [`directories.connect`](#directories.connect), [`directories.create`](#directories.create), [`directories.delete`](#directories.delete), [`directories.get`](#directories.get), [`directories.groups.list`](#directories.groups.list), [`directories.groups.map`](#directories.groups.map), [`directories.list`](#directories.list), [`directories.status.set`](#directories.status.set), [`directories.token.rotate`](#directories.token.rotate), [`directories.update`](#directories.update) |
+| [Domains](#domains) | [`domains.add`](#domains.add), [`domains.get`](#domains.get), [`domains.remove`](#domains.remove), [`domains.verify`](#domains.verify) |
+| [Enterprise SSO](#enterprise-sso) | [`sso.connections.activate`](#sso.connections.activate), [`sso.connections.certificates.activate`](#sso.connections.certificates.activate), [`sso.connections.certificates.list`](#sso.connections.certificates.list), [`sso.connections.certificates.stage`](#sso.connections.certificates.stage), [`sso.connections.create`](#sso.connections.create), [`sso.connections.delete`](#sso.connections.delete), [`sso.connections.disable`](#sso.connections.disable), [`sso.connections.get`](#sso.connections.get), [`sso.connections.list`](#sso.connections.list), [`sso.connections.require_sso`](#sso.connections.require_sso), [`sso.connections.update`](#sso.connections.update), [`sso.domains.capture`](#sso.domains.capture), [`sso.domains.create`](#sso.domains.create), [`sso.domains.delete`](#sso.domains.delete), [`sso.domains.list`](#sso.domains.list), [`sso.domains.verify`](#sso.domains.verify), [`sso.saml_metadata.import`](#sso.saml_metadata.import) |
+| [Events](#events) | [`events.list`](#events.list) |
+| [Governance](#governance) | [`access_reviews.close`](#access_reviews.close), [`access_reviews.create`](#access_reviews.create), [`access_reviews.get`](#access_reviews.get), [`access_reviews.items.decide`](#access_reviews.items.decide), [`access_reviews.items.list`](#access_reviews.items.list), [`access_reviews.list`](#access_reviews.list), [`sod_policies.create`](#sod_policies.create), [`sod_policies.delete`](#sod_policies.delete), [`sod_policies.get`](#sod_policies.get), [`sod_policies.list`](#sod_policies.list), [`sod_policies.status.set`](#sod_policies.status.set) |
+| [Hooks](#hooks) | [`hooks.create`](#hooks.create), [`hooks.delete`](#hooks.delete), [`hooks.get`](#hooks.get), [`hooks.list`](#hooks.list), [`hooks.update`](#hooks.update) |
+| [Invitations](#invitations) | [`invitations.list`](#invitations.list), [`invitations.resend`](#invitations.resend), [`invitations.revoke`](#invitations.revoke), [`invitations.send`](#invitations.send) |
+| [Legacy login](#legacy-login) | [`legacy_login.approve`](#legacy_login.approve), [`legacy_login.get`](#legacy_login.get), [`legacy_login.probe`](#legacy_login.probe), [`legacy_login.revoke`](#legacy_login.revoke) |
+| [Log streams](#log-streams) | [`log_streams.create`](#log_streams.create), [`log_streams.delete`](#log_streams.delete), [`log_streams.get`](#log_streams.get), [`log_streams.list`](#log_streams.list), [`log_streams.test`](#log_streams.test), [`log_streams.update`](#log_streams.update) |
+| [Members](#members) | [`members.add`](#members.add), [`members.list`](#members.list), [`members.remove`](#members.remove), [`members.update`](#members.update) |
+| [Organizations](#organizations) | [`organizations.create`](#organizations.create), [`organizations.delete`](#organizations.delete), [`organizations.domains.add`](#organizations.domains.add), [`organizations.domains.capture`](#organizations.domains.capture), [`organizations.domains.list`](#organizations.domains.list), [`organizations.domains.remove`](#organizations.domains.remove), [`organizations.domains.verify`](#organizations.domains.verify), [`organizations.get`](#organizations.get), [`organizations.list`](#organizations.list), [`organizations.reactivate`](#organizations.reactivate), [`organizations.suspend`](#organizations.suspend), [`organizations.transfer_ownership`](#organizations.transfer_ownership), [`organizations.update`](#organizations.update) |
+| [Outbound provisioning](#outbound-provisioning) | [`provisioning.targets.create`](#provisioning.targets.create), [`provisioning.targets.delete`](#provisioning.targets.delete), [`provisioning.targets.get`](#provisioning.targets.get), [`provisioning.targets.list`](#provisioning.targets.list), [`provisioning.targets.status.set`](#provisioning.targets.status.set) |
+| [Publishable keys](#publishable-keys) | [`frontend_keys.create`](#frontend_keys.create), [`frontend_keys.list`](#frontend_keys.list), [`frontend_keys.revoke`](#frontend_keys.revoke), [`frontend_keys.set_origins`](#frontend_keys.set_origins) |
+| [Roles](#roles) | [`members.roles.grant`](#members.roles.grant), [`members.roles.list`](#members.roles.list), [`members.roles.revoke`](#members.roles.revoke), [`permissions.create`](#permissions.create), [`permissions.delete`](#permissions.delete), [`permissions.list`](#permissions.list), [`permissions.update`](#permissions.update), [`roles.create`](#roles.create), [`roles.delete`](#roles.delete), [`roles.get`](#roles.get), [`roles.list`](#roles.list), [`roles.permissions.grant`](#roles.permissions.grant), [`roles.permissions.revoke`](#roles.permissions.revoke), [`roles.update`](#roles.update), [`users.environment_roles.get`](#users.environment_roles.get), [`users.environment_roles.grant`](#users.environment_roles.grant), [`users.environment_roles.list`](#users.environment_roles.list), [`users.environment_roles.revoke`](#users.environment_roles.revoke) |
+| [SAML apps](#saml-apps) | [`saml_apps.create`](#saml_apps.create), [`saml_apps.delete`](#saml_apps.delete), [`saml_apps.get`](#saml_apps.get), [`saml_apps.list`](#saml_apps.list), [`saml_apps.update`](#saml_apps.update) |
+| [Secret keys](#secret-keys) | [`keys.create`](#keys.create), [`keys.list`](#keys.list), [`keys.revoke`](#keys.revoke), [`keys.rotate`](#keys.rotate) |
+| [Sign-in](#sign-in) | [`signin.policy.get`](#signin.policy.get), [`signin.policy.inherit`](#signin.policy.inherit), [`signin.policy.update`](#signin.policy.update), [`signin.self_service_signup.set`](#signin.self_service_signup.set), [`signin.social.delete`](#signin.social.delete), [`signin.social.list`](#signin.social.list), [`signin.social.set`](#signin.social.set) |
+| [Support sessions](#support-sessions) | [`support_sessions.end`](#support_sessions.end), [`support_sessions.start`](#support_sessions.start) |
+| [Token vault](#token-vault) | [`token_vault.grants.create`](#token_vault.grants.create), [`token_vault.grants.delete`](#token_vault.grants.delete), [`token_vault.secrets.create`](#token_vault.secrets.create), [`token_vault.secrets.get`](#token_vault.secrets.get), [`token_vault.secrets.list`](#token_vault.secrets.list), [`token_vault.secrets.revoke`](#token_vault.secrets.revoke), [`token_vault.secrets.rotate`](#token_vault.secrets.rotate) |
+| [Users](#users) | [`users.create`](#users.create), [`users.deactivate`](#users.deactivate), [`users.erase`](#users.erase), [`users.get`](#users.get), [`users.list`](#users.list), [`users.mfa.reset`](#users.mfa.reset), [`users.password.set`](#users.password.set), [`users.password_reset.send`](#users.password_reset.send), [`users.reactivate`](#users.reactivate), [`users.sessions.list`](#users.sessions.list), [`users.sessions.revoke`](#users.sessions.revoke), [`users.sessions.revoke_all`](#users.sessions.revoke_all), [`users.update`](#users.update), [`users.verification.send`](#users.verification.send), [`users.verify`](#users.verify) |
+| [Webhooks](#webhooks) | [`webhooks.create`](#webhooks.create), [`webhooks.delete`](#webhooks.delete), [`webhooks.get`](#webhooks.get), [`webhooks.list`](#webhooks.list), [`webhooks.pause`](#webhooks.pause), [`webhooks.resume`](#webhooks.resume), [`webhooks.secret.rotate`](#webhooks.secret.rotate), [`webhooks.signature_scheme.change`](#webhooks.signature_scheme.change), [`webhooks.update`](#webhooks.update) |
 
 ## Admin Portal
 
-### organizations.portal_links.create
+### <a id="organizations.portal_links.create"></a>organizations.portal_links.create
 
 Create a one-time Admin Portal link an organization's IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal, or to read its audit logs, without an account. The URL is shown once.
 
@@ -79,7 +79,7 @@ Create a one-time Admin Portal link an organization's IT administrator uses to s
 | `email` | string (email), nullable | no | Mail the link to this address — the customer's IT contact. Left out, nothing is sent. At most 254 characters. |
 | `locale` | string, nullable | no | The language of that mail. Left out, the environment's default language. One of `en`, `da`, `de`, `sv`, `nb`, `fr`. |
 
-### organizations.portal_links.list
+### <a id="organizations.portal_links.list"></a>organizations.portal_links.list
 
 List an organization's Admin Portal links from the last 30 days, newest first: what each opens, who minted it, whom it was mailed to, and whether it is pending, in use, completed, expired or revoked. Never the URL.
 
@@ -95,7 +95,7 @@ List an organization's Admin Portal links from the last 30 days, newest first: w
 |---|---|---|---|
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 
-### organizations.portal_links.revoke
+### <a id="organizations.portal_links.revoke"></a>organizations.portal_links.revoke
 
 Withdraw an Admin Portal link: it can no longer be opened, and a setup session it already opened ends on its next request. What was already set up through it stays.
 
@@ -114,7 +114,7 @@ Withdraw an Admin Portal link: it can no longer be opened, and a setup session i
 
 ## API keys
 
-### api_keys.list
+### <a id="api_keys.list"></a>api_keys.list
 
 List the API keys an organization's members created for your apps, a page at a time. Never the key material.
 
@@ -133,7 +133,7 @@ List the API keys an organization's members created for your apps, a page at a t
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### api_keys.revoke
+### <a id="api_keys.revoke"></a>api_keys.revoke
 
 Revoke an API key an organization's member created for your app. Whatever uses it stops working at once.
 
@@ -152,7 +152,7 @@ Revoke an API key an organization's member created for your app. Whatever uses i
 
 ## APIs
 
-### apis.create
+### <a id="apis.create"></a>apis.create
 
 Register an API (resource server): its identifier becomes the access token audience, and it owns its scopes.
 
@@ -175,7 +175,7 @@ Register an API (resource server): its identifier becomes the access token audie
 | `scopes[].description` | string, nullable | no | What the scope lets an app do, in plain words. At most 255 characters. |
 | `scopes[].tenant_requestable` | boolean | no | Whether organizations' own apps may request it. Default true. |
 
-### apis.delete
+### <a id="apis.delete"></a>apis.delete
 
 Delete an API and its scopes. Existing tokens keep their audience until they expire.
 
@@ -191,7 +191,7 @@ Delete an API and its scopes. Existing tokens keep their audience until they exp
 |---|---|---|---|
 | `id` | string (path) | yes | The API id. |
 
-### apis.get
+### <a id="apis.get"></a>apis.get
 
 Get one registered API and its scopes.
 
@@ -207,7 +207,7 @@ Get one registered API and its scopes.
 |---|---|---|---|
 | `id` | string (path) | yes | The API id. |
 
-### apis.list
+### <a id="apis.list"></a>apis.list
 
 List the APIs (resource servers) registered in this environment, with their scopes.
 
@@ -224,7 +224,7 @@ List the APIs (resource servers) registered in this environment, with their scop
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### apis.scopes.define
+### <a id="apis.scopes.define"></a>apis.scopes.define
 
 Add a scope to an API, or change the description or tenant access of one it owns.
 
@@ -243,7 +243,7 @@ Add a scope to an API, or change the description or tenant access of one it owns
 | `description` | string, nullable | no | At most 255 characters. |
 | `tenant_requestable` | boolean | no | Whether organizations' own apps may request it. Default true. |
 
-### apis.scopes.remove
+### <a id="apis.scopes.remove"></a>apis.scopes.remove
 
 Remove a scope from an API. Apps holding it keep it as a plain scope that no longer reaches the API.
 
@@ -260,7 +260,7 @@ Remove a scope from an API. Apps holding it keep it as a plain scope that no lon
 | `id` | string (path) | yes | The API id. |
 | `key` | string (path) | yes | The scope key. At most 128 characters. |
 
-### apis.update
+### <a id="apis.update"></a>apis.update
 
 Rename an API, link or unlink its app, and optionally replace its complete scope set.
 
@@ -284,7 +284,7 @@ Rename an API, link or unlink its app, and optionally replace its complete scope
 
 ## App audit logs
 
-### audit_logs.events.create
+### <a id="audit_logs.events.create"></a>audit_logs.events.create
 
 Record 1–100 audit events your app's users caused, each for one of your organizations (customers); checked against the action's schema when it has one and appended to that organization's tamper-evident chain. Send an Idempotency-Key.
 
@@ -317,7 +317,7 @@ Record 1–100 audit events your app's users caused, each for one of your organi
 | `events[].context.user_agent` | string, nullable | no | At most 512 characters. |
 | `events[].metadata` | object | no | Up to 50 names to strings, numbers, booleans or null; values up to 500 characters. |
 
-### audit_logs.events.list
+### <a id="audit_logs.events.list"></a>audit_logs.events.list
 
 Read audit events newest first, for one organization or the whole environment, filtered by action, actor, target and time range; pass `next_cursor` as `after` to page.
 
@@ -341,7 +341,7 @@ Read audit events newest first, for one organization or the whole environment, f
 | `limit` | integer | no | Events per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. At most 200 characters. |
 
-### audit_logs.exports.create
+### <a id="audit_logs.exports.create"></a>audit_logs.exports.create
 
 Start a CSV export of audit events (same filters as the list). It is written on the queue: poll audit_logs.exports.get until state is ready, then download from its short-lived url.
 
@@ -363,7 +363,7 @@ Start a CSV export of audit events (same filters as the list). It is written on 
 | `range_start` | string (date-time) | no | Only events that occurred at or after this time. |
 | `range_end` | string (date-time) | no | Only events that occurred before this time. |
 
-### audit_logs.exports.get
+### <a id="audit_logs.exports.get"></a>audit_logs.exports.get
 
 Read an audit-log export's state; once ready it carries a signed download url valid for a few minutes (read it again for a fresh one).
 
@@ -379,7 +379,7 @@ Read an audit-log export's state; once ready it carries a signed download url va
 |---|---|---|---|
 | `id` | string (path) | yes | The export id. At most 64 characters. |
 
-### audit_logs.schemas.create
+### <a id="audit_logs.schemas.create"></a>audit_logs.schemas.create
 
 Define the schema one audit-log action's events must match — allowed target types and metadata schemas (a subset of JSON Schema). Events of that action are then validated on arrival.
 
@@ -400,7 +400,7 @@ Define the schema one audit-log action's events must match — allowed target ty
 | `actor_metadata` | object | no | A metadata schema (a subset of JSON Schema) for the actor's metadata. |
 | `metadata` | object | no | A metadata schema (a subset of JSON Schema) for the event's own metadata. |
 
-### audit_logs.schemas.delete
+### <a id="audit_logs.schemas.delete"></a>audit_logs.schemas.delete
 
 Delete an audit-log action's schema. Its events are then accepted unchecked — or refused, if the environment is in strict mode.
 
@@ -416,7 +416,7 @@ Delete an audit-log action's schema. Its events are then accepted unchecked — 
 |---|---|---|---|
 | `action` | string (path) | yes | The action whose schema to delete. At most 190 characters. |
 
-### audit_logs.schemas.get
+### <a id="audit_logs.schemas.get"></a>audit_logs.schemas.get
 
 Read the schema one audit-log action's events are validated against.
 
@@ -432,7 +432,7 @@ Read the schema one audit-log action's events are validated against.
 |---|---|---|---|
 | `action` | string (path) | yes | The action, e.g. `invoice.voided`. At most 190 characters. |
 
-### audit_logs.schemas.list
+### <a id="audit_logs.schemas.list"></a>audit_logs.schemas.list
 
 List the audit-log schemas this environment validates events against, one per action.
 
@@ -449,7 +449,7 @@ List the audit-log schemas this environment validates events against, one per ac
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### audit_logs.schemas.update
+### <a id="audit_logs.schemas.update"></a>audit_logs.schemas.update
 
 Replace an audit-log action's schema with a new version (omitted parts are removed). Recorded events keep the version they were checked against.
 
@@ -470,7 +470,7 @@ Replace an audit-log action's schema with a new version (omitted parts are remov
 | `actor_metadata` | object | no | A metadata schema (a subset of JSON Schema) for the actor's metadata. |
 | `metadata` | object | no | A metadata schema (a subset of JSON Schema) for the event's own metadata. |
 
-### audit_logs.settings.get
+### <a id="audit_logs.settings.get"></a>audit_logs.settings.get
 
 Read this environment's audit-log settings: retention in days and whether strict schemas are on.
 
@@ -484,7 +484,7 @@ Read this environment's audit-log settings: retention in days and whether strict
 
 Takes no input.
 
-### audit_logs.settings.update
+### <a id="audit_logs.settings.update"></a>audit_logs.settings.update
 
 Change this environment's audit-log retention (days, 1–3650) and strict mode. Shortening retention deletes older events at the next daily prune — irreversibly.
 
@@ -501,7 +501,7 @@ Change this environment's audit-log retention (days, 1–3650) and strict mode. 
 | `retention_days` | integer | no | Keep events this many days after they arrive. At least 1. At most 3650. |
 | `strict_schemas` | boolean | no | Refuse events whose action has no schema. |
 
-### audit_logs.verify
+### <a id="audit_logs.verify"></a>audit_logs.verify
 
 Re-hash one organization's audit-event chain (from the oldest event retention kept, or from_sequence) and report whether every event is unchanged and in place.
 
@@ -521,7 +521,7 @@ Re-hash one organization's audit-event chain (from the oldest event retention ke
 
 ## Applications
 
-### apps.blueprint
+### <a id="apps.blueprint"></a>apps.blueprint
 
 Export an app's configuration as a blueprint — no client id, secret, key set or owner — to register the same app in another environment.
 
@@ -537,7 +537,7 @@ Export an app's configuration as a blueprint — no client id, secret, key set o
 |---|---|---|---|
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 
-### apps.copy
+### <a id="apps.copy"></a>apps.copy
 
 Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.
 
@@ -557,7 +557,7 @@ Copy an app into another environment of this project, with a new client id and s
 | `name` | string | yes | What to call the copy there. At least 1 characters. At most 190 characters. |
 | `redirect_uris` | list of string | no | Its redirect URIs there — staging's callback is rarely production's. Left out, none. At most 50 items. |
 
-### apps.create
+### <a id="apps.create"></a>apps.create
 
 Register an app (OAuth client) from a short form (name and type) or from another environment's blueprint. A confidential app's client_secret is returned once.
 
@@ -585,7 +585,7 @@ Register an app (OAuth client) from a short form (name and type) or from another
 | `organization_id` | string, nullable | no | The owning organization; null for the environment's own app. At most 64 characters. |
 | `jwks` | object | no | A public JWK Set, for a `private_key_jwt` app. Never part of a blueprint. |
 
-### apps.delete
+### <a id="apps.delete"></a>apps.delete
 
 Delete an app and every secret it holds. Anything signing in as it stops working immediately.
 
@@ -601,7 +601,7 @@ Delete an app and every secret it holds. Anything signing in as it stops working
 |---|---|---|---|
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 
-### apps.get
+### <a id="apps.get"></a>apps.get
 
 Get one app (OAuth client) by its id or its client_id: its kind, grants, redirect URIs, scopes and settings. Never a secret.
 
@@ -617,7 +617,7 @@ Get one app (OAuth client) by its id or its client_id: its kind, grants, redirec
 |---|---|---|---|
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 
-### apps.list
+### <a id="apps.list"></a>apps.list
 
 List the apps (OAuth clients) registered in this environment. Never a secret.
 
@@ -634,7 +634,7 @@ List the apps (OAuth clients) registered in this environment. Never a secret.
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### apps.manifest.set
+### <a id="apps.manifest.set"></a>apps.manifest.set
 
 Set or clear the URL an app publishes its roles-and-permissions manifest at. Does not fetch it; apps.manifest.sync does.
 
@@ -651,7 +651,7 @@ Set or clear the URL an app publishes its roles-and-permissions manifest at. Doe
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `manifest_url` | string (uri), nullable | no | An absolute URL; null or left out clears it. At most 500 characters. |
 
-### apps.manifest.sync
+### <a id="apps.manifest.sync"></a>apps.manifest.sync
 
 Fetch an app's published manifest now and sync the roles and permissions it declares.
 
@@ -667,7 +667,7 @@ Fetch an app's published manifest now and sync the roles and permissions it decl
 |---|---|---|---|
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 
-### apps.scopes.set
+### <a id="apps.scopes.set"></a>apps.scopes.set
 
 Replace an app's complete scope set — the ceiling of what it may request, applied from its next token.
 
@@ -684,7 +684,7 @@ Replace an app's complete scope set — the ceiling of what it may request, appl
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `scopes` | list of string | no | Required. The COMPLETE scope set afterwards; an empty list removes every scope. At most 200 items. |
 
-### apps.secrets.list
+### <a id="apps.secrets.list"></a>apps.secrets.list
 
 List an app's live client secrets — ids, last characters and dates, never the secrets themselves.
 
@@ -700,7 +700,7 @@ List an app's live client secrets — ids, last characters and dates, never the 
 |---|---|---|---|
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 
-### apps.secrets.revoke
+### <a id="apps.secrets.revoke"></a>apps.secrets.revoke
 
 Revoke one of an app's client secrets immediately. Never its last live secret — rotate that instead.
 
@@ -717,7 +717,7 @@ Revoke one of an app's client secrets immediately. Never its last live secret �
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `secret_id` | string (path) | yes | The secret's id, from `GET /apps/{id}/secrets`. At most 64 characters. |
 
-### apps.secrets.rotate
+### <a id="apps.secrets.rotate"></a>apps.secrets.rotate
 
 Mint a new client secret for an app and retire the current ones after grace_seconds (0 = at once). The new secret is returned once.
 
@@ -735,7 +735,7 @@ Mint a new client secret for an app and retire the current ones after grace_seco
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `grace_seconds` | integer | yes | How long the current secrets keep working, in seconds. 0 stops them at once. At least 0. At most 2592000. |
 
-### apps.settings.api_key_prefix
+### <a id="apps.settings.api_key_prefix"></a>apps.settings.api_key_prefix
 
 Set the prefix of an app's customer API keys (acme_live), which lets its users create keys for it, or null to stop new keys.
 
@@ -752,7 +752,7 @@ Set the prefix of an app's customer API keys (acme_live), which lets its users c
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `prefix` | string, nullable | no | 2–16 lowercase letters or digits starting with a letter, then `_live` or `_test`. Null or left out: no new keys. At most 32 characters. |
 
-### apps.settings.backchannel_logout
+### <a id="apps.settings.backchannel_logout"></a>apps.settings.backchannel_logout
 
 Set or clear the URI an app is sent a logout token at when somebody signs out (OIDC Back-Channel Logout).
 
@@ -770,7 +770,7 @@ Set or clear the URI an app is sent a logout token at when somebody signs out (O
 | `uri` | string (uri), nullable | no | HTTPS (HTTP on localhost only). Null or left out: the app is not told. At most 2000 characters. |
 | `session_required` | boolean | no | Every logout token carries `sid`. Default false. |
 
-### apps.settings.token_exchange
+### <a id="apps.settings.token_exchange"></a>apps.settings.token_exchange
 
 Turn token exchange (RFC 8693) on or off for a confidential app.
 
@@ -787,7 +787,7 @@ Turn token exchange (RFC 8693) on or off for a confidential app.
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `enabled` | boolean | yes |  |
 
-### apps.settings.token_lifetime
+### <a id="apps.settings.token_lifetime"></a>apps.settings.token_lifetime
 
 Set how long an app's access tokens live, in seconds, or null for the install's default.
 
@@ -804,7 +804,7 @@ Set how long an app's access tokens live, in seconds, or null for the install's 
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
 | `access_token_ttl` | integer, nullable | no | Seconds, from 60 to the install's ceiling. Null or left out: the install's default. |
 
-### apps.update
+### <a id="apps.update"></a>apps.update
 
 Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields left out are unchanged.
 
@@ -825,7 +825,7 @@ Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields le
 
 ## Approvals
 
-### approvals.deny
+### <a id="approvals.deny"></a>approvals.deny
 
 Deny a pending approval request (CIBA) for the person it was raised for: the agent gets access_denied and no token.
 
@@ -841,7 +841,7 @@ Deny a pending approval request (CIBA) for the person it was raised for: the age
 |---|---|---|---|
 | `request_id` | string (path) | yes |  |
 
-### approvals.list
+### <a id="approvals.list"></a>approvals.list
 
 List the pending requests from agents to act as one of this environment's people (CIBA): which app, for whom, and what it asks.
 
@@ -860,7 +860,7 @@ List the pending requests from agents to act as one of this environment's people
 
 ## Audit log
 
-### audit.list
+### <a id="audit.list"></a>audit.list
 
 Read this environment's audit trail oldest first, optionally narrowed by action, actor type or organization; pass the last id as `after` to page.
 
@@ -882,7 +882,7 @@ Read this environment's audit trail oldest first, optionally narrowed by action,
 
 ## Branding
 
-### branding.appearance.get
+### <a id="branding.appearance.get"></a>branding.appearance.get
 
 Read the hosted sign-in theme: the environment default, or one organization's own.
 
@@ -898,7 +898,7 @@ Read the hosted sign-in theme: the environment default, or one organization's ow
 |---|---|---|---|
 | `organization_id` | string | no | Read this organization's theme. Left out, the environment default. At most 64 characters. |
 
-### branding.appearance.set
+### <a id="branding.appearance.set"></a>branding.appearance.set
 
 Set the hosted sign-in theme (preset, colours, corners, type, logo) for the environment default or one organization.
 
@@ -929,7 +929,7 @@ Set the hosted sign-in theme (preset, colours, corners, type, logo) for the envi
 | `theme.dark.muted` | string | no | At most 32 characters. |
 | `logo` | string (uri), nullable | no | An https URL for the logo; null removes it, left out keeps it. At most 2048 characters. |
 
-### branding.whitelabel.get
+### <a id="branding.whitelabel.get"></a>branding.whitelabel.get
 
 Read the white-label branding (palette, app name, email sender, logo) of the environment default or one organization.
 
@@ -945,7 +945,7 @@ Read the white-label branding (palette, app name, email sender, logo) of the env
 |---|---|---|---|
 | `organization_id` | string | no | Read this organization's branding. Left out, the environment default. At most 64 characters. |
 
-### branding.whitelabel.set
+### <a id="branding.whitelabel.set"></a>branding.whitelabel.set
 
 Save the white-label branding (palette, app name, email sender, welcome email) of the environment default or one organization.
 
@@ -972,7 +972,7 @@ Save the white-label branding (palette, app name, email sender, welcome email) o
 
 ## Directory Sync
 
-### directories.connect
+### <a id="directories.connect"></a>directories.connect
 
 Connect a Google Workspace or Microsoft Entra directory to sync an organization's people from, verifying the credentials first. Runs the first sync.
 
@@ -995,7 +995,7 @@ Connect a Google Workspace or Microsoft Entra directory to sync an organization'
 | `credentials.client_id` | string | no | Entra: the app registration's client id. At most 190 characters. |
 | `credentials.client_secret` | string | no | Entra: the app registration's client secret. At most 500 characters. |
 
-### directories.create
+### <a id="directories.create"></a>directories.create
 
 Register a SCIM directory for an organization. Answers the SCIM base URL and a bearer token, shown once.
 
@@ -1013,7 +1013,7 @@ Register a SCIM directory for an organization. Answers the SCIM base URL and a b
 | `organization_id` | string | yes | The organization whose people it provisions. At most 64 characters. |
 | `name` | string | yes | What administrators call it: "Okta SCIM". At most 120 characters. |
 
-### directories.delete
+### <a id="directories.delete"></a>directories.delete
 
 Delete an inbound directory. Its token stops working; the people it provisioned keep their accounts.
 
@@ -1030,7 +1030,7 @@ Delete an inbound directory. Its token stops working; the people it provisioned 
 | `id` | string (path) | yes | The directory's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### directories.get
+### <a id="directories.get"></a>directories.get
 
 Read one inbound directory: its provider, status, SCIM base URL and last sync error. Never its token or credentials.
 
@@ -1047,7 +1047,7 @@ Read one inbound directory: its provider, status, SCIM base URL and last sync er
 | `id` | string (path) | yes | The directory's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### directories.groups.list
+### <a id="directories.groups.list"></a>directories.groups.list
 
 List the groups a directory has synced, with the role ids each group is mapped onto.
 
@@ -1066,7 +1066,7 @@ List the groups a directory has synced, with the role ids each group is mapped o
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### directories.groups.map
+### <a id="directories.groups.map"></a>directories.groups.map
 
 Map a directory group onto a role (everyone in the group holds it as membership syncs), or unmap it.
 
@@ -1086,7 +1086,7 @@ Map a directory group onto a role (everyone in the group holds it as membership 
 | `role_id` | string | yes | A role the organization's own people may hold. At most 64 characters. |
 | `mapped` | boolean | yes | true to map the group onto the role, false to unmap it. |
 
-### directories.list
+### <a id="directories.list"></a>directories.list
 
 List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in, optionally for one organization, with their last sync error.
 
@@ -1104,7 +1104,7 @@ List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### directories.status.set
+### <a id="directories.status.set"></a>directories.status.set
 
 Pause or resume an inbound directory's provisioning.
 
@@ -1122,7 +1122,7 @@ Pause or resume an inbound directory's provisioning.
 | `active` | boolean | yes | true to resume provisioning, false to pause it. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### directories.token.rotate
+### <a id="directories.token.rotate"></a>directories.token.rotate
 
 Issue a new bearer token for a SCIM directory, returned once. The old token stops working immediately.
 
@@ -1140,7 +1140,7 @@ Issue a new bearer token for a SCIM directory, returned once. The old token stop
 | `id` | string (path) | yes | The directory's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### directories.update
+### <a id="directories.update"></a>directories.update
 
 Rename an inbound directory.
 
@@ -1160,7 +1160,7 @@ Rename an inbound directory.
 
 ## Domains
 
-### domains.add
+### <a id="domains.add"></a>domains.add
 
 Start serving this environment on a custom domain: returns the DNS TXT record that proves you control it.
 
@@ -1176,7 +1176,7 @@ Start serving this environment on a custom domain: returns the DNS TXT record th
 |---|---|---|---|
 | `domain` | string | yes | The domain, for example login.example.com. At most 253 characters. |
 
-### domains.get
+### <a id="domains.get"></a>domains.get
 
 Read this environment's custom domain, and the DNS TXT record that proves a pending one.
 
@@ -1190,7 +1190,7 @@ Read this environment's custom domain, and the DNS TXT record that proves a pend
 
 Takes no input.
 
-### domains.remove
+### <a id="domains.remove"></a>domains.remove
 
 Stop serving this environment on its custom domain. Anything using that domain stops reaching the environment.
 
@@ -1204,7 +1204,7 @@ Stop serving this environment on its custom domain. Anything using that domain s
 
 Takes no input.
 
-### domains.verify
+### <a id="domains.verify"></a>domains.verify
 
 Look for the pending domain's DNS TXT record and, once it is visible, serve this environment on that domain.
 
@@ -1220,7 +1220,7 @@ Takes no input.
 
 ## Enterprise SSO
 
-### sso.connections.activate
+### <a id="sso.connections.activate"></a>sso.connections.activate
 
 Activate an SSO connection: people whose email domain routes to it start signing in through it.
 
@@ -1237,7 +1237,7 @@ Activate an SSO connection: people whose email domain routes to it start signing
 | `id` | string (path) | yes | The connection's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.connections.certificates.activate
+### <a id="sso.connections.certificates.activate"></a>sso.connections.certificates.activate
 
 Make a staged SAML signing certificate the connection's primary. The certificate it replaces stops being trusted.
 
@@ -1255,7 +1255,7 @@ Make a staged SAML signing certificate the connection's primary. The certificate
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 | `fingerprint_sha256` | string | yes | The staged certificate's SHA-256 fingerprint, as the certificate list gives it. At most 200 characters. |
 
-### sso.connections.certificates.list
+### <a id="sso.connections.certificates.list"></a>sso.connections.certificates.list
 
 List a SAML connection's signing certificates — primary and staged — with each one's fingerprint and expiry.
 
@@ -1272,7 +1272,7 @@ List a SAML connection's signing certificates — primary and staged — with ea
 | `id` | string (path) | yes | The connection's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.connections.certificates.stage
+### <a id="sso.connections.certificates.stage"></a>sso.connections.certificates.stage
 
 Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) beside the current one, so a renewal has no outage. Activate it once the IdP signs with it.
 
@@ -1291,7 +1291,7 @@ Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) besi
 | `certificate` | string, nullable | no | The new signing certificate, PEM. Send this or metadata. At most 20000 characters. |
 | `metadata` | string, nullable | no | The identity provider's metadata XML, or the https URL it is published at. Send this or certificate. At most 500000 characters. |
 
-### sso.connections.create
+### <a id="sso.connections.create"></a>sso.connections.create
 
 Connect an organization's SAML or OIDC identity provider as a draft. Activate it to start signing people in through it.
 
@@ -1320,7 +1320,7 @@ Connect an organization's SAML or OIDC identity provider as a draft. Activate it
 | `client_secret` | string, nullable | no | OIDC: the client secret. Write-only. At most 500 characters. |
 | `signing_key` | string, nullable | no | OIDC, optional: the provider's ID-token signing key (an RS256 public key, PEM). Leave it out for any provider whose discovery document publishes a jwks_uri — the keys are read from there and follow its rotations. Needed only when it does not. Write-only. At most 20000 characters. |
 
-### sso.connections.delete
+### <a id="sso.connections.delete"></a>sso.connections.delete
 
 Delete an SSO connection and its settings. Where SSO is required, its people cannot sign in until another is activated.
 
@@ -1337,7 +1337,7 @@ Delete an SSO connection and its settings. Where SSO is required, its people can
 | `id` | string (path) | yes | The connection's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.connections.disable
+### <a id="sso.connections.disable"></a>sso.connections.disable
 
 Disable an SSO connection without deleting it. Where SSO is required, its people cannot sign in until it is re-activated.
 
@@ -1354,7 +1354,7 @@ Disable an SSO connection without deleting it. Where SSO is required, its people
 | `id` | string (path) | yes | The connection's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.connections.get
+### <a id="sso.connections.get"></a>sso.connections.get
 
 Read one SSO connection: its type, status, entity ids, URLs, issuer and client id. Never a certificate or secret.
 
@@ -1371,7 +1371,7 @@ Read one SSO connection: its type, status, entity ids, URLs, issuer and client i
 | `id` | string (path) | yes | The connection's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.connections.list
+### <a id="sso.connections.list"></a>sso.connections.list
 
 List the SAML and OIDC connections organizations sign in through, optionally for one organization. Never a certificate or secret.
 
@@ -1389,7 +1389,7 @@ List the SAML and OIDC connections organizations sign in through, optionally for
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### sso.connections.require_sso
+### <a id="sso.connections.require_sso"></a>sso.connections.require_sso
 
 Require single sign-on for the organization an SSO connection belongs to. Ends every password session there.
 
@@ -1406,7 +1406,7 @@ Require single sign-on for the organization an SSO connection belongs to. Ends e
 | `id` | string (path) | yes | The connection's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.connections.update
+### <a id="sso.connections.update"></a>sso.connections.update
 
 Change an SSO connection's name or identity-provider settings. Secrets left out keep the ones on file.
 
@@ -1433,7 +1433,7 @@ Change an SSO connection's name or identity-provider settings. Secrets left out 
 | `client_secret` | string, nullable | no | OIDC: the client secret. Write-only. At most 500 characters. |
 | `signing_key` | string, nullable | no | OIDC, optional: the provider's ID-token signing key (an RS256 public key, PEM). Leave it out for any provider whose discovery document publishes a jwks_uri — the keys are read from there and follow its rotations. Needed only when it does not. Write-only. At most 20000 characters. |
 
-### sso.domains.capture
+### <a id="sso.domains.capture"></a>sso.domains.capture
 
 Turn capture on or off for a verified domain: captured, everyone with an address at it must sign in through the organization's SSO.
 
@@ -1451,7 +1451,7 @@ Turn capture on or off for a verified domain: captured, everyone with an address
 | `capture` | boolean | yes | true to capture the domain, false to release it. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.domains.create
+### <a id="sso.domains.create"></a>sso.domains.create
 
 Claim an email domain for an organization's single sign-on, and get the DNS TXT record to publish to prove it.
 
@@ -1468,7 +1468,7 @@ Claim an email domain for an organization's single sign-on, and get the DNS TXT 
 | `organization_id` | string | yes | The organization claiming it. At most 64 characters. |
 | `domain` | string | yes | The email domain, e.g. acme.com. At most 253 characters. |
 
-### sso.domains.delete
+### <a id="sso.domains.delete"></a>sso.domains.delete
 
 Remove a claimed email domain. Its people stop being routed to the organization's SSO connection.
 
@@ -1485,7 +1485,7 @@ Remove a claimed email domain. Its people stop being routed to the organization'
 | `id` | string (path) | yes | The domain's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.domains.list
+### <a id="sso.domains.list"></a>sso.domains.list
 
 List the email domains organizations claimed for single sign-on, whether each is verified and captured, and the DNS record that proves an unverified one.
 
@@ -1503,7 +1503,7 @@ List the email domains organizations claimed for single sign-on, whether each is
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### sso.domains.verify
+### <a id="sso.domains.verify"></a>sso.domains.verify
 
 Check a claimed domain's DNS TXT record now. Answers the domain, with verified true once the record is found.
 
@@ -1520,7 +1520,7 @@ Check a claimed domain's DNS TXT record now. Answers the domain, with verified t
 | `id` | string (path) | yes | The domain's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sso.saml_metadata.import
+### <a id="sso.saml_metadata.import"></a>sso.saml_metadata.import
 
 Parse an identity provider's SAML metadata (XML or a metadata URL) into the entity id, SSO URL and certificate a SAML connection needs. Stores nothing.
 
@@ -1538,7 +1538,7 @@ Parse an identity provider's SAML metadata (XML or a metadata URL) into the enti
 
 ## Events
 
-### events.list
+### <a id="events.list"></a>events.list
 
 Read this environment's domain events (the facts webhooks deliver) oldest first; pass the last id as `after` to poll for new ones.
 
@@ -1559,7 +1559,7 @@ Read this environment's domain events (the facts webhooks deliver) oldest first;
 
 ## Governance
 
-### access_reviews.close
+### <a id="access_reviews.close"></a>access_reviews.close
 
 Close an access review and apply it: every revoke is carried out, and undecided items get the review's pending policy (revoke by default).
 
@@ -1576,7 +1576,7 @@ Close an access review and apply it: every revoke is carried out, and undecided 
 | `id` | string (path) | yes | The review's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### access_reviews.create
+### <a id="access_reviews.create"></a>access_reviews.create
 
 Open an access review of one organization's roles and memberships — or of staff roles — for someone to certify or revoke.
 
@@ -1595,7 +1595,7 @@ Open an access review of one organization's roles and memberships — or of staf
 | `organization_id` | string, nullable | no | The organization to review. Required unless covers is staff. At most 64 characters. |
 | `due_in_days` | integer | no | Days until it is due. Default 7. At least 1. At most 365. |
 
-### access_reviews.get
+### <a id="access_reviews.get"></a>access_reviews.get
 
 Read one access review: its status, due date, pending-item policy and item count.
 
@@ -1612,7 +1612,7 @@ Read one access review: its status, due date, pending-item policy and item count
 | `id` | string (path) | yes | The review's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### access_reviews.items.decide
+### <a id="access_reviews.items.decide"></a>access_reviews.items.decide
 
 Certify or revoke one item of an open access review. Revokes are applied when the review closes.
 
@@ -1632,7 +1632,7 @@ Certify or revoke one item of an open access review. Revokes are applied when th
 | `note` | string, nullable | no | Why, for whoever audits the review. At most 1000 characters. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### access_reviews.items.list
+### <a id="access_reviews.items.list"></a>access_reviews.items.list
 
 List the items an access review asks someone to certify or revoke: who holds what, and the decision on each.
 
@@ -1651,7 +1651,7 @@ List the items an access review asks someone to certify or revoke: who holds wha
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### access_reviews.list
+### <a id="access_reviews.list"></a>access_reviews.list
 
 List access reviews (certification campaigns), open and closed, optionally those covering one organization.
 
@@ -1669,7 +1669,7 @@ List access reviews (certification campaigns), open and closed, optionally those
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### sod_policies.create
+### <a id="sod_policies.create"></a>sod_policies.create
 
 Define a role-conflict rule: two or more roles no one person may hold together. Enforced on every grant from now on.
 
@@ -1689,7 +1689,7 @@ Define a role-conflict rule: two or more roles no one person may hold together. 
 | `description` | string, nullable | no | Why the roles conflict. At most 500 characters. |
 | `role_ids` | list of string | yes | The roles no one person may hold together; at least two. At least 2 items. At most 50 items. |
 
-### sod_policies.delete
+### <a id="sod_policies.delete"></a>sod_policies.delete
 
 Remove a role-conflict rule. Grants it refused are allowed from then on.
 
@@ -1706,7 +1706,7 @@ Remove a role-conflict rule. Grants it refused are allowed from then on.
 | `id` | string (path) | yes | The rule's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### sod_policies.get
+### <a id="sod_policies.get"></a>sod_policies.get
 
 Read one role-conflict rule: the roles no one person may hold together, and whether it is enforced.
 
@@ -1723,7 +1723,7 @@ Read one role-conflict rule: the roles no one person may hold together, and whet
 | `id` | string (path) | yes | The rule's id. |
 | `organization_id` | string, nullable | no | Only if it binds this organization (its own, or environment-wide); anything else is a 404. At most 64 characters. |
 
-### sod_policies.list
+### <a id="sod_policies.list"></a>sod_policies.list
 
 List role-conflict (segregation of duties) rules: sets of roles no one person may hold together. Optionally those binding one organization.
 
@@ -1741,7 +1741,7 @@ List role-conflict (segregation of duties) rules: sets of roles no one person ma
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### sod_policies.status.set
+### <a id="sod_policies.status.set"></a>sod_policies.status.set
 
 Enforce a role-conflict rule, or stop enforcing it — switched off, grants that break it are allowed again.
 
@@ -1761,7 +1761,7 @@ Enforce a role-conflict rule, or stop enforcing it — switched off, grants that
 
 ## Hooks
 
-### hooks.create
+### <a id="hooks.create"></a>hooks.create
 
 Register a hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.
 
@@ -1781,7 +1781,7 @@ Register a hook at a hook point (token minting, login, registration, password ch
 | `organization_id` | string, nullable | no | The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide. At most 64 characters. |
 | `environment_wide` | boolean | no | True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id. |
 
-### hooks.delete
+### <a id="hooks.delete"></a>hooks.delete
 
 Remove a hook. It is no longer called at its hook point.
 
@@ -1797,7 +1797,7 @@ Remove a hook. It is no longer called at its hook point.
 |---|---|---|---|
 | `id` | string (path) | yes | The hook id. |
 
-### hooks.get
+### <a id="hooks.get"></a>hooks.get
 
 Get one hook: its URL, hook point, owner and whether it is active. Never its signing secret.
 
@@ -1813,7 +1813,7 @@ Get one hook: its URL, hook point, owner and whether it is active. Never its sig
 |---|---|---|---|
 | `id` | string (path) | yes | The hook id. |
 
-### hooks.list
+### <a id="hooks.list"></a>hooks.list
 
 List the hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.
 
@@ -1830,7 +1830,7 @@ List the hooks — endpoints called during sign-in and token issuance — with t
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### hooks.update
+### <a id="hooks.update"></a>hooks.update
 
 Pause (active: false) or activate (active: true) a hook.
 
@@ -1849,7 +1849,7 @@ Pause (active: false) or activate (active: true) a hook.
 
 ## Invitations
 
-### invitations.list
+### <a id="invitations.list"></a>invitations.list
 
 List an organization's pending invitations, a page at a time, with the roles each will grant and the app it leads back to.
 
@@ -1867,7 +1867,7 @@ List an organization's pending invitations, a page at a time, with the roles eac
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### invitations.resend
+### <a id="invitations.resend"></a>invitations.resend
 
 Re-send a pending invitation on a fresh link. The answer is the new invitation; the old id and link stop working.
 
@@ -1884,7 +1884,7 @@ Re-send a pending invitation on a fresh link. The answer is the new invitation; 
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `invitation_id` | string (path) | yes | The invitation id. At most 64 characters. |
 
-### invitations.revoke
+### <a id="invitations.revoke"></a>invitations.revoke
 
 Withdraw a pending invitation: its link stops working and the roles parked for it are dropped.
 
@@ -1901,7 +1901,7 @@ Withdraw a pending invitation: its link stops working and the roles parked for i
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `invitation_id` | string (path) | yes | The invitation id. At most 64 characters. |
 
-### invitations.send
+### <a id="invitations.send"></a>invitations.send
 
 Invite someone into an organization by email, on a tier and with access roles (by id, or manifest `key` with `client_id`), optionally leading back to an app.
 
@@ -1925,7 +1925,7 @@ Invite someone into an organization by email, on a tier and with access roles (b
 
 ## Legacy login
 
-### legacy_login.approve
+### <a id="legacy_login.approve"></a>legacy_login.approve
 
 Approve the declared legacy login endpoint: sign-ins for people not yet migrated, with their passwords, go to that URL.
 
@@ -1939,7 +1939,7 @@ Approve the declared legacy login endpoint: sign-ins for people not yet migrated
 
 Takes no input.
 
-### legacy_login.get
+### <a id="legacy_login.get"></a>legacy_login.get
 
 Read the legacy login endpoint an app declared for migration, and whether it is approved to receive sign-ins.
 
@@ -1953,7 +1953,7 @@ Read the legacy login endpoint an app declared for migration, and whether it is 
 
 Takes no input.
 
-### legacy_login.probe
+### <a id="legacy_login.probe"></a>legacy_login.probe
 
 Ask the declared legacy login endpoint whether it knows an address — your own — to test it before approving. Sends no password.
 
@@ -1969,7 +1969,7 @@ Ask the declared legacy login endpoint whether it knows an address — your own 
 |---|---|---|---|
 | `email` | string (email) | yes | An address that exists in your old system — your own. At most 254 characters. |
 
-### legacy_login.revoke
+### <a id="legacy_login.revoke"></a>legacy_login.revoke
 
 Withdraw the legacy login approval. People not yet migrated can no longer sign in; the declaration stays on file.
 
@@ -1985,7 +1985,7 @@ Takes no input.
 
 ## Log streams
 
-### log_streams.create
+### <a id="log_streams.create"></a>log_streams.create
 
 Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog, or an S3 or GCS bucket. A generated HMAC key is returned once.
 
@@ -2023,7 +2023,7 @@ Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog,
 | `organization_id` | string, nullable | no | The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide. At most 64 characters. |
 | `environment_wide` | boolean | no | True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id. |
 
-### log_streams.delete
+### <a id="log_streams.delete"></a>log_streams.delete
 
 Delete an audit log stream. Nothing more is delivered to its endpoint.
 
@@ -2039,7 +2039,7 @@ Delete an audit log stream. Nothing more is delivered to its endpoint.
 |---|---|---|---|
 | `id` | string (path) | yes | The log stream id. |
 
-### log_streams.get
+### <a id="log_streams.get"></a>log_streams.get
 
 Get one audit log stream: destination, endpoint, auth scheme, owner and health. Never its secret.
 
@@ -2055,7 +2055,7 @@ Get one audit log stream: destination, endpoint, auth scheme, owner and health. 
 |---|---|---|---|
 | `id` | string (path) | yes | The log stream id. |
 
-### log_streams.list
+### <a id="log_streams.list"></a>log_streams.list
 
 List the SIEM destinations this environment's audit trail is streamed to, and whether each is enabled. Never a secret.
 
@@ -2072,7 +2072,7 @@ List the SIEM destinations this environment's audit trail is streamed to, and wh
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### log_streams.test
+### <a id="log_streams.test"></a>log_streams.test
 
 Send one test event to a log stream now and report whether the destination accepted it, and if not, why.
 
@@ -2088,7 +2088,7 @@ Send one test event to a log stream now and report whether the destination accep
 |---|---|---|---|
 | `id` | string (path) | yes | The log stream's id. |
 
-### log_streams.update
+### <a id="log_streams.update"></a>log_streams.update
 
 Change an audit log stream's name, destination, endpoint, options or credential (re-validated; resets its circuit breaker), or disable (enabled: false) / resume (enabled: true) it.
 
@@ -2128,7 +2128,7 @@ Change an audit log stream's name, destination, endpoint, options or credential 
 
 ## Members
 
-### members.add
+### <a id="members.add"></a>members.add
 
 Add an existing user to an organization on a tier (`admin` or `member`), optionally with access roles. Name them by `user_id` or `email`.
 
@@ -2149,7 +2149,7 @@ Add an existing user to an organization on a tier (`admin` or `member`), optiona
 | `roles` | list of string | no | Access roles to grant in the organization: ids, or manifest keys of `client_id`'s app. At most 50 items. |
 | `client_id` | string, nullable | no | The app whose manifest keys `roles` are. At most 255 characters. |
 
-### members.list
+### <a id="members.list"></a>members.list
 
 List an organization's members, a page at a time, with each one's tier, status, name and email.
 
@@ -2167,7 +2167,7 @@ List an organization's members, a page at a time, with each one's tier, status, 
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### members.remove
+### <a id="members.remove"></a>members.remove
 
 Remove a member from an organization, with every role they held there. The last owner cannot be removed.
 
@@ -2184,7 +2184,7 @@ Remove a member from an organization, with every role they held there. The last 
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `user_id` | string (path) | yes | The member's user id. At most 64 characters. |
 
-### members.update
+### <a id="members.update"></a>members.update
 
 Change a member's tier to `admin` or `member`. Ownership moves with transfer-ownership; the last owner cannot be demoted.
 
@@ -2204,7 +2204,7 @@ Change a member's tier to `admin` or `member`. Ownership moves with transfer-own
 
 ## Organizations
 
-### organizations.create
+### <a id="organizations.create"></a>organizations.create
 
 Create an organization in this environment, optionally with an existing user as its owner, a parent and metadata.
 
@@ -2225,7 +2225,7 @@ Create an organization in this environment, optionally with an existing user as 
 | `owner_user_id` | string, nullable | no | An existing user of this environment, who becomes its owner. At most 64 characters. |
 | `metadata` | object | no | Free-form text values the integrator keeps on the organization. |
 
-### organizations.delete
+### <a id="organizations.delete"></a>organizations.delete
 
 Archive an organization: everyone in it loses access at once. The records are kept for the audit trail.
 
@@ -2241,7 +2241,7 @@ Archive an organization: everyone in it loses access at once. The records are ke
 |---|---|---|---|
 | `id` | string (path) | yes | The organization id. At most 64 characters. |
 
-### organizations.domains.add
+### <a id="organizations.domains.add"></a>organizations.domains.add
 
 Claim an email domain (acme.com) for an organization. Returns the DNS TXT record to publish before verifying it.
 
@@ -2258,7 +2258,7 @@ Claim an email domain (acme.com) for an organization. Returns the DNS TXT record
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `domain` | string | yes | A domain name — acme.com, not an address or a URL. At most 190 characters. |
 
-### organizations.domains.capture
+### <a id="organizations.domains.capture"></a>organizations.domains.capture
 
 Turn capture on or off for a verified domain: with it on, everyone with an address there signs in through the organization's SSO.
 
@@ -2276,7 +2276,7 @@ Turn capture on or off for a verified domain: with it on, everyone with an addre
 | `domain_id` | string (path) | yes | The claimed domain's id. At most 64 characters. |
 | `enabled` | boolean | yes | Whether the domain captures sign-ins. |
 
-### organizations.domains.list
+### <a id="organizations.domains.list"></a>organizations.domains.list
 
 List the email domains an organization claims, whether each is verified and captured, and the DNS TXT record that proves it.
 
@@ -2292,7 +2292,7 @@ List the email domains an organization claims, whether each is verified and capt
 |---|---|---|---|
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 
-### organizations.domains.remove
+### <a id="organizations.domains.remove"></a>organizations.domains.remove
 
 Remove a claimed email domain from an organization. Capture on it ends.
 
@@ -2309,7 +2309,7 @@ Remove a claimed email domain from an organization. Capture on it ends.
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `domain_id` | string (path) | yes | The claimed domain's id. At most 64 characters. |
 
-### organizations.domains.verify
+### <a id="organizations.domains.verify"></a>organizations.domains.verify
 
 Check a claimed domain's DNS TXT record and mark the domain verified if it is published.
 
@@ -2326,7 +2326,7 @@ Check a claimed domain's DNS TXT record and mark the domain verified if it is pu
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `domain_id` | string (path) | yes | The claimed domain's id. At most 64 characters. |
 
-### organizations.get
+### <a id="organizations.get"></a>organizations.get
 
 Get one organization of this environment by id.
 
@@ -2342,7 +2342,7 @@ Get one organization of this environment by id.
 |---|---|---|---|
 | `id` | string (path) | yes | The organization id. At most 64 characters. |
 
-### organizations.list
+### <a id="organizations.list"></a>organizations.list
 
 List the organizations in this environment, a page at a time. Narrow by a `q` fragment of the name or slug, or by `status`.
 
@@ -2361,7 +2361,7 @@ List the organizations in this environment, a page at a time. Narrow by a `q` fr
 | `q` | string | no | Only organizations whose name or slug contains this. At most 190 characters. |
 | `status` | string | no | Only organizations in this state. One of `active`, `suspended`, `deleted`. |
 
-### organizations.reactivate
+### <a id="organizations.reactivate"></a>organizations.reactivate
 
 Lift an organization's suspension so its members can sign in again.
 
@@ -2377,7 +2377,7 @@ Lift an organization's suspension so its members can sign in again.
 |---|---|---|---|
 | `id` | string (path) | yes | The organization id. At most 64 characters. |
 
-### organizations.suspend
+### <a id="organizations.suspend"></a>organizations.suspend
 
 Suspend an organization: its members cannot sign in to it until it is reactivated.
 
@@ -2393,7 +2393,7 @@ Suspend an organization: its members cannot sign in to it until it is reactivate
 |---|---|---|---|
 | `id` | string (path) | yes | The organization id. At most 64 characters. |
 
-### organizations.transfer_ownership
+### <a id="organizations.transfer_ownership"></a>organizations.transfer_ownership
 
 Make a member the owner of an organization. Every current owner stays on as an admin; from inside the organization, only its owner may hand it over.
 
@@ -2410,7 +2410,7 @@ Make a member the owner of an organization. Every current owner stays on as an a
 | `id` | string (path) | yes | The organization id. At most 64 characters. |
 | `user_id` | string | yes | The member who becomes the owner — an active member already. At most 64 characters. |
 
-### organizations.update
+### <a id="organizations.update"></a>organizations.update
 
 Rename an organization, change its slug, or replace its metadata. Only what is sent changes.
 
@@ -2431,7 +2431,7 @@ Rename an organization, change its slug, or replace its metadata. Only what is s
 
 ## Outbound provisioning
 
-### provisioning.targets.create
+### <a id="provisioning.targets.create"></a>provisioning.targets.create
 
 Register a downstream app this platform pushes an organization's people to over SCIM, or every organization's with environment_wide.
 
@@ -2455,7 +2455,7 @@ Register a downstream app this platform pushes an organization's people to over 
 | `client_id` | string, nullable | no | oauth2_client_credentials: the client id. At most 400 characters. |
 | `scope` | string, nullable | no | oauth2_client_credentials: the scope to ask for, if the app wants one. At most 400 characters. |
 
-### provisioning.targets.delete
+### <a id="provisioning.targets.delete"></a>provisioning.targets.delete
 
 Delete a downstream SCIM target. Nothing more is pushed to it.
 
@@ -2472,7 +2472,7 @@ Delete a downstream SCIM target. Nothing more is pushed to it.
 | `id` | string (path) | yes | The target's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### provisioning.targets.get
+### <a id="provisioning.targets.get"></a>provisioning.targets.get
 
 Read one downstream SCIM target: its URL, auth scheme, status and last error. Never its credential.
 
@@ -2489,7 +2489,7 @@ Read one downstream SCIM target: its URL, auth scheme, status and last error. Ne
 | `id` | string (path) | yes | The target's id. |
 | `organization_id` | string, nullable | no | Only if it is this organization's; anything else is a 404. At most 64 characters. |
 
-### provisioning.targets.list
+### <a id="provisioning.targets.list"></a>provisioning.targets.list
 
 List the downstream SCIM targets people are provisioned to, optionally for one organization, with their failures. Never their credentials.
 
@@ -2507,7 +2507,7 @@ List the downstream SCIM targets people are provisioned to, optionally for one o
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### provisioning.targets.status.set
+### <a id="provisioning.targets.status.set"></a>provisioning.targets.status.set
 
 Pause or resume pushing people to a downstream SCIM target.
 
@@ -2527,7 +2527,7 @@ Pause or resume pushing people to a downstream SCIM target.
 
 ## Publishable keys
 
-### frontend_keys.create
+### <a id="frontend_keys.create"></a>frontend_keys.create
 
 Create a publishable frontend key for a browser app, usable only from the origins listed. The key is public by design.
 
@@ -2545,7 +2545,7 @@ Create a publishable frontend key for a browser app, usable only from the origin
 | `mode` | string | yes | `test` or `live`; it is in the key's prefix. One of `test`, `live`. |
 | `origins` | list of string | yes | The exact origins (scheme, host, port) allowed to present the key, for example https://app.example.com. At least one. At least 1 items. At most 50 items. |
 
-### frontend_keys.list
+### <a id="frontend_keys.list"></a>frontend_keys.list
 
 List the publishable frontend keys browser apps present to the Frontend API, in full, with their allowed origins.
 
@@ -2562,7 +2562,7 @@ List the publishable frontend keys browser apps present to the Frontend API, in 
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### frontend_keys.revoke
+### <a id="frontend_keys.revoke"></a>frontend_keys.revoke
 
 Revoke a publishable frontend key. Pages still holding it stop working immediately.
 
@@ -2578,7 +2578,7 @@ Revoke a publishable frontend key. Pages still holding it stop working immediate
 |---|---|---|---|
 | `id` | string (path) | yes | The key's id. |
 
-### frontend_keys.set_origins
+### <a id="frontend_keys.set_origins"></a>frontend_keys.set_origins
 
 Replace the exact list of origins allowed to present a publishable frontend key. Live on the next request.
 
@@ -2597,7 +2597,7 @@ Replace the exact list of origins allowed to present a publishable frontend key.
 
 ## Roles
 
-### members.roles.grant
+### <a id="members.roles.grant"></a>members.roles.grant
 
 Grant a member an access role inside one organization, with the environment's authority (staff-only roles included) — or, from inside the organization, one its administrators may hand out. Name the role by id, or by manifest `key` with `client_id`.
 
@@ -2616,7 +2616,7 @@ Grant a member an access role inside one organization, with the environment's au
 | `role_id` | string (path) | yes | The role id, or its manifest `key` with `client_id`. At most 190 characters. |
 | `client_id` | string | no | The app whose manifest `key` `role_id` is. At most 255 characters. |
 
-### members.roles.list
+### <a id="members.roles.list"></a>members.roles.list
 
 List the access roles a member holds inside one organization (staff roles held everywhere are listed under the user).
 
@@ -2633,7 +2633,7 @@ List the access roles a member holds inside one organization (staff roles held e
 | `organization_id` | string (path) | yes | The organization id. At most 64 characters. |
 | `user_id` | string (path) | yes | The member's user id. At most 64 characters. |
 
-### members.roles.revoke
+### <a id="members.roles.revoke"></a>members.roles.revoke
 
 Take an access role back from a member inside one organization. Name the role by id, or by manifest `key` with `client_id`.
 
@@ -2652,7 +2652,7 @@ Take an access role back from a member inside one organization. Name the role by
 | `role_id` | string (path) | yes | The role id, or its manifest `key` with `client_id`. At most 190 characters. |
 | `client_id` | string | no | The app whose manifest `key` `role_id` is. At most 255 characters. |
 
-### permissions.create
+### <a id="permissions.create"></a>permissions.create
 
 Author a manual `feature:action` permission, shared with the environment (organization_id null) or one organization's own.
 
@@ -2671,7 +2671,7 @@ Author a manual `feature:action` permission, shared with the environment (organi
 | `organization_id` | string, nullable | no | The organization it belongs to; null for the environment's shared tier. At most 64 characters. |
 | `tenant_assignable` | boolean | no | Shared tier only: whether organizations may compose it into their own roles. Default false; always true on an organization's own. |
 
-### permissions.delete
+### <a id="permissions.delete"></a>permissions.delete
 
 Delete a manual permission: every role carrying it loses it first.
 
@@ -2687,7 +2687,7 @@ Delete a manual permission: every role carrying it loses it first.
 |---|---|---|---|
 | `id` | string (path) | yes | The permission id. At most 64 characters. |
 
-### permissions.list
+### <a id="permissions.list"></a>permissions.list
 
 List the permission catalogue roles are composed from, a page at a time. Narrow by `client_id` (one app's), `organization_id` (what it can see) or a `q` fragment.
 
@@ -2707,7 +2707,7 @@ List the permission catalogue roles are composed from, a page at a time. Narrow 
 | `client_id` | string | no | Only the permissions this app declared. At most 255 characters. |
 | `q` | string | no | Only permissions whose key or description contains this. At most 120 characters. |
 
-### permissions.update
+### <a id="permissions.update"></a>permissions.update
 
 Change a manual permission's description, and on the shared tier whether organizations may use it. The key itself never changes.
 
@@ -2725,7 +2725,7 @@ Change a manual permission's description, and on the shared tier whether organiz
 | `description` | string, nullable | no | At most 500 characters. |
 | `tenant_assignable` | boolean | no | Shared tier only: whether organizations may compose it into their own roles. |
 
-### roles.create
+### <a id="roles.create"></a>roles.create
 
 Define a role for one organization, or (organization_id null) for the whole environment, optionally scoped to one app, with its opening permissions.
 
@@ -2745,7 +2745,7 @@ Define a role for one organization, or (organization_id null) for the whole envi
 | `client_id` | string, nullable | no | The app whose tokens it is stamped into; null for every app. At most 190 characters. |
 | `permissions` | list of string | no | Permission ids to grant it from the start. At most 200 items. |
 
-### roles.delete
+### <a id="roles.delete"></a>roles.delete
 
 Delete a role: everyone who holds it loses it. An app-declared role is removed from the app's manifest instead.
 
@@ -2761,7 +2761,7 @@ Delete a role: everyone who holds it loses it. An app-declared role is removed f
 |---|---|---|---|
 | `id` | string (path) | yes | The role id. At most 64 characters. |
 
-### roles.get
+### <a id="roles.get"></a>roles.get
 
 Get one role and the permissions it carries. Name it by id, or by manifest `key` with `client_id`.
 
@@ -2778,7 +2778,7 @@ Get one role and the permissions it carries. Name it by id, or by manifest `key`
 | `id` | string (path) | yes | The role id, or its manifest `key` with `client_id`. At most 190 characters. |
 | `client_id` | string | no | The app whose manifest `key` `id` is. At most 255 characters. |
 
-### roles.list
+### <a id="roles.list"></a>roles.list
 
 List the roles that can be granted in this environment, with their permissions. Narrow by `client_id` (one app's) or `organization_id` (grantable there).
 
@@ -2795,7 +2795,7 @@ List the roles that can be granted in this environment, with their permissions. 
 | `client_id` | string | no | Only the roles this app declared. At most 255 characters. |
 | `organization_id` | string | no | Only the roles that can be granted in this organization. At most 64 characters. |
 
-### roles.permissions.grant
+### <a id="roles.permissions.grant"></a>roles.permissions.grant
 
 Add a permission to a role: everyone holding the role gains it. The permission must be unscoped or declared by the role's own app.
 
@@ -2812,7 +2812,7 @@ Add a permission to a role: everyone holding the role gains it. The permission m
 | `id` | string (path) | yes | The role id. At most 64 characters. |
 | `permission_id` | string (path) | yes | The permission id. At most 64 characters. |
 
-### roles.permissions.revoke
+### <a id="roles.permissions.revoke"></a>roles.permissions.revoke
 
 Remove a permission from a role: everyone holding the role loses it.
 
@@ -2829,7 +2829,7 @@ Remove a permission from a role: everyone holding the role loses it.
 | `id` | string (path) | yes | The role id. At most 64 characters. |
 | `permission_id` | string (path) | yes | The permission id. At most 64 characters. |
 
-### roles.update
+### <a id="roles.update"></a>roles.update
 
 Rename a role or change its description. An app-declared role is changed in the app's manifest instead.
 
@@ -2847,7 +2847,7 @@ Rename a role or change its description. An app-declared role is changed in the 
 | `name` | string | no | At least 1 characters. At most 120 characters. |
 | `description` | string, nullable | no | At most 500 characters. |
 
-### users.environment_roles.get
+### <a id="users.environment_roles.get"></a>users.environment_roles.get
 
 Whether a user holds a role everywhere in this environment: the grant, or 404. Name the role by id, or by manifest `key` with `client_id`.
 
@@ -2865,7 +2865,7 @@ Whether a user holds a role everywhere in this environment: the grant, or 404. N
 | `role_id` | string (path) | yes | The role id, or its manifest `key` with `client_id`. At most 190 characters. |
 | `client_id` | string | no | The app whose manifest `key` `role_id` is. At most 255 characters. |
 
-### users.environment_roles.grant
+### <a id="users.environment_roles.grant"></a>users.environment_roles.grant
 
 Grant a user a staff role: held everywhere in this environment, in every organization. Name the role by id, or by manifest `key` with `client_id`.
 
@@ -2883,7 +2883,7 @@ Grant a user a staff role: held everywhere in this environment, in every organiz
 | `role_id` | string (path) | yes | The role id, or its manifest `key` with `client_id`. At most 190 characters. |
 | `client_id` | string | no | The app whose manifest `key` `role_id` is. At most 255 characters. |
 
-### users.environment_roles.list
+### <a id="users.environment_roles.list"></a>users.environment_roles.list
 
 List the staff roles a user holds everywhere in this environment (not those held inside one organization).
 
@@ -2899,7 +2899,7 @@ List the staff roles a user holds everywhere in this environment (not those held
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.environment_roles.revoke
+### <a id="users.environment_roles.revoke"></a>users.environment_roles.revoke
 
 Take a staff role (held everywhere in this environment) back from a user.
 
@@ -2919,7 +2919,7 @@ Take a staff role (held everywhere in this environment) back from a user.
 
 ## SAML apps
 
-### saml_apps.create
+### <a id="saml_apps.create"></a>saml_apps.create
 
 Register a SAML app that signs people in with their account here. Decides where assertions — and their attributes — are sent.
 
@@ -2944,7 +2944,7 @@ Register a SAML app that signs people in with their account here. Decides where 
 | `certificate` | string, nullable | no | The application's signing certificate (PEM). Write-only; left out or null keeps the one on file. At most 20000 characters. |
 | `organization_id` | string, nullable | no | The organization that owns the application: only its active members are signed in to it, and the assertion names it. Null makes it environment-wide — every person in the environment may sign in to it. At most 64 characters. |
 
-### saml_apps.delete
+### <a id="saml_apps.delete"></a>saml_apps.delete
 
 Remove a SAML app. People can no longer sign in to it with their account here.
 
@@ -2960,7 +2960,7 @@ Remove a SAML app. People can no longer sign in to it with their account here.
 |---|---|---|---|
 | `id` | string (path) | yes | The SAML app's id. |
 
-### saml_apps.get
+### <a id="saml_apps.get"></a>saml_apps.get
 
 Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.
 
@@ -2976,7 +2976,7 @@ Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never 
 |---|---|---|---|
 | `id` | string (path) | yes | The SAML app's id. |
 
-### saml_apps.list
+### <a id="saml_apps.list"></a>saml_apps.list
 
 List the SAML apps that trust this environment as their identity provider.
 
@@ -2993,7 +2993,7 @@ List the SAML apps that trust this environment as their identity provider.
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### saml_apps.update
+### <a id="saml_apps.update"></a>saml_apps.update
 
 Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization.
 
@@ -3021,7 +3021,7 @@ Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing cert
 
 ## Secret keys
 
-### keys.create
+### <a id="keys.create"></a>keys.create
 
 Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.
 
@@ -3044,7 +3044,7 @@ Mint a management key for this environment, at most as wide as the caller. The v
 | `require_approval.min_danger` | string, nullable | no | Every action at or above this danger waits for a person's approval. One of `write`, `destructive`, `critical`. |
 | `require_approval.actions` | list of string | no | These actions wait for approval whatever their danger. At most 100 items. |
 
-### keys.list
+### <a id="keys.list"></a>keys.list
 
 List this environment's management keys (names, scopes, parents, expiry, last use — never their values).
 
@@ -3061,7 +3061,7 @@ List this environment's management keys (names, scopes, parents, expiry, last us
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### keys.revoke
+### <a id="keys.revoke"></a>keys.revoke
 
 Revoke a management key and every key it minted, immediately.
 
@@ -3077,7 +3077,7 @@ Revoke a management key and every key it minted, immediately.
 |---|---|---|---|
 | `id` | string (path) | yes | The key to revoke. |
 
-### keys.rotate
+### <a id="keys.rotate"></a>keys.rotate
 
 Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.
 
@@ -3097,7 +3097,7 @@ Rotate a management key: mint a successor with the same scopes and retire the ol
 
 ## Sign-in
 
-### signin.policy.get
+### <a id="signin.policy.get"></a>signin.policy.get
 
 Read the authentication policy (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override.
 
@@ -3113,7 +3113,7 @@ Read the authentication policy (password, MFA, SSO, lockout): the environment ba
 |---|---|---|---|
 | `organization_id` | string | no | Read one organization's rules. Left out, the environment baseline. At most 64 characters. |
 
-### signin.policy.inherit
+### <a id="signin.policy.inherit"></a>signin.policy.inherit
 
 Drop one organization's authentication policy override, so it inherits the environment baseline again.
 
@@ -3129,7 +3129,7 @@ Drop one organization's authentication policy override, so it inherits the envir
 |---|---|---|---|
 | `organization_id` | string (path) | yes | The organization whose override to drop. At most 64 characters. |
 
-### signin.policy.update
+### <a id="signin.policy.update"></a>signin.policy.update
 
 Change the authentication policy of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions.
 
@@ -3152,7 +3152,7 @@ Change the authentication policy of the environment baseline, or tighten one org
 | `sso` | string | no | Whether SSO is off, preferred, or required — `required` refuses every other way in and signs out password sessions. One of `off`, `preferred`, `required`. |
 | `lockout_threshold` | integer, nullable | no | Failed attempts before an account is locked; null for the deployment default (10 inside 15 minutes unless CBOX_ID_LOCKOUT_THRESHOLD says otherwise). At least 3. At most 100. |
 
-### signin.self_service_signup.set
+### <a id="signin.self_service_signup.set"></a>signin.self_service_signup.set
 
 Switch self-service sign-up on or off: whether people can create an account and their own organization in this environment.
 
@@ -3168,7 +3168,7 @@ Switch self-service sign-up on or off: whether people can create an account and 
 |---|---|---|---|
 | `enabled` | boolean | yes | On: anyone may create an account and their own organization. Off: people join by invitation. |
 
-### signin.social.delete
+### <a id="signin.social.delete"></a>signin.social.delete
 
 Stop offering a social login provider. People who used it keep their accounts.
 
@@ -3185,7 +3185,7 @@ Stop offering a social login provider. People who used it keep their accounts.
 | `id` | string (path) | yes | The provider's id. |
 | `organization_id` | string, nullable | no | Only remove it if it is this organization's. At most 64 characters. |
 
-### signin.social.list
+### <a id="signin.social.list"></a>signin.social.list
 
 List the social login providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.
 
@@ -3203,7 +3203,7 @@ List the social login providers (Google, GitHub, Apple…) enabled in this envir
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### signin.social.set
+### <a id="signin.social.set"></a>signin.social.set
 
 Enable a social login provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.
 
@@ -3232,7 +3232,7 @@ Enable a social login provider (Google, GitHub, Apple…) for one organization w
 
 ## Support sessions
 
-### support_sessions.end
+### <a id="support_sessions.end"></a>support_sessions.end
 
 End a support session now: every token it issued is revoked.
 
@@ -3248,7 +3248,7 @@ End a support session now: every token it issued is revoked.
 |---|---|---|---|
 | `id` | string (path) | yes | The support session id. At most 64 characters. |
 
-### support_sessions.start
+### <a id="support_sessions.start"></a>support_sessions.start
 
 Start a support session: a staff member holding the app's support:impersonate acts as a customer's user in that app, for a reason and at most an hour. Optionally returns the first authorization code.
 
@@ -3276,7 +3276,7 @@ Start a support session: a staff member holding the app's support:impersonate ac
 
 ## Token vault
 
-### token_vault.grants.create
+### <a id="token_vault.grants.create"></a>token_vault.grants.create
 
 Grant an app (by OAuth client id) the right to lease a stored credential.
 
@@ -3294,7 +3294,7 @@ Grant an app (by OAuth client id) the right to lease a stored credential.
 | `organization_id` | string, nullable | no | The organization whose vault this is. Left out: the environment's own secrets, a separate collection. At most 64 characters. |
 | `client_id` | string | yes | The OAuth client id of the app that may lease it. At most 190 characters. |
 
-### token_vault.grants.delete
+### <a id="token_vault.grants.delete"></a>token_vault.grants.delete
 
 Withdraw an app's right to lease a stored credential.
 
@@ -3312,7 +3312,7 @@ Withdraw an app's right to lease a stored credential.
 | `client_id` | string (path) | yes | The OAuth client id whose grant is withdrawn. At most 190 characters. |
 | `organization_id` | string, nullable | no | The organization whose vault this is. Left out: the environment's own secrets, a separate collection. At most 64 characters. |
 
-### token_vault.secrets.create
+### <a id="token_vault.secrets.create"></a>token_vault.secrets.create
 
 Store a downstream credential (a third-party API key) in an organization's token vault, or the environment's own. The value is sealed and never returned.
 
@@ -3331,7 +3331,7 @@ Store a downstream credential (a third-party API key) in an organization's token
 | `provider` | string | yes | Whose credential it is: "stripe", "openai". At most 190 characters. |
 | `secret` | string | yes | The credential. Write-only: sealed, never returned. At most 20000 characters. |
 
-### token_vault.secrets.get
+### <a id="token_vault.secrets.get"></a>token_vault.secrets.get
 
 Read one stored credential and the client ids granted to lease it. Never its value.
 
@@ -3348,7 +3348,7 @@ Read one stored credential and the client ids granted to lease it. Never its val
 | `id` | string (path) | yes | The secret's id. |
 | `organization_id` | string, nullable | no | The organization whose vault this is. Left out: the environment's own secrets, a separate collection. At most 64 characters. |
 
-### token_vault.secrets.list
+### <a id="token_vault.secrets.list"></a>token_vault.secrets.list
 
 List the downstream credentials stored in an organization's token vault (or the environment's own): names, providers, status. Never a value.
 
@@ -3366,7 +3366,7 @@ List the downstream credentials stored in an organization's token vault (or the 
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### token_vault.secrets.revoke
+### <a id="token_vault.secrets.revoke"></a>token_vault.secrets.revoke
 
 Revoke a stored credential permanently. No app can lease it again.
 
@@ -3383,7 +3383,7 @@ Revoke a stored credential permanently. No app can lease it again.
 | `id` | string (path) | yes | The secret's id. |
 | `organization_id` | string, nullable | no | The organization whose vault this is. Left out: the environment's own secrets, a separate collection. At most 64 characters. |
 
-### token_vault.secrets.rotate
+### <a id="token_vault.secrets.rotate"></a>token_vault.secrets.rotate
 
 Replace a stored credential's value. Every later lease hands out the new one. The value is never returned.
 
@@ -3403,7 +3403,7 @@ Replace a stored credential's value. Every later lease hands out the new one. Th
 
 ## Users
 
-### users.create
+### <a id="users.create"></a>users.create
 
 Create a user in this environment, optionally with a password, and optionally mail them a one-click sign-in link.
 
@@ -3422,7 +3422,7 @@ Create a user in this environment, optionally with a password, and optionally ma
 | `password` | string, nullable | no | Checked against this environment's password policy. Leave out for a user who signs in another way. At least 8 characters. At most 255 characters. |
 | `send_sign_in_link` | boolean | no | Mail the new user a one-click sign-in link. Default false. |
 
-### users.deactivate
+### <a id="users.deactivate"></a>users.deactivate
 
 Deactivate a user: they can no longer sign in, and every OAuth grant they hold is revoked. Never deletes them.
 
@@ -3438,7 +3438,7 @@ Deactivate a user: they can no longer sign in, and every OAuth grant they hold i
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.erase
+### <a id="users.erase"></a>users.erase
 
 Erase a person (GDPR Art. 17): revoke their sessions and tokens, delete their credentials, memberships and personal data, and pseudonymise their account. Cannot be undone.
 
@@ -3454,7 +3454,7 @@ Erase a person (GDPR Art. 17): revoke their sessions and tokens, delete their cr
 |---|---|---|---|
 | `id` | string (path) | yes | The user's id. |
 
-### users.get
+### <a id="users.get"></a>users.get
 
 Get one user of this environment by id.
 
@@ -3470,7 +3470,7 @@ Get one user of this environment by id.
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.list
+### <a id="users.list"></a>users.list
 
 List the users in this environment, a page at a time. Narrow by exact `email`, a `q` fragment of the address or name, or `status`.
 
@@ -3490,7 +3490,7 @@ List the users in this environment, a page at a time. Narrow by exact `email`, a
 | `q` | string | no | Only users whose address or name contains this. At most 190 characters. |
 | `status` | string | no | Only users in this state. One of `active`, `disabled`, `locked`. |
 
-### users.mfa.reset
+### <a id="users.mfa.reset"></a>users.mfa.reset
 
 Reset a user's two-factor authentication: their authenticator and recovery codes are removed and they must enrol again.
 
@@ -3506,7 +3506,7 @@ Reset a user's two-factor authentication: their authenticator and recovery codes
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.password.set
+### <a id="users.password.set"></a>users.password.set
 
 Set a user's password, temporary by default, and mail it to them unless told not to. Signs them out according to `revoke`.
 
@@ -3528,7 +3528,7 @@ Set a user's password, temporary by default, and mail it to them unless told not
 | `revoke` | string | no | How much existing access to end. Default `sessions_and_tokens`. One of `sessions_and_tokens`, `sessions_only`, `nothing`. |
 | `send_email` | boolean | no | Mail the password to the user. Default true. |
 
-### users.password_reset.send
+### <a id="users.password_reset.send"></a>users.password_reset.send
 
 Mail a user a password-reset link at their own address.
 
@@ -3544,7 +3544,7 @@ Mail a user a password-reset link at their own address.
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.reactivate
+### <a id="users.reactivate"></a>users.reactivate
 
 Reactivate a deactivated user so they can sign in again. Grants revoked on deactivation stay revoked.
 
@@ -3560,7 +3560,7 @@ Reactivate a deactivated user so they can sign in again. Grants revoked on deact
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.sessions.list
+### <a id="users.sessions.list"></a>users.sessions.list
 
 List a user's live sign-in sessions, most recently active first: device, IP and whether somebody else opened it as them.
 
@@ -3576,7 +3576,7 @@ List a user's live sign-in sessions, most recently active first: device, IP and 
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.sessions.revoke
+### <a id="users.sessions.revoke"></a>users.sessions.revoke
 
 End one of a user's sign-in sessions.
 
@@ -3593,7 +3593,7 @@ End one of a user's sign-in sessions.
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 | `session_id` | string (path) | yes | The session id, from `GET /users/{id}/sessions`. At most 64 characters. |
 
-### users.sessions.revoke_all
+### <a id="users.sessions.revoke_all"></a>users.sessions.revoke_all
 
 Sign a user out everywhere: end every session and revoke every OAuth grant they hold.
 
@@ -3609,7 +3609,7 @@ Sign a user out everywhere: end every session and revoke every OAuth grant they 
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.update
+### <a id="users.update"></a>users.update
 
 Change a user's name and/or email address. A changed address must be verified again.
 
@@ -3627,7 +3627,7 @@ Change a user's name and/or email address. A changed address must be verified ag
 | `name` | string, nullable | no | At most 190 characters. |
 | `email` | string (email) | no | The new address. Its verification is cleared. At most 190 characters. |
 
-### users.verification.send
+### <a id="users.verification.send"></a>users.verification.send
 
 Mail a user the link that verifies their email address. Does nothing for an address already verified.
 
@@ -3643,7 +3643,7 @@ Mail a user the link that verifies their email address. Does nothing for an addr
 |---|---|---|---|
 | `id` | string (path) | yes | The user id. At most 64 characters. |
 
-### users.verify
+### <a id="users.verify"></a>users.verify
 
 Mark a user's email address verified without the emailed link. It can then be used to recover the account.
 
@@ -3661,7 +3661,7 @@ Mark a user's email address verified without the emailed link. It can then be us
 
 ## Webhooks
 
-### webhooks.create
+### <a id="webhooks.create"></a>webhooks.create
 
 Register a webhook endpoint for one organization or the whole environment. Returns its signing secret once.
 
@@ -3682,7 +3682,7 @@ Register a webhook endpoint for one organization or the whole environment. Retur
 | `organization_id` | string, nullable | no | The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide. At most 64 characters. |
 | `environment_wide` | boolean | no | True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id. |
 
-### webhooks.delete
+### <a id="webhooks.delete"></a>webhooks.delete
 
 Delete a webhook endpoint. It stops receiving events at once.
 
@@ -3698,7 +3698,7 @@ Delete a webhook endpoint. It stops receiving events at once.
 |---|---|---|---|
 | `id` | string (path) | yes | The webhook endpoint id. |
 
-### webhooks.get
+### <a id="webhooks.get"></a>webhooks.get
 
 Get one webhook endpoint: URL, owner, subscribed events, health. Never its signing secret.
 
@@ -3714,7 +3714,7 @@ Get one webhook endpoint: URL, owner, subscribed events, health. Never its signi
 |---|---|---|---|
 | `id` | string (path) | yes | The webhook endpoint id. |
 
-### webhooks.list
+### <a id="webhooks.list"></a>webhooks.list
 
 List the webhook endpoints registered in this environment: URL, owner, subscribed events and whether each is active.
 
@@ -3731,7 +3731,7 @@ List the webhook endpoints registered in this environment: URL, owner, subscribe
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `after` | string | no | The `next_cursor` of the previous page. |
 
-### webhooks.pause
+### <a id="webhooks.pause"></a>webhooks.pause
 
 Pause a webhook endpoint: it stops receiving events until resumed.
 
@@ -3747,7 +3747,7 @@ Pause a webhook endpoint: it stops receiving events until resumed.
 |---|---|---|---|
 | `id` | string (path) | yes | The webhook endpoint id. |
 
-### webhooks.resume
+### <a id="webhooks.resume"></a>webhooks.resume
 
 Resume a paused webhook endpoint: it receives events again.
 
@@ -3763,7 +3763,7 @@ Resume a paused webhook endpoint: it receives events again.
 |---|---|---|---|
 | `id` | string (path) | yes | The webhook endpoint id. |
 
-### webhooks.secret.rotate
+### <a id="webhooks.secret.rotate"></a>webhooks.secret.rotate
 
 Issue a new signing secret for a webhook endpoint, returned once. The old secret stops verifying immediately.
 
@@ -3780,7 +3780,7 @@ Issue a new signing secret for a webhook endpoint, returned once. The old secret
 |---|---|---|---|
 | `id` | string (path) | yes | The webhook endpoint id. |
 
-### webhooks.signature_scheme.change
+### <a id="webhooks.signature_scheme.change"></a>webhooks.signature_scheme.change
 
 Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks). No new secret is issued: a hex secret is used as whsec_ + base64 of itself. Update the receiver first.
 
@@ -3797,7 +3797,7 @@ Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks
 | `id` | string (path) | yes | The webhook endpoint id. |
 | `signature_scheme` | string | yes | The scheme deliveries are signed with from the next attempt. The secret is unchanged: under `standard_webhooks` a 64-hex secret is used as `whsec_` + base64 of the hex string. Update the receiver before you switch. One of `cbox`, `standard_webhooks`. |
 
-### webhooks.update
+### <a id="webhooks.update"></a>webhooks.update
 
 Change a webhook endpoint's URL and/or the events it subscribes to.
 

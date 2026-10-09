@@ -155,7 +155,7 @@ it('creates the app for the framework picked, through apps.create, and waits for
     $page = $this->get(route('environment.get-started', ['framework' => 'nextjs', 'app' => $app->id]))->assertOk();
 
     expect($page->inertiaProps('quickstart.install.0.code'))->toBe('npm install @cboxdk/id-js jose')
-        ->and($page->inertiaProps('quickstartGuide'))->toEndWith('quickstarts/nextjs.md')
+        ->and($page->inertiaProps('quickstartGuide'))->toEndWith('/quickstarts/nextjs')
         ->and($page->inertiaProps('quickstart.env'))->toContain('CBOX_ID_CLIENT_ID='.$app->client_id)
         ->and($page->inertiaProps('quickstart.env'))->toContain('CBOX_ID_CLIENT_SECRET=<your client secret>')
         ->and($page->inertiaProps('quickstart.env'))->not->toContain('csec_')
