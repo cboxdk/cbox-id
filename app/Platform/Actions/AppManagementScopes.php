@@ -85,6 +85,19 @@ class AppManagementScopes extends EnumManagementScopes
             'description' => 'Define, replace and delete the schemas audit events are validated against, and change how long they are kept — shortening retention deletes older events for good.',
             'critical' => true,
         ],
+        'fga:read' => [
+            'label' => 'Read fine-grained authorization',
+            'description' => 'Read the authorization schema and its tuples, and ask checks and list queries — "may this user edit this document?", "which documents can they see?". What an app\'s backend needs to enforce access, and nothing more.',
+        ],
+        'fga:write' => [
+            'label' => 'Write relationship tuples',
+            'description' => 'Write and delete relationship tuples — who owns, edits or views which of your app\'s resources. Grants and revokes access in your app the moment it is written.',
+        ],
+        'fga:schema' => [
+            'label' => 'Change the authorization schema',
+            'description' => 'Replace the authorization schema — the resource types and how each relation is decided. Changes the answer to every check in this environment at once.',
+            'critical' => true,
+        ],
         'signin:read' => [
             'label' => 'Read the authentication policy',
             'description' => 'Read the authentication policy, the social login providers and the legacy login declaration — never a provider\'s secret.',

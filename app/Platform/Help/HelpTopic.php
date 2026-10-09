@@ -71,6 +71,7 @@ enum HelpTopic: string
     case Connectors = 'connectors';
     case LogStreaming = 'log-streaming';
     case AuditLogs = 'audit-logs';
+    case FineGrainedAuthorization = 'fine-grained-authorization';
     case DataExports = 'data-exports';
     case RiskEvents = 'risk-events';
     case SignInActivity = 'sign-in-activity';
@@ -134,6 +135,7 @@ enum HelpTopic: string
             self::Connectors => 'Every connection, in one list',
             self::LogStreaming => 'Sending the audit log to your own tools',
             self::AuditLogs => 'What your app records about each organization',
+            self::FineGrainedAuthorization => 'Who may do what to which of your app\'s resources',
             self::DataExports => 'Exports & retention',
             self::RiskEvents => 'Sign-ins that looked suspicious',
             self::SignInActivity => 'Sign-ins over time',
@@ -241,6 +243,7 @@ enum HelpTopic: string
 
             self::LogStreaming => 'Mirrors every audit log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
             self::AuditLogs => 'The audit events your app sends about each organization it serves — who did what inside your product, and when — kept per organization in a hash chain and shown to that organization\'s own admins. Use it when an organization you serve asks for an audit log of its account; define schemas to keep the events consistent.',
+            self::FineGrainedAuthorization => 'Your app\'s own access model: resource types like documents and folders, relations like owner, editor and viewer, and how they inherit — a folder\'s viewers can read every document in it. Your app writes who relates to what, and asks "may this user edit this document?" on every request; the schema decides the answer.',
 
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
@@ -289,6 +292,7 @@ enum HelpTopic: string
             self::RoleConflicts => 'guides/role-conflicts',
             self::ActivityLog => 'guides/activity-log',
             self::AuditLogs => 'guides/audit-logs',
+            self::FineGrainedAuthorization => 'guides/fine-grained-authorization',
             self::LogStreaming => 'guides/log-streams',
             self::EnvironmentDomains => 'guides/custom-domains',
             self::AgentApprovals => 'guides/agent-approvals',

@@ -15,6 +15,8 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Kernel\Authorization\Contracts\FineGrainedAuthorization;
+use Cbox\Id\Kernel\Authorization\ValueObjects\Tuple;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\Apis;
@@ -175,6 +177,12 @@ function seedTenantData(string $environmentId, string $marker): array
                 organizationId: $org->id,
                 scopes: [new ApiScopeDefinition(strtolower($marker).':read')],
             ));
+
+            // The environment's own fine-grained authorization model: Users & orgs ›
+            // Fine-grained authorization lists tuples, so the marker is a resource id.
+            $fga = app(FineGrainedAuthorization::class);
+            $fga->updateSchema("type user\ntype document\n  relation viewer: [user]");
+            $fga->writeTuples([Tuple::parse('document:'.strtolower($marker).'-handbook#viewer@user:'.strtolower($marker))]);
 
             // A management key, which AI agents › Agents lists by name. Environment-owned
             // rather than an organization's, and exactly as able to leak across planes.

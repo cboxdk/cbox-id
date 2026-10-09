@@ -44,6 +44,9 @@ use App\Providers\ConsoleServiceProvider;
  *    app built on an environment sends about its own customers.
  *  - Approvals: what an agent is waiting for a person to allow.
  *  - API keys: one page, the kind of key a tab — Secret, Publishable, Workspace.
+ *  - Fine-grained authorization: the relationship model an app defines for its OWN
+ *    resources (documents in folders) — beside Roles and Permissions, which are what a
+ *    person may do in an organization.
  */
 final class Vocabulary
 {
@@ -73,6 +76,9 @@ final class Vocabulary
     public const string ROLES = 'Roles';
 
     public const string PERMISSIONS = 'Permissions';
+
+    /** An environment's own relationship model: schema, tuples, checks. Not roles or permissions. */
+    public const string FINE_GRAINED_AUTHORIZATION = 'Fine-grained authorization';
 
     // Sign-in.
     public const string ENTERPRISE_SSO = 'Enterprise SSO';
