@@ -29,6 +29,7 @@ use Cbox\Risk\ValueObjects\RiskAssessment;
 use Cbox\Risk\ValueObjects\RiskContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -382,6 +383,14 @@ it('forgets devices past their retention, in every environment', function (): vo
 });
 
 it('falls back to the risk score alone when Radar itself cannot run', function (): void {
+    // The missing table is made by dropping it inside the test's transaction. MySQL commits
+    // DDL implicitly, which ends that transaction under RefreshDatabase and leaves nothing
+    // to roll back to; PostgreSQL and SQLite keep DDL transactional, and PostgreSQL is the
+    // database this guards (a failed statement there poisons the caller's transaction).
+    if (DB::getDriverName() === 'mysql') {
+        $this->markTestSkipped('MySQL commits DDL implicitly, so the table cannot be dropped inside the test transaction.');
+    }
+
     config(['risk.mode' => 'enforce']);
     radarUser('dana@acme.example');
     app()->instance(RiskScorer::class, new class implements RiskScorer
