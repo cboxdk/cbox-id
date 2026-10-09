@@ -36,6 +36,12 @@ it('gives every app model a tenancy decision, not a default', function (): void 
         // at length in the model's docblock; surfaced here the moment this guard stopped
         // skipping app/Models.
         'RiskDecision' => 'pre-auth telemetry read deployment-wide, with no environment in context',
+
+        // An uploaded logo, served to anonymous visitors of a hosted sign-in page by its
+        // unguessable path — a request that resolves no environment, where the hard outer
+        // scope would hide every row. Ownership is its `environment_key` column, which the
+        // store checks before it removes anything. Reasoned in the model's docblock.
+        'BrandAsset' => 'a public image found by its unguessable path, owned by an explicit column',
     ];
 
     $missing = [];

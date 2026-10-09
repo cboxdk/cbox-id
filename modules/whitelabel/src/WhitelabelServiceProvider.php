@@ -13,6 +13,7 @@ use Cbox\Console\Kit\Contracts\BrandingResolver;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
+use Cbox\Id\Whitelabel\Assets\DatabaseBrandAssetStore;
 use Cbox\Id\Whitelabel\Assets\LocalBrandAssetStore;
 use Cbox\Id\Whitelabel\Branding\TenantBrandingResolver;
 use Cbox\Id\Whitelabel\BrandProfiles\DatabaseBrandProfiles;
@@ -71,11 +72,22 @@ class WhitelabelServiceProvider extends ServiceProvider
         // What that costs is three storage operations' worth of instrumentation on brand
         // asset writes. The alternative — widening the store to `Filesystem` — would mean
         // calling `url()` on a type that does not declare it.
-        $this->app->bindIf(BrandAssetStore::class, static fn (Application $app): BrandAssetStore => new LocalBrandAssetStore(
-            Storage::build(self::diskConfig($app, self::configString($app, 'whitelabel.assets.disk', 'public'))),
-            $app->make(EnvironmentContext::class),
-            self::configString($app, 'whitelabel.assets.path', 'brand'),
-        ));
+        //
+        // THE DATABASE BY DEFAULT, the disk only when asked for. A disk is one machine's:
+        // on a deployment of more than one replica — production runs two web pods, and
+        // replaces both on every deploy — an upload written to one pod's `public` disk is
+        // missing on the other and gone after the next rollout, and the production image
+        // does not even serve `/storage`. {@see DatabaseBrandAssetStore} has the incident.
+        $this->app->bindIf(BrandAssetStore::class, static fn (Application $app): BrandAssetStore => self::configString($app, 'whitelabel.assets.store', 'database') === 'disk'
+            ? new LocalBrandAssetStore(
+                Storage::build(self::diskConfig($app, self::configString($app, 'whitelabel.assets.disk', 'public'))),
+                $app->make(EnvironmentContext::class),
+                self::configString($app, 'whitelabel.assets.path', 'brand'),
+            )
+            : new DatabaseBrandAssetStore(
+                $app->make(EnvironmentContext::class),
+                self::configString($app, 'whitelabel.assets.path', 'brand'),
+            ));
 
         $this->app->bind(ManageCustomDomain::class, static fn (Application $app): ManageCustomDomain => new ManageCustomDomain(
             $app->make(EnvironmentContext::class),
@@ -111,7 +123,7 @@ class WhitelabelServiceProvider extends ServiceProvider
             order: 10,
         );
 
-        $this->app->make(DashboardCards::class)->add(fn (): DashboardCardProps => $this->brandCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): DashboardCardProps => $this->brandCard(), 8, feature: 'whitelabel');
     }
 
     /**

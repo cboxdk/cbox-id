@@ -46,8 +46,9 @@ type Props = PageProps<{
     organizationsHref: string | null;
     accountHref: string;
     setupGuideHref: string | null;
-    issuer: string;
-    discovery: string;
+    /** Null where this host is no identity provider — the platform root of a SaaS deployment. */
+    issuer: string | null;
+    discovery: string | null;
     /** Present only for the OWNER of an organization that is not a customer. */
     closeOrganizationHref: string | null;
 }>;
@@ -261,35 +262,37 @@ export default function Settings({
                 nowhere in their own console to find them. Both are already served
                 unauthenticated, so showing them here discloses nothing.
             */}
-            <Panel
-                title="Integration"
-                description="Point your OIDC client at these. Discovery exposes every endpoint automatically."
-            >
-                <div className="space-y-3">
-                    {(
-                        [
-                            { label: 'Issuer', value: issuer },
-                            { label: 'OIDC discovery', value: discovery },
-                        ] as const
-                    ).map(({ label, value }) => (
-                        <div
-                            key={label}
-                            className="rounded-xl border p-3"
-                            style={{ borderColor: 'var(--border)' }}
-                        >
-                            <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {label}
-                            </p>
-                            <div className="mt-1 flex items-center gap-2">
-                                <code className="flex-1 min-w-0 truncate mono text-sm">
-                                    {value}
-                                </code>
-                                <CopyButton value={value} />
+            {issuer !== null && discovery !== null && (
+                <Panel
+                    title="Integration"
+                    description="Point your OIDC client at these. Discovery exposes every endpoint automatically."
+                >
+                    <div className="space-y-3">
+                        {(
+                            [
+                                { label: 'Issuer', value: issuer },
+                                { label: 'OIDC discovery', value: discovery },
+                            ] as const
+                        ).map(({ label, value }) => (
+                            <div
+                                key={label}
+                                className="rounded-xl border p-3"
+                                style={{ borderColor: 'var(--border)' }}
+                            >
+                                <p className="text-xs" style={{ color: 'var(--faint)' }}>
+                                    {label}
+                                </p>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <code className="flex-1 min-w-0 truncate mono text-sm">
+                                        {value}
+                                    </code>
+                                    <CopyButton value={value} />
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            </Panel>
+                        ))}
+                    </div>
+                </Panel>
+            )}
 
             {closeOrganizationHref !== null && organization !== null && (
                 <Panel

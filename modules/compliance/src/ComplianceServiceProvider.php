@@ -104,7 +104,7 @@ class ComplianceServiceProvider extends ServiceProvider
             order: 30,
         );
 
-        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->exportCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->exportCard(), 8, feature: 'compliance');
 
         if ($this->app->runningInConsole()) {
             $this->commands([ExportAuditCommand::class, ApplyRetentionCommand::class]);

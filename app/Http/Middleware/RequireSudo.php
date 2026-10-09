@@ -45,7 +45,11 @@ final class RequireSudo
          * for proving who you are.
          */
         if ($request->header('X-Inertia') !== null) {
-            $intended = $this->sameOriginPath($request, $request->headers->get('referer'));
+            // A GET is a click on a gated PAGE (the sidebar's Token vault): that page is
+            // the place to come back to, not the one the click was made from.
+            $intended = $request->isMethod('GET')
+                ? $request->fullUrl()
+                : $this->sameOriginPath($request, $request->headers->get('referer'));
 
             if ($intended !== null) {
                 $request->session()->put('sudo.intended', $intended);

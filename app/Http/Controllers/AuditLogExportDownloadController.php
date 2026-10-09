@@ -29,6 +29,15 @@ final class AuditLogExportDownloadController
 
         $path = $model->path;
 
+        /*
+         * NOT HERE IS A 404, never an empty file. The export is written by the queue, and
+         * on a disk only that process has — `local`, on a deployment whose worker and web
+         * replicas are different pods — this replica cannot see it. Streaming anyway
+         * answered 200 with an empty CSV, which reads as "nothing happened in this period"
+         * to whoever opens it. `cbox-id:doctor` fails that disk on a scaled-out deployment.
+         */
+        abort_unless(AuditLogExports::disk()->exists($path), 404);
+
         return response()->streamDownload(static function () use ($path): void {
             $stream = AuditLogExports::disk()->readStream($path);
 

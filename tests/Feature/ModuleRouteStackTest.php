@@ -50,6 +50,13 @@ it('gives every module console route the host console stack', function (): void 
             continue;
         }
 
+        // Not a console page either: an uploaded logo, which a hosted sign-in page on ANY
+        // host draws for an anonymous visitor — so no plane, no session, no impersonation
+        // window. Named, so a second exception has to be argued for here too.
+        if ($name === 'whitelabel.asset') {
+            continue;
+        }
+
         $owned = collect($modules)->contains(
             fn (string $m): bool => str_starts_with($name, $m.'.') || str_starts_with($name, str_replace('-', '', $m).'.')
         );

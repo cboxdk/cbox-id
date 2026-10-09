@@ -298,6 +298,36 @@ it('exports to CSV on the queue and hands the file out through a signed URL', fu
     expect(AuditEntry::query()->where('action', 'audit_log_export.created')->sole()->organization_id)->toBe($acme);
 });
 
+/*
+ * A replica that cannot see the file says so. The export is written by the worker; on a
+ * disk only the worker has (the default `local`, on a deployment where web and worker are
+ * different pods), the web replica that answers the signed URL found no file and streamed
+ * an empty CSV with a 200 — "nothing happened" to whoever opened it.
+ */
+it('answers 404 rather than an empty CSV when the export file is not on this disk', function (): void {
+    Storage::fake('local');
+    Queue::fake();
+    $key = auditKey();
+    $acme = auditOrg('acme-missing-file');
+
+    sendAuditEvents($key, [auditEvent($acme)])->assertCreated();
+
+    $export = $this->withToken($key)->postJson('/api/v1/audit-logs/exports', ['organization_id' => $acme])
+        ->assertCreated()
+        ->json('data');
+
+    app(EnvironmentContext::class)->set(null);
+    (new GenerateAuditLogExport($export['id']))->handle(app(EnvironmentContext::class));
+    app(EnvironmentContext::class)->set(GenericEnvironment::of('env_test'));
+
+    $url = $this->withToken($key)->getJson("/api/v1/audit-logs/exports/{$export['id']}")->assertOk()->json('data.url');
+
+    // Another pod's disk: the same configuration, none of the worker's files.
+    Storage::fake('local');
+
+    $this->get($url)->assertNotFound();
+});
+
 it('prunes past the retention from the front of each chain, which still verifies', function (): void {
     $key = auditKey();
     $acme = auditOrg('acme-prune');

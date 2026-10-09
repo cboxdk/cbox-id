@@ -31,6 +31,8 @@ function soundProductionConfig(): array
         'queue.default' => 'redis',
         'logging.default' => 'stderr',
         'health.security.token' => 'probe-token',
+        // A disk every process reaches — `s3` names the S3 driver in config/filesystems.php.
+        'cbox-id.audit_logs.export_disk' => 's3',
     ];
 }
 
@@ -94,4 +96,30 @@ it('warns when every log channel writes to the local disk, following stacks', fu
 it('warns when the queue runs inline', function (): void {
     expect(productionVerdicts([...soundProductionConfig(), 'queue.default' => 'sync']))
         ->toHaveKey('Queue runs inline', 'warn');
+});
+
+/*
+ * Found on a production-shaped stack: an audit-log export is written by the worker pod and
+ * downloaded through a web pod, and on the default `local` disk the web pod has no such
+ * file — the download was an empty CSV, answered 200. Brand images had the same shape and
+ * moved to the database; these files cannot, so the doctor says it out loud.
+ */
+it('fails production when files cross processes on a local disk and there is more than one replica', function (): void {
+    $verdicts = productionVerdicts([...soundProductionConfig(), 'cbox-id.audit_logs.export_disk' => 'local', 'cbox-id.deployment.replicas' => 2]);
+
+    expect($verdicts)->toHaveKey('Files are local to one machine', 'fail');
+});
+
+it('only warns about local files on exactly one machine, and names brand images only when they are on a disk', function (): void {
+    $one = [...soundProductionConfig(), 'cbox-id.audit_logs.export_disk' => 'local', 'cbox-id.deployment.replicas' => 1, 'queue-autoscale.cluster.enabled' => false];
+
+    expect(productionVerdicts($one))->toHaveKey('Files are local to one machine', 'warn');
+
+    $results = collect(app(ProductionConfigDoctorCheck::class)->run());
+    $files = $results->first(fn (HealthResult $r): bool => $r->label === 'Files are local to one machine');
+
+    expect($files?->detail)->not->toContain('Brand images');
+
+    expect(productionVerdicts([...soundProductionConfig(), 'whitelabel.assets.store' => 'disk', 'whitelabel.assets.disk' => 'public', 'cbox-id.deployment.replicas' => 2]))
+        ->toHaveKey('Files are local to one machine', 'fail');
 });

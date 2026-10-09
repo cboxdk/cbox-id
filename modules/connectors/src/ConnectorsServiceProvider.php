@@ -89,7 +89,7 @@ class ConnectorsServiceProvider extends ServiceProvider
             order: 20,
         );
 
-        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->connectorsCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->connectorsCard(), 8, feature: 'connectors');
     }
 
     /**

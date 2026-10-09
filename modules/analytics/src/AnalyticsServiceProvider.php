@@ -106,7 +106,7 @@ class AnalyticsServiceProvider extends ServiceProvider
             order: 15,
         );
 
-        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->loginsCard(), 4);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->loginsCard(), 4, feature: 'analytics');
 
         if ($this->app->runningInConsole()) {
             $this->commands([AnalyticsInstallCommand::class]);
