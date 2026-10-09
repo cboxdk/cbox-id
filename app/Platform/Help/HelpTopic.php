@@ -198,6 +198,7 @@ enum HelpTopic: string
             self::FeatureFlags => 'A feature flag is a switch your apps ask about for one person in one organization. Turn it on for named users, named organizations or a percentage of everyone, and every app reads the same answer — in the token\'s `feature_flags` claim, or from the evaluation endpoint — without a deploy. A user rule beats an organization rule, which beats the rollout, which beats the default.',
 
             self::Pipes => 'Each pipe lets people connect their own account at a service like GitHub, Google or Slack. Their tokens are stored encrypted and kept fresh here; the apps you grant ask for a working token whenever they call that service as the person, and never store one themselves.',
+
             self::TokenVault => 'API keys and tokens your apps and agents need for other services, kept encrypted here rather than in each app\'s config. You hand a secret in once, grant specific apps the right to use it, and it is never displayed again — rotate it if you lose it.',
 
             self::ActivityLog => 'Every change made in this organization: who did what, to what, and when. Entries are hash-chained, so a removed or edited entry breaks the chain and shows up. Read-only, on purpose — this is the record you hand an auditor.',

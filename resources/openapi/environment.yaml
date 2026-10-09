@@ -96,6 +96,7 @@ tags:
   - name: Domains
   - name: Events
   - name: 'Feature flags'
+  - name: 'Fine-grained authorization'
   - name: 'Publishable keys'
   - name: Hooks
   - name: 'Secret keys'
@@ -5791,6 +5792,864 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/FeatureFlag'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/check:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'Check whether a subject has a relation on a resource — directly, through computed relations, parents or nested groups. Optionally at least as fresh as a consistency_token.'
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_check
+      x-action: fga.check
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        -
+          name: resource_type
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The resource's type: `document`."
+            maxLength: 64
+        -
+          name: resource_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The resource's id: `readme`."
+            maxLength: 128
+        -
+          name: relation
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'The relation to check: `viewer`.'
+            maxLength: 64
+        -
+          name: subject_type
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The subject's type: `user`, or `group` for a userset."
+            maxLength: 64
+        -
+          name: subject_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The subject's id: `alice`."
+            maxLength: 128
+        -
+          name: subject_relation
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'For a userset subject — `member` with `group`/`eng` asks about every member of eng.'
+            maxLength: 64
+        -
+          name: consistency_token
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'A `consistency_token` a write returned: the answer is then at least as fresh as that write.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaCheck'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/check/batch:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'Run 1–100 checks in one round trip, each written resource#relation@subject (document:readme#viewer@user:alice), all at the same revision, answered in order.'
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_check_batch
+      x-action: fga.check.batch
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        -
+          name: checks
+          in: query
+          required: true
+          schema:
+            type: array
+            description: '1–100 checks, each `resource_type:resource_id#relation@subject_type:subject_id[#subject_relation]`.'
+            minItems: 1
+            maxItems: 100
+            items:
+              type: string
+              maxLength: 400
+        -
+          name: consistency_token
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'A `consistency_token` a write returned: the answer is then at least as fresh as that write.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaCheckBatch'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/resources:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'List the resources of one type a subject has a relation on (e.g. every document alice can view), through all inheritance; sorted ids, paged with after.'
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_resources_list
+      x-action: fga.resources.list
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        -
+          name: resource_type
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'Which type of resource to list: `document`.'
+            maxLength: 64
+        -
+          name: relation
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'The relation the subject must have: `viewer`.'
+            maxLength: 64
+        -
+          name: subject_type
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The subject's type: `user`."
+            maxLength: 64
+        -
+          name: subject_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The subject's id: `alice`."
+            maxLength: 128
+        -
+          name: subject_relation
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'For a userset subject: `member` with `group`/`eng`.'
+            maxLength: 64
+        -
+          name: consistency_token
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'A `consistency_token` a write returned: the answer is then at least as fresh as that write.'
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Ids per page, 1–1000. Default 100.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+            maxLength: 128
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FgaObject'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/schema:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: "Read this environment's fine-grained authorization schema: the source text, its parsed types and relations, its version, and the current consistency token."
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_schema_get
+      x-action: fga.schema.get
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - 'Fine-grained authorization'
+      summary: "Replace this environment's fine-grained authorization schema (types, relations and how each is decided). Changes the answer to every check at once; refused if invalid or if existing tuples would no longer fit."
+      description: 'Requires scope `fga:schema`. Danger: critical.'
+      operationId: fga_schema_update
+      x-action: fga.schema.update
+      x-scope: 'fga:schema'
+      x-danger: critical
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                schema:
+                  type: string
+                  description: 'The schema, in the schema language: `type document` then `  relation viewer: [user, group#member] or editor or viewer from parent`.'
+                  maxLength: 65536
+              required:
+                - schema
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaSchema'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/schema/validate:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'Check a fine-grained authorization schema without saving it: every error by line, or the parsed types and canonical text.'
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_schema_validate
+      x-action: fga.schema.validate
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        -
+          name: schema
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'The schema to check, in the schema language.'
+            maxLength: 65536
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaSchemaValidation'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/subjects:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'List the subjects of one type that have a relation on a resource (e.g. every user who can view the readme), groups and inheritance expanded; sorted ids, paged with after.'
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_subjects_list
+      x-action: fga.subjects.list
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        -
+          name: resource_type
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The resource's type: `document`."
+            maxLength: 64
+        -
+          name: resource_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: "The resource's id: `readme`."
+            maxLength: 128
+        -
+          name: relation
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'The relation: `viewer`.'
+            maxLength: 64
+        -
+          name: subject_type
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'Which type of subject to list: `user`.'
+            maxLength: 64
+        -
+          name: consistency_token
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            description: 'A `consistency_token` a write returned: the answer is then at least as fresh as that write.'
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Ids per page, 1–1000. Default 100.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+            maxLength: 128
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FgaObject'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/tuples:
+    get:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'List stored relationship tuples oldest first, filtered by resource type and id, relation and subject; pass next_cursor as after to page.'
+      description: 'Requires scope `fga:read`. Danger: read.'
+      operationId: fga_tuples_list
+      x-action: fga.tuples.list
+      x-scope: 'fga:read'
+      x-danger: read
+      parameters:
+        -
+          name: resource_type
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only tuples on this resource type.'
+            maxLength: 64
+        -
+          name: resource_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only tuples on this resource.'
+            maxLength: 128
+        -
+          name: relation
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only tuples of this relation.'
+            maxLength: 64
+        -
+          name: subject_type
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only tuples naming this subject type.'
+            maxLength: 64
+        -
+          name: subject_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only tuples naming this subject.'
+            maxLength: 128
+        -
+          name: subject_relation
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'Only tuples naming a userset with this relation.'
+            maxLength: 64
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Tuples per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FgaTuple'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'Write 1–100 relationship tuples (resource#relation@subject) in one atomic batch, each checked against the schema. Grants access at once; returns a consistency_token for checks that must see it.'
+      description: 'Requires scope `fga:write`. Danger: write.'
+      operationId: fga_tuples_write
+      x-action: fga.tuples.write
+      x-scope: 'fga:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tuples:
+                  type: array
+                  description: '1–100 tuples to write, all together or none.'
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      resource_type:
+                        type: string
+                        description: "The resource's type, as the schema names it: `document`."
+                        maxLength: 64
+                      resource_id:
+                        type: string
+                        description: 'Your id for the resource: `readme`.'
+                        maxLength: 128
+                      relation:
+                        type: string
+                        description: 'The relation: `viewer`.'
+                        maxLength: 64
+                      subject:
+                        type: object
+                        description: 'Who: one subject (`user:alice`), or a userset (`group:eng#member`).'
+                        properties:
+                          type:
+                            type: string
+                            description: "The subject's type: `user`, or `group` for a userset."
+                            maxLength: 64
+                          id:
+                            type: string
+                            description: 'Your id for the subject: `alice`, `eng`.'
+                            maxLength: 128
+                          relation:
+                            type:
+                              - string
+                              - 'null'
+                            description: 'For a userset — everybody with this relation on the subject: `member` of `group:eng`. Omit for one subject.'
+                            maxLength: 64
+                        required:
+                          - type
+                          - id
+                    required:
+                      - resource_type
+                      - resource_id
+                      - relation
+                      - subject
+              required:
+                - tuples
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaTupleWrite'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /fga/tuples/delete:
+    post:
+      tags:
+        - 'Fine-grained authorization'
+      summary: 'Delete 1–100 relationship tuples in one atomic batch. Revokes the access they granted, and everything inherited through them, at once.'
+      description: 'Requires scope `fga:write`. Danger: destructive.'
+      operationId: fga_tuples_delete
+      x-action: fga.tuples.delete
+      x-scope: 'fga:write'
+      x-danger: destructive
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tuples:
+                  type: array
+                  description: '1–100 tuples to delete, all together or none.'
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    properties:
+                      resource_type:
+                        type: string
+                        description: "The resource's type, as the schema names it: `document`."
+                        maxLength: 64
+                      resource_id:
+                        type: string
+                        description: 'Your id for the resource: `readme`.'
+                        maxLength: 128
+                      relation:
+                        type: string
+                        description: 'The relation: `viewer`.'
+                        maxLength: 64
+                      subject:
+                        type: object
+                        description: 'Who: one subject (`user:alice`), or a userset (`group:eng#member`).'
+                        properties:
+                          type:
+                            type: string
+                            description: "The subject's type: `user`, or `group` for a userset."
+                            maxLength: 64
+                          id:
+                            type: string
+                            description: 'Your id for the subject: `alice`, `eng`.'
+                            maxLength: 128
+                          relation:
+                            type:
+                              - string
+                              - 'null'
+                            description: 'For a userset — everybody with this relation on the subject: `member` of `group:eng`. Omit for one subject.'
+                            maxLength: 64
+                        required:
+                          - type
+                          - id
+                    required:
+                      - resource_type
+                      - resource_id
+                      - relation
+                      - subject
+              required:
+                - tuples
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FgaTupleWrite'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -20382,6 +21241,210 @@ components:
             - 'null'
           format: date-time
           description: 'When the file is deleted.'
+    FgaSubject:
+      type: object
+      required:
+        - type
+        - id
+        - relation
+      properties:
+        type:
+          type: string
+          description: "The subject's type: `user`, or `group` for a userset."
+        id:
+          type: string
+        relation:
+          type:
+            - string
+            - 'null'
+          description: 'For a userset — everybody with this relation on the subject (`member` of `group:eng`). null for one subject.'
+    FgaTuple:
+      type: object
+      required:
+        - resource_type
+        - resource_id
+        - relation
+        - subject
+        - tuple
+      properties:
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        relation:
+          type: string
+        subject:
+          $ref: '#/components/schemas/FgaSubject'
+        tuple:
+          type: string
+          description: 'The same tuple in the notation: `document:readme#viewer@group:eng#member`.'
+    FgaSchema:
+      type: object
+      required:
+        - defined
+        - schema
+        - version
+        - types
+        - updated_at
+        - consistency_token
+      properties:
+        defined:
+          type: boolean
+          description: 'false until a schema is first saved.'
+        schema:
+          type:
+            - string
+            - 'null'
+          description: 'The source as it was written, comments and all.'
+        version:
+          type: integer
+          description: 'How many times the schema has been replaced.'
+        types:
+          type: array
+          description: 'The parsed types, each with its relations and how each is decided.'
+          items:
+            $ref: '#/components/schemas/FgaType'
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        consistency_token:
+          type: string
+          description: 'The revision the model is at.'
+    FgaType:
+      type: object
+      required:
+        - name
+        - relations
+      properties:
+        name:
+          type: string
+        relations:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+              - rewrite
+              - directly_related
+            properties:
+              name:
+                type: string
+              rewrite:
+                type: object
+                description: |
+                  How the relation is decided, as a tree of one-key objects: `direct` (a list of
+                  `{type, relation?}`), `computed` (a relation name), `from` (`{tupleset, relation}`),
+                  `union` and `intersection` (lists of rewrites), `exclusion` (`{base, subtract}`).
+              directly_related:
+                type: array
+                description: 'The subjects a tuple may name on this relation; empty for a relation that is only computed.'
+                items:
+                  type: object
+                  required:
+                    - type
+                  properties:
+                    type:
+                      type: string
+                    relation:
+                      type: string
+    FgaSchemaValidation:
+      type: object
+      required:
+        - valid
+        - errors
+        - types
+        - canonical
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: object
+            required:
+              - line
+              - message
+            properties:
+              line:
+                type: integer
+                description: '0 when the problem is about the whole schema.'
+              message:
+                type: string
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/FgaType'
+        canonical:
+          type:
+            - string
+            - 'null'
+          description: 'The schema as the platform prints it, when valid.'
+    FgaTupleWrite:
+      type: object
+      required:
+        - written
+        - deleted
+        - consistency_token
+      properties:
+        written:
+          type: integer
+          description: 'Tuples that were new. Re-writing an existing one is not counted.'
+        deleted:
+          type: integer
+          description: 'Tuples that were there to delete.'
+        consistency_token:
+          type: string
+          description: 'Pass to a check that must see this write.'
+    FgaCheck:
+      type: object
+      required:
+        - allowed
+        - resource_type
+        - resource_id
+        - relation
+        - subject
+        - consistency_token
+      properties:
+        allowed:
+          type: boolean
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        relation:
+          type: string
+        subject:
+          $ref: '#/components/schemas/FgaSubject'
+        consistency_token:
+          type: string
+          description: 'The revision the answer was decided at.'
+    FgaCheckBatch:
+      type: object
+      required:
+        - results
+        - consistency_token
+      properties:
+        results:
+          type: array
+          description: 'One answer per check, in the order asked.'
+          items:
+            $ref: '#/components/schemas/FgaCheck'
+        consistency_token:
+          type:
+            - string
+            - 'null'
+    FgaObject:
+      type: object
+      required:
+        - type
+        - id
+      properties:
+        type:
+          type: string
+        id:
+          type: string
     AuditLogSettings:
       type: object
       required:
