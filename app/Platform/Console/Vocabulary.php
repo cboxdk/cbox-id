@@ -112,6 +112,7 @@ final class Vocabulary
 
     /** Switches an app asks about per user and organization (Developers › Feature flags). */
     public const string FEATURE_FLAGS = 'Feature flags';
+
     /**
      * A third-party provider people connect their OWN account at (GitHub, Google, Slack…)
      * so an app here can call that API as them. Not a sign-in method: Social login is how
