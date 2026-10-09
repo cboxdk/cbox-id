@@ -90,6 +90,9 @@ class ConsoleNavigation
                 // Synchronous: they run INSIDE a sign-in or a token issuance and can change
                 // its outcome. Webhooks, one line up, are told after the fact.
                 new NavPage('environment.hooks', Vocabulary::HOOKS),
+                // What the apps built on this environment switch on per user and
+                // organization; delivered in the token's `feature_flags` claim.
+                new NavPage('environment.feature-flags', Vocabulary::FEATURE_FLAGS),
             ),
             // Where software acting on this environment is handed access and governed: the
             // agents holding its management keys, what they are waiting for a person to

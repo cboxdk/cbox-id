@@ -51,6 +51,7 @@ return [
             'offline_access' => 'Stay signed in',
             'organizations' => 'Which organizations you belong to',
             'groups' => 'Your roles',
+            'feature_flags' => 'Which features are turned on for you',
         ],
     ],
 

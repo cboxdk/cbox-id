@@ -48,6 +48,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [My API keys and Member API keys](api-keys.md) — keys people create for your apps' APIs, and how admins see and revoke them.
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Hooks](inline-hooks.md) — have a say while it happens.
+- [Feature flags](feature-flags.md) — turn a feature on for named customers, people or a share of everyone, read in the token or from the API.
 - [Token vault](token-vault.md) — credentials your apps use elsewhere.
 
 ## Agents

@@ -3228,6 +3228,53 @@ components:
         role_ids: { type: array, items: { type: string } }
         active: { type: boolean }
         created_at: { type: ["string", "null"], format: date-time }
+    FeatureFlag:
+      type: object
+      required: [id, key, enabled, default_value, users, organizations]
+      description: "A switch apps ask about per user and organization. First match wins: switched off, then a user rule, then an organization rule, then the rollout, then the default."
+      properties:
+        id: { type: string }
+        key: { type: string, description: "What code asks for and the `feature_flags` claim carries. Fixed once created." }
+        description: { type: ["string", "null"] }
+        enabled: { type: boolean, description: "The kill switch: false is off for everyone." }
+        default_value: { type: boolean, description: "The answer when no rule matches." }
+        rollout_percentage: { type: ["integer", "null"], minimum: 0, maximum: 100, description: "On for this share of everyone else, by a stable hash of the user id (the organization id without one)." }
+        users:
+          type: array
+          description: "Rules for named users; they outrank every other rule."
+          items: { $ref: "#/components/schemas/FeatureFlagRule" }
+        organizations:
+          type: array
+          description: "Rules for named organizations; they outrank the rollout and the default."
+          items: { $ref: "#/components/schemas/FeatureFlagRule" }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    FeatureFlagRule:
+      type: object
+      required: [id, enabled]
+      properties:
+        id: { type: string, description: "The user's or organization's id." }
+        enabled: { type: boolean, description: "On or off for them." }
+    FeatureFlagEvaluation:
+      type: object
+      required: [user_id, organization_id, feature_flags, evaluations]
+      description: "Every flag's answer for the user and organization asked about."
+      properties:
+        user_id: { type: ["string", "null"] }
+        organization_id: { type: ["string", "null"] }
+        feature_flags:
+          type: array
+          description: "The keys of the flags that are on, sorted — exactly what the token's `feature_flags` claim would carry."
+          items: { type: string }
+        evaluations:
+          type: array
+          items:
+            type: object
+            required: [key, enabled, reason]
+            properties:
+              key: { type: string }
+              enabled: { type: boolean }
+              reason: { type: string, enum: [disabled, user_target, organization_target, rollout, default], description: "The rule that decided." }
     AccessReview:
       type: object
       required: [id, organization_id, staff, name, status, open, pending_policy, item_count]

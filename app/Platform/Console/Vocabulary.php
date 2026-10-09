@@ -47,6 +47,8 @@ use App\Providers\ConsoleServiceProvider;
  *  - Radar: adaptive protection at sign-in and sign-up — the rules that allow, challenge or
  *    block an attempt, and the decisions they made. Not "Risk events": that is the
  *    risk-plus module's feed of elevated scores, a narrower thing.
+ *  - Feature flags: switches an app asks about per user and organization. Not
+ *    "entitlements", which are what a customer has paid for and are set from billing.
  */
 final class Vocabulary
 {
@@ -101,6 +103,9 @@ final class Vocabulary
     public const string WEBHOOKS = 'Webhooks';
 
     public const string HOOKS = 'Hooks';
+
+    /** Switches an app asks about per user and organization (Developers › Feature flags). */
+    public const string FEATURE_FLAGS = 'Feature flags';
 
     public const string API_KEYS = 'API keys';
 

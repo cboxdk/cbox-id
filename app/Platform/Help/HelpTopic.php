@@ -42,6 +42,7 @@ enum HelpTopic: string
     case Apis = 'apis';
     case Webhooks = 'webhooks';
     case InlineHooks = 'inline-hooks';
+    case FeatureFlags = 'feature-flags';
     case TokenVault = 'token-vault';
     case ActivityLog = 'activity-log';
     case Settings = 'settings';
@@ -106,6 +107,7 @@ enum HelpTopic: string
             self::Apis => 'Your APIs, and who may call them',
             self::Webhooks => 'Getting told when something happens',
             self::InlineHooks => 'Having a say while it happens',
+            self::FeatureFlags => 'Features on for some, not all',
             self::TokenVault => 'Credentials your apps use elsewhere',
             self::ActivityLog => 'The record of what changed',
             self::Settings => 'Organization settings',
@@ -188,6 +190,8 @@ enum HelpTopic: string
             self::Webhooks => 'Cbox ID posts a signed message to your endpoint after something happens — a member joined, a role changed — so your systems can react without polling. Delivery is retried, and it is after the fact: your endpoint is told, it does not get a vote.',
 
             self::InlineHooks => 'These run in the middle of an operation, not after it, and their answer changes the outcome: your endpoint can add information to a token, or refuse a sign-in outright. Powerful, and directly in the critical path — a slow or broken endpoint is felt by the person trying to sign in.',
+
+            self::FeatureFlags => 'A feature flag is a switch your apps ask about for one person in one organization. Turn it on for named users, named organizations or a percentage of everyone, and every app reads the same answer — in the token\'s `feature_flags` claim, or from the evaluation endpoint — without a deploy. A user rule beats an organization rule, which beats the rollout, which beats the default.',
 
             self::TokenVault => 'API keys and tokens your apps and agents need for other services, kept encrypted here rather than in each app\'s config. You hand a secret in once, grant specific apps the right to use it, and it is never displayed again — rotate it if you lose it.',
 
@@ -287,6 +291,7 @@ enum HelpTopic: string
             self::Apis => 'guides/apis',
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
+            self::FeatureFlags => 'guides/feature-flags',
             self::TokenVault => 'guides/token-vault',
             self::AccessReviews => 'guides/access-reviews',
             self::RoleConflicts => 'guides/role-conflicts',

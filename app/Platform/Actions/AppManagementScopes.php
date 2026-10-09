@@ -187,6 +187,14 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage the token vault',
             'description' => 'Store, rotate and revoke downstream credentials, and grant or withdraw an app\'s right to lease one. Not the vault.manage / vault.lease scopes an app\'s own token carries.',
         ],
+        'feature_flags:read' => [
+            'label' => 'Read feature flags',
+            'description' => 'List feature flags with their targeting, and evaluate every flag for a user in an organization — what an app\'s backend asks when it has no token in hand.',
+        ],
+        'feature_flags:write' => [
+            'label' => 'Manage feature flags',
+            'description' => 'Define, switch, retarget and delete feature flags — which features which users and organizations get.',
+        ],
         'portal_links:read' => [
             'label' => 'Read Admin Portal links',
             'description' => 'List an organization\'s recent Admin Portal links: what each opens, who minted it, whom it was mailed to and where it stands — never the link itself.',
