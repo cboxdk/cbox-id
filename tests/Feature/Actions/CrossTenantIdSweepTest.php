@@ -176,6 +176,7 @@ function sweepBody(ActionDefinition $action, array $own): array
         'apps.scopes.set' => ['scopes' => ['openid']],
         'apps.copy' => ['environment_id' => 'env_test', 'name' => 'Copy'],
         'apps.secrets.rotate' => ['grace_seconds' => 0],
+        'directories.credentials.replace' => ['credentials' => ['api_key' => 'sweep']],
         'directories.groups.map' => ['group_id' => $own['directory_group'], 'role_id' => $own['role'], 'mapped' => true],
         'frontend_keys.set_origins' => ['origins' => ['https://sweep.example']],
         'invitations.send' => ['email' => 'sweep-invitee@sweep.example'],

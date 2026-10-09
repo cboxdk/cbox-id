@@ -4138,6 +4138,145 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /directories/hris:
+    post:
+      tags:
+        - 'Directory Sync'
+      summary: "Connect an HR system (Workday, BambooHR, Rippling, HiBob or Personio) to sync an organization's people from, verifying the credentials first. The first sync is queued."
+      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      operationId: directories_hris_connect
+      x-action: directories.hris.connect
+      x-scope: 'directory_sync:write'
+      x-danger: critical
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: 'The organization whose people it provisions.'
+                  maxLength: 64
+                provider:
+                  type: string
+                  description: 'workday, bamboohr, rippling, hibob or personio.'
+                  enum:
+                    - workday
+                    - bamboohr
+                    - rippling
+                    - hibob
+                    - personio
+                name:
+                  type: string
+                  description: "What administrators call it. Defaults to the HR system's name."
+                  maxLength: 120
+                credentials:
+                  type: object
+                  description: "The HR system's credentials, in the keys its setup guide names. Write-only: sealed, never returned."
+                  properties:
+                    report_url:
+                      type: string
+                      description: 'Workday: Report web-service URL.'
+                      maxLength: 20000
+                    username:
+                      type: string
+                      description: 'Workday: Integration system user.'
+                      maxLength: 20000
+                    password:
+                      type: string
+                      description: 'Workday: Integration system user password (secret).'
+                      maxLength: 20000
+                    client_id:
+                      type: string
+                      description: 'Workday: API client ID; Personio: Client ID.'
+                      maxLength: 20000
+                    client_secret:
+                      type: string
+                      description: 'Workday: API client secret (secret); Personio: Client secret (secret).'
+                      maxLength: 20000
+                    refresh_token:
+                      type: string
+                      description: 'Workday: Refresh token (secret).'
+                      maxLength: 20000
+                    subdomain:
+                      type: string
+                      description: 'BambooHR: Company subdomain.'
+                      maxLength: 20000
+                    api_key:
+                      type: string
+                      description: 'BambooHR: API key (secret).'
+                      maxLength: 20000
+                    api_token:
+                      type: string
+                      description: 'Rippling: API token (secret).'
+                      maxLength: 20000
+                    service_user_id:
+                      type: string
+                      description: 'HiBob: Service user ID.'
+                      maxLength: 20000
+                    service_user_token:
+                      type: string
+                      description: 'HiBob: Service user token (secret).'
+                      maxLength: 20000
+                custom_attributes:
+                  type: array
+                  description: "The HR system's own field names to copy onto each person, verbatim."
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 190
+                sync_interval_minutes:
+                  type:
+                    - integer
+                    - 'null'
+                  description: 'Minutes between scheduled pulls, 15 to 1440. Omitted or null: the platform default (hourly).'
+                  minimum: 15
+                  maximum: 1440
+              required:
+                - organization_id
+                - provider
+                - credentials
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/directories/{id}':
     delete:
       tags:
@@ -4304,6 +4443,123 @@ paths:
                   maxLength: 120
               required:
                 - name
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/credentials':
+    put:
+      tags:
+        - 'Directory Sync'
+      summary: "Replace a pull directory's provider credentials, verifying the new ones first. Write-only; never returned."
+      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      operationId: directories_credentials_replace
+      x-action: directories.credentials.replace
+      x-scope: 'directory_sync:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                credentials:
+                  type: object
+                  description: "The new credentials, in the keys the provider's setup names (Google: service_account_json, admin_email; Entra: tenant_id, client_id, client_secret). Write-only."
+                  properties:
+                    report_url:
+                      type: string
+                      maxLength: 20000
+                    username:
+                      type: string
+                      maxLength: 20000
+                    password:
+                      type: string
+                      maxLength: 20000
+                    client_id:
+                      type: string
+                      maxLength: 20000
+                    client_secret:
+                      type: string
+                      maxLength: 20000
+                    refresh_token:
+                      type: string
+                      maxLength: 20000
+                    subdomain:
+                      type: string
+                      maxLength: 20000
+                    api_key:
+                      type: string
+                      maxLength: 20000
+                    api_token:
+                      type: string
+                      maxLength: 20000
+                    service_user_id:
+                      type: string
+                      maxLength: 20000
+                    service_user_token:
+                      type: string
+                      maxLength: 20000
+                    service_account_json:
+                      type: string
+                      maxLength: 20000
+                    admin_email:
+                      type: string
+                      maxLength: 20000
+                    tenant_id:
+                      type: string
+                      maxLength: 20000
+              required:
+                - credentials
       responses:
         200:
           description: OK
@@ -4611,6 +4867,206 @@ paths:
                   maxLength: 64
               required:
                 - active
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Directory'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/sync':
+    post:
+      tags:
+        - 'Directory Sync'
+      summary: 'Pull a Google Workspace, Microsoft Entra or HR-system directory now, on a worker. `full` asks an HR system for everybody rather than what changed.'
+      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      operationId: directories_sync
+      x-action: directories.sync
+      x-scope: 'directory_sync:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                full:
+                  type: boolean
+                  description: 'Ask an HR system that syncs incrementally for everybody, not only what changed. Ignored by other providers.'
+      responses:
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/directories/{id}/sync-settings':
+    patch:
+      tags:
+        - 'Directory Sync'
+      summary: 'Set how often a pull directory syncs, and for an HR system which of its fields pass through onto people.'
+      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      operationId: directories_sync_settings_update
+      x-action: directories.sync_settings.update
+      x-scope: 'directory_sync:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The directory's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                sync_interval_minutes:
+                  type:
+                    - integer
+                    - 'null'
+                  description: 'Minutes between scheduled pulls, 15 to 1440. null returns to the platform default (hourly).'
+                  minimum: 15
+                  maximum: 1440
+                custom_attributes:
+                  type: array
+                  description: "HR systems only: the HR system's own field names to copy onto each person, verbatim."
+                  maxItems: 50
+                  items:
+                    type: string
+                    maxLength: 190
+                field_map:
+                  type: object
+                  description: 'Workday only: the report column holding each field, where it is not the default name.'
+                  properties:
+                    id:
+                      type: string
+                      description: 'The report column holding id. Default: Employee_ID.'
+                      maxLength: 190
+                    email:
+                      type: string
+                      description: 'The report column holding email. Default: Work_Email.'
+                      maxLength: 190
+                    first_name:
+                      type: string
+                      description: 'The report column holding first_name. Default: Legal_First_Name.'
+                      maxLength: 190
+                    last_name:
+                      type: string
+                      description: 'The report column holding last_name. Default: Legal_Last_Name.'
+                      maxLength: 190
+                    display_name:
+                      type: string
+                      description: 'The report column holding display_name. Default: Preferred_Name.'
+                      maxLength: 190
+                    active:
+                      type: string
+                      description: 'The report column holding active. Default: Active_Status.'
+                      maxLength: 190
+                    on_leave:
+                      type: string
+                      description: 'The report column holding on_leave. Default: On_Leave.'
+                      maxLength: 190
+                    hire_date:
+                      type: string
+                      description: 'The report column holding hire_date. Default: Hire_Date.'
+                      maxLength: 190
+                    termination_date:
+                      type: string
+                      description: 'The report column holding termination_date. Default: Termination_Date.'
+                      maxLength: 190
+                    department_id:
+                      type: string
+                      description: 'The report column holding department_id. Default: Supervisory_Organization_ID.'
+                      maxLength: 190
+                    department:
+                      type: string
+                      description: 'The report column holding department. Default: Supervisory_Organization.'
+                      maxLength: 190
+                    manager_id:
+                      type: string
+                      description: 'The report column holding manager_id. Default: Manager_Employee_ID.'
+                      maxLength: 190
+                    title:
+                      type: string
+                      description: 'The report column holding title. Default: Business_Title.'
+                      maxLength: 190
       responses:
         200:
           description: OK
@@ -17286,9 +17742,17 @@ components:
             - scim
             - google_workspace
             - microsoft_entra
+            - workday
+            - bamboohr
+            - rippling
+            - hibob
+            - personio
         pull:
           type: boolean
           description: 'true when this platform fetches from the provider; false for a SCIM endpoint the provider posts to.'
+        hris:
+          type: boolean
+          description: 'true for an HR system (Workday, BambooHR, Rippling, HiBob, Personio): employment dates decide access and departments become groups.'
         active:
           type: boolean
         status:
@@ -17310,6 +17774,74 @@ components:
           type:
             - string
             - 'null'
+          description: 'Why the last pull failed, or for a partial one how many records could not be synced and the first reason. Never names a person.'
+        last_sync_started_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When the last pull started. null for a SCIM directory.'
+        last_sync_status:
+          type:
+            - string
+            - 'null'
+          enum:
+            - running
+            - succeeded
+            - partial
+            - failed
+            - null
+          description: 'How the last pull went. partial: the provider answered but some records could not be reconciled, or a mass deprovisioning was refused.'
+        last_sync_stats:
+          type:
+            - object
+            - 'null'
+          description: "The last pull's counts, and up to 50 records it could not reconcile — by the provider's own id, never by name or email."
+          properties:
+            mode:
+              type: string
+              enum:
+                - full
+                - incremental
+            provisioned:
+              type: integer
+            deprovisioned:
+              type: integer
+            groups:
+              type: integer
+            skipped:
+              type: integer
+              description: 'Leavers and people who have not started, who never had an account.'
+            failed:
+              type: integer
+            failures:
+              type: array
+              items:
+                type: object
+                properties:
+                  external_id:
+                    type:
+                      - string
+                      - 'null'
+                  reason:
+                    type: string
+        sync_interval_minutes:
+          type:
+            - integer
+            - 'null'
+          description: 'Minutes between scheduled pulls. null for a SCIM directory.'
+        next_sync_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        custom_attributes:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+          description: "HR systems only: the HR system's own field names copied onto each person."
         created_at:
           type:
             - string

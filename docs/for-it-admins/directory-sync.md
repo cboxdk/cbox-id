@@ -27,6 +27,11 @@ Google Workspace does not push over SCIM. If your company uses Google Workspace 
 directory, the product's administrators can connect it from their side instead; ask the
 person who sent you the link.
 
+**Your people live in an HR system?** Choose **Using an HR system?** at the top of the page
+instead, and connect Workday, BambooHR, Rippling, HiBob or Personio: the product then reads
+your people from it — an account from their start date, gone after their last day. The
+steps for each are in the [HR system guides](idp/_index.md#hr-systems).
+
 ## 2. Create the directory
 
 Give it a **Directory name**, for example "Okta", and choose **Create directory**.

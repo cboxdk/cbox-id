@@ -3082,13 +3082,39 @@ components:
         id: { type: string }
         organization_id: { type: string }
         name: { type: string }
-        provider: { type: string, enum: [scim, google_workspace, microsoft_entra] }
+        provider: { type: string, enum: [scim, google_workspace, microsoft_entra, workday, bamboohr, rippling, hibob, personio] }
         pull: { type: boolean, description: "true when this platform fetches from the provider; false for a SCIM endpoint the provider posts to." }
+        hris: { type: boolean, description: "true for an HR system (Workday, BambooHR, Rippling, HiBob, Personio): employment dates decide access and departments become groups." }
         active: { type: boolean }
         status: { type: string, enum: [active, paused] }
         scim_base_url: { type: ["string", "null"], description: "Where the identity provider sends SCIM requests. null for a pull directory." }
         last_synced_at: { type: ["string", "null"], format: date-time }
-        last_sync_error: { type: ["string", "null"] }
+        last_sync_error: { type: ["string", "null"], description: "Why the last pull failed, or for a partial one how many records could not be synced and the first reason. Never names a person." }
+        last_sync_started_at: { type: ["string", "null"], format: date-time, description: "When the last pull started. null for a SCIM directory." }
+        last_sync_status: { type: ["string", "null"], enum: [running, succeeded, partial, failed, null], description: "How the last pull went. partial: the provider answered but some records could not be reconciled, or a mass deprovisioning was refused." }
+        last_sync_stats:
+          type: ["object", "null"]
+          description: "The last pull's counts, and up to 50 records it could not reconcile — by the provider's own id, never by name or email."
+          properties:
+            mode: { type: string, enum: [full, incremental] }
+            provisioned: { type: integer }
+            deprovisioned: { type: integer }
+            groups: { type: integer }
+            skipped: { type: integer, description: "Leavers and people who have not started, who never had an account." }
+            failed: { type: integer }
+            failures:
+              type: array
+              items:
+                type: object
+                properties:
+                  external_id: { type: ["string", "null"] }
+                  reason: { type: string }
+        sync_interval_minutes: { type: ["integer", "null"], description: "Minutes between scheduled pulls. null for a SCIM directory." }
+        next_sync_at: { type: ["string", "null"], format: date-time }
+        custom_attributes:
+          type: ["array", "null"]
+          items: { type: string }
+          description: "HR systems only: the HR system's own field names copied onto each person."
         created_at: { type: ["string", "null"], format: date-time }
         bearer_token:
           type: ["string", "null"]

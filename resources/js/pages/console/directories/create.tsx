@@ -19,13 +19,22 @@ interface Credential {
     label: string;
     help: string;
     example: string;
+    secret: boolean;
+    required: boolean;
 }
 
 interface ProviderOption {
     value: string;
     label: string;
     pull: boolean;
-    setup: { steps: string[]; docs: string; credentials: Credential[] } | null;
+    /** An HR system: its fields come from `setup.credentials`, and it posts to `urls.hris`. */
+    hris: boolean;
+    setup: {
+        steps: string[];
+        docs: string;
+        incremental: boolean;
+        credentials: Credential[];
+    } | null;
 }
 
 type Props = PageProps<{
@@ -34,7 +43,7 @@ type Props = PageProps<{
     organization: OrganizationPicker | null;
     entitled: boolean;
     indexHref: string;
-    urls: { register: string; connect: string };
+    urls: { register: string; connect: string; hris: string };
 }>;
 
 export default function CreateDirectory({
@@ -44,7 +53,18 @@ export default function CreateDirectory({
     indexHref,
     urls,
 }: Props) {
-    const form = useForm({
+    const form = useForm<{
+        provider: string;
+        organization: string;
+        name: string;
+        googleServiceAccountJson: string;
+        googleAdminEmail: string;
+        entraTenantId: string;
+        entraClientId: string;
+        entraClientSecret: string;
+        credentials: Record<string, string>;
+        customAttributes: string;
+    }>({
         provider: providers[0]?.value ?? 'scim',
         organization: organization?.selected?.id ?? '',
         name: '',
@@ -53,6 +73,8 @@ export default function CreateDirectory({
         entraTenantId: '',
         entraClientId: '',
         entraClientSecret: '',
+        credentials: {},
+        customAttributes: '',
     });
 
     /*
@@ -69,12 +91,14 @@ export default function CreateDirectory({
     );
 
     const pull = provider?.pull === true;
+    const hris = provider?.hris === true;
 
     const submit = (): void => {
-        // Two different writes behind one button, because they are two different acts: one
-        // MINTS a token we hand over, the other SEALS credentials we then use. The page
-        // asks one question — which provider — and the answer decides which.
-        form.post(pull ? urls.connect : urls.register);
+        // Different writes behind one button, because they are different acts: one MINTS a
+        // token we hand over, the others SEAL credentials we then use — an identity
+        // directory's, or an HR system's. The page asks one question — which provider —
+        // and the answer decides which.
+        form.post(hris ? urls.hris : pull ? urls.connect : urls.register);
     };
 
     return (
@@ -94,8 +118,9 @@ export default function CreateDirectory({
 
             <h1 className="cbx-page-title mt-2">New directory</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Either point an identity provider at our SCIM endpoint, or connect Google Workspace
-                or Microsoft Entra directly and we will pull your people on a schedule.
+                Point an identity provider at our SCIM endpoint, connect Google Workspace or
+                Microsoft Entra, or connect your HR system — Workday, BambooHR, Rippling, HiBob or
+                Personio — and we will pull your people on a schedule.
             </p>
 
             {!entitled ? (
@@ -139,9 +164,11 @@ export default function CreateDirectory({
                             options={providers.map((option) => ({
                                 value: option.value,
                                 label: option.label,
-                                hint: option.pull
-                                    ? 'We fetch your people from them on a schedule.'
-                                    : 'Your provider posts changes to us as they happen.',
+                                hint: option.hris
+                                    ? 'Your HR system: people get an account on their start date and lose it after their last day.'
+                                    : option.pull
+                                      ? 'We fetch your people from them on a schedule.'
+                                      : 'Your provider posts changes to us as they happen.',
                             }))}
                         />
                         {form.errors.provider !== undefined && (
@@ -183,7 +210,58 @@ export default function CreateDirectory({
                         </Panel>
                     )}
 
-                    {pull ? (
+                    {hris && provider?.setup != null ? (
+                        <Panel
+                            title="Credentials"
+                            description="Checked against your HR system before anything is stored. Never shown again."
+                        >
+                            <div className="space-y-4">
+                                {provider.setup.credentials.map((credential, index) => (
+                                    <Field
+                                        key={credential.key}
+                                        label={
+                                            credential.label +
+                                            (credential.required ? '' : ' (optional)')
+                                        }
+                                        hint={credential.help}
+                                        error={index === 0 ? credentialError : undefined}
+                                    >
+                                        <Input
+                                            name={`credentials.${credential.key}`}
+                                            type={credential.secret ? 'password' : 'text'}
+                                            className="mono"
+                                            autoComplete="off"
+                                            placeholder={credential.example}
+                                            value={form.data.credentials[credential.key] ?? ''}
+                                            onChange={(event) =>
+                                                form.setData('credentials', {
+                                                    ...form.data.credentials,
+                                                    [credential.key]: event.target.value,
+                                                })
+                                            }
+                                        />
+                                    </Field>
+                                ))}
+
+                                <Field
+                                    label="Fields to pass through (optional)"
+                                    hint="The HR system's own field names to copy onto each person, one per line — a cost centre, a location."
+                                    error={form.errors.customAttributes}
+                                >
+                                    <Textarea
+                                        name="customAttributes"
+                                        rows={2}
+                                        className="mono"
+                                        spellCheck={false}
+                                        value={form.data.customAttributes}
+                                        onChange={(event) =>
+                                            form.setData('customAttributes', event.target.value)
+                                        }
+                                    />
+                                </Field>
+                            </div>
+                        </Panel>
+                    ) : pull ? (
                         <Panel
                             title="Credentials"
                             description="Verified against the provider before anything is stored."

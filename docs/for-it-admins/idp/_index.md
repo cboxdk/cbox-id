@@ -43,6 +43,23 @@ the portal shows.
 
 <!-- END GENERATED -->
 
+## HR systems
+
+If your people live in an HR system, connect it instead of — or as well as — an identity
+provider: accounts follow employment, from the start date to the end of the last day.
+
+<!-- BEGIN GENERATED HR SYSTEMS by `php artisan docs:idp-guides` — edit the command, never this table. -->
+
+| HR system | What the portal asks for | Changes picked up |
+|---|---|---|
+| [Workday](workday.md) | Report web-service URL | A full sync every time |
+| [BambooHR](bamboohr.md) | Company subdomain, API key | Changes only, between daily full syncs |
+| [Rippling](rippling.md) | API token | Changes only, between daily full syncs |
+| [HiBob](hibob.md) | Service user ID, Service user token | A full sync every time |
+| [Personio](personio.md) | Client ID, Client secret | A full sync every time |
+
+<!-- END GENERATED HR SYSTEMS -->
+
 ## Related
 
 - [Enterprise SSO](../sso.md) — the portal's five steps.

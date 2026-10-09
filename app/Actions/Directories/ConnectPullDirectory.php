@@ -108,6 +108,20 @@ final readonly class ConnectPullDirectory implements Action
     }
 
     /**
+     * The credentials Google Workspace's or Microsoft Entra's connector reads, from the
+     * fields this action takes — shared with {@see ReplaceDirectoryCredentials}.
+     *
+     * @param  array<mixed>  $given
+     * @return array<string, string>
+     *
+     * @throws ActionRefused
+     */
+    public static function credentialsFor(DirectoryProvider $provider, array $given): array
+    {
+        return self::credentials($provider, $given);
+    }
+
+    /**
      * The credentials the provider's connector reads, or a refusal saying which are missing.
      *
      * @param  array<mixed>  $given

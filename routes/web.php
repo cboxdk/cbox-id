@@ -101,6 +101,7 @@ use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\Portal\PortalCertificateController;
 use App\Http\Controllers\Portal\PortalDirectoryController;
 use App\Http\Controllers\Portal\PortalDomainController;
+use App\Http\Controllers\Portal\PortalHrisController;
 use App\Http\Controllers\Portal\PortalLogStreamController;
 use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalAuditLogController;
@@ -583,6 +584,9 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
         Route::get('/setup/directory-sync', [PortalDirectoryController::class, 'show'])->name('portal.directories');
         Route::post('/setup/directories', [PortalDirectoryController::class, 'store'])->name('portal.directories.store');
         Route::post('/setup/directories/{directory}/rotate', [PortalDirectoryController::class, 'rotate'])->name('portal.directories.rotate');
+        Route::get('/setup/hr-system', [PortalHrisController::class, 'show'])->name('portal.hris');
+        Route::post('/setup/hr-system', [PortalHrisController::class, 'store'])->name('portal.hris.store');
+        Route::post('/setup/hr-system/{directory}/sync', [PortalHrisController::class, 'sync'])->name('portal.hris.sync');
 
         Route::get('/setup/log-streams', [PortalLogStreamController::class, 'show'])->name('portal.log-streams');
         Route::post('/setup/log-streams', [PortalLogStreamController::class, 'store'])->name('portal.log-streams.store');
@@ -894,11 +898,15 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('directories.create');
     Route::post('/sync-in', [DirectoryController::class, 'store'])->name('directories.store');
     Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('directories.connect');
+    Route::post('/sync-in/hris', [DirectoryController::class, 'connectHris'])->name('directories.hris');
     Route::get('/sync-in/{directory}', [DirectoryController::class, 'show'])->name('directories.show');
     Route::patch('/sync-in/{directory}', [DirectoryController::class, 'update'])->name('directories.update');
     Route::post('/sync-in/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('directories.rotate');
     Route::post('/sync-in/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('directories.toggle');
     Route::post('/sync-in/{directory}/map', [DirectoryController::class, 'map'])->name('directories.map');
+    Route::post('/sync-in/{directory}/sync', [DirectoryController::class, 'sync'])->name('directories.sync');
+    Route::patch('/sync-in/{directory}/sync-settings', [DirectoryController::class, 'syncSettings'])->name('directories.sync-settings');
+    Route::put('/sync-in/{directory}/credentials', [DirectoryController::class, 'credentials'])->name('directories.credentials');
     Route::delete('/sync-in/{directory}', [DirectoryController::class, 'destroy'])->name('directories.destroy');
     // Roles: the SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page — a role URL is something you
@@ -1381,11 +1389,15 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('environment.directories.create');
         Route::post('/sync-in', [DirectoryController::class, 'store'])->name('environment.directories.store');
         Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('environment.directories.connect');
+        Route::post('/sync-in/hris', [DirectoryController::class, 'connectHris'])->name('environment.directories.hris');
         Route::get('/sync-in/{directory}', [DirectoryController::class, 'show'])->name('environment.directories.show');
         Route::patch('/sync-in/{directory}', [DirectoryController::class, 'update'])->name('environment.directories.update');
         Route::post('/sync-in/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('environment.directories.rotate');
         Route::post('/sync-in/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('environment.directories.toggle');
         Route::post('/sync-in/{directory}/map', [DirectoryController::class, 'map'])->name('environment.directories.map');
+        Route::post('/sync-in/{directory}/sync', [DirectoryController::class, 'sync'])->name('environment.directories.sync');
+        Route::patch('/sync-in/{directory}/sync-settings', [DirectoryController::class, 'syncSettings'])->name('environment.directories.sync-settings');
+        Route::put('/sync-in/{directory}/credentials', [DirectoryController::class, 'credentials'])->name('environment.directories.credentials');
         Route::delete('/sync-in/{directory}', [DirectoryController::class, 'destroy'])->name('environment.directories.destroy');
 
         // Outbound sync (provisioning connections) — routable list → create → detail.
