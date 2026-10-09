@@ -236,6 +236,7 @@ it('guards every console write at least as tightly as the pages it sits beside',
         // The browser-facing sign-in API the SDKs call — no server-rendered page at all.
         'frontend.sign-in',
         'frontend.sign-in.factor',
+        'frontend.sign-in.factor.sms',
         'frontend.sign-in.passkey',
         'frontend.sign-in.passkey.options',
         // Ending a session, from either side of an impersonation.

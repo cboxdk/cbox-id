@@ -10117,6 +10117,348 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /sign-in/sms:
+    get:
+      tags:
+        - Sign-in
+      summary: 'Read the SMS second-factor policy: whether text-message codes are accepted, for which countries, and the administrator rule.'
+      description: 'Requires scope `signin:read`. Danger: read.'
+      operationId: signin_sms_get
+      x-action: signin.sms.get
+      x-scope: 'signin:read'
+      x-danger: read
+      parameters:
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SmsFactorPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Sign-in
+      summary: "Change the SMS second-factor policy: accept text-message codes or not, the countries they may go to, and whether SMS may be an administrator's only factor."
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_sms_update
+      x-action: signin.sms.update
+      x-scope: 'signin:write'
+      x-danger: critical
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: 'Accept text messages as a second factor in this environment. Off by default: SMS is the weakest factor offered.'
+                allowed_countries:
+                  type: array
+                  description: 'ISO 3166-1 alpha-2 countries whose numbers may enrol and be texted. Required to be non-empty while SMS is on: which countries you text is your toll-fraud exposure.'
+                  maxItems: 250
+                  items:
+                    type: string
+                    enum:
+                      - AC
+                      - AD
+                      - AE
+                      - AF
+                      - AG
+                      - AI
+                      - AL
+                      - AM
+                      - AO
+                      - AR
+                      - AS
+                      - AT
+                      - AU
+                      - AW
+                      - AZ
+                      - BA
+                      - BB
+                      - BD
+                      - BE
+                      - BF
+                      - BG
+                      - BH
+                      - BI
+                      - BJ
+                      - BM
+                      - BN
+                      - BO
+                      - BR
+                      - BS
+                      - BT
+                      - BW
+                      - BY
+                      - BZ
+                      - CA
+                      - CD
+                      - CF
+                      - CG
+                      - CH
+                      - CI
+                      - CK
+                      - CL
+                      - CM
+                      - CN
+                      - CO
+                      - CR
+                      - CU
+                      - CV
+                      - CW
+                      - CY
+                      - CZ
+                      - DE
+                      - DJ
+                      - DK
+                      - DM
+                      - DO
+                      - DZ
+                      - EC
+                      - EE
+                      - EG
+                      - ER
+                      - ES
+                      - ET
+                      - FI
+                      - FJ
+                      - FK
+                      - FM
+                      - FO
+                      - FR
+                      - GA
+                      - GB
+                      - GD
+                      - GE
+                      - GF
+                      - GH
+                      - GI
+                      - GL
+                      - GM
+                      - GN
+                      - GP
+                      - GQ
+                      - GR
+                      - GT
+                      - GU
+                      - GW
+                      - GY
+                      - HK
+                      - HN
+                      - HR
+                      - HT
+                      - HU
+                      - ID
+                      - IE
+                      - IL
+                      - IN
+                      - IO
+                      - IQ
+                      - IR
+                      - IS
+                      - IT
+                      - JM
+                      - JO
+                      - JP
+                      - KE
+                      - KG
+                      - KH
+                      - KI
+                      - KM
+                      - KN
+                      - KP
+                      - KR
+                      - KW
+                      - KY
+                      - KZ
+                      - LA
+                      - LB
+                      - LC
+                      - LI
+                      - LK
+                      - LR
+                      - LS
+                      - LT
+                      - LU
+                      - LV
+                      - LY
+                      - MA
+                      - MC
+                      - MD
+                      - ME
+                      - MG
+                      - MH
+                      - MK
+                      - ML
+                      - MM
+                      - MN
+                      - MO
+                      - MP
+                      - MQ
+                      - MR
+                      - MS
+                      - MT
+                      - MU
+                      - MV
+                      - MW
+                      - MX
+                      - MY
+                      - MZ
+                      - NA
+                      - NC
+                      - NE
+                      - NF
+                      - NG
+                      - NI
+                      - NL
+                      - 'NO'
+                      - NP
+                      - NR
+                      - NU
+                      - NZ
+                      - OM
+                      - PA
+                      - PE
+                      - PF
+                      - PG
+                      - PH
+                      - PK
+                      - PL
+                      - PM
+                      - PR
+                      - PS
+                      - PT
+                      - PW
+                      - PY
+                      - QA
+                      - RE
+                      - RO
+                      - RS
+                      - RU
+                      - RW
+                      - SA
+                      - SB
+                      - SC
+                      - SD
+                      - SE
+                      - SG
+                      - SH
+                      - SI
+                      - SK
+                      - SL
+                      - SM
+                      - SN
+                      - SO
+                      - SR
+                      - SS
+                      - ST
+                      - SV
+                      - SX
+                      - SY
+                      - SZ
+                      - TC
+                      - TD
+                      - TG
+                      - TH
+                      - TJ
+                      - TK
+                      - TL
+                      - TM
+                      - TN
+                      - TO
+                      - TR
+                      - TT
+                      - TV
+                      - TW
+                      - TZ
+                      - UA
+                      - UG
+                      - US
+                      - UY
+                      - UZ
+                      - VC
+                      - VE
+                      - VG
+                      - VI
+                      - VN
+                      - VU
+                      - WF
+                      - WS
+                      - XK
+                      - YE
+                      - ZA
+                      - ZM
+                      - ZW
+                    maxLength: 2
+                privileged_need_stronger_factor:
+                  type: boolean
+                  description: 'Administrators may add SMS only beside an authenticator app or a passkey, and are asked to enrol one if SMS is all they hold. On by default.'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SmsFactorPolicy'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /sign-in/social-providers:
     get:
       tags:
@@ -13257,6 +13599,52 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/users/{id}/mfa/sms':
+    delete:
+      tags:
+        - Users
+      summary: "Remove a user's phone number for text-message sign-in codes. Their other factors and recovery codes stay."
+      description: 'Requires scope `users:write`. Danger: critical.'
+      operationId: users_mfa_sms_remove
+      x-action: users.mfa.sms.remove
+      x-scope: 'users:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The user id.'
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/users/{id}/password':
     post:
       tags:
@@ -14887,6 +15275,32 @@ components:
           type: array
           items:
             type: string
+    SmsFactorPolicy:
+      type: object
+      required:
+        - enabled
+        - allowed_countries
+        - privileged_need_stronger_factor
+        - deployment_countries
+      properties:
+        enabled:
+          type: boolean
+          description: 'Text-message codes are accepted as a second factor. Off by default.'
+        allowed_countries:
+          type: array
+          items:
+            type: string
+            pattern: '^[A-Z]{2}$'
+          description: 'ISO 3166-1 alpha-2 countries whose numbers may enrol and be texted. Re-checked at every send.'
+        privileged_need_stronger_factor:
+          type: boolean
+          description: 'Administrators may add SMS only beside an authenticator app or a passkey.'
+        deployment_countries:
+          type: array
+          items:
+            type: string
+            pattern: '^[A-Z]{2}$'
+          description: "The deployment's ceiling (CBOX_ID_SMS_ALLOWED_COUNTRIES). Empty: no deployment restriction. A listed country outside it is never texted."
     SelfServiceSignup:
       type: object
       required:

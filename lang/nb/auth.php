@@ -153,6 +153,7 @@ return [
             'lead' => 'Skriv inn den sekssifrede koden fra autentiseringsappen din.',
             'label' => 'Autentiseringskode',
             'switch' => 'Bruk en gjenopprettingskode i stedet',
+            'sms_switch' => 'Send meg en kode på SMS i stedet',
         ],
         'recovery' => [
             'lead' => 'Skriv inn en av gjenopprettingskodene du lagret da du slo på tofaktorautentisering.',
@@ -160,6 +161,18 @@ return [
             'submit' => 'Bekreft gjenopprettingskode',
             'switch' => 'Bruk autentiseringsappen i stedet',
             'invalid' => 'Gjenopprettingskoden er ugyldig eller allerede brukt.',
+            'back' => 'Bruk en annen metode',
+        ],
+        'sms' => [
+            'lead' => 'Vi sender en kode på SMS til telefonnummeret på kontoen din.',
+            'send' => 'Send meg en kode',
+            'sent' => 'Vi har sendt en kode til :number. Den utløper om noen minutter.',
+            'resend' => 'Send en ny kode',
+            'label' => 'Koden fra SMS-en',
+            'switch' => 'Bruk autentiseringsappen i stedet',
+            'wait' => 'Det ble nettopp sendt en kode. Vent litt før du ber om en ny.',
+            'failed' => 'Vi kunne ikke sende SMS-en. Prøv igjen om litt, eller bruk en gjenopprettingskode.',
+            'unavailable' => 'SMS-koder er ikke tilgjengelige for denne kontoen.',
         ],
     ],
 

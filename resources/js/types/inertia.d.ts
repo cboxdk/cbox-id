@@ -41,6 +41,14 @@ declare module '@inertiajs/core' {
             challenged?: boolean;
             /** Step-up: a fresh code was sent. */
             resent?: string;
+            /** Second factor: a code was texted to this (masked) number. */
+            smsSentTo?: string;
+            /**
+             * My account: a code was texted to this (masked) number to prove it, so the
+             * page draws the confirmation step. Masked — the full number never leaves the
+             * server once it has been sealed.
+             */
+            smsEnrolmentSentTo?: string;
             /**
              * What the legacy-login endpoint said about one address.
              *

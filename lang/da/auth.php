@@ -155,6 +155,7 @@ return [
             'lead' => 'Indtast den 6-cifrede kode fra din godkendelsesapp.',
             'label' => 'Godkendelseskode',
             'switch' => 'Brug en gendannelseskode i stedet',
+            'sms_switch' => 'Send mig en kode på sms i stedet',
         ],
         'recovery' => [
             'lead' => 'Indtast en af de gendannelseskoder du gemte da du slog totrinsbekræftelse til.',
@@ -162,6 +163,18 @@ return [
             'submit' => 'Bekræft gendannelseskode',
             'switch' => 'Brug din godkendelsesapp i stedet',
             'invalid' => 'Gendannelseskoden er ugyldig eller allerede brugt.',
+            'back' => 'Brug en anden metode',
+        ],
+        'sms' => [
+            'lead' => 'Vi sender en kode på sms til telefonnummeret på din konto.',
+            'send' => 'Send mig en kode',
+            'sent' => 'Vi har sendt en kode til :number. Den udløber om få minutter.',
+            'resend' => 'Send en ny kode',
+            'label' => 'Koden fra sms\'en',
+            'switch' => 'Brug din godkendelsesapp i stedet',
+            'wait' => 'Der blev sendt en kode for lidt siden. Vent et øjeblik, før du beder om en ny.',
+            'failed' => 'Vi kunne ikke sende sms\'en. Prøv igen om lidt, eller brug en gendannelseskode.',
+            'unavailable' => 'Sms-koder er ikke tilgængelige for denne konto.',
         ],
     ],
 

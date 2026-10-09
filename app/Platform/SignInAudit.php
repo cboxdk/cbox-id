@@ -35,6 +35,8 @@ final readonly class SignInAudit
 
     public const string POLICY_INHERITED = 'auth_policy.inherited';
 
+    public const string SMS_POLICY_UPDATED = 'auth_policy.sms_updated';
+
     public const string SOCIAL_PROVIDER_REMOVED = 'social_provider.removed';
 
     public const string SAML_APP_REGISTERED = 'saml_app.registered';

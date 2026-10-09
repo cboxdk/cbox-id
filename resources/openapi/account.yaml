@@ -171,6 +171,34 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /me/mfa/sms:
+    delete:
+      tags:
+        - 'Sign-in methods'
+      summary: 'Remove your phone number for text-message sign-in codes.'
+      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      operationId: account_mfa_sms_remove
+      x-action: account.mfa.sms.remove
+      x-scope: 'account:sign_in:write'
+      x-danger: critical
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/me/organizations/{organization_id}/api-keys':
     post:
       tags:

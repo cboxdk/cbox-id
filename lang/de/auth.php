@@ -154,6 +154,7 @@ return [
             'lead' => 'Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App ein.',
             'label' => 'Authentifizierungscode',
             'switch' => 'Stattdessen einen Wiederherstellungscode verwenden',
+            'sms_switch' => 'Stattdessen einen Code per SMS erhalten',
         ],
         'recovery' => [
             'lead' => 'Geben Sie einen der Wiederherstellungscodes ein, die Sie beim Aktivieren der Zwei-Faktor-Authentifizierung gespeichert haben.',
@@ -161,6 +162,18 @@ return [
             'submit' => 'Code bestätigen',
             'switch' => 'Stattdessen Ihre Authentifizierungs-App verwenden',
             'invalid' => 'Dieser Wiederherstellungscode ist ungültig oder wurde bereits verwendet.',
+            'back' => 'Eine andere Methode verwenden',
+        ],
+        'sms' => [
+            'lead' => 'Wir senden einen Code per SMS an die Telefonnummer Ihres Kontos.',
+            'send' => 'Code per SMS senden',
+            'sent' => 'Wir haben einen Code an :number gesendet. Er läuft in wenigen Minuten ab.',
+            'resend' => 'Neuen Code senden',
+            'label' => 'Code aus der SMS',
+            'switch' => 'Stattdessen Ihre Authentifizierungs-App verwenden',
+            'wait' => 'Es wurde gerade ein Code gesendet. Warten Sie einen Moment, bevor Sie einen neuen anfordern.',
+            'failed' => 'Die SMS konnte nicht gesendet werden. Versuchen Sie es gleich noch einmal oder verwenden Sie einen Wiederherstellungscode.',
+            'unavailable' => 'SMS-Codes sind für dieses Konto nicht verfügbar.',
         ],
     ],
 

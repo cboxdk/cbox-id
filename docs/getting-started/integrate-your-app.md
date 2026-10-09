@@ -215,6 +215,15 @@ costs an attempt rather than the whole sign-in — five are allowed, which is wh
 mistyped digit sending somebody back to the password field while still bounding a
 brute-force of a six-digit space.
 
+`mfa_required` also lists the `factors` the person can answer with — `totp`, `sms` and
+`recovery_code` — as kinds only, never the number. For `sms`, ask for the text first with
+`POST /frontend/v1/sign-in/factor/sms` and `{ "mfa_token": … }` (the answer is
+`{ "status": "sent", "to": "+45 ******78", "expires_in": 300 }`, or `rate_limited` with a
+`retry_after`), then submit the code to `/frontend/v1/sign-in/factor` with
+`"method": "sms"`. Each send spends one of the token's five attempts, which bounds how many
+texts one password can cause. The JavaScript SDK does not wrap the send call yet; call it
+with `fetch`, sending your publishable key in the `X-Cbox-Publishable-Key` header as the SDK does.
+
 ### Passkeys, from your own button
 
 ```ts

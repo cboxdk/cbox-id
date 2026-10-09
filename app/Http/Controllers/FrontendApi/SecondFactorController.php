@@ -64,9 +64,15 @@ class SecondFactorController
             return $this->refuse();
         }
 
-        $satisfied = $stage === 'pending_otp'
-            ? $this->completeOtp($request, $ticket->subject_id, $code)
-            : $this->completeMfa($request, $ticket->subject_id, $code);
+        // A texted code is its own method rather than a shape guess: it is six digits like
+        // a TOTP code, and trying one after the other would charge the lockout twice.
+        $bySms = $stage === 'pending_mfa' && $request->input('method') === 'sms';
+
+        $satisfied = match (true) {
+            $stage === 'pending_otp' => $this->completeOtp($request, $ticket->subject_id, $code),
+            $bySms => $this->completeSms($request, $ticket->subject_id, $code),
+            default => $this->completeMfa($request, $ticket->subject_id, $code),
+        };
 
         if (! $satisfied) {
             return $this->refuse();
@@ -77,7 +83,7 @@ class SecondFactorController
         // factors, and it names them the way every other door does — see {@see AuthMethod}.
         return new JsonResponse([
             'status' => 'ok',
-            'login_ticket' => $this->tickets->promote($ticket, AuthMethod::forSecondFactorCode()),
+            'login_ticket' => $this->tickets->promote($ticket, $bySms ? AuthMethod::forSmsCode() : AuthMethod::forSecondFactorCode()),
             'expires_in' => 60,
         ]);
     }
@@ -101,6 +107,17 @@ class SecondFactorController
         return $this->looksLikeTotp($code)
             ? $this->auth->completeMfa($request, $code)
             : $this->auth->completeMfaWithRecoveryCode($request, $code);
+    }
+
+    /**
+     * Run the app's own texted-code challenge, with the pending subject put where it looks —
+     * the code having been sent by {@see SmsChallengeController} on the same ticket.
+     */
+    private function completeSms(Request $request, string $subjectId, string $code): bool
+    {
+        $this->auth->holdForMfa($request, $subjectId);
+
+        return $this->auth->completeMfaWithSms($request, $code);
     }
 
     /**
