@@ -35,6 +35,7 @@ return [
             'offline_access' => 'Forbli innlogget',
             'organizations' => 'Hvilke organisasjoner du tilhører',
             'groups' => 'Rollene dine',
+            'feature_flags' => 'Hvilke funksjoner som er slått på for deg',
         ],
     ],
 

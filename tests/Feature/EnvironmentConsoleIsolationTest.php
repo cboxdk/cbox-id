@@ -265,6 +265,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.governance' => 'access-review campaigns, none seeded',
         'environment.sod-policies' => 'conflict rules, none seeded',
         'environment.hooks' => 'inline hooks, none seeded',
+        'environment.feature-flags' => 'feature flags, none seeded',
         'environment.audit-streams' => 'SIEM destinations, none seeded',
         'environment.settings' => 'environment-level configuration, not tenant records',
         'environment.appearance' => 'the theme editor, which reads one org',

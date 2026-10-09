@@ -116,6 +116,9 @@ it('gates every subject-plane create action', function (): void {
     //  - `environment.audit-logs.schemas` — an audit-log schema is the environment
     //    console's alone, reaches nothing outside the tenant (it only narrows what the app's
     //    own events may say), and there is no subject session there to ask about.
+    //  - `environment.feature-flags` — a flag is the environment console's alone, where
+    //    there is no subject session to ask, and it reaches nothing outside the tenant: it
+    //    is a switch this environment's own apps read.
     //  - `environment.organizations` — the environment plane's tenants. A tenant record
     //    reaches nothing on its own: it is this customer's own bookkeeping of who their
     //    customers are, the same shape as `projects` above, and the writes that DO reach
@@ -134,6 +137,7 @@ it('gates every subject-plane create action', function (): void {
         'app/Http/Controllers/Console/ApiController.php::store()',
         'app/Http/Controllers/Console/AuditLogController.php::store()',
         'app/Http/Controllers/Console/EnvironmentOrganizationController.php::store()',
+        'app/Http/Controllers/Console/FeatureFlagController.php::store()',
         'app/Http/Controllers/Console/LogStreamController.php::store()',
         'app/Http/Controllers/Console/ProjectController.php::store()',
         'app/Http/Controllers/Console/RoleConflictController.php::store()',

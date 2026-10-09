@@ -44,6 +44,8 @@ use App\Providers\ConsoleServiceProvider;
  *    app built on an environment sends about its own customers.
  *  - Approvals: what an agent is waiting for a person to allow.
  *  - API keys: one page, the kind of key a tab — Secret, Publishable, Workspace.
+ *  - Feature flags: switches an app asks about per user and organization. Not
+ *    "entitlements", which are what a customer has paid for and are set from billing.
  */
 final class Vocabulary
 {
@@ -95,6 +97,9 @@ final class Vocabulary
     public const string WEBHOOKS = 'Webhooks';
 
     public const string HOOKS = 'Hooks';
+
+    /** Switches an app asks about per user and organization (Developers › Feature flags). */
+    public const string FEATURE_FLAGS = 'Feature flags';
 
     public const string API_KEYS = 'API keys';
 

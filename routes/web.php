@@ -45,6 +45,7 @@ use App\Http\Controllers\Console\EnvironmentKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationApiKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationController;
 use App\Http\Controllers\Console\EnvironmentUserController;
+use App\Http\Controllers\Console\FeatureFlagController;
 use App\Http\Controllers\Console\FrontendKeyController;
 use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
@@ -1531,6 +1532,16 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/inline-hooks/{hook}', [HookController::class, 'show'])->name('environment.hooks.show');
         Route::post('/inline-hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('environment.hooks.toggle');
         Route::delete('/inline-hooks/{hook}', [HookController::class, 'destroy'])->name('environment.hooks.destroy');
+
+        // Feature flags — the switches the environment's apps ask about per user and
+        // organization. This console only: a flag is read by every app and organization in
+        // the environment, so it is the environment's to define.
+        Route::get('/feature-flags', [FeatureFlagController::class, 'index'])->name('environment.feature-flags');
+        Route::get('/feature-flags/new', [FeatureFlagController::class, 'create'])->name('environment.feature-flags.create');
+        Route::post('/feature-flags', [FeatureFlagController::class, 'store'])->name('environment.feature-flags.store');
+        Route::get('/feature-flags/{flag}', [FeatureFlagController::class, 'show'])->name('environment.feature-flags.show');
+        Route::patch('/feature-flags/{flag}', [FeatureFlagController::class, 'update'])->name('environment.feature-flags.update');
+        Route::delete('/feature-flags/{flag}', [FeatureFlagController::class, 'destroy'])->name('environment.feature-flags.destroy');
 
         // Token vault — routable list → create → detail, on the merged component. The URL
         // keeps its old spelling so existing links and bookmarks still resolve; the route

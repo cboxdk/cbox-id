@@ -35,6 +35,7 @@ return [
             'offline_access' => 'Förbli inloggad',
             'organizations' => 'Vilka organisationer du tillhör',
             'groups' => 'Dina roller',
+            'feature_flags' => 'Vilka funktioner som är aktiverade för dig',
         ],
     ],
 

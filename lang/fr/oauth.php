@@ -35,6 +35,7 @@ return [
             'offline_access' => 'Rester connecté',
             'organizations' => 'Les organisations dont vous faites partie',
             'groups' => 'Vos rôles',
+            'feature_flags' => 'Les fonctionnalités activées pour vous',
         ],
     ],
 

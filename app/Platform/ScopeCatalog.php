@@ -81,6 +81,11 @@ final class ScopeCatalog
             // irrelevant when Cbox ID is the identity provider), and concludes a feature
             // is missing. The description carries the whole answer rather than half of it.
             ['key' => 'groups', 'label' => 'Their roles, as a “groups” claim', 'description' => 'Puts the person’s ROLES on the ID token under the name `groups` — what Kubernetes, Grafana, Vault and most older SaaS look for. There is nothing called a group in this console: create a Role named as the app expects, and it arrives here.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Your roles'],
+            // The `feature_flags` claim (laravel-id 1.24): the keys of the feature flags on for
+            // the person in the organization they signed in to. In the picker AND the
+            // dynamic-registration allow-list from the start, so it does not repeat the
+            // `organizations` / `groups` story above.
+            ['key' => 'feature_flags', 'label' => 'Their feature flags', 'description' => 'Puts the keys of the feature flags that are on for the person, in the organization they signed in to, on the access token, the ID token and UserInfo as a `feature_flags` claim.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Which features are turned on for you'],
             ['key' => 'vault.manage', 'label' => 'Manage stored secrets', 'description' => 'Create, rotate and revoke downstream credentials in the Token Vault.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'vault.lease', 'label' => 'Use stored secrets', 'description' => 'Fetch a stored credential to call a downstream service.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'apps.manifest', 'label' => 'Publish its own manifest', 'description' => 'Let this app push its own roles and permissions manifest to Cbox ID.', 'category' => self::PLATFORM_API, 'recommended' => false],

@@ -218,6 +218,7 @@ export type MessageKey =
     | 'oauth.consent.redirect_notice'
     | 'oauth.consent.registered_by'
     | 'oauth.consent.scopes.email'
+    | 'oauth.consent.scopes.feature_flags'
     | 'oauth.consent.scopes.groups'
     | 'oauth.consent.scopes.offline_access'
     | 'oauth.consent.scopes.openid'

@@ -69,6 +69,7 @@ final class CrossTenantSweep
             'apps:id' => 'app',
             'secrets:secret_id' => 'app_secret',
             'exports:id' => 'audit_export',
+            'feature-flags:id' => 'feature_flag',
             'schemas:action' => 'audit_schema',
             'directories:id' => 'directory',
             'frontend-keys:id' => 'frontend_key',
@@ -248,6 +249,7 @@ final class CrossTenantSweep
             $w['app_secret'] = $run('apps.secrets.list', ['id' => $w['app']])[0]['id'];
 
             $w['webhook'] = $run('webhooks.create', ['url' => "https://hooks-{$slug}.sweep.example/in", 'event_types' => ['user.created'], 'organization_id' => $w['organization']])['id'];
+            $w['feature_flag'] = $run('feature_flags.create', ['key' => 'sweep-'.preg_replace('/[^a-z0-9]/', '', strtolower($slug)), 'organizations' => [['id' => $w['organization'], 'enabled' => true]], 'users' => [['id' => $w['member']]]])['id'];
             $w['hook'] = $run('hooks.create', ['hook_point' => 'token_minting', 'url' => "https://hook-{$slug}.sweep.example/mint", 'organization_id' => $w['organization']])['id'];
             $w['log_stream'] = $run('log_streams.create', ['name' => 'Sweep SIEM '.$label, 'destination' => 'generic_json', 'endpoint_url' => "https://siem-{$slug}.sweep.example", 'auth' => 'none', 'organization_id' => $w['organization']])['id'];
             $w['directory'] = $run('directories.create', ['organization_id' => $w['organization'], 'name' => 'Sweep SCIM '.$label])['id'];

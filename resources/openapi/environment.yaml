@@ -95,6 +95,7 @@ tags:
   - name: 'Directory Sync'
   - name: Domains
   - name: Events
+  - name: 'Feature flags'
   - name: 'Publishable keys'
   - name: Hooks
   - name: 'Secret keys'
@@ -4906,6 +4907,444 @@ paths:
           $ref: '#/components/responses/Forbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /feature-flags:
+    post:
+      tags:
+        - 'Feature flags'
+      summary: 'Define a feature flag: a key apps ask about, its default, and who it is on for — named users, named organizations, a rollout percentage.'
+      description: 'Requires scope `feature_flags:write`. Danger: write.'
+      operationId: feature_flags_create
+      x-action: feature_flags.create
+      x-scope: 'feature_flags:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                  description: 'What code asks for and the `feature_flags` claim carries: lowercase letters and digits, with `-`, `_` or `.` between them. Fixed once created.'
+                  maxLength: 64
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 500
+                enabled:
+                  type: boolean
+                  description: 'The kill switch: off means off for everyone, whatever the rules say. Defaults to true.'
+                default_value:
+                  type: boolean
+                  description: 'The answer when no rule matches. Defaults to false.'
+                users:
+                  type: array
+                  description: 'Rules for named users — they outrank every other rule. The COMPLETE list when sent.'
+                  maxItems: 1000
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: "The user's id."
+                        maxLength: 128
+                      enabled:
+                        type: boolean
+                        description: 'On (true, the default) or off for them, whatever the organization, rollout or default say.'
+                    required:
+                      - id
+                organizations:
+                  type: array
+                  description: 'Rules for named organizations — they outrank the rollout and the default. The COMPLETE list when sent.'
+                  maxItems: 1000
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: "The organization's id."
+                        maxLength: 128
+                      enabled:
+                        type: boolean
+                        description: 'On (true, the default) or off for them, whatever the organization, rollout or default say.'
+                    required:
+                      - id
+                rollout_percentage:
+                  type:
+                    - integer
+                    - 'null'
+                  description: 'On for this percentage of everyone else, by a stable hash of the user id (or the organization id without one). null for no rollout.'
+                  minimum: 0
+                  maximum: 100
+              required:
+                - key
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FeatureFlag'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Feature flags'
+      summary: "List this environment's feature flags with their default, kill switch and targeting rules."
+      description: 'Requires scope `feature_flags:read`. Danger: read.'
+      operationId: feature_flags_list
+      x-action: feature_flags.list
+      x-scope: 'feature_flags:read'
+      x-danger: read
+      parameters:
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: 'Items per page, 1–100. Default 50.'
+        -
+          name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The `next_cursor` of the previous page.'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FeatureFlag'
+                  meta:
+                    $ref: '#/components/schemas/PageMeta'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /feature-flags/evaluate:
+    get:
+      tags:
+        - 'Feature flags'
+      summary: 'Evaluate every feature flag for a user in an organization: whether each is on, and the rule that decided. For app backends without a token in hand.'
+      description: 'Requires scope `feature_flags:read`. Danger: read.'
+      operationId: feature_flags_evaluate
+      x-action: feature_flags.evaluate
+      x-scope: 'feature_flags:read'
+      x-danger: read
+      parameters:
+        -
+          name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The user to evaluate for. Left out, only organization rules, an organization-bucketed rollout and defaults apply.'
+            maxLength: 128
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The organization the question is asked in.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FeatureFlagEvaluation'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/feature-flags/{id}':
+    delete:
+      tags:
+        - 'Feature flags'
+      summary: 'Delete a feature flag and its rules. Its key evaluates to off from now on; tokens already minted keep it until they expire.'
+      description: 'Requires scope `feature_flags:write`. Danger: destructive.'
+      operationId: feature_flags_delete
+      x-action: feature_flags.delete
+      x-scope: 'feature_flags:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The flag's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'Feature flags'
+      summary: 'Read one feature flag: its default, whether it is switched on, and every user, organization and rollout rule.'
+      description: 'Requires scope `feature_flags:read`. Danger: read.'
+      operationId: feature_flags_get
+      x-action: feature_flags.get
+      x-scope: 'feature_flags:read'
+      x-danger: read
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The flag's id."
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FeatureFlag'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Feature flags'
+      summary: 'Change a feature flag: switch it on or off for everyone, change its default, or replace its user rules, organization rules or rollout percentage.'
+      description: 'Requires scope `feature_flags:write`. Danger: write.'
+      operationId: feature_flags_update
+      x-action: feature_flags.update
+      x-scope: 'feature_flags:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The flag's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Null or empty clears it.'
+                  maxLength: 500
+                enabled:
+                  type: boolean
+                  description: 'The kill switch: off means off for everyone.'
+                default_value:
+                  type: boolean
+                  description: 'The answer when no rule matches.'
+                users:
+                  type: array
+                  description: 'Rules for named users — they outrank every other rule. The COMPLETE list when sent.'
+                  maxItems: 1000
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: "The user's id."
+                        maxLength: 128
+                      enabled:
+                        type: boolean
+                        description: 'On (true, the default) or off for them, whatever the organization, rollout or default say.'
+                    required:
+                      - id
+                organizations:
+                  type: array
+                  description: 'Rules for named organizations — they outrank the rollout and the default. The COMPLETE list when sent.'
+                  maxItems: 1000
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: "The organization's id."
+                        maxLength: 128
+                      enabled:
+                        type: boolean
+                        description: 'On (true, the default) or off for them, whatever the organization, rollout or default say.'
+                    required:
+                      - id
+                rollout_percentage:
+                  type:
+                    - integer
+                    - 'null'
+                  description: 'On for this percentage of everyone else, by a stable hash of the user id (or the organization id without one). null for no rollout.'
+                  minimum: 0
+                  maximum: 100
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FeatureFlag'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -14064,6 +14503,9 @@ paths:
                       - vault.grant.revoked
                       - vault.secret.revoked
                       - governance.access.revoked
+                      - feature_flag.created
+                      - feature_flag.updated
+                      - feature_flag.deleted
                 signature_scheme:
                   type: string
                   description: 'How deliveries are signed: `cbox` (X-Cbox-Signature, the default) or `standard_webhooks` (webhook-id / webhook-timestamp / webhook-signature, verifiable with any Standard Webhooks library; the secret is a `whsec_` secret).'
@@ -17433,6 +17875,115 @@ components:
             - string
             - 'null'
           format: date-time
+    FeatureFlag:
+      type: object
+      required:
+        - id
+        - key
+        - enabled
+        - default_value
+        - users
+        - organizations
+      description: 'A switch apps ask about per user and organization. First match wins: switched off, then a user rule, then an organization rule, then the rollout, then the default.'
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+          description: 'What code asks for and the `feature_flags` claim carries. Fixed once created.'
+        description:
+          type:
+            - string
+            - 'null'
+        enabled:
+          type: boolean
+          description: 'The kill switch: false is off for everyone.'
+        default_value:
+          type: boolean
+          description: 'The answer when no rule matches.'
+        rollout_percentage:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          maximum: 100
+          description: 'On for this share of everyone else, by a stable hash of the user id (the organization id without one).'
+        users:
+          type: array
+          description: 'Rules for named users; they outrank every other rule.'
+          items:
+            $ref: '#/components/schemas/FeatureFlagRule'
+        organizations:
+          type: array
+          description: 'Rules for named organizations; they outrank the rollout and the default.'
+          items:
+            $ref: '#/components/schemas/FeatureFlagRule'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    FeatureFlagRule:
+      type: object
+      required:
+        - id
+        - enabled
+      properties:
+        id:
+          type: string
+          description: "The user's or organization's id."
+        enabled:
+          type: boolean
+          description: 'On or off for them.'
+    FeatureFlagEvaluation:
+      type: object
+      required:
+        - user_id
+        - organization_id
+        - feature_flags
+        - evaluations
+      description: "Every flag's answer for the user and organization asked about."
+      properties:
+        user_id:
+          type:
+            - string
+            - 'null'
+        organization_id:
+          type:
+            - string
+            - 'null'
+        feature_flags:
+          type: array
+          description: "The keys of the flags that are on, sorted — exactly what the token's `feature_flags` claim would carry."
+          items:
+            type: string
+        evaluations:
+          type: array
+          items:
+            type: object
+            required:
+              - key
+              - enabled
+              - reason
+            properties:
+              key:
+                type: string
+              enabled:
+                type: boolean
+              reason:
+                type: string
+                enum:
+                  - disabled
+                  - user_target
+                  - organization_target
+                  - rollout
+                  - default
+                description: 'The rule that decided.'
     AccessReview:
       type: object
       required:
