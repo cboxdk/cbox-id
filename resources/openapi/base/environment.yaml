@@ -3069,6 +3069,111 @@ components:
         created_at: { type: ["string", "null"], format: date-time }
         completed_at: { type: ["string", "null"], format: date-time }
         expires_at: { type: ["string", "null"], format: date-time, description: "When the file is deleted." }
+    FgaSubject:
+      type: object
+      required: [type, id, relation]
+      properties:
+        type: { type: string, description: "The subject's type: `user`, or `group` for a userset." }
+        id: { type: string }
+        relation: { type: ["string", "null"], description: "For a userset — everybody with this relation on the subject (`member` of `group:eng`). null for one subject." }
+    FgaTuple:
+      type: object
+      required: [resource_type, resource_id, relation, subject, tuple]
+      properties:
+        resource_type: { type: string }
+        resource_id: { type: string }
+        relation: { type: string }
+        subject: { $ref: "#/components/schemas/FgaSubject" }
+        tuple: { type: string, description: "The same tuple in the notation: `document:readme#viewer@group:eng#member`." }
+    FgaSchema:
+      type: object
+      required: [defined, schema, version, types, updated_at, consistency_token]
+      properties:
+        defined: { type: boolean, description: "false until a schema is first saved." }
+        schema: { type: ["string", "null"], description: "The source as it was written, comments and all." }
+        version: { type: integer, description: "How many times the schema has been replaced." }
+        types:
+          type: array
+          description: The parsed types, each with its relations and how each is decided.
+          items: { $ref: "#/components/schemas/FgaType" }
+        updated_at: { type: ["string", "null"], format: date-time }
+        consistency_token: { type: string, description: "The revision the model is at." }
+    FgaType:
+      type: object
+      required: [name, relations]
+      properties:
+        name: { type: string }
+        relations:
+          type: array
+          items:
+            type: object
+            required: [name, rewrite, directly_related]
+            properties:
+              name: { type: string }
+              rewrite:
+                type: object
+                description: |
+                  How the relation is decided, as a tree of one-key objects: `direct` (a list of
+                  `{type, relation?}`), `computed` (a relation name), `from` (`{tupleset, relation}`),
+                  `union` and `intersection` (lists of rewrites), `exclusion` (`{base, subtract}`).
+              directly_related:
+                type: array
+                description: The subjects a tuple may name on this relation; empty for a relation that is only computed.
+                items:
+                  type: object
+                  required: [type]
+                  properties:
+                    type: { type: string }
+                    relation: { type: string }
+    FgaSchemaValidation:
+      type: object
+      required: [valid, errors, types, canonical]
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [line, message]
+            properties:
+              line: { type: integer, description: "0 when the problem is about the whole schema." }
+              message: { type: string }
+        types:
+          type: array
+          items: { $ref: "#/components/schemas/FgaType" }
+        canonical: { type: ["string", "null"], description: "The schema as the platform prints it, when valid." }
+    FgaTupleWrite:
+      type: object
+      required: [written, deleted, consistency_token]
+      properties:
+        written: { type: integer, description: "Tuples that were new. Re-writing an existing one is not counted." }
+        deleted: { type: integer, description: "Tuples that were there to delete." }
+        consistency_token: { type: string, description: "Pass to a check that must see this write." }
+    FgaCheck:
+      type: object
+      required: [allowed, resource_type, resource_id, relation, subject, consistency_token]
+      properties:
+        allowed: { type: boolean }
+        resource_type: { type: string }
+        resource_id: { type: string }
+        relation: { type: string }
+        subject: { $ref: "#/components/schemas/FgaSubject" }
+        consistency_token: { type: string, description: "The revision the answer was decided at." }
+    FgaCheckBatch:
+      type: object
+      required: [results, consistency_token]
+      properties:
+        results:
+          type: array
+          description: One answer per check, in the order asked.
+          items: { $ref: "#/components/schemas/FgaCheck" }
+        consistency_token: { type: ["string", "null"] }
+    FgaObject:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string }
+        id: { type: string }
     AuditLogSettings:
       type: object
       required: [retention_days, strict_schemas]

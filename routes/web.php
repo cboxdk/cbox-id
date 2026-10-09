@@ -46,6 +46,7 @@ use App\Http\Controllers\Console\EnvironmentOrganizationApiKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationController;
 use App\Http\Controllers\Console\EnvironmentUserController;
 use App\Http\Controllers\Console\FeatureFlagController;
+use App\Http\Controllers\Console\FgaController;
 use App\Http\Controllers\Console\FrontendKeyController;
 use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
@@ -1429,6 +1430,17 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/permissions', [PermissionController::class, 'store'])->name('environment.permissions.store');
         Route::patch('/permissions/{permission}', [PermissionController::class, 'update'])->name('environment.permissions.update');
         Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('environment.permissions.destroy');
+
+        // Fine-grained authorization — the environment's own relationship model: the
+        // overview (schema at a glance, tuples, a check playground) and, behind `env.sudo`
+        // because it decides every check at once, the schema editor.
+        Route::get('/authorization', [FgaController::class, 'index'])->name('environment.fga');
+        Route::post('/authorization/tuples', [FgaController::class, 'storeTuple'])->name('environment.fga.tuples.store');
+        Route::delete('/authorization/tuples', [FgaController::class, 'destroyTuple'])->name('environment.fga.tuples.destroy');
+        Route::middleware('env.sudo')->group(function (): void {
+            Route::get('/authorization/schema', [FgaController::class, 'schema'])->name('environment.fga.schema');
+            Route::put('/authorization/schema', [FgaController::class, 'updateSchema'])->name('environment.fga.schema.update');
+        });
 
         // Access reviews (certification campaigns) — routable list → create → detail.
         Route::get('/access-reviews', [AccessReviewController::class, 'index'])->name('environment.governance');

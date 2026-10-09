@@ -49,6 +49,9 @@ use App\Providers\ConsoleServiceProvider;
  *    risk-plus module's feed of elevated scores, a narrower thing.
  *  - Feature flags: switches an app asks about per user and organization. Not
  *    "entitlements", which are what a customer has paid for and are set from billing.
+ *  - Fine-grained authorization: the relationship model an app defines for its OWN
+ *    resources (documents in folders) — beside Roles and Permissions, which are what a
+ *    person may do in an organization.
  */
 final class Vocabulary
 {
@@ -78,6 +81,9 @@ final class Vocabulary
     public const string ROLES = 'Roles';
 
     public const string PERMISSIONS = 'Permissions';
+
+    /** An environment's own relationship model: schema, tuples, checks. Not roles or permissions. */
+    public const string FINE_GRAINED_AUTHORIZATION = 'Fine-grained authorization';
 
     // Sign-in.
     public const string ENTERPRISE_SSO = 'Enterprise SSO';

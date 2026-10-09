@@ -25,6 +25,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Members](members.md) — invite the team, send them back to your app, hand ownership over.
 - [Roles](roles.md) — decide who can do what, including the Admins & support roles held across an environment.
 - [Permissions](permissions.md) — what a role is made of, written here rather than in each app.
+- [Fine-grained authorization](fine-grained-authorization.md) — who may do what to which of your app's own resources: documents in folders, owners, editors and viewers, with inheritance.
 - [Access reviews](access-reviews.md) — certify who still needs what.
 - [Role conflicts](role-conflicts.md) — roles that must never be combined.
 - [Support access](support-access.md) — signing in to one of your apps as one of its users, for a reason and at most an hour.

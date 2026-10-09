@@ -60,6 +60,9 @@ class ConsoleNavigation
                 // Roles are made OF permissions, so a console that offers one and hides
                 // the other asks an administrator to assign a thing they cannot inspect.
                 new NavPage('environment.permissions', Vocabulary::PERMISSIONS),
+                // Who may do what to which of the app's OWN resources — the model the app
+                // defines and checks per request, beside the roles a person holds.
+                new NavPage('environment.fga', Vocabulary::FINE_GRAINED_AUTHORIZATION),
             ),
             // How people arrive — every page here is a way IN. The outbound halves (SAML
             // apps that trust this environment, provisioning out to other systems) are
