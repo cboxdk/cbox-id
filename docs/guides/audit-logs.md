@@ -170,6 +170,11 @@ is `ready`. The answer then includes a `url` you can download from.
 
 - The URL is signed and works for 15 minutes. To get a fresh one, read the export again.
 - The file is kept for 72 hours (`CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS`) and then deleted.
+- The queue writes the file and a web process hands it out, so both must reach the disk it
+  is on (`CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, default `local`). On more than one machine —
+  separate web and worker pods, two web replicas — point it at shared object storage;
+  `cbox-id:doctor` fails a `local` disk there, and a download of a file this process cannot
+  see answers 404.
 - An export holds at most 1,000,000 events. For more, split the range.
 - Any cell that starts with `=`, `+`, `-` or `@` is written with a leading `'`, so a
   spreadsheet treats it as text instead of a formula.

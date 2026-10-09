@@ -33,7 +33,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 
 /**
@@ -197,7 +196,7 @@ final readonly class RoleController extends ConsoleController
             // Authoring a permission by hand is the control plane's own page and has no
             // organization-plane equivalent, so the pointer goes where the page exists
             // rather than being dropped from the merge.
-            'permissionsHref' => Route::has($this->scope->routeName('permissions'))
+            'permissionsHref' => $this->scope->serves('permissions')
                 ? $this->url('permissions')
                 : null,
             'indexHref' => $this->url('roles'),

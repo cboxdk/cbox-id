@@ -88,6 +88,11 @@ Override the wordmark/hero without editing Blade.
 
 `CBOX_ID_BRAND_NAME` is also the product name in the hosted emails and on the error pages.
 
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `WHITELABEL_ASSETS_STORE` | Where uploaded logos and favicons are kept: `database` (a row every replica shares, served at `/brand-assets/…`) or `disk`. | `database` | Leave it. `disk` writes to `WHITELABEL_ASSETS_DISK` instead, which only works on one machine with `php artisan storage:link`. |
+| `WHITELABEL_ASSETS_DISK` | The filesystem disk for `WHITELABEL_ASSETS_STORE=disk`. | `public` | Only with the disk store. |
+
 ## Languages
 
 The languages used by the hosted pages (sign-in, consent, Admin Portal) and the emails

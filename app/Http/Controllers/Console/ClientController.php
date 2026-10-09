@@ -397,7 +397,11 @@ final readonly class ClientController extends ConsoleController
                 'update' => $this->url('clients.update', $model->id),
                 'manifest' => $this->url('clients.manifest', $model->id),
                 'sync' => $this->url('clients.sync', $model->id),
-                'secrets' => $this->url('clients.secrets', $model->id),
+                // Only for an app whose secrets page exists: it 404s for a public client and
+                // for one that signs its own assertions, and so does this link, otherwise.
+                'secrets' => $mayManage && AppTabs::holdsSharedSecret($model)
+                    ? $this->url('clients.secrets', $model->id)
+                    : null,
                 'destroy' => $this->url('clients.destroy', $model->id),
             ],
         ]);

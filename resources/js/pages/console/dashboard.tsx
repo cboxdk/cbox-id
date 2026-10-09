@@ -59,13 +59,15 @@ type Props = PageProps<{
         percent: number;
         nextTitle: string | null;
         steps: ChecklistStep[];
+        /** The setup guide, and where "hide" posts — only while there is a checklist. */
+        guideHref: string;
+        dismissHref: string;
     } | null;
     help: HelpContent;
     urls: {
-        audit: string;
+        /** Null for anybody the audit log would refuse: the feed is an admin's. */
+        audit: string | null;
         account: string;
-        getStarted: string;
-        dismissChecklist: string;
     };
 }>;
 
@@ -103,7 +105,7 @@ export default function Dashboard({
                         no reliable "this is their very first visit" signal to hang that on.
                     */}
                     {checklist !== null && checklist.completed === 0 && (
-                        <FirstRun checklist={checklist} href={urls.getStarted} />
+                        <FirstRun checklist={checklist} href={checklist.guideHref} />
                     )}
 
                     {cards.length > 0 && (
@@ -172,8 +174,8 @@ export default function Dashboard({
                         {checklist !== null && (
                             <Checklist
                                 checklist={checklist}
-                                getStartedHref={urls.getStarted}
-                                dismissHref={urls.dismissChecklist}
+                                getStartedHref={checklist.guideHref}
+                                dismissHref={checklist.dismissHref}
                             />
                         )}
                     </div>
@@ -379,14 +381,16 @@ function ModuleCardTile({ card }: { card: ModuleCard }) {
     );
 }
 
-function RecentActivity({ recent, href }: { recent: Props['recent']; href: string }) {
+function RecentActivity({ recent, href }: { recent: Props['recent']; href: string | null }) {
     return (
         <Panel
             title="Recent activity"
             action={
-                <Link href={href} className="text-sm" style={{ color: 'var(--accent-strong)' }}>
-                    View audit log
-                </Link>
+                href !== null ? (
+                    <Link href={href} className="text-sm" style={{ color: 'var(--accent-strong)' }}>
+                        View audit log
+                    </Link>
+                ) : undefined
             }
         >
             {recent.length === 0 ? (

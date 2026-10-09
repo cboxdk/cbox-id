@@ -66,7 +66,7 @@ type Props = PageProps<{
     apps: ReturnApp[];
     isOwner: boolean;
     managedElsewhere: boolean;
-    rolesHref: string;
+    rolesHref: string | null;
     inviteHref: string;
     leaveHref: string;
     organizationName: string;
@@ -233,7 +233,7 @@ function Roster({
     roles: RoleOption[];
     isOwner: boolean;
     managedElsewhere: boolean;
-    rolesHref: string;
+    rolesHref: string | null;
     leaveHref: string;
     organizationName: string;
 }) {
@@ -394,7 +394,7 @@ function RosterRow({
     roles: RoleOption[];
     accessRoles: AccessRole[];
     byId: Map<string, AccessRole>;
-    rolesHref: string;
+    rolesHref: string | null;
     managing: boolean;
     onToggleManage: () => void;
     onAsk: (kind: 'remove' | 'transfer' | 'leave') => void;
@@ -557,13 +557,19 @@ function RosterRow({
                                 </p>
 
                                 {accessRoles.length === 0 ? (
-                                    <Link
-                                        href={rolesHref}
-                                        className="text-xs"
-                                        style={{ color: 'var(--accent-strong)' }}
-                                    >
-                                        No roles defined yet →
-                                    </Link>
+                                    rolesHref !== null ? (
+                                        <Link
+                                            href={rolesHref}
+                                            className="text-xs"
+                                            style={{ color: 'var(--accent-strong)' }}
+                                        >
+                                            No roles defined yet →
+                                        </Link>
+                                    ) : (
+                                        <p className="text-xs" style={{ color: 'var(--faint)' }}>
+                                            No roles defined yet.
+                                        </p>
+                                    )
                                 ) : (
                                     grouped(accessRoles).map(([group, inGroup]) => (
                                         <div key={group}>

@@ -71,6 +71,10 @@ it('renders a dashboard analytics card', function (): void {
     // console scope at all, and that is exactly what this assertion was measuring.
     actingAsRole(MembershipRole::Owner);
 
+    // AND WITH THE MODULE ON. A card links to its module's page, which 404s while the
+    // module is off, so an off module has no card (DashboardCardScopeTest).
+    config(['id-analytics.enabled' => true]);
+
     // THE CARD AS DATA, not as a rendered string. A module says what its card IS and the
     // console draws it, so the assertion is about the label and the number rather than
     // about markup a copy edit would move.

@@ -58,6 +58,10 @@ it('renders a dashboard export card', function (): void {
     // console scope at all, and that is exactly what this assertion was measuring.
     actingAsRole(MembershipRole::Owner);
 
+    // AND WITH THE MODULE ON. A card links to its module's page, which 404s while the
+    // module is off, so an off module has no card (DashboardCardScopeTest).
+    config(['compliance.enabled' => true]);
+
     // THE CARD AS DATA, not as a rendered string.
     $card = collect(app(DashboardCards::class)->resolve())->firstWhere('key', 'compliance.exports');
 

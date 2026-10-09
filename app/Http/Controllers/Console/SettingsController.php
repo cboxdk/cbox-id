@@ -15,6 +15,7 @@ use App\Platform\Help\HelpTopic;
 use App\Platform\Membership\AfterLeaving;
 use App\Platform\Membership\MembershipLifecycle;
 use App\Platform\Membership\MembershipRefused;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -74,6 +75,16 @@ final readonly class SettingsController extends ConsoleController
          */
         $issuer = rtrim(app(IssuerResolver::class)->issuer(), '/');
 
+        /*
+         * …AND ONLY WHERE THERE IS ONE. On a multi-tenant deployment the platform root is
+         * nobody's identity provider: its discovery document is a deliberate 404
+         * ({@see PlaneResolver::servesIssuer()}, docs/operations/deployment.md). This page
+         * still told the operator and every workspace administrator on cboxid.com to "point
+         * your OIDC client at" the apex, with a discovery URL that answers 404. A tenant
+         * environment and a single-tenant install are issuers; the root says nothing.
+         */
+        $servesIssuer = app(PlaneResolver::class)->servesIssuer();
+
         // Whose theme the branding card previews: the organization's own, or the
         // environment default it would inherit when there is no organization to speak of.
         $brandingTarget = $organization ?? $environment;
@@ -127,8 +138,8 @@ final readonly class SettingsController extends ConsoleController
             'setupGuideHref' => ! $onEnvironmentPlane && $organization !== null
                 ? route('get-started')
                 : null,
-            'issuer' => $issuer,
-            'discovery' => $issuer.'/.well-known/openid-configuration',
+            'issuer' => $servesIssuer ? $issuer : null,
+            'discovery' => $servesIssuer ? $issuer.'/.well-known/openid-configuration' : null,
             /*
              * CLOSING THE ORGANIZATION — its OWNER's call, from inside it. Only an
              * environment administrator could do this before, so an owner who wanted out had

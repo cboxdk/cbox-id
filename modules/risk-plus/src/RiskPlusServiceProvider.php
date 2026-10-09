@@ -110,7 +110,7 @@ class RiskPlusServiceProvider extends ServiceProvider
             order: 40,
         );
 
-        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->riskCard(), 6);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->riskCard(), 6, feature: 'risk-plus');
     }
 
     /**

@@ -160,7 +160,9 @@ final readonly class DirectoryMemberController extends ConsoleController
              * clicking controls that refuse.
              */
             'managedElsewhere' => TenantRoster::managedElsewhere($organizationId),
-            'rolesHref' => route('roles'),
+            // The Roles page is an administrator's (a member is refused it with a 403), and
+            // so is the panel that links to it; a member is not handed the link at all.
+            'rolesHref' => $isAdmin ? route('roles') : null,
             'inviteHref' => route('directory.members.invite'),
             'leaveHref' => route('directory.members.leave'),
             'organizationName' => $me->organization()->name ?? '',

@@ -49,6 +49,7 @@ class ProductionConfigDoctorCheck implements HealthCheck
             $this->queue(),
             $this->log(),
             $this->healthToken(),
+            $this->files(),
         ];
     }
 
@@ -143,6 +144,60 @@ class ProductionConfigDoctorCheck implements HealthCheck
                 .'Set LOG_CHANNEL=stderr (or ship the files) so incidents leave a trace.',
             )
             : HealthResult::ok('Logs', 'written to '.implode(', ', $drivers === [] ? ['an unknown channel'] : $drivers));
+    }
+
+    /**
+     * FILES ONE PROCESS WRITES AND ANOTHER READS, on a disk only one of them has.
+     *
+     * An audit-log CSV export is written by the QUEUE (the worker pod) and downloaded
+     * through a WEB pod; a compliance JSONL bundle is appended by the scheduler. On a
+     * `local` disk each pod has its own, so the download a web replica serves is of a file
+     * that only exists on the worker — an empty CSV, answered 200 — and everything is gone
+     * the next time the pods are replaced, which on a continuously deployed cluster is
+     * every merge. Brand images used to be the third; they live in the database now
+     * (`whitelabel.assets.store`), unless a deployment asks for a disk.
+     *
+     * Same rule as the cache: a smell on one machine, a fault the moment there are two.
+     */
+    private function files(): HealthResult
+    {
+        $local = [];
+
+        foreach ($this->sharedDisks() as $purpose => $disk) {
+            if (($this->string("filesystems.disks.{$disk}.driver") ?? 'local') === 'local') {
+                $local[] = "{$purpose} (`{$disk}`)";
+            }
+        }
+
+        if ($local === []) {
+            return HealthResult::ok('Shared files', 'on a disk every process reaches');
+        }
+
+        $detail = 'These are written by one process and read by another, on a local disk: '.implode(', ', $local);
+
+        return $this->scaledOut() !== null
+            ? HealthResult::fail('Files are local to one machine', "{$detail} — and this deployment {$this->scaledOut()}, so they are missing wherever they were not written and lost when a pod is replaced. Point them at a shared disk (S3-compatible object storage).")
+            : HealthResult::warn('Files are local to one machine', "{$detail}. Fine on exactly one machine; give them a shared disk before adding a second.");
+    }
+
+    /**
+     * The disks a file goes through between two processes, by what the file is.
+     *
+     * @return array<string, string>
+     */
+    private function sharedDisks(): array
+    {
+        $disks = ['Audit-log exports' => $this->string('cbox-id.audit_logs.export_disk') ?? 'local'];
+
+        if ($this->string('compliance.export.sink') === 'jsonl') {
+            $disks['Compliance JSONL bundles'] = $this->string('compliance.export.jsonl.disk') ?? 'local';
+        }
+
+        if ($this->string('whitelabel.assets.store') === 'disk') {
+            $disks['Brand images'] = $this->string('whitelabel.assets.disk') ?? 'public';
+        }
+
+        return $disks;
     }
 
     private function healthToken(): HealthResult

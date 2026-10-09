@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Http\Middleware\BindConsoleOrganization;
+use App\Http\Middleware\EnforceCustomerConsole;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
@@ -21,6 +22,7 @@ use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Route;
 
 /**
  * The three questions every console page asks, answered once.
@@ -413,6 +415,27 @@ class ConsoleScope
     public function routeName(string $name): string
     {
         return $this->plane() === ConsolePlane::Environment ? 'environment.'.$name : $name;
+    }
+
+    /**
+     * Whether THIS console serves the page `$name` names — the plane's own route exists,
+     * and a customer's console has not withheld it ({@see CustomerConsole}).
+     *
+     * For a pointer to another page. `Route::has()` alone answers "does the application
+     * have it", which on a customer's environment host is the wrong question: the roles
+     * page there offered "add permissions manually" as a link to `/permissions`, a route
+     * the application has and {@see EnforceCustomerConsole} refuses
+     * on that console with a 404.
+     */
+    public function serves(string $name): bool
+    {
+        $route = $this->routeName($name);
+
+        if (! Route::has($route)) {
+            return false;
+        }
+
+        return ! $this->atCustomerAltitude() || CustomerConsole::servesRoute($route);
     }
 
     /**

@@ -48,7 +48,8 @@ type Props = PageProps<{
         update: string;
         manifest: string;
         sync: string;
-        secrets: string;
+        /** Null when this app holds no shared secret, or this administrator may not manage it. */
+        secrets: string | null;
         destroy: string;
     };
 }>;
@@ -123,7 +124,7 @@ export default function ClientDetail({
                                   ? 'None — this app signs in with its own keys instead of a secret.'
                                   : 'Stored as a hash and shown only once.'}
                         </p>
-                        {mayManage && client.confidential && !client.signsAssertions && (
+                        {urls.secrets !== null && (
                             <Link
                                 href={urls.secrets}
                                 className="mt-1 inline-block text-sm underline"
