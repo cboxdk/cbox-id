@@ -43,6 +43,7 @@ enum HelpTopic: string
     case Webhooks = 'webhooks';
     case InlineHooks = 'inline-hooks';
     case TokenVault = 'token-vault';
+    case Pipes = 'pipes';
     case ActivityLog = 'activity-log';
     case Settings = 'settings';
     case Appearance = 'appearance';
@@ -106,6 +107,7 @@ enum HelpTopic: string
             self::Webhooks => 'Getting told when something happens',
             self::InlineHooks => 'Having a say while it happens',
             self::TokenVault => 'Credentials your apps use elsewhere',
+            self::Pipes => 'Calling other services as your users',
             self::ActivityLog => 'The record of what changed',
             self::Settings => 'Organization settings',
             self::Appearance => 'Your branded sign-in page',
@@ -187,6 +189,7 @@ enum HelpTopic: string
 
             self::InlineHooks => 'These run in the middle of an operation, not after it, and their answer changes the outcome: your endpoint can add information to a token, or refuse a sign-in outright. Powerful, and directly in the critical path — a slow or broken endpoint is felt by the person trying to sign in.',
 
+            self::Pipes => 'Each pipe lets people connect their own account at a service like GitHub, Google or Slack. Their tokens are stored encrypted and kept fresh here; the apps you grant ask for a working token whenever they call that service as the person, and never store one themselves.',
             self::TokenVault => 'API keys and tokens your apps and agents need for other services, kept encrypted here rather than in each app\'s config. You hand a secret in once, grant specific apps the right to use it, and it is never displayed again — rotate it if you lose it.',
 
             self::ActivityLog => 'Every change made in this organization: who did what, to what, and when. Entries are hash-chained, so a removed or edited entry breaks the chain and shows up. Read-only, on purpose — this is the record you hand an auditor.',
@@ -285,6 +288,7 @@ enum HelpTopic: string
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
             self::TokenVault => 'guides/token-vault',
+            self::Pipes => 'guides/pipes',
             self::AccessReviews => 'guides/access-reviews',
             self::RoleConflicts => 'guides/role-conflicts',
             self::ActivityLog => 'guides/activity-log',

@@ -43,6 +43,10 @@ final class AccountScopes
             'label' => 'Remove sign-in methods',
             'description' => 'Remove one of your passkeys, or disconnect a social account — never the last way you can sign in.',
         ],
+        'account:pipes:write' => [
+            'label' => 'Disconnect your connected services',
+            'description' => 'Disconnect a third-party account (GitHub, Google, …) you connected so an app here could act through it.',
+        ],
         'account:devices:write' => [
             'label' => 'Remove your devices',
             'description' => 'Remove one of your trusted devices.',

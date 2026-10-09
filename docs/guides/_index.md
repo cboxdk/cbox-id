@@ -48,6 +48,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Hooks](inline-hooks.md) — have a say while it happens.
 - [Token vault](token-vault.md) — credentials your apps use elsewhere.
+- [Pipes](pipes.md) — let people connect their GitHub, Google or Slack account, and call those APIs as them.
 
 ## Agents
 

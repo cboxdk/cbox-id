@@ -37,6 +37,10 @@ final class ParityAllowlist
     public static function ceremonies(): array
     {
         return [
+            // Connecting a third-party account (Pipes): the person consents at the provider
+            // in THIS browser, which carries the flow's state and PKCE verifier. A REST call
+            // has no browser to send to GitHub.
+            'account.pipes.authorize',
             // Turning on a second factor: the authenticator itself has to take part.
             'account.mfa.confirm',
             'account.mfa.enrol',

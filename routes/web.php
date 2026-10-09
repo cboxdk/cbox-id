@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Auth\SudoController;
+use App\Http\Controllers\ConnectedServiceController;
 use App\Http\Controllers\Console\AccessReviewController;
 use App\Http\Controllers\Console\AccountSettingsController;
 use App\Http\Controllers\Console\AgentApprovalController;
@@ -65,6 +66,7 @@ use App\Http\Controllers\Console\Organization\OrganizationSupportController;
 use App\Http\Controllers\Console\OrganizationLookupController;
 use App\Http\Controllers\Console\OutboundSyncController;
 use App\Http\Controllers\Console\PermissionController;
+use App\Http\Controllers\Console\PipeController;
 use App\Http\Controllers\Console\PlatformCustomerController;
 use App\Http\Controllers\Console\PlatformEnvironmentController;
 use App\Http\Controllers\Console\PlatformOrganizationController;
@@ -744,6 +746,30 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/account/api-keys', [AccountApiKeyController::class, 'index'])->name('account.api-keys');
     Route::post('/account/api-keys', [AccountApiKeyController::class, 'store'])->name('account.api-keys.store');
     Route::delete('/account/api-keys/{key}', [AccountApiKeyController::class, 'destroy'])->name('account.api-keys.revoke');
+
+    /*
+     * CONNECTED SERVICES (Pipes) — the third-party accounts a person connected so an app
+     * here may act through them, and the connect flow. HOSTED and translated (`locale`):
+     * the people who land here are an app's end users, deep-linked from that app with
+     * `?client_id=…&return_to=…`, which is a contract like the API keys page's.
+     *
+     * Closed to an impersonator: connecting would attach the IMPERSONATOR's GitHub to the
+     * person, and disconnecting is theirs to decide. No `sudo` — this adds no way in, and
+     * the provider's own consent screen is the confirmation.
+     */
+    Route::middleware('locale')->group(function (): void {
+        Route::get('/account/connected-services', [ConnectedServiceController::class, 'index'])->name('account.pipes');
+        Route::get('/account/connected-services/{provider}/connect', [ConnectedServiceController::class, 'consent'])->name('account.pipes.connect');
+        Route::post('/account/connected-services/{provider}/connect', [ConnectedServiceController::class, 'authorize'])
+            ->middleware([BlockDuringImpersonation::class, 'throttle:30,1'])
+            ->name('account.pipes.authorize');
+        Route::get('/account/connected-services/{provider}/callback', [ConnectedServiceController::class, 'callback'])
+            ->middleware([BlockDuringImpersonation::class, NoStore::class])
+            ->name('account.pipes.callback');
+        Route::delete('/account/connected-services/{provider}', [ConnectedServiceController::class, 'destroy'])
+            ->middleware(BlockDuringImpersonation::class)
+            ->name('account.pipes.destroy');
+    });
 
     Route::get('/usage', [UsageController::class, 'index'])->name('usage');
     // THE TENANT DIRECTORY — everyone who can sign in to this organization, plus the
@@ -1550,6 +1576,22 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::post('/token-vault/{secret}/grants', [VaultController::class, 'grant'])->name('environment.vault.grants.store');
             Route::delete('/token-vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('environment.vault.grants.destroy');
             Route::post('/token-vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('environment.vault.revoke');
+        });
+
+        // Pipes — the third-party providers people connect their own accounts at, so the
+        // environment's apps can call those APIs as them. Behind `env.sudo` with the vault:
+        // a pipe holds a client secret, and a grant hands an app every connected person's
+        // token at that provider.
+        Route::middleware('env.sudo')->group(function (): void {
+            Route::get('/pipes', [PipeController::class, 'index'])->name('environment.pipes');
+            Route::get('/pipes/new', [PipeController::class, 'create'])->name('environment.pipes.create');
+            Route::post('/pipes', [PipeController::class, 'store'])->name('environment.pipes.store');
+            Route::get('/pipes/{pipe}', [PipeController::class, 'show'])->name('environment.pipes.show');
+            Route::patch('/pipes/{pipe}', [PipeController::class, 'update'])->name('environment.pipes.update');
+            Route::delete('/pipes/{pipe}', [PipeController::class, 'destroy'])->name('environment.pipes.destroy');
+            Route::post('/pipes/{pipe}/grants', [PipeController::class, 'grant'])->name('environment.pipes.grants.store');
+            Route::delete('/pipes/{pipe}/grants/{client}', [PipeController::class, 'revokeGrant'])->name('environment.pipes.grants.destroy');
+            Route::delete('/pipes/{pipe}/connections/{connection}', [PipeController::class, 'disconnect'])->name('environment.pipes.connections.destroy');
         });
 
         // Step-up re-authentication for this plane. Inside the env-admin group — only an

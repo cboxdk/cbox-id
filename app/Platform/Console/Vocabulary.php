@@ -96,6 +96,16 @@ final class Vocabulary
 
     public const string HOOKS = 'Hooks';
 
+    /**
+     * A third-party provider people connect their OWN account at (GitHub, Google, Slack…)
+     * so an app here can call that API as them. Not a sign-in method: Social login is how
+     * people get IN; a pipe is how an app reaches OUT on their behalf.
+     */
+    public const string PIPES = 'Pipes';
+
+    /** What a person calls their pipe connections on My account. */
+    public const string CONNECTED_SERVICES = 'Connected services';
+
     public const string API_KEYS = 'API keys';
 
     /** The person's own keys, on My account — not the workspace's API keys page. */

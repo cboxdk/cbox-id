@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\Environment\ActionApprovalController;
+use App\Http\Controllers\Api\PipeTokenController;
 use App\Http\Controllers\Api\VaultController;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionRoutes;
@@ -165,5 +166,8 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])
         Route::delete('secrets/{id}/grants/{clientId}', [VaultController::class, 'revokeGrant'])
             ->middleware('scope:vault.manage');
         Route::post('secrets/{id}/lease', [VaultController::class, 'lease'])
+            ->middleware('scope:vault.lease');
+        // Pipes: a fresh access token for one person's connected third-party account.
+        Route::post('pipes/{provider}/token', [PipeTokenController::class, 'lease'])
             ->middleware('scope:vault.lease');
     });

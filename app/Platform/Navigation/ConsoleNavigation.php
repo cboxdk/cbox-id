@@ -86,11 +86,14 @@ class ConsoleNavigation
                 // Synchronous: they run INSIDE a sign-in or a token issuance and can change
                 // its outcome. Webhooks, one line up, are told after the fact.
                 new NavPage('environment.hooks', Vocabulary::HOOKS),
+                // People's own third-party accounts (GitHub, Google…) that apps here may
+                // act through — reach OUT, where Social login under Authentication is IN.
+                new NavPage('environment.pipes', Vocabulary::PIPES),
             ),
             // Where software acting on this environment is handed access and governed: the
             // agents holding its management keys, what they are waiting for a person to
-            // allow, and how to point one at the environment's MCP server. Connected
-            // accounts land here when they exist.
+            // allow, and how to point one at the environment's MCP server. People's
+            // connected third-party accounts are Developers › Pipes.
             new NavArea('AI agents', 'magic',
                 new NavPage('environment.agents', Vocabulary::AGENTS),
                 new NavPage('environment.approvals', Vocabulary::APPROVALS),
