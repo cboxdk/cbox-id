@@ -123,3 +123,31 @@ it('only warns about local files on exactly one machine, and names brand images 
     expect(productionVerdicts([...soundProductionConfig(), 'whitelabel.assets.store' => 'disk', 'whitelabel.assets.disk' => 'public', 'cbox-id.deployment.replicas' => 2]))
         ->toHaveKey('Files are local to one machine', 'fail');
 });
+
+it('counts the compliance archive only when it is written', function (): void {
+    $base = [...soundProductionConfig(), 'cbox-id.deployment.replicas' => 2, 'compliance.export.jsonl.disk' => 'local'];
+
+    expect(productionVerdicts([...$base, 'compliance.export.sink' => 'null']))->toHaveKey('Shared files', 'ok')
+        ->and(productionVerdicts([...$base, 'compliance.export.sink' => 'jsonl']))->toHaveKey('Files are local to one machine', 'fail');
+});
+
+it('fails production when brand assets are linked through public/storage and that link does not exist', function (): void {
+    $public = sys_get_temp_dir().'/cbox-id-doctor-public-'.bin2hex(random_bytes(4));
+    mkdir($public);
+    $original = public_path();
+    app()->usePublicPath($public);
+
+    try {
+        $config = [...soundProductionConfig(), 'whitelabel.assets.store' => 'disk', 'whitelabel.assets.disk' => 'public', 'filesystems.disks.public.url' => 'https://id.example/storage'];
+
+        expect(productionVerdicts($config))->toHaveKey('Brand asset links are dead', 'fail');
+
+        mkdir($public.'/storage');
+
+        expect(productionVerdicts($config))->toHaveKey('Brand asset links', 'ok');
+    } finally {
+        app()->usePublicPath($original);
+        @rmdir($public.'/storage');
+        @rmdir($public);
+    }
+});

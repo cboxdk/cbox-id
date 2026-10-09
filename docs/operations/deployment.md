@@ -127,6 +127,7 @@ it generates for the database and Valkey, and these overrides.
 | `HEALTH_TOKEN` | from a secret file | What `/health/ready` and `/health/status` require; `cbox-id:doctor` fails without it. |
 | `APP_KEY`, `CBOX_ID_CRYPTO_KEY` | carried over, unchanged | `CBOX_ID_CRYPTO_KEY` seals every stored secret. It is backed up apart from the database; a new one opens nothing sealed under the old. |
 | `CBOX_ID_*` (issuer, base domains, WebAuthn), `MAIL_*` | carried over | The deployment's own settings and its mail transport. |
+| `CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, `WHITELABEL_ASSETS_DISK` | **not yet shared** (`local`, `public`) | An audit-log export is written by the worker pod and downloaded through a web pod; a brand logo is uploaded through one web pod and served by both. Each pod has its own disk, which goes with the pod, so these need storage every pod shares. Until production has it, `cbox-id:doctor` fails **Files are local to one pod**, and a download whose file is on another pod answers 404 rather than an empty CSV. |
 
 The pods add their own:
 
@@ -181,6 +182,7 @@ shape above is one answer; the pieces every deployment needs are these:
 | Cache, sessions, queue | Valkey or Redis, `maxmemory-policy noeviction` |
 | Secrets | your secrets manager, into the process environment |
 | Probes | liveness `/up`, readiness `/health/ready` with `HEALTH_TOKEN` |
+| Files | with more than one host or pod, shared storage for audit-log exports and brand assets (`CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, `WHITELABEL_ASSETS_DISK`); on one server the local disk, with `php artisan storage:link` for brand assets |
 
 ## Requirements
 

@@ -34,6 +34,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -299,14 +300,14 @@ it('exports to CSV on the queue and hands the file out through a signed URL', fu
 });
 
 /*
- * A replica that cannot see the file says so. The export is written by the worker; on a
- * disk only the worker has (the default `local`, on a deployment where web and worker are
- * different pods), the web replica that answers the signed URL found no file and streamed
- * an empty CSV with a 200 — "nothing happened" to whoever opened it.
+ * The worker writes the CSV and a web process streams it — on Kubernetes, two pods with two
+ * disks. With the export disk left at `local` the web pod had no file, `readStream()` answered
+ * null, and the download was a 200 with an empty CSV for an export that said `ready`.
  */
-it('answers 404 rather than an empty CSV when the export file is not on this disk', function (): void {
+it('refuses a ready export whose file is not on the export disk, rather than handing out an empty CSV', function (): void {
     Storage::fake('local');
     Queue::fake();
+    Log::spy();
     $key = auditKey();
     $acme = auditOrg('acme-missing-file');
 
@@ -316,16 +317,23 @@ it('answers 404 rather than an empty CSV when the export file is not on this dis
         ->assertCreated()
         ->json('data');
 
+    // The worker — another pod — writes the file to ITS disk.
     app(EnvironmentContext::class)->set(null);
     (new GenerateAuditLogExport($export['id']))->handle(app(EnvironmentContext::class));
     app(EnvironmentContext::class)->set(GenericEnvironment::of('env_test'));
 
-    $url = $this->withToken($key)->getJson("/api/v1/audit-logs/exports/{$export['id']}")->assertOk()->json('data.url');
+    $ready = $this->withToken($key)->getJson("/api/v1/audit-logs/exports/{$export['id']}")->assertOk()
+        ->assertJsonPath('data.state', 'ready')
+        ->json('data');
 
-    // Another pod's disk: the same configuration, none of the worker's files.
-    Storage::fake('local');
+    // The web pod that answers the download never had it.
+    Storage::disk('local')->delete((string) AuditLogExport::query()->findOrFail($export['id'])->path);
 
-    $this->get($url)->assertNotFound();
+    $this->get($ready['url'])->assertNotFound();
+
+    Log::shouldHaveReceived('error')->withArgs(
+        static fn (string $message, array $context): bool => str_contains($message, 'missing from the export disk') && $context['export'] === $export['id'],
+    )->once();
 });
 
 it('prunes past the retention from the front of each chain, which still verifies', function (): void {

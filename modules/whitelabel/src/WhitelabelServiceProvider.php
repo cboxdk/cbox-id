@@ -99,7 +99,6 @@ class WhitelabelServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'whitelabel');
         $this->loadRoutesFrom(__DIR__.'/../routes/whitelabel.php');
 
         // Console — always present. This was a licence check when the module shipped as
