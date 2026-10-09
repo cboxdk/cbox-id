@@ -34,11 +34,16 @@ final readonly class OtpStepUpController extends PageController
             return to_route('login');
         }
 
-        return $this->page('auth/otp-step-up', __('auth.otp_step_up.title'), [
+        $signUp = $pending['purpose'] === 'sign_up';
+
+        return $this->page('auth/otp-step-up', __($signUp ? 'auth.otp_step_up.signup_title' : 'auth.otp_step_up.title'), [
             // MASKED. The person already knows their own address; the point of showing it
             // is to say WHICH inbox to look in, and an unmasked address on a page reached
             // without a session is one an onlooker learns too.
             'maskedEmail' => self::mask($pending['email']),
+            // A sign-up Radar challenged is confirming its address, not explaining an
+            // unusual sign-in — and says so, without saying what Radar saw.
+            'purpose' => $pending['purpose'],
         ]);
     }
 

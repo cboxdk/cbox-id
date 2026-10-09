@@ -166,6 +166,8 @@ return [
     'otp_step_up' => [
         'title' => 'Vérification supplémentaire',
         'lead' => 'Cette connexion semblait inhabituelle, nous avons donc envoyé un code à usage unique à :email. Saisissez-le pour continuer.',
+        'signup_title' => 'Confirmez votre adresse e-mail',
+        'signup_lead' => 'Pour terminer la création de votre compte, saisissez le code à usage unique envoyé à :email.',
         'code_label' => 'Code de vérification',
         'resend' => 'Vous ne l’avez pas reçu ? Renvoyer le code',
         'resent' => 'Nous avons envoyé un nouveau code à :email.',

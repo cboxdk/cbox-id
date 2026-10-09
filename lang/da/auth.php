@@ -168,6 +168,8 @@ return [
     'otp_step_up' => [
         'title' => 'Ekstra bekræftelse',
         'lead' => 'Dette login så usædvanligt ud, så vi har sendt en engangskode til :email. Indtast den for at fortsætte.',
+        'signup_title' => 'Bekræft din e-mailadresse',
+        'signup_lead' => 'Indtast engangskoden, vi har sendt til :email, for at gøre oprettelsen af din konto færdig.',
         'code_label' => 'Bekræftelseskode',
         'resend' => 'Fik du den ikke? Send koden igen',
         'resent' => 'Vi har sendt en ny kode til :email.',

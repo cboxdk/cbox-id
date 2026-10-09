@@ -128,8 +128,16 @@ class SignInController
             // sends them to support instead of to their IdP.
             AttemptOutcome::SsoRequired => new JsonResponse(['status' => 'sso_required']),
 
-            AttemptOutcome::Invalid => $this->refuse(),
+            AttemptOutcome::Invalid => $this->failed($request, $email),
         };
+    }
+
+    /** A wrong password or an unknown address: counted for Radar, then the generic refusal. */
+    private function failed(Request $request, string $email): JsonResponse
+    {
+        $this->risk->failed($request, $email);
+
+        return $this->refuse();
     }
 
     /**

@@ -158,6 +158,8 @@ export type MessageKey =
     | 'auth.otp_step_up.lead'
     | 'auth.otp_step_up.resend'
     | 'auth.otp_step_up.resent'
+    | 'auth.otp_step_up.signup_lead'
+    | 'auth.otp_step_up.signup_title'
     | 'auth.otp_step_up.title'
     | 'auth.otp_step_up.too_many_codes'
     | 'auth.password_field.hide'

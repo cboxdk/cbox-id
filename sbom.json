@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:752babb5-cad5-4552-81ef-b1a8bd392a8a",
+    "serialNumber": "urn:uuid:4c70b69d-9dc9-49ba-bdea-200798f78dc4",
     "version": 1,
     "metadata": {
         "tools": [
@@ -751,6 +751,22 @@
                 {
                     "license": {
                         "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/maxmind-db/reader@v1.14.0",
+            "group": "maxmind-db",
+            "name": "reader",
+            "version": "v1.14.0",
+            "purl": "pkg:composer/maxmind-db/reader@v1.14.0",
+            "description": "MaxMind DB Reader API",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "Apache-2.0"
                     }
                 }
             ]

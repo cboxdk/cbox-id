@@ -7,6 +7,7 @@ namespace App\Http\Controllers\FrontendApi;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\PasskeyChallenges;
 use App\Platform\PlatformAuth;
+use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Identity\Contracts\Passkeys;
@@ -108,7 +109,7 @@ class PasskeySignInController
         // Checked before the assertion is verified, as the hosted flow does: a passkey is
         // phishing-resistant, so an elevated-but-not-rejected outcome needs no step-up, but
         // a hard block must stop before anything is established.
-        if ($this->risk->shouldBlock($this->risk->assess($request, 'login'))) {
+        if ($this->risk->shouldBlock($this->risk->assess($request, 'login', method: RadarMethod::Passkey))) {
             return $this->refuse();
         }
 

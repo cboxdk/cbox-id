@@ -166,6 +166,8 @@ return [
     'otp_step_up' => [
         'title' => 'Ytterligare verifiering',
         'lead' => 'Den här inloggningen såg ovanlig ut, så vi har skickat en engångskod till :email. Ange den för att fortsätta.',
+        'signup_title' => 'Bekräfta din e-postadress',
+        'signup_lead' => 'Ange engångskoden vi har skickat till :email för att slutföra skapandet av ditt konto.',
         'code_label' => 'Verifieringskod',
         'resend' => 'Fick du ingen kod? Skicka igen',
         'resent' => 'Vi har skickat en ny kod till :email.',

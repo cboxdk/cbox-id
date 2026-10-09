@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\Radar\Radar;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
@@ -232,9 +233,11 @@ final class PlatformAuth
     }
 
     /**
-     * The subject + email held pending an emailed step-up code, or null.
+     * The subject + email held pending an emailed step-up code, or null. `purpose` is
+     * `sign_in` for a risky sign-in and `sign_up` for a new account Radar challenged, whose
+     * address is confirmed this way before its first session ({@see confirmByEmail()}).
      *
-     * @return array{subject: string, email: string}|null
+     * @return array{subject: string, email: string, purpose: 'sign_in'|'sign_up'}|null
      */
     public function pendingOtpStepUp(Request $request): ?array
     {
@@ -244,7 +247,24 @@ final class PlatformAuth
             return null;
         }
 
-        return ['subject' => $pending['subject'], 'email' => $pending['email']];
+        return [
+            'subject' => $pending['subject'],
+            'email' => $pending['email'],
+            'purpose' => ($pending['purpose'] ?? null) === 'sign_up' ? 'sign_up' : 'sign_in',
+        ];
+    }
+
+    /**
+     * A SIGN-UP RADAR CHALLENGED, with no CAPTCHA configured to put in front of it: the
+     * account exists, but its first session waits for the one-time code emailed to the
+     * address it was created with. Possession of the inbox is the proof — the same step-up a
+     * risky sign-in takes, on the same page, so it is held exactly the same way: nothing about
+     * who is being confirmed is submitted, it lives in the session.
+     */
+    public function confirmByEmail(Request $request, string $subjectId, string $email): void
+    {
+        $this->otp->issue(self::OTP_PURPOSE, $email, 'email', $request->ip());
+        session()->put(self::OTP_PENDING_KEY, ['subject' => $subjectId, 'email' => $email, 'purpose' => 'sign_up']);
     }
 
     /**
@@ -479,6 +499,11 @@ final class PlatformAuth
         // (new device, geo-velocity) have a history to compare future logins against.
         $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
 
+        // And tell Radar a sign-in SUCCEEDED here, from this device, so "new device" and
+        // "impossible travel" are measured against sign-ins that happened — never against an
+        // address somebody merely typed. Fails open inside.
+        app(Radar::class)->succeeded($request, $subjectId);
+
         // Add (or refresh) this account and make it active, keeping any other
         // signed-in accounts — so a second sign-in adds a switchable account
         // rather than replacing the first.
@@ -510,6 +535,7 @@ final class PlatformAuth
 
         $this->applyPendingLink($session->user_id);
         $this->recordOrganizationSignIn($session->user_id);
+        app(Radar::class)->succeeded($request, $session->user_id);
     }
 
     /**

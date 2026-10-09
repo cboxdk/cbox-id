@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AuditLogs\AuditLogIngest;
 use App\Platform\Navigation\ConsoleNavigation;
+use App\Platform\RiskGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -33,6 +34,7 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -165,6 +167,16 @@ function seedTenantData(string $environmentId, string $marker): array
                 'occurred_at' => now()->utc()->format('Y-m-d\\TH:i:s.v\\Z'),
                 'actor' => ['id' => 'usr_'.strtolower($marker), 'type' => 'user'],
             ]], null);
+
+            // A sign-in attempt Radar judged. The decisions explorer prints the mail domain
+            // (never the address), so the marker is the domain. RiskDecision is not
+            // environment-owned — the explorer applies the environment itself, which is
+            // exactly what this proves.
+            app(RiskGuard::class)->assess(
+                Request::create('/login', 'POST', server: ['REMOTE_ADDR' => '198.51.100.23']),
+                'login',
+                'person@'.strtolower($marker).'.example',
+            );
 
             // An API, owned by the organization so its owner's name is on the list too.
             // The identifier carries the marker as a HOST: it is the one thing the APIs page

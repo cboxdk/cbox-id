@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Models\RiskDecision;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
@@ -12,6 +13,7 @@ use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\RiskGuard;
 use Cbox\Id\Directory\Models\DirectoryGroup;
 use Cbox\Id\Governance\Models\CertificationItem;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -29,6 +31,7 @@ use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -96,6 +99,9 @@ final class CrossTenantSweep
             'environment-roles:role_id' => 'staff_role',
             'sessions:session_id' => 'session',
             'webhooks:id' => 'webhook',
+            'rules:id' => 'radar_rule',
+            'lists:id' => 'radar_list_entry',
+            'decisions:id' => 'radar_decision',
         ],
         'workspace' => [
             'environments:environment_id' => 'environment',
@@ -268,6 +274,8 @@ final class CrossTenantSweep
             $w['audit_schema'] = "sweep_{$slug}.done";
             $run('audit_logs.schemas.create', ['action' => $w['audit_schema']]);
             $w['audit_export'] = $run('audit_logs.exports.create', ['organization_id' => $w['organization']])['id'];
+            $w['radar_rule'] = $run('radar.rules.create', ['name' => 'Sweep rule '.$label, 'action' => 'challenge', 'conditions' => [['field' => 'country', 'operator' => 'in', 'values' => ['DK']]]])['id'];
+            $w['radar_list_entry'] = $run('radar.lists.add', ['list' => 'deny', 'kind' => 'email_domain', 'value' => "radar-{$slug}.sweep.example"])['id'];
 
             $w['access_review'] = $run('access_reviews.create', ['name' => 'Sweep review '.$label, 'covers' => 'organization', 'organization_id' => $w['organization']])['id'];
             $w['access_review_item'] = (string) CertificationItem::query()->where('campaign_id', $w['access_review'])->value('id');
@@ -284,6 +292,10 @@ final class CrossTenantSweep
             ))->key->id;
             $w['agent_request'] = self::agentRequest($w['member']);
             $w['support_session'] = self::supportSession($w['member'], $w['organization'], $w['app_client_id']);
+            // A Radar decision is written by a sign-in attempt, not by an action: one scored
+            // attempt on this environment's host.
+            app(RiskGuard::class)->assess(Request::create('/login', 'POST', server: ['REMOTE_ADDR' => '198.51.100.9']), 'login', "member-{$slug}@sweep.example");
+            $w['radar_decision'] = (string) RiskDecision::query()->where('environment_id', $environmentId)->orderByDesc('id')->value('id');
 
             return $w;
         } finally {

@@ -167,6 +167,8 @@ return [
     'otp_step_up' => [
         'title' => 'Zusätzliche Bestätigung',
         'lead' => 'Diese Anmeldung wirkte ungewöhnlich, daher haben wir einen Einmalcode an :email gesendet. Geben Sie ihn ein, um fortzufahren.',
+        'signup_title' => 'Bestätigen Sie Ihre E-Mail-Adresse',
+        'signup_lead' => 'Geben Sie den Einmalcode ein, den wir an :email gesendet haben, um die Erstellung Ihres Kontos abzuschließen.',
         'code_label' => 'Bestätigungscode',
         'resend' => 'Keinen Code erhalten? Erneut senden',
         'resent' => 'Wir haben einen neuen Code an :email gesendet.',

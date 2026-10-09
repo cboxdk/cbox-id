@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Models\RiskDecision;
+use App\Platform\Radar\Enums\RadarField;
+use App\Platform\Radar\RadarDecision;
+use App\Platform\Radar\RadarFacts;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Risk\ValueObjects\RiskAssessment;
 use Cbox\Risk\ValueObjects\SignalResult;
@@ -78,7 +81,7 @@ final class RiskTrail
      * migration that has not run yet must degrade observability, never sign-in. The
      * failure is logged at warning so a silently-empty trail is still noticeable.
      */
-    public function record(string $action, ?string $ip, ?string $email, RiskAssessment $assessment): ?RiskDecision
+    public function record(string $action, ?string $ip, ?string $email, RiskAssessment $assessment, ?RadarDecision $radar = null): ?RiskDecision
     {
         try {
             $decision = new RiskDecision;
@@ -87,14 +90,18 @@ final class RiskTrail
                 // binding and a long-lived holder would pin the first request's value.
                 'environment_id' => app(EnvironmentContext::class)->current()?->environmentKey(),
                 'action' => $action,
-                'mode' => $this->mode(),
+                // The mode the verdict was made under — the ENVIRONMENT's, which is the
+                // deployment's `RISK_MODE` until the environment chooses its own.
+                'mode' => $radar?->mode->value ?? $this->mode(),
                 'outcome' => $assessment->outcome,
                 'score' => round($assessment->score, 2),
-                'reasons' => $assessment->reasons(),
+                // The score's reasons, then Radar's — every sentence the explorer shows.
+                'reasons' => array_values(array_unique([...$assessment->reasons(), ...($radar?->verdict->reasons ?? [])])),
                 'signals' => $this->signalPoints($assessment),
                 'ip_hash' => $this->ipPseudonym($ip),
                 'email_hash' => $email === null || trim($email) === '' ? null : $this->emailPseudonym($email),
                 'email_domain' => $this->domainOf($email),
+                ...$this->radarColumns($radar),
             ]);
             $decision->save();
 
@@ -108,6 +115,38 @@ final class RiskTrail
 
             return null;
         }
+    }
+
+    /**
+     * What Radar decided, beside the score: the verdict, whether it was acted on, the rule
+     * that decided it, every rule that fired, and the facts — which carry no IP, no address
+     * and no user agent ({@see RadarFacts::recordable()}). The device
+     * is its pseudonym, and only for a returning device cookie.
+     *
+     * @return array<string, mixed>
+     */
+    private function radarColumns(?RadarDecision $radar): array
+    {
+        if ($radar === null) {
+            return [];
+        }
+
+        $facts = $radar->facts;
+        $country = $facts?->get(RadarField::Country);
+        $asn = $facts?->get(RadarField::Asn);
+        $method = $facts?->method->value;
+
+        return [
+            'verdict' => $radar->verdict->action->value,
+            'enforced' => $radar->enforced(),
+            'rule' => $radar->verdict->rule,
+            'method' => $method,
+            'country' => is_string($country) ? $country : null,
+            'asn' => is_int($asn) ? $asn : null,
+            'device_hash' => $facts?->deviceHash,
+            'triggered' => $radar->verdict->triggered,
+            'facts' => $facts?->recordable(),
+        ];
     }
 
     /**
