@@ -32,6 +32,9 @@ beforeEach(function (): void {
 afterEach(fn () => ProductionShape::reset());
 
 it('is the trap: a path-only probe is a localhost request production refuses', function (): void {
+    // Production's APP_URL. ProductionShape trusts APP_URL's host, and a local or CI .env
+    // with APP_URL=http://localhost would trust the very host this probe is refused for.
+    config(['app.url' => 'https://cboxid.com']);
     ProductionShape::cacheRoutes();
     ProductionShape::enforceTrustedHosts();
 
