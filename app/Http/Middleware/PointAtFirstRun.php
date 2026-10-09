@@ -84,6 +84,11 @@ final class PointAtFirstRun
             // instead of receiving `login_required`.
             'oauth/*',
             'sso/*',
+            // The documentation redirect. The person standing at an unclaimed install is
+            // the one most likely to want the install guide, and pointing `/docs` at the
+            // setup screen would hide it from exactly them.
+            'docs',
+            'docs/*',
         );
     }
 }

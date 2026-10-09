@@ -26,17 +26,17 @@ Danger is how much harm the action can do in the wrong hands: `read` only reads;
 
 | Area | Actions |
 |---|---|
-| [API keys](#api-keys) | [`account.api_keys.create`](#accountapi_keyscreate), [`account.api_keys.revoke`](#accountapi_keysrevoke) |
-| [Applications](#applications) | [`account.applications.revoke`](#accountapplicationsrevoke) |
-| [Devices](#devices) | [`account.devices.remove`](#accountdevicesremove) |
-| [Organizations](#organizations) | [`account.organizations.leave`](#accountorganizationsleave) |
-| [Profile](#profile) | [`account.profile.update`](#accountprofileupdate) |
-| [Sessions](#sessions) | [`account.sessions.revoke`](#accountsessionsrevoke), [`account.sessions.revoke_others`](#accountsessionsrevoke_others) |
-| [Sign-in methods](#sign-in-methods) | [`account.passkeys.remove`](#accountpasskeysremove), [`account.social.unlink`](#accountsocialunlink) |
+| [API keys](#api-keys) | [`account.api_keys.create`](#account.api_keys.create), [`account.api_keys.revoke`](#account.api_keys.revoke) |
+| [Applications](#applications) | [`account.applications.revoke`](#account.applications.revoke) |
+| [Devices](#devices) | [`account.devices.remove`](#account.devices.remove) |
+| [Organizations](#organizations) | [`account.organizations.leave`](#account.organizations.leave) |
+| [Profile](#profile) | [`account.profile.update`](#account.profile.update) |
+| [Sessions](#sessions) | [`account.sessions.revoke`](#account.sessions.revoke), [`account.sessions.revoke_others`](#account.sessions.revoke_others) |
+| [Sign-in methods](#sign-in-methods) | [`account.passkeys.remove`](#account.passkeys.remove), [`account.social.unlink`](#account.social.unlink) |
 
 ## API keys
 
-### account.api_keys.create
+### <a id="account.api_keys.create"></a>account.api_keys.create
 
 Create an API key of your own for one of this environment's apps, in an organization you belong to. The value is returned once, as `token`.
 
@@ -57,7 +57,7 @@ Create an API key of your own for one of this environment's apps, in an organiza
 | `permissions` | list of string | no | What the key may do in the app — each one a permission you hold there. Empty: it only identifies you. At most 200 items. |
 | `expires_at` | string (date-time), nullable | no | When it stops working. Left out, it does not expire. |
 
-### account.api_keys.revoke
+### <a id="account.api_keys.revoke"></a>account.api_keys.revoke
 
 Revoke one of your own API keys.
 
@@ -76,7 +76,7 @@ Revoke one of your own API keys.
 
 ## Applications
 
-### account.applications.revoke
+### <a id="account.applications.revoke"></a>account.applications.revoke
 
 Withdraw an application's access to your account; it must ask you again to act as you.
 
@@ -94,7 +94,7 @@ Withdraw an application's access to your account; it must ask you again to act a
 
 ## Devices
 
-### account.devices.remove
+### <a id="account.devices.remove"></a>account.devices.remove
 
 Remove one of your trusted devices; it is no longer asked to approve anything.
 
@@ -112,7 +112,7 @@ Remove one of your trusted devices; it is no longer asked to approve anything.
 
 ## Organizations
 
-### account.organizations.leave
+### <a id="account.organizations.leave"></a>account.organizations.leave
 
 Leave one of your own organizations. The last owner cannot leave — transfer ownership first.
 
@@ -130,7 +130,7 @@ Leave one of your own organizations. The last owner cannot leave — transfer ow
 
 ## Profile
 
-### account.profile.update
+### <a id="account.profile.update"></a>account.profile.update
 
 Change the display name on your own account.
 
@@ -148,7 +148,7 @@ Change the display name on your own account.
 
 ## Sessions
 
-### account.sessions.revoke
+### <a id="account.sessions.revoke"></a>account.sessions.revoke
 
 Sign out one of your own sessions.
 
@@ -164,7 +164,7 @@ Sign out one of your own sessions.
 |---|---|---|---|
 | `session_id` | string (path) | yes |  |
 
-### account.sessions.revoke_others
+### <a id="account.sessions.revoke_others"></a>account.sessions.revoke_others
 
 Sign out every one of your sessions except the one you are using.
 
@@ -180,7 +180,7 @@ Takes no input.
 
 ## Sign-in methods
 
-### account.passkeys.remove
+### <a id="account.passkeys.remove"></a>account.passkeys.remove
 
 Remove one of your passkeys.
 
@@ -196,7 +196,7 @@ Remove one of your passkeys.
 |---|---|---|---|
 | `passkey_id` | string (path) | yes |  |
 
-### account.social.unlink
+### <a id="account.social.unlink"></a>account.social.unlink
 
 Disconnect a social account from yours — never the last way you can sign in.
 

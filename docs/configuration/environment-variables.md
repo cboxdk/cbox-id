@@ -93,6 +93,16 @@ Override the wordmark/hero without editing Blade.
 | `WHITELABEL_ASSETS_STORE` | Where uploaded logos and favicons are kept: `database` (a row every replica shares, served at `/brand-assets/…`) or `disk`. | `database` | Leave it. `disk` writes to `WHITELABEL_ASSETS_DISK` instead, which only works on one machine with `php artisan storage:link`. |
 | `WHITELABEL_ASSETS_DISK` | The filesystem disk for `WHITELABEL_ASSETS_STORE=disk`. | `public` | Only with the disk store. |
 
+## Documentation links
+
+Where the console's **Read the guide** links, the Get started page's quickstart link and
+this deployment's own `/docs` address point. `/docs` and `/docs/<page>` redirect there.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `DOCS_BASE_URL` | The documentation site's base; a page is linked as `<base>/<path under docs/><suffix>`. | `https://cbox.dk/products/cbox-id/docs` | Set `https://github.com/cboxdk/cbox-id/blob/main/docs` (with the `.md` suffix) to link GitHub's source view. Set it empty on an air-gapped install: every documentation link disappears and `/docs` answers 404. |
+| `DOCS_LINK_SUFFIX` | Appended to every page path. | *(empty)* | `.md` for GitHub's source view. |
+
 ## Languages
 
 The languages used by the hosted pages (sign-in, consent, Admin Portal) and the emails

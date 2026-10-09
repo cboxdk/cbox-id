@@ -47,7 +47,9 @@ export class AppErrorBoundary extends Component<Props, State> {
         }
 
         return (
-            <main id="main-content" className="auth-shell">
+            // `data-app-error` is how the docs-screenshot run (tests/Browser/DocsScreenshotsTest.php)
+            // tells this fallback from the page it was meant to photograph.
+            <main id="main-content" className="auth-shell" data-app-error="">
                 <div className="card" style={{ maxWidth: '32rem', padding: '2rem' }}>
                     <h1 className="cbx-page-title">Something went wrong</h1>
                     <p className="cbx-page-desc">

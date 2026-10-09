@@ -49,17 +49,18 @@ with that token.
    (what your team calls it, for example "Okta"). For Google Workspace, paste the
    **Service-account JSON key** and the **Admin email to impersonate**; for Microsoft
    Entra, the **Tenant ID**, **Client ID** and **Client secret**. Those credentials are
-   checked against the provider before anything is stored. The bearer token is
-   For a SCIM directory, the bearer token is shown **once**: store it in your provider
-   immediately.
+   checked against the provider before anything is stored. For a SCIM directory, the
+   bearer token is shown **once**: store it in your provider immediately.
 2. In your provider, assign the people and groups that should have access. Only
    what you assign is sent; a SCIM connection does not mean "everyone in the
    company" unless you scope it that way.
 3. Watch the first sync land. Directories show as **Active** or **Paused**, with the
    last error if one occurred.
-4. Map the groups your provider sends onto your [roles](roles.md). This is the part
-   worth doing carefully: once `Engineering` maps to a role, access follows group
-   membership, and you stop granting anything by hand.
+4. Map the groups your provider sends onto your [roles](roles.md), on the directory's
+   own page. This is the part worth doing carefully: once `Engineering` maps to a role,
+   access follows group membership, and you stop granting anything by hand.
+
+   ![A directory's page: its SCIM endpoint, and each group its provider sent with the roles it can map to](../screenshots/directory-detail.png)
 
 ## From code
 
