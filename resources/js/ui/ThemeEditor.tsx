@@ -32,8 +32,48 @@ export interface ThemeEditorProps {
     saving?: boolean;
     /** The server's refusal, if the last save was rejected for contrast. */
     error?: string | null;
-    onSave: (theme: Theme) => void;
+    /** The server's refusal of an image, per image. */
+    imageErrors?: Partial<Record<ImageKind, string>>;
+    /** Each face's own name, from `ThemeFont::labels()`. */
+    fontLabels?: Record<string, string>;
+    /**
+     * A remote logo URL saved before logos became uploads — no longer drawn anywhere. The
+     * editor asks for an upload until one is made (or the logo is removed).
+     */
+    remoteLogoIgnored?: boolean;
+    /** Whether this install can store images at all (the white-label module). */
+    imagesAccepted?: boolean;
+    /**
+     * `images` holds only what CHANGED: a data URI to store, null to remove. An image the
+     * administrator did not touch is absent, so saving the colours never re-uploads it.
+     */
+    onSave: (theme: Theme, images: ImageChanges) => void;
 }
+
+export type ImageKind = 'logo' | 'favicon';
+
+/** Stable defaults: an object literal as a default prop is a new object every render. */
+const NO_IMAGE_ERRORS: Partial<Record<ImageKind, string>> = {};
+const NO_FONT_LABELS: Record<string, string> = {};
+export type ImageChanges = Partial<Record<ImageKind, string | null>>;
+
+/**
+ * The twin of `App\Platform\Appearance\BrandImage`: what the server will accept, checked
+ * here first so a wrong file is refused in the dialog rather than after an upload. The
+ * server checks the BYTES again — this is a courtesy, not the rule.
+ */
+const IMAGE_RULES: Record<ImageKind, { maxBytes: number; types: string[]; formats: string }> = {
+    logo: {
+        maxBytes: 1024 * 1024,
+        types: ['image/png', 'image/jpeg', 'image/webp'],
+        formats: 'PNG, JPEG or WebP',
+    },
+    favicon: {
+        maxBytes: 256 * 1024,
+        types: ['image/png', 'image/webp', 'image/x-icon', 'image/vnd.microsoft.icon'],
+        formats: 'PNG, ICO or WebP',
+    },
+};
 
 /**
  * THE HOSTED SIGN-IN THEME EDITOR — presets, colours, corners and type, against a live
@@ -55,9 +95,21 @@ export function ThemeEditor({
     scope,
     saving = false,
     error = null,
+    imageErrors = NO_IMAGE_ERRORS,
+    fontLabels = NO_FONT_LABELS,
+    remoteLogoIgnored = false,
+    imagesAccepted = true,
     onSave,
 }: ThemeEditorProps) {
     const [draft, setDraft] = useState<Theme>(value);
+    const [images, setImages] = useState<ImageChanges>({});
+
+    const pickImage = useCallback((kind: ImageKind, next: string | null) => {
+        setImages((current) => ({ ...current, [kind]: next }));
+        setDraft((current) => ({ ...current, [kind]: next ?? '' }));
+    }, []);
+
+    const nameOf = (font: string): string => fontLabels[font] ?? fontLabel(font);
     const [mode, setMode] = useState<'light' | 'dark'>('light');
     const [copied, setCopied] = useState<'css' | 'json' | ''>('');
     const copyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -143,7 +195,7 @@ export function ThemeEditor({
                         className="shrink-0"
                         icon="check"
                         loading={saving}
-                        onClick={() => onSave(draft)}
+                        onClick={() => onSave(draft, images)}
                     >
                         Save changes
                     </Button>
@@ -167,6 +219,32 @@ export function ThemeEditor({
                 >
                     {error}
                 </p>
+            )}
+
+            {/*
+                THE OLD REMOTE LOGO. It was an https URL drawn as-is on the sign-in page,
+                which made it a beacon: every visitor's browser reported to whoever hosted
+                the image. It is no longer drawn, and the page says so here — the one place
+                the administrator can fix it — instead of leaving them to find their own
+                sign-in page suddenly logo-less.
+            */}
+            {remoteLogoIgnored && images.logo === undefined && (
+                <output
+                    className="mb-4 rounded-lg px-3.5 py-3 text-sm flex items-start gap-2.5"
+                    style={{
+                        background: 'var(--warning-soft)',
+                        color: 'var(--warning-strong)',
+                        border: '1px solid color-mix(in srgb, var(--warning) 35%, transparent)',
+                    }}
+                >
+                    <Icon name="warning" className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>
+                        <b>Upload your logo — remote logo URLs are no longer shown.</b> A logo
+                        linked from another site told that site about every person who opened your
+                        sign-in page, so hosted pages now draw only images uploaded here. Upload it
+                        under <i>Logo &amp; favicon</i> below, or remove it to stop this notice.
+                    </span>
+                </output>
             )}
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr] items-start">
@@ -212,7 +290,7 @@ export function ThemeEditor({
                                             className="block text-[11px] truncate"
                                             style={{ color: 'var(--muted-foreground)' }}
                                         >
-                                            {radiusLabel(preset.radius)} · {fontLabel(preset.font)}
+                                            {radiusLabel(preset.radius)} · {nameOf(preset.font)}
                                         </span>
                                     </span>
                                 </button>
@@ -324,8 +402,14 @@ export function ThemeEditor({
 
                         <div>
                             <p className="cbx-nav-group mb-2">Typeface</p>
+                            {/*
+                                Each option is drawn IN its face, so the choice is made by
+                                looking rather than by reading a name. Every face is
+                                self-hosted (public/fonts), so what this button shows is what
+                                a visitor's browser will draw, on any operating system.
+                            */}
                             <fieldset
-                                className="grid grid-cols-3 gap-1.5"
+                                className="grid grid-cols-2 gap-1.5"
                                 style={{ border: 0, padding: 0 }}
                             >
                                 <legend className="sr-only">Typeface</legend>
@@ -337,7 +421,7 @@ export function ThemeEditor({
                                             setDraft((current) => ({ ...current, font: key }))
                                         }
                                         aria-pressed={draft.font === key}
-                                        className="px-2 py-2 rounded-lg text-[13px] font-medium transition border"
+                                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px] font-medium transition border text-left"
                                         style={{
                                             fontFamily: stack,
                                             ...(draft.font === key
@@ -348,31 +432,53 @@ export function ThemeEditor({
                                                 : { borderColor: 'var(--control-border)' }),
                                         }}
                                     >
-                                        {fontLabel(key)}
+                                        <span
+                                            aria-hidden="true"
+                                            className="text-[17px] leading-none"
+                                        >
+                                            Aa
+                                        </span>
+                                        <span className="truncate">{nameOf(key)}</span>
                                     </button>
                                 ))}
                             </fieldset>
                         </div>
+                    </section>
 
-                        <div>
-                            <label className="label" htmlFor="theme-logo">
-                                Logo URL{' '}
-                                <span style={{ color: 'var(--faint)' }}>(https, optional)</span>
-                            </label>
-                            <Input
-                                id="theme-logo"
-                                type="url"
-                                spellCheck={false}
-                                placeholder="https://acme.com/logo.svg"
-                                value={draft.logo}
-                                onChange={(event) =>
-                                    setDraft((current) => ({
-                                        ...current,
-                                        logo: event.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
+                    {/*
+                        UPLOADS, NOT URLS. An image on the sign-in page is fetched by every
+                        visitor, so it is stored here and served by this application — a URL
+                        to somebody else's server would tell that server who they all are.
+                    */}
+                    <section className="card p-4 space-y-4" aria-labelledby="theme-images">
+                        <p id="theme-images" className="cbx-nav-group" style={{ margin: 0 }}>
+                            Logo &amp; favicon
+                        </p>
+                        {imagesAccepted ? (
+                            <>
+                                <ImagePicker
+                                    kind="logo"
+                                    label="Logo"
+                                    hint="Shown above the sign-in form and in emails. PNG, JPEG or WebP, up to 1 MB. A wide image about 36px tall reads best."
+                                    value={draft.logo}
+                                    error={imageErrors.logo}
+                                    onChange={(next) => pickImage('logo', next)}
+                                />
+                                <ImagePicker
+                                    kind="favicon"
+                                    label="Favicon"
+                                    hint="The browser-tab icon on your sign-in pages. A square PNG, ICO or WebP, up to 256 KB."
+                                    value={draft.favicon}
+                                    error={imageErrors.favicon}
+                                    onChange={(next) => pickImage('favicon', next)}
+                                />
+                            </>
+                        ) : (
+                            <p className="text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+                                Image uploads need the white-label module, which is not enabled on
+                                this install.
+                            </p>
+                        )}
                     </section>
 
                     <section className="card p-4">
@@ -444,7 +550,15 @@ export function ThemeEditor({
                                     border: '1px solid var(--border)',
                                 }}
                             >
-                                <Icon name="shield" className="w-3 h-3" />
+                                {draft.favicon !== '' ? (
+                                    <img
+                                        src={draft.favicon}
+                                        alt=""
+                                        className="w-3 h-3 object-contain"
+                                    />
+                                ) : (
+                                    <Icon name="shield" className="w-3 h-3" />
+                                )}
                                 {host}.cboxid.com
                             </span>
                         </div>
@@ -462,10 +576,21 @@ export function ThemeEditor({
                         <div
                             className="p-8 sm:p-12 transition-colors"
                             aria-hidden="true"
+                            data-testid="appearance-preview"
                             style={{
                                 ...(vars as React.CSSProperties),
                                 background: m.background,
                                 color: m.foreground,
+                                /*
+                                 * THE TYPEFACE, APPLIED. The variables above include
+                                 * `--font-sans`, but setting a custom property does not
+                                 * change any element's font: everything in here inherited
+                                 * the COMPUTED family from <body>, which read the console's
+                                 * own `--font-sans`. So the typeface buttons changed nothing
+                                 * in the preview. The heading below reads `--font-display`,
+                                 * which the variables now set too.
+                                 */
+                                fontFamily: 'var(--font-sans)',
                                 minHeight: '30rem',
                             }}
                         >
@@ -475,9 +600,6 @@ export function ThemeEditor({
                                         src={draft.logo}
                                         alt={draft.name}
                                         style={{ maxHeight: '2rem', maxWidth: '11rem' }}
-                                        onError={() =>
-                                            setDraft((current) => ({ ...current, logo: '' }))
-                                        }
                                     />
                                 ) : (
                                     <div className="inline-flex items-center gap-2">
@@ -580,6 +702,141 @@ export function ThemeEditor({
                     </p>
                 </div>
             </div>
+        </div>
+    );
+}
+
+/**
+ * One uploaded image: its thumbnail, a button that opens the file picker, and Remove.
+ *
+ * The file is read as a `data:` URI in the browser — that IS the preview, and it is also
+ * what is sent on Save, so the server checks exactly the bytes that were shown. Nothing
+ * leaves the page until Save.
+ */
+function ImagePicker({
+    kind,
+    label,
+    hint,
+    value,
+    error,
+    onChange,
+}: {
+    kind: ImageKind;
+    label: string;
+    hint: string;
+    value: string;
+    error?: string;
+    onChange: (next: string | null) => void;
+}) {
+    const input = useRef<HTMLInputElement>(null);
+    const [problem, setProblem] = useState<string | null>(null);
+    const rules = IMAGE_RULES[kind];
+    const id = `theme-${kind}`;
+    const message = problem ?? error ?? null;
+
+    const choose = (file: File | undefined): void => {
+        if (file === undefined) {
+            return;
+        }
+
+        if (!rules.types.includes(file.type)) {
+            setProblem(
+                file.type.includes('svg')
+                    ? `SVG is not accepted — it can carry a script. Use a ${rules.formats} image.`
+                    : `Use a ${rules.formats} image.`,
+            );
+
+            return;
+        }
+
+        if (file.size > rules.maxBytes) {
+            setProblem(
+                `That file is larger than ${rules.maxBytes / 1024 >= 1024 ? '1 MB' : `${rules.maxBytes / 1024} KB`}.`,
+            );
+
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                setProblem(null);
+                onChange(reader.result);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <div>
+            <p className="label" id={`${id}-label`}>
+                {label}
+            </p>
+            <div className="flex items-center gap-3">
+                <span
+                    className="grid place-items-center rounded-lg shrink-0 overflow-hidden"
+                    style={{
+                        width: kind === 'logo' ? '5.5rem' : '2.5rem',
+                        height: '2.5rem',
+                        border: '1px solid var(--border)',
+                        background: 'var(--secondary)',
+                    }}
+                >
+                    {value !== '' ? (
+                        <img
+                            src={value}
+                            alt={`Current ${label.toLowerCase()}`}
+                            className="max-w-full max-h-full object-contain"
+                        />
+                    ) : (
+                        <Icon name="image" className="w-4 h-4" style={{ color: 'var(--faint)' }} />
+                    )}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                    <Button
+                        size="sm"
+                        icon="upload"
+                        aria-describedby={`${id}-hint`}
+                        onClick={() => input.current?.click()}
+                    >
+                        {value !== '' ? 'Replace' : 'Upload'}
+                    </Button>
+                    {value !== '' && (
+                        <Button
+                            size="sm"
+                            style={{ color: 'var(--muted-foreground)' }}
+                            onClick={() => {
+                                setProblem(null);
+                                onChange(null);
+                            }}
+                        >
+                            Remove
+                        </Button>
+                    )}
+                </div>
+                <input
+                    ref={input}
+                    id={id}
+                    type="file"
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-labelledby={`${id}-label`}
+                    accept={rules.types.join(',')}
+                    onChange={(event) => {
+                        choose(event.target.files?.[0]);
+                        // Cleared so choosing the same file again after a Remove still fires.
+                        event.target.value = '';
+                    }}
+                />
+            </div>
+            <p id={`${id}-hint`} className="mt-1.5 text-[12px]" style={{ color: 'var(--faint)' }}>
+                {hint}
+            </p>
+            {message !== null && (
+                <p className="field-error mt-1" role="alert">
+                    {message}
+                </p>
+            )}
         </div>
     );
 }

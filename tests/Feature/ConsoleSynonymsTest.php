@@ -76,7 +76,7 @@ it('finds the page a new administrator means by the word they type', function (s
     'domain verification' => ['domain verification', 'domains'],
     'redirect URI' => ['redirect URI', 'clients'],
     'MCP' => ['MCP', 'agent-connect'],
-    'logo' => ['logo', 'appearance'],
+    'logo' => ['logo', 'branding'],
     'SIEM' => ['SIEM', 'audit-streams'],
 ]);
 

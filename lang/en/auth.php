@@ -86,6 +86,10 @@ return [
         'forgot_password' => 'Forgot password?',
         'or' => 'OR',
         'continue_with' => 'Continue with :provider',
+        // The badge on the sign-in method this device used last, and what it means said in full
+        // for a screen reader.
+        'last_used' => 'Last used',
+        'last_used_hint' => 'The way you signed in last time on this device.',
         'magic_link' => 'Email me a magic link',
         'passkey' => 'Sign in with a passkey',
         'passkey_failed' => 'Passkey sign-in failed.',

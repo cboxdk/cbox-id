@@ -25,6 +25,7 @@
     $brand = app(\App\Platform\Appearance\BrandContext::class);
     $appName = $brand->name() ?? config('cbox-id.branding.name', 'Cbox ID');
     $appearanceCss = $brand->css();
+    $brandFavicon = $brand->favicon();
 @endphp
 <!DOCTYPE html>
 {{--
@@ -42,8 +43,14 @@
     {{-- Root paths, not /brand/*. Icon harvesters — password managers, link unfurlers,
          browsers restoring a tab before the HTML parses — probe /favicon.ico and
          /apple-touch-icon.png directly and never read these tags. --}}
+    {{-- A branded door carries the brand's own uploaded favicon — served by this
+         application, like the logo, so the tab icon is not a request to anybody else. --}}
+    @if ($brandFavicon)
+    <link rel="icon" href="{{ $brandFavicon }}">
+    @else
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="any">
+    @endif
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">

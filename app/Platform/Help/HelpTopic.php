@@ -147,7 +147,7 @@ enum HelpTopic: string
             self::RiskEvents => 'Sign-ins that looked suspicious',
             self::Radar => 'Allowing, challenging and blocking sign-ins',
             self::SignInActivity => 'Sign-ins over time',
-            self::Branding => 'Your look on the console and sign-in',
+            self::Branding => 'Your brand, on the sign-in and in mail',
             self::Workspaces => 'Every workspace on this install',
             self::Environments => 'Every environment on this install',
             self::PlatformOrganizations => 'Organizations in the target environment',
@@ -265,7 +265,7 @@ enum HelpTopic: string
 
             self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
 
-            self::Branding => 'The palette, logo, app name and email sender your people see on the console and the hosted sign-in page. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its page, under Settings › Branding.',
+            self::Branding => 'Everything your people see of your brand, on one page: the hosted sign-in\'s logo, favicon, colours, typeface and corners, previewed live — and the product name, email sender and welcome mail. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its Branding tab.',
 
             self::Workspaces => 'A workspace is one signed-up company\'s home on this install, holding its projects, environments and team. Open one to walk its products and environments, or suspend it, which signs its members out and stops every environment it owns from serving sign-ins.',
 

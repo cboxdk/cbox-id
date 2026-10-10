@@ -64,6 +64,10 @@ return [
         'forgot_password' => 'Glömt lösenordet?',
         'or' => 'ELLER',
         'continue_with' => 'Fortsätt med :provider',
+        // The badge on the sign-in method this device used last, and what it means said in full
+        // for a screen reader.
+        'last_used' => 'Senast använd',
+        'last_used_hint' => 'Så loggade du in senast på den här enheten.',
         'magic_link' => 'Skicka en inloggningslänk till mig',
         'passkey' => 'Logga in med lösennyckel',
         'passkey_failed' => 'Inloggningen med lösennyckel misslyckades.',

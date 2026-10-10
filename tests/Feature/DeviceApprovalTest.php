@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use App\Platform\Radar\Enums\RadarAction;
+use App\Platform\Radar\Enums\RadarList;
+use App\Platform\Radar\Enums\RadarListKind;
+use App\Platform\Radar\Enums\RadarMode;
+use App\Platform\Radar\Enums\RadarRuleScope;
+use App\Platform\Radar\RadarLists;
+use App\Platform\Radar\RadarPolicy;
+use App\Platform\Radar\RadarRules;
+use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -17,6 +26,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Otp\Contracts\OtpChannels;
+use Cbox\Id\Otp\Testing\FakeOtpChannel;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 
@@ -161,10 +172,15 @@ it('does not ask the browser to autofill a one-time code over the device code', 
      * response carries it any more — and what is being asserted is a property of the
      * component itself, which is where it can be stated exactly once.
      */
-    $source = (string) file_get_contents(resource_path('js/pages/device.tsx'));
+    $source = (string) file_get_contents(resource_path('js/pages/oauth/device.tsx'));
 
-    expect($source)->not->toContain('autoComplete="one-time-code"');
-    expect($source)->toContain('autoComplete="off"');
+    // THE USER-CODE FIELD, specifically. The page has one other code field — the emailed
+    // code a Radar challenge asks for — and that one IS delivered to this person, so
+    // `one-time-code` is exactly right there and wrong here.
+    expect(preg_match('#<Input\s+name="userCode"(.*?)/>#s', $source, $field))->toBe(1);
+
+    expect($field[1])->not->toContain('one-time-code')
+        ->and($field[1])->toContain('autoComplete="off"');
 });
 
 it('goes straight to the approval screen when the link carries the code', function () {
@@ -257,4 +273,170 @@ it('returns a person to the device approval after they sign in to reach it', fun
     test()->get($complete)->assertRedirect(route('device'));
 
     expect(deviceScreen()['client']['name'])->toBe('TV App');
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| The hosted, phone-first page
+|--------------------------------------------------------------------------
+*/
+
+it('is a hosted door in the visitor\'s language, not a console page', function () {
+    signedInFor();
+
+    test()->withHeader('Accept-Language', 'da')->get(route('device'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('oauth/device')
+            ->where('title', 'Forbind en enhed')
+            ->where('i18n.locale', 'da')
+            ->where('i18n.messages', fn ($messages): bool => ($messages['oauth.device.approve'] ?? null) === 'Godkend'));
+});
+
+it('accepts the code the way a phone types it — lowercase, without the dash', function (Closure $type) {
+    signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+
+    lookUpDeviceCode($type($result->userCode))->assertRedirect(route('device'))->assertSessionHasNoErrors();
+
+    expect(deviceScreen()['client']['name'])->toBe('TV App');
+})->with([
+    'lowercase, no dash' => [fn (string $code): string => strtolower(str_replace('-', '', $code))],
+    'a space for the dash' => [fn (string $code): string => str_replace('-', ' ', $code)],
+    'padded' => [fn (string $code): string => '  '.$code.' '],
+]);
+
+it('prefills from verification_uri_complete and shows the code to hold against the TV', function () {
+    signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid', 'email']);
+
+    // Following the TV's own link — even typed back lower-case and without its dash —
+    // goes straight to the confirm step.
+    test()->get(route('device', ['user_code' => strtolower(str_replace('-', '', $result->userCode))]))
+        ->assertRedirect(route('device'));
+
+    $screen = deviceScreen();
+
+    expect($screen['client']['name'])->toBe('TV App')
+        // The code is shown, read back from the session: the one check a person can make
+        // against device-code phishing is "is this the code on MY screen".
+        ->and($screen['userCode'])->toBe($result->userCode);
+});
+
+/**
+ * Somebody who scans the TV's QR code is almost never signed in on their phone, and may
+ * not use a password at all. Every way in has to bring them back to the code they came
+ * for — this used to hold for the password form alone.
+ */
+it('returns a person who signs in with a magic link to the device they came to approve', function () {
+    $subject = app(Subjects::class)->create('tv@acme.test', 'TV Person', 'a-strong-unbreached-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme TV', 'acme-tv'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    $complete = '/device?user_code='.$result->userCode;
+
+    test()->get($complete)->assertRedirect(route('login'));
+
+    $token = app(MagicLink::class)->request('tv@acme.test');
+
+    test()->post(route('magic.redeem.store', $token))->assertRedirect($complete);
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Radar on the approval
+|--------------------------------------------------------------------------
+*/
+
+it('asks for an emailed code when Radar challenges the approval, then approves on it', function () {
+    signedInFor();
+    $channel = new FakeOtpChannel;
+    app(OtpChannels::class)->register('email', $channel);
+
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    lookUpDeviceCode($result->userCode);
+
+    app(RadarPolicy::class)->setMode(RadarMode::Enforce);
+    app(RadarRules::class)->create('Unusual', null, RadarAction::Challenge, RadarRuleScope::SignIn, [
+        ['field' => 'email_domain', 'operator' => 'eq', 'value' => 'acme.test'],
+    ]);
+
+    approveDevice()->assertRedirect(route('device'));
+
+    // Not approved yet: a code went to the account's own inbox, and the page asks for it —
+    // every account can answer this, whether it signs in with a password, a passkey or Google.
+    $screen = deviceScreen();
+
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved)
+        ->and($screen['stepUp'])->toBe(['sentTo' => 'd••@acme.test'])
+        ->and($channel->codeFor('dev@acme.test'))->not->toBeNull();
+
+    // A wrong code is refused and approves nothing.
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.verify'), ['stepUpCode' => '000000']))
+        ->assertSessionHasErrors('stepUpCode');
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved);
+
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.verify'), ['stepUpCode' => (string) $channel->codeFor('dev@acme.test')]))
+        ->assertRedirect(route('device'));
+
+    expect(DeviceCode::query()->value('status'))->toBe(GrantPollStatus::Approved)
+        ->and(flashed('deviceOutcome'))->toBe('approved');
+})->group('security');
+
+it('never takes an emailed code for a request it was not asked for', function () {
+    signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    lookUpDeviceCode($result->userCode);
+
+    // No challenge was raised for this request: the endpoint has nothing to confirm.
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.verify'), ['stepUpCode' => '123456']))
+        ->assertNotFound();
+
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved);
+})->group('security');
+
+it('refuses the approval outright when Radar blocks it', function () {
+    signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    lookUpDeviceCode($result->userCode);
+
+    app(RadarPolicy::class)->setMode(RadarMode::Enforce);
+    app(RadarLists::class)->add(RadarList::Deny, RadarListKind::Email, 'dev@acme.test');
+
+    approveDevice()->assertRedirect(route('device'));
+
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved)
+        ->and(flashed('deviceError'))->toBe(__('oauth.device.blocked'))
+        ->and(deviceScreen()['client'])->toBeNull();
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| The QR code a TV shows
+|--------------------------------------------------------------------------
+*/
+
+it('draws verification_uri_complete as an SVG QR code for a pending code, sessionless and cacheable', function () {
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+
+    $response = test()->get('/oauth/device/qr?user_code='.strtolower($result->userCode))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/svg+xml');
+
+    expect((string) $response->getContent())->toStartWith('<?xml')->toContain('<svg')
+        ->and($response->headers->get('Cache-Control'))->toContain('public')->toContain('max-age=')
+        // No session, no cookie, no person: a TV asks for it before anybody signed in.
+        ->and($response->headers->getCookies())->toBe([]);
+});
+
+it('draws no QR code for a code that is unknown, expired or already decided', function () {
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+
+    test()->get('/oauth/device/qr?user_code=ZZZZ-ZZZZ')->assertNotFound();
+    test()->get('/oauth/device/qr')->assertNotFound();
+
+    app(DeviceAuthorization::class)->deny($result->userCode);
+
+    test()->get('/oauth/device/qr?user_code='.$result->userCode)->assertNotFound();
 })->group('security');

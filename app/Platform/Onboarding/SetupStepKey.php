@@ -67,7 +67,7 @@ enum SetupStepKey: string
             self::InviteTeam => $peopleRoute,
             self::ConnectApp => 'clients',
             self::DefineRoles => 'roles',
-            self::BrandSignIn => 'appearance',
+            self::BrandSignIn => 'branding',
             self::SingleSignOn => 'connections',
             self::SyncUsersIn => 'directories',
         };

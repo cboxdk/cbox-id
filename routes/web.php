@@ -25,10 +25,10 @@ use App\Http\Controllers\Console\AgentApprovalController;
 use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
-use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
 use App\Http\Controllers\Console\AuditLogController;
 use App\Http\Controllers\Console\AuthPolicyController;
+use App\Http\Controllers\Console\BrandingController;
 use App\Http\Controllers\Console\ClientController;
 use App\Http\Controllers\Console\ClientPromotionController;
 use App\Http\Controllers\Console\ClientScopesController;
@@ -1075,12 +1075,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::delete('/settings/organization', [SettingsController::class, 'destroyOrganization'])
         ->middleware('sudo')
         ->name('settings.organization.destroy');
-    // Appearance: the SAME component the environment plane serves. What is being
-    // themed — an organization's own sign-in, or the environment default every
-    // organization inherits — is an explicit choice on the page, offered on the
-    // environment plane alone.
-    Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance');
-    Route::post('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
+    // Branding: the SAME component the environment plane serves — the sign-in theme, the
+    // logo and favicon, and (with the white-label module) the name, sender and palette.
+    // What is being branded is the page's address: this organization's own here.
+    Route::get('/branding', [BrandingController::class, 'edit'])->name('branding');
+    Route::post('/branding', [BrandingController::class, 'update'])->name('branding.update');
+    Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('branding.profile.update');
     // Sign-in rules: the SAME component the environment plane serves, and the half of
     // this pair that never existed. `AuthPolicies::setForOrganization()` had no caller
     // anywhere in the product while both sign-in doors enforced what it writes, so a
@@ -1171,11 +1171,17 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/approvals/{request}/approve', [MyApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{request}/deny', [MyApprovalController::class, 'deny'])->name('approvals.deny');
 
-    // RFC 8628 device grant: where a signed-in user approves a device's user_code.
-    Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
-    Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
-    Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
-    Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
+    // RFC 8628 device grant: where a signed-in person approves a device's user_code. A
+    // HOSTED page (`oauth/device`), so it speaks the visitor's language like the other
+    // doors — whoever scanned the TV's QR code, not an administrator.
+    Route::middleware('locale')->group(function (): void {
+        Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
+        Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
+        Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
+        // The emailed code a Radar challenge on the approval asks for.
+        Route::post('/device/verify', [DeviceApprovalController::class, 'verify'])->name('device.verify');
+        Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
+    });
 
     // Step-up re-authentication ("sudo mode") gate for sensitive actions. Blocked
     // while impersonating: an impersonator must never be able to clear the gate
@@ -1337,8 +1343,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::get('/roles', [RoleController::class, 'index'])->name('environment.organizations.roles');
             Route::get('/api-keys', [OrganizationApiKeysController::class, 'index'])->name('environment.organizations.api-keys');
 
-            Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.organizations.branding');
-            Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.organizations.branding.update');
+            Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.organizations.branding');
+            Route::post('/branding', [BrandingController::class, 'update'])->name('environment.organizations.branding.update');
+            Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('environment.organizations.branding.profile.update');
 
             Route::get('/policy', [AuthPolicyController::class, 'edit'])->name('environment.organizations.policy');
             Route::put('/policy', [AuthPolicyController::class, 'update'])->name('environment.organizations.policy.update');
@@ -1777,10 +1784,11 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Passkeys, magic links, the bot challenge and session lengths — environment plane
         // only, like the two above: they are decided before anybody's organization is known.
         Route::put('/sign-in-rules/methods', [AuthPolicyController::class, 'methods'])->name('environment.auth-policy.methods');
-        // Appearance — the merged component. The route NAME is preserved on both
-        // planes; only the component behind it is now shared.
-        Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.appearance');
-        Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.appearance.update');
+        // Branding — the environment default every organization inherits. One page for
+        // the sign-in theme, the logo and favicon, and the white-label name and palette.
+        Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.branding');
+        Route::post('/branding', [BrandingController::class, 'update'])->name('environment.branding.update');
+        Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('environment.branding.profile.update');
 
         // Step into a subject's session for support (env-admin actor). Authorized in
         // the controller by env-scoped membership; owners/admins refused; reason required.
@@ -2031,6 +2039,11 @@ foreach ([
     '/admin/analytics' => '/admin/usage',
     // The organization lookup that used to sit beside the header's "acting organization".
     '/admin/acting-organization' => '/admin/lookup/organizations',
+
+    // Appearance and the white-label Branding page became ONE Branding page.
+    '/appearance' => '/branding',
+    '/admin/appearance' => '/admin/branding',
+    '/admin/organizations/{organization}/appearance' => '/admin/organizations/{organization}/branding',
 ] as $from => $to) {
     ConsoleRoutes::moved($from, $to);
 }

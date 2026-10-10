@@ -147,6 +147,9 @@ function undocumentedByDesign(): array
         'POST /oauth/backchannel_authentication',
         'POST /oauth/decisions',
         'POST /oauth/device_authorization',
+        // The same grant's `verification_uri_complete` drawn as an SVG QR code for a TV —
+        // an image beside the RFC 8628 endpoint, documented in the TV guide.
+        'GET /oauth/device/qr',
         'POST /oauth/introspect',
         'GET /oauth/logout',
         // RP-Initiated Logout allows both bindings.

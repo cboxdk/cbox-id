@@ -76,7 +76,7 @@ enum EnvironmentStep: string
         return match ($this) {
             self::CreateApp, self::FirstSignIn => 'environment.get-started',
             self::AddRedirect, self::GoLive => 'environment.clients',
-            self::BrandSignIn => 'environment.appearance',
+            self::BrandSignIn => 'environment.branding',
             self::CreateOrganization => 'environment.organizations.create',
             self::ConnectSso => 'environment.connections',
             self::ConnectAgent => 'environment.agent-connect',

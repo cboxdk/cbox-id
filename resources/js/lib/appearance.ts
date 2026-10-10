@@ -28,8 +28,13 @@ export interface Theme {
     font: string;
     light: ThemeMode;
     dark: ThemeMode;
-    /** Editor-only, carried alongside the typed appearance. */
+    /**
+     * Editor-only, carried alongside the typed appearance: the uploaded images as they are
+     * drawn — this application's own URL for a stored one, or a `data:` URI for one chosen
+     * in the editor and not yet saved. Never a remote address; see `BrandImages`.
+     */
     logo: string;
+    favicon: string;
     name: string;
 }
 
@@ -46,10 +51,13 @@ export type FontStacks = Record<string, string>;
 
 export const HEX = /^#[0-9a-fA-F]{6}$/;
 
+/** The twin of `ThemeFont::label()` — the face's own name, which is what people compare. */
 const FONT_LABELS: Record<string, string> = {
     system: 'System',
-    geometric: 'Geometric',
-    serif: 'Serif',
+    inter: 'Inter',
+    geometric: 'Plus Jakarta Sans',
+    rounded: 'Nunito',
+    serif: 'Source Serif',
 };
 
 const RADIUS_LABELS: Record<string, string> = {
@@ -246,7 +254,14 @@ export function themeVars(
         '--border': `color-mix(in srgb, ${m.foreground} 14%, ${m.background})`,
         '--input': `color-mix(in srgb, ${m.foreground} 22%, ${m.background})`,
         ...radiusScale(theme.radius),
+        /*
+         * BOTH families, as `AppearanceCss` emits them: headings are drawn in
+         * `--font-display`. Setting a custom property here is not enough on its own — a
+         * descendant inherits the COMPUTED `font-family` of `<body>`, not the variable — so
+         * the preview root also sets `font-family: var(--font-sans)`; see `ThemeEditor`.
+         */
         '--font-sans': fontStack(fonts, theme.font),
+        '--font-display': fontStack(fonts, theme.font),
     };
 }
 
@@ -262,6 +277,7 @@ export function exportedCss(theme: Theme, fonts: FontStacks): string {
             delete vars['--radius-md'];
             delete vars['--radius-sm'];
             delete vars['--font-sans'];
+            delete vars['--font-display'];
         }
 
         return Object.entries(vars)

@@ -132,7 +132,7 @@ it('serves each shared page at the same slug on both consoles', function (string
     ['permissions', 'environment.permissions'],
     ['settings', 'environment.settings'],
     ['auth-policy', 'environment.auth-policy'],
-    ['appearance', 'environment.appearance'],
+    ['branding', 'environment.branding'],
     ['usage', 'environment.usage'],
     ['keys', 'environment.keys'],
 ]);

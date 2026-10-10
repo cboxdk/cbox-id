@@ -43,6 +43,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Outbound provisioning](sync-users-out.md) — push your people into your other SaaS products.
 - [Custom domains](custom-domains.md) — serve an environment's sign-in on your own address, such as `login.example.com`.
 - [Languages](languages.md) — which language sign-in, consent, the Admin Portal and their emails are shown in.
+- [Sign in on TVs and devices](sign-in-on-tvs-and-devices.md) — a code and a QR code on the screen, approved on a phone: the device grant end to end.
 
 ## Building on an environment
 

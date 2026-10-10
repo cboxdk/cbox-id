@@ -77,7 +77,7 @@ const FINDING_YOUR_WAY = [
     'environment.sign-in-methods' => [1, 'See every sign-in method'],
     'environment.auth-policy' => [2, 'Change the password and MFA policy'],
     // i. The sign-in page's look.
-    'environment.appearance' => [1, 'Brand the sign-in page'],
+    'environment.branding' => [1, 'Brand the sign-in page'],
 ];
 
 /**

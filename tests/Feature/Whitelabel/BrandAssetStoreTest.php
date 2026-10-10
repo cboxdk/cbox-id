@@ -33,10 +33,12 @@ it('stores an uploaded logo in the database and serves it from the URL it hands 
 
     expect(app(BrandAssetStore::class))->toBeInstanceOf(DatabaseBrandAssetStore::class);
 
-    $logo = UploadedFile::fake()->image('logo.png', 40, 40);
-    $bytes = (string) file_get_contents($logo->getPathname());
+    // Uploaded the way the Appearance editor sends it — the bytes as a data URI, through
+    // the `branding.appearance.set` action the API and MCP run too.
+    $logo = pngDataUri(40, 40);
+    $bytes = (string) base64_decode(substr($logo, strlen('data:image/png;base64,')), true);
 
-    saveBranding(['logo' => $logo])->assertSessionHasNoErrors();
+    saveThemeImages(['logo' => $logo])->assertSessionHasNoErrors();
 
     $url = app(BrandProfiles::class)->forOrganization($org->id)?->logo_url;
 
@@ -58,10 +60,10 @@ it('replaces the previous logo rather than keeping every upload', function (): v
 
     [, $org] = actingAsRole(MembershipRole::Owner);
 
-    saveBranding(['logo' => UploadedFile::fake()->image('first.png')])->assertSessionHasNoErrors();
+    saveThemeImages(['logo' => pngDataUri(40, 20)])->assertSessionHasNoErrors();
     $first = app(BrandProfiles::class)->forOrganization($org->id)?->logo_url;
 
-    saveBranding(['logo' => UploadedFile::fake()->image('second.png')])->assertSessionHasNoErrors();
+    saveThemeImages(['logo' => pngDataUri(60, 20)])->assertSessionHasNoErrors();
     $second = app(BrandProfiles::class)->forOrganization($org->id)?->logo_url;
 
     expect($second)->not->toBe($first)

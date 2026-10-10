@@ -63,6 +63,10 @@ Print `verification_uri` and `user_code`. If the machine has a desktop, also *op
 regardless, because the machine that runs your CLI is often not the machine the person
 is looking at.
 
+On a TV or any device with a screen, show a QR code of `verification_uri_complete` too —
+Cbox ID draws one for you at `GET /oauth/device/qr?user_code=…`. See
+[Sign in on TVs and devices](../guides/sign-in-on-tvs-and-devices.md).
+
 ## 3. Poll for the token
 
 ```bash
@@ -118,6 +122,8 @@ the one you registered, exactly so a native app can bind an ephemeral one (RFC 8
 ## Related
 
 - [Integrate your app](integrate-your-app.md) — where the `client_id` comes from.
+- [Sign in on TVs and devices](../guides/sign-in-on-tvs-and-devices.md) — the same grant on
+  a screen: the code, the address and a QR code, and the page the phone opens.
 - [Approvals](../guides/agent-approvals.md) — the same idea for software that acts
   on somebody's behalf and needs a yes first (CIBA).
 - [Trusted devices](../guides/trusted-devices.md) — approving from a phone that is

@@ -102,7 +102,7 @@ function productAdministration(): array
         // Permissions are what an app enforces; writing new ones is the vendor's job. A
         // customer composes roles from the ones that exist, on the Roles page.
         'permissions' => ['permissions'],
-        'appearance' => ['appearance'],
+        'branding' => ['branding'],
         'settings' => ['settings'],
         'usage' => ['usage'],
         'member API keys' => ['directory.api-keys'],
@@ -114,7 +114,6 @@ function productAdministration(): array
         'connectors' => ['connectors.catalog'],
         'trusted devices inventory' => ['devices.index'],
         'risk events' => ['risk-plus.events'],
-        'branding' => ['whitelabel.branding'],
     ];
 }
 
@@ -223,7 +222,7 @@ it('keeps the product\'s administration for the environment console on the same 
     actAsEnvironmentAdmin($vendorId, $environmentId);
 
     $this->get(route('environment.'.$route))->assertOk();
-})->with(['clients', 'webhooks', 'hooks', 'governance', 'sod-policies', 'provisioning', 'audit-streams', 'appearance', 'settings', 'usage']);
+})->with(['clients', 'webhooks', 'hooks', 'governance', 'sod-policies', 'provisioning', 'audit-streams', 'branding', 'settings', 'usage']);
 
 it('keeps the whole organization console on a single-tenant install, where it is the only one', function (string $route): void {
     actingAsRole(MembershipRole::Owner);
@@ -231,7 +230,7 @@ it('keeps the whole organization console on a single-tenant install, where it is
     expect(app(ConsoleScope::class)->atCustomerAltitude())->toBeFalse();
 
     $this->get(route($route))->assertOk();
-})->with(['clients', 'webhooks', 'hooks', 'governance', 'sod-policies', 'provisioning', 'audit-streams', 'appearance', 'settings', 'usage', 'get-started']);
+})->with(['clients', 'webhooks', 'hooks', 'governance', 'sod-policies', 'provisioning', 'audit-streams', 'branding', 'settings', 'usage', 'get-started']);
 
 it('keeps the full rail on a single-tenant install', function (): void {
     actingAsRole(MembershipRole::Owner);
@@ -322,7 +321,7 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
     $ceremonies = [
         'accounts', 'accounts.add', 'accounts.switch',
         'activity',
-        'device', 'device.lookup', 'device.approve', 'device.deny',
+        'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
         'environment.open',
         'link.confirm', 'link.connect', 'link.decline',
         'organization.switch',

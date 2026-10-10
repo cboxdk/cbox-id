@@ -88,3 +88,21 @@ it('generates one nonce per instance and holds it', function (): void {
     expect($nonce->value())->toBe($nonce->value())
         ->and(strlen((string) base64_decode($nonce->value(), true)))->toBe(16);
 })->group('security');
+
+/**
+ * NO REMOTE IMAGE ON A HOSTED PAGE.
+ *
+ * `img-src` carried `https:` so a customer-hosted logo URL could be drawn on the branded
+ * sign-in — which is exactly what made that logo a beacon: every visitor's browser
+ * reported to whoever hosted it. Logos and favicons are uploads served by this
+ * application now, so any other image origin is refused outright.
+ */
+it('allows images from this application and data: URIs, and nowhere else', function (): void {
+    expect(cspDirective('img-src', '/login'))->toBe("img-src 'self' data:");
+})->group('security');
+
+it('admits the deployment\'s own brand-asset CDN, and only that', function (): void {
+    config()->set('whitelabel.assets.cdn_base_url', 'https://assets.example-cdn.test/brand');
+
+    expect(cspDirective('img-src', '/login'))->toBe("img-src 'self' data: https://assets.example-cdn.test");
+})->group('security');

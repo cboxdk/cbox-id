@@ -904,7 +904,7 @@ Read the hosted sign-in theme: the environment default, or one organization's ow
 
 ### <a id="branding.appearance.set"></a>branding.appearance.set
 
-Set the hosted sign-in theme (preset, colours, corners, type, logo) for the environment default or one organization.
+Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and favicon) for the environment default or one organization.
 
 | | |
 |---|---|
@@ -920,7 +920,7 @@ Set the hosted sign-in theme (preset, colours, corners, type, logo) for the envi
 | `theme` | object | yes | The theme. Both modes must be readable: text needs 4.5:1 against the background, muted text 3:1. |
 | `theme.preset` | string | no | A preset id: cbox, midnight, minimal, warm, contrast. At most 64 characters. |
 | `theme.radius` | string | no | Corner radius: 0rem, 0.25rem, 0.375rem, 0.5rem, 0.75rem, 1rem. At most 32 characters. |
-| `theme.font` | string | no | Type family: system, geometric, serif. At most 32 characters. |
+| `theme.font` | string | no | Type family: system, inter, geometric, rounded, serif. At most 32 characters. |
 | `theme.light` | object | no | Colours as #rrggbb. One left out takes the preset's. |
 | `theme.light.primary` | string | no | At most 32 characters. |
 | `theme.light.background` | string | no | At most 32 characters. |
@@ -931,7 +931,8 @@ Set the hosted sign-in theme (preset, colours, corners, type, logo) for the envi
 | `theme.dark.background` | string | no | At most 32 characters. |
 | `theme.dark.foreground` | string | no | At most 32 characters. |
 | `theme.dark.muted` | string | no | At most 32 characters. |
-| `logo` | string (uri), nullable | no | An https URL for the logo; null removes it, left out keeps it. At most 2048 characters. |
+| `logo` | string, nullable | no | The logo as a base64 data: URI (data:image/png;base64,…): PNG, JPEG or WebP, at most 1024 KB and 4096px on the longest side. SVG and remote URLs are refused. Null removes it; left out keeps it. At most 1398204 characters. |
+| `favicon` | string, nullable | no | The favicon as a base64 data: URI (data:image/png;base64,…): PNG, ICO or WebP, at most 256 KB and 1024px on the longest side. SVG and remote URLs are refused. Null removes it; left out keeps it. At most 349628 characters. |
 
 ### <a id="branding.whitelabel.get"></a>branding.whitelabel.get
 

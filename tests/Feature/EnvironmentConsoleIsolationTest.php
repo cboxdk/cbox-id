@@ -293,7 +293,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.feature-flags' => 'feature flags, none seeded',
         'environment.audit-streams' => 'SIEM destinations, none seeded',
         'environment.settings' => 'environment-level configuration, not tenant records',
-        'environment.appearance' => 'the theme editor, which reads one org',
+        'environment.branding' => 'the theme editor, which reads one org',
         'environment.auth-policy' => 'policy toggles',
         // The environment's own settings, counts of connections and the names of social
         // providers from the catalogue — never an organization's record.

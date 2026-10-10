@@ -175,7 +175,7 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/webhooks/new' => ['console/webhooks/create', 'New webhook'],
         '/admin/audit' => ['console/audit', 'Audit log'],
         '/admin/settings' => ['console/settings', 'Settings'],
-        '/admin/appearance' => ['console/appearance', 'Appearance'],
+        '/admin/branding' => ['console/branding', 'Branding'],
         '/admin/sign-in-rules' => ['console/auth-policy', 'Authentication policy'],
     ] as $path => [$component, $title]) {
         $this->get($path)

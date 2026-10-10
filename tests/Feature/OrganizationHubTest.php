@@ -84,7 +84,7 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
         OrganizationTabs::DOMAINS => 'environment/organizations/tabs/domains',
         OrganizationTabs::ROLES => 'console/roles/index',
         OrganizationTabs::API_KEYS => 'environment/organizations/tabs/api-keys',
-        OrganizationTabs::BRANDING => 'console/appearance',
+        OrganizationTabs::BRANDING => 'console/branding',
         OrganizationTabs::POLICY => 'console/auth-policy',
         OrganizationTabs::SUPPORT => 'environment/organizations/tabs/support',
         OrganizationTabs::AUDIT => 'console/audit',

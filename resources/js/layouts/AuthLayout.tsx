@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { SandboxBanner } from '@/chrome/Banners';
 import { Brand } from '@/chrome/Brand';
+import { DoorBrand } from '@/chrome/DoorBrand';
 import { LanguagePicker } from '@/chrome/LanguagePicker';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Toaster } from '@/chrome/Toaster';
@@ -32,7 +33,7 @@ const FEATURES: MessageKey[] = [
  * flashing ours. What React contributes here is the name and the logo.
  *
  * A BRANDED DOOR HAS NO HERO. With a brand — an organization's door, or any door on a
- * customer's environment — the page is the one the Appearance editor previews: their logo
+ * customer's environment — the page is the one the Branding page previews: their logo
  * (or their initial) and their name over the form, and nothing else. The hero is Cbox
  * selling Cbox, and it used to sit beside a vendor's own sign-up page, pitching SCIM to
  * the vendor's end users under the vendor's name.
@@ -62,19 +63,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                     className="auth-shell flex flex-col justify-center px-6 py-12 sm:px-12"
                 >
                     <div className="mx-auto w-full" style={{ maxWidth: '24rem' }}>
-                        {brand === null ? (
-                            <a href="/" className="inline-block">
-                                <Brand />
-                            </a>
-                        ) : brand.logo !== null ? (
-                            <img
-                                src={brand.logo}
-                                alt={brand.name}
-                                style={{ maxHeight: '2.25rem', maxWidth: '12rem' }}
-                            />
-                        ) : (
-                            <BrandMonogram name={brand.name} />
-                        )}
+                        <DoorBrand brand={brand} />
 
                         <div className="mt-9">{children}</div>
 
@@ -155,29 +144,5 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                 )}
             </div>
         </TooltipProvider>
-    );
-}
-
-/**
- * A brand with no logo uploaded: its initial on the accent, and its name — drawn exactly
- * as the Appearance editor's preview draws it, so the page is the one that was approved.
- */
-function BrandMonogram({ name }: { name: string }) {
-    return (
-        <span className="inline-flex items-center gap-2.5 select-none">
-            <span
-                aria-hidden="true"
-                className="grid place-items-center w-8 h-8 rounded-lg text-sm font-bold"
-                style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}
-            >
-                {name.charAt(0).toUpperCase()}
-            </span>
-            <span
-                className="font-semibold tracking-tight"
-                style={{ fontSize: '1.02rem', color: 'var(--foreground)' }}
-            >
-                {name}
-            </span>
-        </span>
     );
 }

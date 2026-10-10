@@ -26,7 +26,16 @@ type Props = PageProps<{
     providers: SocialProvider[];
     /** The environment's switches, under the deployment's. A method that is off is not drawn. */
     methods: { passkeys: boolean; magicLink: boolean };
+    /**
+     * Which way this device signed in last — a provider key (`google`), `passkey`,
+     * `password`, `magic_link` or `sso` — or null. Read on the server from a first-party
+     * cookie; see `LastSignInMethod`.
+     */
+    lastUsed: string | null;
 }>;
+
+/** The id the "last used" hint is referenced by — one per page, since one method is marked. */
+const LAST_USED_HINT = 'last-used-hint';
 
 export default function Login({
     purpose,
@@ -35,6 +44,7 @@ export default function Login({
     signupOpen,
     providers,
     methods,
+    lastUsed,
 }: Props) {
     /*
      * ON THE FLASH CHANNEL, not in props.
@@ -63,6 +73,30 @@ export default function Login({
     const [canUsePasskeys] = useState(passkeysSupported);
 
     const passwordRef = useRef<HTMLInputElement>(null);
+
+    /*
+     * "LAST USED", as Clerk, WorkOS and Stytch mark it: a small badge on the method this
+     * device signed in with last time. The ORDER does not change — somebody who has learnt
+     * where their button is should find it there tomorrow, and a list that rearranges itself
+     * per device is one a support article cannot describe. A password and single sign-on
+     * both start at the email step, so that is where their badge goes.
+     *
+     * The badge is drawn for the eye and hidden from the accessibility tree; the button is
+     * DESCRIBED by one sentence that says the same thing in full, so a screen reader hears
+     * "Continue with Google — the way you signed in last time on this device" rather than a
+     * bare "Last used" glued to the end of the button's name.
+     */
+    const marks = (method: string | string[]): boolean =>
+        lastUsed !== null &&
+        (Array.isArray(method) ? method.includes(lastUsed) : method === lastUsed);
+    const lastUsedProps = (method: string | string[]) =>
+        marks(method) ? { 'aria-describedby': LAST_USED_HINT, 'data-last-used': true } : {};
+    const badge = (method: string | string[]) =>
+        marks(method) ? (
+            <span className="last-used-badge" aria-hidden="true">
+                {t('auth.login.last_used')}
+            </span>
+        ) : null;
 
     // The password field is revealed by a server round trip, so nothing focused it. HTML
     // `autofocus` only fires at document parse and this element arrives after that.
@@ -105,6 +139,12 @@ export default function Login({
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {purpose}
             </p>
+
+            {lastUsed !== null && (
+                <span id={LAST_USED_HINT} className="sr-only">
+                    {t('auth.login.last_used_hint')}
+                </span>
+            )}
 
             {pendingLink !== null && (
                 <div
@@ -232,10 +272,12 @@ export default function Login({
                                 type="submit"
                                 variant="primary"
                                 size="lg"
-                                className="w-full"
+                                className="w-full relative"
                                 loading={form.processing}
+                                {...lastUsedProps(['password', 'sso'])}
                             >
                                 {t('auth.login.continue')}
+                                {badge(['password', 'sso'])}
                             </Button>
                         </form>
                     ) : (
@@ -251,8 +293,13 @@ export default function Login({
                             */}
                             {ssoOffer != null && ssoOfferLeads === true && (
                                 <div className="mt-7">
-                                    <a href={ssoOffer} className="btn btn-primary btn-lg w-full">
+                                    <a
+                                        href={ssoOffer}
+                                        className="btn btn-primary btn-lg w-full relative"
+                                        {...lastUsedProps('sso')}
+                                    >
                                         {t('auth.login.sso.continue')}
+                                        {badge('sso')}
                                     </a>
                                     <Divider className="my-5">
                                         {t('auth.login.sso.or_password')}
@@ -338,8 +385,13 @@ export default function Login({
                             </form>
 
                             {ssoOffer != null && ssoOfferLeads !== true && (
-                                <a href={ssoOffer} className="btn btn-ghost btn-lg w-full mt-3">
+                                <a
+                                    href={ssoOffer}
+                                    className="btn btn-ghost btn-lg w-full mt-3 relative"
+                                    {...lastUsedProps('sso')}
+                                >
                                     {t('auth.login.sso.instead')}
+                                    {badge('sso')}
                                 </a>
                             )}
                         </>
@@ -361,7 +413,8 @@ export default function Login({
                                 <a
                                     key={provider.provider}
                                     href={provider.url}
-                                    className="btn btn-ghost btn-lg w-full"
+                                    className="btn btn-ghost btn-lg w-full relative"
+                                    {...lastUsedProps(provider.provider)}
                                 >
                                     <ProviderMark provider={provider.provider} />
                                     <span>
@@ -369,6 +422,7 @@ export default function Login({
                                             provider: provider.label,
                                         })}
                                     </span>
+                                    {badge(provider.provider)}
                                 </a>
                             ))}
                         </div>
@@ -379,10 +433,12 @@ export default function Login({
                             <Button
                                 size="lg"
                                 icon="magic"
-                                className="w-full"
+                                className="w-full relative"
                                 onClick={() => form.post(magicLink.url())}
+                                {...lastUsedProps('magic_link')}
                             >
                                 {t('auth.login.magic_link')}
+                                {badge('magic_link')}
                             </Button>
                         )}
 
@@ -394,11 +450,13 @@ export default function Login({
                             <Button
                                 size="lg"
                                 icon="key"
-                                className="w-full"
+                                className="w-full relative"
                                 loading={passkeyBusy}
                                 onClick={() => void signIn()}
+                                {...lastUsedProps('passkey')}
                             >
                                 {t('auth.login.passkey')}
+                                {badge('passkey')}
                             </Button>
                         )}
 

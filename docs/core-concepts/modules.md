@@ -16,7 +16,7 @@ Seven capability areas live under `modules/` rather than in `app/`:
 | `connectors` | Connectors → Catalog, Connections | One catalog and connections view over outbound SCIM provisioning, webhooks, inbound directory sync and upstream IdP federation. |
 | `devices` | Sign-in → Trusted devices (`/trusted-devices`; Authentication in an environment console), and My account → Trusted devices | A phone as an authenticator: approval pushes on the CIBA path, security alerts, and the REST surface the app talks to. Off by default. See [Trusted devices](../guides/trusted-devices.md). |
 | `risk-plus` | Logs → Risk events | Adaptive-risk signals (impossible travel, new device) plugged into the risk engine, and a console to review elevated events. |
-| `whitelabel` | Settings → Branding (`/branding`) | Per-organization branding: palette, logo, favicon, app name, custom domain and email sender. |
+| `whitelabel` | a section of Settings → Branding (`/branding`), no page of its own | Per-organization app name, email sender, welcome mail and console palette, custom domain — and the store behind the uploaded logo and favicon. |
 
 **All seven are always present.** There is nothing to license, unlock or install — but
 several can be switched off, and off means *absent*: no route, no nav entry, no page. A

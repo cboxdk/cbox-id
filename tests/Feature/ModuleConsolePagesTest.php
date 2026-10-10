@@ -186,7 +186,10 @@ it('puts every module page in the environment rail', function (): void {
         ->and($routes)->toContain('environment.connectors.catalog')
         ->and($routes)->toContain('environment.connectors.connections')
         ->and($routes)->toContain('environment.risk-plus.events')
-        ->and($routes)->toContain('environment.whitelabel.branding')
+        // The white-label module has no page of its own: its half is on the host's one
+        // Branding page.
+        ->and($routes)->toContain('environment.branding')
+        ->and($routes)->not->toContain('environment.whitelabel.branding')
         ->and($routes)->toContain('environment.devices.index')
         // Personal, so it is not here — and its absence is what stops the rail linking
         // to a route that does not exist on this plane.
@@ -233,7 +236,6 @@ it('serves every module page to an environment administrator, for the environmen
         'connectors.catalog',
         'connectors.connections',
         'risk-plus.events',
-        'whitelabel.branding',
         'devices.index',
     ] as $route) {
         expect($this->get(route('environment.'.$route))->status())->toBe(200, "[environment.{$route}] did not render on the environment plane");
@@ -256,7 +258,7 @@ it('refuses every module page to a browser holding no admin session at all', fun
         'environment.compliance.audit',
         'environment.connectors.catalog',
         'environment.risk-plus.events',
-        'environment.whitelabel.branding',
+        'environment.branding',
         'environment.devices.index',
     ] as $route) {
         expect($this->get(route($route))->status())
@@ -549,13 +551,14 @@ it('edits the environment default when no organization is chosen', function (): 
 it('edits one organization\'s profile from its own page and leaves the environment default alone', function (): void {
     $organizationId = moduleEnvironmentAdmin('brand-org');
 
-    $this->get(route('environment.organizations.whitelabel.branding', (string) $organizationId))
+    $this->get(route('environment.organizations.branding', (string) $organizationId))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('saveHref', route('environment.organizations.whitelabel.branding.save', (string) $organizationId)));
+            ->component('console/branding')
+            ->where('profileHref', route('environment.organizations.branding.profile.update', (string) $organizationId)));
 
-    $this->from(route('environment.organizations.whitelabel.branding', (string) $organizationId))
-        ->post(route('environment.organizations.whitelabel.branding.save', (string) $organizationId), [
+    $this->from(route('environment.organizations.branding', (string) $organizationId))
+        ->post(route('environment.organizations.branding.profile.update', (string) $organizationId), [
             'palette' => [],
             'appName' => 'Just This Tenant',
             'emailFromName' => '',
