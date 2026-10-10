@@ -76,6 +76,20 @@ class ProductionConfigDoctorCheck implements HealthCheck
         $disk = $this->string('whitelabel.assets.disk') ?? 'public';
         $url = $this->string("filesystems.disks.{$disk}.url") ?? '';
 
+        /*
+         * The disk store writes every logo `public` and links to it. Cloudflare R2 has no
+         * object ACLs and answers the `public-read` that asks for with `NotImplemented`, so
+         * on the `r2` disk — the one production's exports share — every upload fails. The
+         * database store is what a scaled-out deployment wants for brand images anyway.
+         */
+        if ($this->diskDriver($disk) === 's3' && str_contains($this->string("filesystems.disks.{$disk}.endpoint") ?? '', '.r2.cloudflarestorage.com')) {
+            return HealthResult::fail(
+                'Brand assets cannot be uploaded',
+                "WHITELABEL_ASSETS_DISK is `{$disk}`, a Cloudflare R2 bucket, and R2 refuses the public object every "
+                .'logo and favicon is written as. Set WHITELABEL_ASSETS_STORE=database (the default), which every replica shares.',
+            );
+        }
+
         if ($this->diskDriver($disk) !== 'local' || ! str_contains($url, '/storage')) {
             return HealthResult::ok('Brand asset links', "served by the `{$disk}` disk itself");
         }
@@ -204,11 +218,30 @@ class ProductionConfigDoctorCheck implements HealthCheck
     private function files(): HealthResult
     {
         $local = [];
+        $unconfigured = [];
 
         foreach ($this->sharedDisks() as $purpose => $disk) {
-            if (($this->string("filesystems.disks.{$disk}.driver") ?? 'local') === 'local') {
+            $driver = $this->string("filesystems.disks.{$disk}.driver") ?? 'local';
+
+            if ($driver === 'local') {
                 $local[] = "{$purpose} (`{$disk}`)";
+            } elseif ($driver === 's3' && $this->string("filesystems.disks.{$disk}.bucket") === null) {
+                $unconfigured[] = "{$purpose} (`{$disk}`)";
             }
+        }
+
+        /*
+         * A shared disk with nowhere to write. `CBOX_ID_AUDIT_LOGS_EXPORT_DISK=r2` set
+         * before the bucket's credentials reached the pods is the shape this takes: every
+         * export fails on the queue, and only the job's own error says why.
+         */
+        if ($unconfigured !== []) {
+            return HealthResult::fail(
+                'Shared disk has no bucket',
+                'These are written to object storage with no bucket configured, so every write fails: '
+                .implode(', ', $unconfigured).'. Set the disk\'s bucket and credentials (for `r2`: R2_BUCKET, '
+                .'R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY).',
+            );
         }
 
         if ($local === []) {

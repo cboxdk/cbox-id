@@ -127,7 +127,9 @@ it generates for the database and Valkey, and these overrides.
 | `HEALTH_TOKEN` | from a secret file | What `/health/ready` and `/health/status` require; `cbox-id:doctor` fails without it. |
 | `APP_KEY`, `CBOX_ID_CRYPTO_KEY` | carried over, unchanged | `CBOX_ID_CRYPTO_KEY` seals every stored secret. It is backed up apart from the database; a new one opens nothing sealed under the old. |
 | `CBOX_ID_*` (issuer, base domains, WebAuthn), `MAIL_*` | carried over | The deployment's own settings and its mail transport. |
-| `CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, `WHITELABEL_ASSETS_DISK` | **not yet shared** (`local`, `public`) | An audit-log export is written by the worker pod and downloaded through a web pod; a brand logo is uploaded through one web pod and served by both. Each pod has its own disk, which goes with the pod, so these need storage every pod shares. Until production has it, `cbox-id:doctor` fails **Files are local to one pod**, and a download whose file is on another pod answers 404 rather than an empty CSV. |
+| `CBOX_ID_AUDIT_LOGS_EXPORT_DISK` | `r2`, once the infrastructure repository gives the namespace its bucket ([Shared storage](#shared-storage-on-kubernetes)) | An audit-log export is written by the worker pod and downloaded through a web pod. Each pod has its own disk, which goes with the pod, so the file has to be in storage both reach. Until it is, `cbox-id:doctor` fails **Files are local to one machine**, and a download whose file is on another pod answers 404 rather than an empty CSV. |
+| `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | from the bucket the infrastructure repository manages | The `r2` disk's bucket and credentials. The key pair is a secret, in the Secret `cbox-id-env`. |
+| `WHITELABEL_ASSETS_STORE` | `database` (the default) | Brand logos and favicons are kept in the database every replica shares and served at `/brand-assets/…`; no disk is involved. |
 
 The pods add their own:
 
@@ -143,6 +145,49 @@ are baked into the image by the `Dockerfile`, as is `APP_ENV=production`.
 
 Changing production's environment is the operator's change in the infrastructure
 repository, re-applied there; it is not something a commit here can do.
+
+### Shared storage on Kubernetes
+
+The web pods and the worker pod do not share a filesystem; each pod's disk is its own and
+is gone when the pod is replaced, which on a continuously released cluster is every
+merge. Two kinds of file cross pods:
+
+| File | Written by | Read by | Disk setting |
+|---|---|---|---|
+| Audit-log CSV export | a queue worker (worker pod) | the signed download (a web pod) | `CBOX_ID_AUDIT_LOGS_EXPORT_DISK` |
+| Compliance JSONL archive, when `CBOX_ID_COMPLIANCE_SINK=jsonl` | the scheduler (worker pod) | whoever collects the archive | `CBOX_ID_COMPLIANCE_JSONL_DISK` |
+
+Both go to the `r2` disk, a private Cloudflare R2 bucket for the namespace. The
+application needs only the four `R2_*` variables and the disk names:
+
+```dotenv
+CBOX_ID_AUDIT_LOGS_EXPORT_DISK=r2
+# With the JSONL compliance sink:
+CBOX_ID_COMPLIANCE_JSONL_DISK=r2
+R2_BUCKET=<bucket>
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=<R2 API token key ID>         # secret
+R2_SECRET_ACCESS_KEY=<R2 API token secret>     # secret
+```
+
+- **The bucket stays private.** No object in it is linked to: an export is streamed by the
+  application through its own signed URL, which works for 15 minutes. The token needs
+  **Object Read & Write** on this bucket and nothing else.
+- **The application deletes what it wrote.** The daily `audit-logs:prune` deletes an export
+  past `CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS` (72 by default); a delete R2 refuses is
+  reported and retried on the next run. A lifecycle rule on the `audit-log-exports/`
+  prefix (delete after a few days) is a reasonable backstop, never a replacement. Do not
+  put one on `compliance/`: that is the archive.
+- **One object per batch.** On object storage the compliance archive is
+  `compliance/audit/<environment>/<scope>/<first sequence>.jsonl`, not one appended file;
+  list a scope's objects in name order and concatenate them to get its bundle.
+- **Brand images are not on it.** They are in the database (`WHITELABEL_ASSETS_STORE=database`);
+  R2 refuses the public objects the disk store writes.
+
+Order matters: the application has to have the `r2` disk (and the S3 driver it needs)
+before the environment points anything at it. After the release, `php artisan
+cbox-id:doctor` in a web pod reports **Shared files** as ok; **Shared disk has no bucket**
+means `R2_BUCKET` did not reach the pod.
 
 ### Health in production
 
@@ -182,7 +227,7 @@ shape above is one answer; the pieces every deployment needs are these:
 | Cache, sessions, queue | Valkey or Redis, `maxmemory-policy noeviction` |
 | Secrets | your secrets manager, into the process environment |
 | Probes | liveness `/up`, readiness `/health/ready` with `HEALTH_TOKEN` |
-| Files | with more than one host or pod, shared storage for audit-log exports and brand assets (`CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, `WHITELABEL_ASSETS_DISK`); on one server the local disk, with `php artisan storage:link` for brand assets |
+| Files | with more than one host or pod, shared object storage for audit-log exports and the compliance JSONL archive — the `r2` disk or the stock `s3` disk (`CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, `CBOX_ID_COMPLIANCE_JSONL_DISK`, see [Shared file storage](../configuration/environment-variables.md#shared-file-storage)); on one server the local disk. Brand images are in the database |
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:752babb5-cad5-4552-81ef-b1a8bd392a8a",
+    "serialNumber": "urn:uuid:ea465e2f-215b-477b-b848-30d3623b4e2b",
     "version": 1,
     "metadata": {
         "tools": [
@@ -19,6 +19,38 @@
         }
     },
     "components": [
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/aws/aws-crt-php@v1.2.7",
+            "group": "aws",
+            "name": "aws-crt-php",
+            "version": "v1.2.7",
+            "purl": "pkg:composer/aws/aws-crt-php@v1.2.7",
+            "description": "AWS Common Runtime for PHP",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "Apache-2.0"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/aws/aws-sdk-php@3.400.1",
+            "group": "aws",
+            "name": "aws-sdk-php",
+            "version": "3.400.1",
+            "purl": "pkg:composer/aws/aws-sdk-php@3.400.1",
+            "description": "AWS SDK for PHP - Use Amazon Web Services in your PHP project",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "Apache-2.0"
+                    }
+                }
+            ]
+        },
         {
             "type": "library",
             "bom-ref": "pkg:composer/bacon/bacon-qr-code@v3.1.1",
@@ -693,6 +725,22 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/league/flysystem-aws-s3-v3@3.35.3",
+            "group": "league",
+            "name": "flysystem-aws-s3-v3",
+            "version": "3.35.3",
+            "purl": "pkg:composer/league/flysystem-aws-s3-v3@3.35.3",
+            "description": "AWS S3 filesystem adapter for Flysystem.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/league/flysystem-local@3.35.3",
             "group": "league",
             "name": "flysystem-local",
@@ -763,6 +811,22 @@
             "version": "3.12.1",
             "purl": "pkg:composer/monolog/monolog@3.12.1",
             "description": "Sends your logs to files, sockets, inboxes, databases and various web services",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/mtdowling/jmespath.php@2.9.2",
+            "group": "mtdowling",
+            "name": "jmespath.php",
+            "version": "2.9.2",
+            "purl": "pkg:composer/mtdowling/jmespath.php@2.9.2",
+            "description": "Declaratively specify how to extract elements from a JSON document",
             "licenses": [
                 {
                     "license": {
@@ -1271,6 +1335,22 @@
             "version": "v3.7.1",
             "purl": "pkg:composer/symfony/event-dispatcher-contracts@v3.7.1",
             "description": "Generic abstractions related to dispatching event",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/symfony/filesystem@v8.1.6",
+            "group": "symfony",
+            "name": "filesystem",
+            "version": "v8.1.6",
+            "purl": "pkg:composer/symfony/filesystem@v8.1.6",
+            "description": "Provides basic utilities for the filesystem",
             "licenses": [
                 {
                     "license": {

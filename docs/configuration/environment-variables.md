@@ -91,7 +91,7 @@ Override the wordmark/hero without editing Blade.
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `WHITELABEL_ASSETS_STORE` | Where uploaded logos and favicons are kept: `database` (a row every replica shares, served at `/brand-assets/…`) or `disk`. | `database` | Leave it. `disk` writes to `WHITELABEL_ASSETS_DISK` instead, which only works on one machine with `php artisan storage:link`. |
-| `WHITELABEL_ASSETS_DISK` | The filesystem disk for `WHITELABEL_ASSETS_STORE=disk`. | `public` | Only with the disk store. |
+| `WHITELABEL_ASSETS_DISK` | The filesystem disk for `WHITELABEL_ASSETS_STORE=disk`. | `public` | Only with the disk store. Not `r2`: the disk store writes every logo as a public object, and R2 refuses that (`cbox-id:doctor` fails it as **Brand assets cannot be uploaded**). |
 
 ## Documentation links
 
@@ -451,6 +451,39 @@ statement about `SESSION_SAME_SITE`, `HASH_DRIVER` or `SESSION_DRIVER`.
 | `SESSION_SAME_SITE` | `strict` | Mitigates CSRF (relax to `lax` only if a cross-site OIDC redirect flow needs it). |
 | `HASH_DRIVER` | `argon2id` | Memory-hard, side-channel-resistant password hashing (this app's default, overriding the framework's bcrypt default). Requires sodium/argon2 support. |
 | `SESSION_DRIVER` | `redis` (recommended) | Central, revocable sessions; enables sign-out-everywhere and idle timeout. |
+
+## Shared file storage
+
+Two kinds of file are written by one process and read by another: an audit-log CSV export
+(written by a queue worker, downloaded through a web process) and, with the JSONL sink, the
+compliance archive (written by the scheduler). On one server that is one disk and the
+defaults are fine. With separate web and worker pods, or more than one web replica, each
+pod's disk is its own and goes with the pod, so these need storage every process
+reaches. `php artisan cbox-id:doctor` fails **Files are local to one machine** until they
+have it.
+
+The `r2` disk in `config/filesystems.php` is that storage on Cloudflare R2: S3-compatible,
+private, region `auto`, path-style addressing, and it throws on a failed write so the job
+that made the write fails visibly. Point the export disk (and the archive's) at it and give
+it a bucket:
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_AUDIT_LOGS_EXPORT_DISK` | The disk audit-log CSV exports are written to. Private: a file is only ever handed out through a signed URL that works for 15 minutes, streamed by the application. | `local` | `r2` (or another shared disk) as soon as web and queue run on different machines or pods. |
+| `CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS` | How long a finished export is kept before the daily prune deletes it. | `72` | Shorten it to keep less customer data at rest. |
+| `CBOX_ID_COMPLIANCE_SINK` | Where the compliance audit trail is exported: `null`, `jsonl` (a bundle on a disk) or `http` (a SIEM). | `null` | `jsonl` for a cold archive you keep yourself. |
+| `CBOX_ID_COMPLIANCE_JSONL_DISK` | The disk the JSONL archive is written to. On `local` each batch is appended to one `<prefix>/<environment>/<scope>.jsonl`; on object storage (`r2`, `s3`) each batch is its own object, `<prefix>/<environment>/<scope>/<first sequence>.jsonl`, zero-padded, so the bucket lists them in chain order and concatenated in that order they are the bundle. | `local` | `r2` with more than one pod, like the export disk. |
+| `CBOX_ID_COMPLIANCE_JSONL_PATH` | The prefix the archive is written under. | `compliance/audit` | Only to share a bucket with something else. |
+| `R2_BUCKET` | The R2 bucket the `r2` disk writes to. | *(none)* | Required for the `r2` disk; `cbox-id:doctor` fails **Shared disk has no bucket** while a shared disk has none. |
+| `R2_ENDPOINT` | The account's S3 API endpoint, `https://<account-id>.r2.cloudflarestorage.com` (or the `eu.` jurisdiction endpoint for an EU bucket). | *(none)* | Required for the `r2` disk. |
+| `R2_ACCESS_KEY_ID` | Access key ID of an R2 API token with **Object Read & Write** on that bucket. A secret: keep it in your secrets store. | *(none)* | Required for the `r2` disk. |
+| `R2_SECRET_ACCESS_KEY` | That token's secret access key. | *(none)* | With the key ID. Rotate both together. |
+| `R2_URL` | A public URL for the bucket. Nothing in Cbox ID links to the bucket, so this stays unset. | *(none)* | Never for the export or archive bucket. |
+
+Any S3-compatible store works the same way through the stock `s3` disk (`AWS_BUCKET`,
+`AWS_DEFAULT_REGION`, `AWS_ENDPOINT`, `AWS_USE_PATH_STYLE_ENDPOINT`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`). Brand images do not need a disk at all: they are kept in the
+database by default (`WHITELABEL_ASSETS_STORE`, under [Branding](#branding)).
 
 ## Standard Laravel keys
 

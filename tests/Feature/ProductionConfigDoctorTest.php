@@ -33,6 +33,7 @@ function soundProductionConfig(): array
         'health.security.token' => 'probe-token',
         // A disk every process reaches — `s3` names the S3 driver in config/filesystems.php.
         'cbox-id.audit_logs.export_disk' => 's3',
+        'filesystems.disks.s3.bucket' => 'exports',
     ];
 }
 
@@ -150,4 +151,49 @@ it('fails production when brand assets are linked through public/storage and tha
         @rmdir($public.'/storage');
         @rmdir($public);
     }
+});
+
+/*
+ * Production's answer to "Files are local to one machine": the `r2` disk in
+ * config/filesystems.php, a Cloudflare R2 bucket every pod reaches.
+ */
+it('reports shared files when audit-log exports and the compliance archive are on the r2 disk', function (): void {
+    $r2 = [
+        ...soundProductionConfig(),
+        'cbox-id.deployment.replicas' => 2,
+        'cbox-id.audit_logs.export_disk' => 'r2',
+        'compliance.export.sink' => 'jsonl',
+        'compliance.export.jsonl.disk' => 'r2',
+        'filesystems.disks.r2.bucket' => 'cbox-id',
+        'filesystems.disks.r2.endpoint' => 'https://0123456789abcdef.r2.cloudflarestorage.com',
+    ];
+
+    expect(config('filesystems.disks.r2.driver'))->toBe('s3')
+        ->and(productionVerdicts($r2))->toHaveKey('Shared files', 'ok')
+        ->and(array_unique(array_values(productionVerdicts($r2))))->toBe(['ok']);
+});
+
+it('fails a shared disk that has no bucket to write to', function (): void {
+    $verdicts = productionVerdicts([
+        ...soundProductionConfig(),
+        'cbox-id.audit_logs.export_disk' => 'r2',
+        'filesystems.disks.r2.bucket' => null,
+    ]);
+
+    expect($verdicts)->toHaveKey('Shared disk has no bucket', 'fail')
+        ->and($verdicts)->not->toHaveKey('Shared files');
+});
+
+it('fails brand assets on the r2 disk, which refuses the public objects they are written as', function (): void {
+    $verdicts = productionVerdicts([
+        ...soundProductionConfig(),
+        'whitelabel.assets.store' => 'disk',
+        'whitelabel.assets.disk' => 'r2',
+        'filesystems.disks.r2.bucket' => 'cbox-id',
+        'filesystems.disks.r2.endpoint' => 'https://0123456789abcdef.r2.cloudflarestorage.com',
+    ]);
+
+    expect($verdicts)->toHaveKey('Brand assets cannot be uploaded', 'fail')
+        // As shared storage it is fine; it is the public ACL R2 refuses.
+        ->and($verdicts)->toHaveKey('Shared files', 'ok');
 });
