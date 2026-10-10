@@ -20,10 +20,11 @@ languages:
 
 That covers sign-in, sign-up, two-factor and step-up prompts, password reset,
 invitations and email confirmation, the OAuth consent screen and organization picker,
+the device sign-in page a TV's QR code opens ([Sign in on TVs and devices](sign-in-on-tvs-and-devices.md)),
 the Admin Portal, the error pages, and the emails those flows send.
 
-The **admin console stays in English**, whatever language your browser prefers. So do
-the device-approval and "confirm it's you" screens, which sit inside the console.
+The **admin console stays in English**, whatever language your browser prefers. So does
+the console's own "confirm it's you" screen.
 
 ## How a visitor's language is chosen
 

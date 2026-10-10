@@ -87,6 +87,12 @@ Password sign-in, plus **passwordless options**: email magic link and **passkey*
 (WebAuthn) sign-in. Social buttons appear when a provider is configured. Organizations
 get a branded variant at `/o/{slug}/login`.
 
+**Last used.** The method a device signed in with last time — a social provider's button,
+the passkey, the magic link, or the email step for a password or single sign-on — carries a
+small *Last used* badge, as on Clerk, WorkOS and Stytch. The order of the buttons does not
+change. What is remembered is the method alone (`google`, `passkey`…), in a first-party,
+HttpOnly cookie on the host the person signed in on; nothing about the person is stored.
+
 ![Login screen](../screenshots/hosted-sign-in.png)
 
 ### Signup
@@ -102,9 +108,17 @@ Create a new organization and its first owner. Risk scoring runs on submit
 On the platform root the sign-in pages carry Cbox ID's own panel beside the form. On a
 customer's environment every door — sign-in, sign-up, password reset, magic link, an
 invitation, the organization picker and the create-a-team step — carries that
-environment's brand instead: the name and logo its Appearance page previews, over its
-colours, with no Cbox ID panel. An organization's own door (`/o/{slug}/login`) carries the
-organization's. The consoles on that host stay Cbox ID's.
+environment's brand instead: the name, **uploaded** logo and favicon its Appearance page
+previews, over its colours and typeface, with no Cbox ID panel. The device sign-in page and
+the Admin Portal carry it too, and so do the emails. An organization's own door
+(`/o/{slug}/login`) carries the organization's. The consoles on that host stay Cbox ID's.
+
+Logos and favicons are **uploads** (PNG, JPEG or WebP; ICO for a favicon; never SVG),
+served by Cbox ID itself at `/brand-assets/…`. A logo used to be an https URL to anywhere,
+and every visitor's browser then reported to whoever hosted it — so a remote logo URL saved
+before is no longer drawn, and the Appearance page asks for an upload until one is made.
+Every typeface on offer (System, Inter, Plus Jakarta Sans, Nunito, Source Serif) is
+self-hosted for the same reason: no hosted page loads anything from another origin.
 
 ### Joining by invitation
 
@@ -220,7 +234,8 @@ than minting areas of their own.
 ### Settings
 
 *Settings · Appearance.* Organization details, and the branding an organization's own
-sign-in page inherits.
+sign-in page inherits: a preset, four colours per mode, corners, the typeface, and the
+uploaded logo and favicon — edited against a live preview of the sign-in page.
 
 ![Settings](../screenshots/environment-settings.png)
 
