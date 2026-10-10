@@ -42,11 +42,12 @@ trait RunsActions
      * @param  array<string, mixed>  $input
      * @param  array<string, string>  $fields
      * @param  array<string, string>  $messages
+     * @param  bool  $asEnvironment  for the environment's own settings — see {@see self::runAction()}
      */
-    protected function act(string $action, array $input, array $fields = [], string $fallback = 'form', array $messages = []): ActionResult|RedirectResponse
+    protected function act(string $action, array $input, array $fields = [], string $fallback = 'form', array $messages = [], bool $asEnvironment = false): ActionResult|RedirectResponse
     {
         try {
-            return $this->runAction($action, $input);
+            return $this->runAction($action, $input, $asEnvironment);
         } catch (ActionRefused $refused) {
             abort_if($refused->status === 404, 404);
 
@@ -118,13 +119,19 @@ trait RunsActions
      *
      * @param  class-string<Action>  $action
      * @param  array<string, mixed>  $input
+     * @param  bool  $asEnvironment  act on the environment's own settings — refused unless this
+     *                               console's administrator administers the environment
+     *                               ({@see ConsoleSessionPrincipal::forEnvironment()})
      *
      * @throws ActionRefused
      * @throws AuthorizationException
      * @throws ValidationException
      */
-    protected function runAction(string $action, array $input): ActionResult
+    protected function runAction(string $action, array $input, bool $asEnvironment = false): ActionResult
     {
-        return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal(app(ConsoleScope::class)), $input, via: ActionVia::Console);
+        $scope = app(ConsoleScope::class);
+        $principal = $asEnvironment ? ConsoleSessionPrincipal::forEnvironment($scope) : new ConsoleSessionPrincipal($scope);
+
+        return app(ActionRunner::class)->run($action, $principal, $input, via: ActionVia::Console);
     }
 }

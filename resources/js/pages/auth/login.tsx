@@ -24,6 +24,8 @@ type Props = PageProps<{
     pendingLink: string | null;
     signupOpen: boolean;
     providers: SocialProvider[];
+    /** The environment's switches, under the deployment's. A method that is off is not drawn. */
+    methods: { passkeys: boolean; magicLink: boolean };
     /**
      * Which way this device signed in last — a provider key (`google`), `passkey`,
      * `password`, `magic_link` or `sso` — or null. Read on the server from a first-party
@@ -41,6 +43,7 @@ export default function Login({
     pendingLink,
     signupOpen,
     providers,
+    methods,
     lastUsed,
 }: Props) {
     /*
@@ -394,7 +397,15 @@ export default function Login({
                         </>
                     )}
 
-                    <Divider>{t('auth.login.or')}</Divider>
+                    {/*
+                        "OR" only above something to choose instead. With every other method
+                        switched off for this environment the divider would introduce nothing.
+                    */}
+                    {(providers.length > 0 ||
+                        methods.magicLink ||
+                        (methods.passkeys && canUsePasskeys)) && (
+                        <Divider>{t('auth.login.or')}</Divider>
+                    )}
 
                     {providers.length > 0 && (
                         <div className="space-y-2.5 mb-2.5">
@@ -418,22 +429,24 @@ export default function Login({
                     )}
 
                     <div className="space-y-2.5">
-                        <Button
-                            size="lg"
-                            icon="magic"
-                            className="w-full relative"
-                            onClick={() => form.post(magicLink.url())}
-                            {...lastUsedProps('magic_link')}
-                        >
-                            {t('auth.login.magic_link')}
-                            {badge('magic_link')}
-                        </Button>
+                        {methods.magicLink && (
+                            <Button
+                                size="lg"
+                                icon="magic"
+                                className="w-full relative"
+                                onClick={() => form.post(magicLink.url())}
+                                {...lastUsedProps('magic_link')}
+                            >
+                                {t('auth.login.magic_link')}
+                                {badge('magic_link')}
+                            </Button>
+                        )}
 
                         {/*
                             Hidden entirely where the browser cannot do WebAuthn. An
                             affordance that always fails is worse than one that is absent.
                         */}
-                        {canUsePasskeys && (
+                        {methods.passkeys && canUsePasskeys && (
                             <Button
                                 size="lg"
                                 icon="key"

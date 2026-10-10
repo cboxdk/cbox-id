@@ -152,6 +152,8 @@ export type MessageKey =
     | 'auth.login.mandate.reasons.password_reset'
     | 'auth.login.mandate.reasons.social'
     | 'auth.login.mandate.your_organization'
+    | 'auth.login.method_off.magic_link'
+    | 'auth.login.method_off.passkeys'
     | 'auth.login.new_organization'
     | 'auth.login.or'
     | 'auth.login.passkey'

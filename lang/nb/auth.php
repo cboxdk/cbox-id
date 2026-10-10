@@ -85,6 +85,11 @@ return [
             'unverified' => 'Passnøkkelen kunne ikke bekreftes.',
             'failed' => 'Noe gikk galt under innloggingen.',
         ],
+        // Answered by a passkey or magic-link door the environment has switched off.
+        'method_off' => [
+            'passkeys' => 'Passnøkler er slått av her. Logg inn på en annen måte.',
+            'magic_link' => 'Innloggingslenker på e-post er slått av her. Logg inn på en annen måte.',
+        ],
     ],
 
     'signup' => [

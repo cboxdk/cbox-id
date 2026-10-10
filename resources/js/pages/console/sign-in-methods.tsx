@@ -14,14 +14,19 @@ interface MethodRow {
     hrefLabel: string | null;
     /** The deployment variable that decides it, when the deployment does. */
     variable: string | null;
+    /** What bounds the setting from above — the deployment's limit, or how inheritance works. */
+    ceiling: string | null;
 }
 
 type Props = PageProps<{
     help: HelpContent;
     environmentName: string;
+    /** On an organization's own console: whose sign-in this page describes. */
+    organizationName: string | null;
     ssoOnly: boolean;
     sections: { title: string; description: string; rows: MethodRow[] }[];
-    organizationsHref: string;
+    /** The per-organization table — the environment console only. */
+    organizationsHref: string | null;
 }>;
 
 const STATE: Record<MethodRow['state'], { label: string; tone: 'success' | 'neutral' | 'info' }> = {
@@ -30,43 +35,65 @@ const STATE: Record<MethodRow['state'], { label: string; tone: 'success' | 'neut
     optional: { label: 'Optional', tone: 'info' },
 };
 
-const DECIDED_BY: Record<MethodRow['decidedBy'], string> = {
-    environment: 'Set for this environment',
-    organization: 'Set per organization',
-    deployment: 'Set by the deployment',
-};
+/** Whose decision a row is — said from where the reader stands. */
+function decidedBy(row: MethodRow, onOrganization: boolean): string {
+    switch (row.decidedBy) {
+        case 'environment':
+            return onOrganization ? 'Set for the whole environment' : 'Set for this environment';
+        case 'organization':
+            return onOrganization ? 'Set for this organization' : 'Set per organization';
+        default:
+            return 'Set by the deployment';
+    }
+}
 
 /**
  * AUTHENTICATION › SIGN-IN METHODS — every way in, on one page, with where each is changed.
  *
  * Read-only: each row links to the one page whose form writes it, so nothing here can
  * disagree with that page. A row the DEPLOYMENT decides says so and names the variable,
- * instead of drawing a switch the console cannot honour.
+ * instead of drawing a switch the console cannot honour; a row the environment decides
+ * under the deployment's limit says what that limit is.
+ *
+ * On an organization's console (a single-tenant install's whole administration) the page
+ * describes that organization's sign-in, and rows only the environment can change carry no
+ * link.
  */
 export default function SignInMethods({
     help,
     environmentName,
+    organizationName,
     ssoOnly,
     sections,
     organizationsHref,
 }: Props) {
+    const onOrganization = organizationName !== null;
+
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
                 description={
-                    <>
-                        Every way people sign in to {environmentName}, whether it is on, and where
-                        it is changed. Organizations can make these stricter —{' '}
-                        <Link href={organizationsHref}>see which have</Link>.
-                    </>
+                    organizationsHref === null ? (
+                        <>
+                            Every way people sign in to {organizationName ?? environmentName},
+                            whether it is on, and where it is changed.
+                        </>
+                    ) : (
+                        <>
+                            Every way people sign in to {environmentName}, whether it is on, and
+                            where it is changed. Organizations can make these stricter —{' '}
+                            <Link href={organizationsHref}>see which have</Link>.
+                        </>
+                    )
                 }
             />
 
             {ssoOnly && (
                 <p className="cbx-callout" role="note">
-                    Enterprise SSO is required for this environment, so every other way in is
-                    refused until that rule is relaxed on Authentication policy.
+                    Enterprise SSO is required{' '}
+                    {onOrganization ? `for ${organizationName}` : 'for this environment'}, so every
+                    other way in is refused until that rule is relaxed on Authentication policy.
                 </p>
             )}
 
@@ -89,7 +116,7 @@ export default function SignInMethods({
                                     </div>
                                     <p className="cbx-method-summary">{row.summary}</p>
                                     <p className="cbx-method-owner">
-                                        {DECIDED_BY[row.decidedBy]}
+                                        {decidedBy(row, onOrganization)}
                                         {row.variable !== null && (
                                             <>
                                                 {' · '}
@@ -97,6 +124,9 @@ export default function SignInMethods({
                                             </>
                                         )}
                                     </p>
+                                    {row.ceiling !== null && (
+                                        <p className="cbx-method-owner">{row.ceiling}</p>
+                                    )}
                                 </div>
                                 {row.href !== null && (
                                     <Link

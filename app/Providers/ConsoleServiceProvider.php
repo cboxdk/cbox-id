@@ -158,7 +158,12 @@ final class ConsoleServiceProvider extends ServiceProvider
         // active — and it is one of the half-dozen things a customer's IT department owns
         // ({@see \App\Platform\Console\CustomerConsole}), so it has a page of its own.
         // The Enterprise SSO page still lists them beside its connections.
+        // SIGN-IN METHODS FIRST, as on the environment console: every way in on one page,
+        // and the answer a single-tenant install's administrator had no page for. Not on a
+        // customer's console or a workspace's — both keep lists of their own that leave it
+        // out, because neither decides how the product's people sign in.
         $nav->area('authentication', 'Sign-in', 'fingerprint', 30)
+            ->page('sign-in-methods', Vocabulary::SIGN_IN_METHODS, order: 5)
             ->page('connections', Vocabulary::ENTERPRISE_SSO, order: 10)
             ->page('domains', Vocabulary::DOMAINS, order: 15)
             ->page('social-providers', Vocabulary::SOCIAL_LOGIN, order: 20)

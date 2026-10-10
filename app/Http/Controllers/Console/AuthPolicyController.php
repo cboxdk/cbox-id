@@ -14,15 +14,19 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
 use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
+use App\Http\Requests\Console\SaveSignInMethodsRequest;
 use App\Http\Requests\Console\SaveSmsFactorPolicyRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
 use App\Platform\LockoutDefaults;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
+use App\Platform\Turnstile;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
 use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
@@ -33,6 +37,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Otp\Sms\CallingCodes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 use Locale;
 
@@ -150,9 +155,49 @@ final readonly class AuthPolicyController extends ConsoleController
                 ? route('environment.organizations.policy.update')
                 : $this->url('auth-policy.update'),
             'inheritHref' => $onEnvironmentPlane ? null : $this->url('auth-policy.inherit'),
-            'selfServiceSignup' => $onEnvironmentPlane ? $this->selfServiceProps() : null,
-            'smsFactor' => $onEnvironmentPlane ? $this->smsFactorProps() : null,
+            /*
+             * THE ENVIRONMENT'S OWN SETTINGS — on its console, and on a single-tenant
+             * install's organization console, whose administrators are the environment's
+             * ({@see ConsoleScope::administersEnvironment()}). A customer's console never.
+             */
+            'environmentName' => $this->environmentName(),
+            'selfServiceSignup' => $this->managesEnvironment() ? $this->selfServiceProps() : null,
+            'smsFactor' => $this->managesEnvironment() ? $this->smsFactorProps() : null,
+            'signInMethods' => $this->managesEnvironment() ? $this->signInMethodsProps($baseline) : null,
         ]);
+    }
+
+    /**
+     * The environment's sign-in methods and session lengths as the page draws them, with the
+     * deployment's ceiling beside each — so a switch the deployment holds off is drawn off
+     * and says why, and a length field says the most it may be.
+     *
+     * @return array{passkeys: bool, magicLink: bool, botChallenge: bool, sessionIdleMinutes: string, sessionAbsoluteMinutes: string, deployment: array{passkeys: bool, magicLink: bool, botChallenge: bool, sessionIdleMinutes: int, sessionAbsoluteMinutes: int}, inForce: array{sessionIdleMinutes: int, sessionAbsoluteMinutes: int}, href: string}
+     */
+    private function signInMethodsProps(AuthPolicy $baseline): array
+    {
+        $methods = app(SignInMethods::class);
+
+        return [
+            'passkeys' => $baseline->passkeys,
+            'magicLink' => $baseline->magicLink,
+            'botChallenge' => $baseline->botChallenge,
+            // Strings, empty for "the deployment's", like the other optional numbers here.
+            'sessionIdleMinutes' => $baseline->sessionIdleMinutes === null ? '' : (string) $baseline->sessionIdleMinutes,
+            'sessionAbsoluteMinutes' => $baseline->sessionAbsoluteMinutes === null ? '' : (string) $baseline->sessionAbsoluteMinutes,
+            'deployment' => [
+                'passkeys' => $methods->deploymentAllowsPasskeys(),
+                'magicLink' => $methods->deploymentAllowsMagicLink(),
+                'botChallenge' => app(Turnstile::class)->configured(),
+                'sessionIdleMinutes' => $methods->deploymentSessionIdleMinutes(),
+                'sessionAbsoluteMinutes' => $methods->deploymentSessionAbsoluteMinutes(),
+            ],
+            'inForce' => [
+                'sessionIdleMinutes' => $methods->sessionIdleMinutes(),
+                'sessionAbsoluteMinutes' => $methods->sessionAbsoluteMinutes(),
+            ],
+            'href' => $this->url('auth-policy.methods'),
+        ];
     }
 
     /**
@@ -193,7 +238,7 @@ final readonly class AuthPolicyController extends ConsoleController
      */
     public function sms(SaveSmsFactorPolicyRequest $request): RedirectResponse
     {
-        $this->scope->assertMayAdministerEnvironment();
+        $this->scope->assertAdministersEnvironment();
 
         $input = $request->policyInput();
 
@@ -201,7 +246,7 @@ final readonly class AuthPolicyController extends ConsoleController
             'enabled' => 'enabled',
             'allowed_countries' => 'allowedCountries',
             'privileged_need_stronger_factor' => 'privilegedNeedStrongerFactor',
-        ], 'allowedCountries');
+        ], 'allowedCountries', asEnvironment: true);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -226,12 +271,39 @@ final readonly class AuthPolicyController extends ConsoleController
 
         $policy = $request->policy();
 
+        // The password, MFA, SSO and lockout rules only: the sign-in methods and session
+        // lengths are a form of their own ({@see methods()}), and leaving them out here
+        // keeps whatever is on file rather than resetting it to this form's defaults.
         $result = $this->act(UpdateSignInPolicy::class, [
             'organization_id' => $this->editsEnvironment() ? null : $this->organizationId(),
-            ...AuthPolicyFields::toArray($policy),
+            ...AuthPolicyFields::organizationArray($policy),
         ], self::FIELDS);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Authentication policy saved.');
+    }
+
+    /**
+     * `PUT /admin/sign-in-rules/methods` — passkeys, magic links, the bot challenge and how
+     * long sessions last, for the whole environment, through the same action the management
+     * API runs ({@see UpdateSignInPolicy}), which refuses a length past the deployment's
+     * ceiling with the ceiling named.
+     *
+     * Environment plane only: these are decided where the organization is usually not known
+     * yet, so they cannot be an organization's.
+     */
+    public function methods(SaveSignInMethodsRequest $request): RedirectResponse
+    {
+        $this->scope->assertAdministersEnvironment();
+
+        $result = $this->act(UpdateSignInPolicy::class, $request->methodsInput(), [
+            'passkeys' => 'passkeys',
+            'magic_link' => 'magicLink',
+            'bot_challenge' => 'botChallenge',
+            'session_idle_minutes' => 'sessionIdleMinutes',
+            'session_absolute_minutes' => 'sessionAbsoluteMinutes',
+        ], 'sessionAbsoluteMinutes', asEnvironment: true);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sign-in methods and sessions saved.');
     }
 
     /**
@@ -341,7 +413,11 @@ final readonly class AuthPolicyController extends ConsoleController
             'enabled' => SelfServiceSignup::enabledFor($this->currentEnvironment()),
             'open' => $policy->isOpen(),
             'mode' => $policy->mode(),
-            'href' => $this->url('auth-policy.self-service-signup'),
+            // The switch only exists where the environment decides; elsewhere the page says
+            // what does, and there is nothing to post.
+            'href' => $policy->decidedByEnvironment() && Route::has($this->routeName('auth-policy.self-service-signup'))
+                ? $this->url('auth-policy.self-service-signup')
+                : '',
         ];
     }
 
@@ -386,6 +462,24 @@ final readonly class AuthPolicyController extends ConsoleController
         $key = app(EnvironmentContext::class)->current()?->environmentKey();
 
         return $key === null ? null : Environment::query()->find($key);
+    }
+
+    /**
+     * Whether this page also draws the ENVIRONMENT's own settings — methods and sessions,
+     * text-message codes, self-service sign-up: on the environment's own page, and on a
+     * single-tenant install's organization console.
+     */
+    private function managesEnvironment(): bool
+    {
+        return $this->editsEnvironment()
+            || ($this->scope->plane() === ConsolePlane::Organization && $this->scope->administersEnvironment());
+    }
+
+    private function environmentName(): string
+    {
+        $environment = app(CurrentEnvironment::class)->get();
+
+        return $environment === null ? 'this environment' : $environment->name;
     }
 
     /**

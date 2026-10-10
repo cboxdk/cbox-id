@@ -30,6 +30,7 @@ use Cbox\Id\Directory\ValueObjects\ScimUser;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Federation\Contracts\DomainVerification;
+use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
@@ -188,6 +189,7 @@ final class DemoEnvironmentSeeder extends Seeder
             $this->seedPublishableKeys();
             $this->seedOrganizations();
             $this->seedEnterpriseSso($actor);
+            $this->seedSocialLogin();
             $this->seedDirectorySync($actor);
             $this->seedAgents($environment);
             $this->seedAppAuditLogs();
@@ -407,6 +409,49 @@ final class DemoEnvironmentSeeder extends Seeder
         ]);
 
         $connections->activate($acme->id, $connection->id);
+    }
+
+    /**
+     * Social login the way most environments have it: providers turned on once for the
+     * whole environment, so every organization offers them — and the two exceptions the
+     * console has to show. Globex brings its own GitHub credentials, which stand in for the
+     * environment's on its page; Initech, whose people sign in with their work accounts,
+     * turned the environment's GitHub off for its page.
+     *
+     * Straight through the framework rather than the action: the action asks Google for its
+     * discovery document, and a seeder must not need the network.
+     */
+    private function seedSocialLogin(): void
+    {
+        $providers = app(SignInProviders::class);
+        $connections = app(Connections::class);
+
+        // Slack and GitHub — not Google, whose "turn it on" is the task the console's
+        // finding-your-way walk measures, so the demo leaves it to be done.
+        $slack = $providers->create(null, 'slack', ConnectionType::Oidc, 'Slack', [
+            'provider' => 'slack',
+            'client_id' => '1234567890.demo',
+            'client_secret' => 'demo-slack-secret',
+            'issuer' => 'https://slack.com',
+            'authorization_endpoint' => 'https://slack.com/openid/connect/authorize',
+            'token_endpoint' => 'https://slack.com/api/openid.connect.token',
+            'jwks_uri' => 'https://slack.com/openid/connect/keys',
+            'userinfo_endpoint' => 'https://slack.com/api/openid.connect.userInfo',
+        ]);
+        $connections->activate(null, $slack->id);
+
+        $github = $providers->create(null, 'github', ConnectionType::OAuth2, 'GitHub', [
+            'provider' => 'github', 'client_id' => 'Iv1.demoenvironment', 'client_secret' => 'demo-github-secret',
+        ]);
+        $connections->activate(null, $github->id);
+
+        $globex = $this->organizations['globex'];
+        $own = $providers->create($globex->id, 'github', ConnectionType::OAuth2, 'GitHub', [
+            'provider' => 'github', 'client_id' => 'Iv1.globexown', 'client_secret' => 'globex-github-secret',
+        ]);
+        $connections->activate($globex->id, $own->id);
+
+        $providers->stopInheriting($this->organizations['initech']->id, 'github');
     }
 
     /** Globex provisions its people from its IdP over SCIM: a directory, five people, a group. */

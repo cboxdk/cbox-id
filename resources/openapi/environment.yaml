@@ -13427,7 +13427,7 @@ paths:
     patch:
       tags:
         - Sign-in
-      summary: "Change the authentication policy of the environment baseline, or tighten one organization's override. Requiring SSO signs out password sessions."
+      summary: "Change the authentication policy of the environment baseline — including whether passkeys and magic links are offered and how long sessions last — or tighten one organization's override. Requiring SSO signs out password sessions."
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_policy_update
       x-action: signin.policy.update
@@ -13498,6 +13498,29 @@ paths:
                   description: 'Failed attempts before an account is locked; null for the deployment default (10 inside 15 minutes unless CBOX_ID_LOCKOUT_THRESHOLD says otherwise).'
                   minimum: 3
                   maximum: 100
+                passkeys:
+                  type: boolean
+                  description: 'Environment only. Whether people may sign in with a passkey, and add one. Off at the deployment (CBOX_ID_PASSKEYS_ENABLED=false) stays off.'
+                magic_link:
+                  type: boolean
+                  description: 'Environment only. Whether a one-time sign-in link may be emailed. Off at the deployment (CBOX_ID_MAGIC_LINK_ENABLED=false) stays off.'
+                session_idle_minutes:
+                  type:
+                    - integer
+                    - 'null'
+                  description: "Environment only. Minutes of inactivity before a session ends; null for the deployment's. No more than the deployment allows (CBOX_ID_SESSION_IDLE_MINUTES)."
+                  minimum: 1
+                  maximum: 525600
+                session_absolute_minutes:
+                  type:
+                    - integer
+                    - 'null'
+                  description: "Environment only. Minutes a session lasts at most, however active; null for the deployment's. No more than the deployment allows (CBOX_ID_SESSION_TTL_MINUTES)."
+                  minimum: 5
+                  maximum: 525600
+                bot_challenge:
+                  type: boolean
+                  description: 'Environment only. Whether a sign-up Radar flags is asked to prove it is a person (Cloudflare Turnstile). Has no effect where the deployment has no Turnstile keys.'
       responses:
         200:
           description: OK
@@ -13979,7 +14002,7 @@ paths:
     get:
       tags:
         - Sign-in
-      summary: 'List the social login providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.'
+      summary: "List the social login providers (Google, GitHub, Apple…) set up in this environment — the environment's own and organizations' — optionally for one organization."
       description: 'Requires scope `signin:read`. Danger: read.'
       operationId: signin_social_list
       x-action: signin.social.list
@@ -13992,8 +14015,18 @@ paths:
           required: false
           schema:
             type: string
-            description: "Only this organization's providers."
+            description: "Only this organization's own providers (not the ones it inherits — see signin.social.offered)."
             maxLength: 64
+        -
+          name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            description: "Only the environment's providers, which every organization inherits, or only organizations' own."
+            enum:
+              - environment
+              - organization
         -
           name: limit
           in: query
@@ -14049,7 +14082,7 @@ paths:
     post:
       tags:
         - Sign-in
-      summary: 'Enable a social login provider (Google, GitHub, Apple…) for one organization with its client credentials. The secret is never returned.'
+      summary: 'Enable a social login provider (Google, GitHub, Apple…) for the whole environment or for one organization, with its client credentials. The secret is never returned.'
       description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_set
       x-action: signin.social.set
@@ -14074,9 +14107,14 @@ paths:
               type: object
               properties:
                 organization_id:
-                  type: string
-                  description: 'The organization whose sign-in page offers it.'
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The organization the provider belongs to. Send this or environment_wide.'
                   maxLength: 64
+                environment_wide:
+                  type: boolean
+                  description: "True to make the provider the environment's own rather than one organization's. Send this or organization_id."
                 provider:
                   type: string
                   description: 'The catalogue key: google, microsoft, okta, auth0, keycloak, gitlab, slack, github, discord, apple, facebook, linkedin, bitbucket, xero, intuit.'
@@ -14137,8 +14175,20 @@ paths:
                         - 'null'
                       description: 'Team ID (Apple).'
                       maxLength: 5000
+                scopes:
+                  type: array
+                  description: 'Extra scopes to request beyond the ones sign-in needs (for example `read:org` on GitHub). Replaces any extra scopes already set; an empty list removes them.'
+                  maxItems: 20
+                  items:
+                    type: string
+                    maxLength: 200
+                reserved_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'A ULID to create the provider under, so its redirect URI (which contains the id) can be registered with the provider first. Left out, one is minted.'
+                  maxLength: 26
               required:
-                - organization_id
                 - provider
                 - client_id
       responses:
@@ -14165,6 +14215,132 @@ paths:
           $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sign-in/social-providers/inherited/{provider}':
+    put:
+      tags:
+        - Sign-in
+      summary: "Turn one of the environment's social login providers off (or back on) for one organization's sign-in page."
+      description: 'Requires scope `signin:write`. Danger: write.'
+      operationId: signin_social_inherit
+      x-action: signin.social.inherit
+      x-scope: 'signin:write'
+      x-danger: write
+      parameters:
+        -
+          name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The catalogue key: google, github…'
+            maxLength: 100
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type: string
+                  description: 'The organization whose sign-in page this is about.'
+                  maxLength: 64
+                offered:
+                  type: boolean
+                  description: "False to stop offering the environment's provider on this organization's page; true to offer it again."
+              required:
+                - organization_id
+                - offered
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OfferedSocialProviders'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /sign-in/social-providers/offered:
+    get:
+      tags:
+        - Sign-in
+      summary: "The social login buttons one organization's sign-in page shows (or the plain sign-in page's), after inheritance from the environment, with where each comes from."
+      description: 'Requires scope `signin:read`. Danger: read.'
+      operationId: signin_social_offered
+      x-action: signin.social.offered
+      x-scope: 'signin:read'
+      x-danger: read
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: 'The organization whose sign-in page to resolve. Left out, the plain sign-in page, before anybody has said who they are.'
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OfferedSocialProviders'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -14213,6 +14389,275 @@ paths:
       responses:
         204:
           description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Sign-in
+      summary: "Change a social login provider's client credentials, provider values or extra scopes. Secrets left out keep the ones on file."
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_social_update
+      x-action: signin.social.update
+      x-scope: 'signin:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The provider's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only change it if it is this organization's; anything else is a 404."
+                  maxLength: 64
+                client_id:
+                  type: string
+                  description: 'A new client id. For Apple, the Services ID.'
+                  maxLength: 400
+                client_secret:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'A new client secret. Write-only; left out or blank keeps the one on file.'
+                  maxLength: 5000
+                parameters:
+                  type: object
+                  description: "What the chosen provider needs besides its client credentials — Microsoft's directory, Okta's domain, Apple's team id, key id and private key."
+                  properties:
+                    directory:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Directory (tenant) ID (Microsoft Entra ID).'
+                      maxLength: 5000
+                    domain:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Okta domain (Okta).'
+                      maxLength: 5000
+                    host:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Keycloak host (Keycloak).'
+                      maxLength: 5000
+                    key_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Key ID (Apple).'
+                      maxLength: 5000
+                    private_key:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Private key (.p8) (Apple).'
+                      maxLength: 5000
+                    realm:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Realm (Keycloak).'
+                      maxLength: 5000
+                    team_id:
+                      type:
+                        - string
+                        - 'null'
+                      description: 'Team ID (Apple).'
+                      maxLength: 5000
+                scopes:
+                  type: array
+                  description: 'Extra scopes to request beyond the ones sign-in needs (for example `read:org` on GitHub). Replaces any extra scopes already set; an empty list removes them.'
+                  maxItems: 20
+                  items:
+                    type: string
+                    maxLength: 200
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SocialProvider'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sign-in/social-providers/{id}/disable':
+    post:
+      tags:
+        - Sign-in
+      summary: 'Turn a social login provider off without removing it. People who used it keep their accounts.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_social_disable
+      x-action: signin.social.disable
+      x-scope: 'signin:write'
+      x-danger: critical
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The provider's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SocialProvider'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/sign-in/social-providers/{id}/enable':
+    post:
+      tags:
+        - Sign-in
+      summary: 'Turn a social login provider that was turned off back on, with the credentials it already has.'
+      description: 'Requires scope `signin:write`. Danger: write.'
+      operationId: signin_social_enable
+      x-action: signin.social.enable
+      x-scope: 'signin:write'
+      x-danger: write
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The provider's id."
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "Only if it is this organization's; anything else is a 404."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SocialProvider'
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -20239,6 +20684,11 @@ components:
         - mfa
         - sso
         - lockout_threshold
+        - passkeys
+        - magic_link
+        - session_idle_minutes
+        - session_absolute_minutes
+        - bot_challenge
       properties:
         min_length:
           type: integer
@@ -20272,6 +20722,45 @@ components:
             - integer
             - 'null'
           description: 'Failed attempts before a lockout; null for none.'
+        passkeys:
+          type: boolean
+          description: "Environment-wide. Whether passkeys may be used to sign in and be added. An organization's override never changes it."
+        magic_link:
+          type: boolean
+          description: 'Environment-wide. Whether a one-time sign-in link may be emailed.'
+        session_idle_minutes:
+          type:
+            - integer
+            - 'null'
+          description: "Environment-wide. Minutes of inactivity before a session ends; null for the deployment's."
+        session_absolute_minutes:
+          type:
+            - integer
+            - 'null'
+          description: "Environment-wide. Minutes a session lasts at most; null for the deployment's."
+        bot_challenge:
+          type: boolean
+          description: 'Environment-wide. Whether a sign-up Radar flags is challenged with Turnstile, where the deployment has keys.'
+    SignInMethodsInForce:
+      type: object
+      required:
+        - passkeys
+        - magic_link
+        - session_idle_minutes
+        - session_absolute_minutes
+        - bot_challenge
+      properties:
+        passkeys:
+          type: boolean
+        magic_link:
+          type: boolean
+        session_idle_minutes:
+          type: integer
+          description: '0 for no idle timeout.'
+        session_absolute_minutes:
+          type: integer
+        bot_challenge:
+          type: boolean
     SignInPolicy:
       type: object
       required:
@@ -20280,6 +20769,8 @@ components:
         - baseline
         - override
         - inheriting
+        - in_force
+        - deployment
       properties:
         organization_id:
           type:
@@ -20299,17 +20790,26 @@ components:
         inheriting:
           type: boolean
           description: 'True for an organization with no override of its own.'
+        in_force:
+          $ref: '#/components/schemas/SignInMethodsInForce'
+          description: "The environment-wide methods and session lengths actually in force, after the deployment's ceiling."
+        deployment:
+          $ref: '#/components/schemas/SignInMethodsInForce'
+          description: "The deployment's ceiling: which methods it offers at all, the longest sessions it allows, and whether it has Turnstile keys."
     SocialProvider:
       type: object
       required:
         - id
         - organization_id
+        - level
         - provider
         - name
         - protocol
         - status
+        - enabled
+        - scopes
         - callback_uri
-      description: 'Its client secret and private key are write-only and never returned.'
+      description: "Its client secret and private key are write-only and never returned. An environment provider (`level: environment`) is offered on every organization's sign-in page unless the organization has its own for the same provider or turned it off."
       properties:
         id:
           type: string
@@ -20317,6 +20817,20 @@ components:
           type:
             - string
             - 'null'
+          description: "null for the environment's own provider."
+        level:
+          type: string
+          enum:
+            - environment
+            - organization
+        enabled:
+          type: boolean
+          description: 'False when it is turned off; its credentials are kept.'
+        scopes:
+          type: array
+          items:
+            type: string
+          description: 'Extra scopes requested on top of the ones sign-in needs.'
         provider:
           type:
             - string
@@ -20339,6 +20853,51 @@ components:
             - string
             - 'null'
           format: date-time
+    OfferedSocialProviders:
+      type: object
+      required:
+        - organization_id
+        - providers
+        - not_inherited
+      description: 'The social login buttons one sign-in page shows, after inheritance.'
+      properties:
+        organization_id:
+          type:
+            - string
+            - 'null'
+          description: 'null for the plain sign-in page, before anybody has said who they are.'
+        providers:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - provider
+              - name
+              - source
+              - callback_uri
+            properties:
+              id:
+                type: string
+              provider:
+                type:
+                  - string
+                  - 'null'
+              name:
+                type: string
+              source:
+                type: string
+                enum:
+                  - environment
+                  - organization
+                description: "`environment` when inherited; `organization` when the organization's own stands in its place."
+              callback_uri:
+                type: string
+        not_inherited:
+          type: array
+          items:
+            type: string
+          description: "The environment's providers this organization turned off for its page."
     FrontendKey:
       type: object
       required:

@@ -25,6 +25,7 @@ use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PrivilegedSubjects;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
 use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -119,6 +120,10 @@ final readonly class AccountController extends PageController
                     'signCount' => $passkey->sign_count,
                     'removeHref' => route('account.passkeys.destroy', $passkey->id),
                 ])->values()->all(),
+            // Whether a passkey may be ADDED here. Off for the environment (or the deployment)
+            // takes the enrolment button away; the list stays, so a person can still see and
+            // remove what they enrolled before.
+            'passkeysEnabled' => app(SignInMethods::class)->passkeysEnabled(),
             'socialProviders' => $this->socialProviders($providers, $subjects, $subjectId),
             'session' => $session === null ? null : [
                 'id' => $session->id,

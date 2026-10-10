@@ -85,6 +85,11 @@ return [
             'unverified' => 'Lösennyckeln kunde inte verifieras.',
             'failed' => 'Något gick fel vid inloggningen.',
         ],
+        // Answered by a passkey or magic-link door the environment has switched off.
+        'method_off' => [
+            'passkeys' => 'Lösennycklar är avstängda här. Logga in på ett annat sätt.',
+            'magic_link' => 'Inloggningslänkar via e-post är avstängda här. Logga in på ett annat sätt.',
+        ],
     ],
 
     'signup' => [

@@ -126,6 +126,7 @@ use App\Http\Controllers\Sso\SamlMetadataController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\RequireSignInMethod;
 use App\Http\Middleware\TargetEnvironment;
 use App\Http\WebRateLimiters;
 use App\Platform\Console\ConsoleRoutes;
@@ -181,10 +182,10 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // minute is no limit on one caller minting challenges into the cache. The limiter
         // runs after the key door, so the environment it scopes to is the key's own.
         Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'challenge'])
-            ->middleware('throttle:passkey')
+            ->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])
             ->name('frontend.sign-in.passkey.options');
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
-            ->middleware('throttle:passkey')
+            ->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])
             ->name('frontend.sign-in.passkey');
     });
 }
@@ -377,15 +378,17 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
     // Mails a sign-in link to whatever address is typed in: metered per (address, email) and
     // per address in front of the controller's own friendlier refusal ({@see WebRateLimiters}).
-    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->middleware('throttle:magic-link-send')->name('login.magic-link');
+    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->middleware(['throttle:magic-link-send', RequireSignInMethod::class.':magic_link'])->name('login.magic-link');
 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
     // Opening the link renders a button; pressing it signs in. Mail scanners fetch every
     // link they see, so a GET that redeemed handed the session to the scanner. Only the
     // POST looks the token up, so only the POST is throttled ({@see WebRateLimiters}).
-    Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->name('magic.redeem');
-    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->middleware('throttle:link-token')->name('magic.redeem.store');
+    // Behind the environment's magic-link switch, both halves: a link mailed before the
+    // switch was turned off is closed with it (the framework refuses the redemption too).
+    Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->middleware(RequireSignInMethod::class.':magic_link')->name('magic.redeem');
+    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->middleware(['throttle:link-token', RequireSignInMethod::class.':magic_link'])->name('magic.redeem.store');
 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
@@ -404,8 +407,8 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof. Both
     // halves are throttled: the first writes a fresh challenge into the session for any
     // anonymous caller, the second is a credential check ({@see WebRateLimiters}).
-    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:passkey')->name('passkeys.login.options');
-    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware('throttle:passkey')->name('passkeys.login');
+    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])->name('passkeys.login.options');
+    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])->name('passkeys.login');
 
     // Social sign-in (Google, GitHub, Microsoft) over OAuth. NoStore for the same reason
     // as the SSO doors: a `state`, then a single-use `code` and a new session.
@@ -929,6 +932,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // done by different people, at different times.
     Route::get('/social-sign-in', [SocialProviderController::class, 'index'])->name('social-providers');
     Route::post('/social-sign-in', [SocialProviderController::class, 'store'])->name('social-providers.store');
+    // Whether this organization's page offers one of the ENVIRONMENT's providers. Before
+    // `/{connection}`, so the literal segment is never read as an id.
+    Route::put('/social-sign-in/inherited/{provider}', [SocialProviderController::class, 'inherit'])->name('social-providers.inherit');
+    Route::patch('/social-sign-in/{connection}', [SocialProviderController::class, 'update'])->name('social-providers.update');
+    Route::post('/social-sign-in/{connection}/enable', [SocialProviderController::class, 'enable'])->name('social-providers.enable');
+    Route::post('/social-sign-in/{connection}/disable', [SocialProviderController::class, 'disable'])->name('social-providers.disable');
     Route::delete('/social-sign-in/{connection}', [SocialProviderController::class, 'destroy'])->name('social-providers.destroy');
 
     // Sync users in (inbound directories): the SAME components the environment plane
@@ -1077,9 +1086,19 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // anywhere in the product while both sign-in doors enforced what it writes, so a
     // tenant could be governed by a per-organization policy that nobody — not even the
     // operator — had a way to author.
+    // Every way in, on one page — the organization console has it too: on a single-tenant
+    // install this console is the whole administration, and "is magic link on?" was a
+    // question it had no page for.
+    Route::get('/sign-in-methods', SignInMethodsController::class)->name('sign-in-methods');
     Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('auth-policy');
     Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('auth-policy.update');
     Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('auth-policy.inherit');
+    // The ENVIRONMENT's sign-in methods, session lengths and SMS policy, from the organization
+    // console — served only where its administrator administers the environment: a
+    // single-tenant install, where this console is the whole administration. Everywhere else
+    // the controller refuses ({@see \App\Platform\Console\ConsoleScope::administersEnvironment()}).
+    Route::put('/sign-in-rules/methods', [AuthPolicyController::class, 'methods'])->name('auth-policy.methods');
+    Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('auth-policy.sms');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     // The SAME components the environment plane serves. The routable index/new/show
@@ -1187,8 +1206,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // credential is persistence — gate it behind a fresh step-up, symmetric with
     // the sudo required to REMOVE a passkey in settings. BlockDuringImpersonation
     // runs first so an impersonator gets an unambiguous 403, never a step-up prompt.
-    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo', 'throttle:passkey'])->name('passkeys.register.options');
-    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register');
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo', 'throttle:passkey', RequireSignInMethod::class.':passkeys'])->name('passkeys.register.options');
+    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo', RequireSignInMethod::class.':passkeys'])->name('passkeys.register');
 
     // Explicit account linking — connect a social provider to the signed-in user.
     // Also a new way in, so it likewise requires a fresh step-up (and is closed to
@@ -1414,6 +1433,10 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // of their own users to reach their own feature.
         Route::get('/social-sign-in', [SocialProviderController::class, 'index'])->name('environment.social-providers');
         Route::post('/social-sign-in', [SocialProviderController::class, 'store'])->name('environment.social-providers.store');
+        Route::put('/social-sign-in/inherited/{provider}', [SocialProviderController::class, 'inherit'])->name('environment.social-providers.inherit');
+        Route::patch('/social-sign-in/{connection}', [SocialProviderController::class, 'update'])->name('environment.social-providers.update');
+        Route::post('/social-sign-in/{connection}/enable', [SocialProviderController::class, 'enable'])->name('environment.social-providers.enable');
+        Route::post('/social-sign-in/{connection}/disable', [SocialProviderController::class, 'disable'])->name('environment.social-providers.disable');
         Route::delete('/social-sign-in/{connection}', [SocialProviderController::class, 'destroy'])->name('environment.social-providers.destroy');
         Route::get('/single-sign-on/new', [ConnectionController::class, 'create'])->name('environment.connections.create');
         Route::post('/single-sign-on/import', [ConnectionController::class, 'importMetadata'])->name('environment.connections.import');
@@ -1764,6 +1787,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Text-message codes as a second factor — environment plane only, like sign-up: the
         // countries an environment texts are a cost and fraud decision for the environment.
         Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('environment.auth-policy.sms');
+        // Passkeys, magic links, the bot challenge and session lengths — environment plane
+        // only, like the two above: they are decided before anybody's organization is known.
+        Route::put('/sign-in-rules/methods', [AuthPolicyController::class, 'methods'])->name('environment.auth-policy.methods');
         // Branding — the environment default every organization inherits. One page for
         // the sign-in theme, the logo and favicon, and the white-label name and palette.
         Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.branding');

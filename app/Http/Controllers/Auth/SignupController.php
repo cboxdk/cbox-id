@@ -144,7 +144,7 @@ final readonly class SignupController extends PageController
         $confirmByEmail = false;
 
         if ($risk->shouldStepUp($assessment)) {
-            if ($turnstile->configured()) {
+            if ($turnstile->enabled()) {
                 if (! $turnstile->verify($request->turnstileToken(), $request->ip())) {
                     // Show the widget — this may be the first the submitter sees of it — and
                     // let the failed token go. Turnstile tokens are single-use, so a retry has

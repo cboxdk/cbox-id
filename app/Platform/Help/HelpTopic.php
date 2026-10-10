@@ -179,7 +179,7 @@ enum HelpTopic: string
 
             self::Domains => 'The email domains this organization owns, each proved with a DNS TXT record. Once a domain is verified you can turn on capture, which sends everyone with an address on it to your Enterprise SSO connection instead of a password — so verify every domain your people have addresses on before you rely on single sign-on.',
 
-            self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. You supply the credentials from your own account with each provider; everything else — endpoints, scopes, what to read from the response — is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
+            self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. Set a provider up once for the environment and every organization offers it; an organization can use its own credentials instead, or turn one off. You supply the credentials; everything else is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
 
             self::SyncUsersIn => 'Your identity provider creates, updates and deactivates people here on its own, over a standard called SCIM. Someone joining or leaving in your HR system reaches your apps within seconds, with no ticket and no leftover accounts — which is the part that matters when someone leaves.',
 
@@ -245,7 +245,7 @@ enum HelpTopic: string
             self::Staff => 'An admin & support role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
             self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s audit log records who did it and why.',
 
-            self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in. The environment sets a baseline every organization inherits, and an organization can make its own rules stricter but never looser.',
+            self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in — and, for the whole environment, whether passkeys and magic links are offered and how long a session lasts. The environment sets a baseline every organization inherits; an organization can make its password and two-factor rules stricter but never looser.',
 
             self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Enterprise SSO under Authentication.',
 
@@ -260,7 +260,7 @@ enum HelpTopic: string
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
             self::RiskEvents => 'Sign-ins and requests that Cbox ID scored as risky enough to flag, newest first, with the score and the reasons behind it. Look here after a spike in failed sign-ins, or when someone reports a sign-in they did not make.',
-            self::SignInMethods => 'Every way a person can sign in here — password, passkeys, magic link, social login, enterprise SSO, a second factor — with whether it is on and where it is changed. Some are this environment\'s to decide, some each organization\'s, and some the deployment\'s, which the page names so you know who to ask.',
+            self::SignInMethods => 'Every way a person can sign in here — password, passkeys, magic link, social login, enterprise SSO, a second factor — with whether it is on and where it is changed. Most are this environment\'s to decide; SSO connections are each organization\'s; and where the deployment switched a method off or limits it, the page says so and names the setting.',
             self::Radar => 'Radar judges every sign-in and sign-up: credential stuffing, bot-like speed, impossible travel, new devices, anonymising networks and throwaway addresses, plus rules and allow and deny lists of your own. It records every verdict and, once you switch it to enforce, blocks or asks for a second factor. Read the decisions here before you enforce, and when someone says they cannot sign in.',
 
             self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
@@ -329,7 +329,8 @@ enum HelpTopic: string
             self::PlatformOrganizations => 'core-concepts/workspaces-and-organizations',
             self::DataExports => 'security/compliance',
             self::RiskEvents => 'security/adaptive-risk',
-            self::SignInMethods => 'getting-started/finding-your-way',
+            self::SignInMethods,
+            self::SignInRules => 'guides/authentication-policy',
             self::Radar => 'guides/radar',
             self::SignInActivity => 'operations/analytics',
             self::PlatformQueues => 'operations/queue-workers',
@@ -344,7 +345,6 @@ enum HelpTopic: string
             self::Billing,
             self::EnvironmentOverview,
             self::Users,
-            self::SignInRules,
             self::SamlApplications,
             self::LegacyLogin,
             self::Connectors,

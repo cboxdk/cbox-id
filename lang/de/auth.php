@@ -86,6 +86,11 @@ return [
             'unverified' => 'Dieser Passkey konnte nicht verifiziert werden.',
             'failed' => 'Bei der Anmeldung ist ein Fehler aufgetreten.',
         ],
+        // Answered by a passkey or magic-link door the environment has switched off.
+        'method_off' => [
+            'passkeys' => 'Passkeys sind hier deaktiviert. Melden Sie sich auf andere Weise an.',
+            'magic_link' => 'Anmeldelinks per E-Mail sind hier deaktiviert. Melden Sie sich auf andere Weise an.',
+        ],
     ],
 
     'signup' => [

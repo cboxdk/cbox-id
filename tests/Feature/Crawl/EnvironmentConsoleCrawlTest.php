@@ -29,5 +29,8 @@ it('serves every environment-console page and every link they offer', function (
     );
 
     expect($crawl->failures)->toBe([], implode("\n", $crawl->failures))
-        ->and($crawl->requests)->toBeGreaterThan(100);
+        ->and($crawl->requests)->toBeGreaterThan(100)
+        // The sign-in pages, with the demo's environment-wide providers, Globex's own and
+        // Initech's opt-out on them — every row's change, edit and setup links followed.
+        ->and($crawl->components)->toHaveKeys(['console/sign-in-methods', 'console/social-providers', 'console/auth-policy']);
 });

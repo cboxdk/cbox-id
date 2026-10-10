@@ -6,9 +6,11 @@ namespace App\Platform\Console;
 
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\EnforceCustomerConsole;
+use App\Http\Middleware\RequireMultiTenant;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\InstallationOrganization;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -852,6 +854,54 @@ class ConsoleScope
     public function assertMayAdministerEnvironment(): void
     {
         if ($this->plane() !== ConsolePlane::Environment || ! $this->environmentAdmin->check()) {
+            throw new AuthorizationException('This belongs to the environment, and is administered from the environment console.');
+        }
+    }
+
+    /**
+     * Whether this person may change the ENVIRONMENT's own settings from the console they are
+     * in — its sign-in methods, session lengths, SMS policy and social providers.
+     *
+     * On the environment console, its administrator. On an ORGANIZATION console only where
+     * the deployment is single-tenant — there is no environment console on that shape to
+     * send anyone to ({@see RequireMultiTenant}) — and then only:
+     *
+     *  - a platform operator, who runs the install; or
+     *  - an OWNER of the install's own organization ({@see InstallationOrganization}),
+     *    acting in it.
+     *
+     * NOT the administrator of any organization: a single-tenant install can host customer
+     * organizations, and their owners must never change passkeys, sessions or social
+     * providers for everybody else's people. On a multi-tenant deployment an organization
+     * console belongs to one customer of somebody's product, and the environment stays the
+     * vendor's, exactly as before.
+     *
+     * Deliberately NOT folded into {@see assertMayAdministerEnvironment()}: that guard also
+     * keeps environment-owned records with no organization column (publishable keys, the
+     * legacy login) off every organization console, and those stay off.
+     */
+    public function administersEnvironment(): bool
+    {
+        if ($this->plane() === ConsolePlane::Environment) {
+            return $this->environmentAdmin->check();
+        }
+
+        if ($this->planes->isMultiTenant()) {
+            return false;
+        }
+
+        if ($this->isPlatformOperator()) {
+            return true;
+        }
+
+        return $this->subject->isOwner()
+            && app(InstallationOrganization::class)->is($this->subject->organizationId());
+    }
+
+    /** @throws AuthorizationException */
+    public function assertAdministersEnvironment(): void
+    {
+        if (! $this->administersEnvironment()) {
             throw new AuthorizationException('This belongs to the environment, and is administered from the environment console.');
         }
     }

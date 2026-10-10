@@ -21,7 +21,32 @@ use Illuminate\Auth\Access\AuthorizationException;
  */
 final readonly class ConsoleSessionPrincipal implements Principal
 {
-    public function __construct(private ConsoleScope $scope) {}
+    /**
+     * @param  bool  $forEnvironment  acting on the ENVIRONMENT's own settings from a console
+     *                                whose administrator administers it — see
+     *                                {@see self::forEnvironment()}
+     */
+    public function __construct(
+        private ConsoleScope $scope,
+        private bool $forEnvironment = false,
+    ) {}
+
+    /**
+     * The same person, acting on the environment's own settings: confined to no
+     * organization, and holding the environment-administrator gate.
+     *
+     * Only for a scope that {@see ConsoleScope::administersEnvironment()} — the environment
+     * console, or the organization console of a single-tenant install — and refused for any
+     * other, so a controller cannot widen a customer's console by asking for this.
+     *
+     * @throws AuthorizationException
+     */
+    public static function forEnvironment(ConsoleScope $scope): self
+    {
+        $scope->assertAdministersEnvironment();
+
+        return new self($scope, forEnvironment: true);
+    }
 
     public function kind(): string
     {
@@ -41,7 +66,9 @@ final readonly class ConsoleSessionPrincipal implements Principal
     public function authorize(ActionDefinition $action): void
     {
         match ($action->consoleGate) {
-            ConsoleGate::EnvironmentAdmin => $this->scope->assertMayAdministerEnvironment(),
+            ConsoleGate::EnvironmentAdmin => $this->forEnvironment
+                ? $this->scope->assertAdministersEnvironment()
+                : $this->scope->assertMayAdministerEnvironment(),
             ConsoleGate::Administer => $this->scope->assertMayAdminister(),
             ConsoleGate::Operator => $this->assertOperator(),
             ConsoleGate::Person => $this->assertPerson(),
@@ -109,7 +136,7 @@ final readonly class ConsoleSessionPrincipal implements Principal
      */
     public function confinedToOrganization(): ?string
     {
-        return $this->scope->plane() === ConsolePlane::Organization
+        return $this->scope->plane() === ConsolePlane::Organization && ! $this->forEnvironment
             ? $this->scope->requireOrganizationId()
             : null;
     }

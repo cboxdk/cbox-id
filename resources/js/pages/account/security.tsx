@@ -62,6 +62,8 @@ type Props = PageProps<{
         needsStrongerFactor: boolean;
     } | null;
     passkeys: PasskeyRow[];
+    /** Whether a passkey may be added here — off when the environment or deployment turned passkeys off. */
+    passkeysEnabled: boolean;
     socialProviders: SocialProvider[];
     session: { id: string; methods: string[]; signedIn: string | null } | null;
     otherSessions: number;
@@ -88,6 +90,7 @@ export default function Security({
     twoFactor,
     smsFactor,
     passkeys,
+    passkeysEnabled,
     socialProviders,
     session,
     otherSessions,
@@ -122,11 +125,7 @@ export default function Security({
 
             <ProfilePanel profile={profile} href={urls.profile} />
 
-            <PasswordPanel
-                hasPassword={hasPassword}
-                email={profile.email}
-                href={urls.password}
-            />
+            <PasswordPanel hasPassword={hasPassword} email={profile.email} href={urls.password} />
 
             <TwoFactorPanel twoFactor={twoFactor} urls={urls} />
 
@@ -134,15 +133,11 @@ export default function Security({
                 <SmsPanel sms={smsFactor} totpEnabled={twoFactor.enabled} urls={urls} />
             )}
 
-            <PasskeyPanel passkeys={passkeys} name={profile.name} />
+            <PasskeyPanel passkeys={passkeys} name={profile.name} enabled={passkeysEnabled} />
 
             {socialProviders.length > 0 && <SocialPanel providers={socialProviders} />}
 
-            <SessionPanel
-                session={session}
-                otherSessions={otherSessions}
-                urls={urls}
-            />
+            <SessionPanel session={session} otherSessions={otherSessions} urls={urls} />
         </div>
     );
 }
@@ -319,10 +314,7 @@ function TwoFactorPanel({
                         Your account is protected with an authenticator app.
                     </p>
 
-                    <div
-                        className="mt-4 pt-4"
-                        style={{ borderTop: '1px solid var(--border)' }}
-                    >
+                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="font-medium text-sm">Recovery codes</h3>
                             <Pill dot={false}>{twoFactor.recoveryRemaining} left</Pill>
@@ -388,8 +380,8 @@ function TwoFactorPanel({
                 <div className="space-y-4">
                     <ol className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
                         <li>
-                            1. Scan the QR code with your authenticator app or password
-                            manager — or add the key manually.
+                            1. Scan the QR code with your authenticator app or password manager — or
+                            add the key manually.
                         </li>
                         <li>2. Enter the 6-digit code it shows.</li>
                     </ol>
@@ -407,7 +399,12 @@ function TwoFactorPanel({
                                 ever moves. On a white plate because a QR must be
                                 dark-on-light to scan.
                             */}
-                            <img src={mfaQrCode} alt="Authenticator setup QR code" width={220} height={220} />
+                            <img
+                                src={mfaQrCode}
+                                alt="Authenticator setup QR code"
+                                width={220}
+                                height={220}
+                            />
                         </div>
 
                         <div className="min-w-0 flex-1 w-full">
@@ -498,7 +495,15 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
     );
 }
 
-function PasskeyPanel({ passkeys, name }: { passkeys: PasskeyRow[]; name: string }) {
+function PasskeyPanel({
+    passkeys,
+    name,
+    enabled,
+}: {
+    passkeys: PasskeyRow[];
+    name: string;
+    enabled: boolean;
+}) {
     /*
      * READ ONCE, LAZILY, rather than in an effect.
      *
@@ -548,7 +553,8 @@ function PasskeyPanel({ passkeys, name }: { passkeys: PasskeyRow[]; name: string
             title="Passkeys"
             description="Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password."
             action={
-                supported && (
+                supported &&
+                enabled && (
                     <Button variant="primary" className="shrink-0" loading={busy} onClick={add}>
                         <Icon name="plus" className="w-4 h-4" /> Add passkey
                     </Button>
@@ -559,10 +565,17 @@ function PasskeyPanel({ passkeys, name }: { passkeys: PasskeyRow[]; name: string
                 {message}
             </output>
 
-            {!supported && (
+            {!enabled && (
                 <p className="text-sm mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                    This browser cannot create a passkey, so there is nothing to add here —
-                    but any you already have are listed below, and you can remove them.
+                    Passkeys are turned off here, so you cannot add one or sign in with one. Any you
+                    already have are listed below, and you can remove them.
+                </p>
+            )}
+
+            {enabled && !supported && (
+                <p className="text-sm mb-3" style={{ color: 'var(--muted-foreground)' }}>
+                    This browser cannot create a passkey, so there is nothing to add here — but any
+                    you already have are listed below, and you can remove them.
                 </p>
             )}
 
@@ -584,9 +597,7 @@ function PasskeyPanel({ passkeys, name }: { passkeys: PasskeyRow[]; name: string
                                     style={{ color: 'var(--success-strong)' }}
                                 />
                                 <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate">
-                                        {passkey.name}
-                                    </p>
+                                    <p className="text-sm font-medium truncate">{passkey.name}</p>
                                     <p
                                         className="text-xs"
                                         style={{ color: 'var(--muted-foreground)' }}
@@ -654,10 +665,7 @@ function SocialPanel({ providers }: { providers: SocialProvider[] }) {
         >
             <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {providers.map((provider) => (
-                    <li
-                        key={provider.key}
-                        className="flex items-center justify-between gap-4 py-3"
-                    >
+                    <li key={provider.key} className="flex items-center justify-between gap-4 py-3">
                         <div className="flex items-center gap-3">
                             <span className="font-medium">{provider.label}</span>
                             {provider.linked && <Pill tone="success">Connected</Pill>}
@@ -728,10 +736,7 @@ function SessionPanel({
     const [signingOut, setSigningOut] = useState(false);
 
     return (
-        <Panel
-            title="Current session"
-            description="The session you are signed in with right now."
-        >
+        <Panel title="Current session" description="The session you are signed in with right now.">
             {session === null ? (
                 <p className="text-sm" style={{ color: 'var(--faint)' }}>
                     No active session details are available.

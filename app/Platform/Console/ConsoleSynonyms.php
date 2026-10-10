@@ -52,7 +52,7 @@ final class ConsoleSynonyms
 
         // Authentication.
         'sign-in-methods' => ['login methods', 'authentication methods', 'password', 'passkeys', 'WebAuthn', 'magic link', 'email code', 'OTP', 'passwordless', 'MFA', '2FA', 'two-factor', 'SMS', 'sessions', 'session lifetime'],
-        'auth-policy' => ['password policy', 'password rules', 'MFA', '2FA', 'two-factor', 'multi-factor', 'lockout', 'brute force', 'sign-up', 'signup', 'registration', 'SMS', 'text message', 'require SSO', 'breached passwords'],
+        'auth-policy' => ['password policy', 'password rules', 'MFA', '2FA', 'two-factor', 'multi-factor', 'lockout', 'brute force', 'sign-up', 'signup', 'registration', 'SMS', 'text message', 'require SSO', 'breached passwords', 'session timeout', 'idle timeout', 'session length', 'turn off passkeys', 'turn off magic link', 'bot challenge'],
         'social-providers' => ['social sign-in', 'social connections', 'OAuth', 'Google login', 'Sign in with Google', 'GitHub login', 'Microsoft login', 'Apple login', 'Sign in with Apple', 'Facebook', 'LinkedIn', 'Discord', 'Slack login', 'GitLab'],
         'connections' => ['SSO', 'SAML', 'OIDC', 'OpenID Connect', 'single sign-on', 'SAML connection', 'Okta', 'Entra ID', 'Azure AD', 'ADFS', 'Google Workspace SSO', 'Ping', 'OneLogin', 'IdP', 'identity provider', 'enterprise connection'],
         'directories' => ['SCIM', 'user provisioning', 'directory', 'HRIS', 'HR system', 'Workday', 'BambooHR', 'Rippling', 'HiBob', 'Personio', 'Google Workspace directory', 'Entra directory', 'groups', 'deprovisioning', 'sync users'],

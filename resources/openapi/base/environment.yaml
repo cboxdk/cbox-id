@@ -2752,7 +2752,7 @@ components:
         orphaned: { type: boolean, description: "Its app stopped declaring it." }
     SignInRules:
       type: object
-      required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold]
+      required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold, passkeys, magic_link, session_idle_minutes, session_absolute_minutes, bot_challenge]
       properties:
         min_length: { type: integer, description: "Minimum password length." }
         require_breach_check: { type: boolean, description: "Passwords found in known breaches are refused." }
@@ -2761,9 +2761,23 @@ components:
         mfa: { type: string, enum: [off, optional, required] }
         sso: { type: string, enum: [off, preferred, required], description: "`required` refuses every other way in." }
         lockout_threshold: { type: ["integer", "null"], description: "Failed attempts before a lockout; null for none." }
+        passkeys: { type: boolean, description: "Environment-wide. Whether passkeys may be used to sign in and be added. An organization's override never changes it." }
+        magic_link: { type: boolean, description: "Environment-wide. Whether a one-time sign-in link may be emailed." }
+        session_idle_minutes: { type: ["integer", "null"], description: "Environment-wide. Minutes of inactivity before a session ends; null for the deployment's." }
+        session_absolute_minutes: { type: ["integer", "null"], description: "Environment-wide. Minutes a session lasts at most; null for the deployment's." }
+        bot_challenge: { type: boolean, description: "Environment-wide. Whether a sign-up Radar flags is challenged with Turnstile, where the deployment has keys." }
+    SignInMethodsInForce:
+      type: object
+      required: [passkeys, magic_link, session_idle_minutes, session_absolute_minutes, bot_challenge]
+      properties:
+        passkeys: { type: boolean }
+        magic_link: { type: boolean }
+        session_idle_minutes: { type: integer, description: "0 for no idle timeout." }
+        session_absolute_minutes: { type: integer }
+        bot_challenge: { type: boolean }
     SignInPolicy:
       type: object
-      required: [organization_id, policy, baseline, override, inheriting]
+      required: [organization_id, policy, baseline, override, inheriting, in_force, deployment]
       properties:
         organization_id: { type: ["string", "null"], description: "null for the environment baseline." }
         policy:
@@ -2776,19 +2790,46 @@ components:
             - { $ref: "#/components/schemas/SignInRules" }
             - { type: "null" }
         inheriting: { type: boolean, description: "True for an organization with no override of its own." }
+        in_force:
+          $ref: "#/components/schemas/SignInMethodsInForce"
+          description: "The environment-wide methods and session lengths actually in force, after the deployment's ceiling."
+        deployment:
+          $ref: "#/components/schemas/SignInMethodsInForce"
+          description: "The deployment's ceiling: which methods it offers at all, the longest sessions it allows, and whether it has Turnstile keys."
     SocialProvider:
       type: object
-      required: [id, organization_id, provider, name, protocol, status, callback_uri]
-      description: "Its client secret and private key are write-only and never returned."
+      required: [id, organization_id, level, provider, name, protocol, status, enabled, scopes, callback_uri]
+      description: "Its client secret and private key are write-only and never returned. An environment provider (`level: environment`) is offered on every organization's sign-in page unless the organization has its own for the same provider or turned it off."
       properties:
         id: { type: string }
-        organization_id: { type: ["string", "null"] }
+        organization_id: { type: ["string", "null"], description: "null for the environment's own provider." }
+        level: { type: string, enum: [environment, organization] }
+        enabled: { type: boolean, description: "False when it is turned off; its credentials are kept." }
+        scopes: { type: array, items: { type: string }, description: "Extra scopes requested on top of the ones sign-in needs." }
         provider: { type: ["string", "null"], description: "The catalogue key: google, github, apple…" }
         name: { type: string }
         protocol: { type: string, enum: [oidc, oauth2] }
         status: { type: string }
         callback_uri: { type: string, description: "The redirect URI to register with the provider." }
         created_at: { type: ["string", "null"], format: date-time }
+    OfferedSocialProviders:
+      type: object
+      required: [organization_id, providers, not_inherited]
+      description: "The social login buttons one sign-in page shows, after inheritance."
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the plain sign-in page, before anybody has said who they are." }
+        providers:
+          type: array
+          items:
+            type: object
+            required: [id, provider, name, source, callback_uri]
+            properties:
+              id: { type: string }
+              provider: { type: ["string", "null"] }
+              name: { type: string }
+              source: { type: string, enum: [environment, organization], description: "`environment` when inherited; `organization` when the organization's own stands in its place." }
+              callback_uri: { type: string }
+        not_inherited: { type: array, items: { type: string }, description: "The environment's providers this organization turned off for its page." }
     FrontendKey:
       type: object
       required: [id, name, key, mode, origins, active]

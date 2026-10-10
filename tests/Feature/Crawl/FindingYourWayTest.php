@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Platform\InstallationOrganization;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
@@ -80,6 +82,18 @@ const FINDING_YOUR_WAY = [
     'environment.branding' => [1, 'Brand the sign-in page'],
 ];
 
+/**
+ * Tasks whose destination is one STATE of a page rather than the page — the setup form a
+ * link on it opens — by path and query, with the same budget rule.
+ *
+ * "Turn on Google for my app" is the most common thing a new administrator comes to do:
+ * Authentication (1) › Social login (2) › Google (3), and the form that opens offers the
+ * whole environment without being asked — which the test below holds as well.
+ */
+const FINDING_YOUR_WAY_STATES = [
+    '/admin/social-sign-in?provider=google' => [3, 'Turn on Google for the environment'],
+];
+
 it('puts every task an environment administrator comes for a few clicks from home', function (): void {
     $world = ConsoleCrawl::world();
     $environment = $world->environment;
@@ -90,7 +104,8 @@ it('puts every task an environment administrator comes for a few clicks from hom
 
     $origin = 'https://'.$environment->slug.'.'.ConsoleCrawl::ROOT;
     $version = (string) app(HandleInertiaRequests::class)->version(request());
-    $depths = findingYourWayWalk($this, $origin.'/admin', $version, maxDepth: 5);
+    $urls = [];
+    $depths = findingYourWayWalk($this, $origin.'/admin', $version, maxDepth: 5, urls: $urls);
 
     // `FINDING_YOUR_WAY_LOG=1` prints how many clicks every page took.
     if (getenv('FINDING_YOUR_WAY_LOG') !== false) {
@@ -108,16 +123,84 @@ it('puts every task an environment administrator comes for a few clicks from hom
         }
     }
 
+    foreach (FINDING_YOUR_WAY_STATES as $path => [$budget, $task]) {
+        $took = $urls[$origin.$path] ?? null;
+
+        if ($took === null || $took > $budget) {
+            $over[] = sprintf('%s (%s): %s clicks, budget %d', $task, $path, $took === null ? 'not reachable in 5' : (string) $took, $budget);
+        }
+    }
+
     expect($over)->toBe([], "Tasks a new administrator cannot find in their budget:\n".implode("\n", $over));
+
+    // …and where "Turn on Google" lands is a form for the WHOLE environment, with the real
+    // redirect URI to copy — not a form that first asks which organization.
+    $google = findingYourWayPage($this, $origin.'/admin/social-sign-in?provider=google', $version);
+
+    expect($google['props']['template']['key'] ?? null)->toBe('google')
+        ->and($google['props']['organization']['allowsEnvironment'] ?? null)->toBeTrue()
+        ->and(array_key_exists('selected', $google['props']['organization']) && $google['props']['organization']['selected'] === null)->toBeTrue()
+        ->and($google['props']['template']['redirectUri'] ?? '')->toEndWith('/sso/oidc/'.($google['props']['template']['reservedId'] ?? '?').'/callback');
+});
+
+/**
+ * THE SAME TASKS ON A SINGLE-TENANT INSTALL, whose whole administration is the organization
+ * console: there is no environment console to send anybody to, so the environment's own
+ * sign-in settings are changed here — and "turn on Google" lands on a form for every sign-in
+ * page, exactly as on the environment console.
+ */
+const FINDING_YOUR_WAY_SINGLE_TENANT = [
+    'sign-in-methods' => [2, 'See every sign-in method'],
+    'auth-policy' => [2, 'Turn passkeys or magic links off, or shorten sessions'],
+    'social-providers' => [2, 'Manage social login'],
+];
+
+it('puts the environment\'s sign-in settings a few clicks from home on a single-tenant install', function (): void {
+    installedDeployment();
+    [, $home] = actingAsRole(MembershipRole::Owner);
+    // The install's own organization, whose owners administer its environment.
+    app(InstallationOrganization::class)->set($home->id);
+
+    $origin = rtrim(url('/'), '/');
+    $version = (string) app(HandleInertiaRequests::class)->version(request());
+    $urls = [];
+    $depths = findingYourWayWalk($this, $origin.'/dashboard', $version, maxDepth: 4, urls: $urls, environmentConsole: false);
+
+    $over = [];
+
+    foreach (FINDING_YOUR_WAY_SINGLE_TENANT as $route => [$budget, $task]) {
+        $took = $depths[$route] ?? null;
+
+        if ($took === null || $took > $budget) {
+            $over[] = sprintf('%s (%s): %s clicks, budget %d', $task, $route, $took === null ? 'not reachable in 4' : (string) $took, $budget);
+        }
+    }
+
+    $google = $urls[$origin.'/social-sign-in?provider=google'] ?? null;
+
+    if ($google === null || $google > 3) {
+        $over[] = 'Turn on Google for the environment (/social-sign-in?provider=google): '.($google ?? 'not reachable in 4').' clicks, budget 3';
+    }
+
+    expect($over)->toBe([], "Tasks a single-tenant administrator cannot find in their budget:\n".implode("\n", $over));
+
+    // The form offers every sign-in page first, and the policy page draws the environment's panels.
+    $form = findingYourWayPage($this, $origin.'/social-sign-in?provider=google', $version);
+    $policy = findingYourWayPage($this, $origin.'/sign-in-rules', $version);
+
+    expect($form['props']['ownerChoice'] ?? null)->toBeTrue()
+        ->and($policy['props']['signInMethods'] ?? null)->not->toBeNull()
+        ->and($policy['props']['smsFactor'] ?? null)->not->toBeNull();
 });
 
 /**
  * Breadth-first from $start, one level per click; returns route name => the fewest clicks
- * that reached it.
+ * that reached it, and fills $urls with every URL => the fewest clicks that reached IT.
  *
+ * @param  array<string, int>  $urls
  * @return array<string, int>
  */
-function findingYourWayWalk(TestCase $test, string $start, string $version, int $maxDepth): array
+function findingYourWayWalk(TestCase $test, string $start, string $version, int $maxDepth, array &$urls = [], bool $environmentConsole = true): array
 {
     $depths = [];
     $seen = [$start => true];
@@ -128,7 +211,7 @@ function findingYourWayWalk(TestCase $test, string $start, string $version, int 
         $next = [];
 
         foreach ($level as $url) {
-            $route = findingYourWayRoute($url);
+            $route = findingYourWayRoute($url, $environmentConsole);
 
             if ($route === null) {
                 continue;
@@ -136,6 +219,7 @@ function findingYourWayWalk(TestCase $test, string $start, string $version, int 
 
             $name = (string) $route->getName();
             $depths[$name] ??= $depth;
+            $urls[$url] ??= $depth;
 
             // The second Users detail page proves what the first did.
             $visitsPerRoute[$name] = ($visitsPerRoute[$name] ?? 0) + 1;
@@ -164,8 +248,8 @@ function findingYourWayWalk(TestCase $test, string $start, string $version, int 
     return $depths;
 }
 
-/** The environment-console GET page a URL is, or null for anything else. */
-function findingYourWayRoute(string $url): ?Route
+/** The console GET page a URL is — the environment console's, or the organization console's — or null. */
+function findingYourWayRoute(string $url, bool $environmentConsole = true): ?Route
 {
     try {
         $route = app(Router::class)->getRoutes()->match(Request::create($url, 'GET'));
@@ -175,7 +259,11 @@ function findingYourWayRoute(string $url): ?Route
 
     $name = (string) $route->getName();
 
-    return str_starts_with($name, 'environment.')
+    $ours = $environmentConsole
+        ? str_starts_with($name, 'environment.')
+        : $name !== '' && ! str_starts_with($name, 'environment.') && ! str_starts_with($name, 'platform.');
+
+    return $ours
         && preg_match('/(impersonat|handoff|switch|acting-organization|lookup|search|sudo|\.jump$)/', $name) !== 1
         ? $route
         : null;

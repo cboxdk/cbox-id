@@ -95,7 +95,11 @@ final class CrossTenantSweep
             'portal-links:id' => 'portal_link',
             'provisioning-targets:id' => 'provisioning_target',
             'saml-apps:id' => 'saml_app',
-            'social-providers:id' => 'social_provider',
+            // A social provider BY ID — an organization's own, or the environment's — is a
+            // resource like any other; the account plane's `social:provider` below is a name.
+            'social-providers:id' => 'social_connection',
+            // Whether an organization inherits the environment's GitHub: a catalogue key.
+            'inherited:provider' => 'social_provider_key',
             'sod-policies:id' => 'sod_policy',
             'connections:id' => 'sso_connection',
             'domains:id' => 'sso_domain',
@@ -157,7 +161,7 @@ final class CrossTenantSweep
      *
      * @var list<string>
      */
-    public const array NAMES = ['api_scope', 'vault_grant', 'social_provider', 'application', 'pipe_provider'];
+    public const array NAMES = ['api_scope', 'vault_grant', 'social_provider', 'social_provider_key', 'application', 'pipe_provider'];
 
     /**
      * Every scope an environment action asks for: the sweep's key holds all of them, so a
@@ -285,6 +289,8 @@ final class CrossTenantSweep
             $w['pipe_connection'] = self::pipeConnection($w['pipe'], $w['member']);
             $w['saml_app'] = $run('saml_apps.create', ['entity_id' => "https://sp-{$slug}.sweep.example", 'acs_url' => "https://sp-{$slug}.sweep.example/acs", 'organization_id' => $w['organization']])['id'];
             $w['social_provider'] = $run('signin.social.set', ['organization_id' => $w['organization'], 'provider' => 'github', 'client_id' => 'gh-'.$slug, 'client_secret' => 'gh-secret'])['id'];
+            $w['social_connection'] = $w['social_provider'];
+            $w['social_provider_key'] = 'github';
             $w['frontend_key'] = $run('frontend_keys.create', ['name' => 'Sweep site '.$label, 'mode' => 'test', 'origins' => ["https://site-{$slug}.sweep.example"]])['id'];
             $w['environment_key'] = $run('keys.create', ['name' => 'Sweep worker '.$label, 'scopes' => ['users:read']])['id'];
             $w['audit_schema'] = "sweep_{$slug}.done";
