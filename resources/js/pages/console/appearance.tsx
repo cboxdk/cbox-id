@@ -79,7 +79,12 @@ export default function AppearancePage({
                     // switching what is being themed has to give it a new one — otherwise
                     // the environment's colours stay on screen above the organization's
                     // Save button.
-                    key={environmentDefault ? 'environment' : 'organization'}
+                    //
+                    // …and by the STORED images: after a save that uploaded one, the server
+                    // hands back its own URL, and the editor starts again from what is now
+                    // stored — so the pending upload is spent rather than sent a second time
+                    // with the next colour change.
+                    key={`${environmentDefault ? 'environment' : 'organization'}|${appearance.logo}|${appearance.favicon}`}
                     value={appearance}
                     presets={presets}
                     fonts={fonts}
