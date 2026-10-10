@@ -31,6 +31,7 @@ use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
+use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
@@ -2816,18 +2817,20 @@ it('serves social sign-in on the environment plane, not only the organization on
     expect($orgId)->not->toBe('');
 })->group('security');
 
-it('refuses to enable a provider that names no organization', function (): void {
+it('turns a provider on for the whole environment when the form names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-social-unchosen');
 
-    // The READ renders — every organization's providers, with the setup form asking which
-    // organization. The WRITE is what must refuse, and it does so by demanding an
-    // organization rather than by silently writing to none.
+    // The READ renders — the environment's providers and every organization's, with the
+    // setup form asking who it is for, the whole environment first.
     $this->get(route('environment.social-providers'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('view', 'environment')
             ->has('organizationFilter')
-            ->has('organization'));
+            ->where('organization.allowsEnvironment', true));
 
+    // No organization chosen is the ENVIRONMENT's provider, said out loud by the form — the
+    // action itself still refuses a request that names neither ({@see EnableSocialProvider}).
     test()->from(route('environment.social-providers'))
         ->post(route('environment.social-providers.store'), [
             'provider' => 'github',
@@ -2835,7 +2838,13 @@ it('refuses to enable a provider that names no organization', function (): void 
             'clientSecret' => 'gh',
             'parameters' => [],
         ])
-        ->assertSessionHasErrors('organization');
+        ->assertSessionHasNoErrors();
+
+    $environmentProviders = app(SignInProviders::class)->environmentProviders();
+
+    expect($environmentProviders)->toHaveCount(1)
+        ->and($environmentProviders[0]->provider)->toBe('github')
+        ->and($environmentProviders[0]->organization_id)->toBeNull();
 })->group('security');
 
 /*

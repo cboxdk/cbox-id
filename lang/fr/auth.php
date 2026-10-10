@@ -81,6 +81,11 @@ return [
             'unverified' => 'Cette clé d’accès n’a pas pu être vérifiée.',
             'failed' => 'Une erreur s’est produite lors de la connexion.',
         ],
+        // Answered by a passkey or magic-link door the environment has switched off.
+        'method_off' => [
+            'passkeys' => 'Les clés d’accès sont désactivées ici. Connectez-vous autrement.',
+            'magic_link' => 'Les liens de connexion par e-mail sont désactivés ici. Connectez-vous autrement.',
+        ],
     ],
 
     'signup' => [

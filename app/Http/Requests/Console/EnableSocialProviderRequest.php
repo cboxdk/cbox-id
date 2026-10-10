@@ -35,7 +35,28 @@ final class EnableSocialProviderRequest extends FormRequest
             'clientSecret' => ['nullable', 'string', 'max:5000'],
             'parameters' => ['array'],
             'parameters.*' => ['nullable', 'string', 'max:5000'],
+            // The id the form reserved so it could show the real redirect URI; the action
+            // refuses one that is not a free ULID.
+            'reservedId' => ['nullable', 'string', 'max:26'],
+            // Extra scopes as one line, separated by spaces or commas — the way a provider's
+            // own documentation writes them.
+            'scopes' => ['nullable', 'string', 'max:2000'],
         ];
+    }
+
+    public function reservedId(): ?string
+    {
+        $id = trim((string) $this->string('reservedId'));
+
+        return $id === '' ? null : $id;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function scopes(): array
+    {
+        return array_values(array_filter(preg_split('/[\s,]+/', (string) $this->string('scopes')) ?: [], static fn (string $scope): bool => $scope !== ''));
     }
 
     public function provider(): string

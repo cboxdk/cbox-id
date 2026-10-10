@@ -24,9 +24,18 @@ type Props = PageProps<{
     pendingLink: string | null;
     signupOpen: boolean;
     providers: SocialProvider[];
+    /** The environment's switches, under the deployment's. A method that is off is not drawn. */
+    methods: { passkeys: boolean; magicLink: boolean };
 }>;
 
-export default function Login({ purpose, email, pendingLink, signupOpen, providers }: Props) {
+export default function Login({
+    purpose,
+    email,
+    pendingLink,
+    signupOpen,
+    providers,
+    methods,
+}: Props) {
     /*
      * ON THE FLASH CHANNEL, not in props.
      *
@@ -36,13 +45,14 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
      * claiming their address had been identified — or still showing a mandate that has
      * since been spent.
      */
-    const { identified, ssoOffer, ssoOfferLeads, magicSentTo, magicUrl, mandate } =
-        usePage().flash;
+    const { identified, ssoOffer, ssoOfferLeads, magicSentTo, magicUrl, mandate } = usePage().flash;
     const { t, rich } = useTranslator();
 
     const form = useForm({ email, password: '' });
 
-    const [passkeyMessage, setPasskeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
+    const [passkeyMessage, setPasskeyMessage] = useState<{ text: string; ok: boolean } | null>(
+        null,
+    );
     const [passkeyBusy, setPasskeyBusy] = useState(false);
     // A lazy initialiser, not an effect: reading it after mount renders one frame with
     // the passkey button ABSENT and then adds it, which moves the two buttons below it
@@ -157,11 +167,10 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                         // A full navigation, not a client visit: the destination is the
                         // identity provider's own redirect endpoint, which answers with a
                         // cross-origin 302 that a client-side navigation cannot follow.
-                        <a
-                            href={mandate.startUrl}
-                            className="btn btn-primary btn-lg w-full mt-4"
-                        >
-                            {t('auth.login.mandate.continue', { organization: mandate.organization })}
+                        <a href={mandate.startUrl} className="btn btn-primary btn-lg w-full mt-4">
+                            {t('auth.login.mandate.continue', {
+                                organization: mandate.organization,
+                            })}
                         </a>
                     ) : (
                         <p
@@ -200,7 +209,11 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 form.post(identify.url());
                             }}
                         >
-                            <Field id="email" label={t('auth.common.email')} error={form.errors.email}>
+                            <Field
+                                id="email"
+                                label={t('auth.common.email')}
+                                error={form.errors.email}
+                            >
                                 <Input
                                     name="email"
                                     scale="lg"
@@ -241,12 +254,18 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                     <a href={ssoOffer} className="btn btn-primary btn-lg w-full">
                                         {t('auth.login.sso.continue')}
                                     </a>
-                                    <Divider className="my-5">{t('auth.login.sso.or_password')}</Divider>
+                                    <Divider className="my-5">
+                                        {t('auth.login.sso.or_password')}
+                                    </Divider>
                                 </div>
                             )}
 
                             <form
-                                className={ssoOffer != null && ssoOfferLeads === true ? 'mt-5 space-y-4' : 'mt-7 space-y-4'}
+                                className={
+                                    ssoOffer != null && ssoOfferLeads === true
+                                        ? 'mt-5 space-y-4'
+                                        : 'mt-7 space-y-4'
+                                }
                                 onSubmit={(event) => {
                                     event.preventDefault();
                                     form.post(attempt.url());
@@ -276,7 +295,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                         spellCheck={false}
                                         placeholder="you@company.com"
                                         value={form.data.email}
-                                        onChange={(event) => form.setData('email', event.target.value)}
+                                        onChange={(event) =>
+                                            form.setData('email', event.target.value)
+                                        }
                                     />
                                 </Field>
 
@@ -300,7 +321,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                     placeholder="••••••••••••"
                                     error={form.errors.password}
                                     value={form.data.password}
-                                    onChange={(event) => form.setData('password', event.target.value)}
+                                    onChange={(event) =>
+                                        form.setData('password', event.target.value)
+                                    }
                                 />
 
                                 <Button
@@ -322,7 +345,15 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                         </>
                     )}
 
-                    <Divider>{t('auth.login.or')}</Divider>
+                    {/*
+                        "OR" only above something to choose instead. With every other method
+                        switched off for this environment the divider would introduce nothing.
+                    */}
+                    {(providers.length > 0 ||
+                        methods.magicLink ||
+                        (methods.passkeys && canUsePasskeys)) && (
+                        <Divider>{t('auth.login.or')}</Divider>
+                    )}
 
                     {providers.length > 0 && (
                         <div className="space-y-2.5 mb-2.5">
@@ -334,7 +365,9 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                                 >
                                     <ProviderMark provider={provider.provider} />
                                     <span>
-                                        {t('auth.login.continue_with', { provider: provider.label })}
+                                        {t('auth.login.continue_with', {
+                                            provider: provider.label,
+                                        })}
                                     </span>
                                 </a>
                             ))}
@@ -342,20 +375,22 @@ export default function Login({ purpose, email, pendingLink, signupOpen, provide
                     )}
 
                     <div className="space-y-2.5">
-                        <Button
-                            size="lg"
-                            icon="magic"
-                            className="w-full"
-                            onClick={() => form.post(magicLink.url())}
-                        >
-                            {t('auth.login.magic_link')}
-                        </Button>
+                        {methods.magicLink && (
+                            <Button
+                                size="lg"
+                                icon="magic"
+                                className="w-full"
+                                onClick={() => form.post(magicLink.url())}
+                            >
+                                {t('auth.login.magic_link')}
+                            </Button>
+                        )}
 
                         {/*
                             Hidden entirely where the browser cannot do WebAuthn. An
                             affordance that always fails is worse than one that is absent.
                         */}
-                        {canUsePasskeys && (
+                        {methods.passkeys && canUsePasskeys && (
                             <Button
                                 size="lg"
                                 icon="key"

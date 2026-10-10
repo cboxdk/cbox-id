@@ -243,17 +243,20 @@ export function OrganizationPickerField({
     onChange,
     error,
     hint = 'What you create here belongs to this organization, and to no other.',
+    label = 'For which organization?',
 }: {
     picker: OrganizationPicker;
     onChange: (organizationId: string) => void;
     error?: string;
     hint?: ReactNode;
+    /** The question, where "for which organization" would undersell "the whole environment". */
+    label?: string;
 }) {
     const [value, setValue] = useState<OrganizationOption | null>(picker.selected);
 
     return (
         <Field
-            label="For which organization?"
+            label={label}
             hint={picker.locked ? 'Opened from this organization’s page.' : hint}
             error={error}
         >

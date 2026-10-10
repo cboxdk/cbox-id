@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpClient;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +23,12 @@ use Illuminate\Support\Facades\Log;
  * behaviour: {@see configured()} is false, {@see verify()} answers true, the widget
  * never renders, and the CSP keeps its tighter script-src. The feature is opt-in by
  * the presence of the two keys and nothing else.
+ *
+ * AND THE ENVIRONMENT MAY SAY NO. With keys present, an environment can still switch the
+ * challenge off for its own sign-ups (the authentication policy's `botChallenge`), and a
+ * flagged sign-up is then confirmed by email instead — the fallback a deployment without
+ * keys already uses. {@see enabled()} is the question callers ask; {@see configured()} is
+ * only whether the deployment could.
  */
 final class Turnstile
 {
@@ -43,17 +50,27 @@ final class Turnstile
         return $this->key('site_key') !== '' && $this->secretKey() !== '';
     }
 
-    /** The public site key for the widget, or '' when Turnstile is not configured. */
+    /**
+     * Whether a flagged sign-up is challenged HERE: the deployment has the keys, and the
+     * current environment has not switched the challenge off. The deployment's absence wins
+     * — an environment cannot switch on a challenge nobody configured.
+     */
+    public function enabled(): bool
+    {
+        return $this->configured() && app(AuthPolicies::class)->forEnvironment()->botChallenge;
+    }
+
+    /** The public site key for the widget, or '' when the challenge is not used here. */
     public function siteKey(): string
     {
-        return $this->configured() ? $this->key('site_key') : '';
+        return $this->enabled() ? $this->key('site_key') : '';
     }
 
     /**
      * Verify a widget token with Cloudflare. NEVER trust the browser's own success
      * callback: the token is the only evidence, and only Cloudflare can validate it.
      *
-     * Returns true when Turnstile is not configured (the feature is inert), and false
+     * Returns true when the challenge is not used here (see enabled()), and false
      * for a missing, malformed or rejected token — including when Cloudflare cannot be
      * reached. Failing closed is the right default here because the only requests that
      * reach this method are ones the risk scorer already judged elevated; a legitimate
@@ -61,7 +78,7 @@ final class Turnstile
      */
     public function verify(?string $token, ?string $ip = null): bool
     {
-        if (! $this->configured()) {
+        if (! $this->enabled()) {
             return true;
         }
 

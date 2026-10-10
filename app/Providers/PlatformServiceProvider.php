@@ -12,6 +12,7 @@ use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\FrontendApi\AppearanceConfig;
+use App\Platform\FrontendApi\SignInMethodsConfig;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\Install\Contracts\SetupTokens;
@@ -78,6 +79,9 @@ final class PlatformServiceProvider extends ServiceProvider
         // to POST and then renders the form in our colours, which is the tell that gives
         // away an embedded widget as somebody else's.
         $this->app->tag(AppearanceConfig::class, FrontendConfigContributor::class);
+        // …and which methods to draw: a passkey or magic-link button the environment has
+        // switched off would lead an embedded sign-in to a 403.
+        $this->app->tag(SignInMethodsConfig::class, FrontendConfigContributor::class);
 
         // THE LEGACY LOGIN AN APP DECLARED, once a person has approved it. Bound
         // unconditionally because the source itself is inert without an approved row —

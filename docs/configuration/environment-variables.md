@@ -158,8 +158,10 @@ Laravel `SESSION_*` keys below).
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_SESSION_TTL_MINUTES` | Absolute session lifetime before re-authentication. | `480` (8h) | Lower it for higher-assurance deployments. |
-| `CBOX_ID_SESSION_IDLE_MINUTES` | Idle timeout — inactivity before the session is invalidated. | `30` | Lower it for shared or high-risk environments. |
+| `CBOX_ID_SESSION_TTL_MINUTES` | Absolute session lifetime before re-authentication — the longest an environment may choose on its Authentication policy. | `480` (8h) | Lower it for higher-assurance deployments. An environment can shorten it, never lengthen it. |
+| `CBOX_ID_SESSION_IDLE_MINUTES` | Idle timeout — inactivity before the session is invalidated, and the longest idle timeout an environment may choose. `0` sets none, and the session lifetime then bounds an environment's. | `30` | Lower it for shared or high-risk environments. |
+| `CBOX_ID_PASSKEYS_ENABLED` | Whether passkeys exist on this deployment at all. `false` turns them off in every environment, whatever its Authentication policy says. | `true` | Leave on; environments switch them off for themselves. |
+| `CBOX_ID_MAGIC_LINK_ENABLED` | Whether emailed sign-in links exist on this deployment at all. `false` turns them off in every environment. | `true` | Turn off if the deployment has no reliable mail transport. |
 | `CBOX_ID_SUPPORT_SESSION_MAX_TTL` | The longest a [support session](../guides/support-access.md) may run, in seconds — and every token minted for it. The console offers nothing longer. It can only lower the one-hour ceiling; nothing goes under 60. | `3600` | Lower it if your policy wants support access shorter than an hour. |
 
 ## OAuth / OIDC endpoint policy

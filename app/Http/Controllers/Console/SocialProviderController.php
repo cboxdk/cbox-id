@@ -6,16 +6,20 @@ namespace App\Http\Controllers\Console;
 
 use App\Actions\SignIn\EnableSocialProvider;
 use App\Actions\SignIn\RemoveSocialProvider;
+use App\Actions\SignIn\SetSocialProviderInheritance;
 use App\Actions\SignIn\SocialProviderFields;
+use App\Actions\SignIn\TurnOffSocialProvider;
+use App\Actions\SignIn\TurnOnSocialProvider;
+use App\Actions\SignIn\UpdateSocialProvider;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\EnableSocialProviderRequest;
+use App\Http\Requests\Console\UpdateSocialProviderRequest;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
-use Cbox\Id\Federation\Enums\ClientSecretKind;
+use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Enums\ProviderCapability;
 use Cbox\Id\Federation\Models\Connection;
@@ -23,99 +27,93 @@ use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Federation\ValueObjects\ProviderTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
  * SOCIAL SIGN-IN — pick a provider from a list instead of describing one from memory.
+ *
+ * TWO OWNERS, ONE PAGE. A provider belongs to the ENVIRONMENT — offered on every sign-in page
+ * in it, which is what "turn on Google for my app" means and therefore what the setup form
+ * offers first — or to one ORGANIZATION, which then replaces the environment's for that
+ * provider on its own page. An organization can also turn one of the environment's off for
+ * its page without bringing its own. The precedence is the framework's
+ * ({@see SignInProviders}); this page draws it in two shapes:
+ *
+ *  - the ENVIRONMENT view (the environment console, unfiltered): the environment's
+ *    providers, then every organization's own, then which organizations turned one off;
+ *  - an ORGANIZATION view (one organization's console, or the list filtered to one): what
+ *    that organization's sign-in page actually shows, each button saying whether it is
+ *    inherited or the organization's own.
  *
  * Everything an administrator used to have to know — Google's issuer, that Entra's names
  * the directory, that GitHub is not an OpenID Provider at all, which scopes carry an
  * address — is catalogue data. What is left is the part that genuinely is theirs: the
  * client id and secret from their own account with that provider.
  *
- * The screen is built around the two things that actually go wrong. The redirect URI is
- * shown before anything else and is copyable, because "the redirect URI does not match" is
- * the single most common failure setting any of these up. And the provider's own steps are
- * shown beside the fields rather than linked away to, because the person filling this in is
- * switching between two browser tabs and every extra one costs them their place.
+ * THE REAL REDIRECT URI, BEFORE SAVING. The URI contains the provider's id, which used to
+ * exist only after saving, so the form showed a `{connection}` placeholder and asked people
+ * to come back and fix it — the single most common way any of these failed. The form now
+ * reserves the id when it is drawn (kept in the session, so a reload while somebody is in
+ * the provider's console in another tab shows the same URI), and the provider is created
+ * under it ({@see SignInProviders::create()}).
  *
- * ONE PAGE, BOTH PLANES, through {@see ConsoleScope}. It used to ask
- * `CurrentUser::isAdmin()` — a question only the organization plane can answer — which is
- * why this capability shipped reachable from one console only: the person who owns the
- * environment could not reach the feature at all without impersonating one of their users.
- *
- * Enabling and removing are ACTIONS (`signin.social.set`, `signin.social.delete`), the same
- * classes the management API runs; this controller maps the form onto them.
+ * Every write is an ACTION — `signin.social.set`, `.update`, `.enable`, `.disable`,
+ * `.delete`, `.inherit` — the same classes the management API runs; this controller maps
+ * the forms onto them.
  */
 final readonly class SocialProviderController extends ConsoleController
 {
-    public function index(Request $request, Connections $connections): Response
+    /** The session key the setup form's reserved id lives under, per provider. */
+    private const RESERVED = 'social-setup.reserved.';
+
+    public function index(Request $request, SignInProviders $providers): Response
     {
         $this->scope->assertMayAdminister();
 
-        /*
-         * A provider is offered on ONE organization's sign-in page. The organization console
-         * lists its own; the environment console lists every organization's — with whose it
-         * is — or the one organization its filter names. The "add a provider" half is about
-         * one organization either way: on the environment console its form asks which.
-         */
         $filter = $this->organizationFilter();
         $organizationId = $filter->id;
+        $environmentView = $organizationId === null && ! $filter->unknown;
 
-        $enabled = match (true) {
+        /** @var list<Connection> $environment */
+        $environment = $filter->unknown ? [] : $providers->environmentProviders();
+        $environmentKeys = array_map(static fn (Connection $connection): string => (string) $connection->provider, $environment);
+
+        /** @var list<Connection> $own */
+        $own = match (true) {
             $filter->unknown => [],
-            $organizationId !== null => $connections->catalogueProvidersFor($organizationId),
-            default => Connection::query()
-                ->whereNotNull('organization_id')
-                ->whereNotNull('provider')
-                ->orderBy('provider')
-                ->get()
-                ->all(),
+            $organizationId !== null => array_values(Connection::query()->where('organization_id', $organizationId)->whereNotNull('provider')->orderBy('provider')->get()->all()),
+            default => array_values(Connection::query()->whereNotNull('organization_id')->whereNotNull('provider')->orderBy('provider')->get()->all()),
         };
 
-        // What is already offered is only "already offered" for one organization; across the
-        // environment every provider can still be added somewhere.
-        $enabledKeys = $organizationId === null
-            ? []
-            : array_map(static fn (Connection $connection): ?string => $connection->provider, $enabled);
-
-        $owners = $organizationId === null
-            ? $this->scope->organizationNames(array_map(static fn (Connection $connection): ?string => $connection->organization_id, $enabled))
+        $owners = $environmentView
+            ? $this->scope->organizationNames([
+                ...array_map(static fn (Connection $connection): ?string => $connection->organization_id, $own),
+                ...array_keys($providers->optOuts()),
+            ])
             : [];
 
-        /*
-         * WHICH PROVIDER IS BEING SET UP, in the URL rather than in component state. It was a
-         * locked property before, which meant the setup panel could not be linked to, shared
-         * or reloaded — and a person following a provider's own documentation in a second tab
-         * is exactly the person who reloads.
-         */
         $template = SocialProviderFields::loginTemplate($request->string('provider')->toString());
+        $editing = $this->editing($request, $organizationId);
+
+        // What can still be added for the owner the page is about: the environment's on the
+        // environment view (an organization's own can be added from the same form), the
+        // organization's on an organization view.
+        $taken = $environmentView
+            ? $environmentKeys
+            : array_map(static fn (Connection $connection): string => (string) $connection->provider, $own);
 
         return $this->page('console/social-providers', Vocabulary::SOCIAL_LOGIN, [
-            'enabled' => array_map(fn (Connection $connection): array => [
-                'id' => $connection->id,
-                'name' => $connection->name,
-                'provider' => $connection->provider,
-                'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : 'OpenID Connect',
-                /*
-                 * THE REAL REDIRECT URI, which only exists once the connection does. The
-                 * setup panel can only show a `{connection}` placeholder, so without this the
-                 * one value the provider must be given is available nowhere after saving —
-                 * and the sign-in then fails with an error naming the client id rather than
-                 * the URI, which reads as a credential problem and gets debugged as one.
-                 */
-                'callbackUri' => $this->callbackUriFor($connection),
-                'organization' => $organizationId === null && $connection->organization_id !== null
-                    ? ($owners[$connection->organization_id] ?? $connection->organization_id)
-                    : null,
-                'removeHref' => $this->url('social-providers.destroy', $connection->id),
-            ], $enabled),
-            /*
-             * The providers that can be used for SIGN-IN, asked for by name rather than taken
-             * as the whole catalogue. Today those are the same set, and the day they stop
-             * being — a catalogue entry that is only ever a directory — this page would
-             * otherwise offer a sign-in button pointing nowhere.
-             */
+            'view' => $environmentView ? 'environment' : 'organization',
+            'organizationName' => $environmentView ? null : $filter->name,
+            'environmentProviders' => $environmentView
+                ? array_map(fn (Connection $connection): array => $this->row($connection), $environment)
+                : [],
+            'organizationProviders' => $environmentView
+                ? array_map(fn (Connection $connection): array => $this->row($connection, $owners[(string) $connection->organization_id] ?? (string) $connection->organization_id, in_array($connection->provider, $environmentKeys, true)), $own)
+                : [],
+            'optOuts' => $environmentView ? $this->optOutRows($providers, $owners) : [],
+            'page' => $environmentView || $organizationId === null ? [] : $this->pageRows($providers, $organizationId, $environment, $own),
             'available' => array_map(fn (ProviderTemplate $option): array => [
                 'key' => $option->key,
                 'name' => $option->name,
@@ -128,14 +126,23 @@ final readonly class SocialProviderController extends ConsoleController
                 ])),
             ], array_values(array_filter(
                 ProviderCatalog::withCapability(ProviderCapability::Login),
-                static fn (ProviderTemplate $t): bool => ! in_array($t->key, $enabledKeys, true),
+                static fn (ProviderTemplate $t): bool => ! in_array($t->key, $taken, true),
             ))),
-            'template' => $template === null ? null : $this->templateProps($template),
+            'template' => $template === null ? null : [
+                ...$this->templateProps($template),
+                'reservedId' => $reserved = $this->reservedId($request, $template),
+                'redirectUri' => SocialProviderFields::callbackUriFor($template, $reserved),
+            ],
+            'editing' => $editing,
             'organizationFilter' => $this->organizationFilterProps($filter),
-            // "For which organization?" on the setup form, on the environment console —
-            // prefilled and locked to the one the list is filtered to.
-            'organization' => $this->organizationPicker(),
-            'indexHref' => $this->url('social-providers'),
+            // "Who is it for?" on the setup form, on the environment console: every sign-in
+            // page in the environment unless an organization is chosen — prefilled and
+            // locked to the one the list is filtered to.
+            'organization' => $this->organizationPicker(allowsEnvironment: true),
+            'environmentHref' => $this->scope->plane() === ConsolePlane::Environment && ! $environmentView
+                ? route('environment.social-providers')
+                : null,
+            'indexHref' => $this->url('social-providers', $environmentView || $this->organizationFilterProps($filter) === null ? null : ['organization' => $organizationId]),
             'storeHref' => $this->url('social-providers.store'),
             'help' => HelpProps::for(HelpTopic::SocialSignIn),
         ]);
@@ -155,20 +162,24 @@ final readonly class SocialProviderController extends ConsoleController
         $parameters = $template === null ? [] : array_map(static fn ($parameter): string => $parameter->key, $template->parameters);
 
         // A refusal about a parameter lands on that parameter's own field.
-        $fields = ['provider' => 'provider', 'client_id' => 'clientId', 'client_secret' => 'clientSecret'];
+        $fields = ['provider' => 'provider', 'client_id' => 'clientId', 'client_secret' => 'clientSecret', 'scopes' => 'scopes', 'reserved_id' => 'clientId', 'organization_id' => 'organization'];
 
         foreach ($parameters as $key) {
             $fields['parameters.'.$key] = 'parameters.'.$key;
         }
 
+        // The environment's own unless the form named an organization — the organization
+        // console's always being its own.
+        $organizationId = $this->chosenOrganizationId($request, allowsEnvironment: true);
+
         $result = $this->act(EnableSocialProvider::class, [
-            // The member's own; on the environment console the form's "For which
-            // organization?", checked against this environment.
-            'organization_id' => $this->chosenOrganizationId($request),
+            ...($organizationId === null ? ['environment_wide' => true] : ['organization_id' => $organizationId]),
             'provider' => $request->provider(),
             'client_id' => $request->clientId(),
             'client_secret' => $request->clientSecret(),
             'parameters' => array_intersect_key($request->parameters(), array_flip($parameters)),
+            'scopes' => $request->scopes(),
+            'reserved_id' => $request->reservedId(),
         ], $fields, 'clientId');
 
         if ($result instanceof RedirectResponse) {
@@ -177,11 +188,78 @@ final readonly class SocialProviderController extends ConsoleController
 
         /** @var Connection $enabled */
         $enabled = $result->value;
+        $request->session()->forget(self::RESERVED.$request->provider());
 
-        return to_route($this->scope->routeName('social-providers'), $this->scope->plane() === ConsolePlane::Environment
+        $where = $enabled->organization_id === null
+            ? 'every sign-in page in this environment'
+            : (($this->scope->organizationNames([$enabled->organization_id])[$enabled->organization_id] ?? 'this organization').'’s sign-in page');
+
+        return to_route($this->scope->routeName('social-providers'), $this->scope->plane() === ConsolePlane::Environment && $enabled->organization_id !== null
             ? ['organization' => $enabled->organization_id]
             : [])
-            ->with('status', $enabled->name.' is now offered on the sign-in page.');
+            ->with('status', $enabled->name.' is now offered on '.$where.'.');
+    }
+
+    /** New credentials, values or scopes, through {@see UpdateSocialProvider}. */
+    public function update(UpdateSocialProviderRequest $request, string $connection): RedirectResponse
+    {
+        $this->scope->assertMayAdminister();
+
+        $result = $this->act(UpdateSocialProvider::class, [
+            'id' => $connection,
+            'organization_id' => $this->routeOrganizationId(),
+            ...$request->changes(),
+        ], ['client_id' => 'clientId', 'client_secret' => 'clientSecret', 'scopes' => 'scopes', 'parameters' => 'parameters'], 'clientId');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var Connection $updated */
+        $updated = $result->value;
+
+        // Back to the list the form was opened from: one organization's, when it was.
+        $backToOrganization = $this->scope->plane() === ConsolePlane::Environment
+            && $this->scope->organizationId() === null
+            && $updated->organization_id !== null
+            && $request->boolean('fromOrganization');
+
+        return redirect($this->url('social-providers', $backToOrganization ? ['organization' => $updated->organization_id] : null))
+            ->with('status', $updated->name.' is saved.');
+    }
+
+    public function enable(string $connection): RedirectResponse
+    {
+        $this->scope->assertMayAdminister();
+
+        $result = $this->act(TurnOnSocialProvider::class, ['id' => $connection, 'organization_id' => $this->routeOrganizationId()]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var Connection $enabled */
+        $enabled = $result->value;
+
+        return back()->with('status', $enabled->name.' is on again.');
+    }
+
+    public function disable(string $connection): RedirectResponse
+    {
+        $this->scope->assertMayAdminister();
+
+        $result = $this->act(TurnOffSocialProvider::class, ['id' => $connection, 'organization_id' => $this->routeOrganizationId()]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        /** @var Connection $disabled */
+        $disabled = $result->value;
+
+        return back()->with('status', $disabled->organization_id === null
+            ? $disabled->name.' is off on every sign-in page. Its credentials are kept, so you can turn it back on.'
+            : $disabled->name.' is off on this organization’s sign-in page. Its credentials are kept, so you can turn it back on.');
     }
 
     public function destroy(string $connection): RedirectResponse
@@ -214,42 +292,211 @@ final readonly class SocialProviderController extends ConsoleController
     }
 
     /**
-     * Whether this provider hands out key material instead of a client secret.
-     *
-     * Asked in three places — validation, what gets stored, and what the form draws — so it
-     * is one question with one answer rather than three `=== 'signed_jwt'` comparisons that
-     * could drift apart. Which they had: the form relabelled the secret field for Apple
-     * while validation still demanded it and the save path stored whatever was typed.
+     * Whether one organization's page offers one of the environment's providers, through
+     * {@see SetSocialProviderInheritance}.
      */
-    private function mintsItsOwnSecret(ProviderTemplate $template): bool
+    public function inherit(Request $request, string $provider): RedirectResponse
     {
-        return $template->secretKind === ClientSecretKind::SignedJwt;
+        $this->scope->assertMayAdminister();
+
+        $offered = $request->boolean('offered');
+
+        $result = $this->act(SetSocialProviderInheritance::class, [
+            'provider' => $provider,
+            'organization_id' => $this->chosenOrganizationId($request),
+            'offered' => $offered,
+        ]);
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        $name = ProviderCatalog::find($provider)->name ?? $provider;
+
+        return back()->with('status', $offered
+            ? $name.' from the environment is offered on this organization’s sign-in page again.'
+            : $name.' from the environment is no longer offered on this organization’s sign-in page.');
     }
 
     /**
-     * The URI the administrator registers with the provider, before the connection exists.
-     *
-     * Computed from the host rather than stored, and shown BEFORE the credential fields,
-     * because a mismatch here is the most common way any of these fails — and the error a
-     * provider returns for it names its own client id, not the URI.
+     * The id the setup form reserves so it can show the real redirect URI, kept in the
+     * session per provider: a reload — or a second look after registering the URI in the
+     * provider's own console — shows the same one. Spent when the provider is saved.
      */
-    private function redirectUriFor(ProviderTemplate $template): string
+    private function reservedId(Request $request, ProviderTemplate $template): string
     {
-        return $template->isOidc()
-            ? url('/sso/oidc/{connection}/callback')
-            : url('/sso/oauth2/{connection}/callback');
-    }
+        $key = self::RESERVED.$template->key;
+        $held = $request->session()->get($key);
 
-    /** The same URI for a connection that now EXISTS, with its real id in place. */
-    private function callbackUriFor(Connection $connection): string
-    {
-        return $connection->type === ConnectionType::OAuth2
-            ? url('/sso/oauth2/'.$connection->id.'/callback')
-            : url('/sso/oidc/'.$connection->id.'/callback');
+        if (is_string($held) && Str::isUlid($held) && Connection::query()->withoutGlobalScopes()->whereKey($held)->doesntExist()) {
+            return $held;
+        }
+
+        $id = strtolower((string) Str::ulid());
+        $request->session()->put($key, $id);
+
+        return $id;
     }
 
     /**
+     * One provider row, with every control its owner's administrator has.
+     *
      * @return array<string, mixed>
+     */
+    private function row(Connection $connection, ?string $organization = null, bool $replacesEnvironment = false): array
+    {
+        return [
+            'id' => $connection->id,
+            'name' => $connection->name,
+            'provider' => $connection->provider,
+            'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : 'OpenID Connect',
+            'enabled' => $connection->isActive(),
+            /*
+             * THE REAL REDIRECT URI. The one value the provider must be given, and the
+             * sign-in fails with an error naming the client id rather than the URI when it
+             * is wrong — which reads as a credential problem and gets debugged as one.
+             */
+            'callbackUri' => SocialProviderFields::callbackUri($connection),
+            'scopes' => SocialProviderFields::extraScopes($connection),
+            'organization' => $organization,
+            'replacesEnvironment' => $replacesEnvironment,
+            'editHref' => $this->url('social-providers', array_filter([
+                'edit' => $connection->id,
+                'organization' => $this->scope->plane() === ConsolePlane::Environment && $this->scope->organizationId() === null && request()->query('organization') !== null
+                    ? $connection->organization_id
+                    : null,
+            ])),
+            'enableHref' => $this->url('social-providers.enable', $connection->id),
+            'disableHref' => $this->url('social-providers.disable', $connection->id),
+            'removeHref' => $this->url('social-providers.destroy', $connection->id),
+        ];
+    }
+
+    /**
+     * What one organization's sign-in page shows, button by button: its own (in the
+     * environment's place where both exist), then each of the environment's — offered,
+     * turned off by this organization, replaced by its own, or off for everyone.
+     *
+     * @param  list<Connection>  $environment
+     * @param  list<Connection>  $own
+     * @return list<array<string, mixed>>
+     */
+    private function pageRows(SignInProviders $providers, string $organizationId, array $environment, array $own): array
+    {
+        $ownKeys = array_map(static fn (Connection $connection): string => (string) $connection->provider, $own);
+        $hidden = $providers->notInheritedBy($organizationId);
+        $inheritHref = fn (string $provider): string => $this->url('social-providers.inherit', $provider);
+
+        $rows = array_map(fn (Connection $connection): array => [
+            ...$this->row($connection, null, in_array($connection->provider, array_map(static fn (Connection $e): string => (string) $e->provider, $environment), true)),
+            'source' => 'organization',
+            'state' => $connection->isActive() ? 'offered' : 'off',
+            'inheritHref' => null,
+        ], $own);
+
+        foreach ($environment as $connection) {
+            $key = (string) $connection->provider;
+
+            $rows[] = [
+                'id' => $connection->id,
+                'name' => $connection->name,
+                'provider' => $connection->provider,
+                'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : 'OpenID Connect',
+                'enabled' => $connection->isActive(),
+                'callbackUri' => SocialProviderFields::callbackUri($connection),
+                'source' => 'environment',
+                'state' => match (true) {
+                    in_array($key, $ownKeys, true) => 'replaced',
+                    ! $connection->isActive() => 'off',
+                    in_array($key, $hidden, true) => 'hidden',
+                    default => 'offered',
+                },
+                // Turning the environment's off for this page, or back on — not offered for
+                // one this organization replaced with its own, where it would change nothing.
+                'inheritHref' => in_array($key, $ownKeys, true) ? null : $inheritHref($key),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Which organizations turned which of the environment's providers off for their page.
+     *
+     * @param  array<string, string>  $owners
+     * @return list<array{organizationId: string, organization: string, provider: string, name: string, inheritHref: string}>
+     */
+    private function optOutRows(SignInProviders $providers, array $owners): array
+    {
+        $rows = [];
+
+        foreach ($providers->optOuts() as $organizationId => $keys) {
+            foreach ($keys as $key) {
+                $rows[] = [
+                    'organizationId' => $organizationId,
+                    'organization' => $owners[$organizationId] ?? $organizationId,
+                    'provider' => $key,
+                    'name' => ProviderCatalog::find($key)->name ?? $key,
+                    'inheritHref' => $this->url('social-providers.inherit', $key),
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The change-credentials form for `?edit={id}`: what is on file that is not a secret,
+     * and the shape of what the provider asks for. Never the client secret, never Apple's
+     * private key — blank keeps them.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function editing(Request $request, ?string $organizationId): ?array
+    {
+        $id = $request->string('edit')->toString();
+
+        if ($id === '') {
+            return null;
+        }
+
+        $connection = Connection::query()
+            ->whereKey($id)
+            ->whereNotNull('provider')
+            ->when($this->scope->plane() === ConsolePlane::Organization || $this->scope->organizationId() !== null,
+                fn ($query) => $query->where('organization_id', $this->scope->requireOrganizationId()))
+            ->first();
+
+        $template = $connection === null ? null : SocialProviderFields::loginTemplate((string) $connection->provider);
+
+        if ($connection === null || $template === null) {
+            return null;
+        }
+
+        $config = app(Connections::class)->config($connection);
+        $props = $this->templateProps($template);
+
+        return [
+            ...$props,
+            'id' => $connection->id,
+            'organization' => $connection->organization_id === null
+                ? null
+                : ($this->scope->organizationNames([$connection->organization_id])[$connection->organization_id] ?? null),
+            'redirectUri' => SocialProviderFields::callbackUri($connection),
+            'clientId' => is_string($config['client_id'] ?? null) ? $config['client_id'] : '',
+            // Every provider value that is not key material, as it is on file.
+            'values' => array_map(
+                static fn (array $parameter): string => $parameter['multiline'] ? '' : (is_string($config[$parameter['key']] ?? null) ? $config[$parameter['key']] : ''),
+                array_column($props['parameters'], null, 'key'),
+            ),
+            'scopes' => implode(' ', SocialProviderFields::extraScopes($connection)),
+            'updateHref' => $this->url('social-providers.update', $connection->id),
+            'fromOrganization' => $organizationId !== null,
+        ];
+    }
+
+    /**
+     * @return array{key: string, name: string, protocol: string, documentationUrl: string|null, setupSteps: list<string>, parameters: list<array{key: string, label: string, help: string, example: string, multiline: bool}>, mintsItsOwnSecret: bool}
      */
     private function templateProps(ProviderTemplate $template): array
     {
@@ -258,15 +505,15 @@ final readonly class SocialProviderController extends ConsoleController
             'name' => $template->name,
             'protocol' => $template->isOidc() ? 'OpenID Connect' : 'OAuth 2.0',
             'documentationUrl' => $template->documentationUrl,
-            'redirectUri' => $this->redirectUriFor($template),
             'setupSteps' => $template->setupSteps,
             'parameters' => array_map(static fn ($parameter): array => [
                 'key' => $parameter->key,
                 'label' => $parameter->label,
                 'help' => $parameter->help,
                 'example' => $parameter->example,
-                // A PEM key is four lines, not a word: the form asks for it in a textarea.
-                // Decided here rather than by the component sniffing the label for "private".
+                // A PEM key is four lines, not a word: the form asks for it in a textarea —
+                // and never shows it back. Decided here rather than by the component
+                // sniffing the label for "private".
                 'multiline' => str_contains(mb_strtolower($parameter->label), 'key')
                     && str_contains(mb_strtolower($parameter->label), 'private'),
             ], $template->parameters),
@@ -275,7 +522,7 @@ final readonly class SocialProviderController extends ConsoleController
              * here is the single most common way a first attempt fails: both exist in Apple's
              * console, both look like a reverse domain, and only one of them works.
              */
-            'mintsItsOwnSecret' => $this->mintsItsOwnSecret($template),
+            'mintsItsOwnSecret' => ! SocialProviderFields::takesSecret($template),
         ];
     }
 }

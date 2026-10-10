@@ -28,6 +28,7 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -90,6 +91,12 @@ final readonly class LoginController extends PageController
             'pendingLink' => $auth->pendingLink()?->label(),
             'signupOpen' => $signup->isOpen(),
             'providers' => SocialProviderProps::forOrganization($organization?->id),
+            // The environment's own switches under the deployment's: a button for a method
+            // that is off would lead to a refusal, so it is not drawn.
+            'methods' => [
+                'passkeys' => app(SignInMethods::class)->passkeysEnabled(),
+                'magicLink' => app(SignInMethods::class)->magicLinkEnabled(),
+            ],
         ]);
     }
 

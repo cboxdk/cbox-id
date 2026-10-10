@@ -36,7 +36,8 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Directory Sync](sync-users-in.md) — the company's directory creates and deactivates people for you, over SCIM.
 - [HR system sync](hris.md) — Workday, BambooHR, Rippling, HiBob or Personio: accounts follow employment, departments become groups.
 - [Admin Portal](admin-portal.md) — hand Enterprise SSO, Directory Sync, Domains, Log streams and more to the customer's own IT admin with a single-use link.
-- [Social login](social-sign-in.md) — Google, GitHub, Apple and the rest, and how connecting one to an existing account works.
+- [Authentication policy and sign-in methods](authentication-policy.md) — password, two-factor and SSO rules, which ways in the environment offers, how long sessions last, and what the deployment decides.
+- [Social login](social-sign-in.md) — Google, GitHub, Apple and the rest for the whole environment, an organization's own, and how connecting one to an existing account works.
 - [Radar](radar.md) — allow, challenge or block each sign-in and sign-up: credential stuffing, impossible travel, new devices, throwaway addresses, your own rules and lists, monitor before you enforce.
 - [SMS as a second factor](sms-mfa.md) — text-message codes: when to turn them on, which countries, and what they do not protect against.
 - [Outbound provisioning](sync-users-out.md) — push your people into your other SaaS products.

@@ -105,6 +105,11 @@ return [
             'unverified' => 'That passkey could not be verified.',
             'failed' => 'Something went wrong signing in.',
         ],
+        // Answered by a passkey or magic-link door the environment has switched off.
+        'method_off' => [
+            'passkeys' => 'Passkeys are turned off here. Sign in another way.',
+            'magic_link' => 'Emailed sign-in links are turned off here. Sign in another way.',
+        ],
     ],
 
     'signup' => [

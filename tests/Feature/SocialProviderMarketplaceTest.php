@@ -224,7 +224,7 @@ it('shows the real redirect URI once a provider is enabled', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $id = enableProvider($org->id, 'github');
 
-    $enabled = collect((array) socialProvidersPage()->toArray()['props']['enabled']);
+    $enabled = collect((array) socialProvidersPage()->toArray()['props']['page']);
 
     expect($enabled->pluck('callbackUri')->all())->toBe([url('/sso/oauth2/'.$id.'/callback')]);
 });
@@ -235,7 +235,7 @@ it('uses the OIDC callback path for an OIDC provider', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $id = enableProvider($org->id, 'google', ConnectionType::Oidc);
 
-    $enabled = collect((array) socialProvidersPage()->toArray()['props']['enabled']);
+    $enabled = collect((array) socialProvidersPage()->toArray()['props']['page']);
 
     expect($enabled->pluck('callbackUri')->all())->toBe([url('/sso/oidc/'.$id.'/callback')]);
 });

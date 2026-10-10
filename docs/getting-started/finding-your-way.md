@@ -69,6 +69,8 @@ links in older notes keep working.
 | Users & orgs held Roles, Permissions and Fine-grained authorization | They are in a new **Authorization** area, beside Authentication |
 | Access reviews and Role conflicts were under Advanced | They are under **Authorization**, beside the roles they govern |
 | Password rules, two-factor, SMS, social and SSO were on separate pages, and passkeys, magic links and sessions were on none | **Authentication › Sign-in methods** shows every way in, whether it is on, and where it is changed |
+| Social login was set up per organization, so turning on Google meant doing it for each one | A provider is set up once for the environment and every organization inherits it; an organization can still use its own |
+| Passkeys, magic links and session lifetime were decided by the deployment only | They are on **Authentication policy**, for the environment, within the deployment's limits |
 | An organization's domains were only on its own page | **Authentication › Domains** lists every organization's domains as well |
 | An organization had 14 tabs in one row, and the last ones were cut off on a laptop | 9 tabs, with related pages grouped under one tab |
 | Detail pages had a bare "‹ Back" link | A breadcrumb shows the area and the list |
@@ -81,11 +83,16 @@ checks that each task stays within these limits.
 
 ### Turn on Google or GitHub login
 
-**Authentication › Social login**, then choose the provider under **Add a provider**.
-Paste the client ID and secret from your own Google or GitHub OAuth app. The page shows
-the redirect URI to register with the provider. Each provider is offered on one
-organization's sign-in page, so the form asks **For which organization?**.
-[Social login](../guides/social-sign-in.md).
+1. **Authentication › Social login**.
+2. **Google** (or GitHub) under **Add a provider**. **Who is it for?** is already
+   **The whole environment**.
+3. Copy the redirect URI it shows into your own Google or GitHub OAuth app, paste the client
+   ID and secret back, and press **Turn on Google for everyone**.
+
+That is three clicks from the environment's home page. Every organization's sign-in page now
+offers it. To give one organization its own credentials instead, choose it under **Who is it
+for?**; to take the button off one organization's page, open Social login filtered to that
+organization and use **Turn off here**. [Social login](../guides/social-sign-in.md).
 
 ### Set up enterprise SSO for a customer, verify their domain, and hand over the setup
 
@@ -180,10 +187,18 @@ whether it is on and where it is changed:
 
 Three kinds of setting appear there:
 
-- **Set for this environment:** changed on Authentication policy.
-- **Set per organization:** social providers and SSO connections.
-- **Set by the deployment:** passkeys, magic links and session lifetime. For these, the
-  page names the environment variable.
+- **Set for this environment:** changed on Authentication policy or Social login. This now
+  includes passkeys, magic links, the bot challenge and session lifetime, which used to be
+  the deployment's alone.
+- **Set per organization:** SSO connections, and an organization's stricter password and
+  two-factor rules.
+- **Set by the deployment:** a method the deployment switched off (for example
+  `CBOX_ID_PASSKEYS_ENABLED=false`) stays off whatever the environment says, and the row
+  names the variable. Rows with a deployment limit, such as the longest session, show it.
+
+On a single-tenant install there is no environment console: the same page is under
+**Sign-in › Sign-in methods** in the organization console, and describes that organization's
+sign-in. [Authentication policy and sign-in methods](../guides/authentication-policy.md).
 
 ### Brand the sign-in page
 

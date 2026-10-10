@@ -17,13 +17,14 @@ use Cbox\Id\Federation\Models\Connection;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * The social login providers enabled in this environment — catalogue connections only
+ * The social login providers set up in this environment — the environment's own, which
+ * every organization inherits, and organizations' own — catalogue connections only
  * (Google, GitHub, Apple…), never a company's own SSO connection, which is a different job
  * on a different page.
  */
 #[AsAction(
     name: 'signin.social.list',
-    summary: 'List the social login providers (Google, GitHub, Apple…) enabled in this environment, optionally for one organization.',
+    summary: 'List the social login providers (Google, GitHub, Apple…) set up in this environment — the environment\'s own and organizations\' — optionally for one organization.',
     scope: 'signin:read',
     danger: Danger::Read,
     schema: 'SocialProvider',
@@ -37,7 +38,8 @@ final class ListSocialProviders implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('organization_id')->max(64)->describe('Only this organization\'s providers.'),
+            Field::string('organization_id')->max(64)->describe('Only this organization\'s own providers (not the ones it inherits — see signin.social.offered).'),
+            Field::string('level')->oneOf(['environment', 'organization'])->describe('Only the environment\'s providers, which every organization inherits, or only organizations\' own.'),
             ...self::pageFields(),
         ]);
     }
@@ -49,7 +51,9 @@ final class ListSocialProviders implements Action
         return $this->page(
             Connection::query()
                 ->whereNotNull('provider')
-                ->when($organizationId !== null, fn (Builder $query): Builder => $query->where('organization_id', $organizationId)),
+                ->when($organizationId !== null, fn (Builder $query): Builder => $query->where('organization_id', $organizationId))
+                ->when($context->string('level') === 'environment', fn (Builder $query): Builder => $query->whereNull('organization_id'))
+                ->when($context->string('level') === 'organization', fn (Builder $query): Builder => $query->whereNotNull('organization_id')),
             $context,
             SocialProviderFields::present(...),
         );
