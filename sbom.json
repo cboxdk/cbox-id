@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:ea465e2f-215b-477b-b848-30d3623b4e2b",
+    "serialNumber": "urn:uuid:73a7b2fd-0f35-40d0-96be-0205de8dccda",
     "version": 1,
     "metadata": {
         "tools": [
@@ -181,11 +181,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.23.1",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.25.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v1.23.1",
-            "purl": "pkg:composer/cboxdk/laravel-id@v1.23.1",
+            "version": "v1.25.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v1.25.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -293,11 +293,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-ssrf@v1.3.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-ssrf@v1.5.0",
             "group": "cboxdk",
             "name": "laravel-ssrf",
-            "version": "v1.3.0",
-            "purl": "pkg:composer/cboxdk/laravel-ssrf@v1.3.0",
+            "version": "v1.5.0",
+            "purl": "pkg:composer/cboxdk/laravel-ssrf@v1.5.0",
             "description": "Cbox SSRF \u2014 a hardened, config-driven guard against server-side request forgery for outbound URLs in Laravel. Blocks private/reserved/cloud-metadata targets, pins DNS, and refuses redirects.",
             "licenses": [
                 {
@@ -453,11 +453,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/firebase/php-jwt@v7.1.0",
+            "bom-ref": "pkg:composer/firebase/php-jwt@v7.2.1",
             "group": "firebase",
             "name": "php-jwt",
-            "version": "v7.1.0",
-            "purl": "pkg:composer/firebase/php-jwt@v7.1.0",
+            "version": "v7.2.1",
+            "purl": "pkg:composer/firebase/php-jwt@v7.2.1",
             "description": "A simple library to encode and decode JSON Web Tokens (JWT) in PHP. Should conform to the current spec.",
             "licenses": [
                 {
@@ -501,11 +501,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.5",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@8.2.0",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.15.5",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.5",
+            "version": "8.2.0",
+            "purl": "pkg:composer/guzzlehttp/guzzle@8.2.0",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -517,11 +517,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/promises@2.5.3",
+            "bom-ref": "pkg:composer/guzzlehttp/promises@3.0.2",
             "group": "guzzlehttp",
             "name": "promises",
-            "version": "2.5.3",
-            "purl": "pkg:composer/guzzlehttp/promises@2.5.3",
+            "version": "3.0.2",
+            "purl": "pkg:composer/guzzlehttp/promises@3.0.2",
             "description": "Guzzle promises library",
             "licenses": [
                 {
@@ -533,11 +533,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/psr7@2.13.1",
+            "bom-ref": "pkg:composer/guzzlehttp/psr7@3.1.0",
             "group": "guzzlehttp",
             "name": "psr7",
-            "version": "2.13.1",
-            "purl": "pkg:composer/guzzlehttp/psr7@2.13.1",
+            "version": "3.1.0",
+            "purl": "pkg:composer/guzzlehttp/psr7@3.1.0",
             "description": "PSR-7 message implementation that also provides common utility methods",
             "licenses": [
                 {
@@ -799,6 +799,22 @@
                 {
                     "license": {
                         "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/maxmind-db/reader@v1.14.0",
+            "group": "maxmind-db",
+            "name": "reader",
+            "version": "v1.14.0",
+            "purl": "pkg:composer/maxmind-db/reader@v1.14.0",
+            "description": "MaxMind DB Reader API",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "Apache-2.0"
                     }
                 }
             ]
@@ -1111,22 +1127,6 @@
             "version": "v0.12.24",
             "purl": "pkg:composer/psy/psysh@v0.12.24",
             "description": "An interactive shell for modern PHP.",
-            "licenses": [
-                {
-                    "license": {
-                        "id": "MIT"
-                    }
-                }
-            ]
-        },
-        {
-            "type": "library",
-            "bom-ref": "pkg:composer/ralouphie/getallheaders@3.0.3",
-            "group": "ralouphie",
-            "name": "getallheaders",
-            "version": "3.0.3",
-            "purl": "pkg:composer/ralouphie/getallheaders@3.0.3",
-            "description": "A polyfill for getallheaders.",
             "licenses": [
                 {
                     "license": {
@@ -1543,6 +1543,22 @@
             "version": "v1.38.1",
             "purl": "pkg:composer/symfony/polyfill-php81@v1.38.1",
             "description": "Symfony polyfill backporting some PHP 8.1+ features to lower PHP versions",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/symfony/polyfill-php82@v1.43.0",
+            "group": "symfony",
+            "name": "polyfill-php82",
+            "version": "v1.43.0",
+            "purl": "pkg:composer/symfony/polyfill-php82@v1.43.0",
+            "description": "Symfony polyfill backporting some PHP 8.2+ features to lower PHP versions",
             "licenses": [
                 {
                     "license": {

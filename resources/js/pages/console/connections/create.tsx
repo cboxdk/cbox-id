@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     EmptyState,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     Panel,
@@ -77,18 +77,7 @@ export default function CreateConnection({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Enterprise SSO
-            </Link>
+            <Breadcrumb href={indexHref} label="Enterprise SSO" />
 
             <h1 className="cbx-page-title mt-2">New connection</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>

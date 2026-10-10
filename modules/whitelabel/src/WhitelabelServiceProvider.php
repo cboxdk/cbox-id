@@ -6,8 +6,7 @@ namespace Cbox\Id\Whitelabel;
 
 use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Actions\ActionRegistry;
-use App\Platform\Console\ConsoleArea;
-use App\Platform\Console\ConsolePages;
+use App\Platform\Appearance\BrandImages;
 use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Contracts\BrandingResolver;
 use Cbox\Console\Kit\Facades\Console;
@@ -15,6 +14,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Assets\DatabaseBrandAssetStore;
 use Cbox\Id\Whitelabel\Assets\LocalBrandAssetStore;
+use Cbox\Id\Whitelabel\Branding\ProfileBrandImages;
 use Cbox\Id\Whitelabel\Branding\TenantBrandingResolver;
 use Cbox\Id\Whitelabel\BrandProfiles\DatabaseBrandProfiles;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
@@ -89,6 +89,21 @@ class WhitelabelServiceProvider extends ServiceProvider
                 self::configString($app, 'whitelabel.assets.path', 'brand'),
             ));
 
+        /*
+         * THE HOST'S LOGO AND FAVICON SOCKET, answered from the brand profiles. The hosted
+         * sign-in, the Branding page, the checklists and the mail layout all read the
+         * images through it, so the logo uploaded here is the one every page draws.
+         *
+         * The origins are what the content security policy must admit besides this
+         * application: a CDN in front of the asset store, when one is configured. The
+         * default database store needs none — its images are served by this application.
+         */
+        $this->app->bind(BrandImages::class, static fn (Application $app): BrandImages => new ProfileBrandImages(
+            $app->make(BrandProfiles::class),
+            $app->make(BrandAssetStore::class),
+            self::assetOrigins($app),
+        ));
+
         $this->app->bind(ManageCustomDomain::class, static fn (Application $app): ManageCustomDomain => new ManageCustomDomain(
             $app->make(EnvironmentContext::class),
             $app->make(UrlGuard::class),
@@ -105,22 +120,10 @@ class WhitelabelServiceProvider extends ServiceProvider
         // a separate paid package; vendored in-tree there is nothing to unlock.
         Console::features()->register('whitelabel', static fn (): bool => true);
 
-        // Through ConsolePages, which serves BOTH planes by default. The old call went to
-        // the organization rail's registry and nowhere else, so the environment default
-        // every organization inherits — the row this module's schema is built around —
-        // had no editor anywhere in the console.
-        //
-        // The area's icon is no longer passed from here either. This call used to hand
-        // 'palette' to the host's Settings area, and the registry applies a passed icon
-        // as an override: installing the branding module restyled the console's Settings
-        // rail entry for every page under it.
-        $this->app->make(ConsolePages::class)->add(
-            area: ConsoleArea::Settings,
-            route: 'whitelabel.branding',
-            label: 'Branding',
-            feature: 'whitelabel',
-            order: 10,
-        );
+        // NO CONSOLE PAGE OF ITS OWN. This module's branding page and the host's Appearance
+        // page both set the logo and the colours, and the rail read "Branding › Branding".
+        // The host's one Branding page edits this module's half through its action
+        // (`branding.whitelabel.set`), so the module registers no page here.
 
         $this->app->make(DashboardCards::class)->add(fn (): DashboardCardProps => $this->brandCard(), 8, feature: 'whitelabel');
     }
@@ -158,8 +161,8 @@ class WhitelabelServiceProvider extends ServiceProvider
             tone: $custom ? 'info' : 'neutral',
             // Only when the page exists: this module registers its own route, and a card
             // linking at a route nobody registered is a dashboard that 500s.
-            linkLabel: Route::has('whitelabel.branding') ? ($custom ? 'Edit branding' : 'Customize') : null,
-            linkHref: Route::has('whitelabel.branding') ? route('whitelabel.branding') : null,
+            linkLabel: Route::has('branding') ? ($custom ? 'Edit branding' : 'Customize') : null,
+            linkHref: Route::has('branding') ? route('branding') : null,
             swatch: is_string($tokens['--primary'] ?? null)
                 ? $tokens['--primary']
                 : (is_string($tokens['--accent'] ?? null) ? $tokens['--accent'] : null),
@@ -184,6 +187,40 @@ class WhitelabelServiceProvider extends ServiceProvider
         $typed = array_filter($config, static fn (mixed $value, mixed $key): bool => is_string($key), ARRAY_FILTER_USE_BOTH);
 
         return $typed;
+    }
+
+    /**
+     * The origins, other than this application's, that serve stored brand images: the
+     * configured CDN, and — for the disk store — the disk's own URL when it names another
+     * host. Each reduced to scheme://host[:port], which is all a CSP source needs.
+     *
+     * @return list<string>
+     */
+    private static function assetOrigins(Application $app): array
+    {
+        $candidates = [$app->make('config')->get('whitelabel.assets.cdn_base_url')];
+
+        if (self::configString($app, 'whitelabel.assets.store', 'database') === 'disk') {
+            $candidates[] = self::diskConfig($app, self::configString($app, 'whitelabel.assets.disk', 'public'))['url'] ?? null;
+        }
+
+        $origins = [];
+
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate) || preg_match('#\Ahttps?://#i', $candidate) !== 1) {
+                continue;
+            }
+
+            $parts = parse_url($candidate);
+
+            if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+                continue;
+            }
+
+            $origins[] = strtolower($parts['scheme']).'://'.strtolower($parts['host']).(isset($parts['port']) ? ':'.$parts['port'] : '');
+        }
+
+        return array_values(array_unique($origins));
     }
 
     private static function configString(Application $app, string $key, string $default): string

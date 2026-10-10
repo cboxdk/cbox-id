@@ -39,8 +39,11 @@
         <!-- The suite boots the whole platform (Testbench + Pest 4 browser tests) and
              does not fit in a stock 128M. Setting it here means the plain, documented
              `vendor/bin/pest` works on any machine, instead of only where php.ini
-             happens to be generous or the caller remembered `-d memory_limit=1G`. -->
-        <ini name="memory_limit" value="1G"/>
+             happens to be generous or the caller remembered `-d memory_limit`. 2G, not 1G:
+             CI runs the whole suite in ONE process and what it holds grows from test to
+             test; the console crawls tipped 1G there once the suite passed ~5,600 tests,
+             although a crawl alone needs ~256M. Bring this back down with the leak fixed. -->
+        <ini name="memory_limit" value="2G"/>
         <!-- The suite-owned infrastructure (APP_ENV, CACHE_STORE, QUEUE_CONNECTION,
              SESSION_DRIVER, …) is set in tests/bootstrap.php instead of here: `<env>`
              writes $_ENV and putenv() but not $_SERVER, which is the first place

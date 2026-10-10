@@ -138,4 +138,109 @@ describe('CommandPalette', () => {
         expect(await screen.findByText('Applications')).toBeInTheDocument();
         expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    /*
+     * The words a person arriving from another platform types. "SAML" used to match only
+     * "SAML apps" — the OUTBOUND direction — so the reader setting up a customer's Okta was
+     * offered the one page that is not it; "tenant", "SCIM" and "Google login" matched
+     * nothing at all.
+     */
+    it('finds a page by the words people type for it, not only by its label', async () => {
+        const areas = [
+            {
+                key: 'Authentication',
+                label: 'Authentication',
+                icon: 'fingerprint',
+                href: '/admin/sign-in-methods',
+                active: false,
+                current: false,
+                pages: [
+                    {
+                        route: 'environment.connections',
+                        href: '/admin/single-sign-on',
+                        label: 'Enterprise SSO',
+                        active: false,
+                        keywords: ['SSO', 'SAML', 'OIDC', 'Okta'],
+                    },
+                    {
+                        route: 'environment.directories',
+                        href: '/admin/sync-in',
+                        label: 'Directory Sync',
+                        active: false,
+                        keywords: ['SCIM', 'HR system', 'Workday'],
+                    },
+                    {
+                        route: 'environment.social-providers',
+                        href: '/admin/social-sign-in',
+                        label: 'Social login',
+                        active: false,
+                        keywords: ['Google login', 'GitHub login'],
+                    },
+                ],
+            },
+            {
+                key: 'Users & orgs',
+                label: 'Users & orgs',
+                icon: 'members',
+                href: '/admin/users',
+                active: false,
+                current: false,
+                pages: [
+                    {
+                        route: 'environment.organizations',
+                        href: '/admin/organizations',
+                        label: 'Organizations',
+                        active: false,
+                        keywords: ['tenants', 'tenant', 'customers'],
+                    },
+                ],
+            },
+            {
+                key: 'Advanced',
+                label: 'Advanced',
+                icon: 'sliders',
+                href: '/admin/staff',
+                active: false,
+                current: false,
+                pages: [
+                    {
+                        route: 'environment.sso-providers',
+                        href: '/admin/saml-apps',
+                        label: 'SAML apps',
+                        active: false,
+                        keywords: ['SAML IdP', 'outbound SAML'],
+                    },
+                ],
+            },
+        ] as NavArea[];
+
+        // Navigation only, so the server's results cannot be what matched.
+        setPageProps({
+            shell: { altitude: 'environment', platformMode: true, areas } as unknown as Shell,
+        });
+
+        render(<CommandPalette areas={areas} />);
+        await userEvent.keyboard('{Meta>}k{/Meta}');
+        const input = await screen.findByRole('combobox');
+
+        const options = (): string[] =>
+            screen.getAllByRole('option').map((option) => option.textContent ?? '');
+
+        await userEvent.type(input, 'tenant');
+        await waitFor(() => expect(options()[0]).toContain('Organizations'));
+
+        await userEvent.clear(input);
+        await userEvent.type(input, 'SCIM');
+        await waitFor(() => expect(options()[0]).toContain('Directory Sync'));
+
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Google login');
+        await waitFor(() => expect(options()[0]).toContain('Social login'));
+
+        // Both match "SAML"; the inbound direction — the one nine readers in ten mean — first.
+        await userEvent.clear(input);
+        await userEvent.type(input, 'SAML');
+        await waitFor(() => expect(options()[0]).toContain('Enterprise SSO'));
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
 });

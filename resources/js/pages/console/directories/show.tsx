@@ -1,9 +1,10 @@
-import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
     Badge,
+    Breadcrumb,
     Button,
     Checkbox,
     ConfirmDelete,
@@ -14,12 +15,49 @@ import {
     Input,
     Panel,
     Pill,
+    type PillTone,
+    Select,
+    Textarea,
 } from '@/ui';
 
 interface Group {
     id: string;
     name: string;
     roleIds: string[];
+}
+
+interface SetupCredential {
+    key: string;
+    label: string;
+    help: string;
+    example: string;
+    secret: boolean;
+    required: boolean;
+}
+
+interface SyncFailure {
+    external_id: string | null;
+    reason: string;
+}
+
+/** How a pull directory's sync is going — the same presenter the API answers with. */
+interface SyncState {
+    status: 'running' | 'succeeded' | 'partial' | 'failed' | null;
+    startedAt: string | null;
+    syncedAt: string | null;
+    nextAt: string | null;
+    intervalMinutes: number | null;
+    stats: {
+        mode: 'full' | 'incremental';
+        provisioned: number;
+        deprovisioned: number;
+        groups: number;
+        skipped: number;
+        failed: number;
+        failures: SyncFailure[];
+    } | null;
+    customAttributes: string[];
+    active: boolean;
 }
 
 interface RoleOption {
@@ -39,8 +77,16 @@ type Props = PageProps<{
         active: boolean;
         status: string;
         lastSyncError: string | null;
+        pull: boolean;
+        hris: boolean;
+        sync: SyncState | null;
     };
-    setup: { steps: string[]; docs: string; credentials: unknown[] } | null;
+    setup: {
+        steps: string[];
+        docs: string;
+        incremental: boolean;
+        credentials: SetupCredential[];
+    } | null;
     organizationName: string;
     scimBaseUrl: string;
     groups: Group[];
@@ -53,6 +99,9 @@ type Props = PageProps<{
         toggle: string;
         destroy: string;
         map: string;
+        sync: string;
+        syncSettings: string;
+        credentials: string;
     };
 }>;
 
@@ -78,18 +127,7 @@ export default function DirectoryDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Directory Sync
-                </Link>
+                <Breadcrumb href={indexHref} label="Directory Sync" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{directory.name}</h1>
                     <Badge>{directory.providerLabel}</Badge>
@@ -128,6 +166,15 @@ export default function DirectoryDetail({
                         {directory.lastSyncError}
                     </p>
                 </Panel>
+            )}
+
+            {directory.sync !== null && (
+                <SyncPanel
+                    sync={directory.sync}
+                    incremental={setup?.incremental === true}
+                    mayChange={mayChange}
+                    href={urls.sync}
+                />
             )}
 
             {directory.scim && (
@@ -232,6 +279,22 @@ export default function DirectoryDetail({
                         </form>
                     </Panel>
 
+                    {directory.sync !== null && (
+                        <SyncSettings
+                            sync={directory.sync}
+                            hris={directory.hris}
+                            href={urls.syncSettings}
+                        />
+                    )}
+
+                    {directory.hris && setup !== null && (
+                        <ReplaceCredentials
+                            providerLabel={directory.providerLabel}
+                            credentials={setup.credentials}
+                            href={urls.credentials}
+                        />
+                    )}
+
                     <Panel
                         title={directory.active ? 'Pause provisioning' : 'Resume provisioning'}
                         description={
@@ -297,6 +360,235 @@ export default function DirectoryDetail({
                 }}
             />
         </div>
+    );
+}
+
+const STATUS: Record<NonNullable<SyncState['status']>, { label: string; tone: PillTone }> = {
+    running: { label: 'Syncing', tone: 'info' },
+    succeeded: { label: 'Synced', tone: 'success' },
+    partial: { label: 'Synced with problems', tone: 'warning' },
+    failed: { label: 'Failed', tone: 'destructive' },
+};
+
+function when(iso: string | null): string {
+    return iso === null ? '—' : new Date(iso).toLocaleString();
+}
+
+/**
+ * HOW THE SYNC IS GOING: the last run's outcome and counts, when the next one is due, and
+ * the records it could not reconcile — by the provider's own employee id, which is what an
+ * administrator can look up there. "Sync now" queues a pull; an incremental HR system can
+ * also be asked for everybody, the only run that deprovisions people who disappeared.
+ */
+function SyncPanel({
+    sync,
+    incremental,
+    mayChange,
+    href,
+}: {
+    sync: SyncState;
+    incremental: boolean;
+    mayChange: boolean;
+    href: string;
+}) {
+    const status = sync.status === null ? null : STATUS[sync.status];
+    const stats = sync.stats;
+
+    return (
+        <Panel
+            title="Sync"
+            description={
+                sync.intervalMinutes === null
+                    ? undefined
+                    : `Pulled every ${sync.intervalMinutes} minutes${incremental ? ', asking only for what changed between daily full pulls' : ''}.`
+            }
+            action={
+                mayChange && sync.active ? (
+                    <div className="flex gap-2 shrink-0">
+                        {incremental && (
+                            <Button
+                                size="sm"
+                                onClick={() =>
+                                    router.post(href, { full: true }, { preserveScroll: true })
+                                }
+                            >
+                                Full sync
+                            </Button>
+                        )}
+                        <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => router.post(href, {}, { preserveScroll: true })}
+                        >
+                            Sync now
+                        </Button>
+                    </div>
+                ) : undefined
+            }
+        >
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                <span>
+                    {status === null ? (
+                        <Pill tone="neutral">Not synced yet</Pill>
+                    ) : (
+                        <Pill tone={status.tone}>{status.label}</Pill>
+                    )}
+                </span>
+                <span style={{ color: 'var(--muted-foreground)' }}>
+                    Last run {when(sync.startedAt)}
+                </span>
+                <span style={{ color: 'var(--muted-foreground)' }}>Next {when(sync.nextAt)}</span>
+            </div>
+
+            {stats !== null && (
+                <p className="mt-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    {stats.mode === 'incremental' ? 'Changes only: ' : 'Everybody: '}
+                    {stats.provisioned} up to date, {stats.deprovisioned} deprovisioned,{' '}
+                    {stats.skipped} skipped, {stats.groups} groups
+                    {stats.failed > 0 ? `, ${stats.failed} could not be synced` : ''}.
+                </p>
+            )}
+
+            {stats !== null && stats.failures.length > 0 && (
+                <ul className="mt-3 space-y-1 text-sm">
+                    {stats.failures.map((failure) => (
+                        <li key={`${failure.external_id ?? 'run'}: ${failure.reason}`}>
+                            {failure.external_id !== null && (
+                                <code className="mono text-xs mr-2">{failure.external_id}</code>
+                            )}
+                            {failure.reason}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Panel>
+    );
+}
+
+const INTERVALS = ['15', '30', '60', '120', '240', '720', '1440'] as const;
+
+/** The pace, and — for an HR system — the fields copied onto people verbatim. */
+function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; href: string }) {
+    const form = useForm({
+        interval: String(sync.intervalMinutes ?? 60),
+        customAttributes: sync.customAttributes.join('\n'),
+    });
+
+    return (
+        <Panel
+            title="Sync settings"
+            description={
+                hris
+                    ? "How often to pull, and which of the HR system's own fields to copy onto each person — a cost centre, a location. Changing the fields makes the next run a full one."
+                    : 'How often to pull.'
+            }
+        >
+            <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    form.patch(href, { preserveScroll: true });
+                }}
+            >
+                <Field label="Pull every" error={form.errors.interval}>
+                    <Select
+                        name="interval"
+                        value={form.data.interval}
+                        onValueChange={(value) => form.setData('interval', value)}
+                        options={INTERVALS.map((minutes) => ({
+                            value: minutes,
+                            label:
+                                Number(minutes) < 60
+                                    ? `${minutes} minutes`
+                                    : Number(minutes) === 60
+                                      ? 'hour'
+                                      : `${Number(minutes) / 60} hours`,
+                        }))}
+                    />
+                </Field>
+                {hris && (
+                    <Field
+                        label="Fields to pass through"
+                        hint="The HR system's own field names, one per line."
+                        error={form.errors.customAttributes}
+                    >
+                        <Textarea
+                            name="customAttributes"
+                            rows={3}
+                            className="mono"
+                            spellCheck={false}
+                            value={form.data.customAttributes}
+                            onChange={(event) =>
+                                form.setData('customAttributes', event.target.value)
+                            }
+                        />
+                    </Field>
+                )}
+                <Button type="submit" variant="primary" size="sm" loading={form.processing}>
+                    Save
+                </Button>
+            </form>
+        </Panel>
+    );
+}
+
+/**
+ * NEW CREDENTIALS without reconnecting — the key was rotated, the secret expired. The fields
+ * are the HR system's own, from the framework's catalogue; they are verified against it
+ * before the old ones are replaced, and never shown again.
+ */
+function ReplaceCredentials({
+    providerLabel,
+    credentials,
+    href,
+}: {
+    providerLabel: string;
+    credentials: SetupCredential[];
+    href: string;
+}) {
+    const form = useForm<{ credentials: Record<string, string> }>({ credentials: {} });
+    const credentialError = usePage().props.errors.credentials;
+
+    return (
+        <Panel
+            title="Replace credentials"
+            description={`New ${providerLabel} credentials, checked against ${providerLabel} before the current ones are replaced.`}
+        >
+            <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    form.put(href, { preserveScroll: true, onSuccess: () => form.reset() });
+                }}
+            >
+                {credentials.map((credential, index) => (
+                    <Field
+                        key={credential.key}
+                        label={credential.label + (credential.required ? '' : ' (optional)')}
+                        hint={credential.help}
+                        error={index === 0 ? credentialError : undefined}
+                    >
+                        <Input
+                            name={`credentials.${credential.key}`}
+                            type={credential.secret ? 'password' : 'text'}
+                            className="mono"
+                            autoComplete="off"
+                            placeholder={credential.example}
+                            value={form.data.credentials[credential.key] ?? ''}
+                            onChange={(event) =>
+                                form.setData('credentials', {
+                                    ...form.data.credentials,
+                                    [credential.key]: event.target.value,
+                                })
+                            }
+                        />
+                    </Field>
+                ))}
+                <Button type="submit" variant="primary" size="sm" loading={form.processing}>
+                    Verify and replace
+                </Button>
+            </form>
+        </Panel>
     );
 }
 

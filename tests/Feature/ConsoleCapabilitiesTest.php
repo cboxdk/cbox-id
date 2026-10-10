@@ -31,6 +31,7 @@ use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
+use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
@@ -2502,10 +2503,10 @@ it('refuses single sign-on to an organization admin with no organization at all'
 it('serves appearance from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-appearance');
 
-    $this->get(route('environment.appearance'))
+    $this->get(route('environment.branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             // The plane that holds the environment, and the only one offered the choice.
             ->where('mayThemeEnvironment', true));
 })->group('security');
@@ -2513,10 +2514,10 @@ it('serves appearance from one component on the environment plane', function ():
 it('serves appearance from the same component on the organization plane', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    $this->get(route('appearance'))
+    $this->get(route('branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             ->where('mayThemeEnvironment', false));
 })->group('security');
 
@@ -2550,8 +2551,8 @@ it('still themes the environment default when the environment console saves', fu
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    saveAppearance('environment.appearance', $theme, environmentDefault: true)
-        ->assertRedirect(route('environment.appearance'))
+    saveAppearance('environment.branding', $theme, environmentDefault: true)
+        ->assertRedirect(route('environment.branding'))
         ->assertSessionHasNoErrors();
 
     expect(Environment::query()->find($environmentId)?->settings['appearance']['light']['primary'])->toBe('#00aa88')
@@ -2571,7 +2572,7 @@ it('lets the environment console theme one organization on its own Branding tab 
     $this->get(route('environment.organizations.branding', $orgId))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             ->where('environmentDefault', false)
             ->where('saveHref', route('environment.organizations.branding.update', $orgId))
             ->where('organizationHub.id', $orgId));
@@ -2592,7 +2593,7 @@ it('themes only the environment default from the environment\'s own Appearance p
     // in this environment is a 404.
     $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
 
-    saveAppearance('environment.appearance', Appearance::fromPreset('warm')->toArray())
+    saveAppearance('environment.branding', Appearance::fromPreset('warm')->toArray())
         ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
@@ -2610,7 +2611,7 @@ it('refuses an organization admin the environment default theme', function (): v
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    saveAppearance('appearance', $theme, environmentDefault: true)->assertForbidden();
+    saveAppearance('branding', $theme, environmentDefault: true)->assertForbidden();
 
     expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
 })->group('security');
@@ -2622,7 +2623,7 @@ it('refuses an unreadable environment default, which only the organization plane
     anEnvironmentAdminActingOn('tenant-appearance-contrast');
     $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
 
-    saveAppearance('environment.appearance', [
+    saveAppearance('environment.branding', [
         'radius' => '0.5rem',
         'font' => 'system',
         'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
@@ -2638,7 +2639,7 @@ it('does not offer the environment default to an organization admin', function (
     // someone the server will refuse.
     actingAsRole(MembershipRole::Owner);
 
-    $this->get(route('appearance'))
+    $this->get(route('branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('mayThemeEnvironment', false));
 })->group('security');
@@ -2652,7 +2653,7 @@ it('does offer it to the administrator who holds the environment', function (): 
     // half would still be standing when the environment half ran.
     anEnvironmentAdminActingOn('tenant-appearance-view');
 
-    $this->get(route('environment.appearance'))
+    $this->get(route('environment.branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('mayThemeEnvironment', true));
 })->group('security');
@@ -2816,18 +2817,20 @@ it('serves social sign-in on the environment plane, not only the organization on
     expect($orgId)->not->toBe('');
 })->group('security');
 
-it('refuses to enable a provider that names no organization', function (): void {
+it('turns a provider on for the whole environment when the form names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-social-unchosen');
 
-    // The READ renders — every organization's providers, with the setup form asking which
-    // organization. The WRITE is what must refuse, and it does so by demanding an
-    // organization rather than by silently writing to none.
+    // The READ renders — the environment's providers and every organization's, with the
+    // setup form asking who it is for, the whole environment first.
     $this->get(route('environment.social-providers'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('view', 'environment')
             ->has('organizationFilter')
-            ->has('organization'));
+            ->where('organization.allowsEnvironment', true));
 
+    // No organization chosen is the ENVIRONMENT's provider, said out loud by the form — the
+    // action itself still refuses a request that names neither ({@see EnableSocialProvider}).
     test()->from(route('environment.social-providers'))
         ->post(route('environment.social-providers.store'), [
             'provider' => 'github',
@@ -2835,7 +2838,13 @@ it('refuses to enable a provider that names no organization', function (): void 
             'clientSecret' => 'gh',
             'parameters' => [],
         ])
-        ->assertSessionHasErrors('organization');
+        ->assertSessionHasNoErrors();
+
+    $environmentProviders = app(SignInProviders::class)->environmentProviders();
+
+    expect($environmentProviders)->toHaveCount(1)
+        ->and($environmentProviders[0]->provider)->toBe('github')
+        ->and($environmentProviders[0]->organization_id)->toBeNull();
 })->group('security');
 
 /*

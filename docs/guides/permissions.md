@@ -6,7 +6,7 @@ description: What a permission is, how to write one in the console without any c
 
 # Permissions
 
-**Console page:** Members & roles › Permissions (Users & orgs › Permissions in an environment console)
+**Console page:** Members & roles › Permissions (Authorization › Permissions in an environment console)
 
 A [role](roles.md) is a job title — `Editor`, `Support agent`. A **permission** is one
 specific thing a role is allowed to do: `invoices:create`, `reports:read`.

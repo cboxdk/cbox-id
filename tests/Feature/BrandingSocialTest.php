@@ -28,9 +28,9 @@ it('lets an admin theme the branded login page via the appearance editor', funct
     $theme = Appearance::fromPreset('cbox')->toArray();
     $theme['light']['primary'] = '#0ea5e9';
 
-    test()->from(route('appearance'))
-        ->post(route('appearance.update'), ['theme' => $theme])
-        ->assertRedirect(route('appearance'))
+    test()->from(route('branding'))
+        ->post(route('branding.update'), ['theme' => $theme])
+        ->assertRedirect(route('branding'))
         ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($org->id)?->settings)->toMatchArray([
@@ -57,7 +57,7 @@ it('points org settings at the appearance editor', function () {
     test()->get(route('settings'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('appearanceHref', route('appearance')));
+            ->where('appearanceHref', route('branding')));
 });
 
 it('redirects a member away from org settings to their own account', function () {

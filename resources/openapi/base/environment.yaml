@@ -1714,6 +1714,94 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /vault/pipes/{provider}/token:
+    post:
+      tags: [Token Vault]
+      summary: Lease a fresh access token for a person's connected account (Pipes)
+      description: |
+        Returns a working access token for one person's connected account at a
+        third-party provider (GitHub, Google, Microsoft 365, Slack, Salesforce, HubSpot,
+        Linear, Notion), refreshing it first when it is about to expire. The app must be
+        granted the provider's pipe (Developers › Pipes); an app an organization owns may
+        only lease for that organization's members.
+
+        Whose token: a token issued to the app FOR a person leases that person's
+        connection, and `user_id` may only repeat it; a client-credentials token names the
+        person in `user_id`. The response is `Cache-Control: no-store`. Drop the token
+        when you are done and lease again next time.
+      security: [{ AgentToken: [] }]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: The provider's key.
+          schema: { type: string, enum: [github, google, microsoft, slack, salesforce, hubspot, linear, notion] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose]
+              properties:
+                purpose: { type: string, maxLength: 200, description: Recorded on the audit trail. }
+                user_id: { type: string, maxLength: 128, description: "The person, for a token not issued for one. With a person's token, may only name that person." }
+      responses:
+        '200':
+          description: A fresh access token.
+          headers:
+            Cache-Control: { schema: { type: string, example: no-store } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, provider, user_id, connection_id, scopes, lease_expires_at, metadata]
+                properties:
+                  access_token: { type: string, description: The provider's access token. Use it as a bearer token against the provider's API. }
+                  token_type: { type: string, enum: [Bearer] }
+                  provider: { type: string }
+                  user_id: { type: string }
+                  connection_id: { type: string }
+                  scopes: { type: array, items: { type: string }, description: What the person consented to. }
+                  expires_at: { type: ["string", "null"], format: date-time, description: "When the PROVIDER stops accepting it. Null for tokens that do not expire." }
+                  lease_expires_at: { type: string, format: date-time, description: When to drop it and lease again. }
+                  metadata:
+                    type: object
+                    additionalProperties: { type: string }
+                    description: "What the app needs to call the API at all — Salesforce's `instance_url`, Slack's `team.id`, Notion's `workspace_id`. Never a credential."
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403':
+          description: |
+            Lease denied — the app is not granted this pipe, there is no such (enabled)
+            pipe, the person is not a member of the app's organization, or `user_id` names
+            someone other than the token's person. One response, with a constant message.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - $ref: '#/components/schemas/BearerChallenge'
+              example: { error: lease_denied, message: "The lease was denied." }
+        '404':
+          description: The app is granted the pipe, and the person has not connected the provider. Send them to `connect_url`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipeConnectRequired' }
+              example: { error: not_connected, message: "This person has not connected the provider.", connect_url: "https://id.example.com/account/connected-services/github/connect" }
+        '409':
+          description: The person must connect the provider again — it refused the refresh token, or the token expired with none. Send them to `connect_url`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PipeConnectRequired' }
+              example: { error: reauthorization_required, message: "This person must connect the provider again.", connect_url: "https://id.example.com/account/connected-services/github/connect" }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503':
+          description: A needed refresh could not complete right now. Retry after the `Retry-After` header.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /devices:
     post:
       tags: [Devices]
@@ -2180,6 +2268,20 @@ components:
         permissions_declared: { type: integer }
         orphaned_role_keys: { type: array, items: { type: string }, description: "Roles stored here that the manifest no longer declares." }
         orphaned_permission_keys: { type: array, items: { type: string } }
+    SmsFactorPolicy:
+      type: object
+      required: [enabled, allowed_countries, privileged_need_stronger_factor, deployment_countries]
+      properties:
+        enabled: { type: boolean, description: "Text-message codes are accepted as a second factor. Off by default." }
+        allowed_countries:
+          type: array
+          items: { type: string, pattern: "^[A-Z]{2}$" }
+          description: "ISO 3166-1 alpha-2 countries whose numbers may enrol and be texted. Re-checked at every send."
+        privileged_need_stronger_factor: { type: boolean, description: "Administrators may add SMS only beside an authenticator app or a passkey." }
+        deployment_countries:
+          type: array
+          items: { type: string, pattern: "^[A-Z]{2}$" }
+          description: "The deployment's ceiling (CBOX_ID_SMS_ALLOWED_COUNTRIES). Empty: no deployment restriction. A listed country outside it is never texted."
     SelfServiceSignup:
       type: object
       required: [enabled, decided_here]
@@ -2650,7 +2752,7 @@ components:
         orphaned: { type: boolean, description: "Its app stopped declaring it." }
     SignInRules:
       type: object
-      required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold]
+      required: [min_length, require_breach_check, max_age_days, reuse_history, mfa, sso, lockout_threshold, passkeys, magic_link, session_idle_minutes, session_absolute_minutes, bot_challenge]
       properties:
         min_length: { type: integer, description: "Minimum password length." }
         require_breach_check: { type: boolean, description: "Passwords found in known breaches are refused." }
@@ -2659,9 +2761,23 @@ components:
         mfa: { type: string, enum: [off, optional, required] }
         sso: { type: string, enum: [off, preferred, required], description: "`required` refuses every other way in." }
         lockout_threshold: { type: ["integer", "null"], description: "Failed attempts before a lockout; null for none." }
+        passkeys: { type: boolean, description: "Environment-wide. Whether passkeys may be used to sign in and be added. An organization's override never changes it." }
+        magic_link: { type: boolean, description: "Environment-wide. Whether a one-time sign-in link may be emailed." }
+        session_idle_minutes: { type: ["integer", "null"], description: "Environment-wide. Minutes of inactivity before a session ends; null for the deployment's." }
+        session_absolute_minutes: { type: ["integer", "null"], description: "Environment-wide. Minutes a session lasts at most; null for the deployment's." }
+        bot_challenge: { type: boolean, description: "Environment-wide. Whether a sign-up Radar flags is challenged with Turnstile, where the deployment has keys." }
+    SignInMethodsInForce:
+      type: object
+      required: [passkeys, magic_link, session_idle_minutes, session_absolute_minutes, bot_challenge]
+      properties:
+        passkeys: { type: boolean }
+        magic_link: { type: boolean }
+        session_idle_minutes: { type: integer, description: "0 for no idle timeout." }
+        session_absolute_minutes: { type: integer }
+        bot_challenge: { type: boolean }
     SignInPolicy:
       type: object
-      required: [organization_id, policy, baseline, override, inheriting]
+      required: [organization_id, policy, baseline, override, inheriting, in_force, deployment]
       properties:
         organization_id: { type: ["string", "null"], description: "null for the environment baseline." }
         policy:
@@ -2674,19 +2790,46 @@ components:
             - { $ref: "#/components/schemas/SignInRules" }
             - { type: "null" }
         inheriting: { type: boolean, description: "True for an organization with no override of its own." }
+        in_force:
+          $ref: "#/components/schemas/SignInMethodsInForce"
+          description: "The environment-wide methods and session lengths actually in force, after the deployment's ceiling."
+        deployment:
+          $ref: "#/components/schemas/SignInMethodsInForce"
+          description: "The deployment's ceiling: which methods it offers at all, the longest sessions it allows, and whether it has Turnstile keys."
     SocialProvider:
       type: object
-      required: [id, organization_id, provider, name, protocol, status, callback_uri]
-      description: "Its client secret and private key are write-only and never returned."
+      required: [id, organization_id, level, provider, name, protocol, status, enabled, scopes, callback_uri]
+      description: "Its client secret and private key are write-only and never returned. An environment provider (`level: environment`) is offered on every organization's sign-in page unless the organization has its own for the same provider or turned it off."
       properties:
         id: { type: string }
-        organization_id: { type: ["string", "null"] }
+        organization_id: { type: ["string", "null"], description: "null for the environment's own provider." }
+        level: { type: string, enum: [environment, organization] }
+        enabled: { type: boolean, description: "False when it is turned off; its credentials are kept." }
+        scopes: { type: array, items: { type: string }, description: "Extra scopes requested on top of the ones sign-in needs." }
         provider: { type: ["string", "null"], description: "The catalogue key: google, github, apple…" }
         name: { type: string }
         protocol: { type: string, enum: [oidc, oauth2] }
         status: { type: string }
         callback_uri: { type: string, description: "The redirect URI to register with the provider." }
         created_at: { type: ["string", "null"], format: date-time }
+    OfferedSocialProviders:
+      type: object
+      required: [organization_id, providers, not_inherited]
+      description: "The social login buttons one sign-in page shows, after inheritance."
+      properties:
+        organization_id: { type: ["string", "null"], description: "null for the plain sign-in page, before anybody has said who they are." }
+        providers:
+          type: array
+          items:
+            type: object
+            required: [id, provider, name, source, callback_uri]
+            properties:
+              id: { type: string }
+              provider: { type: ["string", "null"] }
+              name: { type: string }
+              source: { type: string, enum: [environment, organization], description: "`environment` when inherited; `organization` when the organization's own stands in its place." }
+              callback_uri: { type: string }
+        not_inherited: { type: array, items: { type: string }, description: "The environment's providers this organization turned off for its page." }
     FrontendKey:
       type: object
       required: [id, name, key, mode, origins, active]
@@ -2768,7 +2911,7 @@ components:
         muted: { type: string }
     Appearance:
       type: object
-      required: [organization_id, customized, theme, logo]
+      required: [organization_id, customized, theme, logo, favicon, remote_logo_ignored]
       properties:
         organization_id: { type: ["string", "null"], description: "null for the environment default." }
         customized: { type: boolean, description: "Whether this level has a theme of its own." }
@@ -2780,7 +2923,9 @@ components:
             font: { type: string }
             light: { $ref: "#/components/schemas/ThemeMode" }
             dark: { $ref: "#/components/schemas/ThemeMode" }
-        logo: { type: ["string", "null"] }
+        logo: { type: ["string", "null"], description: "The uploaded logo, served by this application at /brand-assets/…; null when none is uploaded at this level. Never a remote URL." }
+        favicon: { type: ["string", "null"], description: "The uploaded favicon, served the same way; null when none." }
+        remote_logo_ignored: { type: boolean, description: "A remote logo URL saved before logos became uploads is still stored at this level. It is never fetched and no longer shown on any hosted page; upload a logo (or send `logo: null`) to clear it." }
     WhitelabelBranding:
       type: object
       required: [organization_id, palette, app_name, email_from_name, email_template, logo_url, favicon_url]
@@ -2792,8 +2937,8 @@ components:
         app_name: { type: ["string", "null"] }
         email_from_name: { type: ["string", "null"] }
         email_template: { type: ["string", "null"] }
-        logo_url: { type: ["string", "null"], description: "Uploaded from the console." }
-        favicon_url: { type: ["string", "null"], description: "Uploaded from the console." }
+        logo_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)." }
+        favicon_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)." }
     CustomDomain:
       type: object
       required: [domain, verified_at, pending]
@@ -3055,12 +3200,212 @@ components:
         created_at: { type: ["string", "null"], format: date-time }
         completed_at: { type: ["string", "null"], format: date-time }
         expires_at: { type: ["string", "null"], format: date-time, description: "When the file is deleted." }
+    FgaSubject:
+      type: object
+      required: [type, id, relation]
+      properties:
+        type: { type: string, description: "The subject's type: `user`, or `group` for a userset." }
+        id: { type: string }
+        relation: { type: ["string", "null"], description: "For a userset — everybody with this relation on the subject (`member` of `group:eng`). null for one subject." }
+    FgaTuple:
+      type: object
+      required: [resource_type, resource_id, relation, subject, tuple]
+      properties:
+        resource_type: { type: string }
+        resource_id: { type: string }
+        relation: { type: string }
+        subject: { $ref: "#/components/schemas/FgaSubject" }
+        tuple: { type: string, description: "The same tuple in the notation: `document:readme#viewer@group:eng#member`." }
+    FgaSchema:
+      type: object
+      required: [defined, schema, version, types, updated_at, consistency_token]
+      properties:
+        defined: { type: boolean, description: "false until a schema is first saved." }
+        schema: { type: ["string", "null"], description: "The source as it was written, comments and all." }
+        version: { type: integer, description: "How many times the schema has been replaced." }
+        types:
+          type: array
+          description: The parsed types, each with its relations and how each is decided.
+          items: { $ref: "#/components/schemas/FgaType" }
+        updated_at: { type: ["string", "null"], format: date-time }
+        consistency_token: { type: string, description: "The revision the model is at." }
+    FgaType:
+      type: object
+      required: [name, relations]
+      properties:
+        name: { type: string }
+        relations:
+          type: array
+          items:
+            type: object
+            required: [name, rewrite, directly_related]
+            properties:
+              name: { type: string }
+              rewrite:
+                type: object
+                description: |
+                  How the relation is decided, as a tree of one-key objects: `direct` (a list of
+                  `{type, relation?}`), `computed` (a relation name), `from` (`{tupleset, relation}`),
+                  `union` and `intersection` (lists of rewrites), `exclusion` (`{base, subtract}`).
+              directly_related:
+                type: array
+                description: The subjects a tuple may name on this relation; empty for a relation that is only computed.
+                items:
+                  type: object
+                  required: [type]
+                  properties:
+                    type: { type: string }
+                    relation: { type: string }
+    FgaSchemaValidation:
+      type: object
+      required: [valid, errors, types, canonical]
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [line, message]
+            properties:
+              line: { type: integer, description: "0 when the problem is about the whole schema." }
+              message: { type: string }
+        types:
+          type: array
+          items: { $ref: "#/components/schemas/FgaType" }
+        canonical: { type: ["string", "null"], description: "The schema as the platform prints it, when valid." }
+    FgaTupleWrite:
+      type: object
+      required: [written, deleted, consistency_token]
+      properties:
+        written: { type: integer, description: "Tuples that were new. Re-writing an existing one is not counted." }
+        deleted: { type: integer, description: "Tuples that were there to delete." }
+        consistency_token: { type: string, description: "Pass to a check that must see this write." }
+    FgaCheck:
+      type: object
+      required: [allowed, resource_type, resource_id, relation, subject, consistency_token]
+      properties:
+        allowed: { type: boolean }
+        resource_type: { type: string }
+        resource_id: { type: string }
+        relation: { type: string }
+        subject: { $ref: "#/components/schemas/FgaSubject" }
+        consistency_token: { type: string, description: "The revision the answer was decided at." }
+    FgaCheckBatch:
+      type: object
+      required: [results, consistency_token]
+      properties:
+        results:
+          type: array
+          description: One answer per check, in the order asked.
+          items: { $ref: "#/components/schemas/FgaCheck" }
+        consistency_token: { type: ["string", "null"] }
+    FgaObject:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string }
+        id: { type: string }
     AuditLogSettings:
       type: object
       required: [retention_days, strict_schemas]
       properties:
         retention_days: { type: integer, description: "Events are kept this many days after they arrive." }
         strict_schemas: { type: boolean, description: "Whether an action with no schema is refused." }
+    RadarSettings:
+      type: object
+      required: [mode, mode_inherited, deployment_mode, ip_intelligence, builtin_rules]
+      properties:
+        mode: { type: string, enum: [monitor, enforce], description: "monitor records every verdict and acts on none; enforce blocks and challenges." }
+        mode_inherited: { type: boolean, description: "True while the environment follows the deployment's default (RISK_MODE) rather than a mode it chose." }
+        deployment_mode: { type: string, enum: [monitor, enforce] }
+        ip_intelligence: { type: string, enum: [none, maxmind, ipinfo], description: "The configured IP intelligence source. With none, country, network and travel facts are unknown and the rules on them never fire." }
+        builtin_rules:
+          type: array
+          items:
+            type: object
+            required: [key, name, description, applies_to, enabled, action, threshold, threshold_unit, threshold_min, threshold_max]
+            properties:
+              key: { type: string, enum: [credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated] }
+              name: { type: string }
+              description: { type: string }
+              applies_to: { type: string, enum: [all, sign_in, sign_up] }
+              enabled: { type: boolean }
+              action: { type: string, enum: [allow, challenge, block] }
+              threshold: { type: ["integer", "null"], description: "null for a rule that counts nothing." }
+              threshold_unit: { type: ["string", "null"] }
+              threshold_min: { type: ["integer", "null"] }
+              threshold_max: { type: ["integer", "null"] }
+    RadarRule:
+      type: object
+      required: [id, name, description, position, enabled, applies_to, action, conditions, summary, created_at, updated_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        position: { type: integer, description: "1 is evaluated first; the first rule whose conditions all hold decides." }
+        enabled: { type: boolean }
+        applies_to: { type: string, enum: [all, sign_in, sign_up] }
+        action: { type: string, enum: [allow, challenge, block] }
+        conditions:
+          type: array
+          items:
+            type: object
+            required: [field, operator, value]
+            properties:
+              field: { type: string }
+              operator: { type: string, enum: [eq, neq, in, not_in, gt, gte, lt, lte, contains, not_contains, starts_with, ends_with, in_cidr, not_in_cidr] }
+              value:
+                description: "Normalised: a string, a number, true/false, or a list for the list operators."
+                oneOf:
+                  - { type: string }
+                  - { type: number }
+                  - { type: boolean }
+                  - { type: array, items: { oneOf: [{ type: string }, { type: number }] } }
+        summary: { type: string, description: "The conditions as a person reads them." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    RadarListEntry:
+      type: object
+      required: [id, list, kind, value, note, expires_at, active, created_at]
+      properties:
+        id: { type: string }
+        list: { type: string, enum: [allow, deny] }
+        kind: { type: string, enum: [ip, email, email_domain, device] }
+        value: { type: string, description: "Normalised: an IP or CIDR range, a lower-case address or domain, or a device id." }
+        note: { type: ["string", "null"] }
+        expires_at: { type: ["string", "null"], format: date-time }
+        active: { type: boolean }
+        created_at: { type: string, format: date-time }
+    RadarDecision:
+      type: object
+      required: [id, assessed_at, flow, method, verdict, enforced, mode, rule, rule_name, triggered, reasons, risk_score, risk_outcome, country, asn, email_domain, device, facts]
+      properties:
+        id: { type: string }
+        assessed_at: { type: string, format: date-time }
+        flow: { type: string, enum: [sign_in, sign_up] }
+        method: { type: ["string", "null"], enum: [password, magic_link, passkey, sign_up, null] }
+        verdict: { type: string, enum: [allow, challenge, block] }
+        enforced: { type: boolean, description: "Whether the verdict was acted on; false under monitor." }
+        mode: { type: string, enum: [monitor, enforce] }
+        rule: { type: ["string", "null"], description: "What decided it: deny_list:<kind>, allow_list:<kind>, rule:<id>, builtin:<key>; null when nothing matched." }
+        rule_name: { type: ["string", "null"] }
+        triggered:
+          type: array
+          description: Every rule that fired, the deciding one included.
+          items:
+            type: object
+            required: [rule, name]
+            properties:
+              rule: { type: string }
+              name: { type: string }
+        reasons: { type: array, items: { type: string } }
+        risk_score: { type: number }
+        risk_outcome: { type: string, enum: [allow, flag, challenge, step_up, reject] }
+        country: { type: ["string", "null"] }
+        asn: { type: ["integer", "null"] }
+        email_domain: { type: ["string", "null"] }
+        device: { type: ["string", "null"], description: "The device id (a pseudonym of the device cookie), for a returning device." }
+        facts: { type: object, description: "The facts the rules were evaluated on — never the IP, the address or the user agent." }
     AuditLogVerification:
       type: object
       required: [organization_id, valid, complete, verified_count, first_sequence, last_sequence, head_sequence, broken_at_sequence, reason]
@@ -3082,13 +3427,39 @@ components:
         id: { type: string }
         organization_id: { type: string }
         name: { type: string }
-        provider: { type: string, enum: [scim, google_workspace, microsoft_entra] }
+        provider: { type: string, enum: [scim, google_workspace, microsoft_entra, workday, bamboohr, rippling, hibob, personio] }
         pull: { type: boolean, description: "true when this platform fetches from the provider; false for a SCIM endpoint the provider posts to." }
+        hris: { type: boolean, description: "true for an HR system (Workday, BambooHR, Rippling, HiBob, Personio): employment dates decide access and departments become groups." }
         active: { type: boolean }
         status: { type: string, enum: [active, paused] }
         scim_base_url: { type: ["string", "null"], description: "Where the identity provider sends SCIM requests. null for a pull directory." }
         last_synced_at: { type: ["string", "null"], format: date-time }
-        last_sync_error: { type: ["string", "null"] }
+        last_sync_error: { type: ["string", "null"], description: "Why the last pull failed, or for a partial one how many records could not be synced and the first reason. Never names a person." }
+        last_sync_started_at: { type: ["string", "null"], format: date-time, description: "When the last pull started. null for a SCIM directory." }
+        last_sync_status: { type: ["string", "null"], enum: [running, succeeded, partial, failed, null], description: "How the last pull went. partial: the provider answered but some records could not be reconciled, or a mass deprovisioning was refused." }
+        last_sync_stats:
+          type: ["object", "null"]
+          description: "The last pull's counts, and up to 50 records it could not reconcile — by the provider's own id, never by name or email."
+          properties:
+            mode: { type: string, enum: [full, incremental] }
+            provisioned: { type: integer }
+            deprovisioned: { type: integer }
+            groups: { type: integer }
+            skipped: { type: integer, description: "Leavers and people who have not started, who never had an account." }
+            failed: { type: integer }
+            failures:
+              type: array
+              items:
+                type: object
+                properties:
+                  external_id: { type: ["string", "null"] }
+                  reason: { type: string }
+        sync_interval_minutes: { type: ["integer", "null"], description: "Minutes between scheduled pulls. null for a SCIM directory." }
+        next_sync_at: { type: ["string", "null"], format: date-time }
+        custom_attributes:
+          type: ["array", "null"]
+          items: { type: string }
+          description: "HR systems only: the HR system's own field names copied onto each person."
         created_at: { type: ["string", "null"], format: date-time }
         bearer_token:
           type: ["string", "null"]
@@ -3133,6 +3504,53 @@ components:
         role_ids: { type: array, items: { type: string } }
         active: { type: boolean }
         created_at: { type: ["string", "null"], format: date-time }
+    FeatureFlag:
+      type: object
+      required: [id, key, enabled, default_value, users, organizations]
+      description: "A switch apps ask about per user and organization. First match wins: switched off, then a user rule, then an organization rule, then the rollout, then the default."
+      properties:
+        id: { type: string }
+        key: { type: string, description: "What code asks for and the `feature_flags` claim carries. Fixed once created." }
+        description: { type: ["string", "null"] }
+        enabled: { type: boolean, description: "The kill switch: false is off for everyone." }
+        default_value: { type: boolean, description: "The answer when no rule matches." }
+        rollout_percentage: { type: ["integer", "null"], minimum: 0, maximum: 100, description: "On for this share of everyone else, by a stable hash of the user id (the organization id without one)." }
+        users:
+          type: array
+          description: "Rules for named users; they outrank every other rule."
+          items: { $ref: "#/components/schemas/FeatureFlagRule" }
+        organizations:
+          type: array
+          description: "Rules for named organizations; they outrank the rollout and the default."
+          items: { $ref: "#/components/schemas/FeatureFlagRule" }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    FeatureFlagRule:
+      type: object
+      required: [id, enabled]
+      properties:
+        id: { type: string, description: "The user's or organization's id." }
+        enabled: { type: boolean, description: "On or off for them." }
+    FeatureFlagEvaluation:
+      type: object
+      required: [user_id, organization_id, feature_flags, evaluations]
+      description: "Every flag's answer for the user and organization asked about."
+      properties:
+        user_id: { type: ["string", "null"] }
+        organization_id: { type: ["string", "null"] }
+        feature_flags:
+          type: array
+          description: "The keys of the flags that are on, sorted — exactly what the token's `feature_flags` claim would carry."
+          items: { type: string }
+        evaluations:
+          type: array
+          items:
+            type: object
+            required: [key, enabled, reason]
+            properties:
+              key: { type: string }
+              enabled: { type: boolean }
+              reason: { type: string, enum: [disabled, user_target, organization_target, rollout, default], description: "The rule that decided." }
     AccessReview:
       type: object
       required: [id, organization_id, staff, name, status, open, pending_policy, item_count]
@@ -3180,6 +3598,49 @@ components:
         rotated_at: { type: ["string", "null"], format: date-time }
         created_at: { type: ["string", "null"], format: date-time }
         grants: { type: array, items: { type: string }, description: "The OAuth client ids that may lease it. Not on lists." }
+    Pipe:
+      type: object
+      required: [id, provider, name, client_id, scopes, enabled, redirect_uri, grants, connections]
+      description: "A pipe: this environment's OAuth app at a third-party provider, through which people connect their own accounts. The client secret is write-only."
+      properties:
+        id: { type: string }
+        provider: { type: string, enum: [github, google, microsoft, slack, salesforce, hubspot, linear, notion] }
+        name: { type: string }
+        client_id: { type: string, description: "Your app's OAuth client id at the provider." }
+        scopes: { type: array, items: { type: string }, description: What people are asked for when they connect. }
+        parameters: { type: object, additionalProperties: { type: string }, description: "Per-installation values: Microsoft's `tenant`, Salesforce's `domain`." }
+        enabled: { type: boolean }
+        redirect_uri: { type: string, format: uri, description: The callback URL to register at the provider. }
+        grants: { type: array, items: { type: string }, description: The OAuth client ids of the apps that may lease its tokens. }
+        connections: { type: integer, description: How many people have connected an account through it. }
+        created_at: { type: ["string", "null"], format: date-time }
+        updated_at: { type: ["string", "null"], format: date-time }
+    PipeConnection:
+      type: object
+      required: [id, pipe_id, provider, user_id, status, scopes]
+      description: "One person's connected account at a pipe's provider. Never a token."
+      properties:
+        id: { type: string }
+        pipe_id: { type: string }
+        provider: { type: string }
+        user_id: { type: string }
+        status: { type: string, enum: [active, needs_reauth] }
+        account: { type: ["string", "null"], description: "The account's name at the provider, when it says (a GitHub login, an email, a workspace)." }
+        scopes: { type: array, items: { type: string } }
+        metadata: { type: object, additionalProperties: { type: string } }
+        expires_at: { type: ["string", "null"], format: date-time, description: When the current access token expires. Null when it does not. }
+        connected_at: { type: ["string", "null"], format: date-time }
+        last_refreshed_at: { type: ["string", "null"], format: date-time }
+        refresh_failures: { type: integer, description: Consecutive transient refresh failures. }
+        last_error: { type: ["string", "null"] }
+        reauth_reason: { type: ["string", "null"], description: "Why it needs reconnecting: the provider's error code, or `no_refresh_token`." }
+    PipeConnectRequired:
+      type: object
+      required: [error, message, connect_url]
+      properties:
+        error: { type: string, enum: [not_connected, reauthorization_required] }
+        message: { type: string }
+        connect_url: { type: string, format: uri, description: "Where to send the person to connect. Add `?client_id=…&return_to=…` to bring them back to your app." }
     AgentRequest:
       type: object
       description: A pending request from an agent to act as one of this environment's people (OIDC CIBA).

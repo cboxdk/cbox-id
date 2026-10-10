@@ -51,6 +51,7 @@ return [
             'offline_access' => 'Stay signed in',
             'organizations' => 'Which organizations you belong to',
             'groups' => 'Your roles',
+            'feature_flags' => 'Which features are turned on for you',
         ],
     ],
 
@@ -104,5 +105,44 @@ return [
         // Both forms read "minutes" in English, as the page always has; the pair is there
         // so a language with a real singular can use it.
         'too_many' => 'You have created several organizations in a short time. Try again in :count minutes.|You have created several organizations in a short time. Try again in :count minutes.',
+    ],
+    /*
+     * The RFC 8628 verification page — where a person approves the code their TV, console
+     * or terminal shows, usually on a phone after scanning a QR code. The scope list reuses
+     * `consent.scopes`, and the "this will allow" and critical lines `consent.*`.
+     */
+    'device' => [
+        'title' => 'Connect a device',
+        'heading' => 'Connect a device',
+        'lead' => 'Enter the code shown on your TV, console or terminal.',
+        'code_label' => 'Code from your device',
+        'code_hint' => 'Eight letters, like BCDF-GHJK. Capitals and the dash are optional.',
+        'continue' => 'Continue',
+        'next_note' => 'You’ll see which app is asking before anything is connected.',
+        'code_required' => 'Enter the code shown on your device.',
+        'invalid' => 'That code is invalid or has expired. Check the code on your device and try again.',
+        'too_many' => 'Too many attempts. Try again in :seconds seconds.',
+        'link_expired' => 'That sign-in request has expired or already finished. Enter the code shown on your device.',
+        'consent_heading' => 'Sign in to :client?',
+        'consent_lead' => ':client on another device is asking to sign in to your account.',
+        'signing_in_as' => 'Signing in as',
+        'code_check' => 'Check that this code matches the one on your device',
+        'deny' => 'Deny',
+        'approve' => 'Approve',
+        'warning' => 'Only approve if you started signing in on your own device just now. If you didn’t, deny it — someone may be trying to get into your account.',
+        'approved_heading' => 'You’re all set',
+        'approved_body' => 'You can return to your TV or device — it is signing in now.',
+        'denied_heading' => 'Request denied',
+        'denied_body' => 'Nothing was connected, and the device has been told no.',
+        'enter_another' => 'Connect another device',
+        'blocked' => 'This request could not be approved from here. Try again on a network you usually use, or contact your administrator.',
+        'step_up' => 'Confirm it is you before connecting a new device — this sign-in looks different from your usual ones.',
+        'step_up_heading' => 'Confirm it’s you',
+        'step_up_sent' => 'We sent a code to :email. Enter it to connect the device.',
+        'step_up_label' => 'Code from the email',
+        'step_up_submit' => 'Confirm and approve',
+        'step_up_resend' => 'Send a new code',
+        'step_up_invalid' => 'That code is not right, or it has expired. Check the newest email and try again.',
+        'step_up_wait' => 'A code was sent a moment ago — use that one, or wait a minute before asking for another.',
     ],
 ];

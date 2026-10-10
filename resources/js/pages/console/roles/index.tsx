@@ -19,6 +19,7 @@ import {
     OrganizationFilterChip,
     PageHeader,
     Pagination,
+    AccessModelGuide,
 } from '@/ui';
 
 interface Offerable {
@@ -226,6 +227,9 @@ export default function RolesIndex({
                 noun="role"
                 href={(page) => listHref(search, page)}
             />
+            <div className="mt-8">
+                <AccessModelGuide current="roles" />
+            </div>
         </>
     );
 }

@@ -37,11 +37,19 @@ final class ParityAllowlist
     public static function ceremonies(): array
     {
         return [
+            // Connecting a third-party account (Pipes): the person consents at the provider
+            // in THIS browser, which carries the flow's state and PKCE verifier. A REST call
+            // has no browser to send to GitHub.
+            'account.pipes.authorize',
             // Turning on a second factor: the authenticator itself has to take part.
             'account.mfa.confirm',
             'account.mfa.enrol',
             // New recovery codes are shown once, to the person, behind a fresh password.
             'account.mfa.recovery-codes',
+            // Adding a phone number as a second factor: the phone itself has to receive the
+            // code that proves it. (Removing it is `account.mfa.sms.remove`.)
+            'account.mfa.sms.confirm',
+            'account.mfa.sms.enrol',
             // A password is only ever typed by its owner.
             'account.password.update',
             // The person's own answer to an agent asking to act as them (CIBA): approving IS
@@ -55,6 +63,8 @@ final class ParityAllowlist
             'device.approve',
             'device.deny',
             'device.lookup',
+            // …and the emailed code a Radar challenge on that approval asks for.
+            'device.verify',
             // A person answering an agent's held action — the same consent their phone
             // gives. As an action, a credential could approve its own held requests.
             'environment.approvals.actions.approve',
@@ -80,6 +90,7 @@ final class ParityAllowlist
             // The hosted sign-in for frontend apps: a person proving who they are.
             'frontend.sign-in',
             'frontend.sign-in.factor',
+            'frontend.sign-in.factor.sms',
             'frontend.sign-in.passkey',
             'frontend.sign-in.passkey.options',
             // Accepting an invitation is the invitee's own act, proved by the link they hold.
@@ -97,6 +108,8 @@ final class ParityAllowlist
             'logout',
             'magic.redeem.store',
             'mfa.recover',
+            'mfa.sms.send',
+            'mfa.sms.verify',
             'mfa.verify',
             'passkeys.login',
             'passkeys.login.options',
@@ -145,6 +158,8 @@ final class ParityAllowlist
             'portal.domains.destroy',
             'portal.domains.store',
             'portal.domains.verify',
+            'portal.hris.store',
+            'portal.hris.sync',
             'portal.log-streams.destroy',
             'portal.log-streams.store',
             'portal.log-streams.test',

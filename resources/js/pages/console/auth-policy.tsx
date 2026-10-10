@@ -6,6 +6,7 @@ import {
     Badge,
     Button,
     Checkbox,
+    Combobox,
     Dialog,
     Field,
     Input,
@@ -41,6 +42,43 @@ interface SelfServiceSignup {
     href: string;
 }
 
+/** Text-message codes as a second factor. Environment plane only. */
+interface SmsFactorSetting {
+    enabled: boolean;
+    allowedCountries: string[];
+    privilegedNeedStrongerFactor: boolean;
+    /** The deployment's own ceiling (CBOX_ID_SMS_ALLOWED_COUNTRIES); empty means none. */
+    deploymentCountries: string[];
+    countries: { value: string; label: string }[];
+    href: string;
+}
+
+/**
+ * Passkeys, magic links, the bot challenge and session lengths — the environment's own,
+ * under the deployment's ceiling. Environment plane only.
+ */
+interface SignInMethodsSetting {
+    passkeys: boolean;
+    magicLink: boolean;
+    botChallenge: boolean;
+    /** Empty means "the deployment's". */
+    sessionIdleMinutes: string;
+    sessionAbsoluteMinutes: string;
+    /** What the deployment allows: a method it switched off cannot be switched on here. */
+    deployment: {
+        passkeys: boolean;
+        magicLink: boolean;
+        /** Whether the deployment has Turnstile keys at all. */
+        botChallenge: boolean;
+        /** 0 when the deployment sets no idle timeout. */
+        sessionIdleMinutes: number;
+        sessionAbsoluteMinutes: number;
+    };
+    /** What applies today, after the ceiling. */
+    inForce: { sessionIdleMinutes: number; sessionAbsoluteMinutes: number };
+    href: string;
+}
+
 interface OrganizationRow {
     id: string;
     name: string;
@@ -70,6 +108,10 @@ type Props = PageProps<{
     /** Null on the environment baseline, which inherits from nothing. */
     inheritHref: string | null;
     selfServiceSignup: SelfServiceSignup | null;
+    smsFactor: SmsFactorSetting | null;
+    signInMethods: SignInMethodsSetting | null;
+    /** The environment's name — what the environment-wide panels are about. */
+    environmentName: string;
     help: HelpContent;
 }>;
 
@@ -89,6 +131,9 @@ export default function AuthPolicyPage({
     saveHref,
     inheritHref,
     selfServiceSignup,
+    smsFactor,
+    signInMethods,
+    environmentName,
     help,
 }: Props) {
     const form = useForm<Policy>(policy);
@@ -329,17 +374,41 @@ export default function AuthPolicyPage({
                 </div>
             </form>
 
+            {/*
+                On an organization's own console these are drawn only where its administrators
+                are the environment's — a single-tenant install — and they are said to be the
+                environment's, because changing one changes it for every organization here.
+            */}
+            {!onEnvironmentPlane && signInMethods !== null && (
+                <div className="pt-2">
+                    <h2 className="text-base font-semibold">For the whole environment</h2>
+                    <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                        These apply to every organization in {environmentName}, not only {scopeName}
+                        .
+                    </p>
+                </div>
+            )}
+
+            {signInMethods !== null && (
+                <SignInMethodsPanel setting={signInMethods} scopeName={environmentName} />
+            )}
+
             {selfServiceSignup !== null && (
                 <SelfServiceSignupPanel
                     setting={selfServiceSignup}
-                    scopeName={scopeName}
+                    scopeName={environmentName}
                     onEnable={() => setConfirming('signup')}
                 />
+            )}
+
+            {smsFactor !== null && (
+                <SmsFactorPanel setting={smsFactor} scopeName={environmentName} />
             )}
 
             {/* What each organization actually ends up with. */}
             {onEnvironmentPlane && organizations !== null && (
                 <Panel
+                    id="organizations"
                     title="Per organization"
                     description="The rules in force after this environment's baseline is applied. An organization's own override can only make these stricter."
                 >
@@ -449,7 +518,7 @@ export default function AuthPolicyPage({
                 <Dialog
                     open={confirming === 'signup'}
                     onOpenChange={(open) => !open && setConfirming(null)}
-                    title={`Let people sign up to ${scopeName}?`}
+                    title={`Let people sign up to ${environmentName}?`}
                     description="Anyone who reaches one of your apps can create an account here, without an invitation."
                     footer={
                         <>
@@ -483,8 +552,8 @@ export default function AuthPolicyPage({
                             <code>prompt=create_organization</code>.
                         </li>
                         <li>
-                            Your authentication policy still applies: password strength, the breach check,
-                            email confirmation, rate limits and bot checks.
+                            Your authentication policy still applies: password strength, the breach
+                            check, email confirmation, rate limits and bot checks.
                         </li>
                     </ul>
                 </Dialog>
@@ -540,6 +609,7 @@ function SelfServiceSignupPanel({
     if (!setting.decidedHere) {
         return (
             <Panel
+                id="sign-up"
                 title="Self-service sign-up"
                 description={`Decided by this deployment's CBOX_ID_SIGNUP_MODE, which is "${setting.mode}". Sign-up is ${setting.open ? 'open' : 'closed'}.`}
             />
@@ -548,6 +618,7 @@ function SelfServiceSignupPanel({
 
     return (
         <Panel
+            id="sign-up"
             title="Self-service sign-up"
             description={
                 setting.enabled
@@ -587,6 +658,315 @@ function SelfServiceSignupPanel({
                 person to create an organization with <code>prompt=create_organization</code>. Both
                 are offered only while this is on.
             </p>
+        </Panel>
+    );
+}
+
+/** "90 minutes", "8 hours", "2 days" — whichever reads whole. */
+function duration(minutes: number): string {
+    if (minutes % 1440 === 0) {
+        const days = minutes / 1440;
+
+        return `${days} ${days === 1 ? 'day' : 'days'}`;
+    }
+
+    if (minutes % 60 === 0) {
+        const hours = minutes / 60;
+
+        return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+    }
+
+    return `${minutes} minutes`;
+}
+
+/**
+ * SIGN-IN METHODS AND SESSIONS — the switches that used to be the deployment's alone.
+ *
+ * Each sits UNDER the deployment: a method the deployment switched off is drawn off and
+ * disabled, with the variable named, because a switch the console cannot honour is worse
+ * than none. The two lengths say the most they may be, and an empty field is the
+ * deployment's own value — written as the placeholder, so "empty" never reads as "none".
+ */
+function SignInMethodsPanel({
+    setting,
+    scopeName,
+}: {
+    setting: SignInMethodsSetting;
+    scopeName: string;
+}) {
+    const form = useForm({
+        passkeys: setting.passkeys,
+        magicLink: setting.magicLink,
+        botChallenge: setting.botChallenge,
+        sessionIdleMinutes: setting.sessionIdleMinutes,
+        sessionAbsoluteMinutes: setting.sessionAbsoluteMinutes,
+    });
+    const { deployment } = setting;
+    const idleCeiling =
+        deployment.sessionIdleMinutes > 0
+            ? deployment.sessionIdleMinutes
+            : deployment.sessionAbsoluteMinutes;
+
+    const deploymentOff = (variable: string) => (
+        <>
+            Off for this whole deployment (<code className="mono">{variable}</code>), which wins
+            over this setting.
+        </>
+    );
+
+    return (
+        <Panel
+            id="sign-in-methods"
+            title="Sign-in methods and sessions"
+            description={`Which ways in ${scopeName} offers besides a password, and how long a sign-in lasts. These are the same for every organization in it.`}
+        >
+            <form
+                className="space-y-5"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    form.put(setting.href, { preserveScroll: true });
+                }}
+            >
+                <div className="space-y-4">
+                    <Checkbox
+                        label="Passkeys"
+                        hint={
+                            deployment.passkeys
+                                ? 'Face ID, Touch ID, Windows Hello or a security key. Turning this off keeps the passkeys people already added, for when you turn it back on.'
+                                : deploymentOff('CBOX_ID_PASSKEYS_ENABLED')
+                        }
+                        checked={deployment.passkeys && form.data.passkeys}
+                        disabled={!deployment.passkeys}
+                        onCheckedChange={(checked) => form.setData('passkeys', checked)}
+                    />
+                    <Checkbox
+                        label="Magic link"
+                        hint={
+                            deployment.magicLink
+                                ? 'A one-time sign-in link by email. Turning this off also stops links already sent from working.'
+                                : deploymentOff('CBOX_ID_MAGIC_LINK_ENABLED')
+                        }
+                        checked={deployment.magicLink && form.data.magicLink}
+                        disabled={!deployment.magicLink}
+                        onCheckedChange={(checked) => form.setData('magicLink', checked)}
+                    />
+                    <Checkbox
+                        label="Bot challenge"
+                        hint={
+                            deployment.botChallenge
+                                ? 'Ask a sign-up Radar flags to prove it is a person (Cloudflare Turnstile). Off, a flagged sign-up confirms its email address instead.'
+                                : 'This deployment has no Turnstile keys (CBOX_ID_TURNSTILE_SITE_KEY), so there is no challenge to turn on. A flagged sign-up confirms its email address instead.'
+                        }
+                        checked={deployment.botChallenge && form.data.botChallenge}
+                        disabled={!deployment.botChallenge}
+                        onCheckedChange={(checked) => form.setData('botChallenge', checked)}
+                    />
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-5">
+                    <Field
+                        id="session-idle"
+                        label="End a session after this long without activity"
+                        error={form.errors.sessionIdleMinutes}
+                        hint={`Minutes, at most ${idleCeiling}. Empty uses the deployment's ${deployment.sessionIdleMinutes > 0 ? duration(deployment.sessionIdleMinutes) : 'setting: no idle timeout'}. In force now: ${setting.inForce.sessionIdleMinutes > 0 ? duration(setting.inForce.sessionIdleMinutes) : 'none'}.`}
+                    >
+                        <Input
+                            id="session-idle"
+                            name="sessionIdleMinutes"
+                            type="number"
+                            min={1}
+                            max={idleCeiling}
+                            placeholder={
+                                deployment.sessionIdleMinutes > 0
+                                    ? `${deployment.sessionIdleMinutes} (deployment)`
+                                    : 'None (deployment)'
+                            }
+                            value={form.data.sessionIdleMinutes}
+                            onChange={(event) =>
+                                form.setData('sessionIdleMinutes', event.target.value)
+                            }
+                        />
+                    </Field>
+
+                    <Field
+                        id="session-absolute"
+                        label="End a session after this long, however active"
+                        error={form.errors.sessionAbsoluteMinutes}
+                        hint={`Minutes, at most ${deployment.sessionAbsoluteMinutes}. Empty uses the deployment's ${duration(deployment.sessionAbsoluteMinutes)}. Shortening it also ends longer sessions already running.`}
+                    >
+                        <Input
+                            id="session-absolute"
+                            name="sessionAbsoluteMinutes"
+                            type="number"
+                            min={5}
+                            max={deployment.sessionAbsoluteMinutes}
+                            placeholder={`${deployment.sessionAbsoluteMinutes} (deployment)`}
+                            value={form.data.sessionAbsoluteMinutes}
+                            onChange={(event) =>
+                                form.setData('sessionAbsoluteMinutes', event.target.value)
+                            }
+                        />
+                    </Field>
+                </div>
+
+                {(form.errors.passkeys ?? form.errors.magicLink ?? form.errors.botChallenge) !==
+                    undefined && (
+                    <p className="field-error" role="alert">
+                        {form.errors.passkeys ?? form.errors.magicLink ?? form.errors.botChallenge}
+                    </p>
+                )}
+
+                <div>
+                    <Button type="submit" variant="primary" loading={form.processing}>
+                        Save sign-in methods
+                    </Button>
+                </div>
+            </form>
+        </Panel>
+    );
+}
+
+/**
+ * TEXT-MESSAGE CODES — SMS as a second factor, off until an environment turns it on.
+ *
+ * The trade-off is written on the panel rather than in a help page, because it is the
+ * whole decision: SMS is better than a password alone and worse than every other factor
+ * here, and each country on the list is a place the environment pays to send texts to.
+ * Turning it on needs at least one country — the action refuses SMS with none, so the
+ * page cannot show "on" for a setting nobody can enrol under.
+ */
+function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; scopeName: string }) {
+    const form = useForm({
+        enabled: setting.enabled,
+        allowedCountries: setting.allowedCountries,
+        privilegedNeedStrongerFactor: setting.privilegedNeedStrongerFactor,
+    });
+    const [adding, setAdding] = useState<string | undefined>(undefined);
+
+    const label = (code: string) =>
+        setting.countries.find((country) => country.value === code)?.label ?? code;
+
+    const outsideDeployment = form.data.allowedCountries.filter(
+        (code) =>
+            setting.deploymentCountries.length > 0 && !setting.deploymentCountries.includes(code),
+    );
+
+    const options = setting.countries.filter(
+        (country) => !form.data.allowedCountries.includes(country.value),
+    );
+
+    return (
+        <Panel
+            id="sms"
+            title="Text-message codes"
+            description={
+                setting.enabled
+                    ? `People in ${scopeName} can add a phone number and receive sign-in codes by SMS.`
+                    : `Off. People in ${scopeName} use an authenticator app, a passkey or recovery codes.`
+            }
+        >
+            <form
+                className="space-y-5"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    form.put(setting.href, { preserveScroll: true });
+                }}
+            >
+                <div
+                    className="rounded-lg p-3 text-sm space-y-1.5"
+                    style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+                >
+                    <p>
+                        <b>SMS is the weakest second factor offered here.</b> A code can be taken by
+                        a SIM swap or number port-out, intercepted in the phone network, or typed
+                        into a convincing fake sign-in page. It is still far better than a password
+                        alone — turn it on for people who cannot use an authenticator app or a
+                        passkey.
+                    </p>
+                    <p>
+                        Every text costs money. Codes go only to the countries listed below, and
+                        each number, network address and this environment have daily limits.
+                    </p>
+                </div>
+
+                <Checkbox
+                    label="Accept text-message codes as a second factor"
+                    checked={form.data.enabled}
+                    onCheckedChange={(checked) => form.setData('enabled', checked)}
+                />
+
+                <Field
+                    label="Countries"
+                    hint="Only numbers in these countries can be added and texted. Removing a country stops texts to it at once."
+                    error={form.errors.allowedCountries}
+                >
+                    <Combobox
+                        aria-label="Add a country"
+                        value={adding}
+                        placeholder="Add a country…"
+                        searchPlaceholder="Search countries…"
+                        options={options}
+                        onValueChange={(code) => {
+                            setAdding(undefined);
+                            form.setData('allowedCountries', [...form.data.allowedCountries, code]);
+                        }}
+                    />
+                </Field>
+
+                {form.data.allowedCountries.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2" aria-label="Allowed countries">
+                        {form.data.allowedCountries.map((code) => (
+                            <li key={code}>
+                                <Badge>
+                                    {label(code)} <span className="mono">{code}</span>
+                                    <button
+                                        type="button"
+                                        className="ml-1.5"
+                                        aria-label={`Remove ${label(code)}`}
+                                        onClick={() =>
+                                            form.setData(
+                                                'allowedCountries',
+                                                form.data.allowedCountries.filter(
+                                                    (other) => other !== code,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        ×
+                                    </button>
+                                </Badge>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                        No countries yet. Add at least one before turning text-message codes on.
+                    </p>
+                )}
+
+                {outsideDeployment.length > 0 && (
+                    <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
+                        This deployment only texts {setting.deploymentCountries.join(', ')}, so
+                        numbers in {outsideDeployment.map(label).join(', ')} cannot receive codes
+                        until CBOX_ID_SMS_ALLOWED_COUNTRIES includes them.
+                    </p>
+                )}
+
+                <Checkbox
+                    label="Owners and admins need an authenticator app or a passkey too"
+                    hint="An owner or admin can add SMS only next to a stronger factor, and is asked to add one if SMS is all they have."
+                    checked={form.data.privilegedNeedStrongerFactor}
+                    onCheckedChange={(checked) =>
+                        form.setData('privilegedNeedStrongerFactor', checked)
+                    }
+                />
+
+                <div>
+                    <Button type="submit" variant="primary" loading={form.processing}>
+                        Save text-message settings
+                    </Button>
+                </div>
+            </form>
         </Panel>
     );
 }

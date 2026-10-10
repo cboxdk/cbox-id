@@ -12,6 +12,7 @@ import {
     Input,
     PageHeader,
     Panel,
+    AccessModelGuide,
 } from '@/ui';
 
 interface PermissionRow {
@@ -231,12 +232,14 @@ export default function Permissions({
 
                         {declaredShown < declaredTotal && (
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                Showing {declaredShown} of {declaredTotal}. Search to reach the rest.
+                                Showing {declaredShown} of {declaredTotal}. Search to reach the
+                                rest.
                             </p>
                         )}
                     </div>
                 )}
             </Panel>
+            <AccessModelGuide current="permissions" />
         </div>
     );
 }

@@ -44,6 +44,19 @@ use App\Providers\ConsoleServiceProvider;
  *    app built on an environment sends about its own customers.
  *  - Approvals: what an agent is waiting for a person to allow.
  *  - API keys: one page, the kind of key a tab — Secret, Publishable, Workspace.
+ *  - Radar: adaptive protection at sign-in and sign-up — the rules that allow, challenge or
+ *    block an attempt, and the decisions they made. Not "Risk events": that is the
+ *    risk-plus module's feed of elevated scores, a narrower thing.
+ *  - Feature flags: switches an app asks about per user and organization. Not
+ *    "entitlements", which are what a customer has paid for and are set from billing.
+ *  - Sign-in methods: every way in on one page — what is on, and where it is changed.
+ *    Authentication policy is the page that changes the password and two-factor rules.
+ *  - Authorization: the area holding Roles, Permissions, Fine-grained authorization and the
+ *    governance of roles. Entitlements are not in it: what a customer has paid for is set
+ *    from billing, and only read here.
+ *  - Fine-grained authorization: the relationship model an app defines for its OWN
+ *    resources (documents in folders) — beside Roles and Permissions, which are what a
+ *    person may do in an organization.
  */
 final class Vocabulary
 {
@@ -74,6 +87,9 @@ final class Vocabulary
 
     public const string PERMISSIONS = 'Permissions';
 
+    /** An environment's own relationship model: schema, tuples, checks. Not roles or permissions. */
+    public const string FINE_GRAINED_AUTHORIZATION = 'Fine-grained authorization';
+
     // Sign-in.
     public const string ENTERPRISE_SSO = 'Enterprise SSO';
 
@@ -85,9 +101,25 @@ final class Vocabulary
 
     public const string AUTHENTICATION_POLICY = 'Authentication policy';
 
+    /**
+     * Every way in — password, passkeys, magic link, social, enterprise SSO, SMS codes,
+     * two-factor — on one page, with whether each is on and where it is changed.
+     */
+    public const string SIGN_IN_METHODS = 'Sign-in methods';
+
+    /**
+     * The environment rail's area for what people may do once signed in: Roles, Permissions,
+     * Fine-grained authorization and the governance of roles. Beside Authentication, which
+     * is how they got in.
+     */
+    public const string AUTHORIZATION = 'Authorization';
+
     public const string SOCIAL_LOGIN = 'Social login';
 
     public const string SAML_APPS = 'SAML apps';
+
+    /** Adaptive protection at sign-in and sign-up: rules, lists, and the decisions it made. */
+    public const string RADAR = 'Radar';
 
     // Building on an environment.
     public const string APPLICATIONS = 'Applications';
@@ -95,6 +127,19 @@ final class Vocabulary
     public const string WEBHOOKS = 'Webhooks';
 
     public const string HOOKS = 'Hooks';
+
+    /** Switches an app asks about per user and organization (Developers › Feature flags). */
+    public const string FEATURE_FLAGS = 'Feature flags';
+
+    /**
+     * A third-party provider people connect their OWN account at (GitHub, Google, Slack…)
+     * so an app here can call that API as them. Not a sign-in method: Social login is how
+     * people get IN; a pipe is how an app reaches OUT on their behalf.
+     */
+    public const string PIPES = 'Pipes';
+
+    /** What a person calls their pipe connections on My account. */
+    public const string CONNECTED_SERVICES = 'Connected services';
 
     public const string API_KEYS = 'API keys';
 

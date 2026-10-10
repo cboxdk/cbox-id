@@ -1,4 +1,4 @@
-import { useForm, usePage } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { useTranslator } from '@/i18n';
 import PortalLayout from '@/layouts/PortalLayout';
@@ -41,7 +41,7 @@ type Props = PageProps<{
     /** Our SCIM base URL in every form a guide asks for — whole, or as host and path. */
     scimValues: Record<string, string>;
     directories: DirectoryRow[];
-    urls: { self: string; create: string };
+    urls: { self: string; create: string; hris: string };
 }>;
 
 /**
@@ -69,6 +69,13 @@ export default function PortalDirectorySync({
                 title={t('portal.directory.title')}
                 lead={t('portal.directory.lead')}
             />
+
+            {/* The other way in: an HR system pulled from, rather than SCIM pushed to us. */}
+            <p className="text-sm mb-6">
+                <Link href={urls.hris} style={{ color: 'var(--accent)' }}>
+                    {t('portal.hris.link')}
+                </Link>
+            </p>
 
             <Step number={1} title={t('portal.directory.step_provider')} done={guide !== null}>
                 {guide === null ? (

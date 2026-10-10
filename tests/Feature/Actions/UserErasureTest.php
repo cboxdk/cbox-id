@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Models\OnboardingDismissal;
+use App\Models\Radar\RadarDevice;
 use App\Models\RiskDecision;
 use App\Platform\FrontendApi\LoginTicket;
+use App\Platform\Radar\RadarPseudonyms;
 use App\Platform\RiskTrail;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
@@ -87,7 +89,20 @@ function erasablePerson(string $email = 'erase-me@acme.example'): User
         'ip_hash' => str_repeat('a', 64),
         'email_hash' => app(RiskTrail::class)->emailPseudonym($email),
         'email_domain' => 'acme.example',
+        'device_hash' => str_repeat('d', 64),
         'assessed_at' => now(),
+    ])->save();
+
+    // The browser Radar remembers them signing in from, and where.
+    (new RadarDevice)->forceFill([
+        'subject_hash' => app(RadarPseudonyms::class)->subject($email),
+        'device_hash' => str_repeat('d', 64),
+        'fingerprint_hash' => str_repeat('f', 64),
+        'country' => 'DK',
+        'latitude' => 55.7,
+        'longitude' => 12.6,
+        'first_seen_at' => now(),
+        'last_seen_at' => now(),
     ])->save();
 
     RiskEvent::query()->create([
@@ -116,6 +131,8 @@ function expectErased(User $person, string $email): void
         ->and(RiskDecision::query()->where('email_hash', app(RiskTrail::class)->emailPseudonym($email))->exists())->toBeFalse()
         // The decision itself is kept: it is what thresholds are tuned on, and names nobody now.
         ->and(RiskDecision::query()->count())->toBe(1)
+        ->and(RiskDecision::query()->whereNotNull('device_hash')->exists())->toBeFalse()
+        ->and(RadarDevice::query()->count())->toBe(0)
         ->and(RiskEvent::query()->count())->toBe(0)
         ->and(AuditEntry::query()->where('action', 'user.erased')->where('target_id', $person->id)->exists())->toBeTrue();
 }
@@ -170,6 +187,7 @@ it('erases a person over REST with a key holding users:erase, and returns the re
         ->and($steps['app.frontend_login_tickets']['counts']['login_tickets'] ?? null)->toBe(1)
         ->and($steps['app.onboarding']['counts']['checklist_dismissals'] ?? null)->toBe(1)
         ->and($steps['app.risk_decisions']['counts']['risk_decisions'] ?? null)->toBe(1)
+        ->and($steps['app.radar_devices']['counts']['radar_devices'] ?? null)->toBe(1)
         ->and($steps['risk_plus.history']['counts']['risk_events'] ?? null)->toBe(1)
         // And the receipt names nobody.
         ->and($response->getContent())->not->toContain('erase-me@acme.example');

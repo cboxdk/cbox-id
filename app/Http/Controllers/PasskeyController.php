@@ -6,7 +6,9 @@ namespace App\Http\Controllers;
 
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
+use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\Passkeys;
@@ -107,7 +109,7 @@ final class PasskeyController extends Controller
     {
         // Hard-block a Reject before establishing the session. (A passkey is
         // phishing-resistant, so an elevated-but-not-reject outcome needs no step-up.)
-        if ($risk->shouldBlock($risk->assess($request, 'login'))) {
+        if ($risk->shouldBlock($risk->assess($request, 'login', method: RadarMethod::Passkey))) {
             return $this->error(__('auth.common.could_not_process'));
         }
 
@@ -154,7 +156,9 @@ final class PasskeyController extends Controller
 
         $auth->establish($request, $subjectId, AuthMethod::forPasskey());
 
-        return new JsonResponse(['redirect' => route('dashboard')]);
+        // Back to where they were going — a device approval, an app's sign-in — as the
+        // password door does; the dashboard only when they were going nowhere.
+        return new JsonResponse(['redirect' => IntendedUrl::pullForSubject() ?? route('dashboard')]);
     }
 
     private function putChallenge(Request $request, string $key, string $challenge): void

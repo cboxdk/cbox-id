@@ -87,6 +87,12 @@ Password sign-in, plus **passwordless options**: email magic link and **passkey*
 (WebAuthn) sign-in. Social buttons appear when a provider is configured. Organizations
 get a branded variant at `/o/{slug}/login`.
 
+**Last used.** The method a device signed in with last time — a social provider's button,
+the passkey, the magic link, or the email step for a password or single sign-on — carries a
+small *Last used* badge, as on Clerk, WorkOS and Stytch. The order of the buttons does not
+change. What is remembered is the method alone (`google`, `passkey`…), in a first-party,
+HttpOnly cookie on the host the person signed in on; nothing about the person is stored.
+
 ![Login screen](../screenshots/hosted-sign-in.png)
 
 ### Signup
@@ -102,9 +108,17 @@ Create a new organization and its first owner. Risk scoring runs on submit
 On the platform root the sign-in pages carry Cbox ID's own panel beside the form. On a
 customer's environment every door — sign-in, sign-up, password reset, magic link, an
 invitation, the organization picker and the create-a-team step — carries that
-environment's brand instead: the name and logo its Appearance page previews, over its
-colours, with no Cbox ID panel. An organization's own door (`/o/{slug}/login`) carries the
-organization's. The consoles on that host stay Cbox ID's.
+environment's brand instead: the name, **uploaded** logo and favicon its Branding page
+previews, over its colours and typeface, with no Cbox ID panel. The device sign-in page and
+the Admin Portal carry it too, and so do the emails. An organization's own door
+(`/o/{slug}/login`) carries the organization's. The consoles on that host stay Cbox ID's.
+
+Logos and favicons are **uploads** (PNG, JPEG or WebP; ICO for a favicon; never SVG),
+served by Cbox ID itself at `/brand-assets/…`. A logo used to be an https URL to anywhere,
+and every visitor's browser then reported to whoever hosted it — so a remote logo URL saved
+before is no longer drawn, and the Branding page asks for an upload until one is made.
+Every typeface on offer (System, Inter, Plus Jakarta Sans, Nunito, Source Serif) is
+self-hosted for the same reason: no hosted page loads anything from another origin.
 
 ### Joining by invitation
 
@@ -219,8 +233,11 @@ than minting areas of their own.
 
 ### Settings
 
-*Settings · Appearance.* Organization details, and the branding an organization's own
-sign-in page inherits.
+*Settings · Branding.* Organization details, and the brand an organization's own sign-in
+page inherits — one page: a preset, four colours per mode, corners, the typeface, and the
+uploaded logo and favicon, edited against a live preview of the sign-in page; and, with the
+white-label module, the product name, the email sender, the welcome mail and the console's
+own palette. `/appearance` and the module's old Branding page redirect here.
 
 ![Settings](../screenshots/environment-settings.png)
 
@@ -239,26 +256,36 @@ No screenshot of its own. The 2026-07-13 image above filed these settings under
 Every capability of the full organization console, plus the ones that only make sense for
 a whole environment, filed by task in the words the market uses:
 
-- **Home:** Overview.
-- **Users & orgs:** Users, Organizations (your customers), Roles, Permissions. A user's
-  page has **Admin & support roles**: roles granted across the whole environment. An organization
-  opens on its own page, `/admin/organizations/{id}`, with a tab for each thing that is
-  its: Overview (is SSO connected, a domain verified, a directory syncing — and its latest
-  audit entries), Members, Invitations, SSO, Directory Sync, Domains, Roles, API keys,
-  Branding, Policy, Support, Audit log and Settings, plus an **Admin Portal link** for its
-  IT administrator. The environment-wide lists (Enterprise SSO, Roles, Audit log, …) show
+- **Home:** Overview, Get started.
+- **Users & orgs:** Users, Organizations (your customers). A user's page has their
+  organizations, sessions, two-factor (with **Reset 2FA**), **Sign-in decisions** (what
+  Radar decided about them, and why) and **Admin & support roles**: roles granted across the
+  whole environment. An organization opens on its own page, `/admin/organizations/{id}`,
+  with nine tabs: Overview (is SSO connected, a domain verified, a directory syncing — and
+  its latest audit entries), Members (and its Invitations), SSO, Directory Sync, Domains,
+  Roles, Authentication policy, Audit log (and App audit logs) and Settings (and Branding, API keys,
+  Support access), plus an **Admin Portal link** for its IT administrator. The
+  environment-wide lists (Enterprise SSO, Domains, Directory Sync, Roles, Audit log, …) show
   every organization's rows with an Organization column and an **Organization** filter
   chip; a form that creates something for one asks **For which organization?**.
-- **Authentication:** Authentication policy, Social login, Enterprise SSO, Directory Sync:
-  every way people come in.
-- **Developers:** Applications, APIs, API keys, Webhooks, Hooks.
+- **Authentication:** Sign-in methods (every way in on one page — what is on and where it is
+  changed), Authentication policy, Social login, Enterprise SSO, Domains, Directory Sync,
+  Radar: every way people come in.
+- **Authorization:** Roles, Permissions, Fine-grained authorization, Access reviews, Role
+  conflicts: what people may do once they are in, and the governance of it.
+- **Developers:** Applications, APIs, API keys, Webhooks, Hooks, Feature flags, Pipes.
 - **AI agents:** Agents, Approvals (every pending approval request in the environment,
   so an administrator can deny one that looks like abuse), Connect.
-- **Branding:** Appearance, and Branding when the white-label module is on.
+- **Branding:** one Branding page — the sign-in theme, logo and favicon, and (with the white-label module) the name, sender and console palette.
 - **Monitoring:** Audit log, Log streams, Usage, and the analytics, compliance and risk
   modules' pages.
-- **Advanced:** Admins & support, Access reviews, Role conflicts, Token vault, Outbound
-  provisioning, SAML apps, Legacy login: set up once and rarely revisited.
+- **Advanced:** Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy
+  login: set up once and rarely revisited.
+
+Every detail page has a breadcrumb — "Authentication / Enterprise SSO" above a connection —
+and ⌘K finds a page by the word you would use for it elsewhere: *SAML*, *SCIM*, *tenant*,
+*Google login*, *RBAC*, *passkeys*. [Finding your way](finding-your-way.md) walks the common
+tasks click by click.
 - **Settings**, and **Connectors** when that module is on.
 
 ![Users & orgs, Users](../screenshots/users.png)

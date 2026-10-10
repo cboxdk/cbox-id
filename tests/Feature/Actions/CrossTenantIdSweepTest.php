@@ -176,6 +176,7 @@ function sweepBody(ActionDefinition $action, array $own): array
         'apps.scopes.set' => ['scopes' => ['openid']],
         'apps.copy' => ['environment_id' => 'env_test', 'name' => 'Copy'],
         'apps.secrets.rotate' => ['grace_seconds' => 0],
+        'directories.credentials.replace' => ['credentials' => ['api_key' => 'sweep']],
         'directories.groups.map' => ['group_id' => $own['directory_group'], 'role_id' => $own['role'], 'mapped' => true],
         'frontend_keys.set_origins' => ['origins' => ['https://sweep.example']],
         'invitations.send' => ['email' => 'sweep-invitee@sweep.example'],
@@ -548,6 +549,8 @@ function sweepAccount(string $subjectId, array $fixture, string $organizationId)
         'customer_api_key' => (string) mintAppKey($fixture, $subjectId)->id,
         'application' => $fixture['clientId'],
         'social_provider' => 'github',
+        'pipe_provider' => 'github',
+        'pipe_connection' => CrossTenantSweep::pipeConnection(CrossTenantSweep::pipe(), $subjectId),
     ];
 }
 

@@ -17,6 +17,7 @@ use App\Platform\Actions\OrganizationTarget;
 use App\Platform\RevokingAuthPolicies;
 use App\Platform\SignInAudit;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 
@@ -36,13 +37,13 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
  */
 #[AsAction(
     name: 'signin.policy.update',
-    summary: 'Change the authentication policy of the environment baseline, or tighten one organization\'s override. Requiring SSO signs out password sessions.',
+    summary: 'Change the authentication policy of the environment baseline — including whether passkeys and magic links are offered and how long sessions last — or tighten one organization\'s override. Requiring SSO signs out password sessions.',
     scope: 'signin:write',
     danger: Danger::Critical,
     schema: 'SignInPolicy',
     tag: 'Sign-in',
     rest: ['PATCH', '/sign-in/policy'],
-    consoleRoutes: ['auth-policy.update', 'environment.auth-policy.update', 'environment.organizations.policy.update'],
+    consoleRoutes: ['auth-policy.update', 'environment.auth-policy.update', 'environment.organizations.policy.update', 'environment.auth-policy.methods', 'auth-policy.methods'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class UpdateSignInPolicy implements Action
@@ -51,6 +52,7 @@ final readonly class UpdateSignInPolicy implements Action
         private AuthPolicies $policies,
         private SignInAudit $audit,
         private EnvironmentContext $environments,
+        private SignInMethods $methods,
     ) {}
 
     public static function input(): InputSchema
@@ -67,9 +69,23 @@ final readonly class UpdateSignInPolicy implements Action
 
         if ($organizationId === null) {
             $policy = AuthPolicyFields::policy($context, $this->policies->forEnvironment());
+            $past = AuthPolicyFields::pastTheDeployment($policy, $this->methods);
+
+            if ($past !== []) {
+                throw ActionRefused::onFields('past_deployment_limit', $past);
+            }
 
             $this->policies->setForEnvironment($policy);
         } else {
+            // Passkeys, magic links, session lengths and the bot challenge are decided once
+            // for the environment; an override row holding one would be a value in force
+            // nowhere, so it is refused field by field like a loosening.
+            $environmentOnly = AuthPolicyFields::environmentOnly($context);
+
+            if ($environmentOnly !== []) {
+                throw ActionRefused::onFields('environment_only', $environmentOnly);
+            }
+
             // From what is IN FORCE for the organization, the way the console's form is
             // prefilled: an organization with no override has no values of its own, and
             // starting from an empty policy's defaults would store a 12 under a 16.

@@ -14,6 +14,22 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## Unreleased
+
+### Logos are uploads; remote logo URLs are no longer shown
+
+`PUT /api/v1/branding/appearance` (and the MCP tool `branding.appearance.set`) no longer
+takes a logo **URL**. Send the image itself as a base64 `data:` URI in `logo` (and, new,
+`favicon`); an https URL is refused with `invalid_logo`. A logo URL saved before is kept in
+the settings but **not drawn** on any hosted page and never fetched — every visitor's
+browser used to report to whoever hosted it. Until an administrator uploads a logo (or
+removes it), the Branding page says so. Nothing to migrate; tell the environments that
+had a remote logo to upload it.
+
+The content security policy's `img-src` is now `'self' data:`. A deployment that serves
+brand assets from its own CDN keeps working: set `WHITELABEL_ASSETS_CDN_URL` and that origin
+is admitted. The consent screen no longer draws an app's `logo_uri`.
+
 ## 2.0.0
 
 ### The operator checklist

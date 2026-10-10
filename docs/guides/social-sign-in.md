@@ -1,12 +1,12 @@
 ---
 title: Social login and connected accounts
 weight: 35
-description: Let people sign in with Google, Microsoft, GitHub, Discord, Apple, Facebook and others, connect a provider to an account they already have, and understand why we never merge two accounts because their email addresses match.
+description: Turn on Google, Microsoft, GitHub, Discord, Apple, Facebook and others for your whole environment — or one organization — connect a provider to an account people already have, and understand why we never merge two accounts because their email addresses match.
 ---
 
 # Social login and connected accounts
 
-**Console page:** Sign-in › Social login (Authentication › Social login in an environment console)
+**Console page:** Authentication › Social login in the environment console (Sign-in › Social login on an organization's console)
 
 Enterprise SSO connects your *company's* identity provider. Social login is the
 other case: individual people arriving with an account they already hold somewhere
@@ -52,34 +52,101 @@ endpoint and take the address marked primary.
 signing key you download from Apple, and it expires within six months. A setup that
 treats it as a text field will fail half a year later on a day nobody touched it.
 
-## Enabling a provider
+## Turn on Google for your app
 
-Open **Social login** and pick a provider. The screen is ordered the way the
-setup actually goes:
+Set a provider up once for the **environment** and it appears on every sign-in page in it —
+the plain one, and every organization's. This is the usual case:
 
-1. **The redirect URI**, first and copyable. Register it with the provider exactly as
-   shown. "The redirect URI does not match" is the most common way any of these fails,
-   and the error providers return for it names their client id rather than the URI — so
-   it reads as a credential problem and gets debugged as one.
-2. **The provider's own steps**, shown beside the fields rather than linked away to. You
-   are switching between two browser tabs while you do this; a third costs you your place.
-3. **What the provider gave you** — usually a client ID and secret, plus anything
-   per-installation (your Okta domain, your Entra directory id).
+1. **Authentication › Social login**, then **Google** under **Add a provider**.
+2. **Who is it for?** is already **The whole environment**. Leave it.
+3. Copy the **redirect URI** and register it in Google's console. It is the real one: the
+   id it contains is reserved for this provider when the form opens, and stays the same if
+   you reload while you are in Google's console.
+4. Paste the client ID and secret Google gave you, then **Turn on Google for everyone**.
 
-For an OpenID Connect provider we run discovery the moment you press Enable, so a
-mistyped domain fails with the provider's own error while you are still looking at the
-form — not silently, later, for one of your users. Nothing is offered on your sign-in
-page until it has been saved successfully.
+On a single-tenant install, platform operators and owners of the install's own organization
+(see [Authentication policy](authentication-policy.md)) find the same form under
+**Sign-in › Social login** on the organization console, with **Who is it for?** set to **Every sign-in page in this
+environment**; choose **Only this organization's sign-in page** for the organization's own.
 
-Removing a provider takes the button off your sign-in page. Anyone who signed in with it
-keeps their account and can still use their password.
+For an OpenID Connect provider we run discovery the moment you save, so a mistyped domain
+fails with the provider's own error while you are still looking at the form — not silently,
+later, for one of your users. Nothing is offered on a sign-in page until it has been saved.
+
+The setup screen is ordered the way the work goes: the redirect URI first ("the redirect URI
+does not match" is the most common way any of these fails, and the error names the client id
+rather than the URI); then the provider's own steps, beside the fields rather than linked
+away to; then what the provider gave you — usually a client ID and secret, plus anything
+per-installation (your Okta domain, your Entra directory id). **Extra scopes** is optional,
+for an app that needs more from the provider than sign-in does, such as `read:org` on
+GitHub. Sign-in's own scopes are always requested.
+
+## One organization's own provider
+
+An organization can bring its own credentials for a provider, offered on its own sign-in
+page in place of the environment's. Choose the organization under **Who is it for?**, or
+open **Social login** filtered to it.
+
+On one organization's sign-in page, for each provider, the first of these that applies wins:
+
+1. **The organization has its own.** Its own is used. If it turned its own off, the button
+   is gone — the environment's credentials do not stand in for it.
+2. **The organization turned the environment's off** for its page. No button.
+3. **The environment has it, turned on.** The environment's is offered.
+
+The plain sign-in page, before anybody has said which organization they belong to, shows
+the environment's providers.
+
+Social login filtered to one organization shows exactly what its page offers, and where
+each button comes from. **Turn off here** removes one of the environment's from that
+organization's page without setting up its own; **Offer it again** brings it back.
+
+Two things to know:
+
+- **Signing in with an environment provider does not make anyone a member** of the
+  organization whose page they were on. Holding a Google account says nothing about
+  belonging to Acme. An organization's *own* provider adds the person as a member, as
+  before.
+- **Turning a provider off for an organization only removes the button.** It does not stop
+  somebody signing in with that provider elsewhere. An organization that must keep every
+  other way in closed requires SSO on its **Authentication policy** tab.
+
+## Change, turn off, remove
+
+- **Change** replaces the client ID, secret, provider values or extra scopes. A secret or
+  private key left empty keeps the one on file. The redirect URI does not change, so there
+  is nothing to update at the provider.
+- **Turn off** takes the button away and keeps the credentials, so **Turn on** brings it
+  back as it was.
+- **Remove** deletes the provider and its credentials.
+
+Anyone who signed in with a provider keeps their account and can still use their password.
+
+### Through the management API
+
+Every step is an action, the same one the console runs:
+
+| Action | Request |
+|---|---|
+| `signin.social.set` | `POST /v1/sign-in/social-providers` with `environment_wide: true`, or `organization_id` |
+| `signin.social.update` | `PATCH /v1/sign-in/social-providers/{id}` |
+| `signin.social.enable`, `signin.social.disable` | `POST /v1/sign-in/social-providers/{id}/enable` and `/disable` |
+| `signin.social.delete` | `DELETE /v1/sign-in/social-providers/{id}` |
+| `signin.social.inherit` | `PUT /v1/sign-in/social-providers/inherited/{provider}` with `organization_id` and `offered` |
+| `signin.social.list` | `GET /v1/sign-in/social-providers`, optionally `level=environment` |
+| `signin.social.offered` | `GET /v1/sign-in/social-providers/offered?organization_id=…` — what one page shows, and from where |
+
+`signin.social.set` refuses a request that names neither an organization nor
+`environment_wide: true`: a provider on every customer's page should not be what a
+forgotten field means. Turning a provider on — when it is created, or turned back on — sends
+the `connection.activated` webhook. Every change is on the audit log.
 
 ### Your credentials, not ours
 
 If the platform operator has configured a provider, it appears on every sign-in page in
-the deployment. When your organization has connected the same provider itself, yours is
-used on your branded page. That matters because the accounts people end up with should
-sit with the organization that invited them.
+the deployment. When your environment or organization has connected the same provider,
+yours is used. That matters because the accounts people end up with should sit with the
+environment and organization that invited them.
 
 ## Connecting a provider to an existing account
 

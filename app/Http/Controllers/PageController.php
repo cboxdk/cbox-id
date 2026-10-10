@@ -48,15 +48,20 @@ abstract readonly class PageController
     }
 
     /**
-     * The pages drawn in the sign-in layout — every `auth/*` and `oauth/*` page but the
-     * console's own step-up, which sits inside the console. Named by component because
+     * The hosted pages a customer's brand is painted on — every `auth/*` and `oauth/*` page
+     * but the console's own step-up, which sits inside the console, and the Admin Portal. Named by component because
      * the component IS what decides the layout; a new door under either folder is branded
      * without anybody remembering to ask.
      */
     private static function isDoor(string $component): bool
     {
         return $component !== 'auth/sudo'
-            && (str_starts_with($component, 'auth/') || str_starts_with($component, 'oauth/'));
+            && (str_starts_with($component, 'auth/')
+                || str_starts_with($component, 'oauth/')
+                // The Admin Portal is the vendor's page too: their customer's IT
+                // administrator opens it from a link the vendor sent, and should meet the
+                // vendor's name and uploaded logo rather than Cbox's.
+                || str_starts_with($component, 'portal/'));
     }
 
     /**

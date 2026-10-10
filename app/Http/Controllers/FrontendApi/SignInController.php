@@ -128,8 +128,16 @@ class SignInController
             // sends them to support instead of to their IdP.
             AttemptOutcome::SsoRequired => new JsonResponse(['status' => 'sso_required']),
 
-            AttemptOutcome::Invalid => $this->refuse(),
+            AttemptOutcome::Invalid => $this->failed($request, $email),
         };
+    }
+
+    /** A wrong password or an unknown address: counted for Radar, then the generic refusal. */
+    private function failed(Request $request, string $email): JsonResponse
+    {
+        $this->risk->failed($request, $email);
+
+        return $this->refuse();
     }
 
     /**
@@ -195,11 +203,24 @@ class SignInController
             return $this->refuse();
         }
 
-        return new JsonResponse([
+        $body = [
             'status' => $status,
             'mfa_token' => $this->tickets->mintPending($key, $subjectId, [AuthMethod::Password->value], $stage),
             'expires_in' => 300,
-        ]);
+        ];
+
+        // Which second factors the page can offer. Told only to a caller that has just
+        // proved the password, and only as kinds — never the number a code would go to.
+        if ($stage === 'pending_mfa') {
+            $factors = $this->auth->pendingMfaFactors($request);
+            $body['factors'] = array_values(array_filter([
+                $factors['totp'] ? 'totp' : null,
+                $factors['sms'] ? 'sms' : null,
+                'recovery_code',
+            ]));
+        }
+
+        return new JsonResponse($body);
     }
 
     /**

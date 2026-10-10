@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Directories\ConfigureDirectorySync;
+use App\Actions\Directories\ConnectHrisDirectory;
 use App\Actions\Directories\ConnectPullDirectory;
 use App\Actions\Directories\DeleteDirectory;
+use App\Actions\Directories\DirectoryFields;
 use App\Actions\Directories\MapDirectoryGroup;
 use App\Actions\Directories\RegisterScimDirectory;
+use App\Actions\Directories\ReplaceDirectoryCredentials;
 use App\Actions\Directories\RotateDirectoryToken;
 use App\Actions\Directories\SetDirectoryStatus;
+use App\Actions\Directories\SyncDirectoryNow;
 use App\Actions\Directories\UpdateDirectory;
 use App\Actions\PortalLinks\CreatePortalLink;
 use App\Http\Props\Shared\HelpProps;
@@ -30,6 +35,8 @@ use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\DirectoryConnectors;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
+use Cbox\Id\Directory\Hris\HrisCatalog;
+use Cbox\Id\Directory\Hris\ValueObjects\HrisCredential;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Directory\Models\DirectoryGroup;
 use Cbox\Id\Directory\ValueObjects\RegisteredDirectory;
@@ -45,7 +52,8 @@ use Inertia\Response;
 /**
  * CONSOLE › SYNC USERS IN — every directory connection that feeds people INTO the
  * platform: a SCIM endpoint the customer's identity provider posts to, or an API-pull
- * connector fetched from on a schedule.
+ * connector fetched from on a schedule — an identity directory (Google Workspace,
+ * Microsoft Entra) or an HR system (Workday, BambooHR, Rippling, HiBob, Personio).
  *
  * ONE CONTROLLER, BOTH PLANES, and this pair had the worst drift in the console. The
  * organization plane offered Google Workspace and Microsoft Entra as pull directories;
@@ -97,6 +105,8 @@ final readonly class DirectoryController extends ConsoleController
                 'active' => $directory->status === DirectoryStatus::Active,
                 'status' => ucfirst($directory->status->value),
                 'lastSyncError' => $directory->last_sync_error,
+                'hris' => $directory->provider->isHris(),
+                'syncStatus' => $directory->last_sync_status?->value,
                 'owner' => $owners[$directory->organization_id] ?? $directory->organization_id,
                 'href' => $this->url('directories.show', $directory->id),
             ])->values()->all(),
@@ -187,6 +197,9 @@ final readonly class DirectoryController extends ConsoleController
                 'value' => $provider->value,
                 'label' => $provider->label(),
                 'pull' => $provider->isPull(),
+                // An HR system: its credential fields are drawn from `setup.credentials`
+                // rather than from a hand-built form, and it posts to its own action.
+                'hris' => $provider->isHris(),
                 /*
                  * The provider's own setup guide, when there is one.
                  *
@@ -209,6 +222,7 @@ final readonly class DirectoryController extends ConsoleController
             'urls' => [
                 'register' => $this->url('directories.store'),
                 'connect' => $this->url('directories.connect'),
+                'hris' => $this->url('directories.hris'),
             ],
         ]);
     }
@@ -374,6 +388,13 @@ final readonly class DirectoryController extends ConsoleController
                 'active' => $model->status === DirectoryStatus::Active,
                 'status' => ucfirst($model->status->value),
                 'lastSyncError' => $model->last_sync_error,
+                'pull' => $model->provider->isPull(),
+                'hris' => $model->provider->isHris(),
+                /*
+                 * How the sync is going, from the same presenter the API answers with — so
+                 * the console and `GET /directories/{id}` cannot disagree about it.
+                 */
+                'sync' => $model->provider->isPull() ? self::syncProps($model) : null,
             ],
             /*
              * The provider's own guide, for the one place a person needs it after setup: a
@@ -403,8 +424,162 @@ final readonly class DirectoryController extends ConsoleController
                 'toggle' => $this->url('directories.toggle', $model->id),
                 'destroy' => $this->url('directories.destroy', $model->id),
                 'map' => $this->url('directories.map', $model->id),
+                'sync' => $this->url('directories.sync', $model->id),
+                'syncSettings' => $this->url('directories.sync-settings', $model->id),
+                'credentials' => $this->url('directories.credentials', $model->id),
             ],
         ]);
+    }
+
+    /**
+     * Connect an HR system: the credentials are shaped by the framework's catalogue and
+     * probed against the HR system before anything is stored; the first pull is queued.
+     *
+     * Behind the same verified-email gate and step-up as the identity directories: it
+     * seals a customer's HR credentials into the environment and opens a standing sync
+     * that creates and deactivates their people.
+     */
+    public function connectHris(Request $request): RedirectResponse
+    {
+        $this->scope->assertMayAdminister();
+
+        if ($this->scope->plane() === ConsolePlane::Organization) {
+            app(VerifiedEmailGate::class)->require('connect a directory');
+        }
+
+        $organizationId = $this->entitledOrganizationId($request);
+
+        $sudo = $this->registrationChallenge();
+
+        if ($sudo !== null) {
+            return to_route($sudo);
+        }
+
+        $credentials = $request->input('credentials');
+
+        $result = $this->act(ConnectHrisDirectory::class, [
+            'organization_id' => $organizationId,
+            'provider' => (string) $request->string('provider'),
+            'credentials' => is_array($credentials) ? $credentials : [],
+            'custom_attributes' => self::fieldNames((string) $request->string('customAttributes')),
+        ], ['credentials' => 'credentials', 'provider' => 'provider', 'custom_attributes' => 'customAttributes'], fallback: 'credentials');
+
+        if ($result instanceof RedirectResponse) {
+            // Back to the form WITHOUT the secrets: the refusal's `withInput()` would flash
+            // them into the session for the next render.
+            return $result->withInput($request->except('credentials'));
+        }
+
+        /** @var Directory $directory */
+        $directory = $result->value;
+
+        return to_route($this->scope->routeName('directories.show'), $directory->id)
+            ->with('status', $directory->provider->label().' connected — the first sync is running.');
+    }
+
+    /** Pull now, on a worker. `full` asks an incremental HR system for everybody. */
+    public function sync(Request $request, string $directory): RedirectResponse
+    {
+        $model = $this->changeable($directory);
+
+        $result = $this->act(SyncDirectoryNow::class, [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'full' => $request->boolean('full'),
+        ]);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sync started — it runs in the background.');
+    }
+
+    /** The directory's pace, and an HR system's passed-through fields. */
+    public function syncSettings(Request $request, string $directory): RedirectResponse
+    {
+        $model = $this->changeable($directory);
+
+        $input = [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'sync_interval_minutes' => $request->filled('interval') ? $request->integer('interval') : null,
+        ];
+
+        if ($model->provider->isHris() && $request->has('customAttributes')) {
+            $input['custom_attributes'] = self::fieldNames((string) $request->string('customAttributes'));
+        }
+
+        $result = $this->act(ConfigureDirectorySync::class, $input, [
+            'sync_interval_minutes' => 'interval',
+            'custom_attributes' => 'customAttributes',
+        ], fallback: 'interval');
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sync settings saved.');
+    }
+
+    /**
+     * New provider credentials for an HR-system directory, verified before the old ones are
+     * replaced. Behind a step-up: it decides whose credentials provision these people.
+     */
+    public function credentials(Request $request, string $directory): RedirectResponse
+    {
+        $model = $this->changeable($directory);
+
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'directories.show',
+            'environment.directories.show',
+            ['directory' => $model->id],
+            'Replacing the credentials changes whose access provisions and deprovisions these people.',
+        );
+
+        if ($sudo !== null) {
+            return to_route($sudo);
+        }
+
+        $credentials = $request->input('credentials');
+
+        $result = $this->act(ReplaceDirectoryCredentials::class, [
+            'id' => $model->id,
+            'organization_id' => $this->scope->organizationId(),
+            'credentials' => is_array($credentials) ? $credentials : [],
+        ], ['credentials' => 'credentials'], fallback: 'credentials');
+
+        return $result instanceof RedirectResponse
+            ? $result->withInput($request->except('credentials'))
+            : back()->with('status', 'Credentials replaced — the next sync is a full one.');
+    }
+
+    /**
+     * A pull directory's sync, for the detail page.
+     *
+     * @return array<string, mixed>
+     */
+    private static function syncProps(Directory $directory): array
+    {
+        $present = DirectoryFields::present($directory);
+
+        return [
+            'status' => $present['last_sync_status'],
+            'startedAt' => $present['last_sync_started_at'],
+            'syncedAt' => $present['last_synced_at'],
+            'nextAt' => $present['next_sync_at'],
+            'intervalMinutes' => $present['sync_interval_minutes'],
+            'stats' => $present['last_sync_stats'],
+            'customAttributes' => $present['custom_attributes'] ?? [],
+            'active' => $directory->status === DirectoryStatus::Active,
+        ];
+    }
+
+    /**
+     * Field names typed into one box, a comma or a line apart.
+     *
+     * @return list<string>
+     */
+    private static function fieldNames(string $typed): array
+    {
+        $names = preg_split('/[\r\n,]+/', $typed);
+
+        return array_values(array_filter(
+            array_map('trim', is_array($names) ? $names : []),
+            static fn (string $name): bool => $name !== '',
+        ));
     }
 
     public function update(Request $request, string $directory): RedirectResponse
@@ -641,6 +816,26 @@ final readonly class DirectoryController extends ConsoleController
      */
     private static function setupProps(DirectoryProvider $provider): ?array
     {
+        // An HR system's guide is the framework's HR catalogue — never a sign-in provider,
+        // so never in the federation catalogue.
+        $hris = HrisCatalog::for($provider);
+
+        if ($hris !== null) {
+            return [
+                'steps' => $hris->setupSteps,
+                'docs' => $hris->documentationUrl,
+                'incremental' => $hris->incremental,
+                'credentials' => array_map(fn (HrisCredential $credential): array => [
+                    'key' => $credential->key,
+                    'label' => $credential->label,
+                    'help' => $credential->help,
+                    'example' => $credential->example,
+                    'secret' => $credential->secret,
+                    'required' => $credential->required,
+                ], $hris->credentials),
+            ];
+        }
+
         $setup = ProviderCatalog::forDirectory($provider)?->directory;
 
         if ($setup === null) {
@@ -650,6 +845,7 @@ final readonly class DirectoryController extends ConsoleController
         return [
             'steps' => $setup->setupSteps,
             'docs' => $setup->documentationUrl,
+            'incremental' => false,
             // The credential fields the CONNECTOR actually reads, so the labels and the
             // help on the form come from the same declaration the connector is checked
             // against rather than from a second copy that ages here.
@@ -658,6 +854,8 @@ final readonly class DirectoryController extends ConsoleController
                 'label' => $credential->label,
                 'help' => $credential->help,
                 'example' => $credential->example,
+                'secret' => false,
+                'required' => true,
             ], $setup->credentials),
         ];
     }

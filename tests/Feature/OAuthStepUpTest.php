@@ -254,7 +254,7 @@ it('sends a person with an authenticator to the second-factor screen, not a whol
     [$subjectId, $org] = stepUpUser(['pwd']);
     $clientId = stepUpClient($org->id);
     $enrollment = app(Mfa::class)->enrollTotp($subjectId, 'member@acme.test');
-    app(Mfa::class)->confirmTotp($subjectId, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+    confirmTotpForTest($subjectId, $enrollment->secret);
 
     authorizeRequest(stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
         ->assertRedirect(route('mfa'));
@@ -277,7 +277,7 @@ it('sends a stale AND weak session to sign in again: the age wins', function () 
     [$subjectId, $org] = stepUpUser(['pwd'], sessionAgeSeconds: 86_400);
     $clientId = stepUpClient($org->id);
     $enrollment = app(Mfa::class)->enrollTotp($subjectId, 'member@acme.test');
-    app(Mfa::class)->confirmTotp($subjectId, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+    confirmTotpForTest($subjectId, $enrollment->secret);
 
     authorizeRequest(stepUpParams($clientId, ['max_age' => '300', 'acr_values' => 'urn:cbox-id:aal2']))
         ->assertRedirect(route('accounts.add'));

@@ -3,15 +3,17 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
+    AccessRoleHint,
+    type AccessRoleOption,
     Badge,
-    Help,
+    Breadcrumb,
     Button,
     Checkbox,
     ConfirmDelete,
     CopyButton,
     EmptyState,
     Field,
-    Icon,
+    Help,
     Input,
     Panel,
     Pill,
@@ -24,8 +26,6 @@ import {
     staffRoleScope,
     type SupportSessionRow,
     SupportSessions,
-    AccessRoleHint,
-    type AccessRoleOption,
 } from '@/ui';
 
 type AccessRole = AccessRoleOption;
@@ -70,6 +70,14 @@ type Props = PageProps<{
         status: string;
         verified: boolean;
         hasMfa: boolean;
+        /** The phone number for text-message codes, masked; null when there is none. */
+        smsFactor: {
+            maskedNumber: string;
+            country: string;
+            confirmed: boolean;
+            /** Whether this environment's SMS policy accepts it right now. */
+            usable: boolean;
+        } | null;
         requiresPasswordChange: boolean;
     };
     memberships: MembershipRow[];
@@ -93,6 +101,7 @@ type Props = PageProps<{
         resendVerification: string;
         markVerified: string;
         resetMfa: string;
+        removeSms: string;
         deactivate: string;
         reactivate: string;
         erase: string;
@@ -100,6 +109,8 @@ type Props = PageProps<{
         assignOrganization: string;
         environmentRole: string;
         impersonate: string;
+        /** Radar's decisions about this person's sign-ins and sign-ups — why one was challenged. */
+        signInDecisions: string | null;
     };
 }>;
 
@@ -132,18 +143,7 @@ export default function UserDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Users
-                </Link>
+                <Breadcrumb href={indexHref} label="Users" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{label}</h1>
                     {!user.verified && <Pill tone="warning">Unverified</Pill>}
@@ -162,6 +162,7 @@ export default function UserDetail({
                 sessions={sessions}
                 email={user.email}
                 revokeAllHref={urls.revokeAllSessions}
+                decisionsHref={urls.signInDecisions}
             />
 
             <Organizations
@@ -256,6 +257,7 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
     const [dismissed, setDismissed] = useState(false);
     const [setting, setSetting] = useState(false);
     const [resettingMfa, setResettingMfa] = useState(false);
+    const [removingSms, setRemovingSms] = useState(false);
     const [deactivating, setDeactivating] = useState(false);
 
     return (
@@ -337,6 +339,12 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                         </Button>
                     )}
 
+                    {user.smsFactor !== null && (
+                        <Button size="sm" onClick={() => setRemovingSms(true)}>
+                            Remove phone number
+                        </Button>
+                    )}
+
                     {user.status === 'active' ? (
                         <Button size="sm" variant="danger" onClick={() => setDeactivating(true)}>
                             Deactivate
@@ -355,6 +363,19 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
 
                 <p className="text-xs" style={{ color: 'var(--faint)' }}>
                     Two-factor: {user.hasMfa ? 'enabled' : 'not enrolled'}.
+                    {user.smsFactor !== null && (
+                        <>
+                            {' '}
+                            Text-message codes to{' '}
+                            <span className="mono">{user.smsFactor.maskedNumber}</span>
+                            {!user.smsFactor.confirmed
+                                ? ' (not yet confirmed)'
+                                : !user.smsFactor.usable
+                                  ? " (not accepted by this environment's SMS policy)"
+                                  : ''}
+                            .
+                        </>
+                    )}
                 </p>
 
                 {/*
@@ -392,6 +413,20 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                     router.post(urls.resetMfa, {}, { preserveScroll: true });
                 }}
             />
+
+            {user.smsFactor !== null && (
+                <ConfirmDelete
+                    open={removingSms}
+                    onOpenChange={setRemovingSms}
+                    name={user.email}
+                    verb="Remove the phone number of"
+                    consequence={`Text-message codes to ${user.smsFactor.maskedNumber} stop working. Their authenticator app, passkeys and recovery codes are not affected — if the phone number was their only second factor, the account is protected by its password alone until they enrol again.`}
+                    onConfirm={() => {
+                        setRemovingSms(false);
+                        router.post(urls.removeSms, {}, { preserveScroll: true });
+                    }}
+                />
+            )}
 
             <ConfirmDelete
                 open={deactivating}
@@ -603,22 +638,37 @@ function Sessions({
     sessions,
     email,
     revokeAllHref,
+    decisionsHref,
 }: {
     sessions: SessionRow[];
     email: string;
     revokeAllHref: string;
+    decisionsHref: string | null;
 }) {
     const [revokingAll, setRevokingAll] = useState(false);
 
     return (
         <Panel
             title="Active sessions"
+            description="Who is signed in as them right now. Why a sign-in was allowed, challenged or blocked is on Radar."
             action={
-                sessions.length > 0 ? (
-                    <Button size="sm" variant="danger" onClick={() => setRevokingAll(true)}>
-                        Revoke all
-                    </Button>
-                ) : undefined
+                <div className="flex flex-wrap gap-2">
+                    {/*
+                        "Why was their last sign-in challenged?" is asked from the person's
+                        page, and the answer — the rule that fired, the signals it read —
+                        was on Radar with nothing here pointing at it.
+                    */}
+                    {decisionsHref !== null && (
+                        <Button asChild size="sm" icon="shield">
+                            <Link href={decisionsHref}>Sign-in decisions</Link>
+                        </Button>
+                    )}
+                    {sessions.length > 0 && (
+                        <Button size="sm" variant="danger" onClick={() => setRevokingAll(true)}>
+                            Revoke all
+                        </Button>
+                    )}
+                </div>
             }
         >
             <div className="space-y-2">

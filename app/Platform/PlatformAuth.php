@@ -5,19 +5,26 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\Radar\Radar;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
+use Cbox\Id\Identity\Exceptions\SmsFactorRefused;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Identity\ValueObjects\SmsCodeSent;
 use Cbox\Id\Migration\LegacyMigration;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Otp\Contracts\OtpService;
+use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
+use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
+use Cbox\Id\Otp\Sms\Exceptions\SmsSendRefused;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Http\Request;
@@ -70,6 +77,7 @@ final class PlatformAuth
         private readonly LoginAttempts $loginAttempts,
         private readonly PlatformRoot $platformRoot,
         private readonly OrganizationActivity $activity,
+        private readonly SmsFactors $sms,
         // Optional: null unless a host has bound a LegacyCredentialSource. Nullable in the
         // constructor rather than resolved on demand, so the absence is visible in the
         // signature of the class that decides logins instead of buried in a container call.
@@ -213,7 +221,7 @@ final class PlatformAuth
             return AttemptOutcome::SsoRequired;
         }
 
-        if ($this->mfa->hasConfirmedTotp($subject->id)) {
+        if ($this->hasSecondFactor($subject->id)) {
             session()->put(self::MFA_PENDING_KEY, $subject->id);
 
             return AttemptOutcome::Mfa;
@@ -232,9 +240,11 @@ final class PlatformAuth
     }
 
     /**
-     * The subject + email held pending an emailed step-up code, or null.
+     * The subject + email held pending an emailed step-up code, or null. `purpose` is
+     * `sign_in` for a risky sign-in and `sign_up` for a new account Radar challenged, whose
+     * address is confirmed this way before its first session ({@see confirmByEmail()}).
      *
-     * @return array{subject: string, email: string}|null
+     * @return array{subject: string, email: string, purpose: 'sign_in'|'sign_up'}|null
      */
     public function pendingOtpStepUp(Request $request): ?array
     {
@@ -244,7 +254,24 @@ final class PlatformAuth
             return null;
         }
 
-        return ['subject' => $pending['subject'], 'email' => $pending['email']];
+        return [
+            'subject' => $pending['subject'],
+            'email' => $pending['email'],
+            'purpose' => ($pending['purpose'] ?? null) === 'sign_up' ? 'sign_up' : 'sign_in',
+        ];
+    }
+
+    /**
+     * A SIGN-UP RADAR CHALLENGED, with no CAPTCHA configured to put in front of it: the
+     * account exists, but its first session waits for the one-time code emailed to the
+     * address it was created with. Possession of the inbox is the proof — the same step-up a
+     * risky sign-in takes, on the same page, so it is held exactly the same way: nothing about
+     * who is being confirmed is submitted, it lives in the session.
+     */
+    public function confirmByEmail(Request $request, string $subjectId, string $email): void
+    {
+        $this->otp->issue(self::OTP_PURPOSE, $email, 'email', $request->ip());
+        session()->put(self::OTP_PENDING_KEY, ['subject' => $subjectId, 'email' => $email, 'purpose' => 'sign_up']);
     }
 
     /**
@@ -334,6 +361,91 @@ final class PlatformAuth
     private function timingHash(): string
     {
         return self::$timingHash ??= $this->hasher->make('cbox-id-timing-equalizer');
+    }
+
+    /**
+     * Whether this subject has a second factor the sign-in must ask for: an authenticator
+     * app, or a phone number the environment's SMS policy accepts right now.
+     *
+     * ONE ANSWER FOR EVERY DOOR that holds a person for a second factor — the password form,
+     * the embedded channel, the consent screen. Asking `hasConfirmedTotp()` at each of them
+     * is how a person whose only factor is SMS would have been let in on a password alone
+     * at whichever door was not updated.
+     *
+     * An SMS factor the policy no longer accepts (SMS switched off, the country dropped)
+     * does not count: the platform will not text it, so holding the person for it would
+     * strand them. The MFA mandate then asks them to enrol something else, where the
+     * environment requires a second factor at all.
+     */
+    public function hasSecondFactor(string $subjectId): bool
+    {
+        return $this->mfa->hasConfirmedTotp($subjectId) || $this->sms->isUsable($subjectId);
+    }
+
+    /**
+     * Which second factors the pending subject can answer with, for the challenge page to
+     * offer. Never the number itself — the masked form only, once a code has been sent.
+     *
+     * @return array{totp: bool, sms: bool}
+     */
+    public function pendingMfaFactors(Request $request): array
+    {
+        $subjectId = $this->pendingMfaSubject($request);
+
+        return [
+            'totp' => $subjectId !== null && $this->mfa->hasConfirmedTotp($subjectId),
+            'sms' => $subjectId !== null && $this->sms->isUsable($subjectId),
+        ];
+    }
+
+    /**
+     * Text a sign-in code to the pending subject's confirmed number.
+     *
+     * Null when there is no pending subject, the account is locked, or the person has no
+     * number the policy accepts — the caller answers all three alike. Sending is bounded
+     * by the SMS guard (cooldown, per-number, per-IP, daily caps) and the OTP issue caps;
+     * their refusals propagate for the caller to word.
+     *
+     * @throws OtpRateLimitExceeded|SmsSendRefused|SmsDeliveryFailed
+     */
+    public function sendSmsChallenge(Request $request, ?string $locale = null): ?SmsCodeSent
+    {
+        $subjectId = $this->pendingMfaSubject($request);
+
+        if ($subjectId === null || $this->loginAttempts->isLockedOut($subjectId)) {
+            return null;
+        }
+
+        try {
+            return $this->sms->sendChallenge($subjectId, $request->ip(), $locale ?? app()->getLocale());
+        } catch (SmsFactorRefused) {
+            return null;
+        }
+    }
+
+    /**
+     * Complete a pending MFA challenge with a texted code. The same lockout as the TOTP
+     * path binds here — checked first, and every wrong code counts against it — and the
+     * session's `amr` says `sms`, not `otp`, so a relying party can tell the two apart.
+     */
+    public function completeMfaWithSms(Request $request, string $code): bool
+    {
+        $subjectId = $this->pendingMfaSubject($request);
+
+        if ($subjectId === null || $this->loginAttempts->isLockedOut($subjectId)) {
+            return false;
+        }
+
+        if (! $this->sms->verifyChallenge($subjectId, $code, $request->ip())) {
+            $this->loginAttempts->recordFailure($subjectId);
+
+            return false;
+        }
+
+        session()->forget(self::MFA_PENDING_KEY);
+        $this->establish($request, $subjectId, AuthMethod::forSmsCode());
+
+        return true;
     }
 
     public function pendingMfaSubject(Request $request): ?string
@@ -479,6 +591,11 @@ final class PlatformAuth
         // (new device, geo-velocity) have a history to compare future logins against.
         $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
 
+        // And tell Radar a sign-in SUCCEEDED here, from this device, so "new device" and
+        // "impossible travel" are measured against sign-ins that happened — never against an
+        // address somebody merely typed. Fails open inside.
+        app(Radar::class)->succeeded($request, $subjectId);
+
         // Add (or refresh) this account and make it active, keeping any other
         // signed-in accounts — so a second sign-in adds a switchable account
         // rather than replacing the first.
@@ -490,6 +607,8 @@ final class PlatformAuth
         $this->applyPendingLink($subjectId);
         $this->recordOrganizationSignIn($subjectId);
 
+        // "Last used" on this device's sign-in page — the method, never the person.
+        LastSignInMethod::remember($amr);
     }
 
     /**
@@ -510,6 +629,9 @@ final class PlatformAuth
 
         $this->applyPendingLink($session->user_id);
         $this->recordOrganizationSignIn($session->user_id);
+        app(Radar::class)->succeeded($request, $session->user_id);
+
+        LastSignInMethod::remember(array_values(array_filter((array) $session->amr, 'is_string')));
     }
 
     /**

@@ -25,6 +25,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Members](members.md) — invite the team, send them back to your app, hand ownership over.
 - [Roles](roles.md) — decide who can do what, including the Admins & support roles held across an environment.
 - [Permissions](permissions.md) — what a role is made of, written here rather than in each app.
+- [Fine-grained authorization](fine-grained-authorization.md) — who may do what to which of your app's own resources: documents in folders, owners, editors and viewers, with inheritance.
 - [Access reviews](access-reviews.md) — certify who still needs what.
 - [Role conflicts](role-conflicts.md) — roles that must never be combined.
 - [Support access](support-access.md) — signing in to one of your apps as one of its users, for a reason and at most an hour.
@@ -33,11 +34,16 @@ If you are a customer's IT admin who was sent a setup link, you want
 
 - [Enterprise SSO](single-sign-on.md) — people sign in with the company account they already have, and the email Domains that route them there.
 - [Directory Sync](sync-users-in.md) — the company's directory creates and deactivates people for you, over SCIM.
+- [HR system sync](hris.md) — Workday, BambooHR, Rippling, HiBob or Personio: accounts follow employment, departments become groups.
 - [Admin Portal](admin-portal.md) — hand Enterprise SSO, Directory Sync, Domains, Log streams and more to the customer's own IT admin with a single-use link.
-- [Social login](social-sign-in.md) — Google, GitHub, Apple and the rest, and how connecting one to an existing account works.
+- [Authentication policy and sign-in methods](authentication-policy.md) — password, two-factor and SSO rules, which ways in the environment offers, how long sessions last, and what the deployment decides.
+- [Social login](social-sign-in.md) — Google, GitHub, Apple and the rest for the whole environment, an organization's own, and how connecting one to an existing account works.
+- [Radar](radar.md) — allow, challenge or block each sign-in and sign-up: credential stuffing, impossible travel, new devices, throwaway addresses, your own rules and lists, monitor before you enforce.
+- [SMS as a second factor](sms-mfa.md) — text-message codes: when to turn them on, which countries, and what they do not protect against.
 - [Outbound provisioning](sync-users-out.md) — push your people into your other SaaS products.
 - [Custom domains](custom-domains.md) — serve an environment's sign-in on your own address, such as `login.example.com`.
 - [Languages](languages.md) — which language sign-in, consent, the Admin Portal and their emails are shown in.
+- [Sign in on TVs and devices](sign-in-on-tvs-and-devices.md) — a code and a QR code on the screen, approved on a phone: the device grant end to end.
 
 ## Building on an environment
 
@@ -47,7 +53,9 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [My API keys and Member API keys](api-keys.md) — keys people create for your apps' APIs, and how admins see and revoke them.
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Hooks](inline-hooks.md) — have a say while it happens.
+- [Feature flags](feature-flags.md) — turn a feature on for named customers, people or a share of everyone, read in the token or from the API.
 - [Token vault](token-vault.md) — credentials your apps use elsewhere.
+- [Pipes](pipes.md) — let people connect their GitHub, Google or Slack account, and call those APIs as them.
 
 ## Agents
 

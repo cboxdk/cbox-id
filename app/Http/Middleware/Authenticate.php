@@ -169,7 +169,14 @@ final class Authenticate
         // A tenant that requires a second factor cannot enforce it by turning people
         // away — that locks out precisely the people who still need to enrol. Hold them
         // on the security page instead, which is where enrolment lives.
-        if (! $request->routeIs('account', 'sudo')
+        //
+        // THE SUBMITS TOO, for the reason `exemptFromHolds()` gives: exempting only the
+        // `account` and `sudo` screens bounced every enrolment POST — the authenticator,
+        // the phone number, the passkey, the password confirmation in front of them — back
+        // to the page that held them, so a person told to enrol could not. An
+        // administrator asked for a stronger factor because SMS was all they had (see
+        // `SmsFactors::needsStrongerFactor()`) is held here and must be able to add one.
+        if (! $request->routeIs('account', 'account.mfa.*', 'sudo', 'sudo.*', 'passkeys.register', 'passkeys.register.*')
             && $this->mfaMandate->requiresEnrolment($subject->id)
         ) {
             return redirect()->route('account')

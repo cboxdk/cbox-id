@@ -203,7 +203,7 @@ export default function DirectoriesIndex({
                                 help={help}
                                 description="Today somebody adds and removes people here by hand. Connect the directory your company already keeps and it does both for you — including the removals, which are the ones that get forgotten."
                                 steps={[
-                                    'Choose SCIM if your provider pushes to us, or Google Workspace or Entra if we should pull.',
+                                    'Choose SCIM if your provider pushes to us, Google Workspace or Entra if we should pull, or your HR system — Workday, BambooHR, Rippling, HiBob or Personio — so people arrive on their start date.',
                                     'For SCIM: paste the endpoint and the token we mint into your provider.',
                                     'For a pull directory: paste its credentials and we verify them before storing anything.',
                                     'Map the groups you sync onto roles, so access follows the group.',

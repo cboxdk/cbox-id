@@ -15,6 +15,8 @@ use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Contracts\NavRegistry;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Pipes\Models\Pipe;
+use Cbox\Id\Pipes\Models\PipeConnection;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -156,7 +158,12 @@ final class ConsoleServiceProvider extends ServiceProvider
         // active — and it is one of the half-dozen things a customer's IT department owns
         // ({@see \App\Platform\Console\CustomerConsole}), so it has a page of its own.
         // The Enterprise SSO page still lists them beside its connections.
+        // SIGN-IN METHODS FIRST, as on the environment console: every way in on one page,
+        // and the answer a single-tenant install's administrator had no page for. Not on a
+        // customer's console or a workspace's — both keep lists of their own that leave it
+        // out, because neither decides how the product's people sign in.
         $nav->area('authentication', 'Sign-in', 'fingerprint', 30)
+            ->page('sign-in-methods', Vocabulary::SIGN_IN_METHODS, order: 5)
             ->page('connections', Vocabulary::ENTERPRISE_SSO, order: 10)
             ->page('domains', Vocabulary::DOMAINS, order: 15)
             ->page('social-providers', Vocabulary::SOCIAL_LOGIN, order: 20)
@@ -198,7 +205,10 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)
-            ->page('appearance', 'Appearance', order: 20);
+            // ONE page for the brand: the sign-in theme, logo and favicon, and — with the
+            // white-label module — the name, sender and palette. It was two ("Appearance"
+            // and the module's "Branding"), which both set the logo.
+            ->page('branding', 'Branding', order: 20);
 
         // Every user's own security — shown to members and admins alike (the app
         // layout gates the admin-only areas above by role, this one is universal).
@@ -210,7 +220,11 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Keys for the APIs of the apps built on this environment — present only where
             // one offers them, or the person already holds a key (see HolderApiKeys). "My API
             // keys" because the workspace's own page, two areas up, is "API keys".
-            ->page('account.api-keys', Vocabulary::MY_API_KEYS, feature: 'account.api-keys', order: 30);
+            ->page('account.api-keys', Vocabulary::MY_API_KEYS, feature: 'account.api-keys', order: 30)
+            // The third-party accounts (GitHub, Google…) the person connected so an app here
+            // may act through them — present only where the environment offers a pipe or the
+            // person still holds a connection.
+            ->page('account.pipes', Vocabulary::CONNECTED_SERVICES, feature: 'account.pipes', order: 40);
 
         $this->platformAreas($nav);
     }
@@ -332,6 +346,19 @@ final class ConsoleServiceProvider extends ServiceProvider
 
             return $organizationId !== null
                 && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthHolderPage();
+        });
+        // Connected services: offered when the environment has an enabled pipe, or the
+        // person still holds a connection they may want to remove. One statement: this
+        // runs on every console page, so the two questions share a single round trip.
+        $features->register('account.pipes', static function (): bool {
+            $me = app(CurrentUser::class);
+
+            return $me->check() && Pipe::query()
+                ->where('enabled', true)
+                ->select('id')
+                ->toBase()
+                ->unionAll(PipeConnection::query()->where('user_id', $me->id())->select('id')->toBase())
+                ->exists();
         });
         $features->register('organization.api-keys', static function (): bool {
             $me = app(CurrentUser::class);

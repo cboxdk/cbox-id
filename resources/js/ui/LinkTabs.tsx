@@ -12,6 +12,12 @@ export interface LinkTabsProps {
     tabs: LinkTab[];
     /** Names the set for a screen reader — "Key types". */
     label: string;
+    /**
+     * `sub` draws a second, quieter row under a tab whose page is one of a group — an
+     * organization's Members and Invitations — so the two levels are told apart at a
+     * glance rather than reading as one long row.
+     */
+    variant?: 'main' | 'sub';
 }
 
 /**
@@ -25,13 +31,16 @@ export interface LinkTabsProps {
  * One tab is not a set of tabs; with fewer than two there is nothing to choose between,
  * so nothing is drawn.
  */
-export function LinkTabs({ tabs, label }: LinkTabsProps) {
+export function LinkTabs({ tabs, label, variant = 'main' }: LinkTabsProps) {
     if (tabs.length < 2) {
         return null;
     }
 
     return (
-        <nav className="cbx-tabs" aria-label={label}>
+        <nav
+            className={variant === 'sub' ? 'cbx-tabs cbx-tabs--sub' : 'cbx-tabs'}
+            aria-label={label}
+        >
             {tabs.map((tab) => (
                 <Link
                     key={tab.key}

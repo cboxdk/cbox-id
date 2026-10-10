@@ -42,7 +42,9 @@ enum HelpTopic: string
     case Apis = 'apis';
     case Webhooks = 'webhooks';
     case InlineHooks = 'inline-hooks';
+    case FeatureFlags = 'feature-flags';
     case TokenVault = 'token-vault';
+    case Pipes = 'pipes';
     case ActivityLog = 'activity-log';
     case Settings = 'settings';
     case Appearance = 'appearance';
@@ -66,13 +68,16 @@ enum HelpTopic: string
     case Staff = 'staff';
     case SupportAccess = 'support-access';
     case SignInRules = 'sign-in-rules';
+    case SignInMethods = 'sign-in-methods';
     case SamlApplications = 'saml-applications';
     case LegacyLogin = 'legacy-login';
     case Connectors = 'connectors';
     case LogStreaming = 'log-streaming';
     case AuditLogs = 'audit-logs';
+    case FineGrainedAuthorization = 'fine-grained-authorization';
     case DataExports = 'data-exports';
     case RiskEvents = 'risk-events';
+    case Radar = 'radar';
     case SignInActivity = 'sign-in-activity';
     case Branding = 'branding';
     case Workspaces = 'workspaces';
@@ -105,7 +110,9 @@ enum HelpTopic: string
             self::Apis => 'Your APIs, and who may call them',
             self::Webhooks => 'Getting told when something happens',
             self::InlineHooks => 'Having a say while it happens',
+            self::FeatureFlags => 'Features on for some, not all',
             self::TokenVault => 'Credentials your apps use elsewhere',
+            self::Pipes => 'Calling other services as your users',
             self::ActivityLog => 'The record of what changed',
             self::Settings => 'Organization settings',
             self::Appearance => 'Your branded sign-in page',
@@ -129,15 +136,18 @@ enum HelpTopic: string
             self::Staff => 'Roles for your own people',
             self::SupportAccess => 'Signing in to an app as somebody else',
             self::SignInRules => 'The rules every sign-in has to meet',
+            self::SignInMethods => 'Every way into this environment',
             self::SamlApplications => 'Applications that trust this environment',
             self::LegacyLogin => 'Signing in through your old system',
             self::Connectors => 'Every connection, in one list',
             self::LogStreaming => 'Sending the audit log to your own tools',
             self::AuditLogs => 'What your app records about each organization',
+            self::FineGrainedAuthorization => 'Who may do what to which of your app\'s resources',
             self::DataExports => 'Exports & retention',
             self::RiskEvents => 'Sign-ins that looked suspicious',
+            self::Radar => 'Allowing, challenging and blocking sign-ins',
             self::SignInActivity => 'Sign-ins over time',
-            self::Branding => 'Your look on the console and sign-in',
+            self::Branding => 'Your brand, on the sign-in and in mail',
             self::Workspaces => 'Every workspace on this install',
             self::Environments => 'Every environment on this install',
             self::PlatformOrganizations => 'Organizations in the target environment',
@@ -169,7 +179,7 @@ enum HelpTopic: string
 
             self::Domains => 'The email domains this organization owns, each proved with a DNS TXT record. Once a domain is verified you can turn on capture, which sends everyone with an address on it to your Enterprise SSO connection instead of a password — so verify every domain your people have addresses on before you rely on single sign-on.',
 
-            self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. You supply the credentials from your own account with each provider; everything else — endpoints, scopes, what to read from the response — is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
+            self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. Set a provider up once for the environment and every organization offers it; an organization can use its own credentials instead, or turn one off. You supply the credentials; everything else is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
 
             self::SyncUsersIn => 'Your identity provider creates, updates and deactivates people here on its own, over a standard called SCIM. Someone joining or leaving in your HR system reaches your apps within seconds, with no ticket and no leftover accounts — which is the part that matters when someone leaves.',
 
@@ -186,6 +196,10 @@ enum HelpTopic: string
             self::Webhooks => 'Cbox ID posts a signed message to your endpoint after something happens — a member joined, a role changed — so your systems can react without polling. Delivery is retried, and it is after the fact: your endpoint is told, it does not get a vote.',
 
             self::InlineHooks => 'These run in the middle of an operation, not after it, and their answer changes the outcome: your endpoint can add information to a token, or refuse a sign-in outright. Powerful, and directly in the critical path — a slow or broken endpoint is felt by the person trying to sign in.',
+
+            self::FeatureFlags => 'A feature flag is a switch your apps ask about for one person in one organization. Turn it on for named users, named organizations or a percentage of everyone, and every app reads the same answer — in the token\'s `feature_flags` claim, or from the evaluation endpoint — without a deploy. A user rule beats an organization rule, which beats the rollout, which beats the default.',
+
+            self::Pipes => 'Each pipe lets people connect their own account at a service like GitHub, Google or Slack. Their tokens are stored encrypted and kept fresh here; the apps you grant ask for a working token whenever they call that service as the person, and never store one themselves.',
 
             self::TokenVault => 'API keys and tokens your apps and agents need for other services, kept encrypted here rather than in each app\'s config. You hand a secret in once, grant specific apps the right to use it, and it is never displayed again — rotate it if you lose it.',
 
@@ -231,7 +245,7 @@ enum HelpTopic: string
             self::Staff => 'An admin & support role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
             self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s audit log records who did it and why.',
 
-            self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in. The environment sets a baseline every organization inherits, and an organization can make its own rules stricter but never looser.',
+            self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in — and, for the whole environment, whether passkeys and magic links are offered and how long a session lasts. The environment sets a baseline every organization inherits; an organization can make its password and two-factor rules stricter but never looser.',
 
             self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Enterprise SSO under Authentication.',
 
@@ -241,14 +255,17 @@ enum HelpTopic: string
 
             self::LogStreaming => 'Mirrors every audit log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
             self::AuditLogs => 'The audit events your app sends about each organization it serves — who did what inside your product, and when — kept per organization in a hash chain and shown to that organization\'s own admins. Use it when an organization you serve asks for an audit log of its account; define schemas to keep the events consistent.',
+            self::FineGrainedAuthorization => 'Your app\'s own access model: resource types like documents and folders, relations like owner, editor and viewer, and how they inherit — a folder\'s viewers can read every document in it. Your app writes who relates to what, and asks "may this user edit this document?" on every request; the schema decides the answer.',
 
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
             self::RiskEvents => 'Sign-ins and requests that Cbox ID scored as risky enough to flag, newest first, with the score and the reasons behind it. Look here after a spike in failed sign-ins, or when someone reports a sign-in they did not make.',
+            self::SignInMethods => 'Every way a person can sign in here — password, passkeys, magic link, social login, enterprise SSO, a second factor — with whether it is on and where it is changed. Most are this environment\'s to decide; SSO connections are each organization\'s; and where the deployment switched a method off or limits it, the page says so and names the setting.',
+            self::Radar => 'Radar judges every sign-in and sign-up: credential stuffing, bot-like speed, impossible travel, new devices, anonymising networks and throwaway addresses, plus rules and allow and deny lists of your own. It records every verdict and, once you switch it to enforce, blocks or asks for a second factor. Read the decisions here before you enforce, and when someone says they cannot sign in.',
 
             self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
 
-            self::Branding => 'The palette, logo, app name and email sender your people see on the console and the hosted sign-in page. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its page, under Branding.',
+            self::Branding => 'Everything your people see of your brand, on one page: the hosted sign-in\'s logo, favicon, colours, typeface and corners, previewed live — and the product name, email sender and welcome mail. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its Branding tab.',
 
             self::Workspaces => 'A workspace is one signed-up company\'s home on this install, holding its projects, environments and team. Open one to walk its products and environments, or suspend it, which signs its members out and stops every environment it owns from serving sign-ins.',
 
@@ -284,11 +301,14 @@ enum HelpTopic: string
             self::Apis => 'guides/apis',
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
+            self::FeatureFlags => 'guides/feature-flags',
             self::TokenVault => 'guides/token-vault',
+            self::Pipes => 'guides/pipes',
             self::AccessReviews => 'guides/access-reviews',
             self::RoleConflicts => 'guides/role-conflicts',
             self::ActivityLog => 'guides/activity-log',
             self::AuditLogs => 'guides/audit-logs',
+            self::FineGrainedAuthorization => 'guides/fine-grained-authorization',
             self::LogStreaming => 'guides/log-streams',
             self::EnvironmentDomains => 'guides/custom-domains',
             self::AgentApprovals => 'guides/agent-approvals',
@@ -309,6 +329,9 @@ enum HelpTopic: string
             self::PlatformOrganizations => 'core-concepts/workspaces-and-organizations',
             self::DataExports => 'security/compliance',
             self::RiskEvents => 'security/adaptive-risk',
+            self::SignInMethods,
+            self::SignInRules => 'guides/authentication-policy',
+            self::Radar => 'guides/radar',
             self::SignInActivity => 'operations/analytics',
             self::PlatformQueues => 'operations/queue-workers',
             self::Overview,
@@ -322,7 +345,6 @@ enum HelpTopic: string
             self::Billing,
             self::EnvironmentOverview,
             self::Users,
-            self::SignInRules,
             self::SamlApplications,
             self::LegacyLogin,
             self::Connectors,

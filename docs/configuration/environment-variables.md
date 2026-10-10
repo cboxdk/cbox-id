@@ -53,13 +53,32 @@ Optional. Wires [Cloudflare Turnstile](https://developers.cloudflare.com/turnsti
 as the CAPTCHA for a signup the risk scorer **challenges** (it is never shown to
 everyone). Both keys must be set for the feature to exist at all: with either missing,
 no widget renders, no Cloudflare script is loaded, the CSP keeps its strict same-origin
-`script-src`, and signup behaves exactly as it does without the feature. The challenge
-only bites when `RISK_MODE=enforce`.
+`script-src`, and a challenged signup is confirmed with an emailed code instead. The
+challenge only bites when the environment's Radar mode is enforce (`RISK_MODE=enforce`
+until the environment chooses).
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_TURNSTILE_SITE_KEY` | The Turnstile **site key** (public) — rendered into the widget on a challenged signup, and what opens the CSP to `https://challenges.cloudflare.com`. | *(empty — feature off)* | Set both keys to switch bot protection on. Get them from the Cloudflare dashboard (Turnstile → add a widget for your signup hostname). |
 | `CBOX_ID_TURNSTILE_SECRET_KEY` | The Turnstile **secret key** — used server-side to verify the widget's token against Cloudflare's `siteverify`. Never sent to the browser. | *(empty — feature off)* | As above. Treat it like any other secret; a leaked secret lets someone else validate tokens against your widget. |
+
+### Radar
+
+Adaptive sign-in and sign-up protection — see [Radar](../guides/radar.md). Each environment
+chooses monitor or enforce in the console; `RISK_MODE` is the default until it does.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_RADAR_IP_INTELLIGENCE` | Where geo, network and VPN/hosting facts come from: `none`, `maxmind` (local database files) or `ipinfo` (the IPinfo API — the address is sent to IPinfo). | `none` | To switch on country, network and travel rules. |
+| `CBOX_ID_RADAR_MAXMIND_CITY_DB` / `_ASN_DB` / `_ANONYMOUS_DB` | Paths to GeoLite2-City, GeoLite2-ASN and (paid) GeoIP2-Anonymous-IP `.mmdb` files. Each is optional. | *(empty)* | With `maxmind`. Keep them current with `geoipupdate`. |
+| `CBOX_ID_RADAR_IPINFO_TOKEN` | Your IPinfo token, sent as a bearer header. | *(empty)* | With `ipinfo`. |
+| `CBOX_ID_RADAR_IPINFO_URL` / `_TIMEOUT` | IPinfo's base URL and the per-lookup timeout in seconds. | `https://ipinfo.io` / `1.5` | Rarely. |
+| `CBOX_ID_RADAR_IP_CACHE_TTL` | Seconds a lookup is cached (under a pseudonym of the address). | `86400` | Rarely. |
+| `CBOX_ID_RADAR_CACHE_STORE` | The cache store the velocity counters and lookups share. | the default store | On more than one replica, when the default store is not shared. |
+| `CBOX_ID_RADAR_DEVICE_COOKIE` | The first-party device cookie's name. | `cbox_device` | Only on a clash. |
+| `CBOX_ID_RADAR_DEVICE_RETENTION_DAYS` | Days a remembered device is kept after the last sign-in on it. Empty keeps them. | `180` | To match your privacy notice. |
+| `CBOX_ID_RADAR_TRAVEL_MIN_KM` | Hops shorter than this are not travel. | `300` | Raise it if mobile or VPN users trip impossible travel. |
+| `CBOX_ID_RADAR_DISPOSABLE_DOMAINS_PATH` / `_URL` | Where `radar:refresh-disposable-domains` writes the refreshed list, and where it fetches it from. | `storage/app/radar/disposable-domains.txt` / the disposable-email-domains blocklist | To use your own list. |
 
 ## Enterprise self-serve (SSO, SCIM & Admin Portal)
 
@@ -139,8 +158,10 @@ Laravel `SESSION_*` keys below).
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_SESSION_TTL_MINUTES` | Absolute session lifetime before re-authentication. | `480` (8h) | Lower it for higher-assurance deployments. |
-| `CBOX_ID_SESSION_IDLE_MINUTES` | Idle timeout — inactivity before the session is invalidated. | `30` | Lower it for shared or high-risk environments. |
+| `CBOX_ID_SESSION_TTL_MINUTES` | Absolute session lifetime before re-authentication — the longest an environment may choose on its Authentication policy. | `480` (8h) | Lower it for higher-assurance deployments. An environment can shorten it, never lengthen it. |
+| `CBOX_ID_SESSION_IDLE_MINUTES` | Idle timeout — inactivity before the session is invalidated, and the longest idle timeout an environment may choose. `0` sets none, and the session lifetime then bounds an environment's. | `30` | Lower it for shared or high-risk environments. |
+| `CBOX_ID_PASSKEYS_ENABLED` | Whether passkeys exist on this deployment at all. `false` turns them off in every environment, whatever its Authentication policy says. | `true` | Leave on; environments switch them off for themselves. |
+| `CBOX_ID_MAGIC_LINK_ENABLED` | Whether emailed sign-in links exist on this deployment at all. `false` turns them off in every environment. | `true` | Turn off if the deployment has no reliable mail transport. |
 | `CBOX_ID_SUPPORT_SESSION_MAX_TTL` | The longest a [support session](../guides/support-access.md) may run, in seconds — and every token minted for it. The console offers nothing longer. It can only lower the one-hour ceiling; nothing goes under 60. | `3600` | Lower it if your policy wants support access shorter than an hour. |
 
 ## OAuth / OIDC endpoint policy
@@ -306,6 +327,38 @@ issuance and login.
 | `CBOX_ID_OTP_EMAIL_SUBJECT` | Subject line of the code email. | `Your verification code` | Match your product voice. |
 | `CBOX_ID_OTP_EMAIL_FROM_ADDRESS` | From address for the code email. | *(none — falls back to the app's `MAIL_FROM_ADDRESS`)* | Set to send codes from a different, well-aligned sender than the rest of your mail. |
 | `CBOX_ID_OTP_EMAIL_FROM_NAME` | From name for the code email. | *(none — falls back to `MAIL_FROM_NAME`)* | As above. |
+
+## Text messages (SMS)
+
+Text-message codes — SMS as a second factor, and any OTP sent by text. **Nothing is ever
+texted until an environment turns SMS on** in its Authentication policy, so these do
+nothing on a deployment that never does. Read [SMS as a second factor](../guides/sms-mfa.md)
+before turning it on: it explains what SMS does not protect against.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_SMS_DRIVER` | The provider: `twilio`, `messagebird` (legacy REST API), `bird` (Bird Channels API), `46elks`, `log` or `array`. `log` writes the message — code included — to the log and **refuses to send when `APP_ENV=production`**, so a deployment that turned SMS on without a provider fails loudly instead of logging codes. `array` keeps messages in memory, for tests. | `log` | Set it before any environment turns SMS on. |
+| `CBOX_ID_SMS_ALLOWED_COUNTRIES` | Comma-separated ISO country codes (`DK,SE,NO,FI`) the deployment will text at all. Each environment's own list can only narrow it. Empty means no deployment-wide restriction. Non-geographic ranges (`+881`, `+882`, `+979`, …) are refused regardless. | *(empty)* | **Set it.** It is the operator's toll-fraud ceiling. |
+| `CBOX_ID_SMS_APP_NAME` | The product name in the text ("123456 is your … verification code"). | `APP_NAME` | Match the name people know. |
+| `CBOX_ID_SMS_TIMEOUT` | Seconds before a provider request gives up. Senders never retry — a retry can deliver and bill twice. | `10` | Rarely. |
+| `CBOX_ID_SMS_COOLDOWN_SECONDS` | Minimum gap between two texts to the same number. | `30` | Raise if people hammer "resend". |
+| `CBOX_ID_SMS_PER_NUMBER_PER_DAY` | Texts one number can receive per day, per environment. | `10` | Lower to blunt pumping at one number. |
+| `CBOX_ID_SMS_PER_IP_PER_HOUR` | Texts one network address can cause per hour, per environment. | `10` | Lower on consumer traffic; raise behind a corporate NAT. |
+| `CBOX_ID_SMS_PER_ENVIRONMENT_PER_DAY` | Texts one environment can send per day, so one tenant cannot spend the deployment's budget. | `1000` | Size to the environment's real daily sign-ins. |
+| `CBOX_ID_SMS_DAILY_CAP` | Texts the whole deployment can send per day — the circuit breaker that bounds the worst day's bill. | `5000` | Set well above a normal day and below a bill you would notice too late. |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio credentials (or `TWILIO_API_KEY` + `TWILIO_API_SECRET`). | *(none)* | With `CBOX_ID_SMS_DRIVER=twilio`. |
+| `TWILIO_MESSAGING_SERVICE_SID` / `TWILIO_FROM` | Send through a Messaging Service (preferred: Twilio picks the sender per country and applies its geo-permissions) or from one number or sender id. | *(none)* | One of the two. |
+| `MESSAGEBIRD_ACCESS_KEY`, `MESSAGEBIRD_ORIGINATOR` | MessageBird REST API key and sender. | *(none)* | With `messagebird`. |
+| `BIRD_ACCESS_KEY`, `BIRD_WORKSPACE_ID`, `BIRD_CHANNEL_ID` | Bird access key, workspace and SMS channel. | *(none)* | With `bird`. |
+| `ELKS_API_USERNAME`, `ELKS_API_PASSWORD`, `ELKS_FROM` | 46elks API credentials and sender (a number, or up to 11 letters). | *(none)* | With `46elks`. |
+| `ELKS_DRY_RUN` | 46elks validates and prices each message without sending it. | `false` | A staging environment pointed at the real API. |
+| `TWILIO_BASE_URL`, `MESSAGEBIRD_BASE_URL`, `BIRD_BASE_URL`, `ELKS_BASE_URL` | Override the provider's API host (a regional edge, a test double). | *(provider default)* | Rarely. |
+
+The limits are counted in the **cache store**, which must be shared between replicas
+(`CACHE_STORE=redis` or `database`) — with a per-replica cache, every replica has its own
+budget. Code length, lifetime and attempt caps are the OTP variables above: a texted code
+is an OTP like an emailed one. Set spend limits and geo-permissions at the provider as well;
+they are the last line, and they do not depend on this deployment being configured right.
 
 ## SAML identity provider (this platform AS the IdP)
 

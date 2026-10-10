@@ -22,7 +22,6 @@ use App\Platform\SignupPolicy;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
-use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -757,11 +756,17 @@ final readonly class OAuthConsentController extends PageController
                 /*
                  * …and one described by a metadata document leads with the one thing about
                  * it that is VERIFIED: the host that published the document. Its
-                 * `client_uri` and `logo_uri` are https-only, and shown as the publisher's.
+                 * `client_uri` is https-only, and shown as the publisher's.
+                 *
+                 * ITS `logo_uri` IS NOT DRAWN. It is an image on somebody else's host, and an
+                 * `<img>` of it would report every person who reached this screen — address,
+                 * browser, the moment they were asked — to whoever published the document,
+                 * whether or not they went on to allow anything. The hosted pages draw only
+                 * images this application serves (`img-src 'self'`); the app is named, and
+                 * its verified host leads, which is what a person can actually check.
                  */
                 'documentHost' => $authorizing?->documentHost,
                 'clientUri' => $authorizing?->clientUri,
-                'logoUri' => $authorizing?->logoUri,
             ],
             'me' => $this->meProps($me),
             /*
@@ -1230,7 +1235,8 @@ final readonly class OAuthConsentController extends PageController
     /**
      * Send a signed-in person to add a second factor, and come back.
      *
-     * With an authenticator enrolled that is the second-factor screen itself: the person
+     * With an authenticator — or a phone number the environment accepts — enrolled, that is
+     * the second-factor screen itself: the person
      * is held for it exactly as a password sign-in holds them ({@see PlatformAuth::holdForMfa()}),
      * which grants nothing on its own — the code still has to be right — and completing
      * it starts a session whose `amr` carries the second factor. Without one there is no
@@ -1242,7 +1248,7 @@ final readonly class OAuthConsentController extends PageController
     {
         $subjectId = $me->subject()?->id;
 
-        if ($subjectId !== null && app(Mfa::class)->hasConfirmedTotp($subjectId)) {
+        if ($subjectId !== null && app(PlatformAuth::class)->hasSecondFactor($subjectId)) {
             app(PlatformAuth::class)->holdForMfa($request, $subjectId);
 
             return $this->interrupt($request, $authorization, route('mfa'));

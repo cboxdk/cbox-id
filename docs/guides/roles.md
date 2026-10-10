@@ -6,7 +6,7 @@ description: How roles work in Cbox ID — you assign them, each app decides wha
 
 # Roles
 
-**Console page:** Members & roles › Roles
+**Console page:** Members & roles › Roles (Authorization › Roles in an environment console)
 
 ![Roles in an environment console](../screenshots/roles.png)
 

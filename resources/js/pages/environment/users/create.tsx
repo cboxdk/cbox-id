@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { ApiEquivalent, Button, Checkbox, Field, Icon, Input, PageHeader, Panel } from '@/ui';
+import { ApiEquivalent, Breadcrumb, Button, Checkbox, Field, Input, PageHeader, Panel } from '@/ui';
 
 type Props = PageProps<{
     indexHref: string;
@@ -18,18 +18,7 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Users
-            </Link>
+            <Breadcrumb href={indexHref} label="Users" />
 
             <div className="mt-2">
                 <PageHeader description="No password is set here — they get a sign-in link by email and choose how they sign in." />

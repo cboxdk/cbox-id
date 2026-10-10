@@ -40,6 +40,15 @@ use Illuminate\Support\Carbon;
  * @property string $ip_hash
  * @property string|null $email_hash
  * @property string|null $email_domain
+ * @property string|null $verdict allow | challenge | block — Radar's verdict, whatever the mode
+ * @property bool $enforced whether the verdict was acted on
+ * @property string|null $rule what decided it: `deny_list:ip`, `rule:<id>`, `builtin:<key>`
+ * @property string|null $method password | magic_link | passkey | sign_up
+ * @property string|null $country
+ * @property int|null $asn
+ * @property string|null $device_hash
+ * @property list<string>|null $triggered
+ * @property array<string, mixed>|null $facts
  * @property Carbon $assessed_at
  */
 final class RiskDecision extends Model
@@ -110,6 +119,10 @@ final class RiskDecision extends Model
             'score' => 'float',
             'reasons' => 'array',
             'signals' => 'array',
+            'enforced' => 'boolean',
+            'asn' => 'integer',
+            'triggered' => 'array',
+            'facts' => 'array',
             'assessed_at' => 'datetime',
         ];
     }

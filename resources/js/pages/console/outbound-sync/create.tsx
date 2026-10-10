@@ -2,10 +2,10 @@ import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     PageHeader,
@@ -55,18 +55,7 @@ export default function CreateOutboundSync({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Outbound provisioning
-            </Link>
+            <Breadcrumb href={indexHref} label="Outbound provisioning" />
 
             <div className="mt-2">
                 <PageHeader description="A SCIM endpoint we push your people to. Joins, changes and departures are sent as they happen." />

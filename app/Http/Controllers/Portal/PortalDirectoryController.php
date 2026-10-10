@@ -63,6 +63,8 @@ final readonly class PortalDirectoryController extends PortalController
             'urls' => [
                 'self' => route('portal.directories'),
                 'create' => route('portal.directories.store'),
+                // The same intent's other way in: an HR system the platform pulls from.
+                'hris' => route('portal.hris'),
             ],
         ]);
     }

@@ -26,8 +26,9 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
  * organization's, the environment's system trail when it is the environment's own. What is
  * never in the context is a secret — a provider's client secret, a certificate.
  *
- * Enabling a social provider is not here because the framework already records it
- * ({@see Connections::activate()} writes `connection.activated`).
+ * Enabling a social provider — or turning one back on — is not here because the framework
+ * already records it ({@see Connections::activate()} writes `connection.activated`, and
+ * emits it to webhooks).
  */
 final readonly class SignInAudit
 {
@@ -35,7 +36,19 @@ final readonly class SignInAudit
 
     public const string POLICY_INHERITED = 'auth_policy.inherited';
 
+    public const string SMS_POLICY_UPDATED = 'auth_policy.sms_updated';
+
     public const string SOCIAL_PROVIDER_REMOVED = 'social_provider.removed';
+
+    public const string SOCIAL_PROVIDER_UPDATED = 'social_provider.updated';
+
+    public const string SOCIAL_PROVIDER_DISABLED = 'social_provider.disabled';
+
+    /** An organization stopped offering one of its environment's providers on its page. */
+    public const string SOCIAL_PROVIDER_NOT_INHERITED = 'social_provider.not_inherited';
+
+    /** …and offers it again. */
+    public const string SOCIAL_PROVIDER_INHERITED = 'social_provider.inherited';
 
     public const string SAML_APP_REGISTERED = 'saml_app.registered';
 

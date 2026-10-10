@@ -117,8 +117,10 @@ final readonly class SignupController extends PageController
 
         RateLimiter::hit($key, 300);
 
-        // Risk-score the signup (bot and abuse detection). Logged for review; a Reject
-        // blocks only when enforcement is switched on.
+        // Risk-score the signup (bot and abuse detection) and let Radar decide — a
+        // disposable address, bot velocity, the environment's own rules and lists. Recorded
+        // for review; a block refuses only when the environment enforces, and with the
+        // generic sentence: naming the rule would tell a bot what to change.
         $assessment = $risk->assess($request, 'register', $request->email(), [
             'honeypot' => $request->honeypot(),
             'form_rendered_at' => $request->renderedAt(),
@@ -129,23 +131,35 @@ final readonly class SignupController extends PageController
         }
 
         /*
-         * An elevated-but-not-reject outcome is where a CAPTCHA belongs: the scorer has
-         * already decided this submission is unusual, so the friction lands on it and not
-         * on everyone else. Turnstile with no keys configured verifies as true, so a
-         * deployment without it keeps the unchallenged flow.
+         * A CHALLENGE is where friction belongs: Radar has already decided this submission is
+         * unusual, so the friction lands on it and not on everyone else.
+         *
+         * With Turnstile configured, that is the CAPTCHA, before anything is created. Without
+         * it the challenge is the inbox: the account is created, but its first session waits
+         * for the one-time code emailed to the address it was created with
+         * ({@see PlatformAuth::confirmByEmail()}). Before Radar, a deployment with no
+         * Turnstile keys let a challenged signup straight in — the challenge was decided and
+         * then not asked.
          */
-        if ($risk->shouldStepUp($assessment)
-            && ! $turnstile->verify($request->turnstileToken(), $request->ip())) {
-            // Show the widget — this may be the first the submitter sees of it — and let
-            // the failed token go. Turnstile tokens are single-use, so a retry has to
-            // carry a fresh one.
-            $this->inertia->flash('challenged', true);
+        $confirmByEmail = false;
 
-            return $this->refuse($request, 'email', __('auth.signup.complete_verification'));
+        if ($risk->shouldStepUp($assessment)) {
+            if ($turnstile->enabled()) {
+                if (! $turnstile->verify($request->turnstileToken(), $request->ip())) {
+                    // Show the widget — this may be the first the submitter sees of it — and
+                    // let the failed token go. Turnstile tokens are single-use, so a retry has
+                    // to carry a fresh one.
+                    $this->inertia->flash('challenged', true);
+
+                    return $this->refuse($request, 'email', __('auth.signup.complete_verification'));
+                }
+            } else {
+                $confirmByEmail = true;
+            }
         }
 
         if ($this->provisionsOwnIdp(app(EnvironmentContext::class))) {
-            return $this->provisionAccount($request, $subjects, $links);
+            return $this->provisionAccount($request, $subjects, $links, $confirmByEmail);
         }
 
         /*
@@ -178,6 +192,12 @@ final readonly class SignupController extends PageController
             new EmailVerificationMail($links->route('verification.verify', $token)),
         );
 
+        if ($confirmByEmail) {
+            $auth->confirmByEmail($request, $subject->id, $request->email());
+
+            return to_route('login.step-up');
+        }
+
         $auth->establish($request, $subject->id, ['pwd']);
 
         /*
@@ -202,6 +222,7 @@ final readonly class SignupController extends PageController
         RegisterRequest $request,
         Subjects $subjects,
         MailLinks $links,
+        bool $confirmByEmail = false,
     ): RedirectResponse {
         // Subject emails are globally unique in the root — one email, one login.
         if (app(PlatformRoot::class)->run(fn () => $subjects->findByEmail($request->email())) !== null) {
@@ -236,6 +257,16 @@ final readonly class SignupController extends PageController
             Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(
                 new EmailVerificationMail($links->route('verification.verify', $token)),
             );
+        }
+
+        // A signup Radar challenged confirms its address with an emailed code before its
+        // first session — the same step-up page, held in the root's session.
+        if ($confirmByEmail) {
+            app(PlatformRoot::class)->run(
+                fn () => app(PlatformAuth::class)->confirmByEmail($request, $result->owner->id, $request->email()),
+            );
+
+            return to_route('login.step-up');
         }
 
         // The buyer administers every environment they own from the root console — signed

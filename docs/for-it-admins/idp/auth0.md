@@ -35,7 +35,7 @@ Copy **Identity Provider Metadata** — the URL, or the XML — and paste it int
 
 The assertion must be signed, and must carry the person's email address as an attribute or as a NameID in the `emailAddress` format. See [Any SAML 2.0 provider](generic-saml.md) for the details.
 
-Auth0's own guide: <https://auth0.com/docs/authenticate/protocols/saml/saml-sso-integrations/configure-auth0-saml-identity-provider>.
+Auth0's own guide: <https://auth0.com/docs/authenticate/protocols/saml/saml-sso-integrations/enable-saml2-web-app-addon>.
 
 Then verify your domain and turn single sign-on on in the portal: [Enterprise SSO](../sso.md).
 

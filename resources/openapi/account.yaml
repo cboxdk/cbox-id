@@ -52,6 +52,7 @@ tags:
     description: "Where a held operation's approval stands."
   - name: Organizations
     description: 'The organizations you are a member of — and leaving one.'
+  - name: 'Connected services'
 paths:
   '/me/action-approvals/{id}':
     get:
@@ -165,6 +166,34 @@ paths:
           $ref: '#/components/responses/Forbidden'
         404:
           $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /me/mfa/sms:
+    delete:
+      tags:
+        - 'Sign-in methods'
+      summary: 'Remove your phone number for text-message sign-in codes.'
+      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      operationId: account_mfa_sms_remove
+      x-action: account.mfa.sms.remove
+      x-scope: 'account:sign_in:write'
+      x-danger: critical
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
         409:
           $ref: '#/components/responses/Conflict'
         422:
@@ -344,6 +373,44 @@ paths:
           required: true
           schema:
             type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/me/pipes/{provider}':
+    delete:
+      tags:
+        - 'Connected services'
+      summary: 'Disconnect one of your connected services, revoking the access you gave it.'
+      description: 'Requires scope `account:pipes:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      operationId: account_pipes_disconnect
+      x-action: account.pipes.disconnect
+      x-scope: 'account:pipes:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The provider's key, for example `github`."
+            maxLength: 64
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CboxApproval'
       responses:

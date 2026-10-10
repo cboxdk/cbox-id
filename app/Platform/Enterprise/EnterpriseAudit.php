@@ -63,6 +63,12 @@ final readonly class EnterpriseAudit
 
     public const string DIRECTORY_DELETED = 'directory.deleted';
 
+    public const string DIRECTORY_SYNC_REQUESTED = 'directory.sync_requested';
+
+    public const string DIRECTORY_SYNC_CONFIGURED = 'directory.sync_configured';
+
+    public const string DIRECTORY_CREDENTIALS_REPLACED = 'directory.credentials_replaced';
+
     public const string DIRECTORY_GROUP_MAPPED = 'directory.group_role_mapped';
 
     public const string DIRECTORY_GROUP_UNMAPPED = 'directory.group_role_unmapped';

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Platform\AuditLogs\AuditLogIngest;
 use App\Platform\Navigation\ConsoleNavigation;
+use App\Platform\RiskGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Enums\CampaignStatus;
@@ -15,6 +17,8 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Kernel\Authorization\Contracts\FineGrainedAuthorization;
+use Cbox\Id\Kernel\Authorization\ValueObjects\Tuple;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\Apis;
@@ -33,6 +37,7 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -133,6 +138,10 @@ function seedTenantData(string $environmentId, string $marker): array
 
             $directory = app(Directories::class)->register($org->id, "{$marker} Directory")->directory;
 
+            // A claimed email domain: Authentication › Domains lists every organization's,
+            // and prints the domain — so the marker is the domain.
+            app(DomainVerification::class)->add($org->id, strtolower($marker).'-claimed.example');
+
             // The pages that rendered NOTHING before. A leak on any of them was
             // undetectable by construction — proven by injecting a real one on the audit
             // page and watching this sweep pass.
@@ -166,6 +175,16 @@ function seedTenantData(string $environmentId, string $marker): array
                 'actor' => ['id' => 'usr_'.strtolower($marker), 'type' => 'user'],
             ]], null);
 
+            // A sign-in attempt Radar judged. The decisions explorer prints the mail domain
+            // (never the address), so the marker is the domain. RiskDecision is not
+            // environment-owned — the explorer applies the environment itself, which is
+            // exactly what this proves.
+            app(RiskGuard::class)->assess(
+                Request::create('/login', 'POST', server: ['REMOTE_ADDR' => '198.51.100.23']),
+                'login',
+                'person@'.strtolower($marker).'.example',
+            );
+
             // An API, owned by the organization so its owner's name is on the list too.
             // The identifier carries the marker as a HOST: it is the one thing the APIs page
             // always prints, and a URL path would be lowercased into it all the same.
@@ -175,6 +194,12 @@ function seedTenantData(string $environmentId, string $marker): array
                 organizationId: $org->id,
                 scopes: [new ApiScopeDefinition(strtolower($marker).':read')],
             ));
+
+            // The environment's own fine-grained authorization model: Users & orgs ›
+            // Fine-grained authorization lists tuples, so the marker is a resource id.
+            $fga = app(FineGrainedAuthorization::class);
+            $fga->updateSchema("type user\ntype document\n  relation viewer: [user]");
+            $fga->writeTuples([Tuple::parse('document:'.strtolower($marker).'-handbook#viewer@user:'.strtolower($marker))]);
 
             // A management key, which AI agents › Agents lists by name. Environment-owned
             // rather than an organization's, and exactly as able to leak across planes.
@@ -265,10 +290,14 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.governance' => 'access-review campaigns, none seeded',
         'environment.sod-policies' => 'conflict rules, none seeded',
         'environment.hooks' => 'inline hooks, none seeded',
+        'environment.feature-flags' => 'feature flags, none seeded',
         'environment.audit-streams' => 'SIEM destinations, none seeded',
         'environment.settings' => 'environment-level configuration, not tenant records',
-        'environment.appearance' => 'the theme editor, which reads one org',
+        'environment.branding' => 'the theme editor, which reads one org',
         'environment.auth-policy' => 'policy toggles',
+        // The environment's own settings, counts of connections and the names of social
+        // providers from the catalogue — never an organization's record.
+        'environment.sign-in-methods' => 'the environment\'s own settings and counts',
         // Publishable keys are environment-owned and carry no organization at all, so
         // there is no tenant record here to leak — and the fixture seeds none.
         'environment.keys.frontend' => 'publishable keys, which have no organization and none seeded',

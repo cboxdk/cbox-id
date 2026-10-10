@@ -221,4 +221,4 @@ jobs:
       # Browser tests are excluded on purpose: they need Chromium and prove
       # rendering, not persistence. This job is about the engine.
       - name: Tests (Unit + Feature) on ${{ matrix.image }}
-        run: php -d memory_limit=1G vendor/bin/pest --testsuite=Unit,Feature
+        run: vendor/bin/pest --testsuite=Unit,Feature

@@ -95,6 +95,8 @@ dataset('ported_console_writes', [
     // C2. The device grant: an impersonator approving one would plant a durable,
     // victim-attributed credential on hardware the victim does not hold.
     'device.approve (C2)' => ['post', 'device.approve', []],
+    // …and the emailed code that finishes an approval Radar challenged.
+    'device.verify (C2)' => ['post', 'device.verify', []],
     /*
      * C3. The consent screen, which issues the LONGEST-LIVED credential in the product: a
      * refresh token that outlives both the impersonation window and the operator's own

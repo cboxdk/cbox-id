@@ -67,6 +67,8 @@ enum PortalIntent: string
             self::Dsync => [
                 'directories.create',
                 'directories.token.rotate',
+                'directories.hris.connect',
+                'directories.sync',
             ],
             self::DomainVerification => self::DOMAIN_ACTIONS,
             self::LogStreams => [
@@ -115,7 +117,7 @@ enum PortalIntent: string
     {
         return match ($this) {
             self::Sso => 'Connect their identity provider (SAML or OIDC) and prove the email domains that route to it.',
-            self::Dsync => 'Provision and deprovision their people over SCIM from their directory.',
+            self::Dsync => 'Provision and deprovision their people over SCIM from their directory, or from their HR system.',
             self::DomainVerification => 'Prove the email domains they own with a DNS TXT record.',
             self::LogStreams => 'Stream their organization\'s audit trail to their own SIEM.',
             self::CertificateRenewal => 'Upload their identity provider\'s new SAML signing certificate before the old one expires.',

@@ -42,7 +42,7 @@ function confirmedTotpSecret(string $subjectId, string $email): string
 
     // A code from the previous step, so the one this returns for "now" is still unused —
     // TOTP refuses a code it has already seen.
-    app(Mfa::class)->confirmTotp($subjectId, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+    confirmTotpForTest($subjectId, $enrollment->secret);
 
     return $enrollment->secret;
 }

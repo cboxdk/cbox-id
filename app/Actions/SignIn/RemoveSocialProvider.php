@@ -6,21 +6,22 @@ namespace App\Actions\SignIn;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
-use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\Actions\OrganizationTarget;
 use App\Platform\SignInAudit;
-use Cbox\Id\Federation\Models\Connection;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Stop offering a social login provider. Anyone who signed in with it keeps their account
  * and can still use their password.
+ *
+ * Removing the ENVIRONMENT's provider takes it off every page that inherited it; removing an
+ * organization's own puts the environment's back on that organization's page, if there is
+ * one and the organization has not turned it off. To take a button away while keeping its
+ * credentials, turn it off instead (`signin.social.disable`).
  *
  * THE OWNER IS IN THE QUERY, not in an `if` after it — the shape that once shipped a
  * cross-organization IDOR elsewhere. Only a CATALOGUE connection is reachable here: a
@@ -52,13 +53,7 @@ final readonly class RemoveSocialProvider implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
-        $organizationId = OrganizationTarget::check($context, $context->nullableString('organization_id'));
-
-        $connection = Connection::query()
-            ->whereKey($context->string('id'))
-            ->whereNotNull('provider')
-            ->when($organizationId !== null, fn (Builder $query): Builder => $query->where('organization_id', $organizationId))
-            ->first() ?? throw ActionRefused::notFound('social provider');
+        $connection = SocialProviderFields::reachable($context);
 
         $connection->delete();
 

@@ -25,7 +25,15 @@ database** with its reasons and per-signal points — see
 
 ## How the app adapts
 
-Behaviour depends on `RISK_MODE`:
+**The score is no longer the whole decision.** [Radar](../guides/radar.md) takes it, with
+IP intelligence, the device, velocity, impossible travel, throwaway addresses and each
+environment's own rules and allow/deny lists, and decides allow, challenge or block. The
+score's own verdicts survive as two built-in Radar rules — *Risk score: reject* blocks and
+*Risk score: elevated* challenges — so with nothing else configured the behaviour below is
+unchanged. The mode is now chosen **per environment** in the console (Authentication ›
+Radar); `RISK_MODE` is the default an environment follows until it chooses.
+
+Behaviour depends on the mode (`RISK_MODE` until the environment sets its own):
 
 - **`monitor` (default)** — score and log only. Nothing is blocked. Ship here and
   **calibrate thresholds against real traffic first**, so you don't lock out
@@ -69,9 +77,12 @@ tax every legitimate signup to stop the small share that isn't one.
   widget now shown, so the person can satisfy it) — never a 500 and never a silent pass.
 - If Cloudflare cannot be reached the submission is refused rather than waved through.
   Only already-elevated submissions reach that path, and they can retry.
-- **With no keys configured the feature is inert**: no widget, no third-party script, no
-  CSP exception, and signup behaves exactly as it did before. Self-hosters who don't
-  want a Cloudflare dependency simply don't set the keys.
+- **With no keys configured the CAPTCHA is inert**: no widget, no third-party script, no
+  CSP exception. Self-hosters who don't want a Cloudflare dependency simply don't set the
+  keys. A challenged signup is then confirmed another way: the account is created, but its
+  first session waits for a one-time code emailed to the address it signed up with (the
+  same step-up page a risky sign-in uses). Before Radar a challenged signup on such a
+  deployment went straight through.
 
 The **CSP** is opened for `https://challenges.cloudflare.com` in `script-src` and
 `frame-src` **only when Turnstile is configured** — the sole third-party origin this app
@@ -115,6 +126,8 @@ anyone could query. A control you cannot measure cannot responsibly be turned on
 | `ip_hash`, `email_hash` | Keyed HMAC-SHA256 pseudonyms (see below). |
 | `email_domain` | Mail domain **in the clear**. |
 | `environment_id`, `assessed_at` | Scope and time. |
+| `verdict`, `enforced`, `rule`, `triggered` | Radar's verdict (allow / challenge / block), whether it was acted on, the rule that decided it and every rule that fired. |
+| `method`, `country`, `asn`, `device_hash`, `facts` | The credential used, the coarse place and network (from IP intelligence, when configured), a pseudonym of the device cookie, and the facts Radar's rules were evaluated on — never the IP, the address or the user agent. |
 
 ### Personal data
 

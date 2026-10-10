@@ -18,16 +18,17 @@ use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Auth\SudoController;
+use App\Http\Controllers\ConnectedServiceController;
 use App\Http\Controllers\Console\AccessReviewController;
 use App\Http\Controllers\Console\AccountSettingsController;
 use App\Http\Controllers\Console\AgentApprovalController;
 use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
-use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
 use App\Http\Controllers\Console\AuditLogController;
 use App\Http\Controllers\Console\AuthPolicyController;
+use App\Http\Controllers\Console\BrandingController;
 use App\Http\Controllers\Console\ClientController;
 use App\Http\Controllers\Console\ClientPromotionController;
 use App\Http\Controllers\Console\ClientScopesController;
@@ -39,12 +40,15 @@ use App\Http\Controllers\Console\DashboardController;
 use App\Http\Controllers\Console\DirectoryController;
 use App\Http\Controllers\Console\DirectoryMemberController;
 use App\Http\Controllers\Console\EnvironmentDomainController;
+use App\Http\Controllers\Console\EnvironmentDomainsController;
 use App\Http\Controllers\Console\EnvironmentGetStartedController;
 use App\Http\Controllers\Console\EnvironmentHomeController;
 use App\Http\Controllers\Console\EnvironmentKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationApiKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationController;
 use App\Http\Controllers\Console\EnvironmentUserController;
+use App\Http\Controllers\Console\FeatureFlagController;
+use App\Http\Controllers\Console\FgaController;
 use App\Http\Controllers\Console\FrontendKeyController;
 use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
@@ -65,6 +69,7 @@ use App\Http\Controllers\Console\Organization\OrganizationSupportController;
 use App\Http\Controllers\Console\OrganizationLookupController;
 use App\Http\Controllers\Console\OutboundSyncController;
 use App\Http\Controllers\Console\PermissionController;
+use App\Http\Controllers\Console\PipeController;
 use App\Http\Controllers\Console\PlatformCustomerController;
 use App\Http\Controllers\Console\PlatformEnvironmentController;
 use App\Http\Controllers\Console\PlatformOrganizationController;
@@ -72,10 +77,12 @@ use App\Http\Controllers\Console\PlatformQueuesController;
 use App\Http\Controllers\Console\PlatformSearchController;
 use App\Http\Controllers\Console\PlatformUsageController;
 use App\Http\Controllers\Console\ProjectController;
+use App\Http\Controllers\Console\RadarController;
 use App\Http\Controllers\Console\RoleConflictController;
 use App\Http\Controllers\Console\RoleController;
 use App\Http\Controllers\Console\ServiceProviderController;
 use App\Http\Controllers\Console\SettingsController;
+use App\Http\Controllers\Console\SignInMethodsController;
 use App\Http\Controllers\Console\SocialProviderController;
 use App\Http\Controllers\Console\StaffController;
 use App\Http\Controllers\Console\SupportSessionController;
@@ -92,6 +99,7 @@ use App\Http\Controllers\FirstRunController;
 use App\Http\Controllers\FrontendApi\PasskeySignInController;
 use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
+use App\Http\Controllers\FrontendApi\SmsChallengeController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LocaleController;
@@ -102,6 +110,7 @@ use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\Portal\PortalCertificateController;
 use App\Http\Controllers\Portal\PortalDirectoryController;
 use App\Http\Controllers\Portal\PortalDomainController;
+use App\Http\Controllers\Portal\PortalHrisController;
 use App\Http\Controllers\Portal\PortalLogStreamController;
 use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalAuditLogController;
@@ -117,6 +126,7 @@ use App\Http\Controllers\Sso\SamlMetadataController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\RequireSignInMethod;
 use App\Http\Middleware\TargetEnvironment;
 use App\Http\WebRateLimiters;
 use App\Platform\Console\ConsoleRoutes;
@@ -159,6 +169,9 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // session cookie from the first request to this one.
         Route::match(['post', 'options'], '/sign-in/factor', SecondFactorController::class)
             ->name('frontend.sign-in.factor');
+        // Text the code for `method: sms`. Spends one of the ticket's attempts per send.
+        Route::match(['post', 'options'], '/sign-in/factor/sms', SmsChallengeController::class)
+            ->name('frontend.sign-in.factor.sms');
 
         // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
         // handle rather than in a session cookie, for the same reason everything else here
@@ -169,10 +182,10 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // minute is no limit on one caller minting challenges into the cache. The limiter
         // runs after the key door, so the environment it scopes to is the key's own.
         Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'challenge'])
-            ->middleware('throttle:passkey')
+            ->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])
             ->name('frontend.sign-in.passkey.options');
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
-            ->middleware('throttle:passkey')
+            ->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])
             ->name('frontend.sign-in.passkey');
     });
 }
@@ -365,15 +378,17 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
     // Mails a sign-in link to whatever address is typed in: metered per (address, email) and
     // per address in front of the controller's own friendlier refusal ({@see WebRateLimiters}).
-    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->middleware('throttle:magic-link-send')->name('login.magic-link');
+    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->middleware(['throttle:magic-link-send', RequireSignInMethod::class.':magic_link'])->name('login.magic-link');
 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
     // Opening the link renders a button; pressing it signs in. Mail scanners fetch every
     // link they see, so a GET that redeemed handed the session to the scanner. Only the
     // POST looks the token up, so only the POST is throttled ({@see WebRateLimiters}).
-    Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->name('magic.redeem');
-    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->middleware('throttle:link-token')->name('magic.redeem.store');
+    // Behind the environment's magic-link switch, both halves: a link mailed before the
+    // switch was turned off is closed with it (the framework refuses the redemption too).
+    Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->middleware(RequireSignInMethod::class.':magic_link')->name('magic.redeem');
+    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->middleware(['throttle:link-token', RequireSignInMethod::class.':magic_link'])->name('magic.redeem.store');
 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
@@ -392,8 +407,8 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
     // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof. Both
     // halves are throttled: the first writes a fresh challenge into the session for any
     // anonymous caller, the second is a credential check ({@see WebRateLimiters}).
-    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware('throttle:passkey')->name('passkeys.login.options');
-    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware('throttle:passkey')->name('passkeys.login');
+    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])->name('passkeys.login.options');
+    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->middleware(['throttle:passkey', RequireSignInMethod::class.':passkeys'])->name('passkeys.login');
 
     // Social sign-in (Google, GitHub, Microsoft) over OAuth. NoStore for the same reason
     // as the SSO doors: a `state`, then a single-use `code` and a new session.
@@ -407,6 +422,10 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
 Route::get('/mfa', [MfaController::class, 'show'])->middleware('locale')->name('mfa');
 Route::post('/mfa', [MfaController::class, 'verify'])->middleware('locale')->name('mfa.verify');
 Route::post('/mfa/recovery', [MfaController::class, 'recover'])->middleware('locale')->name('mfa.recover');
+// A texted code: one request to send it, one to check it. Sending is bounded by the SMS
+// toll-fraud guard and the OTP issue caps; checking shares the challenge's throttle.
+Route::post('/mfa/sms/send', [MfaController::class, 'sendSms'])->middleware('locale')->name('mfa.sms.send');
+Route::post('/mfa/sms', [MfaController::class, 'verifySms'])->middleware('locale')->name('mfa.sms.verify');
 
 // The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
 // state: primary auth passed, but an elevated risk assessment demands a second
@@ -584,6 +603,9 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
         Route::get('/setup/directory-sync', [PortalDirectoryController::class, 'show'])->name('portal.directories');
         Route::post('/setup/directories', [PortalDirectoryController::class, 'store'])->name('portal.directories.store');
         Route::post('/setup/directories/{directory}/rotate', [PortalDirectoryController::class, 'rotate'])->name('portal.directories.rotate');
+        Route::get('/setup/hr-system', [PortalHrisController::class, 'show'])->name('portal.hris');
+        Route::post('/setup/hr-system', [PortalHrisController::class, 'store'])->name('portal.hris.store');
+        Route::post('/setup/hr-system/{directory}/sync', [PortalHrisController::class, 'sync'])->name('portal.hris.sync');
 
         Route::get('/setup/log-streams', [PortalLogStreamController::class, 'show'])->name('portal.log-streams');
         Route::post('/setup/log-streams', [PortalLogStreamController::class, 'store'])->name('portal.log-streams.store');
@@ -700,6 +722,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::post('/account/two-factor/enrol', [AccountController::class, 'enrolMfa'])->name('account.mfa.enrol');
         Route::post('/account/two-factor/confirm', [AccountController::class, 'confirmMfa'])->name('account.mfa.confirm');
         Route::post('/account/two-factor/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.mfa.recovery-codes');
+        // A phone number as a second factor: enrol (text a code), confirm, remove.
+        Route::post('/account/two-factor/sms', [AccountController::class, 'enrolSms'])->name('account.mfa.sms.enrol');
+        Route::post('/account/two-factor/sms/confirm', [AccountController::class, 'confirmSms'])->name('account.mfa.sms.confirm');
+        Route::delete('/account/two-factor/sms', [AccountController::class, 'removeSms'])->name('account.mfa.sms.destroy');
         Route::delete('/account/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
         Route::delete('/account/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
     });
@@ -745,6 +771,30 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/account/api-keys', [AccountApiKeyController::class, 'index'])->name('account.api-keys');
     Route::post('/account/api-keys', [AccountApiKeyController::class, 'store'])->name('account.api-keys.store');
     Route::delete('/account/api-keys/{key}', [AccountApiKeyController::class, 'destroy'])->name('account.api-keys.revoke');
+
+    /*
+     * CONNECTED SERVICES (Pipes) — the third-party accounts a person connected so an app
+     * here may act through them, and the connect flow. HOSTED and translated (`locale`):
+     * the people who land here are an app's end users, deep-linked from that app with
+     * `?client_id=…&return_to=…`, which is a contract like the API keys page's.
+     *
+     * Closed to an impersonator: connecting would attach the IMPERSONATOR's GitHub to the
+     * person, and disconnecting is theirs to decide. No `sudo` — this adds no way in, and
+     * the provider's own consent screen is the confirmation.
+     */
+    Route::middleware('locale')->group(function (): void {
+        Route::get('/account/connected-services', [ConnectedServiceController::class, 'index'])->name('account.pipes');
+        Route::get('/account/connected-services/{provider}/connect', [ConnectedServiceController::class, 'consent'])->name('account.pipes.connect');
+        Route::post('/account/connected-services/{provider}/connect', [ConnectedServiceController::class, 'authorize'])
+            ->middleware([BlockDuringImpersonation::class, 'throttle:30,1'])
+            ->name('account.pipes.authorize');
+        Route::get('/account/connected-services/{provider}/callback', [ConnectedServiceController::class, 'callback'])
+            ->middleware([BlockDuringImpersonation::class, NoStore::class])
+            ->name('account.pipes.callback');
+        Route::delete('/account/connected-services/{provider}', [ConnectedServiceController::class, 'destroy'])
+            ->middleware(BlockDuringImpersonation::class)
+            ->name('account.pipes.destroy');
+    });
 
     Route::get('/usage', [UsageController::class, 'index'])->name('usage');
     // THE TENANT DIRECTORY — everyone who can sign in to this organization, plus the
@@ -882,6 +932,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // done by different people, at different times.
     Route::get('/social-sign-in', [SocialProviderController::class, 'index'])->name('social-providers');
     Route::post('/social-sign-in', [SocialProviderController::class, 'store'])->name('social-providers.store');
+    // Whether this organization's page offers one of the ENVIRONMENT's providers. Before
+    // `/{connection}`, so the literal segment is never read as an id.
+    Route::put('/social-sign-in/inherited/{provider}', [SocialProviderController::class, 'inherit'])->name('social-providers.inherit');
+    Route::patch('/social-sign-in/{connection}', [SocialProviderController::class, 'update'])->name('social-providers.update');
+    Route::post('/social-sign-in/{connection}/enable', [SocialProviderController::class, 'enable'])->name('social-providers.enable');
+    Route::post('/social-sign-in/{connection}/disable', [SocialProviderController::class, 'disable'])->name('social-providers.disable');
     Route::delete('/social-sign-in/{connection}', [SocialProviderController::class, 'destroy'])->name('social-providers.destroy');
 
     // Sync users in (inbound directories): the SAME components the environment plane
@@ -895,11 +951,15 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('directories.create');
     Route::post('/sync-in', [DirectoryController::class, 'store'])->name('directories.store');
     Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('directories.connect');
+    Route::post('/sync-in/hris', [DirectoryController::class, 'connectHris'])->name('directories.hris');
     Route::get('/sync-in/{directory}', [DirectoryController::class, 'show'])->name('directories.show');
     Route::patch('/sync-in/{directory}', [DirectoryController::class, 'update'])->name('directories.update');
     Route::post('/sync-in/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('directories.rotate');
     Route::post('/sync-in/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('directories.toggle');
     Route::post('/sync-in/{directory}/map', [DirectoryController::class, 'map'])->name('directories.map');
+    Route::post('/sync-in/{directory}/sync', [DirectoryController::class, 'sync'])->name('directories.sync');
+    Route::patch('/sync-in/{directory}/sync-settings', [DirectoryController::class, 'syncSettings'])->name('directories.sync-settings');
+    Route::put('/sync-in/{directory}/credentials', [DirectoryController::class, 'credentials'])->name('directories.credentials');
     Route::delete('/sync-in/{directory}', [DirectoryController::class, 'destroy'])->name('directories.destroy');
     // Roles: the SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page — a role URL is something you
@@ -1015,20 +1075,30 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::delete('/settings/organization', [SettingsController::class, 'destroyOrganization'])
         ->middleware('sudo')
         ->name('settings.organization.destroy');
-    // Appearance: the SAME component the environment plane serves. What is being
-    // themed — an organization's own sign-in, or the environment default every
-    // organization inherits — is an explicit choice on the page, offered on the
-    // environment plane alone.
-    Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance');
-    Route::post('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
+    // Branding: the SAME component the environment plane serves — the sign-in theme, the
+    // logo and favicon, and (with the white-label module) the name, sender and palette.
+    // What is being branded is the page's address: this organization's own here.
+    Route::get('/branding', [BrandingController::class, 'edit'])->name('branding');
+    Route::post('/branding', [BrandingController::class, 'update'])->name('branding.update');
+    Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('branding.profile.update');
     // Sign-in rules: the SAME component the environment plane serves, and the half of
     // this pair that never existed. `AuthPolicies::setForOrganization()` had no caller
     // anywhere in the product while both sign-in doors enforced what it writes, so a
     // tenant could be governed by a per-organization policy that nobody — not even the
     // operator — had a way to author.
+    // Every way in, on one page — the organization console has it too: on a single-tenant
+    // install this console is the whole administration, and "is magic link on?" was a
+    // question it had no page for.
+    Route::get('/sign-in-methods', SignInMethodsController::class)->name('sign-in-methods');
     Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('auth-policy');
     Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('auth-policy.update');
     Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('auth-policy.inherit');
+    // The ENVIRONMENT's sign-in methods, session lengths and SMS policy, from the organization
+    // console — served only where its administrator administers the environment: a
+    // single-tenant install, where this console is the whole administration. Everywhere else
+    // the controller refuses ({@see \App\Platform\Console\ConsoleScope::administersEnvironment()}).
+    Route::put('/sign-in-rules/methods', [AuthPolicyController::class, 'methods'])->name('auth-policy.methods');
+    Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('auth-policy.sms');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     // The SAME components the environment plane serves. The routable index/new/show
@@ -1107,11 +1177,17 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/approvals/{request}/approve', [MyApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{request}/deny', [MyApprovalController::class, 'deny'])->name('approvals.deny');
 
-    // RFC 8628 device grant: where a signed-in user approves a device's user_code.
-    Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
-    Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
-    Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
-    Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
+    // RFC 8628 device grant: where a signed-in person approves a device's user_code. A
+    // HOSTED page (`oauth/device`), so it speaks the visitor's language like the other
+    // doors — whoever scanned the TV's QR code, not an administrator.
+    Route::middleware('locale')->group(function (): void {
+        Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
+        Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
+        Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
+        // The emailed code a Radar challenge on the approval asks for.
+        Route::post('/device/verify', [DeviceApprovalController::class, 'verify'])->name('device.verify');
+        Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
+    });
 
     // Step-up re-authentication ("sudo mode") gate for sensitive actions. Blocked
     // while impersonating: an impersonator must never be able to clear the gate
@@ -1130,8 +1206,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // credential is persistence — gate it behind a fresh step-up, symmetric with
     // the sudo required to REMOVE a passkey in settings. BlockDuringImpersonation
     // runs first so an impersonator gets an unambiguous 403, never a step-up prompt.
-    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo', 'throttle:passkey'])->name('passkeys.register.options');
-    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register');
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo', 'throttle:passkey', RequireSignInMethod::class.':passkeys'])->name('passkeys.register.options');
+    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo', RequireSignInMethod::class.':passkeys'])->name('passkeys.register');
 
     // Explicit account linking — connect a social provider to the signed-in user.
     // Also a new way in, so it likewise requires a fresh step-up (and is closed to
@@ -1273,8 +1349,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::get('/roles', [RoleController::class, 'index'])->name('environment.organizations.roles');
             Route::get('/api-keys', [OrganizationApiKeysController::class, 'index'])->name('environment.organizations.api-keys');
 
-            Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.organizations.branding');
-            Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.organizations.branding.update');
+            Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.organizations.branding');
+            Route::post('/branding', [BrandingController::class, 'update'])->name('environment.organizations.branding.update');
+            Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('environment.organizations.branding.profile.update');
 
             Route::get('/policy', [AuthPolicyController::class, 'edit'])->name('environment.organizations.policy');
             Route::put('/policy', [AuthPolicyController::class, 'update'])->name('environment.organizations.policy.update');
@@ -1319,6 +1396,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/users/{user}/verification', [EnvironmentUserController::class, 'resendVerification'])->name('environment.users.verification');
         Route::post('/users/{user}/verify', [EnvironmentUserController::class, 'markVerified'])->name('environment.users.verify');
         Route::post('/users/{user}/two-factor/reset', [EnvironmentUserController::class, 'resetMfa'])->name('environment.users.mfa');
+        Route::post('/users/{user}/two-factor/sms/remove', [EnvironmentUserController::class, 'removeSms'])->name('environment.users.mfa.sms');
         Route::post('/users/{user}/deactivate', [EnvironmentUserController::class, 'deactivate'])->name('environment.users.deactivate');
         Route::post('/users/{user}/reactivate', [EnvironmentUserController::class, 'reactivate'])->name('environment.users.reactivate');
         Route::post('/users/{user}/erase', [EnvironmentUserController::class, 'erase'])->name('environment.users.erase');
@@ -1355,6 +1433,10 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // of their own users to reach their own feature.
         Route::get('/social-sign-in', [SocialProviderController::class, 'index'])->name('environment.social-providers');
         Route::post('/social-sign-in', [SocialProviderController::class, 'store'])->name('environment.social-providers.store');
+        Route::put('/social-sign-in/inherited/{provider}', [SocialProviderController::class, 'inherit'])->name('environment.social-providers.inherit');
+        Route::patch('/social-sign-in/{connection}', [SocialProviderController::class, 'update'])->name('environment.social-providers.update');
+        Route::post('/social-sign-in/{connection}/enable', [SocialProviderController::class, 'enable'])->name('environment.social-providers.enable');
+        Route::post('/social-sign-in/{connection}/disable', [SocialProviderController::class, 'disable'])->name('environment.social-providers.disable');
         Route::delete('/social-sign-in/{connection}', [SocialProviderController::class, 'destroy'])->name('environment.social-providers.destroy');
         Route::get('/single-sign-on/new', [ConnectionController::class, 'create'])->name('environment.connections.create');
         Route::post('/single-sign-on/import', [ConnectionController::class, 'importMetadata'])->name('environment.connections.import');
@@ -1382,11 +1464,15 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('environment.directories.create');
         Route::post('/sync-in', [DirectoryController::class, 'store'])->name('environment.directories.store');
         Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('environment.directories.connect');
+        Route::post('/sync-in/hris', [DirectoryController::class, 'connectHris'])->name('environment.directories.hris');
         Route::get('/sync-in/{directory}', [DirectoryController::class, 'show'])->name('environment.directories.show');
         Route::patch('/sync-in/{directory}', [DirectoryController::class, 'update'])->name('environment.directories.update');
         Route::post('/sync-in/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('environment.directories.rotate');
         Route::post('/sync-in/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('environment.directories.toggle');
         Route::post('/sync-in/{directory}/map', [DirectoryController::class, 'map'])->name('environment.directories.map');
+        Route::post('/sync-in/{directory}/sync', [DirectoryController::class, 'sync'])->name('environment.directories.sync');
+        Route::patch('/sync-in/{directory}/sync-settings', [DirectoryController::class, 'syncSettings'])->name('environment.directories.sync-settings');
+        Route::put('/sync-in/{directory}/credentials', [DirectoryController::class, 'credentials'])->name('environment.directories.credentials');
         Route::delete('/sync-in/{directory}', [DirectoryController::class, 'destroy'])->name('environment.directories.destroy');
 
         // Outbound sync (provisioning connections) — routable list → create → detail.
@@ -1415,6 +1501,17 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/permissions', [PermissionController::class, 'store'])->name('environment.permissions.store');
         Route::patch('/permissions/{permission}', [PermissionController::class, 'update'])->name('environment.permissions.update');
         Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('environment.permissions.destroy');
+
+        // Fine-grained authorization — the environment's own relationship model: the
+        // overview (schema at a glance, tuples, a check playground) and, behind `env.sudo`
+        // because it decides every check at once, the schema editor.
+        Route::get('/authorization', [FgaController::class, 'index'])->name('environment.fga');
+        Route::post('/authorization/tuples', [FgaController::class, 'storeTuple'])->name('environment.fga.tuples.store');
+        Route::delete('/authorization/tuples', [FgaController::class, 'destroyTuple'])->name('environment.fga.tuples.destroy');
+        Route::middleware('env.sudo')->group(function (): void {
+            Route::get('/authorization/schema', [FgaController::class, 'schema'])->name('environment.fga.schema');
+            Route::put('/authorization/schema', [FgaController::class, 'updateSchema'])->name('environment.fga.schema.update');
+        });
 
         // Access reviews (certification campaigns) — routable list → create → detail.
         Route::get('/access-reviews', [AccessReviewController::class, 'index'])->name('environment.governance');
@@ -1533,6 +1630,16 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/inline-hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('environment.hooks.toggle');
         Route::delete('/inline-hooks/{hook}', [HookController::class, 'destroy'])->name('environment.hooks.destroy');
 
+        // Feature flags — the switches the environment's apps ask about per user and
+        // organization. This console only: a flag is read by every app and organization in
+        // the environment, so it is the environment's to define.
+        Route::get('/feature-flags', [FeatureFlagController::class, 'index'])->name('environment.feature-flags');
+        Route::get('/feature-flags/new', [FeatureFlagController::class, 'create'])->name('environment.feature-flags.create');
+        Route::post('/feature-flags', [FeatureFlagController::class, 'store'])->name('environment.feature-flags.store');
+        Route::get('/feature-flags/{flag}', [FeatureFlagController::class, 'show'])->name('environment.feature-flags.show');
+        Route::patch('/feature-flags/{flag}', [FeatureFlagController::class, 'update'])->name('environment.feature-flags.update');
+        Route::delete('/feature-flags/{flag}', [FeatureFlagController::class, 'destroy'])->name('environment.feature-flags.destroy');
+
         // Token vault — routable list → create → detail, on the merged component. The URL
         // keeps its old spelling so existing links and bookmarks still resolve; the route
         // names are what the two planes disagree on, and both are preserved.
@@ -1551,6 +1658,22 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::post('/token-vault/{secret}/grants', [VaultController::class, 'grant'])->name('environment.vault.grants.store');
             Route::delete('/token-vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('environment.vault.grants.destroy');
             Route::post('/token-vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('environment.vault.revoke');
+        });
+
+        // Pipes — the third-party providers people connect their own accounts at, so the
+        // environment's apps can call those APIs as them. Behind `env.sudo` with the vault:
+        // a pipe holds a client secret, and a grant hands an app every connected person's
+        // token at that provider.
+        Route::middleware('env.sudo')->group(function (): void {
+            Route::get('/pipes', [PipeController::class, 'index'])->name('environment.pipes');
+            Route::get('/pipes/new', [PipeController::class, 'create'])->name('environment.pipes.create');
+            Route::post('/pipes', [PipeController::class, 'store'])->name('environment.pipes.store');
+            Route::get('/pipes/{pipe}', [PipeController::class, 'show'])->name('environment.pipes.show');
+            Route::patch('/pipes/{pipe}', [PipeController::class, 'update'])->name('environment.pipes.update');
+            Route::delete('/pipes/{pipe}', [PipeController::class, 'destroy'])->name('environment.pipes.destroy');
+            Route::post('/pipes/{pipe}/grants', [PipeController::class, 'grant'])->name('environment.pipes.grants.store');
+            Route::delete('/pipes/{pipe}/grants/{client}', [PipeController::class, 'revokeGrant'])->name('environment.pipes.grants.destroy');
+            Route::delete('/pipes/{pipe}/connections/{connection}', [PipeController::class, 'disconnect'])->name('environment.pipes.connections.destroy');
         });
 
         // Step-up re-authentication for this plane. Inside the env-admin group — only an
@@ -1583,6 +1706,25 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::put('/audit-logs/schemas/{action}', [AuditLogController::class, 'update'])->name('environment.audit-logs.schemas.update');
         Route::delete('/audit-logs/schemas/{action}', [AuditLogController::class, 'destroy'])->name('environment.audit-logs.schemas.destroy');
         Route::patch('/audit-logs/settings', [AuditLogController::class, 'settings'])->name('environment.audit-logs.settings.update');
+
+        // Radar — adaptive protection at sign-in and sign-up: the decisions explorer, the
+        // rules (built-in and the environment's own, in order) and the allow and deny lists.
+        // `new` and `order` before `{rule}`, so neither is read as a rule id. The mode switch
+        // is behind `env.sudo`: turning enforcement on or off is the environment's security
+        // posture, the same reason the action is Critical.
+        Route::get('/radar', [RadarController::class, 'index'])->name('environment.radar');
+        Route::get('/radar/rules', [RadarController::class, 'rules'])->name('environment.radar.rules');
+        Route::get('/radar/rules/new', [RadarController::class, 'create'])->name('environment.radar.rules.create');
+        Route::post('/radar/rules', [RadarController::class, 'store'])->name('environment.radar.rules.store');
+        Route::put('/radar/rules/order', [RadarController::class, 'order'])->name('environment.radar.rules.order');
+        Route::get('/radar/rules/{rule}', [RadarController::class, 'edit'])->name('environment.radar.rules.edit');
+        Route::patch('/radar/rules/{rule}', [RadarController::class, 'update'])->name('environment.radar.rules.update');
+        Route::delete('/radar/rules/{rule}', [RadarController::class, 'destroy'])->name('environment.radar.rules.destroy');
+        Route::patch('/radar/settings', [RadarController::class, 'settings'])->name('environment.radar.settings.update');
+        Route::get('/radar/lists', [RadarController::class, 'lists'])->name('environment.radar.lists');
+        Route::post('/radar/lists', [RadarController::class, 'addEntry'])->name('environment.radar.lists.store');
+        Route::delete('/radar/lists/{entry}', [RadarController::class, 'removeEntry'])->name('environment.radar.lists.destroy');
+        Route::put('/radar/mode', [RadarController::class, 'mode'])->middleware('env.sudo')->name('environment.radar.mode.update');
 
         // Log streaming (SIEM) — routable list → create → detail.
         //
@@ -1631,15 +1773,28 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // override. Same page, same controls, different level — which is the only
         // difference there has ever been between the two, and until now the organization
         // half of it had no surface at all.
+        // Sign-in methods — every way in, whether it is on, and the page that changes it.
+        // Read-only: each row links to its one writer.
+        Route::get('/sign-in-methods', SignInMethodsController::class)->name('environment.sign-in-methods');
+        // Every organization's claimed email domains, one list — verified and captured on
+        // each organization's own Domains tab, which every row links to.
+        Route::get('/domains', EnvironmentDomainsController::class)->name('environment.domains');
         Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('environment.auth-policy');
         Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('environment.auth-policy.update');
         // The environment's self-service sign-up switch — environment plane only: it
         // decides who may create an account anywhere in the environment.
         Route::put('/sign-in-rules/self-service-signup', [AuthPolicyController::class, 'selfServiceSignup'])->name('environment.auth-policy.self-service-signup');
-        // Appearance — the merged component. The route NAME is preserved on both
-        // planes; only the component behind it is now shared.
-        Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.appearance');
-        Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.appearance.update');
+        // Text-message codes as a second factor — environment plane only, like sign-up: the
+        // countries an environment texts are a cost and fraud decision for the environment.
+        Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('environment.auth-policy.sms');
+        // Passkeys, magic links, the bot challenge and session lengths — environment plane
+        // only, like the two above: they are decided before anybody's organization is known.
+        Route::put('/sign-in-rules/methods', [AuthPolicyController::class, 'methods'])->name('environment.auth-policy.methods');
+        // Branding — the environment default every organization inherits. One page for
+        // the sign-in theme, the logo and favicon, and the white-label name and palette.
+        Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.branding');
+        Route::post('/branding', [BrandingController::class, 'update'])->name('environment.branding.update');
+        Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('environment.branding.profile.update');
 
         // Step into a subject's session for support (env-admin actor). Authorized in
         // the controller by env-scoped membership; owners/admins refused; reason required.
@@ -1890,6 +2045,11 @@ foreach ([
     '/admin/analytics' => '/admin/usage',
     // The organization lookup that used to sit beside the header's "acting organization".
     '/admin/acting-organization' => '/admin/lookup/organizations',
+
+    // Appearance and the white-label Branding page became ONE Branding page.
+    '/appearance' => '/branding',
+    '/admin/appearance' => '/admin/branding',
+    '/admin/organizations/{organization}/appearance' => '/admin/organizations/{organization}/branding',
 ] as $from => $to) {
     ConsoleRoutes::moved($from, $to);
 }

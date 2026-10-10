@@ -25,6 +25,27 @@ use App\Platform\Actions\WorkspaceScopes;
  */
 final readonly class ActionOpenApi
 {
+    /** The body of the `ApprovalRequired` response, as each base document declares it. */
+    public const array APPROVAL_REQUIRED = [
+        'type' => 'object',
+        'required' => ['error', 'message', 'approval'],
+        'properties' => [
+            'error' => ['type' => 'string', 'enum' => ['approval_required']],
+            'message' => ['type' => 'string'],
+            'approval' => [
+                'type' => 'object',
+                'required' => ['id', 'status', 'binding_code', 'expires_at', 'poll_url'],
+                'properties' => [
+                    'id' => ['type' => 'string'],
+                    'status' => ['type' => 'string'],
+                    'binding_code' => ['type' => 'string'],
+                    'expires_at' => ['type' => 'string', 'format' => 'date-time'],
+                    'poll_url' => ['type' => 'string', 'format' => 'uri'],
+                ],
+            ],
+        ],
+    ];
+
     public function __construct(private ActionRegistry $registry) {}
 
     /**
@@ -138,7 +159,12 @@ final readonly class ActionOpenApi
         $operation['responses'] = [
             (string) $action->status => $this->success($action),
             // Any action can be held for a person's approval when the key's policy says so.
-            '202' => ['$ref' => '#/components/responses/ApprovalRequired'],
+            // An action whose own answer is 202 shares the status: both bodies, told apart by
+            // `error: approval_required` — overwriting it left generated clients without the
+            // action's real answer.
+            '202' => $action->status === 202
+                ? $this->acceptedOrHeld($action)
+                : ['$ref' => '#/components/responses/ApprovalRequired'],
             '401' => ['$ref' => '#/components/responses/Unauthorized'],
             '403' => ['$ref' => '#/components/responses/Forbidden'],
         ];
@@ -342,6 +368,28 @@ final readonly class ActionOpenApi
         return [
             'description' => 'OK',
             'content' => ['application/json' => ['schema' => $schema]],
+        ];
+    }
+
+    /**
+     * The 202 of an action that itself answers 202: its own body, or the approval hold.
+     *
+     * The hold's body is the `ApprovalRequired` response's schema in every plane's base
+     * document; {@see self::APPROVAL_REQUIRED} repeats it because a schema inside `oneOf`
+     * cannot point at a response, and a test holds the two equal.
+     *
+     * @return array<string, mixed>
+     */
+    private function acceptedOrHeld(ActionDefinition $action): array
+    {
+        $own = $this->success($action);
+        $content = is_array($own['content'] ?? null) ? $own['content'] : [];
+        $json = is_array($content['application/json'] ?? null) ? $content['application/json'] : [];
+        $schema = $json['schema'] ?? ['type' => 'object'];
+
+        return [
+            'description' => 'Accepted — or held for a person\'s approval (`error: approval_required`): poll `approval.poll_url`, then repeat the request with `Cbox-Approval`.',
+            'content' => ['application/json' => ['schema' => ['oneOf' => [$schema, self::APPROVAL_REQUIRED]]]],
         ];
     }
 

@@ -21,7 +21,6 @@ interface ClientProps {
     /** The host that published its metadata document — the one VERIFIED fact about it. */
     documentHost?: string | null;
     clientUri?: string | null;
-    logoUri?: string | null;
 }
 
 type Props = PageProps<{
@@ -135,31 +134,21 @@ function Authorize({
     return (
         <div>
             {/*
-                A metadata document's logo is the publisher's, fetched from their host, so it
-                goes without a referrer: the page a person is consenting on is nobody's
-                business but theirs.
+                No app logo: one named by a registration or a metadata document is an image on
+                the publisher's host, and drawing it would report every person who reached this
+                screen to them. See OAuthConsentController.
             */}
-            {client.logoUri ? (
-                <img
-                    src={client.logoUri}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="rounded-full mb-5 object-cover"
-                    style={{ width: '2.75rem', height: '2.75rem' }}
-                />
-            ) : (
-                <div
-                    className="grid place-items-center rounded-full mb-5"
-                    style={{
-                        width: '2.75rem',
-                        height: '2.75rem',
-                        background: 'var(--accent-soft)',
-                        color: 'var(--accent-strong)',
-                    }}
-                >
-                    <Icon name="shield" className="w-5 h-5" />
-                </div>
-            )}
+            <div
+                className="grid place-items-center rounded-full mb-5"
+                style={{
+                    width: '2.75rem',
+                    height: '2.75rem',
+                    background: 'var(--accent-soft)',
+                    color: 'var(--accent-strong)',
+                }}
+            >
+                <Icon name="shield" className="w-5 h-5" />
+            </div>
 
             <h1 className="text-2xl font-semibold tracking-tight">
                 {t('oauth.consent.heading', { client: client.name })}

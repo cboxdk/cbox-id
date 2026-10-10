@@ -1,8 +1,8 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, ConfirmDelete, Icon, type MetadataRow, Panel, Pill } from '@/ui';
+import { Breadcrumb, Button, ConfirmDelete, type MetadataRow, Panel, Pill } from '@/ui';
 import { type OrganizationOption, ServiceProviderFields } from './fields';
 
 type Props = PageProps<{
@@ -52,18 +52,7 @@ export default function ServiceProviderDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    SAML apps
-                </Link>
+                <Breadcrumb href={indexHref} label="SAML apps" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono">{provider.entityId}</h1>
                     {provider.wantAuthnRequestsSigned && <Pill tone="info">Signed requests</Pill>}

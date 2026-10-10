@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Appearance\BrandImages;
 use App\Platform\CspNonce;
 use App\Platform\PlaneResolver;
 use App\Platform\Turnstile;
@@ -86,8 +87,18 @@ final class SecurityHeaders
                 // hash instead breaks the day Cloudflare ships a new build of it.
                 "script-src 'self' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : '').$dev,
                 "style-src 'self' 'unsafe-inline'".$dev,
-                // https: allows customer-hosted org logos on the branded login.
-                "img-src 'self' data: https:",
+                /*
+                 * NO `https:`. It was here so a customer-hosted logo URL could be drawn on
+                 * the branded sign-in — which is exactly what made that logo a tracking
+                 * beacon: every visitor's browser reported to whoever hosted the image.
+                 * Logos and favicons are uploads served by this application now, so the
+                 * page can refuse every other image origin outright. `data:` stays for the
+                 * QR codes and the editor's preview of a file not yet saved.
+                 *
+                 * The only other origins admitted are the deployment's OWN asset hosts — a
+                 * CDN in front of the brand-asset store, when one is configured.
+                 */
+                "img-src 'self' data:".$this->imageOrigins(),
                 "font-src 'self' data:",
                 // …plus the dev server's websocket, which is how Fast Refresh reaches the
                 // page. Empty in every environment that is not a local install.
@@ -162,6 +173,17 @@ final class SecurityHeaders
         }
 
         return $response;
+    }
+
+    /**
+     * The deployment's own brand-asset origins, space-prefixed, or nothing. Asked of the
+     * store rather than configured here, so the policy follows wherever the images live.
+     */
+    private function imageOrigins(): string
+    {
+        $origins = app(BrandImages::class)->origins();
+
+        return $origins === [] ? '' : ' '.implode(' ', $origins);
     }
 
     /**

@@ -1,7 +1,18 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Badge, Button, ConfirmDelete, EmptyState, Field, Icon, Input, Panel, Select } from '@/ui';
+import {
+    Badge,
+    Breadcrumb,
+    Button,
+    ConfirmDelete,
+    EmptyState,
+    Field,
+    Icon,
+    Input,
+    Panel,
+    Select,
+} from '@/ui';
 import { useState } from 'react';
 import {
     reactivate,
@@ -54,18 +65,7 @@ export default function ProjectDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Projects
-                </Link>
+                <Breadcrumb href={indexHref} label="Projects" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     {/*
                         The h1 is the project's name rather than the word "Project", and

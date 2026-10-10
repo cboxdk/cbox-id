@@ -53,6 +53,7 @@ final readonly class OrganizationHeader
             slug: (string) $organization->slug,
             status: $organization->status->value,
             tabs: $this->tabs->for($organization->id, $tab),
+            subTabs: $this->tabs->subTabsFor($organization->id, $tab),
             indexHref: route('environment.organizations'),
             portalLinkHref: route('environment.organizations.portal-links.store', ['organization' => $organization->id]),
             portalIntents: $this->portalIntents($organization->id),

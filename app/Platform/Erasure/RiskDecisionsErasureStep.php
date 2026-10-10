@@ -46,7 +46,9 @@ final readonly class RiskDecisionsErasureStep implements ErasureStep
         $unlinked = RiskDecision::query()
             ->where('environment_id', $this->environments->current()?->environmentKey())
             ->where('email_hash', $this->trail->emailPseudonym($request->email))
-            ->update(['email_hash' => null]);
+            // The device pseudonym too: with the address gone it is the one thing left that
+            // would tie these attempts back to their browser.
+            ->update(['email_hash' => null, 'device_hash' => null]);
 
         return ErasureStepResult::of($this->name(), ['risk_decisions' => $unlinked]);
     }

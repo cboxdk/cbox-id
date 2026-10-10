@@ -27,8 +27,8 @@ use Cbox\Id\Whitelabel\Support\PaletteTokens;
  * reaching it would re-brand the sign-in page of every other tenant. A field left out keeps
  * its value; a colour that is neither hex nor oklch is refused, every bad token at once.
  *
- * The images are not here — see {@see BrandingFields}. The console uploads them beside this
- * action; the API leaves them as they are.
+ * The images are not here — see {@see BrandingFields}. They are uploaded through
+ * `branding.appearance.set`, on the console's Branding page and over the API alike.
  *
  * This action lives in the module, not in `app/Actions`: the module registers itself the
  * way an external package would, and names this directory to the action registry from its
@@ -42,7 +42,7 @@ use Cbox\Id\Whitelabel\Support\PaletteTokens;
     schema: 'WhitelabelBranding',
     tag: 'Branding',
     rest: ['PUT', '/branding/whitelabel'],
-    consoleRoutes: ['whitelabel.branding.save', 'environment.whitelabel.branding.save', 'environment.organizations.whitelabel.branding.save'],
+    consoleRoutes: ['branding.profile.update', 'environment.branding.profile.update', 'environment.organizations.branding.profile.update'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class SaveBranding implements Action

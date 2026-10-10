@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Models\RiskDecision;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
@@ -12,6 +13,7 @@ use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\RiskGuard;
 use Cbox\Id\Directory\Models\DirectoryGroup;
 use Cbox\Id\Governance\Models\CertificationItem;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -24,11 +26,18 @@ use Cbox\Id\OAuthServer\Models\SupportSession;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\CustomerApiKeys;
 use Cbox\Id\Organization\ValueObjects\NewCustomerApiKey;
+use Cbox\Id\Pipes\Contracts\Pipes;
+use Cbox\Id\Pipes\Enums\PipeConnectionStatus;
+use Cbox\Id\Pipes\Models\Pipe;
+use Cbox\Id\Pipes\Models\PipeConnection;
+use Cbox\Id\Pipes\Support\PipeSecrets;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
+use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -69,6 +78,7 @@ final class CrossTenantSweep
             'apps:id' => 'app',
             'secrets:secret_id' => 'app_secret',
             'exports:id' => 'audit_export',
+            'feature-flags:id' => 'feature_flag',
             'schemas:action' => 'audit_schema',
             'directories:id' => 'directory',
             'frontend-keys:id' => 'frontend_key',
@@ -85,17 +95,26 @@ final class CrossTenantSweep
             'portal-links:id' => 'portal_link',
             'provisioning-targets:id' => 'provisioning_target',
             'saml-apps:id' => 'saml_app',
-            'social-providers:id' => 'social_provider',
+            // A social provider BY ID — an organization's own, or the environment's — is a
+            // resource like any other; the account plane's `social:provider` below is a name.
+            'social-providers:id' => 'social_connection',
+            // Whether an organization inherits the environment's GitHub: a catalogue key.
+            'inherited:provider' => 'social_provider_key',
             'sod-policies:id' => 'sod_policy',
             'connections:id' => 'sso_connection',
             'domains:id' => 'sso_domain',
             'support-sessions:id' => 'support_session',
             'secrets:id' => 'vault_secret',
             'grants:client_id' => 'vault_grant',
+            'pipes:id' => 'pipe',
+            'connections:connection_id' => 'pipe_connection',
             'users:id' => 'member',
             'environment-roles:role_id' => 'staff_role',
             'sessions:session_id' => 'session',
             'webhooks:id' => 'webhook',
+            'rules:id' => 'radar_rule',
+            'lists:id' => 'radar_list_entry',
+            'decisions:id' => 'radar_decision',
         ],
         'workspace' => [
             'environments:environment_id' => 'environment',
@@ -112,6 +131,7 @@ final class CrossTenantSweep
             'passkeys:passkey_id' => 'passkey',
             'sessions:session_id' => 'session',
             'social:provider' => 'social_provider',
+            'pipes:provider' => 'pipe_provider',
         ],
         'platform' => [
             'environments:environment_id' => 'environment',
@@ -134,14 +154,14 @@ final class CrossTenantSweep
     /**
      * Slots that hold a NAME the caller chooses, not an id of something that exists apart
      * from its parent or from the caller: a scope key under an API, a grant named by the
-     * client it is for under a vault secret, a social provider (`github`) or an app
-     * (`client_id`) on the person's own account. The first two sit under a parent id the URL
+     * client it is for under a vault secret (or a pipe), a social provider or a connected
+     * service (`github`) or an app (`client_id`) on the person's own account. The first two sit under a parent id the URL
      * already fences, and the parent is swept; the last two are keyed to the person acting,
      * so there is nobody else's to name. The name itself is never swapped for a foreign one.
      *
      * @var list<string>
      */
-    public const array NAMES = ['api_scope', 'vault_grant', 'social_provider', 'application'];
+    public const array NAMES = ['api_scope', 'vault_grant', 'social_provider', 'social_provider_key', 'application', 'pipe_provider'];
 
     /**
      * Every scope an environment action asks for: the sweep's key holds all of them, so a
@@ -248,6 +268,7 @@ final class CrossTenantSweep
             $w['app_secret'] = $run('apps.secrets.list', ['id' => $w['app']])[0]['id'];
 
             $w['webhook'] = $run('webhooks.create', ['url' => "https://hooks-{$slug}.sweep.example/in", 'event_types' => ['user.created'], 'organization_id' => $w['organization']])['id'];
+            $w['feature_flag'] = $run('feature_flags.create', ['key' => 'sweep-'.preg_replace('/[^a-z0-9]/', '', strtolower($slug)), 'organizations' => [['id' => $w['organization'], 'enabled' => true]], 'users' => [['id' => $w['member']]]])['id'];
             $w['hook'] = $run('hooks.create', ['hook_point' => 'token_minting', 'url' => "https://hook-{$slug}.sweep.example/mint", 'organization_id' => $w['organization']])['id'];
             $w['log_stream'] = $run('log_streams.create', ['name' => 'Sweep SIEM '.$label, 'destination' => 'generic_json', 'endpoint_url' => "https://siem-{$slug}.sweep.example", 'auth' => 'none', 'organization_id' => $w['organization']])['id'];
             $w['directory'] = $run('directories.create', ['organization_id' => $w['organization'], 'name' => 'Sweep SCIM '.$label])['id'];
@@ -261,13 +282,22 @@ final class CrossTenantSweep
             $w['vault_secret'] = $run('token_vault.secrets.create', ['organization_id' => $w['organization'], 'name' => 'Sweep vault '.$label, 'provider' => 'github', 'secret' => 'ghp-sweep'])['id'];
             $w['vault_grant'] = 'sweep-agent-'.$slug;
             $run('token_vault.grants.create', ['id' => $w['vault_secret'], 'organization_id' => $w['organization'], 'client_id' => $w['vault_grant']]);
+            // One pipe per provider per environment: two worlds in one environment share it,
+            // and each has its own member's connection through it.
+            $w['pipe'] = self::pipe($run);
+            $run('pipes.grants.create', ['id' => $w['pipe'], 'client_id' => $w['app_client_id']]);
+            $w['pipe_connection'] = self::pipeConnection($w['pipe'], $w['member']);
             $w['saml_app'] = $run('saml_apps.create', ['entity_id' => "https://sp-{$slug}.sweep.example", 'acs_url' => "https://sp-{$slug}.sweep.example/acs", 'organization_id' => $w['organization']])['id'];
             $w['social_provider'] = $run('signin.social.set', ['organization_id' => $w['organization'], 'provider' => 'github', 'client_id' => 'gh-'.$slug, 'client_secret' => 'gh-secret'])['id'];
+            $w['social_connection'] = $w['social_provider'];
+            $w['social_provider_key'] = 'github';
             $w['frontend_key'] = $run('frontend_keys.create', ['name' => 'Sweep site '.$label, 'mode' => 'test', 'origins' => ["https://site-{$slug}.sweep.example"]])['id'];
             $w['environment_key'] = $run('keys.create', ['name' => 'Sweep worker '.$label, 'scopes' => ['users:read']])['id'];
             $w['audit_schema'] = "sweep_{$slug}.done";
             $run('audit_logs.schemas.create', ['action' => $w['audit_schema']]);
             $w['audit_export'] = $run('audit_logs.exports.create', ['organization_id' => $w['organization']])['id'];
+            $w['radar_rule'] = $run('radar.rules.create', ['name' => 'Sweep rule '.$label, 'action' => 'challenge', 'conditions' => [['field' => 'country', 'operator' => 'in', 'values' => ['DK']]]])['id'];
+            $w['radar_list_entry'] = $run('radar.lists.add', ['list' => 'deny', 'kind' => 'email_domain', 'value' => "radar-{$slug}.sweep.example"])['id'];
 
             $w['access_review'] = $run('access_reviews.create', ['name' => 'Sweep review '.$label, 'covers' => 'organization', 'organization_id' => $w['organization']])['id'];
             $w['access_review_item'] = (string) CertificationItem::query()->where('campaign_id', $w['access_review'])->value('id');
@@ -284,11 +314,60 @@ final class CrossTenantSweep
             ))->key->id;
             $w['agent_request'] = self::agentRequest($w['member']);
             $w['support_session'] = self::supportSession($w['member'], $w['organization'], $w['app_client_id']);
+            // A Radar decision is written by a sign-in attempt, not by an action: one scored
+            // attempt on this environment's host.
+            app(RiskGuard::class)->assess(Request::create('/login', 'POST', server: ['REMOTE_ADDR' => '198.51.100.9']), 'login', "member-{$slug}@sweep.example");
+            $w['radar_decision'] = (string) RiskDecision::query()->where('environment_id', $environmentId)->orderByDesc('id')->value('id');
 
             return $w;
         } finally {
             $previous === null ? $context->set(GenericEnvironment::of('env_test')) : $context->set($previous);
         }
+    }
+
+    /**
+     * The environment's GitHub pipe, configured through the action when it is not there yet.
+     *
+     * @param  Closure(string, array<string, mixed>): array<mixed>  $run
+     */
+    public static function pipe(?Closure $run = null): string
+    {
+        $existing = Pipe::query()->where('provider', 'github')->value('id');
+
+        if (is_string($existing)) {
+            return $existing;
+        }
+
+        if ($run === null) {
+            return app(Pipes::class)->configure('github', 'gh-sweep', 'gh-sweep-secret')->id;
+        }
+
+        $id = $run('pipes.create', ['provider' => 'github', 'client_id' => 'gh-sweep', 'client_secret' => 'gh-sweep-secret'])['id'] ?? null;
+
+        return is_string($id) ? $id : throw new \LogicException('pipes.create returned no id');
+    }
+
+    /**
+     * A person's connected GitHub account through $pipeId. Not made through the connect flow:
+     * that is a browser at the provider, and what the sweep needs is the row and its vaulted
+     * token, exactly as the flow leaves them.
+     */
+    public static function pipeConnection(string $pipeId, string $userId): string
+    {
+        $pipe = Pipe::query()->findOrFail($pipeId);
+        $connection = new PipeConnection;
+        $connection->fill([
+            'pipe_id' => $pipe->id,
+            'provider' => $pipe->provider,
+            'user_id' => $userId,
+            'status' => PipeConnectionStatus::Active,
+            'access_secret_id' => app(PipeSecrets::class)->store($pipe, $userId, 'access', 'gho-sweep-'.$userId),
+            'scopes' => $pipe->scopes,
+            'connected_at' => now(),
+        ]);
+        $connection->save();
+
+        return $connection->id;
     }
 
     /**

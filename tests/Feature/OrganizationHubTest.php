@@ -84,7 +84,7 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
         OrganizationTabs::DOMAINS => 'environment/organizations/tabs/domains',
         OrganizationTabs::ROLES => 'console/roles/index',
         OrganizationTabs::API_KEYS => 'environment/organizations/tabs/api-keys',
-        OrganizationTabs::BRANDING => 'console/appearance',
+        OrganizationTabs::BRANDING => 'console/branding',
         OrganizationTabs::POLICY => 'console/auth-policy',
         OrganizationTabs::SUPPORT => 'environment/organizations/tabs/support',
         OrganizationTabs::AUDIT => 'console/audit',
@@ -99,8 +99,17 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
                 ->component($component)
                 ->where('organizationHub.id', $orgId)
                 ->where('organizationHub.name', 'Tenant Co')
-                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 14
-                    && $drawn->firstWhere('current', true)['key'] === $tab));
+                // Nine tabs, the page's group lit — fourteen in one row ran off a laptop's
+                // screen — and the group's own pages as a second row where it has several.
+                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 9
+                    && $drawn->firstWhere('current', true)['key'] === OrganizationTabs::groupOf($tab))
+                ->where('organizationHub.subTabs', fn (Collection $drawn): bool => $drawn->isEmpty()
+                    || $drawn->firstWhere('current', true)['key'] === $tab));
+    }
+
+    // Every page has a tab to be found under: none is reachable only by URL.
+    foreach (array_keys($tabs) as $tab) {
+        expect(OrganizationTabs::groupOf($tab))->not->toBeNull("[{$tab}] is under no tab");
     }
 })->group('security');
 

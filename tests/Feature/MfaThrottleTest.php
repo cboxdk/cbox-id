@@ -45,7 +45,7 @@ function subjectWithTotp(string $email = 'mfa@acme.test'): array
     // the later "correct code" assertion would pass because of the replay guard rather
     // than the throttle, and the test would prove nothing about the thing it is named
     // after. It did exactly that until this line changed.
-    app(Mfa::class)->confirmTotp($subject->id, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+    confirmTotpForTest($subject->id, $enrollment->secret);
 
     return [$subject->id, $enrollment->secret];
 }

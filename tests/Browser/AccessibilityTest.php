@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\Sudo;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\SignInProviders;
+use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -162,7 +165,7 @@ it('has no accessibility issues on the ported console pages', function (string $
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Audit log'],
     'settings' => ['/settings', 'Settings'],
-    'appearance' => ['/appearance', 'Appearance'],
+    'branding' => ['/branding', 'Branding'],
     'sign-in-rules' => ['/sign-in-rules', 'Authentication policy'],
     'clients' => ['/apps', 'Applications'],
     'connections' => ['/single-sign-on', 'Enterprise SSO'],
@@ -177,6 +180,8 @@ it('has no accessibility issues on the ported console pages', function (string $
     'log-streams' => ['/log-streaming', 'Log streams'],
     'usage' => ['/usage', 'Usage'],
     'social-providers' => ['/social-sign-in', 'Social login'],
+    // Every way in, on the console a single-tenant install has.
+    'sign-in-methods' => ['/sign-in-methods', 'Sign-in methods'],
     'get-started' => ['/get-started', 'Set up Acme'],
     'approvals' => ['/approvals', 'Approvals'],
     'dashboard' => ['/dashboard', 'Welcome back'],
@@ -228,6 +233,18 @@ function environmentAdminForAudit(): void
         nameIdFormat: NameIdFormat::cases()[0],
         nameIdAttribute: 'email',
     ));
+
+    // Social login with every kind of row on it: the environment's, an organization's own
+    // in the environment's place, one turned off, and an organization's opt-out.
+    $providers = app(SignInProviders::class);
+    $connections = app(Connections::class);
+
+    foreach ([[null, 'github'], [null, 'discord'], [$org->id, 'github']] as [$owner, $key]) {
+        $connection = $providers->create($owner, $key, ConnectionType::OAuth2, ucfirst($key), ['provider' => $key, 'client_id' => 'a11y', 'client_secret' => 'a11y']);
+        $connections->activate($owner, $connection->id);
+    }
+
+    $providers->stopInheriting($org->id, 'discord');
 }
 
 it('has no accessibility issues on the ported environment console pages', function (string $path, string $heading): void {
@@ -248,7 +265,16 @@ it('has no accessibility issues on the ported environment console pages', functi
     // The SAME page as `/usage` on the other plane, and the reason that page exists: the
     // environment plane had a primitive copy of these counters called "Analytics".
     'analytics' => ['/admin/usage', 'Usage'],
-    'social-sign-in' => ['/admin/social-sign-in', 'Social login'],
+    'social-sign-in' => ['/admin/social-sign-in', 'On every sign-in page'],
+    // "Turn on Google": the setup form, for the whole environment by default.
+    'social-sign-in-setup' => ['/admin/social-sign-in?provider=google', 'Who is it for?'],
+    // Every way in on one page, and every organization's domains in one list.
+    'sign-in-methods' => ['/admin/sign-in-methods', 'Sign-in methods'],
+    // The environment's own passkey, magic-link and session switches.
+    'authentication-policy' => ['/admin/sign-in-rules', 'Sign-in methods and sessions'],
+    'domains' => ['/admin/domains', 'No organization has claimed a domain yet'],
+    // The comparison every authorization page ends with.
+    'roles' => ['/admin/roles', 'Roles, relationships, flags or entitlements?'],
 ])->group('a11y');
 
 /**
@@ -654,7 +680,7 @@ it('has no accessibility issues on any tab of an organization\'s page', function
     'domains' => ['/domains', 'Email domains'],
     'roles' => ['/roles', 'Roles'],
     'api keys' => ['/api-keys', 'Member API keys'],
-    'branding' => ['/appearance', 'Appearance'],
+    'branding' => ['/branding', 'Branding'],
     'policy' => ['/policy', 'Authentication policy'],
     'support' => ['/support', 'Support sessions'],
     'audit log' => ['/audit', 'Audit log'],

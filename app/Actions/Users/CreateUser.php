@@ -17,6 +17,7 @@ use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\PolicyViolation;
 use Cbox\Id\Identity\Models\User;
@@ -69,6 +70,12 @@ final readonly class CreateUser implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $email = trim($context->string('email'));
+
+        // Asked before anything is created: a user made and then refused their link is a
+        // half-done request the caller has to notice and undo.
+        if ($context->boolean('send_sign_in_link') && ! app(SignInMethods::class)->magicLinkEnabled()) {
+            throw ActionRefused::because('magic_link_disabled', 'Magic links are turned off for this environment, so there is no sign-in link to send.', 'send_sign_in_link');
+        }
 
         if ($this->subjects->findByEmail($email) !== null) {
             throw ActionRefused::because('email_taken', 'A user with that email already exists in this environment.', 'email');

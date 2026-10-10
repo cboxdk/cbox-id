@@ -1,11 +1,11 @@
-import { Link, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     Panel,
@@ -55,18 +55,7 @@ export default function CreateWebhook({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Webhooks
-            </Link>
+            <Breadcrumb href={indexHref} label="Webhooks" />
 
             <h1 className="mt-2 cbx-page-title">New webhook</h1>
             <p className="cbx-page-desc">

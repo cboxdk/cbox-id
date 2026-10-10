@@ -85,6 +85,19 @@ class AppManagementScopes extends EnumManagementScopes
             'description' => 'Define, replace and delete the schemas audit events are validated against, and change how long they are kept — shortening retention deletes older events for good.',
             'critical' => true,
         ],
+        'fga:read' => [
+            'label' => 'Read fine-grained authorization',
+            'description' => 'Read the authorization schema and its tuples, and ask checks and list queries — "may this user edit this document?", "which documents can they see?". What an app\'s backend needs to enforce access, and nothing more.',
+        ],
+        'fga:write' => [
+            'label' => 'Write relationship tuples',
+            'description' => 'Write and delete relationship tuples — who owns, edits or views which of your app\'s resources. Grants and revokes access in your app the moment it is written.',
+        ],
+        'fga:schema' => [
+            'label' => 'Change the authorization schema',
+            'description' => 'Replace the authorization schema — the resource types and how each relation is decided. Changes the answer to every check in this environment at once.',
+            'critical' => true,
+        ],
         'signin:read' => [
             'label' => 'Read the authentication policy',
             'description' => 'Read the authentication policy, the social login providers and the legacy login declaration — never a provider\'s secret.',
@@ -92,6 +105,19 @@ class AppManagementScopes extends EnumManagementScopes
         'signin:write' => [
             'label' => 'Change how people sign in',
             'description' => 'Change password, MFA and SSO rules, self-service sign-up, social login providers and the legacy login approval.',
+        ],
+        'radar:read' => [
+            'label' => 'Read Radar',
+            'description' => 'Read Radar\'s mode, built-in and custom rules, allow and deny lists, and the decisions explorer — why a sign-in or sign-up was allowed, challenged or blocked. Never an IP or address from a decision.',
+        ],
+        'radar:write' => [
+            'label' => 'Change Radar rules and lists',
+            'description' => 'Write, reorder and delete Radar rules, tune the built-in ones, and add to or remove from the allow and deny lists.',
+        ],
+        'radar:manage' => [
+            'label' => 'Switch Radar enforcement',
+            'description' => 'Switch Radar between monitor (record only) and enforce (block and challenge) — the environment\'s sign-in protection, on or off.',
+            'critical' => true,
         ],
         'frontend_keys:read' => [
             'label' => 'Read publishable keys',
@@ -173,6 +199,22 @@ class AppManagementScopes extends EnumManagementScopes
         'token_vault:write' => [
             'label' => 'Manage the token vault',
             'description' => 'Store, rotate and revoke downstream credentials, and grant or withdraw an app\'s right to lease one. Not the vault.manage / vault.lease scopes an app\'s own token carries.',
+        ],
+        'feature_flags:read' => [
+            'label' => 'Read feature flags',
+            'description' => 'List feature flags with their targeting, and evaluate every flag for a user in an organization — what an app\'s backend asks when it has no token in hand.',
+        ],
+        'feature_flags:write' => [
+            'label' => 'Manage feature flags',
+            'description' => 'Define, switch, retarget and delete feature flags — which features which users and organizations get.',
+        ],
+        'pipes:read' => [
+            'label' => 'Read pipes',
+            'description' => 'List the third-party providers people can connect their accounts to, which apps may lease those tokens, and who has connected — never a client secret or a token.',
+        ],
+        'pipes:write' => [
+            'label' => 'Manage pipes',
+            'description' => 'Configure, change and remove pipes, grant or withdraw an app\'s right to lease people\'s connected-account tokens, and disconnect a person\'s account.',
         ],
         'portal_links:read' => [
             'label' => 'Read Admin Portal links',

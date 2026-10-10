@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\PointAtFirstRun;
+use App\Platform\Appearance\Appearance;
+use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
@@ -24,6 +26,7 @@ use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -34,6 +37,7 @@ use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -608,10 +612,11 @@ function enableSocialProvider(array $changes = []): TestResponse
  */
 function saveBranding(array $changes = [], bool $environmentPlane = false): TestResponse
 {
-    $name = $environmentPlane ? 'environment.whitelabel.branding' : 'whitelabel.branding';
+    // The white-label half of the ONE Branding page — its own form, its own action.
+    $name = $environmentPlane ? 'environment.branding' : 'branding';
 
     return test()->from(route($name))
-        ->post(route($name.'.save'), [
+        ->post(route($name.'.profile.update'), [
             'palette' => [],
             'appName' => 'Acme Identity',
             'emailFromName' => '',
@@ -2129,4 +2134,59 @@ function platformSubjectId(string $email): string
     expect($subject)->not->toBeNull("no platform-root subject {$email}");
 
     return (string) $subject?->id;
+}
+
+/**
+ * A real, decodable PNG as the base64 data: URI the Appearance editor and the management
+ * API send for a logo or favicon ({@see BrandImageUpload}).
+ */
+function pngDataUri(int $width = 40, int $height = 20): string
+{
+    $image = imagecreatetruecolor($width, $height);
+    imagefill($image, 0, 0, (int) imagecolorallocate($image, 30, 90, 200));
+
+    ob_start();
+    imagepng($image);
+    $bytes = (string) ob_get_clean();
+
+    return 'data:image/png;base64,'.base64_encode($bytes);
+}
+
+/**
+ * Press Save in the theme editor with these images changed — a data URI to store, null to
+ * remove — at the organization's own altitude on the organization console.
+ *
+ * @param  array<string, string|null>  $images
+ */
+function saveThemeImages(array $images, string $route = 'branding', string $preset = 'cbox'): TestResponse
+{
+    return test()->from(route($route))
+        ->post(route($route.'.update'), [
+            'theme' => Appearance::fromPreset($preset)->toArray(),
+            'images' => $images,
+            'environmentDefault' => false,
+        ]);
+}
+
+/**
+ * Confirm a TOTP factor with the PREVIOUS step's code, and fail loudly if it does not take.
+ *
+ * The previous step is deliberate: confirming with the current one advances the replay
+ * guard to it, and a later "correct code" assertion then passes because of the replay guard
+ * rather than whatever the test is about. But the code is minted for "now − 30 s" and
+ * checked a moment later, and if a 30-second step ends in between, "one back" becomes two
+ * back — outside the window — and `confirmTotp()` answers false. Ignoring that left a person
+ * with no second factor whom sign-in let straight in, which failed a test on a slow CI
+ * runner. So: wait out the last seconds of a step, and assert the confirmation.
+ */
+function confirmTotpForTest(string $subjectId, string $secret): void
+{
+    while (time() % 30 >= 25) {
+        usleep(200_000);
+    }
+
+    expect(app(Mfa::class)->confirmTotp(
+        $subjectId,
+        app(TotpAuthenticator::class)->codeAt($secret, time() - 30),
+    ))->toBeTrue('the TOTP factor this test depends on was not confirmed');
 }

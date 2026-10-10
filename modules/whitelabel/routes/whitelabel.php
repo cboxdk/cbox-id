@@ -4,37 +4,21 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsoleRoutes;
 use Cbox\Id\Whitelabel\Http\Controllers\BrandAssetController;
-use Cbox\Id\Whitelabel\Http\Controllers\BrandingController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Both planes, one component — the middleware stacks live in ConsoleRoutes.
+ * THIS MODULE HAS NO CONSOLE PAGE OF ITS OWN ANY MORE.
  *
- * The brand-profile table has always had two altitudes: a row per organization, and one
- * row with `organization_id IS NULL` that every organization inherits. The page could
- * only ever be opened by an organization admin, so the environment default — the thing
- * the data model was shaped around, and the only altitude an environment administrator
- * owns — had no editor at all. A previous fix pinned the page to the organization
- * altitude to stop one tenant re-branding the whole environment; this gives the missing
- * altitude to the plane it belongs to instead of leaving it unreachable.
+ * Its branding page and the host's Appearance page both set the logo and the colours, and
+ * the rail read "Branding › Branding". They are one page now, the host's Branding page
+ * (`/branding`, `/admin/branding`, an organization's `/admin/organizations/{id}/branding`),
+ * which edits this module's half — name, email sender, welcome mail, console palette —
+ * through this module's own action, `branding.whitelabel.set`, asked for by name. Removed,
+ * the module takes that section of the page with it and nothing else.
  */
-ConsoleRoutes::page(
-    feature: 'whitelabel',
-    uri: '/branding',
-    component: [BrandingController::class, 'index'],
-    name: 'whitelabel.branding',
-);
 
 // One URL on both consoles — the environment console always said `/branding`.
 ConsoleRoutes::moved('/settings/branding', '/branding');
-
-ConsoleRoutes::action(
-    feature: 'whitelabel',
-    verb: 'post',
-    uri: '/branding',
-    action: [BrandingController::class, 'save'],
-    name: 'whitelabel.branding.save',
-);
 
 /*
  * An uploaded logo or favicon ({@see \Cbox\Id\Whitelabel\Assets\DatabaseBrandAssetStore}).

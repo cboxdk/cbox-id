@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Mail\EmailVerificationMail;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\IntendedUrl;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
@@ -119,6 +120,18 @@ final class SocialController extends Controller
         // already offers exactly these two things and will still be the right place to
         // do them tomorrow. Prompted, not forced: holding someone on a form at the very
         // first moment of a one-click sign-in is how a one-click sign-in stops being one.
+        /*
+         * WHERE THEY WERE GOING, FIRST. Somebody who followed a TV's link to approve it,
+         * or an app's sign-in, signed in to get THERE — this door used to send every one of
+         * them to the dashboard, so the device page they came from was lost and its code
+         * had to be typed by hand. The same rule the password door has always used.
+         */
+        $intended = IntendedUrl::pullForSubject();
+
+        if ($intended !== null) {
+            return redirect()->to($intended);
+        }
+
         if ($provisioning->created) {
             return redirect()->route('account')->with(
                 'status',

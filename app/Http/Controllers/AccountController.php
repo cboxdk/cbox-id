@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Account\RemovePasskey;
+use App\Actions\Account\RemoveSmsFactor;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
 use App\Http\Controllers\Console\RunsActions;
@@ -22,13 +23,21 @@ use BaconQrCode\Writer;
 use Carbon\CarbonInterface;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\PrivilegedSubjects;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\SignInMethods;
+use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
+use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Exceptions\SmsFactorRefused;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\LinkedIdentity;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
+use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
+use Cbox\Id\Otp\Sms\Exceptions\SmsSendRefused;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -61,7 +70,7 @@ final readonly class AccountController extends PageController
 
     private const ENROL_DECAY = 300;
 
-    public function show(Request $request, Mfa $mfa, MfaMandate $mandate, Subjects $subjects, OperatorProviders $providers): Response
+    public function show(Request $request, Mfa $mfa, MfaMandate $mandate, Subjects $subjects, OperatorProviders $providers, SmsFactors $sms): Response
     {
         $me = app(CurrentUser::class);
 
@@ -97,6 +106,7 @@ final readonly class AccountController extends PageController
                 'offered' => $mandate->offersEnrolment($subjectId),
                 'recoveryRemaining' => $mfa->remainingRecoveryCodes($subjectId),
             ],
+            'smsFactor' => $this->smsFactorProps($subjectId, $mfa, $mandate, $sms),
             'passkeys' => WebAuthnCredential::query()
                 ->where('user_id', $subjectId)
                 ->orderByDesc('created_at')
@@ -110,6 +120,10 @@ final readonly class AccountController extends PageController
                     'signCount' => $passkey->sign_count,
                     'removeHref' => route('account.passkeys.destroy', $passkey->id),
                 ])->values()->all(),
+            // Whether a passkey may be ADDED here. Off for the environment (or the deployment)
+            // takes the enrolment button away; the list stays, so a person can still see and
+            // remove what they enrolled before.
+            'passkeysEnabled' => app(SignInMethods::class)->passkeysEnabled(),
             'socialProviders' => $this->socialProviders($providers, $subjects, $subjectId),
             'session' => $session === null ? null : [
                 'id' => $session->id,
@@ -123,6 +137,9 @@ final readonly class AccountController extends PageController
                 'enrolMfa' => route('account.mfa.enrol'),
                 'confirmMfa' => route('account.mfa.confirm'),
                 'recoveryCodes' => route('account.mfa.recovery-codes'),
+                'enrolSms' => route('account.mfa.sms.enrol'),
+                'confirmSms' => route('account.mfa.sms.confirm'),
+                'removeSms' => route('account.mfa.sms.destroy'),
                 'signOutOthers' => route('account.sessions.revoke-others'),
                 'logout' => route('logout'),
                 'activity' => route('account.activity'),
@@ -250,12 +267,107 @@ final readonly class AccountController extends PageController
         abort_unless($me->check(), 403);
 
         // Nothing to regenerate for somebody with no confirmed factor, and minting codes
-        // that unlock a factor they do not have is worse than doing nothing.
-        abort_unless($mfa->hasConfirmedTotp($me->id()), 403);
+        // that unlock a factor they do not have is worse than doing nothing. A confirmed
+        // phone number is a factor too.
+        abort_unless($mfa->hasConfirmedTotp($me->id()) || app(SmsFactors::class)->isEnrolled($me->id()), 403);
 
         $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
 
         return back()->with('status', 'New recovery codes generated. Your previous codes no longer work.');
+    }
+
+    /**
+     * Start adding a phone number as a second factor: the number is stored sealed and
+     * unconfirmed, and a code is texted to it. A CEREMONY, like the authenticator app's —
+     * the phone itself has to take part — so it stays on this page rather than becoming an
+     * action an API could run.
+     *
+     * The number is never echoed back in full: the page is told the masked form, on the
+     * flash channel, and draws the confirmation step from that.
+     */
+    public function enrolSms(Request $request, MfaMandate $mandate, SmsFactors $sms): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
+
+        abort_unless($me->check(), 403);
+        abort_unless($mandate->offersEnrolment($me->id()), 403);
+
+        $request->validate([
+            'phone' => ['required', 'string', 'max:32'],
+            'country' => ['nullable', 'string', 'size:2', 'alpha'],
+        ]);
+
+        try {
+            $sent = $sms->beginEnrolment(
+                $me->id(),
+                (string) $request->string('phone'),
+                $request->filled('country') ? strtoupper((string) $request->string('country')) : null,
+                $request->ip(),
+                app()->getLocale(),
+            );
+        } catch (SmsFactorRefused $refused) {
+            return back()->withErrors(['phone' => $refused->getMessage()]);
+        } catch (OtpRateLimitExceeded|SmsSendRefused) {
+            return back()->withErrors(['phone' => 'Too many codes have been sent. Wait a few minutes and try again.']);
+        } catch (SmsDeliveryFailed $failed) {
+            report($failed);
+
+            return back()->withErrors(['phone' => 'We could not send the text message. Check the number and try again.']);
+        }
+
+        $this->inertia->flash('smsEnrolmentSentTo', $sent->maskedNumber);
+
+        return back();
+    }
+
+    /**
+     * Prove the number with the texted code. The first second factor someone confirms also
+     * gets them recovery codes, exactly as the authenticator app does: SMS is the factor
+     * most likely to be lost with the phone.
+     */
+    public function confirmSms(Request $request, Mfa $mfa, SmsFactors $sms): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
+
+        abort_unless($me->check(), 403);
+
+        $request->validate(['smsCode' => ['required', 'regex:/^\d{6,10}$/']]);
+
+        // The same bound as the authenticator's confirmation, on its own key.
+        $key = 'mfa-sms-enrol|'.$me->id();
+
+        if (RateLimiter::tooManyAttempts($key, self::ENROL_ATTEMPTS)) {
+            return back()->withErrors([
+                'smsCode' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+            ]);
+        }
+
+        if (! $sms->confirmEnrolment($me->id(), (string) $request->string('smsCode'), $request->ip())) {
+            RateLimiter::hit($key, self::ENROL_DECAY);
+
+            return back()->withErrors(['smsCode' => 'That code did not match, or it has expired. Try again or send a new one.']);
+        }
+
+        RateLimiter::clear($key);
+
+        if ($mfa->remainingRecoveryCodes($me->id()) === 0) {
+            $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
+
+            return back()->with('status', 'Text-message codes are on. Save your recovery codes below.');
+        }
+
+        return back()->with('status', 'Text-message codes are on.');
+    }
+
+    /**
+     * Remove your phone number through {@see RemoveSmsFactor}, the account plane's action —
+     * your authenticator app, passkeys and recovery codes stay.
+     */
+    public function removeSms(): RedirectResponse
+    {
+        $result = $this->act(RemoveSmsFactor::class, []);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Phone number removed.');
     }
 
     /**
@@ -290,6 +402,43 @@ final readonly class AccountController extends PageController
             ->each(fn (string $id) => $sessions->revoke($id));
 
         return back()->with('status', 'Signed out of all other sessions.');
+    }
+
+    /**
+     * The SMS second factor as the page draws it — or null when this environment does not
+     * offer it at all, so the panel is simply absent rather than a control that can only
+     * ever refuse.
+     *
+     * `blocked` is the administrator rule said up front: an administrator adds SMS only next
+     * to an authenticator app or a passkey, and finding that out after typing a number and
+     * waiting for a text would be the wrong order.
+     *
+     * @return array{enrolled: bool, pending: bool, maskedNumber: string|null, countries: list<string>, blocked: bool, needsStrongerFactor: bool}|null
+     */
+    private function smsFactorProps(string $subjectId, Mfa $mfa, MfaMandate $mandate, SmsFactors $sms): ?array
+    {
+        $policy = app(SmsFactorPolicies::class)->forEnvironment();
+        $details = $sms->details($subjectId);
+
+        if ((! $policy->enabled || ! $mandate->offersEnrolment($subjectId)) && $details === null) {
+            return null;
+        }
+
+        $hasStronger = $mfa->hasConfirmedTotp($subjectId)
+            || WebAuthnCredential::query()->where('user_id', $subjectId)->exists();
+
+        return [
+            'enrolled' => $details?->confirmed === true,
+            'pending' => $details !== null && ! $details->confirmed,
+            'maskedNumber' => $details?->maskedNumber,
+            'countries' => $policy->enabled ? $policy->allowedCountries : [],
+            'blocked' => $policy->enabled
+                && $details === null
+                && $policy->privilegedNeedStrongerFactor
+                && ! $hasStronger
+                && app(PrivilegedSubjects::class)->isPrivileged($subjectId),
+            'needsStrongerFactor' => $sms->needsStrongerFactor($subjectId),
+        ];
     }
 
     /**

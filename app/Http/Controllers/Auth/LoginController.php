@@ -13,6 +13,7 @@ use App\Platform\Appearance\BrandContext;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\LastSignInMethod;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
@@ -28,6 +29,7 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -90,6 +92,19 @@ final readonly class LoginController extends PageController
             'pendingLink' => $auth->pendingLink()?->label(),
             'signupOpen' => $signup->isOpen(),
             'providers' => SocialProviderProps::forOrganization($organization?->id),
+            // The environment's own switches under the deployment's: a button for a method
+            // that is off would lead to a refusal, so it is not drawn.
+            'methods' => [
+                'passkeys' => app(SignInMethods::class)->passkeysEnabled(),
+                'magicLink' => app(SignInMethods::class)->magicLinkEnabled(),
+            ],
+            /*
+             * WHICH WAY THIS DEVICE SIGNED IN LAST — `google`, `passkey`, `password`,
+             * `magic_link`, `sso` — so the page can badge it "Last used". Read here, from a
+             * first-party HttpOnly cookie, rather than by script: the page draws a prop and
+             * nothing in the browser reads cookies. See {@see LastSignInMethod}.
+             */
+            'lastUsed' => LastSignInMethod::read($request),
         ]);
     }
 
@@ -142,9 +157,11 @@ final readonly class LoginController extends PageController
                 trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)));
         }
 
-        // Risk-score the attempt: credential stuffing, bot velocity, IP reputation, Tor.
-        // Logged for review. Under enforcement a Reject hard-blocks, and an
-        // elevated-but-not-reject outcome demands the emailed step-up below.
+        // Risk-score the attempt and let Radar decide: credential stuffing, bot velocity,
+        // IP reputation, Tor, impossible travel, the environment's own rules and lists.
+        // Recorded for review. Under enforcement a block refuses with the generic sentence
+        // (telling an attacker WHICH rule fired is telling them what to change), and a
+        // challenge demands a second factor below.
         $assessment = $risk->assess($request, 'login', $request->email());
 
         if ($risk->shouldBlock($assessment)) {
@@ -160,6 +177,9 @@ final readonly class LoginController extends PageController
 
         if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
+            // Counted for Radar too: repeated failures on one address, from anywhere, are
+            // what its account-attack rule watches.
+            $risk->failed($request, $request->email());
 
             return $this->refuse($request, __('auth.login.invalid_credentials'));
         }
