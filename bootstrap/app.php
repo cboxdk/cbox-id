@@ -323,6 +323,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Never flashed back into the session on a validation failure: the Appearance
+        // editor sends an uploaded logo and favicon as base64 data URIs under `images`, up
+        // to a megabyte, and a refused save would otherwise write all of it into the
+        // session row. The editor still holds the file; nothing is lost.
+        $exceptions->dontFlash(['images', 'images.logo', 'images.favicon']);
+
         // One error shape on the REST API, actually honoured. Both OpenAPI specs
         // promise `{error, message}` on every failure and account.yaml marks both
         // REQUIRED — but an empty withExceptions() meant `$request->validate()`

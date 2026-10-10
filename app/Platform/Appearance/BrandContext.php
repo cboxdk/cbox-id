@@ -121,11 +121,28 @@ final class BrandContext
         return is_string($name) && $name !== '' ? $name : null;
     }
 
-    /** The organization's logo, else the environment's, else none. */
+    /**
+     * The organization's uploaded logo, else the environment's, else none — always an
+     * image this application serves ({@see BrandImages}).
+     *
+     * NOT `brand_logo_url`. That was an https URL typed on the Appearance page and drawn
+     * as-is, so every visitor of a branded sign-in page fetched an image from whoever hosted
+     * it — their address, browser and arrival time handed to a third party on the one page
+     * where it matters most. Stored values are left in settings (nothing fetches them, ever)
+     * and are no longer drawn; the console asks the administrator to upload instead.
+     */
     public function logo(): ?string
     {
-        return $this->logoIn($this->organization?->settings)
-            ?? $this->logoIn($this->environment()?->settings);
+        return $this->image(BrandImage::Logo);
+    }
+
+    /**
+     * The uploaded favicon for this door, or null for the platform's own. Only on a page
+     * that is branded at all ({@see self::name()}): the console's tab keeps Cbox's icon.
+     */
+    public function favicon(): ?string
+    {
+        return $this->name() === null ? null : $this->image(BrandImage::Favicon);
     }
 
     /**
@@ -187,14 +204,15 @@ final class BrandContext
         return $narrowed;
     }
 
-    private function logoIn(mixed $settings): ?string
+    private function image(BrandImage $kind): ?string
     {
-        if (! is_array($settings)) {
-            return null;
-        }
+        $images = app(BrandImages::class);
+        $organizationId = $this->organization?->id;
 
-        $logo = $settings['brand_logo_url'] ?? null;
+        $own = is_string($organizationId) ? $images->url($kind, $organizationId) : null;
 
-        return is_string($logo) && $logo !== '' ? $logo : null;
+        // The environment's only where there IS one: a request with no environment pinned
+        // (the console's own root) has no environment default to fall back on.
+        return $own ?? ($this->environment() !== null ? $images->url($kind, null) : null);
     }
 }

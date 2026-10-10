@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Mail\InvitationMail;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\NewInvitation;
@@ -41,7 +44,6 @@ use Inertia\Testing\AssertableInertia;
 | pictures are in tests/Browser/AuthPagesTest.php.
 */
 
-const DOOR_LOGO = 'https://cdn.cboxtax.test/logo.svg';
 const DOOR_VERIFIER = 'a-door-branding-verifier-of-sufficient-length-0123456789';
 
 beforeEach(function (): void {
@@ -65,15 +67,25 @@ function brandedDoorEnvironment(): Environment
     $environment = serveOnTestHost($vendor->environment);
     $environment->forceFill([
         'name' => 'cboxtax',
-        // A freshly provisioned environment has no settings yet; this is its Appearance
-        // page's logo field, saved.
-        'settings' => ['brand_logo_url' => DOOR_LOGO],
+        // A REMOTE logo URL saved before logos became uploads. It must never be drawn: an
+        // image on another host is a beacon reporting every visitor of the sign-in page.
+        'settings' => ['brand_logo_url' => 'https://cdn.cboxtax.test/logo.svg'],
     ])->save();
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
+
+    // The logo the Appearance page uploaded — served by this application.
+    app(BrandImages::class)->store(BrandImageUpload::fromDataUri(BrandImage::Logo, pngDataUri()), null);
+    app(BrandImages::class)->store(BrandImageUpload::fromDataUri(BrandImage::Favicon, pngDataUri(32, 32)), null);
     app(SelfServiceSignup::class)->set($environment, true);
 
     return $environment;
+}
+
+/** The uploaded logo as the doors draw it. */
+function doorLogo(): ?string
+{
+    return app(BrandImages::class)->url(BrandImage::Logo, null);
 }
 
 function doorClient(): string
@@ -108,7 +120,16 @@ function assertEnvironmentDoor(TestResponse $response, string $component): void
     $response->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component($component)
-            ->where('brand', ['name' => 'cboxtax', 'logo' => DOOR_LOGO]));
+            ->where('brand', ['name' => 'cboxtax', 'logo' => doorLogo()]));
+
+    // Our own path, not the remote URL that is still in settings — and root-relative, so
+    // it resolves on whichever host the door is served.
+    expect(doorLogo())->toStartWith('/brand-assets/brand/')
+        ->and((string) $response->getContent())->not->toContain('cdn.cboxtax.test');
+
+    // The tab carries the brand's own favicon, from this application too.
+    expect((string) $response->getContent())
+        ->toContain('<link rel="icon" href="'.app(BrandImages::class)->url(BrandImage::Favicon, null).'">');
 
     // The first paint's title, before any script runs.
     expect((string) $response->getContent())->toMatch('#<title>[^<]*· cboxtax</title>#')
@@ -190,8 +211,9 @@ it('keeps a single-tenant install\'s doors as its operator named them', function
 });
 
 it('says the brand, not a logo that is not there, when none was uploaded', function (): void {
-    $environment = brandedDoorEnvironment();
-    $environment->refresh()->forceFill(['settings' => array_diff_key($environment->settings, ['brand_logo_url' => true])])->save();
+    brandedDoorEnvironment();
+    // Only the legacy remote URL is left, and it is not a logo any more.
+    app(BrandImages::class)->remove(BrandImage::Logo, null);
 
     test()->get(route('signup'))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('brand', ['name' => 'cboxtax', 'logo' => null]));

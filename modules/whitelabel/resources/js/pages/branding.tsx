@@ -19,9 +19,11 @@ type Props = PageProps<{
     appName: string;
     emailFromName: string;
     emailTemplate: string;
-    /** Server-derived, read-only — see the controller for why they are never sent back. */
+    /** The uploaded images, read-only here — they are uploaded on Appearance. */
     logoUrl: string | null;
     faviconUrl: string | null;
+    /** Where the images are uploaded: this altitude's Appearance page. */
+    appearanceHref: string;
     /** True when this page is editing the environment default every organization inherits. */
     environmentDefault: boolean;
     /** On the environment default: the chip that goes to one organization's own brand. */
@@ -38,6 +40,7 @@ export default function Branding({
     emailTemplate,
     logoUrl,
     faviconUrl,
+    appearanceHref,
     environmentDefault,
     organizationFilter,
     saveHref,
@@ -48,15 +51,11 @@ export default function Branding({
         appName: string;
         emailFromName: string;
         emailTemplate: string;
-        logo: File | null;
-        favicon: File | null;
     }>({
         palette,
         appName,
         emailFromName,
         emailTemplate,
-        logo: null,
-        favicon: null,
     });
 
     const setToken = (token: string, value: string): void =>
@@ -72,8 +71,8 @@ export default function Branding({
                 help={help}
                 description={
                     environmentDefault
-                        ? 'Theme the console and hosted sign-in for this whole environment — palette, logo, app name and email sender. Every organization inherits this unless it sets its own — pick one below to brand just that one.'
-                        : 'Theme the console and hosted sign-in for this organization — palette, logo, app name and email sender. This overrides the environment default.'
+                        ? 'Theme the console and hosted sign-in for this whole environment — palette, app name and email sender. Every organization inherits this unless it sets its own — pick one below to brand just that one.'
+                        : 'Theme the console and hosted sign-in for this organization — palette, app name and email sender. This overrides the environment default.'
                 }
             />
 
@@ -124,7 +123,7 @@ export default function Branding({
                 onSubmit={(event) => {
                     event.preventDefault();
                     // A multipart POST, because two of these fields are files.
-                    form.post(saveHref, { forceFormData: true, preserveScroll: true });
+                    form.post(saveHref, { preserveScroll: true });
                 }}
             >
                 <Panel title="Palette & identity">
@@ -215,52 +214,42 @@ export default function Branding({
                             </Field>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <Field
-                                label="Logo"
-                                hint="PNG, JPEG or WebP. SVG is not accepted — it can carry a script."
-                                error={form.errors.logo}
+                        {/*
+                            THE IMAGES ARE THE SIGN-IN'S, and are uploaded beside the theme they
+                            are previewed in. Shown here so this page still answers "what does
+                            our brand look like", with the one place to change them.
+                        */}
+                        <div
+                            className="flex flex-wrap items-center gap-3 rounded-lg px-3.5 py-3"
+                            style={{ background: 'var(--secondary)' }}
+                        >
+                            {logoUrl !== null ? (
+                                <img
+                                    src={logoUrl}
+                                    alt="Current logo"
+                                    style={{ maxHeight: '2rem', maxWidth: '10rem' }}
+                                />
+                            ) : null}
+                            {faviconUrl !== null ? (
+                                <img
+                                    src={faviconUrl}
+                                    alt="Current favicon"
+                                    style={{ height: '1.25rem' }}
+                                />
+                            ) : null}
+                            <p
+                                className="text-[13px] flex-1 min-w-[12rem]"
+                                style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <>
-                                    {logoUrl !== null && (
-                                        <img
-                                            src={logoUrl}
-                                            alt="Current logo"
-                                            style={{ maxHeight: '2rem', marginBottom: '6px' }}
-                                        />
-                                    )}
-                                    <Input
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        onChange={(event) =>
-                                            form.setData('logo', event.target.files?.[0] ?? null)
-                                        }
-                                    />
-                                </>
-                            </Field>
-
-                            <Field
-                                label="Favicon"
-                                hint="PNG, ICO or WebP."
-                                error={form.errors.favicon}
-                            >
-                                <>
-                                    {faviconUrl !== null && (
-                                        <img
-                                            src={faviconUrl}
-                                            alt="Current favicon"
-                                            style={{ height: '1.25rem', marginBottom: '6px' }}
-                                        />
-                                    )}
-                                    <Input
-                                        type="file"
-                                        accept="image/png,image/x-icon,image/webp"
-                                        onChange={(event) =>
-                                            form.setData('favicon', event.target.files?.[0] ?? null)
-                                        }
-                                    />
-                                </>
-                            </Field>
+                                {logoUrl === null && faviconUrl === null
+                                    ? 'No logo or favicon yet. '
+                                    : ''}
+                                The logo and favicon are uploaded on the Appearance page, beside the
+                                sign-in preview.
+                            </p>
+                            <a href={appearanceHref} className="btn btn-secondary btn-sm">
+                                Logo &amp; favicon on Appearance
+                            </a>
                         </div>
 
                         <Field

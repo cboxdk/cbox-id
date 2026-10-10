@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\AppearanceCss;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Appearance\Color;
 use App\Platform\Appearance\ThemeFont;
 use App\Platform\Appearance\ThemeMode;
@@ -102,7 +105,10 @@ it('renders a coherent, safe CSS block for both modes', function (): void {
         ->toContain('--accent:#111111')                          // light primary
         ->toContain('color-mix(in srgb,#111111 12%,transparent)') // derived soft
         ->toContain('--radius:0.25rem')
-        ->toContain('--font-sans:');
+        ->toContain('--font-sans:')
+        // Headings too: they are drawn in --font-display, and the typeface used to stop at
+        // the body text.
+        ->toContain('--font-display:');
     // Nothing that could break out of the <style> context.
     expect($css)->not->toContain('</style><')->not->toContain('javascript:');
 });
@@ -132,24 +138,23 @@ if (! function_exists('signInOrg')) {
 /**
  * Press Save in the theme editor.
  *
- * The logo travels BESIDE the theme rather than inside it, because it is not part of the
- * typed appearance: `Appearance::fromArray()` sanitizes colours, radius and font, and a
- * URL this server will render into an `<img src>` on an unauthenticated page is a
- * different kind of value with a different rule.
+ * The images travel BESIDE the theme rather than inside it, because they are not part of
+ * the typed appearance: `Appearance::fromArray()` sanitizes colours, radius and font, and an
+ * uploaded image is bytes with a different rule ({@see BrandImageUpload}).
  *
  * @param  array<string, mixed>  $theme
+ * @param  array<string, string|null>  $images
  */
-function saveTheme(array $theme, ?string $route = null, bool $environmentDefault = false): TestResponse
+function saveTheme(array $theme, ?string $route = null, bool $environmentDefault = false, array $images = []): TestResponse
 {
-    $logo = $theme['logo'] ?? null;
-    unset($theme['logo'], $theme['name']);
+    unset($theme['logo'], $theme['favicon'], $theme['name']);
 
     $route ??= 'appearance';
 
     return test()->from(route($route))
         ->post(route($route.'.update'), [
             'theme' => $theme,
-            'logo' => is_string($logo) ? $logo : null,
+            ...($images === [] ? [] : ['images' => $images]),
             'environmentDefault' => $environmentDefault,
         ])
         // BACK TO THE EDITOR, named. A bare `assertRedirect()` would also accept the
@@ -180,25 +185,79 @@ it('persists a saved theme to org settings and keeps brand_color in sync', funct
 
     $theme = Appearance::fromPreset('warm')->toArray();
     $theme['light']['primary'] = '#123456';
-    $theme['logo'] = 'https://acme.com/logo.svg';
 
-    saveTheme($theme)->assertSessionHasNoErrors();
+    saveTheme($theme, images: ['logo' => pngDataUri()])->assertSessionHasNoErrors();
 
     $settings = app(Organizations::class)->find($org->id)->settings;
     expect($settings['appearance']['preset'])->toBe('warm')
         ->and($settings['appearance']['light']['primary'])->toBe('#123456')
         ->and($settings['brand_color'])->toBe('#123456')          // legacy mirror
-        ->and($settings['brand_logo_url'])->toBe('https://acme.com/logo.svg');
+        // The logo is an UPLOAD, served by this application — never a URL in settings.
+        ->and(app(BrandImages::class)->url(BrandImage::Logo, $org->id))->toStartWith('/brand-assets/brand/');
 });
 
-it('rejects a non-https logo on save', function (): void {
+/**
+ * A REMOTE LOGO IS NOT A LOGO ANY MORE. Every visitor of the sign-in page fetched it, which
+ * told whoever hosted it who they were. Refused with the reason, and nothing is stored.
+ */
+it('refuses a logo URL and an SVG, and stores neither', function (string $given, string $says): void {
     $org = signInOrg(MembershipRole::Admin);
 
-    $theme = Appearance::fromPreset('cbox')->toArray();
-    $theme['logo'] = 'http://insecure.example/logo.png';
-    saveTheme($theme)->assertSessionHasNoErrors();
+    saveTheme(Appearance::fromPreset('cbox')->toArray(), images: ['logo' => $given])
+        ->assertSessionHasErrors('logo');
 
-    expect(app(Organizations::class)->find($org->id)->settings['brand_logo_url'])->toBeNull();
+    expect(session('errors')->first('logo'))->toContain($says);
+
+    expect(app(BrandImages::class)->url(BrandImage::Logo, $org->id))->toBeNull();
+})->with([
+    'an https URL' => ['https://acme.com/logo.png', 'Remote image URLs are not accepted'],
+    'an SVG' => ['data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), 'SVG is not accepted'],
+    'an SVG declared as PNG' => ['data:image/png;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg"/>'), 'SVG is not accepted'],
+    'not an image' => ['data:image/png;base64,'.base64_encode('hello'), 'Use a PNG, JPEG or WebP'],
+])->group('security');
+
+it('refuses an image that is too large or too big to draw', function (): void {
+    $org = signInOrg(MembershipRole::Admin);
+
+    saveTheme(Appearance::fromPreset('cbox')->toArray(), images: ['favicon' => pngDataUri(1500, 10)])
+        ->assertSessionHasErrors('favicon');
+
+    expect(session('errors')->first('favicon'))->toContain('1024 pixels');
+
+    expect(app(BrandImages::class)->url(BrandImage::Favicon, $org->id))->toBeNull();
+});
+
+it('retires a legacy remote logo URL when a logo is uploaded, and asks for one until then', function (): void {
+    $org = signInOrg(MembershipRole::Admin);
+    app(Organizations::class)->updateSettings($org->id, ['brand_logo_url' => 'https://cdn.example/logo.png']);
+
+    // The editor says so — the one place the administrator can fix it.
+    $this->get(route('appearance'))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('remoteLogoIgnored', true)
+        ->where('appearance.logo', ''));
+
+    saveTheme(Appearance::fromPreset('cbox')->toArray(), images: ['logo' => pngDataUri()])->assertSessionHasNoErrors();
+
+    expect(app(Organizations::class)->find($org->id)->settings['brand_logo_url'] ?? null)->toBeNull();
+
+    $this->get(route('appearance'))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('remoteLogoIgnored', false)
+        ->where('appearance.logo', fn (string $logo): bool => str_starts_with($logo, '/brand-assets/')));
+});
+
+it('removes an uploaded logo when the editor sends null, and leaves one it did not send', function (): void {
+    $org = signInOrg(MembershipRole::Admin);
+
+    saveTheme(Appearance::fromPreset('cbox')->toArray(), images: ['logo' => pngDataUri(), 'favicon' => pngDataUri(32, 32)])->assertSessionHasNoErrors();
+
+    // Colours only: the images are untouched.
+    saveTheme(Appearance::fromPreset('warm')->toArray())->assertSessionHasNoErrors();
+    expect(app(BrandImages::class)->url(BrandImage::Logo, $org->id))->not->toBeNull();
+
+    saveTheme(Appearance::fromPreset('warm')->toArray(), images: ['logo' => null])->assertSessionHasNoErrors();
+
+    expect(app(BrandImages::class)->url(BrandImage::Logo, $org->id))->toBeNull()
+        ->and(app(BrandImages::class)->url(BrandImage::Favicon, $org->id))->not->toBeNull();
 });
 
 // ─────────────────────────── feature: the hosted page applies it ───────────────────────────

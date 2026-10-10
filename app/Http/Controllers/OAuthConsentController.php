@@ -756,11 +756,17 @@ final readonly class OAuthConsentController extends PageController
                 /*
                  * …and one described by a metadata document leads with the one thing about
                  * it that is VERIFIED: the host that published the document. Its
-                 * `client_uri` and `logo_uri` are https-only, and shown as the publisher's.
+                 * `client_uri` is https-only, and shown as the publisher's.
+                 *
+                 * ITS `logo_uri` IS NOT DRAWN. It is an image on somebody else's host, and an
+                 * `<img>` of it would report every person who reached this screen — address,
+                 * browser, the moment they were asked — to whoever published the document,
+                 * whether or not they went on to allow anything. The hosted pages draw only
+                 * images this application serves (`img-src 'self'`); the app is named, and
+                 * its verified host leads, which is what a person can actually check.
                  */
                 'documentHost' => $authorizing?->documentHost,
                 'clientUri' => $authorizing?->clientUri,
-                'logoUri' => $authorizing?->logoUri,
             ],
             'me' => $this->meProps($me),
             /*

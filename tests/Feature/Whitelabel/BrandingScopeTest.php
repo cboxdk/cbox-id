@@ -70,8 +70,11 @@ it('does not expose environment domain controls to an organization admin', funct
         ARRAY_FILTER_USE_BOTH,
     );
 
-    expect(array_keys($urls))->toBe(['saveHref'])
-        ->and($urls['saveHref'])->toBe(route('whitelabel.branding.save'));
+    // The one write is the branding save; the other link is a PAGE — the Appearance editor,
+    // where the logo and favicon are uploaded.
+    expect(array_keys($urls))->toEqualCanonicalizing(['saveHref', 'appearanceHref'])
+        ->and($urls['saveHref'])->toBe(route('whitelabel.branding.save'))
+        ->and($urls['appearanceHref'])->toBe(route('appearance'));
 });
 
 /**

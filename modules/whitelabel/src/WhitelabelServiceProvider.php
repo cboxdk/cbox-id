@@ -6,6 +6,7 @@ namespace Cbox\Id\Whitelabel;
 
 use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Appearance\BrandImages;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\DashboardCards;
@@ -15,6 +16,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Assets\DatabaseBrandAssetStore;
 use Cbox\Id\Whitelabel\Assets\LocalBrandAssetStore;
+use Cbox\Id\Whitelabel\Branding\ProfileBrandImages;
 use Cbox\Id\Whitelabel\Branding\TenantBrandingResolver;
 use Cbox\Id\Whitelabel\BrandProfiles\DatabaseBrandProfiles;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
@@ -88,6 +90,21 @@ class WhitelabelServiceProvider extends ServiceProvider
                 $app->make(EnvironmentContext::class),
                 self::configString($app, 'whitelabel.assets.path', 'brand'),
             ));
+
+        /*
+         * THE HOST'S LOGO AND FAVICON SOCKET, answered from the brand profiles. The hosted
+         * sign-in, the Appearance editor, the checklists and the mail layout all read the
+         * images through it, so the logo uploaded here is the one every page draws.
+         *
+         * The origins are what the content security policy must admit besides this
+         * application: a CDN in front of the asset store, when one is configured. The
+         * default database store needs none — its images are served by this application.
+         */
+        $this->app->bind(BrandImages::class, static fn (Application $app): BrandImages => new ProfileBrandImages(
+            $app->make(BrandProfiles::class),
+            $app->make(BrandAssetStore::class),
+            self::assetOrigins($app),
+        ));
 
         $this->app->bind(ManageCustomDomain::class, static fn (Application $app): ManageCustomDomain => new ManageCustomDomain(
             $app->make(EnvironmentContext::class),
@@ -184,6 +201,40 @@ class WhitelabelServiceProvider extends ServiceProvider
         $typed = array_filter($config, static fn (mixed $value, mixed $key): bool => is_string($key), ARRAY_FILTER_USE_BOTH);
 
         return $typed;
+    }
+
+    /**
+     * The origins, other than this application's, that serve stored brand images: the
+     * configured CDN, and — for the disk store — the disk's own URL when it names another
+     * host. Each reduced to scheme://host[:port], which is all a CSP source needs.
+     *
+     * @return list<string>
+     */
+    private static function assetOrigins(Application $app): array
+    {
+        $candidates = [$app->make('config')->get('whitelabel.assets.cdn_base_url')];
+
+        if (self::configString($app, 'whitelabel.assets.store', 'database') === 'disk') {
+            $candidates[] = self::diskConfig($app, self::configString($app, 'whitelabel.assets.disk', 'public'))['url'] ?? null;
+        }
+
+        $origins = [];
+
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate) || preg_match('#\Ahttps?://#i', $candidate) !== 1) {
+                continue;
+            }
+
+            $parts = parse_url($candidate);
+
+            if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+                continue;
+            }
+
+            $origins[] = strtolower($parts['scheme']).'://'.strtolower($parts['host']).(isset($parts['port']) ? ':'.$parts['port'] : '');
+        }
+
+        return array_values(array_unique($origins));
     }
 
     private static function configString(Application $app, string $key, string $default): string

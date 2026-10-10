@@ -3,6 +3,7 @@ import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { FontStacks, Theme, ThemeCatalogue } from '@/lib/appearance';
 import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, ThemeEditor } from '@/ui';
+import type { ImageChanges } from '@/ui/ThemeEditor';
 
 type Props = PageProps<{
     help: HelpContent;
@@ -10,7 +11,13 @@ type Props = PageProps<{
     appearance: Theme;
     presets: ThemeCatalogue;
     fonts: FontStacks;
+    /** Each face's own name — `ThemeFont::labels()`. */
+    fontLabels: Record<string, string>;
     radii: string[];
+    /** A legacy remote logo URL is stored here and no longer drawn: ask for an upload. */
+    remoteLogoIgnored: boolean;
+    /** Whether this install can store images (the white-label module). */
+    imagesAccepted: boolean;
     /** Only the environment plane may theme the default every organization inherits. */
     mayThemeEnvironment: boolean;
     environmentDefault: boolean;
@@ -31,7 +38,10 @@ export default function AppearancePage({
     appearance,
     presets,
     fonts,
+    fontLabels,
     radii,
+    remoteLogoIgnored,
+    imagesAccepted,
     mayThemeEnvironment,
     environmentDefault,
     hasTarget,
@@ -41,9 +51,12 @@ export default function AppearancePage({
 
     const form = useForm<{
         theme: Theme;
-        logo: string;
+        images: ImageChanges;
         environmentDefault: boolean;
-    }>({ theme: appearance, logo: appearance.logo, environmentDefault });
+    }>({ theme: appearance, images: {}, environmentDefault });
+
+    const message = (key: string): string | undefined =>
+        typeof errors[key] === 'string' ? errors[key] : undefined;
 
     return (
         <>
@@ -70,7 +83,11 @@ export default function AppearancePage({
                     value={appearance}
                     presets={presets}
                     fonts={fonts}
+                    fontLabels={fontLabels}
                     radii={radii}
+                    remoteLogoIgnored={remoteLogoIgnored}
+                    imagesAccepted={imagesAccepted}
+                    imageErrors={{ logo: message('logo'), favicon: message('favicon') }}
                     help={help}
                     title="Appearance"
                     scope={environmentDefault ? 'environment' : 'organization'}
@@ -81,10 +98,12 @@ export default function AppearancePage({
                             ? "Your environment's default sign-in theme. Every organization inherits it unless it sets its own."
                             : "This organization's sign-in theme — it overrides the environment default. Changes preview live and apply to its hosted sign-in."
                     }
-                    onSave={(next) => {
+                    onSave={(next, images) => {
+                        // Only the images that changed travel: a data URI to store, null to
+                        // remove. The theme's own `logo`/`favicon` are previews, not input.
                         form.transform(() => ({
                             theme: next,
-                            logo: next.logo,
+                            images,
                             environmentDefault,
                         }));
 

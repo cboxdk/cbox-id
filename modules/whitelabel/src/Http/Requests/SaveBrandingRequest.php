@@ -7,14 +7,11 @@ namespace Cbox\Id\Whitelabel\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * The branding one altitude carries: its palette, its name, its sender and its two images.
+ * The branding one altitude carries: its palette, its name, its sender and its welcome mail.
  *
- * THE UPLOADS ARE THE PART THAT MATTERS. `accept="image/*"` on an input is a hint to the
- * file picker and nothing more. The asset store keeps the content-guessed extension and
- * writes to the public disk, so an SVG containing a script tag would then be served from the
- * application's OWN origin — a static path, so neither the CSP nor `nosniff` applies to it,
- * and every admin's session cookie lives on that origin. SVG is excluded deliberately: it is
- * the only raster-adjacent format that is also a script host.
+ * The logo and favicon are not here any more: they are uploaded on the Appearance page,
+ * through `branding.appearance.set`, which checks the bytes themselves (SVG refused — it is
+ * a script host — and the format sniffed, never trusted from a name).
  */
 final class SaveBrandingRequest extends FormRequest
 {
@@ -34,19 +31,6 @@ final class SaveBrandingRequest extends FormRequest
             'appName' => ['nullable', 'string', 'max:120'],
             'emailFromName' => ['nullable', 'string', 'max:120'],
             'emailTemplate' => ['nullable', 'string', 'max:5000'],
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:1024'],
-            'favicon' => ['nullable', 'image', 'mimes:png,ico,webp', 'max:256'],
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'logo.mimes' => 'Use a PNG, JPEG or WebP. SVG is not accepted — it can carry a script.',
-            'favicon.mimes' => 'Use a PNG, ICO or WebP. SVG is not accepted — it can carry a script.',
         ];
     }
 

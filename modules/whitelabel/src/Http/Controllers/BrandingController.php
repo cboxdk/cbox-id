@@ -6,9 +6,11 @@ namespace Cbox\Id\Whitelabel\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
 use App\Http\Props\Shared\HelpProps;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Whitelabel\Actions\SaveBranding;
-use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Http\Requests\SaveBrandingRequest;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
@@ -34,7 +36,7 @@ use Inertia\Response;
  */
 final readonly class BrandingController extends ConsoleController
 {
-    public function index(): Response
+    public function index(BrandImages $images): Response
     {
         $this->scope->assertMayAdminister();
 
@@ -58,13 +60,18 @@ final readonly class BrandingController extends ConsoleController
             'emailFromName' => $profile === null ? '' : ($profile->email_from_name ?? ''),
             'emailTemplate' => $profile?->email_templates->get('welcome') ?? '',
             /*
-             * SERVER-DERIVED, and only ever read back from here. These were bound properties
-             * once, and a client that can set them can name another environment's asset and
-             * have the next upload delete it — or point the environment's logo at a host of
-             * its choosing, which is a beacon on every branded page.
+             * SHOWN HERE, UPLOADED ON APPEARANCE. The logo and favicon are the hosted
+             * sign-in's, so they are edited beside the theme they are previewed in — one
+             * upload, through the action the management API and MCP run
+             * (`branding.appearance.set`), rather than a second form that wrote the same
+             * columns with no API at all. Read through the host's socket so the URL is the
+             * one the hosted pages draw.
              */
-            'logoUrl' => $profile?->logo_url,
-            'faviconUrl' => $profile?->favicon_url,
+            'logoUrl' => $images->url(BrandImage::Logo, $this->scope->organizationId()),
+            'faviconUrl' => $images->url(BrandImage::Favicon, $this->scope->organizationId()),
+            'appearanceHref' => $this->scope->plane() === ConsolePlane::Environment && $this->scope->organizationId() !== null
+                ? route('environment.organizations.branding')
+                : $this->url('appearance'),
             /*
              * The view half of the altitude. A page that edits one organization's brand while
              * telling the reader it themes "this whole environment" is how a tenant admin
@@ -80,7 +87,7 @@ final readonly class BrandingController extends ConsoleController
 
     /**
      * Save through the ACTION the management API runs ({@see SaveBranding}) — the palette
-     * check and the altitude rule are the action's — then store the two uploads beside it.
+     * check and the altitude rule are the action's.
      *
      * THE ALTITUDE THE SCOPE RESOLVES, and no other. This used to read and write the
      * `organization_id IS NULL` row unconditionally behind an ORG-admin check, so an admin of
@@ -89,11 +96,11 @@ final readonly class BrandingController extends ConsoleController
      * editor. The scope answers null only on the environment plane, and the action refuses
      * any other organization than the scope's on the organization plane.
      *
-     * The images are uploads, which a JSON API does not carry and the action therefore does
-     * not take: they are stored after the action has accepted the rest, so a refused palette
-     * never leaves an orphaned file behind.
+     * The logo and favicon are no longer uploaded here. They are the hosted sign-in's and
+     * live on the Appearance page, where `branding.appearance.set` takes them — so the one
+     * upload path is an action the API and MCP can reach too.
      */
-    public function save(SaveBrandingRequest $request, BrandProfiles $profiles, BrandAssetStore $assets): RedirectResponse
+    public function save(SaveBrandingRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
 
@@ -122,23 +129,6 @@ final readonly class BrandingController extends ConsoleController
 
         if ($result instanceof RedirectResponse) {
             return $result;
-        }
-
-        /** @var BrandProfile $profile */
-        $profile = $result->value;
-
-        if ($request->file('logo') !== null || $request->file('favicon') !== null) {
-            if ($request->file('logo') !== null) {
-                $assets->forget($profile->logo_url);
-                $profile->logo_url = $assets->put('logo', $request->file('logo'));
-            }
-
-            if ($request->file('favicon') !== null) {
-                $assets->forget($profile->favicon_url);
-                $profile->favicon_url = $assets->put('favicon', $request->file('favicon'));
-            }
-
-            $profiles->save($profile);
         }
 
         return back()->with('status', 'Branding saved.');

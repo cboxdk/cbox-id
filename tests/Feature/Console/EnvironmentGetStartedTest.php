@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\Actions\ActionTrail;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Onboarding\EnvironmentChecklist;
 use App\Platform\Onboarding\EnvironmentStep;
 use App\Support\CliClient;
@@ -83,7 +86,10 @@ it('ticks each step from what the environment holds, never from a checkbox', fun
     $customer = app(Organizations::class)->create(new NewOrganization('First Customer', 'first-customer'));
     app(Connections::class)->create($customer->id, ConnectionType::Oidc, 'Okta', ['issuer' => 'https://okta.example', 'client_id' => 'a', 'client_secret' => 'b']);
     $key = app(EnvironmentApiKeys::class)->issue($tenant['environment']->id, 'Claude Code', ['users:read'])->key;
+    // An UPLOADED logo brands the sign-in; a remote URL left in settings does not.
     $tenant['environment']->forceFill(['settings' => [...($tenant['environment']->settings ?? []), 'brand_logo_url' => 'https://cdn.example/logo.svg']])->save();
+    expect(checklistNow($tenant)[EnvironmentStep::BrandSignIn->value])->toBeFalse();
+    app(BrandImages::class)->store(BrandImageUpload::fromDataUri(BrandImage::Logo, pngDataUri()), null);
     app(ClientRegistry::class)->register(new NewClient('Shop (live)', redirectUris: ['https://shop.example/auth/callback']));
 
     $done = checklistNow($tenant);

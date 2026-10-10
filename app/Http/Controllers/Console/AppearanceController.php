@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Branding\AppearanceFields;
 use App\Actions\Branding\SetAppearance;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SaveAppearanceRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\Appearance\Appearance;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
 use App\Platform\Appearance\ThemeFont;
 use App\Platform\Appearance\ThemePresets;
 use App\Platform\Appearance\ThemeRadius;
@@ -73,6 +77,7 @@ final readonly class AppearanceController extends ConsoleController
             // works in plain JSON and the domain model is typed.
             'presets' => ThemePresets::toPayload(),
             'fonts' => ThemeFont::stacks(),
+            'fontLabels' => ThemeFont::labels(),
             'radii' => ThemeRadius::values(),
             // THE VIEW HALF asks the SCOPE rather than assuming the plane it was written
             // for, so the control the page draws and the write the server accepts come
@@ -82,6 +87,14 @@ final readonly class AppearanceController extends ConsoleController
             // Nothing to theme: a member who belongs to no organization, or an environment
             // that could not be resolved.
             'hasTarget' => $target !== null,
+            /*
+             * A remote logo URL saved before logos became uploads. It is no longer drawn on
+             * any hosted page — it was a beacon to whoever hosted it — so until a logo is
+             * uploaded (or removed) here the editor says so, rather than letting the
+             * administrator discover a missing logo on their own sign-in page.
+             */
+            'remoteLogoIgnored' => $target !== null && AppearanceFields::remoteLogoIgnored($target->settings),
+            'imagesAccepted' => app(BrandImages::class)->accepting(),
             // WHERE SAVE POSTS, resolved by the server: one controller action serves three
             // route names — both consoles' pages and an organization's Branding tab.
             'saveHref' => $mayThemeEnvironment && ! $environmentDefault
@@ -114,18 +127,25 @@ final readonly class AppearanceController extends ConsoleController
                 'Only an environment administrator may change the environment default theme, on the environment\'s own Appearance page.');
         }
 
-        $result = $this->act(SetAppearance::class, [
+        /*
+         * `attempt()`, not `act()`: a refusal goes back WITHOUT the input. `act()` flashes
+         * the whole request into the session, and here that includes up to a megabyte of
+         * base64 image per refused save.
+         */
+        $result = $this->attempt(SetAppearance::class, [
             // `requireOrganizationId()`, not the nullable reader: with none resolved this
             // write would otherwise land wherever a downstream default pointed.
             'organization_id' => $environmentDefault ? null : $this->scope->requireOrganizationId(),
-            // Through the sanitizer first, so the editor's extra keys (its name and logo
-            // preview) never reach the action as theme fields.
+            // Through the sanitizer first, so the editor's extra keys (its name and image
+            // previews) never reach the action as theme fields.
             'theme' => Appearance::fromArray($request->theme())->toArray(),
-            'logo' => $request->logo(),
-        ], ['theme' => 'theme', 'logo' => 'logo'], 'theme');
+            ...$request->images(),
+        ], ['theme' => 'theme', 'logo' => 'logo', 'favicon' => 'favicon'], 'theme');
 
-        if ($result instanceof RedirectResponse) {
-            return $result;
+        if ($result instanceof ActionRefused) {
+            $field = in_array($result->field, ['logo', 'favicon'], true) ? (string) $result->field : 'theme';
+
+            return back()->withErrors([$field => $result->getMessage()]);
         }
 
         return back()->with('status', $environmentDefault ? 'Environment appearance saved.' : 'Appearance saved.');
@@ -140,9 +160,15 @@ final readonly class AppearanceController extends ConsoleController
     {
         $settings = $target === null ? [] : $target->settings;
 
+        $organizationId = $target instanceof Organization ? $target->id : null;
+        $images = app(BrandImages::class);
+
         return [
             ...Appearance::fromSettings($settings)->toArray(),
-            'logo' => is_string($settings['brand_logo_url'] ?? null) ? $settings['brand_logo_url'] : '',
+            // The UPLOADED images at this altitude, as this application serves them. The
+            // legacy remote URL is deliberately not seeded: the editor never draws it.
+            'logo' => $target === null ? '' : ($images->url(BrandImage::Logo, $organizationId) ?? ''),
+            'favicon' => $target === null ? '' : ($images->url(BrandImage::Favicon, $organizationId) ?? ''),
             'name' => $target === null ? '' : $target->name,
         ];
     }

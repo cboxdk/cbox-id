@@ -6,6 +6,9 @@ namespace App\Actions\Branding;
 
 use App\Platform\Actions\Input\Field;
 use App\Platform\Appearance\Appearance;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Appearance\ThemeFont;
 use App\Platform\Appearance\ThemePresets;
 use App\Platform\Appearance\ThemeRadius;
@@ -39,10 +42,20 @@ final class AppearanceFields
         ])->describe('The theme. Both modes must be readable: text needs 4.5:1 against the background, muted text 3:1.');
     }
 
-    /** HTTPS or nothing: it is rendered into an `<img src>` on an unauthenticated page. */
-    public static function secureLogo(string $logo): bool
+    /**
+     * One uploaded image, as the API takes it: a base64 `data:` URI, null to remove it, or
+     * left out to keep it. A URL is refused with the reason ({@see BrandImageUpload}).
+     */
+    public static function image(BrandImage $kind): Field
     {
-        return filter_var($logo, FILTER_VALIDATE_URL) !== false && str_starts_with($logo, 'https://');
+        // Base64 is four characters per three bytes, plus the `data:…;base64,` prefix.
+        $max = (int) ceil($kind->maxBytes() / 3) * 4 + 100;
+
+        return Field::string($kind->value)->nullable()->max($max)->describe(
+            'The '.$kind->label().' as a base64 data: URI (data:image/png;base64,…): '.$kind->formats()
+            .', at most '.($kind->maxBytes() / 1024).' KB and '.$kind->maxDimension().'px on the longest side. '
+            .'SVG and remote URLs are refused. Null removes it; left out keeps it.',
+        );
     }
 
     /**
@@ -59,7 +72,25 @@ final class AppearanceFields
             // shows the environment default; an environment without one, the platform's.
             'customized' => Appearance::isCustomized($settings),
             'theme' => Appearance::fromSettings($settings)->toArray(),
-            'logo' => is_string($settings['brand_logo_url'] ?? null) ? $settings['brand_logo_url'] : null,
+            // This application's own URL for each uploaded image — never a remote one.
+            'logo' => app(BrandImages::class)->absoluteUrl(BrandImage::Logo, $organizationId),
+            'favicon' => app(BrandImages::class)->absoluteUrl(BrandImage::Favicon, $organizationId),
+            // A remote logo URL saved before uploads replaced it. Kept in settings, never
+            // fetched and never drawn; true until a logo is uploaded at this altitude.
+            'remote_logo_ignored' => self::remoteLogoIgnored($settings),
         ];
+    }
+
+    /**
+     * Whether this altitude still carries a legacy `brand_logo_url` that the hosted pages
+     * no longer draw — the console's cue to ask for an upload.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    public static function remoteLogoIgnored(array $settings): bool
+    {
+        $legacy = $settings['brand_logo_url'] ?? null;
+
+        return is_string($legacy) && $legacy !== '';
     }
 }
