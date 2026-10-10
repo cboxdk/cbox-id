@@ -6,6 +6,7 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -194,9 +195,11 @@ it('serves Sign-in methods on a single-tenant install\'s organization console, a
         ->and($props['organizationsHref'])->toBeNull()
         ->and($rows['password']['decidedBy'])->toBe('organization')
         ->and($rows['password']['href'])->toBe(route('auth-policy'))
-        // Environment-wide here, and not this console's to change.
+        // Environment-wide — and on a single-tenant install this console administers the
+        // environment, so the row leads to the panel that changes it.
         ->and($rows['passkeys']['decidedBy'])->toBe('environment')
-        ->and($rows['passkeys']['href'])->toBeNull()
+        ->and($rows['passkeys']['href'])->toBe(route('auth-policy').'#sign-in-methods')
+        ->and($rows['sms']['href'])->toBe(route('auth-policy').'#sms')
         ->and($rows['social']['summary'])->toContain('Discord, Github')
         ->and($rows['social']['href'])->toBe(route('social-providers'));
 
@@ -249,11 +252,9 @@ it('saves the environment\'s methods and session lengths from Authentication pol
         ->and(app(AuthPolicies::class)->forEnvironment()->minLength)->toBe(14);
 });
 
-it('keeps an organization\'s policy form working, without the environment\'s methods', function (): void {
+it('keeps an organization\'s policy form working beside the environment\'s methods', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(passkeys: false));
-
-    expect(smcProps(route('auth-policy'))['signInMethods'])->toBeNull();
 
     $this->from(route('auth-policy'))->put(route('auth-policy.update'), [
         'minLength' => 16, 'requireBreachCheck' => true, 'maxAgeDays' => '', 'reuseHistory' => 0, 'mfa' => 'optional', 'sso' => 'off', 'lockoutThreshold' => '',
@@ -262,3 +263,111 @@ it('keeps an organization\'s policy form working, without the environment\'s met
     expect(app(AuthPolicies::class)->resolve($org->id)->minLength)->toBe(16)
         ->and(app(AuthPolicies::class)->resolve($org->id)->passkeys)->toBeFalse();
 });
+
+// ── A single-tenant install: the organization console administers the environment ──
+
+it('lets a single-tenant install\'s administrator change the environment\'s methods, sessions and SMS from the organization console', function (): void {
+    actingAsRole(MembershipRole::Owner);
+    config()->set('cbox-id.sessions.ttl_minutes', 480);
+    config()->set('cbox-id.sessions.idle_minutes', 30);
+
+    $props = smcProps(route('auth-policy'));
+
+    expect($props['onEnvironmentPlane'])->toBeFalse()
+        ->and($props['signInMethods']['href'])->toBe(route('auth-policy.methods'))
+        ->and($props['smsFactor']['href'])->toBe(route('auth-policy.sms'))
+        // Sign-up here is the deployment's (CBOX_ID_SIGNUP_MODE): drawn, with nothing to post.
+        ->and($props['selfServiceSignup']['decidedHere'])->toBeFalse();
+
+    $this->from(route('auth-policy'))->put(route('auth-policy.methods'), [
+        'passkeys' => false, 'magicLink' => false, 'botChallenge' => true, 'sessionIdleMinutes' => '10', 'sessionAbsoluteMinutes' => '120',
+    ])->assertSessionHasNoErrors();
+
+    $policy = app(AuthPolicies::class)->forEnvironment();
+
+    expect($policy->passkeys)->toBeFalse()
+        ->and($policy->magicLink)->toBeFalse()
+        ->and($policy->sessionAbsoluteMinutes)->toBe(120);
+
+    // The same action, so the same ceiling.
+    $this->from(route('auth-policy'))->put(route('auth-policy.methods'), [
+        'passkeys' => true, 'magicLink' => true, 'botChallenge' => true, 'sessionIdleMinutes' => '', 'sessionAbsoluteMinutes' => '900',
+    ])->assertSessionHasErrors(['sessionAbsoluteMinutes']);
+
+    $this->from(route('auth-policy'))->put(route('auth-policy.sms'), [
+        'enabled' => true, 'allowedCountries' => ['DK'], 'privilegedNeedStrongerFactor' => true,
+    ])->assertSessionHasNoErrors();
+
+    expect(app(SmsFactorPolicies::class)->forEnvironment()->enabled)->toBeTrue();
+});
+
+it('turns a provider on for every sign-in page from a single-tenant organization console, and manages it there', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
+    $props = smcProps(route('social-providers', ['provider' => 'github']));
+
+    expect($props['ownerChoice'])->toBeTrue()
+        ->and($props['view'])->toBe('organization');
+
+    $this->from(route('social-providers', ['provider' => 'github']))->post(route('social-providers.store'), [
+        'provider' => 'github', 'forEnvironment' => true, 'reservedId' => $props['template']['reservedId'],
+        'clientId' => 'gh', 'clientSecret' => 'gh', 'scopes' => '', 'parameters' => [],
+    ])->assertSessionHasNoErrors();
+
+    $environment = app(SignInProviders::class)->environmentProviders();
+
+    expect($environment)->toHaveCount(1)
+        ->and($environment[0]->organization_id)->toBeNull()
+        ->and($environment[0]->id)->toBe($props['template']['reservedId']);
+
+    $id = $environment[0]->id;
+    $listed = smcProps(route('social-providers'));
+
+    expect(array_column($listed['environmentProviders'], 'id'))->toBe([$id])
+        ->and(smcProps(route('social-providers', ['edit' => $id]))['editing']['id'])->toBe($id);
+
+    $this->patch(route('social-providers.update', $id), ['clientId' => 'rotated', 'clientSecret' => '', 'scopes' => '', 'parameters' => []])->assertSessionHasNoErrors();
+    $this->post(route('social-providers.disable', $id))->assertSessionHasNoErrors();
+
+    expect(app(Connections::class)->config(app(Connections::class)->byId($id))['client_id'])->toBe('rotated')
+        ->and(app(SignInProviders::class)->offeredTo($org->id))->toBe([]);
+
+    $this->post(route('social-providers.enable', $id))->assertSessionHasNoErrors();
+    $this->delete(route('social-providers.destroy', $id))->assertSessionHasNoErrors();
+
+    expect(app(SignInProviders::class)->environmentProviders())->toBe([]);
+
+    // Without the choice, the organization's own — as before.
+    $this->from(route('social-providers', ['provider' => 'discord']))->post(route('social-providers.store'), [
+        'provider' => 'discord', 'forEnvironment' => false, 'clientId' => 'd', 'clientSecret' => 'd', 'scopes' => '', 'parameters' => [],
+    ])->assertSessionHasNoErrors();
+
+    expect(app(SignInProviders::class)->offeredTo($org->id)[0]->organization_id)->toBe($org->id);
+});
+
+/**
+ * @group security
+ *
+ * On a multi-tenant deployment an organization console belongs to one customer, and the
+ * environment stays the vendor's: none of it is drawn, and the writes are refused.
+ */
+it('keeps the environment\'s settings off a multi-tenant organization console', function (): void {
+    multiTenantDeployment();
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Elsewhere', 'elsewhere-'.Str::lower(Str::random(4))));
+    $environmentProvider = smcProvider(null, 'github');
+
+    $this->put(route('auth-policy.methods'), [
+        'passkeys' => false, 'magicLink' => false, 'botChallenge' => true, 'sessionIdleMinutes' => '', 'sessionAbsoluteMinutes' => '',
+    ]);
+    $this->put(route('auth-policy.sms'), ['enabled' => true, 'allowedCountries' => ['DK'], 'privilegedNeedStrongerFactor' => true]);
+    $this->post(route('social-providers.store'), ['provider' => 'discord', 'forEnvironment' => true, 'clientId' => 'd', 'clientSecret' => 'd', 'parameters' => []]);
+    $this->post(route('social-providers.disable', $environmentProvider));
+
+    expect(app(AuthPolicies::class)->forEnvironment()->passkeys)->toBeTrue()
+        ->and(app(SmsFactorPolicies::class)->forEnvironment()->enabled)->toBeFalse()
+        ->and(app(SignInProviders::class)->environmentProviders())->toHaveCount(1)
+        ->and(app(SignInProviders::class)->offeredTo(null)[0]->id)->toBe($environmentProvider)
+        // Whatever the form said, an organization console here can only add the organization's own.
+        ->and(collect(app(SignInProviders::class)->offeredTo($other->id))->pluck('provider')->all())->toBe(['github']);
+})->group('security');

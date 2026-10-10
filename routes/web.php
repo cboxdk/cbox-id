@@ -1093,6 +1093,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('auth-policy');
     Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('auth-policy.update');
     Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('auth-policy.inherit');
+    // The ENVIRONMENT's sign-in methods, session lengths and SMS policy, from the organization
+    // console — served only where its administrator administers the environment: a
+    // single-tenant install, where this console is the whole administration. Everywhere else
+    // the controller refuses ({@see \App\Platform\Console\ConsoleScope::administersEnvironment()}).
+    Route::put('/sign-in-rules/methods', [AuthPolicyController::class, 'methods'])->name('auth-policy.methods');
+    Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('auth-policy.sms');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     // The SAME components the environment plane serves. The routable index/new/show

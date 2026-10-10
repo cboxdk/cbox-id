@@ -41,7 +41,7 @@ use Illuminate\Auth\Access\AuthorizationException;
     schema: 'SmsFactorPolicy',
     tag: 'Sign-in',
     rest: ['PATCH', '/sign-in/sms'],
-    consoleRoutes: ['environment.auth-policy.sms'],
+    consoleRoutes: ['environment.auth-policy.sms', 'auth-policy.sms'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]
 final readonly class UpdateSmsFactorPolicy implements Action

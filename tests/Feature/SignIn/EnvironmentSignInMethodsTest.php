@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Turnstile;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
+use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
@@ -252,4 +253,40 @@ it('changes the environment\'s methods and session lengths, and refuses them on 
     expect($refused->json('message'))->toContain('480 minutes')->toContain('30 minutes')
         ->and(app(AuthPolicies::class)->forEnvironment()->sessionAbsoluteMinutes)->toBe(120)
         ->and(app(AuthPolicies::class)->resolve($acme->id)->passkeys)->toBeFalse();
+});
+
+/**
+ * THE EMBEDDED BOX AND THE HOSTED PAGE AGREE, in every precedence case: an organization's own
+ * provider in the environment's place (also when it turned its own off), an organization that
+ * turned the environment's off, one that inherits everything — and the plain page.
+ */
+it('gives an embedded sign-in exactly the social buttons the hosted page draws', function (): void {
+    $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
+    $own = esmOrg('Own');
+    $quiet = esmOrg('Quiet');
+    $hidden = esmOrg('Hidden');
+    $inherits = esmOrg('Inherits');
+
+    esmProvider(null, 'github');
+    esmProvider(null, 'discord');
+    esmProvider($own->id, 'github');
+    $quietGitHub = app(SignInProviders::class)->create($quiet->id, 'github', ConnectionType::OAuth2, 'Github', ['provider' => 'github', 'client_id' => 'q', 'client_secret' => 'q']);
+    $quietGitHub->forceFill(['status' => ConnectionStatus::Inactive])->save();
+    app(SignInProviders::class)->stopInheriting($hidden->id, 'discord');
+
+    $hosted = fn (string $path): array => collect($this->get($path)->assertOk()->viewData('page')['props']['providers'])
+        ->mapWithKeys(fn (array $button): array => [$button['provider'] => $button['label']])->sortKeys()->all();
+    $embedded = fn (?string $organization): array => collect($this->withHeaders(['X-Cbox-Publishable-Key' => $key->key, 'Origin' => 'https://acme.test'])
+        ->getJson('/frontend/v1/config'.($organization === null ? '' : '?organization='.$organization))->assertOk()->json('social'))
+        ->mapWithKeys(fn (array $button): array => [$button['provider'] => $button['name']])->sortKeys()->all();
+
+    foreach ([$own, $quiet, $hidden, $inherits] as $organization) {
+        expect($embedded($organization->slug))->toBe($hosted('/o/'.$organization->slug.'/login'), $organization->name)
+            ->and($embedded($organization->id))->toBe($hosted('/o/'.$organization->slug.'/login'));
+    }
+
+    expect($embedded(null))->toBe($hosted('/login'))
+        ->and(array_keys($embedded($own->slug)))->toBe(['discord', 'github'])
+        ->and(array_keys($embedded($quiet->slug)))->toBe(['discord'])
+        ->and(array_keys($embedded($hidden->slug)))->toBe(['github']);
 });

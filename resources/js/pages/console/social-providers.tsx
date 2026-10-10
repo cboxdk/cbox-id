@@ -16,6 +16,7 @@ import {
     Panel,
     Pill,
     ProviderMark,
+    RadioGroup,
     Textarea,
 } from '@/ui';
 
@@ -138,6 +139,12 @@ type Props = PageProps<{
     organization: OrganizationPicker | null;
     /** Back to the environment's providers, from one organization's view on the environment console. */
     environmentHref: string | null;
+    /**
+     * A single-tenant install's organization console, whose administrators are the
+     * environment's: the environment's providers are managed here too, and the setup form
+     * asks whether a provider is for every sign-in page or only this organization's.
+     */
+    ownerChoice: boolean;
     indexHref: string;
     storeHref: string;
     help: HelpContent;
@@ -156,6 +163,7 @@ export default function SocialProviders({
     organizationFilter,
     organization,
     environmentHref,
+    ownerChoice,
     indexHref,
     storeHref,
     help,
@@ -197,6 +205,7 @@ export default function SocialProviders({
                     <SetupPanel
                         template={template}
                         organization={organization}
+                        ownerChoice={ownerChoice ? (organizationName ?? 'this organization') : null}
                         storeHref={storeHref}
                         cancelHref={indexHref}
                     />
@@ -233,7 +242,7 @@ export default function SocialProviders({
                         {(organizationProviders.length > 0 || optOuts.length > 0) && (
                             <Panel
                                 title="Set by one organization"
-                                description="An organization's own provider replaces the environment's on its sign-in page. One that turned the environment's off is listed too."
+                                description="An organization's own provider replaces the environment's on its sign-in page. One that turned the environment's off is listed too — that only removes the button from its page; requiring SSO is what keeps people out."
                             >
                                 <ul>
                                     {organizationProviders.map((row, index) => (
@@ -288,38 +297,67 @@ export default function SocialProviders({
                         )}
                     </>
                 ) : (
-                    <Panel
-                        title={`On ${organizationName ?? 'this organization'}’s sign-in page`}
-                        description="In the order people see them."
-                        action={
-                            environmentHref !== null ? (
-                                <Link href={environmentHref} className="btn btn-ghost btn-sm">
-                                    The environment’s providers
-                                </Link>
-                            ) : undefined
-                        }
-                    >
-                        {page.length === 0 ? (
-                            <Empty
-                                lines={[
-                                    'No social providers here yet — people sign in with a password, a magic link or a passkey.',
-                                    'Add one below to offer it on this organization’s page.',
-                                ]}
-                            />
-                        ) : (
-                            <ul>
-                                {page.map((row, index) => (
-                                    <PageItem
-                                        key={row.id}
-                                        row={row}
-                                        last={index === page.length - 1}
-                                        organizationName={organizationName}
-                                        controls={controls}
+                    <>
+                        {ownerChoice && (
+                            <Panel
+                                title="On every sign-in page"
+                                description="Your own credentials with each provider, offered on every sign-in page in this environment — every organization here inherits them."
+                            >
+                                {environmentProviders.length === 0 ? (
+                                    <Empty
+                                        lines={[
+                                            'No providers for the whole environment yet.',
+                                            'Choose one under Add a provider; it is offered on every sign-in page unless you say it is only for this organization.',
+                                        ]}
                                     />
-                                ))}
-                            </ul>
+                                ) : (
+                                    <ul>
+                                        {environmentProviders.map((row, index) => (
+                                            <ProviderItem
+                                                key={row.id}
+                                                row={row}
+                                                last={index === environmentProviders.length - 1}
+                                                everywhere
+                                                controls={controls}
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                            </Panel>
                         )}
-                    </Panel>
+                        <Panel
+                            title={`On ${organizationName ?? 'this organization'}’s sign-in page`}
+                            description="In the order people see them. Turning one of the environment's off here only takes the button off this page — it does not stop anyone signing in with it elsewhere. To make your identity provider the only way in, require SSO on Authentication policy."
+                            action={
+                                environmentHref !== null ? (
+                                    <Link href={environmentHref} className="btn btn-ghost btn-sm">
+                                        The environment’s providers
+                                    </Link>
+                                ) : undefined
+                            }
+                        >
+                            {page.length === 0 ? (
+                                <Empty
+                                    lines={[
+                                        'No social providers here yet — people sign in with a password, a magic link or a passkey.',
+                                        'Add one below to offer it on this organization’s page.',
+                                    ]}
+                                />
+                            ) : (
+                                <ul>
+                                    {page.map((row, index) => (
+                                        <PageItem
+                                            key={row.id}
+                                            row={row}
+                                            last={index === page.length - 1}
+                                            organizationName={organizationName}
+                                            controls={controls}
+                                        />
+                                    ))}
+                                </ul>
+                            )}
+                        </Panel>
+                    </>
                 )}
 
                 {available.length > 0 && (
@@ -816,17 +854,23 @@ function PanelHead({ template, title }: { template: Template; title: string }) {
 function SetupPanel({
     template,
     organization,
+    ownerChoice,
     storeHref,
     cancelHref,
 }: {
     template: SetupTemplate;
     organization: OrganizationPicker | null;
+    /** The organization's name where the form may also set a provider up for every page. */
+    ownerChoice: string | null;
     storeHref: string;
     cancelHref: string;
 }) {
     const form = useForm({
         provider: template.key,
         organization: organization?.selected?.id ?? '',
+        // The whole environment first, wherever this form may choose it: it is what "turn
+        // on Google for my app" means.
+        forEnvironment: ownerChoice !== null,
         reservedId: template.reservedId,
         clientId: '',
         clientSecret: '',
@@ -835,7 +879,9 @@ function SetupPanel({
             template.parameters.map((parameter) => [parameter.key, '']),
         ) as Record<string, string>,
     });
-    const forEnvironment = organization !== null && form.data.organization === '';
+    const forEnvironment =
+        (organization !== null && form.data.organization === '') ||
+        (ownerChoice !== null && form.data.forEnvironment);
 
     return (
         <div className="card">
@@ -855,6 +901,29 @@ function SetupPanel({
                         error={form.errors.organization}
                         onChange={(id) => form.setData('organization', id)}
                         hint="The whole environment offers it on every sign-in page. Choose one organization to set up its own instead — it then replaces the environment's on that organization's page."
+                    />
+                )}
+
+                {ownerChoice !== null && (
+                    <RadioGroup
+                        label="Who is it for?"
+                        name="forEnvironment"
+                        value={form.data.forEnvironment ? 'environment' : 'organization'}
+                        onValueChange={(value) =>
+                            form.setData('forEnvironment', value === 'environment')
+                        }
+                        options={[
+                            {
+                                value: 'environment',
+                                label: 'Every sign-in page in this environment',
+                                hint: 'Every organization here inherits it.',
+                            },
+                            {
+                                value: 'organization',
+                                label: `Only ${ownerChoice}’s sign-in page`,
+                                hint: 'Its own credentials, in place of the environment’s for this provider.',
+                            },
+                        ]}
                     />
                 )}
 

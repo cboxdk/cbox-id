@@ -41,6 +41,9 @@ final class EnableSocialProviderRequest extends FormRequest
             // Extra scopes as one line, separated by spaces or commas — the way a provider's
             // own documentation writes them.
             'scopes' => ['nullable', 'string', 'max:2000'],
+            // On a single-tenant install's organization console: every sign-in page, or only
+            // this organization's. Ignored anywhere it is not that console's to decide.
+            'forEnvironment' => ['nullable', 'boolean'],
         ];
     }
 

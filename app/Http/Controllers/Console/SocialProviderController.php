@@ -15,6 +15,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\EnableSocialProviderRequest;
 use App\Http\Requests\Console\UpdateSocialProviderRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
@@ -74,6 +75,9 @@ final readonly class SocialProviderController extends ConsoleController
         $filter = $this->organizationFilter();
         $organizationId = $filter->id;
         $environmentView = $organizationId === null && ! $filter->unknown;
+        // A single-tenant install's organization console: its administrators are the
+        // environment's, so the environment's providers are managed here as well.
+        $managesEnvironment = $this->managesEnvironmentHere();
 
         /** @var list<Connection> $environment */
         $environment = $filter->unknown ? [] : $providers->environmentProviders();
@@ -106,9 +110,12 @@ final readonly class SocialProviderController extends ConsoleController
         return $this->page('console/social-providers', Vocabulary::SOCIAL_LOGIN, [
             'view' => $environmentView ? 'environment' : 'organization',
             'organizationName' => $environmentView ? null : $filter->name,
-            'environmentProviders' => $environmentView
+            'environmentProviders' => $environmentView || $managesEnvironment
                 ? array_map(fn (Connection $connection): array => $this->row($connection), $environment)
                 : [],
+            // "Who is it for?" on the organization console of a single-tenant install: every
+            // sign-in page, or only this organization's.
+            'ownerChoice' => $managesEnvironment,
             'organizationProviders' => $environmentView
                 ? array_map(fn (Connection $connection): array => $this->row($connection, $owners[(string) $connection->organization_id] ?? (string) $connection->organization_id, in_array($connection->provider, $environmentKeys, true)), $own)
                 : [],
@@ -169,8 +176,10 @@ final readonly class SocialProviderController extends ConsoleController
         }
 
         // The environment's own unless the form named an organization — the organization
-        // console's always being its own.
-        $organizationId = $this->chosenOrganizationId($request, allowsEnvironment: true);
+        // console's always being its own, except where its administrators are the
+        // environment's and the form said "every sign-in page".
+        $forEnvironment = $this->managesEnvironmentHere() && $request->boolean('forEnvironment');
+        $organizationId = $forEnvironment ? null : $this->chosenOrganizationId($request, allowsEnvironment: true);
 
         $result = $this->act(EnableSocialProvider::class, [
             ...($organizationId === null ? ['environment_wide' => true] : ['organization_id' => $organizationId]),
@@ -180,7 +189,7 @@ final readonly class SocialProviderController extends ConsoleController
             'parameters' => array_intersect_key($request->parameters(), array_flip($parameters)),
             'scopes' => $request->scopes(),
             'reserved_id' => $request->reservedId(),
-        ], $fields, 'clientId');
+        ], $fields, 'clientId', asEnvironment: $forEnvironment);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -205,11 +214,13 @@ final readonly class SocialProviderController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
+        $environment = $this->targetsEnvironment($connection);
+
         $result = $this->act(UpdateSocialProvider::class, [
             'id' => $connection,
-            'organization_id' => $this->routeOrganizationId(),
+            'organization_id' => $environment ? null : $this->routeOrganizationId(),
             ...$request->changes(),
-        ], ['client_id' => 'clientId', 'client_secret' => 'clientSecret', 'scopes' => 'scopes', 'parameters' => 'parameters'], 'clientId');
+        ], ['client_id' => 'clientId', 'client_secret' => 'clientSecret', 'scopes' => 'scopes', 'parameters' => 'parameters'], 'clientId', asEnvironment: $environment);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -232,7 +243,8 @@ final readonly class SocialProviderController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $result = $this->act(TurnOnSocialProvider::class, ['id' => $connection, 'organization_id' => $this->routeOrganizationId()]);
+        $environment = $this->targetsEnvironment($connection);
+        $result = $this->act(TurnOnSocialProvider::class, ['id' => $connection, 'organization_id' => $environment ? null : $this->routeOrganizationId()], asEnvironment: $environment);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -248,7 +260,8 @@ final readonly class SocialProviderController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        $result = $this->act(TurnOffSocialProvider::class, ['id' => $connection, 'organization_id' => $this->routeOrganizationId()]);
+        $environment = $this->targetsEnvironment($connection);
+        $result = $this->act(TurnOffSocialProvider::class, ['id' => $connection, 'organization_id' => $environment ? null : $this->routeOrganizationId()], asEnvironment: $environment);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -271,12 +284,15 @@ final readonly class SocialProviderController extends ConsoleController
          * Another tenant's provider is a 404, not a button this administrator is failing to
          * press: it is a row they have no business learning exists.
          */
+        $environment = $this->targetsEnvironment($connection);
+
         $result = $this->act(RemoveSocialProvider::class, [
             'id' => $connection,
             // The member's own organization, which the action holds the lookup to; on the
-            // environment console, whose administrator holds every organization, none.
-            'organization_id' => $this->routeOrganizationId(),
-        ]);
+            // environment console, whose administrator holds every organization, none — and
+            // none for the environment's own provider on a console that administers it.
+            'organization_id' => $environment ? null : $this->routeOrganizationId(),
+        ], asEnvironment: $environment);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -316,6 +332,28 @@ final readonly class SocialProviderController extends ConsoleController
         return back()->with('status', $offered
             ? $name.' from the environment is offered on this organization’s sign-in page again.'
             : $name.' from the environment is no longer offered on this organization’s sign-in page.');
+    }
+
+    /**
+     * Whether this is an ORGANIZATION console whose administrators are the environment's —
+     * a single-tenant install's ({@see ConsoleScope::administersEnvironment()}).
+     * The environment console administers it by being the environment console.
+     */
+    private function managesEnvironmentHere(): bool
+    {
+        return $this->scope->plane() === ConsolePlane::Organization && $this->scope->administersEnvironment();
+    }
+
+    /**
+     * Whether a write names the ENVIRONMENT's provider from an organization console that
+     * administers it — the one case its action runs for the environment rather than
+     * confined to this organization. Anything else keeps the organization's narrowing, and
+     * another organization's id stays a 404.
+     */
+    private function targetsEnvironment(string $connection): bool
+    {
+        return $this->managesEnvironmentHere()
+            && Connection::query()->whereKey($connection)->whereNull('organization_id')->whereNotNull('provider')->exists();
     }
 
     /**
@@ -464,7 +502,10 @@ final readonly class SocialProviderController extends ConsoleController
             ->whereKey($id)
             ->whereNotNull('provider')
             ->when($this->scope->plane() === ConsolePlane::Organization || $this->scope->organizationId() !== null,
-                fn ($query) => $query->where('organization_id', $this->scope->requireOrganizationId()))
+                fn ($query) => $this->managesEnvironmentHere()
+                    // The organization's own, or the environment's where this console administers it.
+                    ? $query->where(fn ($owner) => $owner->where('organization_id', $this->scope->requireOrganizationId())->orWhereNull('organization_id'))
+                    : $query->where('organization_id', $this->scope->requireOrganizationId()))
             ->first();
 
         $template = $connection === null ? null : SocialProviderFields::loginTemplate((string) $connection->provider);

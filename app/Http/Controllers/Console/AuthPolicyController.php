@@ -17,6 +17,7 @@ use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
 use App\Http\Requests\Console\SaveSignInMethodsRequest;
 use App\Http\Requests\Console\SaveSmsFactorPolicyRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
@@ -36,6 +37,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Otp\Sms\CallingCodes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 use Locale;
 
@@ -153,9 +155,15 @@ final readonly class AuthPolicyController extends ConsoleController
                 ? route('environment.organizations.policy.update')
                 : $this->url('auth-policy.update'),
             'inheritHref' => $onEnvironmentPlane ? null : $this->url('auth-policy.inherit'),
-            'selfServiceSignup' => $onEnvironmentPlane ? $this->selfServiceProps() : null,
-            'smsFactor' => $onEnvironmentPlane ? $this->smsFactorProps() : null,
-            'signInMethods' => $onEnvironmentPlane ? $this->signInMethodsProps($baseline) : null,
+            /*
+             * THE ENVIRONMENT'S OWN SETTINGS — on its console, and on a single-tenant
+             * install's organization console, whose administrators are the environment's
+             * ({@see ConsoleScope::administersEnvironment()}). A customer's console never.
+             */
+            'environmentName' => $this->environmentName(),
+            'selfServiceSignup' => $this->managesEnvironment() ? $this->selfServiceProps() : null,
+            'smsFactor' => $this->managesEnvironment() ? $this->smsFactorProps() : null,
+            'signInMethods' => $this->managesEnvironment() ? $this->signInMethodsProps($baseline) : null,
         ]);
     }
 
@@ -230,7 +238,7 @@ final readonly class AuthPolicyController extends ConsoleController
      */
     public function sms(SaveSmsFactorPolicyRequest $request): RedirectResponse
     {
-        $this->scope->assertMayAdministerEnvironment();
+        $this->scope->assertAdministersEnvironment();
 
         $input = $request->policyInput();
 
@@ -238,7 +246,7 @@ final readonly class AuthPolicyController extends ConsoleController
             'enabled' => 'enabled',
             'allowed_countries' => 'allowedCountries',
             'privileged_need_stronger_factor' => 'privilegedNeedStrongerFactor',
-        ], 'allowedCountries');
+        ], 'allowedCountries', asEnvironment: true);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -285,7 +293,7 @@ final readonly class AuthPolicyController extends ConsoleController
      */
     public function methods(SaveSignInMethodsRequest $request): RedirectResponse
     {
-        $this->scope->assertMayAdministerEnvironment();
+        $this->scope->assertAdministersEnvironment();
 
         $result = $this->act(UpdateSignInPolicy::class, $request->methodsInput(), [
             'passkeys' => 'passkeys',
@@ -293,7 +301,7 @@ final readonly class AuthPolicyController extends ConsoleController
             'bot_challenge' => 'botChallenge',
             'session_idle_minutes' => 'sessionIdleMinutes',
             'session_absolute_minutes' => 'sessionAbsoluteMinutes',
-        ], 'sessionAbsoluteMinutes');
+        ], 'sessionAbsoluteMinutes', asEnvironment: true);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sign-in methods and sessions saved.');
     }
@@ -405,7 +413,11 @@ final readonly class AuthPolicyController extends ConsoleController
             'enabled' => SelfServiceSignup::enabledFor($this->currentEnvironment()),
             'open' => $policy->isOpen(),
             'mode' => $policy->mode(),
-            'href' => $this->url('auth-policy.self-service-signup'),
+            // The switch only exists where the environment decides; elsewhere the page says
+            // what does, and there is nothing to post.
+            'href' => $policy->decidedByEnvironment() && Route::has($this->routeName('auth-policy.self-service-signup'))
+                ? $this->url('auth-policy.self-service-signup')
+                : '',
         ];
     }
 
@@ -450,6 +462,24 @@ final readonly class AuthPolicyController extends ConsoleController
         $key = app(EnvironmentContext::class)->current()?->environmentKey();
 
         return $key === null ? null : Environment::query()->find($key);
+    }
+
+    /**
+     * Whether this page also draws the ENVIRONMENT's own settings — methods and sessions,
+     * text-message codes, self-service sign-up: on the environment's own page, and on a
+     * single-tenant install's organization console.
+     */
+    private function managesEnvironment(): bool
+    {
+        return $this->editsEnvironment()
+            || ($this->scope->plane() === ConsolePlane::Organization && $this->scope->administersEnvironment());
+    }
+
+    private function environmentName(): string
+    {
+        $environment = app(CurrentEnvironment::class)->get();
+
+        return $environment === null ? 'this environment' : $environment->name;
     }
 
     /**

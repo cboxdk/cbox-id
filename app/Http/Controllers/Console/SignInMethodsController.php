@@ -47,8 +47,10 @@ use Inertia\Response;
  * BOTH CONSOLES. On the environment console it reports the environment. On an organization
  * console — the whole administration on a single-tenant install — it reports what THAT
  * organization's people get: its effective rules, the social buttons its page shows after
- * inheritance, its own SSO connection. Rows the organization cannot change there say whose
- * they are and offer no link, rather than one that would answer 403.
+ * inheritance, its own SSO connection. On a single-tenant install that console's
+ * administrators are the environment's too, so the environment's rows link to the panels that
+ * change them; on any other organization console they say whose they are and offer no link,
+ * rather than one that would answer 403.
  */
 final readonly class SignInMethodsController extends ConsoleController
 {
@@ -84,8 +86,12 @@ final readonly class SignInMethodsController extends ConsoleController
         // Links only to pages THIS console has; an environment-only page is no link at all
         // on an organization console.
         $policyHref = $this->url('auth-policy');
-        $methodsHref = $onEnvironment ? $policyHref.'#sign-in-methods' : null;
-        $methodsLabel = $onEnvironment ? 'Sign-in methods' : null;
+        // The environment's own settings are changeable from here on its console — and on a
+        // single-tenant install's organization console, whose administrators are the
+        // environment's. On anybody else's they are rows without a link.
+        $managesEnvironment = $this->scope->administersEnvironment();
+        $methodsHref = $managesEnvironment ? $policyHref.'#sign-in-methods' : null;
+        $methodsLabel = $managesEnvironment ? 'Sign-in methods' : null;
 
         $selfService = SelfServiceSignup::enabledFor($environment->get());
         $signupHere = $signup->decidedByEnvironment();
@@ -140,7 +146,7 @@ final readonly class SignInMethodsController extends ConsoleController
                             $smsPolicy->enabled
                                 ? 'Accepted as a second factor in '.count($smsPolicy->allowedCountries).' '.(count($smsPolicy->allowedCountries) === 1 ? 'country' : 'countries').'.'
                                 : 'Off. The weakest second factor — turn it on only for people without a smartphone.',
-                            'environment', $onEnvironment ? $policyHref.'#sms' : null, $onEnvironment ? 'SMS settings' : null),
+                            'environment', $managesEnvironment ? $policyHref.'#sms' : null, $managesEnvironment ? 'SMS settings' : null),
                     ],
                 ],
                 [
@@ -152,8 +158,8 @@ final readonly class SignInMethodsController extends ConsoleController
                                 ? 'Anyone can create an account and their own organization.'
                                 : 'Invitation only.',
                             $signupHere ? 'environment' : 'deployment',
-                            $signupHere && $onEnvironment ? $policyHref.'#sign-up' : null,
-                            $signupHere && $onEnvironment ? 'Sign-up' : null,
+                            $signupHere && $managesEnvironment ? $policyHref.'#sign-up' : null,
+                            $signupHere && $managesEnvironment ? 'Sign-up' : null,
                             $signupHere ? null : 'CBOX_ID_SIGNUP_MODE'),
                         self::row('radar', Vocabulary::RADAR, $radar->mode() === RadarMode::Enforce ? 'on' : 'optional',
                             $radar->mode() === RadarMode::Enforce

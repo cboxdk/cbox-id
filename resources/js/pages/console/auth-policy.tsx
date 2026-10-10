@@ -110,6 +110,8 @@ type Props = PageProps<{
     selfServiceSignup: SelfServiceSignup | null;
     smsFactor: SmsFactorSetting | null;
     signInMethods: SignInMethodsSetting | null;
+    /** The environment's name — what the environment-wide panels are about. */
+    environmentName: string;
     help: HelpContent;
 }>;
 
@@ -131,6 +133,7 @@ export default function AuthPolicyPage({
     selfServiceSignup,
     smsFactor,
     signInMethods,
+    environmentName,
     help,
 }: Props) {
     const form = useForm<Policy>(policy);
@@ -371,19 +374,36 @@ export default function AuthPolicyPage({
                 </div>
             </form>
 
+            {/*
+                On an organization's own console these are drawn only where its administrators
+                are the environment's — a single-tenant install — and they are said to be the
+                environment's, because changing one changes it for every organization here.
+            */}
+            {!onEnvironmentPlane && signInMethods !== null && (
+                <div className="pt-2">
+                    <h2 className="text-base font-semibold">For the whole environment</h2>
+                    <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                        These apply to every organization in {environmentName}, not only {scopeName}
+                        .
+                    </p>
+                </div>
+            )}
+
             {signInMethods !== null && (
-                <SignInMethodsPanel setting={signInMethods} scopeName={scopeName} />
+                <SignInMethodsPanel setting={signInMethods} scopeName={environmentName} />
             )}
 
             {selfServiceSignup !== null && (
                 <SelfServiceSignupPanel
                     setting={selfServiceSignup}
-                    scopeName={scopeName}
+                    scopeName={environmentName}
                     onEnable={() => setConfirming('signup')}
                 />
             )}
 
-            {smsFactor !== null && <SmsFactorPanel setting={smsFactor} scopeName={scopeName} />}
+            {smsFactor !== null && (
+                <SmsFactorPanel setting={smsFactor} scopeName={environmentName} />
+            )}
 
             {/* What each organization actually ends up with. */}
             {onEnvironmentPlane && organizations !== null && (
@@ -498,7 +518,7 @@ export default function AuthPolicyPage({
                 <Dialog
                     open={confirming === 'signup'}
                     onOpenChange={(open) => !open && setConfirming(null)}
-                    title={`Let people sign up to ${scopeName}?`}
+                    title={`Let people sign up to ${environmentName}?`}
                     description="Anyone who reaches one of your apps can create an account here, without an invitation."
                     footer={
                         <>

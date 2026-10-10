@@ -197,8 +197,9 @@ Three kinds of setting appear there:
   names the variable. Rows with a deployment limit, such as the longest session, show it.
 
 On a single-tenant install there is no environment console: the same page is under
-**Sign-in › Sign-in methods** in the organization console, and describes that organization's
-sign-in. [Authentication policy and sign-in methods](../guides/authentication-policy.md).
+**Sign-in › Sign-in methods** in the organization console, and its owners and admins change
+the environment's settings there too — passkeys, magic links, sessions and text-message
+codes on **Authentication policy**, and the environment's providers on **Social login**. [Authentication policy and sign-in methods](../guides/authentication-policy.md).
 
 ### Brand the sign-in page
 

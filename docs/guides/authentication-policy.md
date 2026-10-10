@@ -9,6 +9,14 @@ description: Password rules, two-factor and SSO requirements, which sign-in meth
 **Console pages (environment console):** Authentication › Sign-in methods, and Authentication ›
 Authentication policy. An organization's own rules are on its **Authentication policy** tab.
 
+On a **single-tenant install** there is no environment console: the organization console is
+the whole administration, so its owners and admins change the environment's settings there —
+**Sign-in › Authentication policy** has the same **Sign-in methods and sessions** and
+**Text-message codes** panels under *For the whole environment*, and **Sign-in › Social
+login** manages the environment's providers. They are the same actions, with the same
+limits. On a multi-tenant deployment an organization console belongs to one customer, and
+none of this is shown there.
+
 **Sign-in methods** is the overview: every way in, whether it is on, and which page changes
 it. **Authentication policy** is where you change them.
 
@@ -23,7 +31,7 @@ it. **Authentication policy** is where you change them.
 | Bot challenge on or off | The environment, if the deployment has Turnstile keys | Nothing |
 | Session idle timeout and maximum length | The environment, up to the deployment's limits | Nothing |
 | Social login providers | The environment | Use its own credentials instead, or turn one off for its page — see [Social login](social-sign-in.md) |
-| Text-message codes, self-service sign-up | The environment | Nothing |
+| Text-message codes, self-service sign-up | The environment (sign-up on a single-tenant install: the deployment's `CBOX_ID_SIGNUP_MODE`) | Nothing |
 
 Passkeys, magic links, the bot challenge and session lengths apply to the whole environment.
 They are decided before anybody has said which organization they belong to — on the sign-in

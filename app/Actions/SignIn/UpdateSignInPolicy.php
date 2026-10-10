@@ -43,7 +43,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
     schema: 'SignInPolicy',
     tag: 'Sign-in',
     rest: ['PATCH', '/sign-in/policy'],
-    consoleRoutes: ['auth-policy.update', 'environment.auth-policy.update', 'environment.organizations.policy.update', 'environment.auth-policy.methods'],
+    consoleRoutes: ['auth-policy.update', 'environment.auth-policy.update', 'environment.organizations.policy.update', 'environment.auth-policy.methods', 'auth-policy.methods'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class UpdateSignInPolicy implements Action

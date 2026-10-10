@@ -6,6 +6,7 @@ namespace App\Platform\Console;
 
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\EnforceCustomerConsole;
+use App\Http\Middleware\RequireMultiTenant;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
@@ -849,6 +850,39 @@ class ConsoleScope
      *
      * @throws AuthorizationException
      */
+    /**
+     * Whether this person may change the ENVIRONMENT's own settings from the console they are
+     * in — its sign-in methods, session lengths, SMS policy and social providers.
+     *
+     * On the environment console, its administrator. On an ORGANIZATION console only where
+     * the deployment is single-tenant: there the one environment is the install's own and the
+     * organization console is the whole administration — no environment console exists to
+     * send anyone to ({@see RequireMultiTenant}) — so its
+     * administrators are the environment's. On a multi-tenant deployment an organization
+     * console belongs to one customer of somebody's product, and the environment stays the
+     * vendor's, exactly as before.
+     *
+     * Deliberately NOT folded into {@see assertMayAdministerEnvironment()}: that guard also
+     * keeps environment-owned records with no organization column (publishable keys, the
+     * legacy login) off every organization console, and those stay off.
+     */
+    public function administersEnvironment(): bool
+    {
+        if ($this->plane() === ConsolePlane::Environment) {
+            return $this->environmentAdmin->check();
+        }
+
+        return ! $this->planes->isMultiTenant() && $this->mayAdminister();
+    }
+
+    /** @throws AuthorizationException */
+    public function assertAdministersEnvironment(): void
+    {
+        if (! $this->administersEnvironment()) {
+            throw new AuthorizationException('This belongs to the environment, and is administered from the environment console.');
+        }
+    }
+
     public function assertMayAdministerEnvironment(): void
     {
         if ($this->plane() !== ConsolePlane::Environment || ! $this->environmentAdmin->check()) {
