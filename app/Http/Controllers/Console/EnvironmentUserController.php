@@ -335,6 +335,11 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'assignOrganization' => route('environment.users.organizations.store', $model->id),
                 'environmentRole' => route('environment.users.roles', $model->id),
                 'impersonate' => route('environment.impersonate', $model->id),
+                // Radar's decisions about this address — the answer to "why was their last
+                // sign-in challenged?", asked from the person's own page.
+                'signInDecisions' => $model->email !== ''
+                    ? route('environment.radar', ['email' => $model->email])
+                    : null,
             ],
         ]);
     }

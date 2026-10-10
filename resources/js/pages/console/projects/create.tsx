@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Field, Icon, Input, PageHeader, Panel } from '@/ui';
+import { Breadcrumb, Button, Field, Input, PageHeader, Panel } from '@/ui';
 import { store } from '@actions/App/Http/Controllers/Console/ProjectController';
 
 type Props = PageProps<{ indexHref: string }>;
@@ -11,18 +11,7 @@ export default function CreateProject({ indexHref }: Props) {
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Projects
-            </Link>
+            <Breadcrumb href={indexHref} label="Projects" />
 
             <div className="mt-2">
                 <PageHeader description="A separate identity-provider product with its own environments and plan — billed independently of your other projects." />

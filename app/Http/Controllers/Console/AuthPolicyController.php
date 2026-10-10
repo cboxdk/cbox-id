@@ -144,7 +144,7 @@ final readonly class AuthPolicyController extends ConsoleController
                 ? PaginationProps::from($this->organizationPage())
                 : null,
             // Both writes, resolved by the server: one controller serves both consoles' pages
-            // and an organization's Policy tab. The environment baseline inherits from
+            // and an organization's Authentication policy tab. The environment baseline inherits from
             // nothing, so it has nowhere to send "inherit".
             'saveHref' => $this->scope->plane() === ConsolePlane::Environment && ! $onEnvironmentPlane
                 ? route('environment.organizations.policy.update')
@@ -285,7 +285,7 @@ final readonly class AuthPolicyController extends ConsoleController
             return [
                 'id' => $organization->id,
                 'name' => $organization->name,
-                // Its own Policy tab, where the override is edited.
+                // Its own Authentication policy tab, where the override is edited.
                 'href' => route('environment.organizations.policy', ['organization' => $organization->id]),
                 'overridden' => isset($overrides[$organization->id]),
                 'minLength' => $effective->minLength,

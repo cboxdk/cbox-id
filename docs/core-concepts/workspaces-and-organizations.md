@@ -137,21 +137,24 @@ here.
 
 | Area | Pages |
 |---|---|
-| **Home** | Overview |
-| **Users & orgs** | Users, Organizations (your customers), Roles, Permissions |
-| **Authentication** | Authentication policy, Social login, Enterprise SSO, Directory Sync, Trusted devices (devices module) |
-| **Developers** | Applications, APIs, API keys, Webhooks, Hooks |
+| **Home** | Overview, Get started |
+| **Users & orgs** | Users, Organizations (your customers) |
+| **Authentication** | Sign-in methods, Authentication policy, Social login, Enterprise SSO, Domains, Directory Sync, Radar, Trusted devices (devices module) |
+| **Authorization** | Roles, Permissions, Fine-grained authorization, Access reviews, Role conflicts |
+| **Developers** | Applications, APIs, API keys, Webhooks, Hooks, Feature flags, Pipes |
 | **Connectors** | Catalog, Connections (connectors module) |
-| **AI agents** | Approvals |
+| **AI agents** | Agents, Approvals, Connect |
 | **Branding** | Appearance, Branding (white-label module) |
 | **Monitoring** | Audit log, Log streams, Usage, Sign-in activity, Audit trail, Exports & retention, Risk events (each from its module) |
-| **Advanced** | Admins & support, Access reviews, Role conflicts, Token vault, Outbound provisioning, SAML apps, Legacy login |
+| **Advanced** | Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy login |
 | **Settings** | Settings |
 
 **Authentication** holds every way people come *in*; the outbound directions (SAML apps
 that trust this environment, provisioning out to other systems) are under **Advanced**
-with the rest of what is set up once and rarely revisited. The URLs did not change when
-the pages were renamed, so bookmarks and links keep working.
+with the rest of what is set up once and rarely revisited. **Authorization** sits right
+beside it: what people may do once they are in. The URLs did not change when pages were
+renamed or re-filed, so bookmarks and links keep working. [Finding your
+way](../getting-started/finding-your-way.md) walks the common tasks click by click.
 
 ## Moving between them
 

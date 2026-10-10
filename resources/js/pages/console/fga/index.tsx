@@ -3,7 +3,17 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { relativeTime } from '@/lib/time';
 import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, CopyButton, EmptyState, Field, Icon, Input, PageHeader } from '@/ui';
+import {
+    Badge,
+    Button,
+    CopyButton,
+    EmptyState,
+    Field,
+    Icon,
+    Input,
+    PageHeader,
+    AccessModelGuide,
+} from '@/ui';
 
 interface RelationRow {
     name: string;
@@ -107,6 +117,9 @@ export default function FineGrainedAuthorization({
                     />
                 </>
             )}
+            <div className="mt-8">
+                <AccessModelGuide current="fga" />
+            </div>
         </>
     );
 }

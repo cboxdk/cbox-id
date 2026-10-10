@@ -77,7 +77,11 @@ function vocabularySources(): array
         }
 
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root)) as $file) {
-            if (str_ends_with((string) $file, '.php')) {
+            // ⌘K's synonyms are the OTHER words for each page — "single sign-on",
+            // "tenants", "inline hooks" — kept precisely because a reader arriving from
+            // another platform types them. Matched, never shown (see ConsoleSynonyms, and
+            // tests/Feature/ConsoleSynonymsTest.php, which holds them to that).
+            if (str_ends_with((string) $file, '.php') && ! str_ends_with((string) $file, 'app/Platform/Console/ConsoleSynonyms.php')) {
                 $php[] = (string) $file;
             }
         }

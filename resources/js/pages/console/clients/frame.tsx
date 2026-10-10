@@ -1,7 +1,8 @@
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
     Badge,
+    Breadcrumb,
     Button,
     CopyButton,
     Dialog,
@@ -61,18 +62,7 @@ export function AppFrame({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={app.indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Apps
-                </Link>
+                <Breadcrumb href={app.indexHref} label="Applications" />
                 <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
                     <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-3 flex-wrap">

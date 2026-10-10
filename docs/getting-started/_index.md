@@ -32,6 +32,9 @@ products add next.
 
 ## The console
 
+- [Finding your way](finding-your-way.md) — where everything is in the environment
+  console, and the clicks each common task takes: social login, SSO for a customer,
+  Directory Sync, a user's sessions and MFA, roles, apps and agents.
 - [Screens](screens.md) — the workspace, organization and environment consoles and the
   sign-in surface, area by area.
 

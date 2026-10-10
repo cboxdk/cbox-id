@@ -356,6 +356,7 @@ export default function AuthPolicyPage({
             {/* What each organization actually ends up with. */}
             {onEnvironmentPlane && organizations !== null && (
                 <Panel
+                    id="organizations"
                     title="Per organization"
                     description="The rules in force after this environment's baseline is applied. An organization's own override can only make these stricter."
                 >
@@ -499,8 +500,8 @@ export default function AuthPolicyPage({
                             <code>prompt=create_organization</code>.
                         </li>
                         <li>
-                            Your authentication policy still applies: password strength, the breach check,
-                            email confirmation, rate limits and bot checks.
+                            Your authentication policy still applies: password strength, the breach
+                            check, email confirmation, rate limits and bot checks.
                         </li>
                     </ul>
                 </Dialog>
@@ -556,6 +557,7 @@ function SelfServiceSignupPanel({
     if (!setting.decidedHere) {
         return (
             <Panel
+                id="sign-up"
                 title="Self-service sign-up"
                 description={`Decided by this deployment's CBOX_ID_SIGNUP_MODE, which is "${setting.mode}". Sign-up is ${setting.open ? 'open' : 'closed'}.`}
             />
@@ -564,6 +566,7 @@ function SelfServiceSignupPanel({
 
     return (
         <Panel
+            id="sign-up"
             title="Self-service sign-up"
             description={
                 setting.enabled
@@ -638,6 +641,7 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
 
     return (
         <Panel
+            id="sms"
             title="Text-message codes"
             description={
                 setting.enabled

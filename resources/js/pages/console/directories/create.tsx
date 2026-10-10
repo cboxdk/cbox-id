@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     EmptyState,
     Field,
@@ -103,18 +104,7 @@ export default function CreateDirectory({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Directory Sync
-            </Link>
+            <Breadcrumb href={indexHref} label="Directory Sync" />
 
             <h1 className="cbx-page-title mt-2">New directory</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>

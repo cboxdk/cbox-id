@@ -118,3 +118,27 @@ export function rememberRecent(
 
     return next;
 }
+
+/**
+ * How ⌘K ranks what it offers: cmdk's own fuzzy score, except that a page one of whose
+ * KEYWORDS is exactly what was typed comes first.
+ *
+ * Without it "SAML" put "SAML apps" — the outbound direction, which merely has the word in
+ * its label — above Enterprise SSO, whose keywords say SAML is what it is. A keyword is a
+ * statement that this page IS the thing typed; a letter-by-letter match in a label is only
+ * a guess, so the guess is held just below a statement.
+ */
+export function paletteScore(
+    fuzzy: (value: string, search: string, keywords?: string[]) => number,
+    value: string,
+    search: string,
+    keywords?: string[],
+): number {
+    const typed = search.trim().toLowerCase();
+
+    if (typed !== '' && keywords?.some((keyword) => keyword.toLowerCase() === typed)) {
+        return 1;
+    }
+
+    return fuzzy(value, search, keywords) * 0.95;
+}

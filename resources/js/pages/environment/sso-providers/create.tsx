@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Icon, PageHeader, type MetadataRow } from '@/ui';
+import { Breadcrumb, Button, type MetadataRow, PageHeader } from '@/ui';
 import { type OrganizationOption, ServiceProviderFields } from './fields';
 
 type Props = PageProps<{
@@ -36,18 +36,7 @@ export default function RegisterServiceProvider({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                SAML apps
-            </Link>
+            <Breadcrumb href={indexHref} label="SAML apps" />
 
             <div className="mt-2">
                 <PageHeader description="Register an application that uses this environment as its SAML identity provider." />

@@ -1,8 +1,18 @@
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Badge, Button, ConfirmDelete, CopyButton, Icon, Kv, KvList, Panel, Pill } from '@/ui';
+import {
+    Badge,
+    Breadcrumb,
+    Button,
+    ConfirmDelete,
+    CopyButton,
+    Kv,
+    KvList,
+    Panel,
+    Pill,
+} from '@/ui';
 
 type Props = PageProps<{
     connection: {
@@ -20,29 +30,13 @@ type Props = PageProps<{
     urls: { toggle: string; destroy: string };
 }>;
 
-export default function OutboundSyncDetail({
-    connection,
-    mayAdminister,
-    indexHref,
-    urls,
-}: Props) {
+export default function OutboundSyncDetail({ connection, mayAdminister, indexHref, urls }: Props) {
     const [confirming, setConfirming] = useState(false);
 
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Outbound provisioning
-                </Link>
+                <Breadcrumb href={indexHref} label="Outbound provisioning" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{connection.name}</h1>
                     <Pill tone={connection.active ? 'success' : 'warning'}>

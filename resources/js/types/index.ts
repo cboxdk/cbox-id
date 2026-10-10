@@ -166,6 +166,11 @@ export interface NavPage {
      * held for their approval. Null (or absent) when there is nothing to say.
      */
     count?: number | null;
+    /**
+     * The other words for this page that ⌘K matches but never shows — "SAML" and "OIDC"
+     * for Enterprise SSO, "tenant" for Organizations (`App\Platform\Console\ConsoleSynonyms`).
+     */
+    keywords?: string[];
 }
 
 /**
@@ -272,6 +277,11 @@ export interface OrganizationHub {
     slug: string;
     status: string;
     tabs: LinkTab[];
+    /**
+     * The shown page's group as a second row — Members and Invitations, the two audit logs,
+     * Settings' four pages. Empty when the group is one page.
+     */
+    subTabs: LinkTab[];
     indexHref: string;
     /** What the "Admin Portal link" dialog asks: which intents, how long, whom to mail it to. */
     portalLink: {

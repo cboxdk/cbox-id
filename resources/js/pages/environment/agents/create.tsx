@@ -20,6 +20,7 @@ import { claudeCode } from '@/lib/mcpSnippets';
 import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
+    Breadcrumb,
     Button,
     Checkbox,
     CopyButton,
@@ -292,16 +293,7 @@ export default function CreateAgent({
 }
 
 function BackLink({ href }: { href: string }) {
-    return (
-        <Link
-            href={href}
-            className="text-sm inline-flex items-center gap-1"
-            style={{ color: 'var(--muted-foreground)' }}
-        >
-            <Icon name="chevron" className="w-3.5 h-3.5" style={{ transform: 'rotate(90deg)' }} />
-            Agents
-        </Link>
-    );
+    return <Breadcrumb href={href} label="Agents" />;
 }
 
 /**

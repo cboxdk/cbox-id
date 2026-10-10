@@ -1161,6 +1161,126 @@
         margin: 6px 0 0;
     }
 
+    /* BREADCRUMBS — where this page sits: the rail area, then the list it belongs to.
+       Drawn where the eyebrow is, in the same small type, so a detail page reads
+       "Authentication / Enterprise SSO" above its title instead of a bare back arrow. */
+    .cbx-crumbs ol {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 2px 6px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 13px;
+        color: var(--muted-foreground);
+    }
+    .cbx-crumbs li {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+    .cbx-crumbs li + li::before {
+        content: '/';
+        color: var(--faint);
+    }
+    .cbx-crumbs a {
+        color: var(--muted-foreground);
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .cbx-crumbs a:hover {
+        color: var(--foreground);
+        text-decoration: underline;
+    }
+    .cbx-crumbs a:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    /* A one-line note above a page's panels — a rule that changes how the rest reads. */
+    .cbx-callout {
+        margin: 0;
+        padding: 10px 14px;
+        border-radius: var(--radius-md, 8px);
+        border: 1px solid var(--border);
+        background: var(--warning-soft);
+        color: var(--foreground);
+        font-size: 14px;
+    }
+
+    /* Sign-in methods — one row per way in: its name and state, what it is set to, whose
+       decision it is, and the page that changes it. */
+    .cbx-method-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .cbx-method {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+    }
+    .cbx-method + .cbx-method {
+        border-top: 1px solid var(--border);
+    }
+    .cbx-method-main {
+        min-width: 0;
+    }
+    .cbx-method-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .cbx-method-summary {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: var(--muted-foreground);
+    }
+    .cbx-method-owner {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: var(--muted-foreground);
+    }
+    .cbx-method-action {
+        flex-shrink: 0;
+    }
+    @media (max-width: 639px) {
+        .cbx-method {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 14px 16px;
+        }
+    }
+
+    /* A choice between four things people confuse — roles, relationships, flags,
+       entitlements — side by side, with the one this page is marked. */
+    .cbx-access-guide {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .cbx-access-guide li {
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+        min-width: 0;
+    }
+    .cbx-access-guide li[aria-current='page'] {
+        background: var(--accent-soft);
+    }
+    .cbx-access-guide p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--muted-foreground);
+    }
+
     /* Setup progress — a plain track and fill. The fill animates so a step ticked on
        the previous page reads as progress made, not as a different picture. */
     .cbx-progress {
@@ -2889,6 +3009,25 @@
         outline: none;
         border-radius: var(--radius-sm);
         box-shadow: 0 0 0 2px var(--ring);
+    }
+
+    /* The second row: the pages of the group the shown tab is — pill-shaped and without a
+       rule, so it reads as the level below the underlined row rather than more of it. */
+    .cbx-tabs--sub {
+        gap: 4px;
+        margin-top: 10px;
+        border-bottom: 0;
+    }
+    .cbx-tabs--sub .cbx-tab {
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 12.5px;
+    }
+    .cbx-tabs--sub .cbx-tab[data-state='active'] {
+        background: var(--accent-soft);
+    }
+    .cbx-tabs--sub .cbx-tab[data-state='active']::after {
+        content: none;
     }
 
     @keyframes cbx-fade-in {

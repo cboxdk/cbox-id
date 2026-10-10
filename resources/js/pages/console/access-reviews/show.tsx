@@ -1,8 +1,17 @@
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps, Pagination as PaginationState } from '@/types';
-import { Badge, Button, ConfirmDelete, EmptyState, Icon, Pagination, Panel, Pill } from '@/ui';
+import {
+    Badge,
+    Breadcrumb,
+    Button,
+    ConfirmDelete,
+    EmptyState,
+    Pagination,
+    Panel,
+    Pill,
+} from '@/ui';
 
 interface ReviewItem {
     id: string;
@@ -38,18 +47,7 @@ export default function AccessReviewDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Access reviews
-                </Link>
+                <Breadcrumb href={indexHref} label="Access reviews" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{review.name}</h1>
                     <Pill tone={review.open ? 'warning' : 'success'}>

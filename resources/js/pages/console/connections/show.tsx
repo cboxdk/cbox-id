@@ -1,15 +1,15 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
     Badge,
+    Breadcrumb,
     Button,
     ConfirmDelete,
     CopyButton,
     EmptyState,
     Field,
-    Icon,
     Input,
     Panel,
     Pill,
@@ -99,18 +99,7 @@ export default function ConnectionDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Enterprise SSO
-                </Link>
+                <Breadcrumb href={indexHref} label="Enterprise SSO" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{connection.name}</h1>
                     <Pill tone="info">{connection.typeLabel}</Pill>
