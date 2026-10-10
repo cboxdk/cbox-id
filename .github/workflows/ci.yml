@@ -78,8 +78,10 @@ jobs:
       # `--exclude-group` on the command line REPLACES the XML's list rather than adding to
       # it, so naming it here keeps it out if a flag is ever added. One flag per group: Pest
       # reads `--exclude-group=a,b` as a single group with a comma in its name.
+      # 2G: the suite runs in ONE process here, and what it holds grows across ~5,600
+      # tests until the console crawls near the end tipped 1G. A crawl alone needs ~256M.
       - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
-        run: vendor/bin/pest --exclude-group=docs-screenshots
+        run: php -d memory_limit=2G vendor/bin/pest --exclude-group=docs-screenshots
 
   # ---------------------------------------------------------------------------
   # SUPPLY CHAIN — its own job so it ALWAYS runs.
@@ -221,4 +223,4 @@ jobs:
       # Browser tests are excluded on purpose: they need Chromium and prove
       # rendering, not persistence. This job is about the engine.
       - name: Tests (Unit + Feature) on ${{ matrix.image }}
-        run: php -d memory_limit=1G vendor/bin/pest --testsuite=Unit,Feature
+        run: php -d memory_limit=2G vendor/bin/pest --testsuite=Unit,Feature
