@@ -221,8 +221,9 @@ brute-force of a six-digit space.
 `{ "status": "sent", "to": "+45 ******78", "expires_in": 300 }`, or `rate_limited` with a
 `retry_after`), then submit the code to `/frontend/v1/sign-in/factor` with
 `"method": "sms"`. Each send spends one of the token's five attempts, which bounds how many
-texts one password can cause. The JavaScript SDK does not wrap the send call yet; call it
-with `fetch`, sending your publishable key in the `X-Cbox-Publishable-Key` header as the SDK does.
+texts one password can cause. With `@cboxdk/id-js`, `sendSmsCode(mfaToken)` sends it and
+`submitSecondFactor(mfaToken, code, 'sms')` checks it; without the SDK, call the endpoint with
+`fetch`, sending your publishable key in the `X-Cbox-Publishable-Key` header.
 
 ### Passkeys, from your own button
 

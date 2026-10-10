@@ -39,7 +39,7 @@ Danger is how much harm the action can do in the wrong hands: `read` only reads;
 | [Enterprise SSO](#enterprise-sso) | [`sso.connections.activate`](#sso.connections.activate), [`sso.connections.certificates.activate`](#sso.connections.certificates.activate), [`sso.connections.certificates.list`](#sso.connections.certificates.list), [`sso.connections.certificates.stage`](#sso.connections.certificates.stage), [`sso.connections.create`](#sso.connections.create), [`sso.connections.delete`](#sso.connections.delete), [`sso.connections.disable`](#sso.connections.disable), [`sso.connections.get`](#sso.connections.get), [`sso.connections.list`](#sso.connections.list), [`sso.connections.require_sso`](#sso.connections.require_sso), [`sso.connections.update`](#sso.connections.update), [`sso.domains.capture`](#sso.domains.capture), [`sso.domains.create`](#sso.domains.create), [`sso.domains.delete`](#sso.domains.delete), [`sso.domains.list`](#sso.domains.list), [`sso.domains.verify`](#sso.domains.verify), [`sso.saml_metadata.import`](#sso.saml_metadata.import) |
 | [Events](#events) | [`events.list`](#events.list) |
 | [Feature flags](#feature-flags) | [`feature_flags.create`](#feature_flags.create), [`feature_flags.delete`](#feature_flags.delete), [`feature_flags.evaluate`](#feature_flags.evaluate), [`feature_flags.get`](#feature_flags.get), [`feature_flags.list`](#feature_flags.list), [`feature_flags.update`](#feature_flags.update) |
-| [Fine-grained authorization](#fine-grained-authorization) | [`fga.check`](#fga.check), [`fga.check.batch`](#fga.check.batch), [`fga.resources.list`](#fga.resources.list), [`fga.schema.get`](#fga.schema.get), [`fga.schema.update`](#fga.schema.update), [`fga.schema.validate`](#fga.schema.validate), [`fga.subjects.list`](#fga.subjects.list), [`fga.tuples.delete`](#fga.tuples.delete), [`fga.tuples.list`](#fga.tuples.list), [`fga.tuples.write`](#fga.tuples.write) |
+| [Fine-grained authorization](#fine-grained-authorization) | [`fga.check`](#fga.check), [`fga.check_batch`](#fga.check_batch), [`fga.resources.list`](#fga.resources.list), [`fga.schema.get`](#fga.schema.get), [`fga.schema.update`](#fga.schema.update), [`fga.schema.validate`](#fga.schema.validate), [`fga.subjects.list`](#fga.subjects.list), [`fga.tuples.delete`](#fga.tuples.delete), [`fga.tuples.list`](#fga.tuples.list), [`fga.tuples.write`](#fga.tuples.write) |
 | [Governance](#governance) | [`access_reviews.close`](#access_reviews.close), [`access_reviews.create`](#access_reviews.create), [`access_reviews.get`](#access_reviews.get), [`access_reviews.items.decide`](#access_reviews.items.decide), [`access_reviews.items.list`](#access_reviews.items.list), [`access_reviews.list`](#access_reviews.list), [`sod_policies.create`](#sod_policies.create), [`sod_policies.delete`](#sod_policies.delete), [`sod_policies.get`](#sod_policies.get), [`sod_policies.list`](#sod_policies.list), [`sod_policies.status.set`](#sod_policies.status.set) |
 | [Hooks](#hooks) | [`hooks.create`](#hooks.create), [`hooks.delete`](#hooks.delete), [`hooks.get`](#hooks.get), [`hooks.list`](#hooks.list), [`hooks.update`](#hooks.update) |
 | [Invitations](#invitations) | [`invitations.list`](#invitations.list), [`invitations.resend`](#invitations.resend), [`invitations.revoke`](#invitations.revoke), [`invitations.send`](#invitations.send) |
@@ -1820,7 +1820,7 @@ Check whether a subject has a relation on a resource — directly, through compu
 | `subject_relation` | string | no | For a userset subject — `member` with `group`/`eng` asks about every member of eng. At most 64 characters. |
 | `consistency_token` | string, nullable | no | A `consistency_token` a write returned: the answer is then at least as fresh as that write. At most 64 characters. |
 
-### <a id="fga.check.batch"></a>fga.check.batch
+### <a id="fga.check_batch"></a>fga.check_batch
 
 Run 1–100 checks in one round trip, each written resource#relation@subject (document:readme#viewer@user:alice), all at the same revision, answered in order.
 
@@ -1830,7 +1830,7 @@ Run 1–100 checks in one round trip, each written resource#relation@subject (do
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_check_batch` |
-| CLI | `cbox id fga check batch` |
+| CLI | `cbox id fga check_batch` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|

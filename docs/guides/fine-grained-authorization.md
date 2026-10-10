@@ -219,7 +219,7 @@ with the same scopes:
 | `fga.tuples.delete` | `POST /api/v1/fga/tuples/delete` | `fga_tuples_delete` | `fga:write` | destructive |
 | `fga.tuples.list` | `GET /api/v1/fga/tuples` | `fga_tuples_list` | `fga:read` | read |
 | `fga.check` | `GET /api/v1/fga/check` | `fga_check` | `fga:read` | read |
-| `fga.check.batch` | `GET /api/v1/fga/check/batch` | `fga_check_batch` | `fga:read` | read |
+| `fga.check_batch` | `GET /api/v1/fga/check/batch` | `fga_check_batch` | `fga:read` | read |
 | `fga.resources.list` | `GET /api/v1/fga/resources` | `fga_resources_list` | `fga:read` | read |
 | `fga.subjects.list` | `GET /api/v1/fga/subjects` | `fga_subjects_list` | `fga:read` | read |
 

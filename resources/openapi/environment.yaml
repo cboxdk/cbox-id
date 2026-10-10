@@ -4945,7 +4945,52 @@ paths:
                   description: 'Ask an HR system that syncs incrementally for everybody, not only what changed. Ignored by other providers.'
       responses:
         202:
-          $ref: '#/components/responses/ApprovalRequired'
+          description: "Accepted — or held for a person's approval (`error: approval_required`): poll `approval.poll_url`, then repeat the request with `Cbox-Approval`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  -
+                    type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Directory'
+                  -
+                    type: object
+                    required:
+                      - error
+                      - message
+                      - approval
+                    properties:
+                      error:
+                        type: string
+                        enum:
+                          - approval_required
+                      message:
+                        type: string
+                      approval:
+                        type: object
+                        required:
+                          - id
+                          - status
+                          - binding_code
+                          - expires_at
+                          - poll_url
+                        properties:
+                          id:
+                            type: string
+                          status:
+                            type: string
+                          binding_code:
+                            type: string
+                          expires_at:
+                            type: string
+                            format: date-time
+                          poll_url:
+                            type: string
+                            format: uri
         400:
           $ref: '#/components/responses/EnvironmentRequired'
         401:
@@ -5917,7 +5962,7 @@ paths:
       summary: 'Run 1–100 checks in one round trip, each written resource#relation@subject (document:readme#viewer@user:alice), all at the same revision, answered in order.'
       description: 'Requires scope `fga:read`. Danger: read.'
       operationId: fga_check_batch
-      x-action: fga.check.batch
+      x-action: fga.check_batch
       x-scope: 'fga:read'
       x-danger: read
       parameters:

@@ -27,7 +27,7 @@ use Cbox\Id\Kernel\Authorization\ValueObjects\Tuple;
  * spelled out field by field.
  */
 #[AsAction(
-    name: 'fga.check.batch',
+    name: 'fga.check_batch',
     summary: 'Run 1–100 checks in one round trip, each written resource#relation@subject (document:readme#viewer@user:alice), all at the same revision, answered in order.',
     scope: 'fga:read',
     danger: Danger::Read,

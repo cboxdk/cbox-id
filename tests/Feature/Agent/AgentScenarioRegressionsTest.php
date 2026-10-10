@@ -6,6 +6,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\Approvals\StepUpClient;
+use App\Platform\Actions\OpenApi\ActionOpenApi;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -50,7 +51,12 @@ it('documents the approval answer and header on every action, hand-written or ge
     foreach (app(ActionRegistry::class)->forPlane($plane) as $action) {
         $operation = $spec['paths'][$action->documentedPath()][strtolower($action->method)] ?? [];
 
-        expect($operation['responses'][202]['$ref'] ?? null)->toBe('#/components/responses/ApprovalRequired', "{$action->name} does not document 202")
+        // An action that itself answers 202 documents both bodies under it (OpenApiBuildTest).
+        $held = $action->status === 202
+            ? ($operation['responses'][202]['content']['application/json']['schema']['oneOf'][1] ?? null) === ActionOpenApi::APPROVAL_REQUIRED
+            : ($operation['responses'][202]['$ref'] ?? null) === '#/components/responses/ApprovalRequired';
+
+        expect($held)->toBeTrue("{$action->name} does not document 202")
             ->and($operation['parameters'] ?? [])->toContain(['$ref' => '#/components/parameters/CboxApproval']);
     }
 })->with(ActionPlane::cases());
