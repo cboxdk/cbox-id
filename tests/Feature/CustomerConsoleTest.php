@@ -322,7 +322,7 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
     $ceremonies = [
         'accounts', 'accounts.add', 'accounts.switch',
         'activity',
-        'device', 'device.lookup', 'device.approve', 'device.deny',
+        'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
         'environment.open',
         'link.confirm', 'link.connect', 'link.decline',
         'organization.switch',

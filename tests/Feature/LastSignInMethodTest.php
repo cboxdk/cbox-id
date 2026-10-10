@@ -3,13 +3,15 @@
 declare(strict_types=1);
 
 use App\Platform\LastSignInMethod;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\NeverBreachedCheck;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
-use Cbox\Id\Identity\NeverBreachedCheck;
+use Illuminate\Support\Facades\Cookie;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function (): void {
@@ -79,7 +81,7 @@ it('leaves the cookie alone when an invitation or impersonation starts the sessi
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-invite-last'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
 
-    app(\App\Platform\PlatformAuth::class)->establish(request(), $subject->id, ['invitation']);
+    app(PlatformAuth::class)->establish(request(), $subject->id, ['invitation']);
 
-    expect(\Illuminate\Support\Facades\Cookie::hasQueued(LastSignInMethod::COOKIE))->toBeFalse();
+    expect(Cookie::hasQueued(LastSignInMethod::COOKIE))->toBeFalse();
 });

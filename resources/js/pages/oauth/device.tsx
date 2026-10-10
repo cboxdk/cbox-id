@@ -349,6 +349,9 @@ function StepUp({ sentTo, urls }: { sentTo: string; urls: Props['urls'] }) {
                 {/* A code delivered TO this person — so here `one-time-code` is right. */}
                 <Input
                     name="stepUpCode"
+                    // Focus moves here because the person just pressed Approve and this field is
+                    // what stands between them and finishing; it is labelled and described.
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
                     autoFocus
                     autoComplete="one-time-code"
                     inputMode="numeric"
@@ -459,6 +462,10 @@ function CodeForm({ href, error }: { href: string; error?: string }) {
                     */}
                     <Input
                         name="userCode"
+                        // Typing this code is the only reason the page was opened, usually on a phone
+                        // that would otherwise need a second tap to raise its keyboard. The field is
+                        // labelled and described by its hint, and the heading above is one line.
+                        // eslint-disable-next-line jsx-a11y/no-autofocus
                         autoFocus
                         autoComplete="off"
                         autoCorrect="off"
