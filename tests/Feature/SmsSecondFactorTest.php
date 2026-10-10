@@ -131,7 +131,7 @@ it('offers the authenticator first and SMS beside it when a person has both', fu
     $id = smsfPerson();
     smsfEnrol($id, $this->sms);
     $enrolment = app(Mfa::class)->enrollTotp($id, 'sam@acme.test');
-    app(Mfa::class)->confirmTotp($id, app(TotpAuthenticator::class)->codeAt($enrolment->secret, time() - 30));
+    confirmTotpForTest($id, $enrolment->secret);
 
     smsfSignIn()->assertRedirect(route('mfa'));
 

@@ -60,7 +60,7 @@ function subjectWithWorkingTotp(): array
     $enrollment = app(Mfa::class)->enrollTotp($subject->id, 'totp@acme.test');
 
     // Confirmed with the previous step's code, so the one for "now" is still unused.
-    app(Mfa::class)->confirmTotp($subject->id, app(TotpAuthenticator::class)->codeAt($enrollment->secret, time() - 30));
+    confirmTotpForTest($subject->id, $enrollment->secret);
 
     return [$subject->id, $enrollment->secret];
 }

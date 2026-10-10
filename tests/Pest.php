@@ -26,6 +26,7 @@ use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -36,6 +37,7 @@ use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -2164,4 +2166,27 @@ function saveThemeImages(array $images, string $route = 'branding', string $pres
             'images' => $images,
             'environmentDefault' => false,
         ]);
+}
+
+/**
+ * Confirm a TOTP factor with the PREVIOUS step's code, and fail loudly if it does not take.
+ *
+ * The previous step is deliberate: confirming with the current one advances the replay
+ * guard to it, and a later "correct code" assertion then passes because of the replay guard
+ * rather than whatever the test is about. But the code is minted for "now − 30 s" and
+ * checked a moment later, and if a 30-second step ends in between, "one back" becomes two
+ * back — outside the window — and `confirmTotp()` answers false. Ignoring that left a person
+ * with no second factor whom sign-in let straight in, which failed a test on a slow CI
+ * runner. So: wait out the last seconds of a step, and assert the confirmation.
+ */
+function confirmTotpForTest(string $subjectId, string $secret): void
+{
+    while (time() % 30 >= 25) {
+        usleep(200_000);
+    }
+
+    expect(app(Mfa::class)->confirmTotp(
+        $subjectId,
+        app(TotpAuthenticator::class)->codeAt($secret, time() - 30),
+    ))->toBeTrue('the TOTP factor this test depends on was not confirmed');
 }
