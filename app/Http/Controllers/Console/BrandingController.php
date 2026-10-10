@@ -167,7 +167,7 @@ final readonly class BrandingController extends ConsoleController
             return back()->withErrors([$field => $result->getMessage()]);
         }
 
-        return back()->with('status', $environmentDefault ? 'Environment appearance saved.' : 'Appearance saved.');
+        return back()->with('status', $environmentDefault ? 'Environment branding saved.' : 'Branding saved.');
     }
 
     /**

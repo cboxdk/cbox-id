@@ -179,7 +179,7 @@ it('asks for an upload in place of a remote logo, previews the file, and saves i
         ->assertScript('document.querySelector("[data-testid=appearance-preview] img")?.src.startsWith("data:image/png")', true)
         ->assertDontSee('Upload your logo — remote logo URLs are no longer shown.')
         ->press('Save changes')
-        ->assertSee('Appearance saved.')
+        ->assertSee('Branding saved.')
         // Saved, and now served by this application.
         ->assertScript('document.querySelector("[data-testid=appearance-preview] img")?.getAttribute("src").startsWith("/brand-assets/")', true)
         ->assertNoJavaScriptErrors()
@@ -187,6 +187,13 @@ it('asks for an upload in place of a remote logo, previews the file, and saves i
 
     $page->script('document.getElementById("theme-images")?.scrollIntoView({ block: "center" })');
     $page->screenshot(filename: 'hosted-login-appearance-logo-section');
+
+    // ONE page: the white-label half — name, sender, welcome mail — beneath the sign-in look.
+    $page->assertSee('Name & email')
+        ->assertSee('Email sender name')
+        ->assertNoAccessibilityIssues();
+    $page->script('document.getElementById("brand-app-name")?.scrollIntoView({ block: "center" })');
+    $page->screenshot(filename: 'hosted-login-branding-name-email');
 
     @unlink($png);
 });
