@@ -35,6 +35,34 @@ final class RequireEnvironmentSudo
             return $next($request);
         }
 
+        /*
+         * AN INERTIA VISIT IS A REDIRECT, NOT AN ERROR — the branch the account plane's
+         * {@see RequireSudo} has, and this one did not.
+         *
+         * Every click inside the environment console is an Inertia visit, which arrives as
+         * an XHR (`X-Requested-With: XMLHttpRequest`) and so fell into the ceremony branch
+         * below: a 403 JSON body the client cannot render. Token vault, Legacy login, New
+         * agent and New log stream were dead links for everybody who had not stepped up in
+         * the last few minutes — the sidebar offered them, the click did nothing but open
+         * Inertia's error modal. Inertia follows a 302 and renders the page it names, which
+         * is exactly the step-up screen.
+         *
+         * Where to come back to: the page itself when the visit is a GET (the person asked
+         * for that page), and the referer when it is a write (`fullUrl()` of a POST would
+         * send them to an action by GET after they re-entered their password).
+         */
+        if ($request->header('X-Inertia') !== null) {
+            $intended = $request->isMethod('GET')
+                ? $request->fullUrl()
+                : $this->sameOriginPath($request, $request->headers->get('referer'));
+
+            if ($intended !== null) {
+                $request->session()->put('environment.sudo.intended', $intended);
+            }
+
+            return redirect()->route('environment.sudo');
+        }
+
         // JSON/ceremony endpoints can't follow a redirect; tell the client where to
         // re-authenticate. Record the PAGE that made the call (the origin-matched,
         // path-relative referer) so sudo returns the administrator to where they were —

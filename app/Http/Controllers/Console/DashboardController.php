@@ -123,11 +123,17 @@ final readonly class DashboardController extends ConsoleController
             'cards' => $isAdmin && $configuresProduct ? $cards->resolve() : [],
             'checklist' => $progress === null ? null : $this->checklistProps($progress),
             'help' => HelpProps::for(HelpTopic::Overview),
+            /*
+             * ONLY LINKS THIS VIEWER CAN FOLLOW. These were handed to everybody, so a member
+             * on a customer's environment host was offered `/audit` (403 for a non-admin)
+             * and `/get-started` (404: a customer's console has no setup guide) — unused by
+             * the page today, and a dead link the first time a component reached for them.
+             * The guide and its dismissal now travel inside `checklist`, which exists only
+             * when they apply; the audit log only for an administrator.
+             */
             'urls' => [
-                'audit' => route('audit'),
+                'audit' => $isAdmin ? route('audit') : null,
                 'account' => route('account'),
-                'getStarted' => route('get-started'),
-                'dismissChecklist' => route('dashboard.checklist.dismiss'),
             ],
         ]);
     }
@@ -210,6 +216,8 @@ final readonly class DashboardController extends ConsoleController
                 'href' => route($step->route($this->scope->peopleRoute() ?? 'directory.members')),
                 'done' => $step->done,
             ], $progress->steps),
+            'guideHref' => route('get-started'),
+            'dismissHref' => route('dashboard.checklist.dismiss'),
         ];
     }
 }

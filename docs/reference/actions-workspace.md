@@ -26,15 +26,15 @@ Danger is how much harm the action can do in the wrong hands: `read` only reads;
 
 | Area | Actions |
 |---|---|
-| [Environments](#environments) | [`environments.create`](#environmentscreate), [`environments.domain.remove`](#environmentsdomainremove), [`environments.domain.request`](#environmentsdomainrequest), [`environments.domain.verify`](#environmentsdomainverify), [`environments.list`](#environmentslist) |
-| [Keys](#keys) | [`keys.environment.create`](#keysenvironmentcreate), [`keys.environment.revoke`](#keysenvironmentrevoke), [`keys.workspace.create`](#keysworkspacecreate), [`keys.workspace.list`](#keysworkspacelist), [`keys.workspace.revoke`](#keysworkspacerevoke) |
-| [Projects](#projects) | [`projects.create`](#projectscreate), [`projects.list`](#projectslist), [`projects.reactivate`](#projectsreactivate), [`projects.rename`](#projectsrename), [`projects.suspend`](#projectssuspend), [`projects.verification.resend`](#projectsverificationresend) |
-| [Team](#team) | [`team.environment_access`](#teamenvironment_access), [`team.invitations.list`](#teaminvitationslist), [`team.invitations.resend`](#teaminvitationsresend), [`team.invitations.revoke`](#teaminvitationsrevoke), [`team.invite`](#teaminvite), [`team.list`](#teamlist), [`team.remove`](#teamremove), [`team.role`](#teamrole), [`team.transfer_ownership`](#teamtransfer_ownership) |
-| [Workspace](#workspace) | [`workspace.get`](#workspaceget), [`workspace.settings.update`](#workspacesettingsupdate) |
+| [Environments](#environments) | [`environments.create`](#environments.create), [`environments.domain.remove`](#environments.domain.remove), [`environments.domain.request`](#environments.domain.request), [`environments.domain.verify`](#environments.domain.verify), [`environments.list`](#environments.list) |
+| [Keys](#keys) | [`keys.environment.create`](#keys.environment.create), [`keys.environment.revoke`](#keys.environment.revoke), [`keys.workspace.create`](#keys.workspace.create), [`keys.workspace.list`](#keys.workspace.list), [`keys.workspace.revoke`](#keys.workspace.revoke) |
+| [Projects](#projects) | [`projects.create`](#projects.create), [`projects.list`](#projects.list), [`projects.reactivate`](#projects.reactivate), [`projects.rename`](#projects.rename), [`projects.suspend`](#projects.suspend), [`projects.verification.resend`](#projects.verification.resend) |
+| [Team](#team) | [`team.environment_access`](#team.environment_access), [`team.invitations.list`](#team.invitations.list), [`team.invitations.resend`](#team.invitations.resend), [`team.invitations.revoke`](#team.invitations.revoke), [`team.invite`](#team.invite), [`team.list`](#team.list), [`team.remove`](#team.remove), [`team.role`](#team.role), [`team.transfer_ownership`](#team.transfer_ownership) |
+| [Workspace](#workspace) | [`workspace.get`](#workspace.get), [`workspace.settings.update`](#workspace.settings.update) |
 
 ## Environments
 
-### environments.create
+### <a id="environments.create"></a>environments.create
 
 Create an environment under one of the workspace's projects; with `initial_key`, also mint its first management key, returned once as `initial_key.token`.
 
@@ -57,7 +57,7 @@ Create an environment under one of the workspace's projects; with `initial_key`,
 | `initial_key.scopes` | list of string | yes | The environment-key scopes it carries, for example `apis:write`. At least 1 items. At most 64 items. |
 | `initial_key.expires_at` | string (date-time), nullable | no | When it stops working. Left out, it does not expire. |
 
-### environments.domain.remove
+### <a id="environments.domain.remove"></a>environments.domain.remove
 
 Stop serving one of the workspace's environments on its custom domain. Anything using that domain stops reaching it.
 
@@ -73,7 +73,7 @@ Stop serving one of the workspace's environments on its custom domain. Anything 
 |---|---|---|---|
 | `environment_id` | string (path) | yes |  |
 
-### environments.domain.request
+### <a id="environments.domain.request"></a>environments.domain.request
 
 Start serving one of the workspace's environments on a custom domain: returns the DNS TXT record that proves you control it.
 
@@ -90,7 +90,7 @@ Start serving one of the workspace's environments on a custom domain: returns th
 | `environment_id` | string (path) | yes |  |
 | `domain` | string | yes | The domain, for example login.example.com. At most 253 characters. |
 
-### environments.domain.verify
+### <a id="environments.domain.verify"></a>environments.domain.verify
 
 Look for the pending domain's DNS TXT record and, once it is visible, serve the environment on that domain.
 
@@ -106,7 +106,7 @@ Look for the pending domain's DNS TXT record and, once it is visible, serve the 
 |---|---|---|---|
 | `environment_id` | string (path) | yes |  |
 
-### environments.list
+### <a id="environments.list"></a>environments.list
 
 List every environment the workspace owns, across its projects, with each one's issuer.
 
@@ -125,7 +125,7 @@ List every environment the workspace owns, across its projects, with each one's 
 
 ## Keys
 
-### keys.environment.create
+### <a id="keys.environment.create"></a>keys.environment.create
 
 Mint a management key for one of the workspace's environments, with the scopes it needs. The value is returned once, as `token`.
 
@@ -145,7 +145,7 @@ Mint a management key for one of the workspace's environments, with the scopes i
 | `scopes` | list of string | yes | The environment-key scopes it carries, for example `apis:write`. At least 1 items. At most 64 items. |
 | `expires_at` | string (date-time), nullable | no | When it stops working. Left out, it does not expire. |
 
-### keys.environment.revoke
+### <a id="keys.environment.revoke"></a>keys.environment.revoke
 
 Revoke one of an environment's management keys; whatever uses it stops immediately.
 
@@ -162,7 +162,7 @@ Revoke one of an environment's management keys; whatever uses it stops immediate
 | `environment_id` | string (path) | yes |  |
 | `id` | string (path) | yes |  |
 
-### keys.workspace.create
+### <a id="keys.workspace.create"></a>keys.workspace.create
 
 Mint a workspace key with a role and optional scopes, never wider than the caller. The value is returned once, as `token`.
 
@@ -182,7 +182,7 @@ Mint a workspace key with a role and optional scopes, never wider than the calle
 | `scopes` | list of string, nullable | no | Narrow the key below its role. Left out, the role alone bounds it — or, minted by a key with scopes, that key's scopes. At least 1 items. |
 | `expires_at` | string (date-time), nullable | no | When it stops working. Left out, it does not expire — or, minted by a key that does, expires with it. |
 
-### keys.workspace.list
+### <a id="keys.workspace.list"></a>keys.workspace.list
 
 List the workspace's keys, newest first, revoked ones included — names, roles, scopes and expiry, never their values.
 
@@ -199,7 +199,7 @@ List the workspace's keys, newest first, revoked ones included — names, roles,
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `page` | integer | no | The page to read, from 1. A list says `next_page` when there is one. |
 
-### keys.workspace.revoke
+### <a id="keys.workspace.revoke"></a>keys.workspace.revoke
 
 Revoke a workspace key, and every key it minted on either plane (workspace keys and environment management keys, all the way down); whatever uses them stops immediately.
 
@@ -217,7 +217,7 @@ Revoke a workspace key, and every key it minted on either plane (workspace keys 
 
 ## Projects
 
-### projects.create
+### <a id="projects.create"></a>projects.create
 
 Create a project: another independently-billed IdP product, with its own environment allowance.
 
@@ -234,7 +234,7 @@ Create a project: another independently-billed IdP product, with its own environ
 | `name` | string | yes | At most 120 characters. |
 | `environment_limit` | integer | no | This project's plan environment allowance (default 2). At least 1. At most 100. |
 
-### projects.list
+### <a id="projects.list"></a>projects.list
 
 List the workspace's projects (IdP products), each with its environment allowance and how much of it is used.
 
@@ -248,7 +248,7 @@ List the workspace's projects (IdP products), each with its environment allowanc
 
 Takes no input.
 
-### projects.reactivate
+### <a id="projects.reactivate"></a>projects.reactivate
 
 Reactivate a suspended project, so environments can be added to it again.
 
@@ -264,7 +264,7 @@ Reactivate a suspended project, so environments can be added to it again.
 |---|---|---|---|
 | `id` | string (path) | yes |  |
 
-### projects.rename
+### <a id="projects.rename"></a>projects.rename
 
 Rename a project.
 
@@ -281,7 +281,7 @@ Rename a project.
 | `id` | string (path) | yes |  |
 | `name` | string | yes | At most 120 characters. |
 
-### projects.suspend
+### <a id="projects.suspend"></a>projects.suspend
 
 Suspend a project: its environments stay live, but no new ones can be added until it is reactivated.
 
@@ -297,7 +297,7 @@ Suspend a project: its environments stay live, but no new ones can be added unti
 |---|---|---|---|
 | `id` | string (path) | yes |  |
 
-### projects.verification.resend
+### <a id="projects.verification.resend"></a>projects.verification.resend
 
 Re-send the signup confirmation the workspace's first environment is waiting on, to the owner's address on file.
 
@@ -313,7 +313,7 @@ Takes no input.
 
 ## Team
 
-### team.environment_access
+### <a id="team.environment_access"></a>team.environment_access
 
 Set which of the workspace's environments a team member reaches: all of them, or the listed ones.
 
@@ -331,7 +331,7 @@ Set which of the workspace's environments a team member reaches: all of them, or
 | `all_environments` | boolean | yes | True: every environment, including ones created later. |
 | `environment_ids` | list of string | no | With `all_environments` false: the environments they reach. |
 
-### team.invitations.list
+### <a id="team.invitations.list"></a>team.invitations.list
 
 List the team's pending invitations, newest first.
 
@@ -345,7 +345,7 @@ List the team's pending invitations, newest first.
 
 Takes no input.
 
-### team.invitations.resend
+### <a id="team.invitations.resend"></a>team.invitations.resend
 
 Re-send a pending team invitation with a fresh link; the earlier link stops working and the invitation gets a new id.
 
@@ -361,7 +361,7 @@ Re-send a pending team invitation with a fresh link; the earlier link stops work
 |---|---|---|---|
 | `id` | string (path) | yes |  |
 
-### team.invitations.revoke
+### <a id="team.invitations.revoke"></a>team.invitations.revoke
 
 Withdraw a pending team invitation; its link stops working.
 
@@ -377,7 +377,7 @@ Withdraw a pending team invitation; its link stops working.
 |---|---|---|---|
 | `id` | string (path) | yes |  |
 
-### team.invite
+### <a id="team.invite"></a>team.invite
 
 Invite somebody onto the workspace's team with a role; they get a mail with a link to set a password.
 
@@ -395,7 +395,7 @@ Invite somebody onto the workspace's team with a role; they get a mail with a li
 | `name` | string, nullable | no | At most 120 characters. |
 | `role` | string | yes | One of `admin`, `developer`, `member`, `viewer`. |
 
-### team.list
+### <a id="team.list"></a>team.list
 
 List the workspace's team: each member's name, address, role and whether they reach every environment.
 
@@ -412,7 +412,7 @@ List the workspace's team: each member's name, address, role and whether they re
 | `limit` | integer | no | Items per page, 1–100. Default 50. |
 | `page` | integer | no | The page to read, from 1. A list says `next_page` when there is one. |
 
-### team.remove
+### <a id="team.remove"></a>team.remove
 
 Remove a member from the workspace's team. The owner is never removed; transfer ownership first.
 
@@ -428,7 +428,7 @@ Remove a member from the workspace's team. The owner is never removed; transfer 
 |---|---|---|---|
 | `id` | string (path) | yes |  |
 
-### team.role
+### <a id="team.role"></a>team.role
 
 Change a team member's role (admin, developer, member or viewer). The owner's role changes only by transferring ownership.
 
@@ -445,7 +445,7 @@ Change a team member's role (admin, developer, member or viewer). The owner's ro
 | `id` | string (path) | yes |  |
 | `role` | string | yes | One of `admin`, `developer`, `member`, `viewer`. |
 
-### team.transfer_ownership
+### <a id="team.transfer_ownership"></a>team.transfer_ownership
 
 Make another member the workspace's owner; the current owner stays on as an admin. Only the owner, signed in, may do this.
 
@@ -463,7 +463,7 @@ Make another member the workspace's owner; the current owner stays on as an admi
 
 ## Workspace
 
-### workspace.get
+### <a id="workspace.get"></a>workspace.get
 
 Get the workspace: its name and status, and each project's plan for a role that may read billing.
 
@@ -477,7 +477,7 @@ Get the workspace: its name and status, and each project's plan for a role that 
 
 Takes no input.
 
-### workspace.settings.update
+### <a id="workspace.settings.update"></a>workspace.settings.update
 
 Rename the workspace.
 

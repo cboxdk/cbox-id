@@ -57,7 +57,6 @@ class ConnectorsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'connectors');
         $this->loadRoutesFrom(__DIR__.'/../routes/connectors.php');
 
         // Console — present whenever the plugin is installed and not switched off.
@@ -89,7 +88,7 @@ class ConnectorsServiceProvider extends ServiceProvider
             order: 20,
         );
 
-        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->connectorsCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->connectorsCard(), 8, feature: 'connectors');
     }
 
     /**

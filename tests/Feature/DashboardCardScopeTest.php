@@ -144,6 +144,9 @@ it('never lets another organization\'s activity move the dashboard cards', funct
  * ENVIRONMENT, and that literal null was the leak.
  */
 it('asks the analytics reader for the acting organization and never for the whole environment', function (): void {
+    // The module on: a card for a module that is off is not resolved at all (below).
+    config(['id-analytics.enabled' => true]);
+
     platformRootEnvironment();
 
     [, $mine] = actingAsRole(MembershipRole::Owner);
@@ -231,3 +234,41 @@ it('renders no connectors card until an environment administrator has chosen an 
 
     expect(hasDashboardCard('Active connectors'))->toBeTrue();
 })->group('security');
+
+/**
+ * A CARD FOR A MODULE THAT IS OFF IS NOT ON THE DASHBOARD.
+ *
+ * Every module card links to its module's page, and that page is behind the module's
+ * console-kit feature — a 404 while it is inactive. The cards never asked, so on
+ * cboxid.com (analytics and compliance not switched on) the operator's dashboard offered
+ * "Sign-in activity" and "View exports & retention", and both links answered 404. Found
+ * by crawling a production-shaped stack.
+ */
+it('leaves out the card of a module that is switched off, whose page would 404', function (): void {
+    config(['id-analytics.enabled' => false, 'compliance.enabled' => false]);
+
+    ['subjectId' => $owner] = provisionAccount('cards-off@acme.example');
+    signInAsSubject($owner);
+
+    $labels = fn (): array => array_column((array) $this->get(route('dashboard'))->assertOk()->inertiaProps('cards'), 'label');
+
+    expect($labels())->not->toContain('Logins (24h)')
+        ->not->toContain('Audit export');
+
+    // …and each comes back with its module, so the absence above is the gate and not a
+    // card that never renders — and then its link opens.
+    config(['id-analytics.enabled' => true, 'compliance.enabled' => true]);
+    nextRequest();
+
+    $cards = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('cards');
+
+    expect(array_column($cards, 'label'))->toContain('Logins (24h)')
+        ->toContain('Audit export');
+
+    foreach ($cards as $card) {
+        if (is_string($card['linkHref'] ?? null)) {
+            nextRequest();
+            $this->get($card['linkHref'])->assertOk();
+        }
+    }
+});

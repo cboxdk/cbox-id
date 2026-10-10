@@ -32,15 +32,50 @@ final class ConsoleRoutes
      *
      * For the console's own table of moved pages AND for a module's, so the old spelling of
      * a module page lives beside the module's new one rather than in a list in the host.
-     * No middleware on purpose: a redirect discloses nothing a `Location` header to a page
-     * that would refuse the visitor does not, and the destination does its own gating.
+     *
+     * THE OLD ADDRESS EXISTS WHERE THE NEW ONE DOES, and nowhere else. It carries the
+     * existence gates of the family it moved into ({@see movedGates()}) — not the
+     * authentication: a redirect discloses nothing a `Location` header to a page that would
+     * refuse the visitor does not, and the destination does its own sign-in. It used to
+     * carry no gate at all, so on cboxid.com, the platform root, where the environment
+     * console does not exist, 24 old `/admin/…` addresses answered `301 → /admin/… → 404`
+     * — the redirect only moved the 404. tests/Feature/MovedPageRedirectsTest.php follows
+     * every one on the root, on an environment's host and on a single-tenant install.
      *
      * @param  string  $from  the old path, e.g. `/admin/applications/{client}`
      * @param  string  $to  the new path, e.g. `/admin/apps/{client}`
      */
     public static function moved(string $from, string $to): void
     {
-        Route::get($from, MovedPageController::class)->defaults('to', $to);
+        Route::middleware(self::movedGates($to))
+            ->get($from, MovedPageController::class)
+            ->defaults('to', $to);
+    }
+
+    /**
+     * The gates that decide whether the page at $to exists on the requesting host — the
+     * same ones its own route group carries, minus who is asking.
+     *
+     *  - `/admin/…` is the environment console: `plane:environment` (absent on the platform
+     *    root) and `multi.tenant` (absent on a single-tenant install), as {@see page()} and
+     *    routes/web.php register it.
+     *  - `/platform/…` has no plane gate: the operator section is reachable from every
+     *    console, and its own gate answers who may see it.
+     *  - Everything else is a console page, served on `plane:console`.
+     *
+     * @return list<string>
+     */
+    private static function movedGates(string $to): array
+    {
+        if ($to === '/admin' || str_starts_with($to, '/admin/')) {
+            return ['web', 'plane:environment', 'multi.tenant'];
+        }
+
+        if ($to === '/platform' || str_starts_with($to, '/platform/')) {
+            return ['web'];
+        }
+
+        return ['web', 'plane:console'];
     }
 
     /**

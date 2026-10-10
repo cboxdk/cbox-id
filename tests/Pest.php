@@ -2120,3 +2120,13 @@ function withoutRequestId(TestResponse $response): array
 
     return $body;
 }
+
+/** The platform-root subject an account email signs in as — the demo world's people. */
+function platformSubjectId(string $email): string
+{
+    $subject = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail($email));
+
+    expect($subject)->not->toBeNull("no platform-root subject {$email}");
+
+    return (string) $subject?->id;
+}

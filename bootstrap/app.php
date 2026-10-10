@@ -100,11 +100,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Default is UNSET (trust none): if the app is ever exposed directly, an
         // attacker must not be able to spoof X-Forwarded-For to forge the client
         // IP. Opt into proxy trust explicitly per deployment.
-        $trustedProxies = trim((string) env('TRUSTED_PROXIES', ''));
+        //
+        // WHICH proxies lives in config/trustedproxy.php and is read per request — never
+        // pinned with `at:` here. This closure runs when the HTTP kernel is resolved,
+        // before the application bootstraps, so the env() call that used to sit here could
+        // not see a `.env` file once `config:cache` had run: a TRUSTED_PROXIES written there
+        // read as empty and every URL went out as http. See that file.
         $middleware->trustProxies(
-            // '' → trust no proxies. Bare '*' is Laravel's trust-all special case;
-            // a CIDR list is passed as an array (explode would break the '*' case).
-            at: $trustedProxies === '' ? [] : ($trustedProxies === '*' ? '*' : explode(',', $trustedProxies)),
             headers: Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PORT

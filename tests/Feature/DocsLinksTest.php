@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+use League\CommonMark\Environment\Environment;
+use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
+use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
+use League\CommonMark\MarkdownConverter;
+
 /*
 |--------------------------------------------------------------------------
 | EVERY RELATIVE LINK IN docs/ LANDS, AND SO DOES EVERY ANCHOR
@@ -28,9 +34,16 @@ declare(strict_types=1);
 |  - IT STAYS INSIDE docs/. The docs site renders this directory and nothing beside it,
 |    so a link to `../../resources/…` is a 404 there however well it works on GitHub. A
 |    reference to anything else — another repo, a source file — is a canonical URL.
-|  - AN ANCHOR IS A HEADING'S SLUG as GitHub (and Hugo, and most renderers) compute it:
-|    lowercase, punctuation other than `-` and `_` dropped, spaces to hyphens, a repeated
-|    heading suffixed `-1`, `-2`. An explicit `<a id="…">` counts too.
+|  - AN ANCHOR MUST LAND ON BOTH RENDERERS. The docs are read in two places: GitHub, and
+|    the docs site the console's "Read the guide" links open (cbox.dk, which renders
+|    docs/ with league/commonmark — config/docs.php). They slug a heading differently:
+|    GitHub keeps `_` and turns every space into a hyphen; commonmark drops `_` and
+|    collapses a run of spaces. So an anchor is checked against GitHub's slugs AND the
+|    ids the docs site's own renderer gives the page, rendered here with the same
+|    extensions and options. An explicit `<a id="…">` counts on both. (The actions
+|    reference linked `#organizationsportal_linkscreate` — GitHub's slug — and all 79 of
+|    its underscored Contents links were dead on cbox.dk while this test, checking
+|    GitHub's rule alone, passed.)
 |
 | Links inside fenced code blocks and inline code are examples, not links, and are
 | skipped. Absolute URLs are somebody else's uptime and are not fetched.
@@ -146,6 +159,37 @@ function docsAnchors(string $markdown): array
 }
 
 /**
+ * The ids the docs site gives a page: the page rendered by league/commonmark with the
+ * options cbox.dk renders docs/ with (CommonMark core, GitHub-flavoured Markdown, heading
+ * permalinks with no prefix), front matter stripped first as it does.
+ *
+ * @return list<string>
+ */
+function docsSiteAnchors(string $markdown): array
+{
+    $environment = new Environment([
+        'heading_permalink' => [
+            'id_prefix' => '',
+            'apply_id_to_heading' => true,
+            'fragment_prefix' => '',
+            'insert' => 'none',
+            'symbol' => '',
+        ],
+    ]);
+
+    $environment->addExtension(new CommonMarkCoreExtension);
+    $environment->addExtension(new GithubFlavoredMarkdownExtension);
+    $environment->addExtension(new HeadingPermalinkExtension);
+
+    $markdown = (string) preg_replace('/^---\s*\n.*?\n---\s*\n/s', '', $markdown);
+    $html = (new MarkdownConverter($environment))->convert($markdown)->getContent();
+
+    preg_match_all('/\sid="([^"]+)"/', $html, $ids);
+
+    return array_map(static fn (string $id): string => html_entity_decode($id, ENT_QUOTES | ENT_HTML5), $ids[1]);
+}
+
+/**
  * Resolve $target against the directory $from, textually. Null when it climbs out of
  * the repository.
  */
@@ -254,10 +298,17 @@ function docsBrokenLinks(array $files, string $within): array
                 continue;
             }
 
-            $anchors[$resolved] ??= docsAnchors((string) file_get_contents(base_path($resolved)));
+            $page = (string) file_get_contents(base_path($resolved));
+            $anchors[$resolved] ??= [docsAnchors($page), docsSiteAnchors($page)];
+            [$onGitHub, $onSite] = $anchors[$resolved];
+            $wanted = rawurldecode($anchor);
 
-            if (! in_array(rawurldecode($anchor), $anchors[$resolved], true)) {
-                $broken[] = "{$file} → {$target} (no heading with that anchor)";
+            if (! in_array($wanted, $onGitHub, true)) {
+                $broken[] = "{$file} → {$target} (no heading with that anchor on GitHub)";
+            }
+
+            if (! in_array($wanted, $onSite, true)) {
+                $broken[] = "{$file} → {$target} (no heading with that anchor on the docs site)";
             }
         }
     }
@@ -270,9 +321,10 @@ it('resolves every relative link and anchor in docs/', function (): void {
 });
 
 // The README is the front door on GitHub and Packagist; its links may point anywhere in
-// the repository (LICENSE, SECURITY.md), but they must land.
-it('resolves every relative link and anchor in the README', function (): void {
-    expect(docsBrokenLinks(['README.md', 'UPGRADING.md'], ''))->toBe([]);
+// the repository (LICENSE, SECURITY.md), but they must land. So must the changelog's and
+// the upgrade guide's, which the docs site renders as the release notes.
+it('resolves every relative link and anchor in the README, changelog and upgrade guide', function (): void {
+    expect(docsBrokenLinks(['README.md', 'UPGRADING.md', 'CHANGELOG.md', 'SECURITY.md'], ''))->toBe([]);
 });
 
 it('slugs headings the way the renderer does', function (): void {
@@ -294,6 +346,26 @@ it('slugs headings the way the renderer does', function (): void {
         'overview-1',
         'custom-anchor',
     ]);
+});
+
+it('slugs headings the way the docs site does, which is not always GitHub\'s way', function (): void {
+    $page = implode("\n", [
+        '---',
+        'title: Front matter is not a heading',
+        '---',
+        '### organizations.portal_links.create',
+        '### <a id="team.transfer_ownership"></a>team.transfer_ownership',
+        '## Admin Portal',
+    ]);
+
+    expect(docsSiteAnchors($page))->toBe([
+        'organizationsportallinkscreate',
+        'teamtransferownership',
+        'team.transfer_ownership',
+        'admin-portal',
+    ])
+        // GitHub keeps the underscore: the one anchor the two disagree on.
+        ->and(docsAnchors($page))->toContain('organizationsportal_linkscreate');
 });
 
 it('finds links and ignores the ones in code', function (): void {

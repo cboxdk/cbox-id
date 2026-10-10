@@ -145,6 +145,38 @@ it('registers a CLI app with the device grant and no redirect URI', function () 
 });
 
 /**
+ * The app page offers its Secrets page only where there is one.
+ *
+ * `/apps/{id}/secrets` is a 404 for an app with no shared secret — a public client, one
+ * that signs its own assertions — but the page handed the URL to every app, and the crawl
+ * of a production-shaped stack followed it from the platform's own Cbox CLI client into a
+ * 404. The client-side condition that hid the link lived apart from the server rule that
+ * decides the page; the URL is now null exactly when the page would refuse.
+ */
+it('offers the secrets page of an app only when the app has one', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    registerApp(['name' => 'Public CLI', 'kind' => 'cli'])->assertSessionHasNoErrors();
+    registerApp([
+        'name' => 'Server App',
+        'kind' => 'web',
+        'redirectUris' => 'https://server.acme.test/cb',
+    ])->assertSessionHasNoErrors();
+
+    $public = Client::query()->where('name', 'Public CLI')->firstOrFail();
+    $confidential = Client::query()->where('name', 'Server App')->firstOrFail();
+
+    expect($this->get(route('clients.show', $public->id))->assertOk()->inertiaProps('urls.secrets'))->toBeNull();
+    $this->get(route('clients.secrets', $public->id))->assertNotFound();
+
+    $offered = $this->get(route('clients.show', $confidential->id))->assertOk()->inertiaProps('urls.secrets');
+
+    expect($offered)->toBe(route('clients.secrets', $confidential->id));
+    $this->get($offered)->assertOk();
+});
+
+/**
  * And the escape hatch stays reachable, or the presets become a cage: the combinations
  * nobody anticipated are exactly the ones a preset list cannot contain.
  */
@@ -457,6 +489,30 @@ it('shows the issuer that discovery actually serves', function () {
 });
 
 /**
+ * …and none where there is no issuer to show.
+ *
+ * On a multi-tenant deployment the platform root is nobody's identity provider — its
+ * discovery document is a deliberate 404. The Settings page on cboxid.com still handed the
+ * operator and every workspace administrator an "Integration" panel pointing at the apex,
+ * whose discovery URL answers 404. Found by crawling a production-shaped stack.
+ */
+it('offers no issuer on the platform root of a multi-tenant deployment', function () {
+    multiTenantDeployment('cboxid.com');
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+
+    ['subjectId' => $owner] = provisionAccount('settings-root@acme.example');
+    signInAsSubject($owner);
+
+    $page = $this->get('https://cboxid.com/settings')->assertOk();
+
+    expect($page->inertiaProps('issuer'))->toBeNull()
+        ->and($page->inertiaProps('discovery'))->toBeNull();
+
+    // The reason, asserted rather than assumed: the apex refuses discovery.
+    $this->getJson('https://cboxid.com/.well-known/openid-configuration')->assertNotFound();
+});
+
+/**
  * Scopes were badges.
  *
  * To add one to a live app you deleted it and registered a new one — taking its client
@@ -635,3 +691,27 @@ it('refuses an environment-owned SSO connection from the organization plane', fu
 
     expect(Connection::query()->where('name', 'Sneaky Okta')->exists())->toBeFalse();
 })->group('security');
+
+/**
+ * The member roster hands its Roles link to an administrator only: `/roles` refuses a
+ * member with a 403, and the roster offered it to everyone. Found by the console crawl
+ * (tests/Feature/Crawl), walking a customer's console as a plain member.
+ */
+it('offers the roles page from the roster only to an administrator', function (MembershipRole $role, bool $offered) {
+    actingAsRole($role);
+
+    $href = $this->get(route('directory.members'))->assertOk()->inertiaProps('rolesHref');
+
+    if (! $offered) {
+        expect($href)->toBeNull();
+        $this->get(route('roles'))->assertForbidden();
+
+        return;
+    }
+
+    expect($href)->toBe(route('roles'));
+    $this->get($href)->assertOk();
+})->with([
+    'member' => [MembershipRole::Member, false],
+    'admin' => [MembershipRole::Admin, true],
+]);
