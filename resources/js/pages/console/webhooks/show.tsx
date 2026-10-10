@@ -1,16 +1,16 @@
-import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { relativeTime } from '@/lib/time';
 import type { PageProps } from '@/types';
 import {
     Badge,
+    Breadcrumb,
     Button,
     Checkbox,
     ConfirmDelete,
     CopyButton,
     Field,
-    Icon,
     Input,
     Panel,
     Pill,
@@ -98,18 +98,7 @@ export default function WebhookDetail({
         <>
             <div className="space-y-6">
                 <div>
-                    <Link
-                        href={indexHref}
-                        className="text-sm inline-flex items-center gap-1"
-                        style={{ color: 'var(--muted-foreground)' }}
-                    >
-                        <Icon
-                            name="chevron"
-                            className="w-3.5 h-3.5"
-                            style={{ transform: 'rotate(90deg)' }}
-                        />
-                        Webhooks
-                    </Link>
+                    <Breadcrumb href={indexHref} label="Webhooks" />
 
                     <div className="mt-2 flex items-center gap-3 flex-wrap">
                         <h1
@@ -290,8 +279,8 @@ export default function WebhookDetail({
                                         {scheme === 'standard_webhooks'
                                             ? 'Your receiver keeps the same secret. A 64-character hex secret becomes whsec_ followed by the base64 of that hex string — "whsec_" + base64(secret) — and a secret that already starts with whsec_ is used as is.'
                                             : 'Your receiver keeps the same secret, used exactly as written — including the whsec_ prefix — as the HMAC key for X-Cbox-Signature.'}{' '}
-                                        Update your receiver first: from the next attempt it
-                                        rejects every delivery it cannot verify.
+                                        Update your receiver first: from the next attempt it rejects
+                                        every delivery it cannot verify.
                                     </p>
                                 )}
                                 <Button

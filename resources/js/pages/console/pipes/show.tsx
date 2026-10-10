@@ -1,13 +1,13 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
+    Breadcrumb,
     Button,
     ConfirmDelete,
     CopyButton,
     Field,
-    Icon,
     Input,
     Kv,
     KvList,
@@ -78,18 +78,7 @@ export default function PipeDetail({
 
     return (
         <div className="space-y-6">
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Pipes
-            </Link>
+            <Breadcrumb href={indexHref} label="Pipes" />
 
             <PageHeader
                 help={help}

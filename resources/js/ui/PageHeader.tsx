@@ -46,12 +46,17 @@ export interface PageHeaderProps {
 export function PageHeader({ eyebrow, title, badge, help, description, actions }: PageHeaderProps) {
     const { shell, title: stated, organizationHub } = usePage<SharedProps>().props;
 
+    const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea)?.label;
+    // Inside an organization's page the hub's own breadcrumb already says where this is
+    // ("Users & orgs / Organizations", then the organization's name). The rail area above
+    // a tab's heading would repeat it — or, for a page filed elsewhere on the rail, name
+    // an area this page is not being shown in ("AUTHENTICATION" above Acme's SSO tab).
+    const inHub = organizationHub !== undefined && organizationHub !== null;
+    const resolved = eyebrow === undefined ? (inHub ? null : area) : eyebrow;
+
     // Inside an organization's page the organization's name is the page's heading, drawn by
     // the hub's header; this page is one of its tabs, so its own title is the level below.
-    const Heading = organizationHub !== undefined && organizationHub !== null ? 'h2' : 'h1';
-
-    const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea)?.label;
-    const resolved = eyebrow === undefined ? area : eyebrow;
+    const Heading = inHub ? 'h2' : 'h1';
 
     return (
         <header className="cbx-page-header">

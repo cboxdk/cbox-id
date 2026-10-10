@@ -40,6 +40,7 @@ use App\Http\Controllers\Console\DashboardController;
 use App\Http\Controllers\Console\DirectoryController;
 use App\Http\Controllers\Console\DirectoryMemberController;
 use App\Http\Controllers\Console\EnvironmentDomainController;
+use App\Http\Controllers\Console\EnvironmentDomainsController;
 use App\Http\Controllers\Console\EnvironmentGetStartedController;
 use App\Http\Controllers\Console\EnvironmentHomeController;
 use App\Http\Controllers\Console\EnvironmentKeyController;
@@ -81,6 +82,7 @@ use App\Http\Controllers\Console\RoleConflictController;
 use App\Http\Controllers\Console\RoleController;
 use App\Http\Controllers\Console\ServiceProviderController;
 use App\Http\Controllers\Console\SettingsController;
+use App\Http\Controllers\Console\SignInMethodsController;
 use App\Http\Controllers\Console\SocialProviderController;
 use App\Http\Controllers\Console\StaffController;
 use App\Http\Controllers\Console\SupportSessionController;
@@ -1741,6 +1743,12 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // override. Same page, same controls, different level — which is the only
         // difference there has ever been between the two, and until now the organization
         // half of it had no surface at all.
+        // Sign-in methods — every way in, whether it is on, and the page that changes it.
+        // Read-only: each row links to its one writer.
+        Route::get('/sign-in-methods', SignInMethodsController::class)->name('environment.sign-in-methods');
+        // Every organization's claimed email domains, one list — verified and captured on
+        // each organization's own Domains tab, which every row links to.
+        Route::get('/domains', EnvironmentDomainsController::class)->name('environment.domains');
         Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('environment.auth-policy');
         Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('environment.auth-policy.update');
         // The environment's self-service sign-up switch — environment plane only: it

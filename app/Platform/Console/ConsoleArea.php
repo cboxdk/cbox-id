@@ -123,7 +123,8 @@ enum ConsoleArea: string
      *  - Overview's module page (sign-in analytics) is a measurement, so it sits beside
      *    Usage in Monitoring rather than alone on Home.
      *  - Logs is Monitoring — the audit trail, its exports, risk events.
-     *  - Governance is Advanced, where access reviews and role conflicts are.
+     *  - Governance is Authorization, where access reviews and role conflicts are — beside
+     *    the roles they govern.
      *  - Settings' module page is the white-label branding page, which belongs beside
      *    Appearance. The environment console's own Settings is one page and stays one.
      */
@@ -133,7 +134,7 @@ enum ConsoleArea: string
             self::Overview => 'Monitoring',
             self::Directory => 'Users & orgs',
             self::Authentication => 'Authentication',
-            self::Governance => 'Advanced',
+            self::Governance => Vocabulary::AUTHORIZATION,
             self::Developers => 'Developers',
             self::Connectors => 'Connectors',
             self::Logs => 'Monitoring',
@@ -152,7 +153,7 @@ enum ConsoleArea: string
             self::Overview => 'chart',
             self::Directory => 'members',
             self::Authentication => 'fingerprint',
-            self::Governance => 'sliders',
+            self::Governance => 'shield',
             self::Developers => 'code',
             self::Connectors => 'puzzle',
             self::Logs => 'chart',

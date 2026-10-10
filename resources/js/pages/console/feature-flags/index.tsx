@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, EmptyState, Icon, PageHeader } from '@/ui';
+import { Badge, Button, EmptyState, Icon, PageHeader, AccessModelGuide } from '@/ui';
 
 /** One row of `FeatureFlagController::index()`. */
 interface FlagRow {
@@ -116,6 +116,9 @@ export default function FeatureFlags({ help, flags, createHref }: Props) {
                         </Link>
                     ))
                 )}
+            </div>
+            <div className="mt-8">
+                <AccessModelGuide current="feature-flags" />
             </div>
         </>
     );

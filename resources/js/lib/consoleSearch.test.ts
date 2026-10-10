@@ -1,4 +1,6 @@
+import { defaultFilter } from 'cmdk';
 import {
+    paletteScore,
     readRecent,
     rememberRecent,
     type SearchItem,
@@ -77,5 +79,26 @@ describe('console search', () => {
                 item('1'),
             ),
         ).toHaveLength(1);
+    });
+});
+
+describe('paletteScore', () => {
+    it('puts a page whose keyword IS the query above one that only spells it in its label', () => {
+        const sso = paletteScore(defaultFilter, 'go Authentication Enterprise SSO', 'saml', [
+            'SAML',
+            'OIDC',
+        ]);
+        const samlApps = paletteScore(defaultFilter, 'go Advanced SAML apps', 'saml', ['SAML IdP']);
+
+        expect(sso).toBe(1);
+        expect(samlApps).toBeGreaterThan(0);
+        expect(samlApps).toBeLessThan(sso);
+    });
+
+    it('still matches by label, and matches nothing that does not match', () => {
+        expect(
+            paletteScore(defaultFilter, 'go Developers Applications', 'appl', []),
+        ).toBeGreaterThan(0);
+        expect(paletteScore(defaultFilter, 'go Developers Applications', 'zzzz', ['SDK'])).toBe(0);
     });
 });

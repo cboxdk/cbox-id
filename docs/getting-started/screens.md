@@ -239,26 +239,36 @@ No screenshot of its own. The 2026-07-13 image above filed these settings under
 Every capability of the full organization console, plus the ones that only make sense for
 a whole environment, filed by task in the words the market uses:
 
-- **Home:** Overview.
-- **Users & orgs:** Users, Organizations (your customers), Roles, Permissions. A user's
-  page has **Admin & support roles**: roles granted across the whole environment. An organization
-  opens on its own page, `/admin/organizations/{id}`, with a tab for each thing that is
-  its: Overview (is SSO connected, a domain verified, a directory syncing — and its latest
-  audit entries), Members, Invitations, SSO, Directory Sync, Domains, Roles, API keys,
-  Branding, Policy, Support, Audit log and Settings, plus an **Admin Portal link** for its
-  IT administrator. The environment-wide lists (Enterprise SSO, Roles, Audit log, …) show
+- **Home:** Overview, Get started.
+- **Users & orgs:** Users, Organizations (your customers). A user's page has their
+  organizations, sessions, two-factor (with **Reset 2FA**), **Sign-in decisions** (what
+  Radar decided about them, and why) and **Admin & support roles**: roles granted across the
+  whole environment. An organization opens on its own page, `/admin/organizations/{id}`,
+  with nine tabs: Overview (is SSO connected, a domain verified, a directory syncing — and
+  its latest audit entries), Members (and its Invitations), SSO, Directory Sync, Domains,
+  Roles, Authentication policy, Audit log (and App audit logs) and Settings (and Branding, API keys,
+  Support access), plus an **Admin Portal link** for its IT administrator. The
+  environment-wide lists (Enterprise SSO, Domains, Directory Sync, Roles, Audit log, …) show
   every organization's rows with an Organization column and an **Organization** filter
   chip; a form that creates something for one asks **For which organization?**.
-- **Authentication:** Authentication policy, Social login, Enterprise SSO, Directory Sync:
-  every way people come in.
-- **Developers:** Applications, APIs, API keys, Webhooks, Hooks.
+- **Authentication:** Sign-in methods (every way in on one page — what is on and where it is
+  changed), Authentication policy, Social login, Enterprise SSO, Domains, Directory Sync,
+  Radar: every way people come in.
+- **Authorization:** Roles, Permissions, Fine-grained authorization, Access reviews, Role
+  conflicts: what people may do once they are in, and the governance of it.
+- **Developers:** Applications, APIs, API keys, Webhooks, Hooks, Feature flags, Pipes.
 - **AI agents:** Agents, Approvals (every pending approval request in the environment,
   so an administrator can deny one that looks like abuse), Connect.
 - **Branding:** Appearance, and Branding when the white-label module is on.
 - **Monitoring:** Audit log, Log streams, Usage, and the analytics, compliance and risk
   modules' pages.
-- **Advanced:** Admins & support, Access reviews, Role conflicts, Token vault, Outbound
-  provisioning, SAML apps, Legacy login: set up once and rarely revisited.
+- **Advanced:** Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy
+  login: set up once and rarely revisited.
+
+Every detail page has a breadcrumb — "Authentication / Enterprise SSO" above a connection —
+and ⌘K finds a page by the word you would use for it elsewhere: *SAML*, *SCIM*, *tenant*,
+*Google login*, *RBAC*, *passkeys*. [Finding your way](finding-your-way.md) walks the common
+tasks click by click.
 - **Settings**, and **Connectors** when that module is on.
 
 ![Users & orgs, Users](../screenshots/users.png)

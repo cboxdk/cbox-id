@@ -3,15 +3,17 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
+    AccessRoleHint,
+    type AccessRoleOption,
     Badge,
-    Help,
+    Breadcrumb,
     Button,
     Checkbox,
     ConfirmDelete,
     CopyButton,
     EmptyState,
     Field,
-    Icon,
+    Help,
     Input,
     Panel,
     Pill,
@@ -24,8 +26,6 @@ import {
     staffRoleScope,
     type SupportSessionRow,
     SupportSessions,
-    AccessRoleHint,
-    type AccessRoleOption,
 } from '@/ui';
 
 type AccessRole = AccessRoleOption;
@@ -109,6 +109,8 @@ type Props = PageProps<{
         assignOrganization: string;
         environmentRole: string;
         impersonate: string;
+        /** Radar's decisions about this person's sign-ins and sign-ups — why one was challenged. */
+        signInDecisions: string | null;
     };
 }>;
 
@@ -141,18 +143,7 @@ export default function UserDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Users
-                </Link>
+                <Breadcrumb href={indexHref} label="Users" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{label}</h1>
                     {!user.verified && <Pill tone="warning">Unverified</Pill>}
@@ -171,6 +162,7 @@ export default function UserDetail({
                 sessions={sessions}
                 email={user.email}
                 revokeAllHref={urls.revokeAllSessions}
+                decisionsHref={urls.signInDecisions}
             />
 
             <Organizations
@@ -646,22 +638,37 @@ function Sessions({
     sessions,
     email,
     revokeAllHref,
+    decisionsHref,
 }: {
     sessions: SessionRow[];
     email: string;
     revokeAllHref: string;
+    decisionsHref: string | null;
 }) {
     const [revokingAll, setRevokingAll] = useState(false);
 
     return (
         <Panel
             title="Active sessions"
+            description="Who is signed in as them right now. Why a sign-in was allowed, challenged or blocked is on Radar."
             action={
-                sessions.length > 0 ? (
-                    <Button size="sm" variant="danger" onClick={() => setRevokingAll(true)}>
-                        Revoke all
-                    </Button>
-                ) : undefined
+                <div className="flex flex-wrap gap-2">
+                    {/*
+                        "Why was their last sign-in challenged?" is asked from the person's
+                        page, and the answer — the rule that fired, the signals it read —
+                        was on Radar with nothing here pointing at it.
+                    */}
+                    {decisionsHref !== null && (
+                        <Button asChild size="sm" icon="shield">
+                            <Link href={decisionsHref}>Sign-in decisions</Link>
+                        </Button>
+                    )}
+                    {sessions.length > 0 && (
+                        <Button size="sm" variant="danger" onClick={() => setRevokingAll(true)}>
+                            Revoke all
+                        </Button>
+                    )}
+                </div>
             }
         >
             <div className="space-y-2">

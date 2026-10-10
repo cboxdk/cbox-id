@@ -21,6 +21,7 @@ final readonly class OrganizationHeaderProps implements Prop
 {
     /**
      * @param  list<LinkTabProps>  $tabs
+     * @param  list<LinkTabProps>  $subTabs  the shown page's group, as a second row; empty for a one-page group
      * @param  list<PortalIntentProps>  $portalIntents  what a portal link may cover, for this organization
      * @param  list<OptionProps>  $portalLifetimes  how long it may wait, in minutes
      * @param  list<OptionProps>  $portalLocales  the languages it may be mailed in
@@ -31,6 +32,7 @@ final readonly class OrganizationHeaderProps implements Prop
         public string $slug,
         public string $status,
         public array $tabs,
+        public array $subTabs,
         public string $indexHref,
         public string $portalLinkHref,
         public array $portalIntents,
@@ -50,6 +52,7 @@ final readonly class OrganizationHeaderProps implements Prop
             'slug' => $this->slug,
             'status' => $this->status,
             'tabs' => array_map(static fn (LinkTabProps $tab): array => $tab->toArray(), $this->tabs),
+            'subTabs' => array_map(static fn (LinkTabProps $tab): array => $tab->toArray(), $this->subTabs),
             'indexHref' => $this->indexHref,
             'portalLink' => [
                 'href' => $this->portalLinkHref,

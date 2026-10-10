@@ -60,6 +60,7 @@ export default function OrganizationMembers({
     roleOptions,
     rosterRoleOptions,
     addMemberHref,
+    invitationsHref,
 }: Props) {
     return (
         <Members
@@ -69,6 +70,7 @@ export default function OrganizationMembers({
             roleOptions={roleOptions}
             rosterRoleOptions={rosterRoleOptions}
             addHref={addMemberHref}
+            invitationsHref={invitationsHref}
         />
     );
 }
@@ -88,6 +90,7 @@ function Members({
     roleOptions,
     rosterRoleOptions,
     addHref,
+    invitationsHref,
 }: {
     members: Member[];
     pagination: PaginationState;
@@ -95,6 +98,7 @@ function Members({
     roleOptions: RoleOption[];
     rosterRoleOptions: RoleOption[];
     addHref: string;
+    invitationsHref: string;
 }) {
     const [managing, setManaging] = useState<string | null>(null);
     const [removing, setRemoving] = useState<Member | null>(null);
@@ -108,7 +112,15 @@ function Members({
     return (
         <Panel
             title="Members"
-            description="Who belongs to this organization, and what they can do."
+            description="Who belongs to this organization, and what they can do. Someone who has no account here yet is invited by email."
+            // The way to bring in somebody NEW. "Add" below only takes people who already
+            // have an account in this environment, and an administrator who came here to
+            // invite a colleague found no invite on the page they expected it on.
+            action={
+                <Button asChild size="sm" icon="mail">
+                    <Link href={invitationsHref}>Invite by email</Link>
+                </Button>
+            }
         >
             <div className="space-y-4">
                 {refusal !== null && (
@@ -131,6 +143,11 @@ function Members({
                         icon="members"
                         title="Nobody yet"
                         description="Add an existing user of this environment, or invite somebody by email."
+                        actions={
+                            <Button asChild variant="primary">
+                                <Link href={invitationsHref}>Invite by email</Link>
+                            </Button>
+                        }
                     />
                 ) : (
                     <div

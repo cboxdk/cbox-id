@@ -2,9 +2,9 @@ import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Field,
-    Icon,
     Input,
     OrganizationField,
     PageHeader,
@@ -50,18 +50,7 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                APIs
-            </Link>
+            <Breadcrumb href={indexHref} label="APIs" />
 
             <div className="mt-2">
                 <PageHeader description="A service of yours that receives access tokens. You add the scopes it owns on the next page." />

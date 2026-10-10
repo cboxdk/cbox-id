@@ -3,6 +3,7 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Field,
     Icon,
@@ -29,18 +30,7 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Organizations
-            </Link>
+            <Breadcrumb href={indexHref} label="Organizations" />
 
             <div className="mt-2">
                 <PageHeader description="Its ID and URL handle are generated for you." />

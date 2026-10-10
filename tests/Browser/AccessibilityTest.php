@@ -249,6 +249,11 @@ it('has no accessibility issues on the ported environment console pages', functi
     // environment plane had a primitive copy of these counters called "Analytics".
     'analytics' => ['/admin/usage', 'Usage'],
     'social-sign-in' => ['/admin/social-sign-in', 'Social login'],
+    // Every way in on one page, and every organization's domains in one list.
+    'sign-in-methods' => ['/admin/sign-in-methods', 'Sign-in methods'],
+    'domains' => ['/admin/domains', 'No organization has claimed a domain yet'],
+    // The comparison every authorization page ends with.
+    'roles' => ['/admin/roles', 'Roles, relationships, flags or entitlements?'],
 ])->group('a11y');
 
 /**

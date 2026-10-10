@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Field, Icon, Input, PageHeader, Panel } from '@/ui';
+import { Breadcrumb, Button, Field, Input, PageHeader, Panel } from '@/ui';
 import {
     DestinationFields,
     emptyOptions,
@@ -41,18 +41,7 @@ export default function CreateLogStream({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Log streams
-            </Link>
+            <Breadcrumb href={indexHref} label="Log streams" />
 
             <div className="mt-2">
                 <PageHeader description="Where a copy of every audit entry is delivered as it is written." />

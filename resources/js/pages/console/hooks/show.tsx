@@ -1,8 +1,18 @@
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Badge, Button, ConfirmDelete, CopyButton, Icon, Kv, KvList, Panel, Pill } from '@/ui';
+import {
+    Badge,
+    Breadcrumb,
+    Button,
+    ConfirmDelete,
+    CopyButton,
+    Kv,
+    KvList,
+    Panel,
+    Pill,
+} from '@/ui';
 
 type Props = PageProps<{
     hook: {
@@ -41,18 +51,7 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Hooks
-                </Link>
+                <Breadcrumb href={indexHref} label="Hooks" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono truncate" style={{ fontSize: '1.25rem' }}>
                         {hook.url}
@@ -117,8 +116,8 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
             ) : (
                 <Panel title="Managed by your operator">
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        This endpoint belongs to the environment and fires for every organization
-                        in it. It is shown here because it runs on your sign-ins — your operator
+                        This endpoint belongs to the environment and fires for every organization in
+                        it. It is shown here because it runs on your sign-ins — your operator
                         manages it.
                     </p>
                 </Panel>
@@ -170,8 +169,8 @@ function RevealedSecret({ secret, onDismiss }: { secret: string; onDismiss: () =
                         Copy this signing secret now — it won't be shown again.
                     </p>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        There is no rotation on a hook: if this is lost, the endpoint has
-                        to be registered again.
+                        There is no rotation on a hook: if this is lost, the endpoint has to be
+                        registered again.
                     </p>
                 </div>
                 <Button size="sm" className="shrink-0" onClick={onDismiss}>

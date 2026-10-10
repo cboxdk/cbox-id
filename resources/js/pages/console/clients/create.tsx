@@ -5,10 +5,10 @@ import type { OrganizationPicker, PageProps } from '@/types';
 import { lines } from '@/lib/apiSnippets';
 import {
     ApiEquivalent,
+    Breadcrumb,
     Button,
     Checkbox,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     Panel,
@@ -122,18 +122,7 @@ export default function CreateClient({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Apps
-            </Link>
+            <Breadcrumb href={indexHref} label="Applications" />
 
             <h1 className="cbx-page-title mt-2">New app</h1>
             {/*

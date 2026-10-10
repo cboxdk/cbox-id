@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     EmptyState,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     PageHeader,
@@ -83,18 +83,7 @@ export default function CreateRoleConflict({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Role conflicts
-            </Link>
+            <Breadcrumb href={indexHref} label="Role conflicts" />
 
             <div className="mt-2">
                 <PageHeader description="Name two or more roles that must never sit with the same person. New grants that would break the rule are blocked from the moment you save it." />

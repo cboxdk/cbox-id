@@ -4,11 +4,11 @@ import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
     Badge,
+    Breadcrumb,
     Button,
     CodeBlock,
     ConfirmDelete,
     CopyButton,
-    Icon,
     Kv,
     KvList,
     Panel,
@@ -69,18 +69,7 @@ export default function LogStreamDetail({ stream, aws, indexHref, urls }: Props)
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Log streams
-                </Link>
+                <Breadcrumb href={indexHref} label="Log streams" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{stream.name}</h1>
                     <Badge>{stream.destination}</Badge>

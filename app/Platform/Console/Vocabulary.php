@@ -49,6 +49,11 @@ use App\Providers\ConsoleServiceProvider;
  *    risk-plus module's feed of elevated scores, a narrower thing.
  *  - Feature flags: switches an app asks about per user and organization. Not
  *    "entitlements", which are what a customer has paid for and are set from billing.
+ *  - Sign-in methods: every way in on one page — what is on, and where it is changed.
+ *    Authentication policy is the page that changes the password and two-factor rules.
+ *  - Authorization: the area holding Roles, Permissions, Fine-grained authorization and the
+ *    governance of roles. Entitlements are not in it: what a customer has paid for is set
+ *    from billing, and only read here.
  *  - Fine-grained authorization: the relationship model an app defines for its OWN
  *    resources (documents in folders) — beside Roles and Permissions, which are what a
  *    person may do in an organization.
@@ -95,6 +100,19 @@ final class Vocabulary
     public const string OUTBOUND_PROVISIONING = 'Outbound provisioning';
 
     public const string AUTHENTICATION_POLICY = 'Authentication policy';
+
+    /**
+     * Every way in — password, passkeys, magic link, social, enterprise SSO, SMS codes,
+     * two-factor — on one page, with whether each is on and where it is changed.
+     */
+    public const string SIGN_IN_METHODS = 'Sign-in methods';
+
+    /**
+     * The environment rail's area for what people may do once signed in: Roles, Permissions,
+     * Fine-grained authorization and the governance of roles. Beside Authentication, which
+     * is how they got in.
+     */
+    public const string AUTHORIZATION = 'Authorization';
 
     public const string SOCIAL_LOGIN = 'Social login';
 

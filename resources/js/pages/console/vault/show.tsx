@@ -1,13 +1,13 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
     Badge,
+    Breadcrumb,
     Button,
     ConfirmDelete,
     Field,
-    Icon,
     Input,
     Kv,
     KvList,
@@ -44,18 +44,7 @@ export default function VaultSecretDetail({ secret, grants, indexHref, urls }: P
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Token vault
-                </Link>
+                <Breadcrumb href={indexHref} label="Token vault" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{secret.name}</h1>
                     <Badge className="mono">{secret.provider}</Badge>
@@ -227,15 +216,7 @@ function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href:
  * grant authorizes nothing, and listing it beside the live ones invites the list to be
  * read as "who has access".
  */
-function Grants({
-    revoked,
-    grants,
-    href,
-}: {
-    revoked: boolean;
-    grants: Grant[];
-    href: string;
-}) {
+function Grants({ revoked, grants, href }: { revoked: boolean; grants: Grant[]; href: string }) {
     const [revokingClient, setRevokingClient] = useState<Grant | null>(null);
     const form = useForm({ client: '' });
 
@@ -284,11 +265,7 @@ function Grants({
                         });
                     }}
                 >
-                    <Field
-                        label="Authorize a client"
-                        className="flex-1"
-                        error={form.errors.client}
-                    >
+                    <Field label="Authorize a client" className="flex-1" error={form.errors.client}>
                         <Input
                             name="client"
                             className="mono"

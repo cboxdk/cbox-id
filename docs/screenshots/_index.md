@@ -63,7 +63,7 @@ page it illustrates, and add its row here.
 | `organization-domains.png` | An organization's Domains tab |
 | `organization-directory-sync.png` | An organization's Directory Sync tab |
 | `directory-detail.png` | A SCIM directory's page (`/admin/sync-in/{id}`) |
-| `roles.png` | Users & orgs › Roles (`/admin/roles`) |
+| `roles.png` | Authorization › Roles (`/admin/roles`) |
 | `applications.png` | Developers › Applications (`/admin/apps`) |
 | `application-detail.png` | An application's Overview (`/admin/apps/{id}`) |
 | `api-keys.png` | Developers › API keys (`/admin/keys/frontend`) |

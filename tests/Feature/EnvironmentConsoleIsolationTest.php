@@ -8,6 +8,7 @@ use App\Platform\RiskGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Enums\CampaignStatus;
@@ -136,6 +137,10 @@ function seedTenantData(string $environmentId, string $marker): array
             );
 
             $directory = app(Directories::class)->register($org->id, "{$marker} Directory")->directory;
+
+            // A claimed email domain: Authentication › Domains lists every organization's,
+            // and prints the domain — so the marker is the domain.
+            app(DomainVerification::class)->add($org->id, strtolower($marker).'-claimed.example');
 
             // The pages that rendered NOTHING before. A leak on any of them was
             // undetectable by construction — proven by injecting a real one on the audit
@@ -290,6 +295,9 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.settings' => 'environment-level configuration, not tenant records',
         'environment.appearance' => 'the theme editor, which reads one org',
         'environment.auth-policy' => 'policy toggles',
+        // The environment's own settings, counts of connections and the names of social
+        // providers from the catalogue — never an organization's record.
+        'environment.sign-in-methods' => 'the environment\'s own settings and counts',
         // Publishable keys are environment-owned and carry no organization at all, so
         // there is no tenant record here to leak — and the fixture seeds none.
         'environment.keys.frontend' => 'publishable keys, which have no organization and none seeded',

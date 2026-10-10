@@ -2,10 +2,10 @@ import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     PageHeader,
@@ -45,18 +45,7 @@ export default function CreateHook({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Hooks
-            </Link>
+            <Breadcrumb href={indexHref} label="Hooks" />
 
             <div className="mt-2">
                 <PageHeader description="The signing secret is shown once, right after you register the endpoint." />
