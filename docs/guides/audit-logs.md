@@ -172,7 +172,9 @@ is `ready`. The answer then includes a `url` you can download from.
 - The file is kept for 72 hours (`CBOX_ID_AUDIT_LOGS_EXPORT_TTL_HOURS`) and then deleted.
 - The queue writes the file and a web process hands it out, so both must reach the disk it
   is on (`CBOX_ID_AUDIT_LOGS_EXPORT_DISK`, default `local`). On more than one machine —
-  separate web and worker pods, two web replicas — point it at shared object storage;
+  separate web and worker pods, two web replicas — point it at shared object storage: the
+  private `r2` disk (Cloudflare R2) or `s3`, see
+  [Shared file storage](../configuration/environment-variables.md#shared-file-storage).
   `cbox-id:doctor` fails a `local` disk there, and a download of a file this process cannot
   see answers 404.
 - An export holds at most 1,000,000 events. For more, split the range.

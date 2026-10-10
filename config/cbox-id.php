@@ -345,7 +345,9 @@ return [
      * they were RECEIVED; each environment may set its own (`audit_logs.settings.update`).
      * The daily `audit-logs:prune` applies it. `export_disk` is the filesystem disk a CSV
      * export is written to — private, the file is only ever handed out through a signed,
-     * short-lived URL — and `export_ttl_hours` how long a finished export stays there.
+     * short-lived URL — and `export_ttl_hours` how long a finished export stays there. The
+     * queue writes the file and a web process streams it, so with more than one machine
+     * (or pod) it must be a disk they share: `r2` (config/filesystems.php) on production.
      * `portal_export_limit` bounds the CSV the hosted Admin Portal streams directly.
      */
     'audit_logs' => [
