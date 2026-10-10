@@ -137,6 +137,8 @@ export type MessageKey =
     | 'auth.login.create_one'
     | 'auth.login.forgot_password'
     | 'auth.login.invalid_credentials'
+    | 'auth.login.last_used'
+    | 'auth.login.last_used_hint'
     | 'auth.login.magic.dev_note'
     | 'auth.login.magic.sent_to'
     | 'auth.login.magic_link'

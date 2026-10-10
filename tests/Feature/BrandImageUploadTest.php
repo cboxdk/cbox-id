@@ -9,9 +9,6 @@ use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Appearance\InvalidBrandImage;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 /*
 | The checker every door shares — console, management API, MCP — and the one place an

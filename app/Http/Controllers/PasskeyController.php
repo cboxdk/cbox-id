@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
@@ -155,7 +156,9 @@ final class PasskeyController extends Controller
 
         $auth->establish($request, $subjectId, AuthMethod::forPasskey());
 
-        return new JsonResponse(['redirect' => route('dashboard')]);
+        // Back to where they were going — a device approval, an app's sign-in — as the
+        // password door does; the dashboard only when they were going nowhere.
+        return new JsonResponse(['redirect' => IntendedUrl::pullForSubject() ?? route('dashboard')]);
     }
 
     private function putChallenge(Request $request, string $key, string $challenge): void

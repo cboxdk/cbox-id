@@ -64,6 +64,10 @@ return [
         'forgot_password' => 'Mot de passe oublié ?',
         'or' => 'OU',
         'continue_with' => 'Continuer avec :provider',
+        // The badge on the sign-in method this device used last, and what it means said in full
+        // for a screen reader.
+        'last_used' => 'Dernière utilisation',
+        'last_used_hint' => 'La méthode utilisée lors de votre dernière connexion sur cet appareil.',
         'magic_link' => 'M’envoyer un lien de connexion',
         'passkey' => 'Se connecter avec une clé d’accès',
         'passkey_failed' => 'Échec de la connexion avec la clé d’accès.',
