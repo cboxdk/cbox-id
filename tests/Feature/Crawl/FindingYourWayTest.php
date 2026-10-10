@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Platform\InstallationOrganization;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -156,7 +157,9 @@ const FINDING_YOUR_WAY_SINGLE_TENANT = [
 
 it('puts the environment\'s sign-in settings a few clicks from home on a single-tenant install', function (): void {
     installedDeployment();
-    actingAsRole(MembershipRole::Owner);
+    [, $home] = actingAsRole(MembershipRole::Owner);
+    // The install's own organization, whose owners administer its environment.
+    app(InstallationOrganization::class)->set($home->id);
 
     $origin = rtrim(url('/'), '/');
     $version = (string) app(HandleInertiaRequests::class)->version(request());

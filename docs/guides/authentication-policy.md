@@ -9,13 +9,25 @@ description: Password rules, two-factor and SSO requirements, which sign-in meth
 **Console pages (environment console):** Authentication › Sign-in methods, and Authentication ›
 Authentication policy. An organization's own rules are on its **Authentication policy** tab.
 
-On a **single-tenant install** there is no environment console: the organization console is
-the whole administration, so its owners and admins change the environment's settings there —
-**Sign-in › Authentication policy** has the same **Sign-in methods and sessions** and
+On a **single-tenant install** there is no environment console, so the environment's
+settings are changed from the organization console — but only by **platform operators** and
+by **owners of the install's own organization**. A single-tenant install can host customer
+organizations, and their owners and admins never change passkeys, sessions or social
+providers for everybody: they see those rows read-only. Name the install's own organization
+once, as whoever runs the install:
+
+```bash
+php artisan cbox-id:installation-organization acme      # by slug or id
+php artisan cbox-id:installation-organization           # show it
+php artisan cbox-id:installation-organization --clear   # only platform operators again
+```
+
+Until one is named, only platform operators can change them. Its owners then get
+**Sign-in › Authentication policy** with the **Sign-in methods and sessions** and
 **Text-message codes** panels under *For the whole environment*, and **Sign-in › Social
-login** manages the environment's providers. They are the same actions, with the same
-limits. On a multi-tenant deployment an organization console belongs to one customer, and
-none of this is shown there.
+login** with the environment's providers. These are the same actions with the same limits.
+On a multi-tenant deployment an organization console belongs to one customer, and none of
+this is shown there.
 
 **Sign-in methods** is the overview: every way in, whether it is on, and which page changes
 it. **Authentication policy** is where you change them.

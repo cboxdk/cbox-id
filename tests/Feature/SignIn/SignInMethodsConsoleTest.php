@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\InstallationOrganization;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -11,6 +12,7 @@ use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
@@ -185,6 +187,7 @@ it('reports passkeys, magic link, sessions and the bot challenge as this environ
 
 it('serves Sign-in methods on a single-tenant install\'s organization console, about that organization', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    app(InstallationOrganization::class)->set($org->id);
     smcProvider(null, 'discord');
     smcProvider($org->id, 'github');
 
@@ -266,8 +269,9 @@ it('keeps an organization\'s policy form working beside the environment\'s metho
 
 // ── A single-tenant install: the organization console administers the environment ──
 
-it('lets a single-tenant install\'s administrator change the environment\'s methods, sessions and SMS from the organization console', function (): void {
-    actingAsRole(MembershipRole::Owner);
+it('lets the owner of a single-tenant install\'s own organization change the environment\'s methods, sessions and SMS', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    app(InstallationOrganization::class)->set($org->id);
     config()->set('cbox-id.sessions.ttl_minutes', 480);
     config()->set('cbox-id.sessions.idle_minutes', 30);
 
@@ -301,8 +305,9 @@ it('lets a single-tenant install\'s administrator change the environment\'s meth
     expect(app(SmsFactorPolicies::class)->forEnvironment()->enabled)->toBeTrue();
 });
 
-it('turns a provider on for every sign-in page from a single-tenant organization console, and manages it there', function (): void {
+it('turns a provider on for every sign-in page from a single-tenant install\'s own organization, and manages it there', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    app(InstallationOrganization::class)->set($org->id);
 
     $props = smcProps(route('social-providers', ['provider' => 'github']));
 
@@ -371,3 +376,77 @@ it('keeps the environment\'s settings off a multi-tenant organization console', 
         // Whatever the form said, an organization console here can only add the organization's own.
         ->and(collect(app(SignInProviders::class)->offeredTo($other->id))->pluck('provider')->all())->toBe(['github']);
 })->group('security');
+
+/**
+ * @group security
+ *
+ * A single-tenant install can host CUSTOMER organizations. Their owners administer their own
+ * organization and nothing of the environment's: every environment-level write is refused,
+ * and the environment's rows are read-only on their pages. So is the install's own
+ * organization's admin who is not its owner.
+ */
+it('refuses a customer organization\'s owner on a single-tenant install every environment-level write', function (MembershipRole $role, bool $home): void {
+    [, $org] = actingAsRole($role);
+    $installation = $home ? $org : app(Organizations::class)->create(new NewOrganization('The install', 'install-'.Str::lower(Str::random(4))));
+    app(InstallationOrganization::class)->set($installation->id);
+    $environmentProvider = smcProvider(null, 'github');
+
+    // Read-only: nothing to change the environment with is drawn.
+    $rows = smcRows(smcProps(route('sign-in-methods')));
+    $policy = smcProps(route('auth-policy'));
+    $social = smcProps(route('social-providers', ['provider' => 'discord']));
+
+    expect($rows['passkeys']['decidedBy'])->toBe('environment')
+        ->and($rows['passkeys']['href'])->toBeNull()
+        ->and($rows['session']['href'])->toBeNull()
+        ->and($rows['sms']['href'])->toBeNull()
+        ->and($policy['signInMethods'])->toBeNull()
+        ->and($policy['smsFactor'])->toBeNull()
+        ->and($social['ownerChoice'])->toBeFalse()
+        ->and($social['environmentProviders'])->toBe([]);
+
+    // And every write refused.
+    $this->put(route('auth-policy.methods'), ['passkeys' => false, 'magicLink' => false, 'botChallenge' => false, 'sessionIdleMinutes' => '5', 'sessionAbsoluteMinutes' => '10'])->assertForbidden();
+    $this->put(route('auth-policy.sms'), ['enabled' => true, 'allowedCountries' => ['DK'], 'privilegedNeedStrongerFactor' => true])->assertForbidden();
+    $this->patch(route('social-providers.update', $environmentProvider), ['clientId' => 'stolen', 'clientSecret' => '', 'scopes' => '', 'parameters' => []])->assertNotFound();
+    $this->post(route('social-providers.disable', $environmentProvider))->assertNotFound();
+    $this->delete(route('social-providers.destroy', $environmentProvider))->assertNotFound();
+    // "For every page" from here is the organization's own, whatever the form says.
+    $this->post(route('social-providers.store'), ['provider' => 'discord', 'forEnvironment' => true, 'clientId' => 'd', 'clientSecret' => 'd', 'scopes' => '', 'parameters' => []]);
+
+    $environment = app(SignInProviders::class)->environmentProviders();
+
+    expect(app(AuthPolicies::class)->forEnvironment()->passkeys)->toBeTrue()
+        ->and(app(AuthPolicies::class)->forEnvironment()->sessionAbsoluteMinutes)->toBeNull()
+        ->and(app(SmsFactorPolicies::class)->forEnvironment()->enabled)->toBeFalse()
+        ->and(array_map(fn ($c) => $c->provider, $environment))->toBe(['github'])
+        ->and($environment[0]->isActive())->toBeTrue()
+        ->and(app(Connections::class)->config($environment[0])['client_id'])->toBe('id');
+})->with([
+    'a customer organization\'s owner' => [MembershipRole::Owner, false],
+    'a customer organization\'s admin' => [MembershipRole::Admin, false],
+    'the install\'s own organization\'s admin, not its owner' => [MembershipRole::Admin, true],
+])->group('security');
+
+it('lets nobody on an organization console administer the environment until the install names its own organization', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    expect(smcProps(route('auth-policy'))['signInMethods'])->toBeNull();
+    $this->put(route('auth-policy.methods'), ['passkeys' => false, 'magicLink' => true, 'botChallenge' => true, 'sessionIdleMinutes' => '', 'sessionAbsoluteMinutes' => ''])->assertForbidden();
+});
+
+it('names the install\'s own organization from the command line, and only on a single-tenant install', function (): void {
+    platformRootEnvironment();
+
+    $org = app(PlatformRoot::class)->run(fn () => app(Organizations::class)->create(new NewOrganization('The install', 'the-install')));
+
+    $this->artisan('cbox-id:installation-organization', ['organization' => 'the-install'])->assertSuccessful();
+    expect(app(PlatformRoot::class)->run(fn (): ?string => app(InstallationOrganization::class)->id()))->toBe($org->id);
+
+    $this->artisan('cbox-id:installation-organization', ['organization' => 'nobody'])->assertFailed();
+    $this->artisan('cbox-id:installation-organization', ['--clear' => true])->assertSuccessful();
+    expect(app(PlatformRoot::class)->run(fn (): ?string => app(InstallationOrganization::class)->id()))->toBeNull();
+
+    multiTenantDeployment();
+    $this->artisan('cbox-id:installation-organization', ['organization' => 'the-install'])->assertFailed();
+});

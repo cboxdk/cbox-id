@@ -64,8 +64,9 @@ the plain one, and every organization's. This is the usual case:
    you reload while you are in Google's console.
 4. Paste the client ID and secret Google gave you, then **Turn on Google for everyone**.
 
-On a single-tenant install, the same form is under **Sign-in › Social login** on the
-organization console, with **Who is it for?** set to **Every sign-in page in this
+On a single-tenant install, platform operators and owners of the install's own organization
+(see [Authentication policy](authentication-policy.md)) find the same form under
+**Sign-in › Social login** on the organization console, with **Who is it for?** set to **Every sign-in page in this
 environment**; choose **Only this organization's sign-in page** for the organization's own.
 
 For an OpenID Connect provider we run discovery the moment you save, so a mistyped domain

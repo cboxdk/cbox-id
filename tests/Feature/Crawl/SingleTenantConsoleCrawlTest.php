@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Authenticate;
+use App\Platform\InstallationOrganization;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -21,6 +22,8 @@ use Tests\Support\ConsoleCrawl;
 it('serves every page of a single-tenant install\'s console and every link they offer', function (): void {
     installedDeployment();
     [, $org] = actingAsRole(MembershipRole::Owner);
+    // The install's own organization, so its owner administers the environment here.
+    app(InstallationOrganization::class)->set($org->id);
 
     $providers = app(SignInProviders::class);
     $connections = app(Connections::class);
