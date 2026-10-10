@@ -861,9 +861,9 @@ function SetupPanel({
                 <div>
                     <p className="text-sm font-semibold">1. Register this redirect URI</p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        {template.name} refuses the sign-in unless this matches exactly. It is
-                        reserved for this {template.name} — paste it into {template.name} before you
-                        save here.
+                        {template.name} refuses the sign-in unless this matches exactly. It is kept
+                        for this setup, so you can paste it into {template.name} now and save here
+                        afterwards.
                     </p>
                     <RedirectUriBlock uri={template.redirectUri} />
                 </div>
