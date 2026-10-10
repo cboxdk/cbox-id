@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\ProtectedResourceMetadataController;
 use App\Http\Controllers\Api\OAuth\ClientRegistrationController;
+use App\Http\Controllers\DeviceQrController;
 use App\Http\Middleware\AuthenticateMcp;
 use App\Mcp\IdServer;
 use App\Platform\OAuth\RootMcpOAuth;
@@ -65,6 +66,17 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-mcp', AuthenticateMc
  */
 Route::middleware([ResolveEnvironment::class, 'plane:first-party', 'throttle:30,1', NoStore::class])
     ->post('/oauth/device_authorization', DeviceAuthorizationController::class);
+
+/*
+ * The device grant's `verification_uri_complete` as an SVG QR code, for a TV app to show
+ * beside the code without bundling a QR library ({@see DeviceQrController}). Beside the
+ * endpoint that issued the code, behind the same wall: sessionless, cookieless, and
+ * throttled per address so it is no faster a way to test guessed codes than the
+ * approval page. Not `no-store`: the picture is the same for the code's whole life.
+ */
+Route::middleware([ResolveEnvironment::class, 'plane:first-party', 'throttle:60,1'])
+    ->get('/oauth/device/qr', DeviceQrController::class)
+    ->name('device.qr');
 
 /*
  * WHAT AN MCP CLIENT READS AND WRITES BEFORE IT SENDS ANYBODY TO SIGN IN — re-registered

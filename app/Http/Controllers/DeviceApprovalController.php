@@ -6,6 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Platform\CurrentUser;
 use App\Platform\OAuth\ConsentScopes;
+use App\Platform\OAuth\DeviceUserCode;
+use App\Platform\Radar\Enums\RadarMethod;
+use App\Platform\RiskGuard;
+use App\Platform\StepUpReason;
+use App\Platform\Sudo;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\DeviceAuthorization;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -15,19 +20,24 @@ use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Response;
 
 /**
- * RFC 8628 DEVICE GRANT — where a signed-in person approves the code their television,
- * console or command line is showing them.
+ * RFC 8628 DEVICE GRANT — where a person approves the code their television, console or
+ * command line is showing them.
+ *
+ * A HOSTED PAGE, NOT A CONSOLE ONE. It used to render inside the admin console's chrome, in
+ * English only, for a person who had just scanned a QR code off their TV with a phone and
+ * has never seen an admin console in their life. It is now drawn like the other doors —
+ * the environment's (or Cbox's) brand, the visitor's language, built for a phone first —
+ * because that is who arrives here: an end user of the vendor's app, holding a remote.
  *
  * THE RESOLVED CODE LIVES IN THE SESSION, never in the page and never in the URL after the
- * first hop. Under Volt it was a `#[Locked]` component property, which existed because the
- * browser would otherwise have been able to swap the app identity, the scopes or the code
- * itself between the render and the click — approving a DIFFERENT request than the one
- * consented to. A value the client never holds cannot be swapped at all, so the guarantee
- * is now structural rather than an attribute somebody has to remember.
+ * first hop. A value the browser never holds cannot be swapped between the screen that
+ * showed one request and the click that approves another, so the guarantee is structural.
+ * The code IS shown on the consent step — rendered from the session, as text — because the
+ * one check a person can make against device-code phishing is "does this match my TV".
  *
  * NOTHING IS APPROVED BY ARRIVING. Following `verification_uri_complete` resolves the code
- * and shows what is being asked for — which is the screen they came to read — and
- * approving is still a deliberate click.
+ * and shows what is being asked for; approving is still a deliberate click — and on a
+ * sign-in Radar finds unusual, a fresh confirmation of who is holding the phone first.
  */
 final readonly class DeviceApprovalController extends PageController
 {
@@ -41,14 +51,6 @@ final readonly class DeviceApprovalController extends PageController
      * office NAT, and the session is the thing actually doing the guessing.
      */
     private const LOOKUP_ATTEMPTS = 10;
-
-    /** What each scope means, said in the words of the person approving it. */
-    private const SCOPE_LABELS = [
-        'openid' => 'Verify your identity',
-        'profile' => 'Your name',
-        'email' => 'Your email address',
-        'offline_access' => 'Stay signed in',
-    ];
 
     public function show(Request $request, DeviceAuthorization $devices, ClientRegistry $clients): Response|RedirectResponse
     {
@@ -66,20 +68,16 @@ final readonly class DeviceApprovalController extends PageController
         $fromLink = $request->query('user_code');
 
         if (is_string($fromLink)) {
-            $resolved = $this->resolve($fromLink, $devices, $clients, $me);
+            $resolved = $this->resolve($fromLink, $devices, $clients);
 
             if ($resolved === null) {
                 /*
                  * A bad code in a LINK is not the same event as a bad code somebody typed:
                  * they got here by following a link, so "check the code on your device" is
-                 * advice about a code they never saw.
+                 * advice about a code they never saw. On the flash channel — a sentence
+                 * about the request that just happened, true for exactly one render.
                  */
-                /*
-                 * ON THE FLASH CHANNEL. It is a sentence about the request that just
-                 * happened, true for exactly one render — a prop would put it in the
-                 * browser's history entry and show it again on a Back.
-                 */
-                $this->inertia->flash('deviceError', 'That sign-in request has expired or already finished. Enter the code shown on your device.');
+                $this->inertia->flash('deviceError', __('oauth.device.link_expired'));
 
                 return redirect()->route('device');
             }
@@ -92,7 +90,7 @@ final readonly class DeviceApprovalController extends PageController
         }
 
         $code = $request->session()->get(self::CODE_KEY);
-        $pending = is_string($code) ? $this->resolve($code, $devices, $clients, $me) : null;
+        $pending = is_string($code) ? $this->resolve($code, $devices, $clients) : null;
 
         if ($pending === null) {
             // Whatever was consented to is gone — expired, finished, or never there. Drop
@@ -100,11 +98,14 @@ final readonly class DeviceApprovalController extends PageController
             $request->session()->forget(self::CODE_KEY);
         }
 
-        return $this->page('device', 'Connect a device', [
+        return $this->page('oauth/device', __('oauth.device.title'), [
             'client' => $pending === null ? null : [
                 'name' => $pending['clientName'],
                 'scopes' => $pending['scopes'],
             ],
+            // The code being approved, for the person to hold against their TV's screen.
+            // Read back from the session; nothing the browser sends can change it.
+            'userCode' => $pending['code'] ?? null,
             'me' => [
                 'name' => $me->name(),
                 'email' => $me->email(),
@@ -114,6 +115,7 @@ final readonly class DeviceApprovalController extends PageController
                 'lookup' => route('device.lookup'),
                 'approve' => route('device.approve'),
                 'deny' => route('device.deny'),
+                'start' => route('device'),
             ],
         ]);
     }
@@ -125,24 +127,24 @@ final readonly class DeviceApprovalController extends PageController
 
         abort_unless($me->check(), 403);
 
-        $request->validate(['userCode' => ['required', 'string']]);
+        $request->validate(['userCode' => ['required', 'string', 'max:32']], [
+            'userCode.required' => __('oauth.device.code_required'),
+        ]);
 
         $key = 'device-lookup|'.$me->id();
 
         if (RateLimiter::tooManyAttempts($key, self::LOOKUP_ATTEMPTS)) {
             return back()->withErrors([
-                'userCode' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+                'userCode' => __('oauth.device.too_many', ['seconds' => RateLimiter::availableIn($key)]),
             ]);
         }
 
-        $resolved = $this->resolve((string) $request->string('userCode'), $devices, $clients, $me);
+        $resolved = $this->resolve((string) $request->string('userCode'), $devices, $clients);
 
         if ($resolved === null) {
             RateLimiter::hit($key, 60);
 
-            return back()->withErrors([
-                'userCode' => 'That code is invalid or has expired. Check the code on your device and try again.',
-            ]);
+            return back()->withErrors(['userCode' => __('oauth.device.invalid')]);
         }
 
         RateLimiter::clear($key);
@@ -152,8 +154,18 @@ final readonly class DeviceApprovalController extends PageController
         return redirect()->route('device');
     }
 
-    /** Step 2a — approve, binding the acting person and organization to the request. */
-    public function approve(Request $request, DeviceAuthorization $devices): RedirectResponse
+    /**
+     * Step 2a — approve, binding the acting person and organization to the request.
+     *
+     * RADAR HAS A SAY HERE TOO. Approving a device code mints tokens for a device that is
+     * not this one — it is a sign-in, on somebody else's screen, and it is exactly what a
+     * device-code phishing attack asks its victim to do. So the approval is assessed like
+     * a sign-in: a block refuses it, and a challenge asks the person to confirm it is them
+     * (the console's step-up, `sudo`) before the device is connected. The session itself
+     * already went through the sign-in's own Radar assessment and second factor; this is
+     * the second look at the moment that matters.
+     */
+    public function approve(Request $request, DeviceAuthorization $devices, RiskGuard $risk, Sudo $sudo): RedirectResponse
     {
         $me = app(CurrentUser::class);
 
@@ -161,28 +173,37 @@ final readonly class DeviceApprovalController extends PageController
 
         $code = $this->consentedCode($request);
 
+        $assessment = $risk->assess($request, 'device_approval', $me->email(), method: RadarMethod::Password);
+
+        if ($risk->shouldBlock($assessment)) {
+            $request->session()->forget(self::CODE_KEY);
+            $this->inertia->flash('deviceError', __('oauth.device.blocked'));
+
+            return redirect()->route('device');
+        }
+
+        if ($risk->shouldStepUp($assessment) && ! $sudo->confirmed()) {
+            $intended = route('device');
+
+            // The code stays in the session: confirming who they are brings the person
+            // back to the same request, not to an empty form.
+            $request->session()->put('sudo.intended', $intended);
+            StepUpReason::record('sudo', __('oauth.device.step_up'), $intended);
+
+            return redirect()->route('sudo');
+        }
+
         /*
-         * NO ORGANIZATION-STATUS CHECK HERE, and its absence is deliberate.
-         *
-         * An organization that is no longer live — suspended or deleted — cannot connect
-         * devices or mint tokens, and this method used to say so itself. It had to: under
-         * Volt the approval was a component action on the shared `/livewire/update`
-         * endpoint, which route middleware never saw, so the page was the only place that
-         * could refuse.
-         *
-         * It is a route now, and {@see \App\Http\Middleware\Authenticate} asks
-         * {@see \App\Platform\OrganizationAccess} of every authenticated request — so a copy here would
-         * be a branch no request can reach, and an unreachable guard is worse than none:
-         * it reads as the thing holding the line while something else quietly does.
-         * DeletedOrganizationEnforcementTest asks the door that actually answers.
+         * NO ORGANIZATION-STATUS CHECK HERE, and its absence is deliberate:
+         * {@see \App\Http\Middleware\Authenticate} asks {@see \App\Platform\OrganizationAccess}
+         * of every authenticated request, so a suspended or deleted organization never
+         * reaches this line. DeletedOrganizationEnforcementTest asks the door that answers.
          */
         if (! $devices->approve($code, $me->id(), $me->organizationId())) {
             // Expired between the consent screen and the click — send them back to the form.
             $request->session()->forget(self::CODE_KEY);
 
-            return back()->withErrors([
-                'userCode' => 'That code is invalid or has expired. Check the code on your device and try again.',
-            ]);
+            return back()->withErrors(['userCode' => __('oauth.device.invalid')]);
         }
 
         $request->session()->forget(self::CODE_KEY);
@@ -225,15 +246,17 @@ final readonly class DeviceApprovalController extends PageController
     /**
      * Resolve a user code to the client and scopes behind it, or null.
      *
+     * The scopes are the consent screen's rows ({@see ConsentScopes}), in the visitor's
+     * language — so a management scope the `cbox` CLI asks for reads as what it lets the CLI
+     * do, with the critical ones flagged, and `email` reads as "Your email address".
+     *
      * @return array{code: string, clientName: string, scopes: list<array{scope: string, label: string, management: bool, critical: bool}>}|null
      */
-    private function resolve(string $userCode, DeviceAuthorization $devices, ClientRegistry $clients, CurrentUser $me): ?array
+    private function resolve(string $userCode, DeviceAuthorization $devices, ClientRegistry $clients): ?array
     {
-        // Upper-cased and trimmed: the code is shown in capitals on the device, and a
-        // person copying it from a phone keyboard sends whatever the keyboard decided.
-        $code = mb_strtoupper(trim($userCode));
+        $code = DeviceUserCode::normalize($userCode);
 
-        if ($code === '') {
+        if ($code === null) {
             return null;
         }
 
@@ -247,15 +270,7 @@ final readonly class DeviceApprovalController extends PageController
         return [
             'code' => $code,
             'clientName' => $client->name,
-            /*
-             * The consent screen's rows ({@see ConsentScopes}) — so a management scope the
-             * `cbox` CLI asks for reads as what it lets the CLI do, with the critical ones
-             * flagged — in this page's own words for the sign-in scopes it already names.
-             */
-            'scopes' => array_map(
-                static fn (array $row): array => [...$row, 'label' => self::SCOPE_LABELS[$row['scope']] ?? $row['label']],
-                app(ConsentScopes::class)->rows($pending->scopes),
-            ),
+            'scopes' => app(ConsentScopes::class)->rows($pending->scopes),
         ];
     }
 }

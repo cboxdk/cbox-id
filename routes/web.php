@@ -1156,11 +1156,15 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/approvals/{request}/approve', [MyApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{request}/deny', [MyApprovalController::class, 'deny'])->name('approvals.deny');
 
-    // RFC 8628 device grant: where a signed-in user approves a device's user_code.
-    Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
-    Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
-    Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
-    Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
+    // RFC 8628 device grant: where a signed-in person approves a device's user_code. A
+    // HOSTED page (`oauth/device`), so it speaks the visitor's language like the other
+    // doors — whoever scanned the TV's QR code, not an administrator.
+    Route::middleware('locale')->group(function (): void {
+        Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
+        Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
+        Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
+        Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
+    });
 
     // Step-up re-authentication ("sudo mode") gate for sensitive actions. Blocked
     // while impersonating: an impersonator must never be able to clear the gate
