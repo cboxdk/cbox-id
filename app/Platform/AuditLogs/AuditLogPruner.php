@@ -9,6 +9,7 @@ use App\Models\AuditLogs\AuditLogEvent;
 use App\Models\AuditLogs\AuditLogEventTarget;
 use App\Models\AuditLogs\AuditLogExport;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 /**
  * Applies an environment's retention to its audit events, and clears away its expired
@@ -104,8 +105,21 @@ final readonly class AuditLogPruner
             ->chunkById(200, function ($exports) use (&$expired): void {
                 /** @var AuditLogExport $export */
                 foreach ($exports as $export) {
+                    /*
+                     * A delete the disk could not do leaves the export as it is, to be
+                     * tried again on the next run, rather than marked expired with its
+                     * file still in the bucket and nothing left pointing at it. An object
+                     * store disk throws (`r2` sets `throw`); one failure stops neither the
+                     * rest of this sweep nor the prune.
+                     */
                     if ($export->path !== null) {
-                        AuditLogExports::disk()->delete($export->path);
+                        try {
+                            AuditLogExports::disk()->delete($export->path);
+                        } catch (Throwable $e) {
+                            report($e);
+
+                            continue;
+                        }
                     }
 
                     $export->forceFill(['state' => AuditLogExport::EXPIRED, 'path' => null])->save();

@@ -37,6 +37,7 @@ all four.
 | `laravel/framework` | `^13.0` | The application framework. |
 | `inertiajs/inertia-laravel` | `^3.3` | The server half of the console UI: a controller returns a page name and typed props, Laravel returns them as JSON to a React bundle served same-origin. |
 | `laravel/wayfinder` | `^0.1` | Generates TypeScript route helpers and form actions from `routes/*.php` at build time, so no URL is spelled by hand in the client. |
+| `league/flysystem-aws-s3-v3` | `^3.35` | The S3 driver behind the `r2` and `s3` disks: shared object storage for audit-log exports and the compliance archive when web and queue run on different machines. Pulls in `aws/aws-sdk-php` (Apache-2.0). |
 
 ## Cbox / cboxdk dependencies
 

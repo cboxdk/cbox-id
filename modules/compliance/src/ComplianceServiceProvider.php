@@ -167,10 +167,18 @@ class ComplianceServiceProvider extends ServiceProvider
         $driver = $this->configString('compliance.export.sink', 'null');
 
         if ($driver === 'jsonl') {
-            $this->app->bind(AuditExportSink::class, fn (Application $app): JsonlBundleExportSink => new JsonlBundleExportSink(
-                $app->make(FilesystemFactory::class)->disk($this->configString('compliance.export.jsonl.disk', 'local')),
-                $this->configString('compliance.export.jsonl.path', 'compliance/audit'),
-            ));
+            // A disk that is not `local` is object storage (`r2`, `s3`), where an object
+            // cannot be appended to: the sink writes one object per batch there instead of
+            // re-uploading the whole bundle for every batch. See JsonlBundleExportSink.
+            $this->app->bind(AuditExportSink::class, function (Application $app): JsonlBundleExportSink {
+                $disk = $this->configString('compliance.export.jsonl.disk', 'local');
+
+                return new JsonlBundleExportSink(
+                    $app->make(FilesystemFactory::class)->disk($disk),
+                    $this->configString('compliance.export.jsonl.path', 'compliance/audit'),
+                    segmented: $this->configString("filesystems.disks.{$disk}.driver", 'local') !== 'local',
+                );
+            });
 
             return;
         }

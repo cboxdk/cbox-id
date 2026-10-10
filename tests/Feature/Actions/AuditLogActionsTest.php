@@ -32,12 +32,14 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use League\Flysystem\UnableToDeleteFile;
 use Tests\Support\FakeDelegatedTokens;
 
 /*
@@ -334,6 +336,95 @@ it('refuses a ready export whose file is not on the export disk, rather than han
     Log::shouldHaveReceived('error')->withArgs(
         static fn (string $message, array $context): bool => str_contains($message, 'missing from the export disk') && $context['export'] === $export['id'],
     )->once();
+});
+
+/*
+ * The fix for the two-disk problem: production points the export disk at `r2`, the
+ * Cloudflare R2 bucket every pod reaches. The worker writes there, the web process streams
+ * the download from there, and the pod-local `local` disk is never touched.
+ */
+it('writes an export to the shared r2 disk and streams the download from the bucket', function (): void {
+    Storage::fake('local');
+    Storage::fake('r2');
+    config(['cbox-id.audit_logs.export_disk' => 'r2']);
+    Queue::fake();
+    $key = auditKey();
+    $acme = auditOrg('acme-r2');
+
+    sendAuditEvents($key, [auditEvent($acme, ['action' => 'invoice.refunded'])])->assertCreated();
+
+    $export = $this->withToken($key)->postJson('/api/v1/audit-logs/exports', ['organization_id' => $acme])
+        ->assertCreated()
+        ->json('data');
+
+    // The worker pod.
+    app(EnvironmentContext::class)->set(null);
+    (new GenerateAuditLogExport($export['id']))->handle(app(EnvironmentContext::class));
+    app(EnvironmentContext::class)->set(GenericEnvironment::of('env_test'));
+
+    $path = (string) AuditLogExport::query()->findOrFail($export['id'])->path;
+
+    expect(Storage::disk('r2')->exists($path))->toBeTrue()
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
+
+    // A web pod.
+    $ready = $this->withToken($key)->getJson("/api/v1/audit-logs/exports/{$export['id']}")->assertOk()
+        ->assertJsonPath('data.state', 'ready')
+        ->json('data');
+
+    $response = $this->get($ready['url'])->assertOk();
+
+    expect($response->streamedContent())->toBe(Storage::disk('r2')->get($path))
+        ->and($response->streamedContent())->toContain('invoice.refunded')
+        ->and($response->headers->get('Cache-Control'))->toContain('no-store');
+
+    // And the prune deletes it from the bucket once it has expired.
+    Carbon::setTestNow(Carbon::now()->addHours(73));
+    $this->artisan('audit-logs:prune')->assertSuccessful();
+    Carbon::setTestNow();
+
+    expect(Storage::disk('r2')->exists($path))->toBeFalse()
+        ->and(AuditLogExport::query()->findOrFail($export['id'])->state)->toBe(AuditLogExport::EXPIRED);
+});
+
+/*
+ * `r2` throws on a failed operation. A delete the bucket refused used to stop the prune
+ * there: now it is reported, the export stays as it was, and the next run deletes it —
+ * never an `expired` row whose file is still in the bucket with nothing pointing at it.
+ */
+it('keeps an expired export whose file the shared disk would not delete, and deletes it on the next run', function (): void {
+    Storage::fake('r2');
+    config(['cbox-id.audit_logs.export_disk' => 'r2']);
+    Queue::fake();
+    $key = auditKey();
+    $acme = auditOrg('acme-r2-prune');
+
+    sendAuditEvents($key, [auditEvent($acme)])->assertCreated();
+    $export = $this->withToken($key)->postJson('/api/v1/audit-logs/exports', ['organization_id' => $acme])->json('data');
+
+    app(EnvironmentContext::class)->set(null);
+    (new GenerateAuditLogExport($export['id']))->handle(app(EnvironmentContext::class));
+    app(EnvironmentContext::class)->set(GenericEnvironment::of('env_test'));
+
+    $path = (string) AuditLogExport::query()->findOrFail($export['id'])->path;
+    $bucket = Storage::disk('r2');
+
+    $unreachable = Mockery::mock(Filesystem::class);
+    $unreachable->shouldReceive('delete')->andThrow(UnableToDeleteFile::atLocation($path, 'R2 answered 503'));
+    Storage::set('r2', $unreachable);
+
+    Carbon::setTestNow(Carbon::now()->addHours(73));
+    $this->artisan('audit-logs:prune')->assertSuccessful();
+
+    expect(AuditLogExport::query()->findOrFail($export['id'])->state)->toBe(AuditLogExport::READY)
+        ->and($bucket->exists($path))->toBeTrue();
+
+    Storage::set('r2', $bucket);
+    $this->artisan('audit-logs:prune')->assertSuccessful();
+    Carbon::setTestNow();
+
+    expect(AuditLogExport::query()->findOrFail($export['id'])->state)->toBe(AuditLogExport::EXPIRED)
+        ->and($bucket->exists($path))->toBeFalse();
 });
 
 it('prunes past the retention from the front of each chain, which still verifies', function (): void {

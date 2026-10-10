@@ -18,12 +18,24 @@ use Illuminate\Contracts\Filesystem\Filesystem;
  *
  * It throws if the disk write fails, so the engine holds its cursor and re-offers
  * the batch — the archive is never silently short a segment.
+ *
+ * ON OBJECT STORAGE, ONE OBJECT PER BATCH. An object cannot be appended to: Laravel's
+ * `append()` on an S3-compatible disk downloads the whole object and uploads it again
+ * with the batch on the end. Against one ever-growing `{scope}.jsonl` that is a transfer
+ * the size of the whole archive for every 500 entries. With `$segmented` (the provider
+ * sets it for any disk that is not `local`), each batch is its own object,
+ * `{prefix}/{environment}/{scope}/{from}.jsonl`, named by its first sequence and
+ * zero-padded so the bucket lists the objects in chain order; concatenated in that order
+ * they are the bundle. A batch the engine re-offers — its cursor did not move — starts at
+ * the same sequence, so the retry overwrites the object it wrote the first time (with as
+ * many entries or more) instead of adding a second copy of them.
  */
 class JsonlBundleExportSink implements AuditExportSink
 {
     public function __construct(
         private readonly Filesystem $disk,
         private readonly string $prefix = 'compliance/audit',
+        private readonly bool $segmented = false,
     ) {}
 
     public function export(AuditExportBatch $batch): void
@@ -40,13 +52,18 @@ class JsonlBundleExportSink implements AuditExportSink
             $batch->records,
         );
 
-        $path = $this->pathFor($batch->environmentId, $batch->scope);
         $payload = implode("\n", $lines)."\n";
 
-        $ok = $this->disk->append($path, rtrim($payload, "\n"));
+        if ($this->segmented) {
+            $path = $this->segmentPathFor($batch);
+            $ok = $this->disk->put($path, $payload);
+        } else {
+            $path = $this->pathFor($batch->environmentId, $batch->scope);
+            $ok = $this->disk->append($path, rtrim($payload, "\n"));
+        }
 
         if ($ok === false) {
-            throw new \RuntimeException("Failed to append audit export bundle to [{$path}].");
+            throw new \RuntimeException("Failed to write audit export bundle to [{$path}].");
         }
     }
 
@@ -70,6 +87,17 @@ class JsonlBundleExportSink implements AuditExportSink
         $safeEnvironment = preg_replace('/[^A-Za-z0-9_.-]/', '_', $environmentId) ?? 'environment';
 
         return trim($this->prefix, '/')."/{$safeEnvironment}/{$safeScope}.jsonl";
+    }
+
+    /**
+     * One object per batch, under the path the appended bundle would have had (without
+     * its `.jsonl`), named by the first sequence it holds.
+     */
+    private function segmentPathFor(AuditExportBatch $batch): string
+    {
+        $directory = substr($this->pathFor($batch->environmentId, $batch->scope), 0, -strlen('.jsonl'));
+
+        return sprintf('%s/%020d.jsonl', $directory, $batch->fromSequence);
     }
 
     /** A real destination. */

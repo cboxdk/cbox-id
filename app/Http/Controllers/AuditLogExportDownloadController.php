@@ -25,7 +25,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * throw answers null, so the response was a 200 with an empty `audit-logs-….csv` — an export
  * reported `ready`, handed out, and silently empty. Now a missing file is a 404 and an error
  * in the log that names the disk; `cbox-id:doctor` fails the same configuration up front
- * ("Files are local to one pod").
+ * ("Files are local to one machine").
  */
 final class AuditLogExportDownloadController
 {
