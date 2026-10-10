@@ -173,7 +173,7 @@ for (;;) {
 ## What the person sees
 
 The page at `/device` is one of your hosted pages, like sign-in: your environment's
-**name and uploaded logo** ([Appearance](../getting-started/screens.md)), in the person's
+**name and uploaded logo** ([Branding](../getting-started/screens.md)), in the person's
 **language** ([Languages](languages.md)), and laid out for a phone first.
 
 1. **Sign in**, if they are not already — with any method your environment offers:

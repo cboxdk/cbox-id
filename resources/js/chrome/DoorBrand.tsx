@@ -7,10 +7,10 @@ import { Brand } from './Brand';
  *
  * With a brand (an organization's door, or any hosted page on a customer's environment):
  * their UPLOADED logo, served by this application, or — with none uploaded — their initial
- * on the accent beside their name, drawn exactly as the Appearance editor's preview draws
+ * on the accent beside their name, drawn exactly as the Branding page's preview draws
  * it, so the page is the one that was approved. Without one: Cbox's own mark.
  *
- * The logo is never a remote URL. It used to be one, typed on the Appearance page, and an
+ * The logo is never a remote URL. It used to be one, typed on the old Appearance page, and an
  * `<img>` of it reported every visitor to whoever hosted it; the server now only ever hands
  * this a path of its own (see `BrandImages`), and the content security policy refuses any
  * other image origin anyway.

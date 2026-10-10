@@ -63,7 +63,7 @@ function tvCode(): string
 it('changes the preview\'s typeface — headings included — when a face is picked, in a face that loads', function (): void {
     hostedOwner();
 
-    $page = visit('/appearance')->assertSee('Live preview');
+    $page = visit('/branding')->assertSee('Live preview');
 
     $family = 'getComputedStyle(document.querySelector("[data-testid=appearance-preview] h2")).fontFamily';
 
@@ -167,7 +167,7 @@ it('asks for an upload in place of a remote logo, previews the file, and saves i
     imagefill($image, 0, 0, (int) imagecolorallocate($image, 20, 120, 90));
     imagepng($image, $png);
 
-    $page = visit('/appearance')
+    $page = visit('/branding')
         ->assertSee('Upload your logo — remote logo URLs are no longer shown.')
         // The editor never draws the old address — not even in its own preview.
         ->assertScript('[...document.images].some((img) => img.src.includes("cdn.example.test"))', false)

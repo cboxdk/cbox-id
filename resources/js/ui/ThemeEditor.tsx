@@ -51,6 +51,10 @@ export interface ThemeEditorProps {
 }
 
 export type ImageKind = 'logo' | 'favicon';
+
+/** Stable defaults: an object literal as a default prop is a new object every render. */
+const NO_IMAGE_ERRORS: Partial<Record<ImageKind, string>> = {};
+const NO_FONT_LABELS: Record<string, string> = {};
 export type ImageChanges = Partial<Record<ImageKind, string | null>>;
 
 /**
@@ -91,8 +95,8 @@ export function ThemeEditor({
     scope,
     saving = false,
     error = null,
-    imageErrors = {},
-    fontLabels = {},
+    imageErrors = NO_IMAGE_ERRORS,
+    fontLabels = NO_FONT_LABELS,
     remoteLogoIgnored = false,
     imagesAccepted = true,
     onSave,
@@ -225,8 +229,7 @@ export function ThemeEditor({
                 sign-in page suddenly logo-less.
             */}
             {remoteLogoIgnored && images.logo === undefined && (
-                <div
-                    role="status"
+                <output
                     className="mb-4 rounded-lg px-3.5 py-3 text-sm flex items-start gap-2.5"
                     style={{
                         background: 'var(--warning-soft)',
@@ -241,7 +244,7 @@ export function ThemeEditor({
                         sign-in page, so hosted pages now draw only images uploaded here. Upload it
                         under <i>Logo &amp; favicon</i> below, or remove it to stop this notice.
                     </span>
-                </div>
+                </output>
             )}
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr] items-start">

@@ -11,10 +11,10 @@ namespace App\Platform\Appearance;
  * The white-label module owns the storage (its brand profiles and the database-backed
  * asset store the application serves at `/brand-assets/…`) and binds this contract from
  * its own provider, the way it plugs into every other socket. The hosted pages, the
- * Appearance editor, the checklists and the mail layout ask here and nowhere else, so
+ * Branding page, the checklists and the mail layout ask here and nowhere else, so
  * there is one logo per altitude rather than one per screen that happens to draw it.
  *
- * Altitudes are the Appearance editor's: `null` is the ENVIRONMENT default every
+ * Altitudes are the Branding page's: `null` is the ENVIRONMENT default every
  * organization inherits, an id is one ORGANIZATION's own. A read is EXACT — the
  * organization's own image or none; falling back to the environment is the caller's
  * decision ({@see BrandContext::logo()}), because the editor needs to tell "this

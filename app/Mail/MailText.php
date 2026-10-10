@@ -36,7 +36,7 @@ final class MailText
      * The environment's UPLOADED logo as an absolute URL on this application, or null.
      *
      * Absolute because a mail client has no page to resolve a path against; on this
-     * application because the alternative — the remote logo URL the Appearance page used to
+     * application because the alternative — the remote logo URL the old Appearance page used to
      * take — is a tracking pixel in every inbox it reaches, reporting when each message was
      * opened and from where. The environment's default, not an organization's: mail is sent
      * on the environment's behalf. Null outside an environment, and on any failure — a

@@ -149,7 +149,7 @@ function saveTheme(array $theme, ?string $route = null, bool $environmentDefault
 {
     unset($theme['logo'], $theme['favicon'], $theme['name']);
 
-    $route ??= 'appearance';
+    $route ??= 'branding';
 
     return test()->from(route($route))
         ->post(route($route.'.update'), [
@@ -165,10 +165,10 @@ function saveTheme(array $theme, ?string $route = null, bool $environmentDefault
 
 it('renders the editor for an admin', function (): void {
     signInOrg(MembershipRole::Admin);
-    $this->get(route('appearance'))
+    $this->get(route('branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             ->where('hasTarget', true)
             // The organization plane may not theme the environment default, and the
             // control that would let it is not offered rather than offered and refused.
@@ -177,7 +177,7 @@ it('renders the editor for an admin', function (): void {
 
 it('refuses the editor for a non-admin member', function (): void {
     signInOrg(MembershipRole::Member);
-    $this->get(route('appearance'))->assertForbidden();
+    $this->get(route('branding'))->assertForbidden();
 });
 
 it('persists a saved theme to org settings and keeps brand_color in sync', function (): void {
@@ -232,7 +232,7 @@ it('retires a legacy remote logo URL when a logo is uploaded, and asks for one u
     app(Organizations::class)->updateSettings($org->id, ['brand_logo_url' => 'https://cdn.example/logo.png']);
 
     // The editor says so — the one place the administrator can fix it.
-    $this->get(route('appearance'))->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(route('branding'))->assertInertia(fn (AssertableInertia $page) => $page
         ->where('remoteLogoIgnored', true)
         ->where('appearance.logo', ''));
 
@@ -240,7 +240,7 @@ it('retires a legacy remote logo URL when a logo is uploaded, and asks for one u
 
     expect(app(Organizations::class)->find($org->id)->settings['brand_logo_url'] ?? null)->toBeNull();
 
-    $this->get(route('appearance'))->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(route('branding'))->assertInertia(fn (AssertableInertia $page) => $page
         ->where('remoteLogoIgnored', false)
         ->where('appearance.logo', fn (string $logo): bool => str_starts_with($logo, '/brand-assets/')));
 });
@@ -313,7 +313,7 @@ it('saves an environment-level theme and applies it to the hosted sign-in', func
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    saveTheme($theme, 'environment.appearance', environmentDefault: true)->assertSessionHasNoErrors();
+    saveTheme($theme, 'environment.branding', environmentDefault: true)->assertSessionHasNoErrors();
 
     // Persisted onto the environment…
     expect(Environment::find($envId)->settings['appearance']['light']['primary'])->toBe('#00aa88');

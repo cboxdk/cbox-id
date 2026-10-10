@@ -2502,10 +2502,10 @@ it('refuses single sign-on to an organization admin with no organization at all'
 it('serves appearance from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-appearance');
 
-    $this->get(route('environment.appearance'))
+    $this->get(route('environment.branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             // The plane that holds the environment, and the only one offered the choice.
             ->where('mayThemeEnvironment', true));
 })->group('security');
@@ -2513,10 +2513,10 @@ it('serves appearance from one component on the environment plane', function ():
 it('serves appearance from the same component on the organization plane', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    $this->get(route('appearance'))
+    $this->get(route('branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             ->where('mayThemeEnvironment', false));
 })->group('security');
 
@@ -2550,8 +2550,8 @@ it('still themes the environment default when the environment console saves', fu
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    saveAppearance('environment.appearance', $theme, environmentDefault: true)
-        ->assertRedirect(route('environment.appearance'))
+    saveAppearance('environment.branding', $theme, environmentDefault: true)
+        ->assertRedirect(route('environment.branding'))
         ->assertSessionHasNoErrors();
 
     expect(Environment::query()->find($environmentId)?->settings['appearance']['light']['primary'])->toBe('#00aa88')
@@ -2571,7 +2571,7 @@ it('lets the environment console theme one organization on its own Branding tab 
     $this->get(route('environment.organizations.branding', $orgId))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('console/appearance')
+            ->component('console/branding')
             ->where('environmentDefault', false)
             ->where('saveHref', route('environment.organizations.branding.update', $orgId))
             ->where('organizationHub.id', $orgId));
@@ -2592,7 +2592,7 @@ it('themes only the environment default from the environment\'s own Appearance p
     // in this environment is a 404.
     $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
 
-    saveAppearance('environment.appearance', Appearance::fromPreset('warm')->toArray())
+    saveAppearance('environment.branding', Appearance::fromPreset('warm')->toArray())
         ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
@@ -2610,7 +2610,7 @@ it('refuses an organization admin the environment default theme', function (): v
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    saveAppearance('appearance', $theme, environmentDefault: true)->assertForbidden();
+    saveAppearance('branding', $theme, environmentDefault: true)->assertForbidden();
 
     expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
 })->group('security');
@@ -2622,7 +2622,7 @@ it('refuses an unreadable environment default, which only the organization plane
     anEnvironmentAdminActingOn('tenant-appearance-contrast');
     $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
 
-    saveAppearance('environment.appearance', [
+    saveAppearance('environment.branding', [
         'radius' => '0.5rem',
         'font' => 'system',
         'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
@@ -2638,7 +2638,7 @@ it('does not offer the environment default to an organization admin', function (
     // someone the server will refuse.
     actingAsRole(MembershipRole::Owner);
 
-    $this->get(route('appearance'))
+    $this->get(route('branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('mayThemeEnvironment', false));
 })->group('security');
@@ -2652,7 +2652,7 @@ it('does offer it to the administrator who holds the environment', function (): 
     // half would still be standing when the environment half ran.
     anEnvironmentAdminActingOn('tenant-appearance-view');
 
-    $this->get(route('environment.appearance'))
+    $this->get(route('environment.branding'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('mayThemeEnvironment', true));
 })->group('security');

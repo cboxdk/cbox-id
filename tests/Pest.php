@@ -610,10 +610,11 @@ function enableSocialProvider(array $changes = []): TestResponse
  */
 function saveBranding(array $changes = [], bool $environmentPlane = false): TestResponse
 {
-    $name = $environmentPlane ? 'environment.whitelabel.branding' : 'whitelabel.branding';
+    // The white-label half of the ONE Branding page — its own form, its own action.
+    $name = $environmentPlane ? 'environment.branding' : 'branding';
 
     return test()->from(route($name))
-        ->post(route($name.'.save'), [
+        ->post(route($name.'.profile.update'), [
             'palette' => [],
             'appName' => 'Acme Identity',
             'emailFromName' => '',
@@ -2155,7 +2156,7 @@ function pngDataUri(int $width = 40, int $height = 20): string
  *
  * @param  array<string, string|null>  $images
  */
-function saveThemeImages(array $images, string $route = 'appearance', string $preset = 'cbox'): TestResponse
+function saveThemeImages(array $images, string $route = 'branding', string $preset = 'cbox'): TestResponse
 {
     return test()->from(route($route))
         ->post(route($route.'.update'), [

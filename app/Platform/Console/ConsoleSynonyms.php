@@ -83,8 +83,7 @@ final class ConsoleSynonyms
         'agent-connect' => ['MCP', 'MCP server', 'Claude', 'Claude Code', 'Cursor', 'VS Code', 'connect an agent', 'AI agent'],
 
         // Branding.
-        'appearance' => ['branding', 'theme', 'logo', 'colours', 'colors', 'login page', 'sign-in page', 'hosted login', 'universal login', 'customize'],
-        'whitelabel.branding' => ['white label', 'white-label', 'logo', 'favicon', 'app name', 'email sender', 'email template', 'custom branding'],
+        'branding' => ['appearance', 'theme', 'logo', 'favicon', 'colours', 'colors', 'font', 'typeface', 'login page', 'sign-in page', 'hosted login', 'universal login', 'customize', 'white label', 'white-label', 'app name', 'email sender', 'email template', 'custom branding'],
 
         // Monitoring.
         'audit' => ['audit trail', 'activity', 'history', 'events', 'logs', 'who did what'],

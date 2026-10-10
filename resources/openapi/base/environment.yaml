@@ -2896,8 +2896,8 @@ components:
         app_name: { type: ["string", "null"] }
         email_from_name: { type: ["string", "null"] }
         email_template: { type: ["string", "null"] }
-        logo_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Appearance page)." }
-        favicon_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Appearance page)." }
+        logo_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)." }
+        favicon_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)." }
     CustomDomain:
       type: object
       required: [domain, verified_at, pending]

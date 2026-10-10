@@ -108,7 +108,7 @@ Create a new organization and its first owner. Risk scoring runs on submit
 On the platform root the sign-in pages carry Cbox ID's own panel beside the form. On a
 customer's environment every door — sign-in, sign-up, password reset, magic link, an
 invitation, the organization picker and the create-a-team step — carries that
-environment's brand instead: the name, **uploaded** logo and favicon its Appearance page
+environment's brand instead: the name, **uploaded** logo and favicon its Branding page
 previews, over its colours and typeface, with no Cbox ID panel. The device sign-in page and
 the Admin Portal carry it too, and so do the emails. An organization's own door
 (`/o/{slug}/login`) carries the organization's. The consoles on that host stay Cbox ID's.
@@ -116,7 +116,7 @@ the Admin Portal carry it too, and so do the emails. An organization's own door
 Logos and favicons are **uploads** (PNG, JPEG or WebP; ICO for a favicon; never SVG),
 served by Cbox ID itself at `/brand-assets/…`. A logo used to be an https URL to anywhere,
 and every visitor's browser then reported to whoever hosted it — so a remote logo URL saved
-before is no longer drawn, and the Appearance page asks for an upload until one is made.
+before is no longer drawn, and the Branding page asks for an upload until one is made.
 Every typeface on offer (System, Inter, Plus Jakarta Sans, Nunito, Source Serif) is
 self-hosted for the same reason: no hosted page loads anything from another origin.
 
@@ -233,9 +233,11 @@ than minting areas of their own.
 
 ### Settings
 
-*Settings · Appearance.* Organization details, and the branding an organization's own
-sign-in page inherits: a preset, four colours per mode, corners, the typeface, and the
-uploaded logo and favicon — edited against a live preview of the sign-in page.
+*Settings · Branding.* Organization details, and the brand an organization's own sign-in
+page inherits — one page: a preset, four colours per mode, corners, the typeface, and the
+uploaded logo and favicon, edited against a live preview of the sign-in page; and, with the
+white-label module, the product name, the email sender, the welcome mail and the console's
+own palette. `/appearance` and the module's old Branding page redirect here.
 
 ![Settings](../screenshots/environment-settings.png)
 
@@ -274,7 +276,7 @@ a whole environment, filed by task in the words the market uses:
 - **Developers:** Applications, APIs, API keys, Webhooks, Hooks, Feature flags, Pipes.
 - **AI agents:** Agents, Approvals (every pending approval request in the environment,
   so an administrator can deny one that looks like abuse), Connect.
-- **Branding:** Appearance, and Branding when the white-label module is on.
+- **Branding:** one Branding page — the sign-in theme, logo and favicon, and (with the white-label module) the name, sender and console palette.
 - **Monitoring:** Audit log, Log streams, Usage, and the analytics, compliance and risk
   modules' pages.
 - **Advanced:** Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy

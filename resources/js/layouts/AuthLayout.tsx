@@ -33,7 +33,7 @@ const FEATURES: MessageKey[] = [
  * flashing ours. What React contributes here is the name and the logo.
  *
  * A BRANDED DOOR HAS NO HERO. With a brand — an organization's door, or any door on a
- * customer's environment — the page is the one the Appearance editor previews: their logo
+ * customer's environment — the page is the one the Branding page previews: their logo
  * (or their initial) and their name over the form, and nothing else. The hero is Cbox
  * selling Cbox, and it used to sit beside a vendor's own sign-up page, pitching SCIM to
  * the vendor's end users under the vendor's name.

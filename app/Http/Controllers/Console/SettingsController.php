@@ -125,7 +125,7 @@ final readonly class SettingsController extends ConsoleController
                 'darkBackground' => $appearance->dark->background,
                 'darkPrimary' => $appearance->dark->primary,
             ],
-            'appearanceHref' => $this->url('appearance'),
+            'appearanceHref' => $this->url('branding'),
             // Renaming is the organization console's own; on the environment console an
             // organization is renamed on its own page, which is where this page points.
             'renameHref' => $onEnvironmentPlane ? null : route('settings.rename'),

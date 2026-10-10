@@ -23,7 +23,7 @@ takes a logo **URL**. Send the image itself as a base64 `data:` URI in `logo` (a
 `favicon`); an https URL is refused with `invalid_logo`. A logo URL saved before is kept in
 the settings but **not drawn** on any hosted page and never fetched — every visitor's
 browser used to report to whoever hosted it. Until an administrator uploads a logo (or
-removes it), the Appearance page says so. Nothing to migrate; tell the environments that
+removes it), the Branding page says so. Nothing to migrate; tell the environments that
 had a remote logo to upload it.
 
 The content security policy's `img-src` is now `'self' data:`. A deployment that serves

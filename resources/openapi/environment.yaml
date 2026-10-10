@@ -3621,6 +3621,8 @@ paths:
         -
           EnvironmentApiKey: []
         -
+          ManagementAccessToken: []
+        -
           WorkspaceAccessToken: []
       responses:
         200:
@@ -20618,12 +20620,12 @@ components:
           type:
             - string
             - 'null'
-          description: "Uploaded with `PUT /branding/appearance` (the console's Appearance page)."
+          description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)."
         favicon_url:
           type:
             - string
             - 'null'
-          description: "Uploaded with `PUT /branding/appearance` (the console's Appearance page)."
+          description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)."
     CustomDomain:
       type: object
       required:

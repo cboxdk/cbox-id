@@ -8,7 +8,9 @@ use App\Actions\Branding\AppearanceFields;
 use App\Actions\Branding\SetAppearance;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SaveAppearanceRequest;
+use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\BrandImage;
 use App\Platform\Appearance\BrandImages;
@@ -21,26 +23,34 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
- * CONSOLE › APPEARANCE — the hosted-sign-in theme: presets, colours, corners and type,
- * edited against a live preview. One page, both planes.
+ * CONSOLE › BRANDING — everything a customer's people see of the brand, on ONE page: the
+ * hosted sign-in theme (preset, colours, corners, typeface, logo and favicon, against a live
+ * preview), and — where the white-label module is installed — the product's name, the email
+ * sender and welcome mail, and the console palette.
  *
- * The two pages looked like the same feature and were not quite: the organization one
- * themed an ORGANIZATION (which overrides the environment default), the environment one
- * themed the ENVIRONMENT's default (which every organization in it inherits). That
- * difference is a real capability, not a plane detail — so it survives as an explicit
- * choice rather than being implied by which console you happened to open, and it is
- * offered and enforced on the environment plane alone. An organization administrator who
- * could reach it would be re-theming the sign-in page of every other tenant here.
+ * TWO PAGES USED TO DO THIS, and they overlapped. "Appearance" themed the sign-in and took a
+ * logo URL; the module's "Branding" set a palette and uploaded a logo that nothing drew. The
+ * rail read "Branding › Branding", and an administrator setting their logo had two places to
+ * do it and one of them did nothing. Now there is one page, one logo, and old addresses
+ * (`/appearance`, `/admin/appearance`, an organization's `…/appearance`) redirect here.
  *
- * The organization page also refused an unreadable palette and the environment page did
- * not, so an operator could set an environment default that no tenant's users could read.
- * That gate is on both now — in the ACTION (`branding.appearance.set`) the management API
- * runs too, so the rule is the same whichever door changes a theme.
+ * EVERY WRITE IS STILL AN ACTION. The sign-in theme and images go through
+ * `branding.appearance.set`; the name, sender, mail and palette through the module's own
+ * `branding.whitelabel.set`, asked for BY NAME from the action registry — so this page needs
+ * nothing from the module's classes, and without the module that section is simply absent.
+ *
+ * WHICH THING IS BEING BRANDED is the page's ADDRESS: the environment default every
+ * organization inherits on the environment console's own Branding page, one organization's
+ * own on its Branding tab (`/admin/organizations/{organization}/branding`) or on the
+ * organization console. An organization administrator never reaches the environment
+ * default — on the organization plane one tenant could otherwise re-brand every other
+ * tenant's sign-in page — and the actions refuse it as well.
  */
-final readonly class AppearanceController extends ConsoleController
+final readonly class BrandingController extends ConsoleController
 {
     public function edit(EnvironmentContext $environments): Response
     {
@@ -50,7 +60,7 @@ final readonly class AppearanceController extends ConsoleController
 
         /*
          * WHICH THING IS BEING THEMED is the page's ADDRESS, not a choice on it. The
-         * environment console's Appearance page is the environment default every
+         * environment console's Branding page is the environment default every
          * organization inherits; one organization's own theme is its Branding tab
          * (`/admin/organizations/{organization}/branding`). It used to be a toggle on one
          * page, aimed by whichever organization the console header had been pointed at —
@@ -63,8 +73,8 @@ final readonly class AppearanceController extends ConsoleController
         $environment = $this->environment($environments);
         $target = $environmentDefault ? $environment : $organization;
 
-        return $this->page('console/appearance', 'Appearance', [
-            'help' => HelpProps::for(HelpTopic::Appearance),
+        return $this->page('console/branding', 'Branding', [
+            'help' => HelpProps::for(HelpTopic::Branding),
             /*
              * `appearance`, NOT `theme`. The shell shares a prop called `theme` — the
              * CONSOLE's own light/dark preference, which the theme toggle reads — and a
@@ -99,7 +109,16 @@ final readonly class AppearanceController extends ConsoleController
             // route names — both consoles' pages and an organization's Branding tab.
             'saveHref' => $mayThemeEnvironment && ! $environmentDefault
                 ? route('environment.organizations.branding.update')
-                : $this->url('appearance.update'),
+                : $this->url('branding.update'),
+            /*
+             * The white-label half — name, sender, welcome mail, console palette — read
+             * through the module's own action, or null without the module (or without a
+             * target). Its own form and its own Save, through its own action.
+             */
+            'profile' => $target === null ? null : $this->profile($environmentDefault ? null : $this->scope->organizationId()),
+            'profileHref' => $mayThemeEnvironment && ! $environmentDefault
+                ? route('environment.organizations.branding.profile.update')
+                : $this->url('branding.profile.update'),
         ]);
     }
 
@@ -114,7 +133,7 @@ final readonly class AppearanceController extends ConsoleController
 
         /*
          * WHOSE THEME, from the address alone: the environment default on the environment
-         * console's own Appearance page, the organization on its Branding tab and on the
+         * console's own Branding page, the organization on its Branding tab and on the
          * organization console. The form's `environmentDefault` is not trusted to choose —
          * its arrival on the organization plane is a forged payload, refused rather than
          * quietly downgraded, because treating a forgery as a typo is how a control stops
@@ -124,7 +143,7 @@ final readonly class AppearanceController extends ConsoleController
 
         if ($request->environmentDefault()) {
             abort_unless($environmentDefault, 403,
-                'Only an environment administrator may change the environment default theme, on the environment\'s own Appearance page.');
+                'Only an environment administrator may change the environment default theme, on the environment\'s own Branding page.');
         }
 
         /*
@@ -149,6 +168,108 @@ final readonly class AppearanceController extends ConsoleController
         }
 
         return back()->with('status', $environmentDefault ? 'Environment appearance saved.' : 'Appearance saved.');
+    }
+
+    /**
+     * Save the white-label half — the product's name, the email sender, the welcome mail
+     * and the console palette — through the module's own action, `branding.whitelabel.set`,
+     * at the same altitude as the theme. A 404 without the module: there is nothing to save.
+     */
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $this->scope->assertMayAdminister();
+
+        $action = $this->profileAction('branding.whitelabel.set');
+        abort_if($action === null, 404);
+
+        $environmentDefault = $this->scope->plane() === ConsolePlane::Environment && $this->scope->organizationId() === null;
+
+        $request->validate([
+            'palette' => ['array'],
+            'palette.*' => ['nullable', 'string', 'max:100'],
+            'appName' => ['nullable', 'string', 'max:120'],
+            'emailFromName' => ['nullable', 'string', 'max:120'],
+            'emailTemplate' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $palette = [];
+
+        foreach ((array) $request->input('palette', []) as $token => $value) {
+            if (is_string($token)) {
+                $palette[$token] = is_string($value) ? trim($value) : '';
+            }
+        }
+
+        $blank = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
+
+        $result = $this->act($action, [
+            'organization_id' => $environmentDefault ? null : $this->scope->requireOrganizationId(),
+            'palette' => $palette,
+            'app_name' => $blank($request->input('appName')),
+            'email_from_name' => $blank($request->input('emailFromName')),
+            'email_template' => is_string($request->input('emailTemplate')) ? $request->input('emailTemplate') : '',
+        ], [
+            ...array_combine(
+                array_map(static fn (string $token): string => 'palette.'.$token, array_keys($palette)),
+                array_map(static fn (string $token): string => 'palette.'.$token, array_keys($palette)),
+            ),
+            'app_name' => 'appName',
+            'email_from_name' => 'emailFromName',
+            'email_template' => 'emailTemplate',
+        ], 'appName');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return back()->with('status', 'Branding saved.');
+    }
+
+    /**
+     * The white-label profile at this altitude, as the page edits it, or null without the
+     * module. Read through the module's own read action, by name.
+     *
+     * @return array{tokens: list<string>, palette: array<string, string>, appName: string, emailFromName: string, emailTemplate: string}|null
+     */
+    private function profile(?string $organizationId): ?array
+    {
+        $action = $this->profileAction('branding.whitelabel.get');
+
+        if ($action === null) {
+            return null;
+        }
+
+        $payload = $this->runAction($action, $organizationId === null ? [] : ['organization_id' => $organizationId])->payload ?? [];
+
+        $palette = [];
+
+        foreach ((array) ($payload['palette'] ?? []) as $token => $value) {
+            if (is_string($token)) {
+                $palette[$token] = is_string($value) ? $value : '';
+            }
+        }
+
+        $text = static fn (mixed $value): string => is_string($value) ? $value : '';
+
+        return [
+            'tokens' => array_keys($palette),
+            'palette' => $palette,
+            'appName' => $text($payload['app_name'] ?? null),
+            'emailFromName' => $text($payload['email_from_name'] ?? null),
+            'emailTemplate' => $text($payload['email_template'] ?? null),
+        ];
+    }
+
+    /**
+     * An action of the white-label module, by name, or null when the module is not here.
+     *
+     * @return class-string<Action>|null
+     */
+    private function profileAction(string $name): ?string
+    {
+        $all = app(ActionRegistry::class)->all();
+
+        return isset($all[$name]) ? $all[$name]->class : null;
     }
 
     /**

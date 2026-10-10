@@ -20,9 +20,9 @@ use RuntimeException;
  * `/brand-assets/…` on every host).
  *
  * ONE LOGO PER ALTITUDE. The profile already had both images as uploads, and the hosted
- * sign-in drew a different one — an https URL typed on the Appearance page — so the logo a
+ * sign-in drew a different one — an https URL typed on the old Appearance page — so the logo a
  * customer uploaded was stored and shown nowhere, while the one that was shown leaked every
- * visitor to whoever hosted it. The Appearance page now uploads into this profile, and
+ * visitor to whoever hosted it. The Branding page now uploads into this profile, and
  * every page that draws a logo reads it from here.
  */
 final readonly class ProfileBrandImages implements BrandImages

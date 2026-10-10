@@ -102,7 +102,7 @@ final class BrandContext
     /**
      * The name to put in `<title>` and on the sign-in card, or null for the platform's own:
      * the pinned organization's, else — at a door on a customer's environment — the
-     * environment's, which is the name its Appearance page previews the sign-in under.
+     * environment's, which is the name its Branding page previews the sign-in under.
      */
     public function name(): ?string
     {
@@ -125,7 +125,7 @@ final class BrandContext
      * The organization's uploaded logo, else the environment's, else none — always an
      * image this application serves ({@see BrandImages}).
      *
-     * NOT `brand_logo_url`. That was an https URL typed on the Appearance page and drawn
+     * NOT `brand_logo_url`. That was an https URL typed on the old Appearance page and drawn
      * as-is, so every visitor of a branded sign-in page fetched an image from whoever hosted
      * it — their address, browser and arrival time handed to a third party on the one page
      * where it matters most. Stored values are left in settings (nothing fetches them, ever)

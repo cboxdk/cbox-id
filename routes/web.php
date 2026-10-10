@@ -25,10 +25,10 @@ use App\Http\Controllers\Console\AgentApprovalController;
 use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
-use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
 use App\Http\Controllers\Console\AuditLogController;
 use App\Http\Controllers\Console\AuthPolicyController;
+use App\Http\Controllers\Console\BrandingController;
 use App\Http\Controllers\Console\ClientController;
 use App\Http\Controllers\Console\ClientPromotionController;
 use App\Http\Controllers\Console\ClientScopesController;
@@ -1066,12 +1066,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::delete('/settings/organization', [SettingsController::class, 'destroyOrganization'])
         ->middleware('sudo')
         ->name('settings.organization.destroy');
-    // Appearance: the SAME component the environment plane serves. What is being
-    // themed — an organization's own sign-in, or the environment default every
-    // organization inherits — is an explicit choice on the page, offered on the
-    // environment plane alone.
-    Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance');
-    Route::post('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
+    // Branding: the SAME component the environment plane serves — the sign-in theme, the
+    // logo and favicon, and (with the white-label module) the name, sender and palette.
+    // What is being branded is the page's address: this organization's own here.
+    Route::get('/branding', [BrandingController::class, 'edit'])->name('branding');
+    Route::post('/branding', [BrandingController::class, 'update'])->name('branding.update');
+    Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('branding.profile.update');
     // Sign-in rules: the SAME component the environment plane serves, and the half of
     // this pair that never existed. `AuthPolicies::setForOrganization()` had no caller
     // anywhere in the product while both sign-in doors enforced what it writes, so a
@@ -1330,8 +1330,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::get('/roles', [RoleController::class, 'index'])->name('environment.organizations.roles');
             Route::get('/api-keys', [OrganizationApiKeysController::class, 'index'])->name('environment.organizations.api-keys');
 
-            Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.organizations.branding');
-            Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.organizations.branding.update');
+            Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.organizations.branding');
+            Route::post('/branding', [BrandingController::class, 'update'])->name('environment.organizations.branding.update');
+            Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('environment.organizations.branding.profile.update');
 
             Route::get('/policy', [AuthPolicyController::class, 'edit'])->name('environment.organizations.policy');
             Route::put('/policy', [AuthPolicyController::class, 'update'])->name('environment.organizations.policy.update');
@@ -1763,10 +1764,11 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Text-message codes as a second factor — environment plane only, like sign-up: the
         // countries an environment texts are a cost and fraud decision for the environment.
         Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('environment.auth-policy.sms');
-        // Appearance — the merged component. The route NAME is preserved on both
-        // planes; only the component behind it is now shared.
-        Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.appearance');
-        Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.appearance.update');
+        // Branding — the environment default every organization inherits. One page for
+        // the sign-in theme, the logo and favicon, and the white-label name and palette.
+        Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.branding');
+        Route::post('/branding', [BrandingController::class, 'update'])->name('environment.branding.update');
+        Route::post('/branding/profile', [BrandingController::class, 'updateProfile'])->name('environment.branding.profile.update');
 
         // Step into a subject's session for support (env-admin actor). Authorized in
         // the controller by env-scoped membership; owners/admins refused; reason required.
@@ -2017,6 +2019,11 @@ foreach ([
     '/admin/analytics' => '/admin/usage',
     // The organization lookup that used to sit beside the header's "acting organization".
     '/admin/acting-organization' => '/admin/lookup/organizations',
+
+    // Appearance and the white-label Branding page became ONE Branding page.
+    '/appearance' => '/branding',
+    '/admin/appearance' => '/admin/branding',
+    '/admin/organizations/{organization}/appearance' => '/admin/organizations/{organization}/branding',
 ] as $from => $to) {
     ConsoleRoutes::moved($from, $to);
 }
