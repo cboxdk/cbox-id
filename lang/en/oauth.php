@@ -137,5 +137,12 @@ return [
         'enter_another' => 'Connect another device',
         'blocked' => 'This request could not be approved from here. Try again on a network you usually use, or contact your administrator.',
         'step_up' => 'Confirm it is you before connecting a new device — this sign-in looks different from your usual ones.',
+        'step_up_heading' => 'Confirm it’s you',
+        'step_up_sent' => 'We sent a code to :email. Enter it to connect the device.',
+        'step_up_label' => 'Code from the email',
+        'step_up_submit' => 'Confirm and approve',
+        'step_up_resend' => 'Send a new code',
+        'step_up_invalid' => 'That code is not right, or it has expired. Check the newest email and try again.',
+        'step_up_wait' => 'A code was sent a moment ago — use that one, or wait a minute before asking for another.',
     ],
 ];

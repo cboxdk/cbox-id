@@ -113,5 +113,12 @@ return [
         'enter_another' => 'Anslut en annan enhet',
         'blocked' => 'Begäran kan inte godkännas härifrån. Försök igen från ett nätverk du brukar använda, eller kontakta din administratör.',
         'step_up' => 'Bekräfta att det är du innan du ansluter en ny enhet — den här inloggningen ser annorlunda ut än dina vanliga.',
+        'step_up_heading' => 'Bekräfta att det är du',
+        'step_up_sent' => 'Vi har skickat en kod till :email. Ange den för att ansluta enheten.',
+        'step_up_label' => 'Kod från e-postmeddelandet',
+        'step_up_submit' => 'Bekräfta och godkänn',
+        'step_up_resend' => 'Skicka en ny kod',
+        'step_up_invalid' => 'Koden är fel eller har gått ut. Kontrollera det senaste e-postmeddelandet och försök igen.',
+        'step_up_wait' => 'En kod skickades nyss — använd den, eller vänta en minut innan du ber om en ny.',
     ],
 ];

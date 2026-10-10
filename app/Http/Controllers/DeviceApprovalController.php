@@ -9,11 +9,11 @@ use App\Platform\OAuth\ConsentScopes;
 use App\Platform\OAuth\DeviceUserCode;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
-use App\Platform\StepUpReason;
-use App\Platform\Sudo;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\DeviceAuthorization;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Otp\Contracts\OtpService;
+use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -36,13 +36,25 @@ use Inertia\Response;
  * one check a person can make against device-code phishing is "does this match my TV".
  *
  * NOTHING IS APPROVED BY ARRIVING. Following `verification_uri_complete` resolves the code
- * and shows what is being asked for; approving is still a deliberate click — and on a
- * sign-in Radar finds unusual, a fresh confirmation of who is holding the phone first.
+ * and shows what is being asked for; approving is still a deliberate click — and on an
+ * approval Radar finds unusual, an emailed code first, to show who is holding the phone.
  */
 final readonly class DeviceApprovalController extends PageController
 {
     /** Where the resolved, consented-to code is kept between the two requests. */
     private const CODE_KEY = 'device.user_code';
+
+    /**
+     * The code a Radar challenge asked to be confirmed by email, and — once the emailed
+     * code was entered — the code that confirmation is good for. Both name the USER CODE,
+     * so a confirmation earned for one device request never approves another.
+     */
+    private const STEP_UP_KEY = 'device.step_up';
+
+    private const STEP_UP_VERIFIED_KEY = 'device.step_up_verified';
+
+    /** The one-time-code purpose, kept apart from the sign-in step-up's. */
+    private const OTP_PURPOSE = 'device_step_up';
 
     /**
      * A signed-in session must not become a way to brute-force short user codes.
@@ -95,7 +107,7 @@ final readonly class DeviceApprovalController extends PageController
         if ($pending === null) {
             // Whatever was consented to is gone — expired, finished, or never there. Drop
             // it rather than leaving a stale code the approve endpoint would act on.
-            $request->session()->forget(self::CODE_KEY);
+            $this->forgetConsent($request);
         }
 
         return $this->page('oauth/device', __('oauth.device.title'), [
@@ -106,6 +118,10 @@ final readonly class DeviceApprovalController extends PageController
             // The code being approved, for the person to hold against their TV's screen.
             // Read back from the session; nothing the browser sends can change it.
             'userCode' => $pending['code'] ?? null,
+            // Radar asked for a confirmation: where the emailed code went, masked.
+            'stepUp' => $pending !== null && $request->session()->get(self::STEP_UP_KEY) === $pending['code']
+                ? ['sentTo' => self::mask((string) $me->email())]
+                : null,
             'me' => [
                 'name' => $me->name(),
                 'email' => $me->email(),
@@ -115,6 +131,7 @@ final readonly class DeviceApprovalController extends PageController
                 'lookup' => route('device.lookup'),
                 'approve' => route('device.approve'),
                 'deny' => route('device.deny'),
+                'verify' => route('device.verify'),
                 'start' => route('device'),
             ],
         ]);
@@ -160,12 +177,14 @@ final readonly class DeviceApprovalController extends PageController
      * RADAR HAS A SAY HERE TOO. Approving a device code mints tokens for a device that is
      * not this one — it is a sign-in, on somebody else's screen, and it is exactly what a
      * device-code phishing attack asks its victim to do. So the approval is assessed like
-     * a sign-in: a block refuses it, and a challenge asks the person to confirm it is them
-     * (the console's step-up, `sudo`) before the device is connected. The session itself
-     * already went through the sign-in's own Radar assessment and second factor; this is
-     * the second look at the moment that matters.
+     * a sign-in: a block refuses it, and a challenge sends a one-time code to the person's
+     * email and asks for it on this page before the device is connected — the same proof
+     * Radar's sign-in challenge asks for, and one every account can give, whether it signs
+     * in with a password, a passkey or Google. The session itself already went through the
+     * sign-in's own Radar assessment and second factor; this is the second look at the
+     * moment that matters.
      */
-    public function approve(Request $request, DeviceAuthorization $devices, RiskGuard $risk, Sudo $sudo): RedirectResponse
+    public function approve(Request $request, DeviceAuthorization $devices, RiskGuard $risk, OtpService $otp): RedirectResponse
     {
         $me = app(CurrentUser::class);
 
@@ -173,44 +192,54 @@ final readonly class DeviceApprovalController extends PageController
 
         $code = $this->consentedCode($request);
 
-        $assessment = $risk->assess($request, 'device_approval', $me->email(), method: RadarMethod::Password);
+        // Already confirmed for THIS code by the emailed one: no second assessment, which
+        // would only ask again for what was just proved.
+        if ($request->session()->get(self::STEP_UP_VERIFIED_KEY) !== $code) {
+            $assessment = $risk->assess($request, 'device_approval', $me->email(), method: RadarMethod::Password);
 
-        if ($risk->shouldBlock($assessment)) {
-            $request->session()->forget(self::CODE_KEY);
-            $this->inertia->flash('deviceError', __('oauth.device.blocked'));
+            if ($risk->shouldBlock($assessment)) {
+                $this->forgetConsent($request);
+                $this->inertia->flash('deviceError', __('oauth.device.blocked'));
 
-            return redirect()->route('device');
+                return redirect()->route('device');
+            }
+
+            if ($risk->shouldStepUp($assessment)) {
+                return $this->challenge($request, $otp, $code, (string) $me->email());
+            }
         }
 
-        if ($risk->shouldStepUp($assessment) && ! $sudo->confirmed()) {
-            $intended = route('device');
+        return $this->complete($request, $devices, $code);
+    }
 
-            // The code stays in the session: confirming who they are brings the person
-            // back to the same request, not to an empty form.
-            $request->session()->put('sudo.intended', $intended);
-            StepUpReason::record('sudo', __('oauth.device.step_up'), $intended);
+    /**
+     * Step 2a′ — the emailed code a Radar challenge asked for. Right, and the device is
+     * approved in the same step: the person already pressed Approve once.
+     */
+    public function verify(Request $request, DeviceAuthorization $devices, OtpService $otp): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
 
-            return redirect()->route('sudo');
+        abort_unless($me->check(), 403);
+
+        $code = $this->consentedCode($request);
+
+        abort_unless($request->session()->get(self::STEP_UP_KEY) === $code, 404);
+
+        $request->validate(['stepUpCode' => ['required', 'string', 'max:16']], [
+            'stepUpCode.required' => __('oauth.device.step_up_invalid'),
+        ]);
+
+        $typed = preg_replace('/\s+/', '', (string) $request->string('stepUpCode')) ?? '';
+
+        if (! $otp->verifyLatest(self::OTP_PURPOSE, (string) $me->email(), $typed, $request->ip())->verified) {
+            return back()->withErrors(['stepUpCode' => __('oauth.device.step_up_invalid')]);
         }
 
-        /*
-         * NO ORGANIZATION-STATUS CHECK HERE, and its absence is deliberate:
-         * {@see \App\Http\Middleware\Authenticate} asks {@see \App\Platform\OrganizationAccess}
-         * of every authenticated request, so a suspended or deleted organization never
-         * reaches this line. DeletedOrganizationEnforcementTest asks the door that answers.
-         */
-        if (! $devices->approve($code, $me->id(), $me->organizationId())) {
-            // Expired between the consent screen and the click — send them back to the form.
-            $request->session()->forget(self::CODE_KEY);
+        $request->session()->forget(self::STEP_UP_KEY);
+        $request->session()->put(self::STEP_UP_VERIFIED_KEY, $code);
 
-            return back()->withErrors(['userCode' => __('oauth.device.invalid')]);
-        }
-
-        $request->session()->forget(self::CODE_KEY);
-
-        $this->inertia->flash('deviceOutcome', 'approved');
-
-        return redirect()->route('device');
+        return $this->complete($request, $devices, $code);
     }
 
     /** Step 2b — deny, so the requesting device stops polling with `access_denied`. */
@@ -220,11 +249,81 @@ final readonly class DeviceApprovalController extends PageController
 
         $devices->deny($this->consentedCode($request));
 
-        $request->session()->forget(self::CODE_KEY);
+        $this->forgetConsent($request);
 
         $this->inertia->flash('deviceOutcome', 'denied');
 
         return redirect()->route('device');
+    }
+
+    /** Approve the consented code, now that nothing stands in the way. */
+    private function complete(Request $request, DeviceAuthorization $devices, string $code): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
+
+        /*
+         * NO ORGANIZATION-STATUS CHECK HERE, and its absence is deliberate:
+         * {@see \App\Http\Middleware\Authenticate} asks {@see \App\Platform\OrganizationAccess}
+         * of every authenticated request, so a suspended or deleted organization never
+         * reaches this line. DeletedOrganizationEnforcementTest asks the door that answers.
+         */
+        if (! $devices->approve($code, $me->id(), $me->organizationId())) {
+            // Expired between the consent screen and the click — send them back to the form.
+            $this->forgetConsent($request);
+
+            return back()->withErrors(['userCode' => __('oauth.device.invalid')]);
+        }
+
+        $this->forgetConsent($request);
+        $this->inertia->flash('deviceOutcome', 'approved');
+
+        return redirect()->route('device');
+    }
+
+    /**
+     * Radar challenged the approval: email a one-time code and ask for it on this page.
+     *
+     * An account with no address to send it to cannot be challenged this way, and is
+     * refused rather than waved through — the challenge exists because something about
+     * this approval looked wrong.
+     */
+    private function challenge(Request $request, OtpService $otp, string $code, string $email): RedirectResponse
+    {
+        if ($email === '') {
+            $this->forgetConsent($request);
+            $this->inertia->flash('deviceError', __('oauth.device.blocked'));
+
+            return redirect()->route('device');
+        }
+
+        try {
+            $otp->issue(self::OTP_PURPOSE, $email, 'email', $request->ip());
+        } catch (OtpRateLimitExceeded) {
+            // One was sent a moment ago and is still good: keep asking for it.
+            $request->session()->put(self::STEP_UP_KEY, $code);
+
+            return redirect()->route('device')->withErrors(['stepUpCode' => __('oauth.device.step_up_wait')]);
+        }
+
+        $request->session()->put(self::STEP_UP_KEY, $code);
+
+        return redirect()->route('device');
+    }
+
+    /** Whatever this session consented to, and any confirmation that went with it. */
+    private function forgetConsent(Request $request): void
+    {
+        $request->session()->forget([self::CODE_KEY, self::STEP_UP_KEY, self::STEP_UP_VERIFIED_KEY]);
+    }
+
+    /** `d••••@acme.test` — enough to recognise the inbox, not enough to be one. */
+    private static function mask(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
+
+        $masked = mb_substr($local, 0, 1).str_repeat('•', max(1, mb_strlen($local) - 1));
+
+        return $domain === '' ? $masked : $masked.'@'.$domain;
     }
 
     /**

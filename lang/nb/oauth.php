@@ -113,5 +113,12 @@ return [
         'enter_another' => 'Koble til en annen enhet',
         'blocked' => 'Forespørselen kan ikke godkjennes herfra. Prøv igjen fra et nettverk du vanligvis bruker, eller kontakt administratoren din.',
         'step_up' => 'Bekreft at det er deg før du kobler til en ny enhet — denne påloggingen ser annerledes ut enn de vanlige.',
+        'step_up_heading' => 'Bekreft at det er deg',
+        'step_up_sent' => 'Vi har sendt en kode til :email. Skriv den inn for å koble til enheten.',
+        'step_up_label' => 'Kode fra e-posten',
+        'step_up_submit' => 'Bekreft og godkjenn',
+        'step_up_resend' => 'Send en ny kode',
+        'step_up_invalid' => 'Koden er feil eller utløpt. Sjekk den nyeste e-posten og prøv igjen.',
+        'step_up_wait' => 'En kode ble sendt for litt siden — bruk den, eller vent et minutt før du ber om en ny.',
     ],
 ];

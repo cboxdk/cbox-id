@@ -114,5 +114,12 @@ return [
         'enter_another' => 'Weiteres Gerät verbinden',
         'blocked' => 'Diese Anfrage kann von hier aus nicht zugelassen werden. Versuchen Sie es in einem Netzwerk, das Sie üblicherweise nutzen, oder wenden Sie sich an Ihre Administration.',
         'step_up' => 'Bestätigen Sie, dass Sie es sind, bevor Sie ein neues Gerät verbinden — diese Anmeldung sieht anders aus als üblich.',
+        'step_up_heading' => 'Bestätigen Sie, dass Sie es sind',
+        'step_up_sent' => 'Wir haben einen Code an :email gesendet. Geben Sie ihn ein, um das Gerät zu verbinden.',
+        'step_up_label' => 'Code aus der E-Mail',
+        'step_up_submit' => 'Bestätigen und zulassen',
+        'step_up_resend' => 'Neuen Code senden',
+        'step_up_invalid' => 'Dieser Code ist falsch oder abgelaufen. Prüfen Sie die neueste E-Mail und versuchen Sie es erneut.',
+        'step_up_wait' => 'Gerade eben wurde ein Code gesendet — verwenden Sie diesen oder warten Sie eine Minute, bevor Sie einen neuen anfordern.',
     ],
 ];

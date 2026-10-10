@@ -113,5 +113,12 @@ return [
         'enter_another' => 'Forbind en anden enhed',
         'blocked' => 'Anmodningen kan ikke godkendes herfra. Prøv igen fra et netværk, du plejer at bruge, eller kontakt din administrator.',
         'step_up' => 'Bekræft, at det er dig, før du forbinder en ny enhed — dette login ser anderledes ud end dine sædvanlige.',
+        'step_up_heading' => 'Bekræft, at det er dig',
+        'step_up_sent' => 'Vi har sendt en kode til :email. Indtast den for at forbinde enheden.',
+        'step_up_label' => 'Kode fra e-mailen',
+        'step_up_submit' => 'Bekræft og godkend',
+        'step_up_resend' => 'Send en ny kode',
+        'step_up_invalid' => 'Koden er forkert eller udløbet. Tjek den nyeste e-mail, og prøv igen.',
+        'step_up_wait' => 'Der blev sendt en kode for lidt siden — brug den, eller vent et minut, før du beder om en ny.',
     ],
 ];

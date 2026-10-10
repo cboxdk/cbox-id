@@ -12,7 +12,6 @@ use App\Platform\Radar\Enums\RadarRuleScope;
 use App\Platform\Radar\RadarLists;
 use App\Platform\Radar\RadarPolicy;
 use App\Platform\Radar\RadarRules;
-use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -27,6 +26,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Otp\Contracts\OtpChannels;
+use Cbox\Id\Otp\Testing\FakeOtpChannel;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 
@@ -173,8 +174,13 @@ it('does not ask the browser to autofill a one-time code over the device code', 
      */
     $source = (string) file_get_contents(resource_path('js/pages/oauth/device.tsx'));
 
-    expect($source)->not->toContain('autoComplete="one-time-code"');
-    expect($source)->toContain('autoComplete="off"');
+    // THE USER-CODE FIELD, specifically. The page has one other code field — the emailed
+    // code a Radar challenge asks for — and that one IS delivered to this person, so
+    // `one-time-code` is exactly right there and wrong here.
+    expect(preg_match('#<Input\s+name="userCode"(.*?)/>#s', $source, $field))->toBe(1);
+
+    expect($field[1])->not->toContain('one-time-code')
+        ->and($field[1])->toContain('autoComplete="off"');
 });
 
 it('goes straight to the approval screen when the link carries the code', function () {
@@ -343,8 +349,11 @@ it('returns a person who signs in with a magic link to the device they came to a
 |--------------------------------------------------------------------------
 */
 
-it('asks the person to confirm it is them when Radar challenges the approval, then approves', function () {
+it('asks for an emailed code when Radar challenges the approval, then approves on it', function () {
     signedInFor();
+    $channel = new FakeOtpChannel;
+    app(OtpChannels::class)->register('email', $channel);
+
     $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
     lookUpDeviceCode($result->userCode);
 
@@ -353,18 +362,38 @@ it('asks the person to confirm it is them when Radar challenges the approval, th
         ['field' => 'email_domain', 'operator' => 'eq', 'value' => 'acme.test'],
     ]);
 
-    approveDevice()->assertRedirect(route('sudo'));
-
-    // Not approved, and the code kept for when they come back.
-    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved)
-        ->and(session('sudo.intended'))->toBe(route('device'))
-        ->and(deviceScreen()['client']['name'])->toBe('TV App');
-
-    app(Sudo::class)->confirm();
-
     approveDevice()->assertRedirect(route('device'));
 
-    expect(DeviceCode::query()->value('status'))->toBe(GrantPollStatus::Approved);
+    // Not approved yet: a code went to the account's own inbox, and the page asks for it —
+    // every account can answer this, whether it signs in with a password, a passkey or Google.
+    $screen = deviceScreen();
+
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved)
+        ->and($screen['stepUp'])->toBe(['sentTo' => 'd••@acme.test'])
+        ->and($channel->codeFor('dev@acme.test'))->not->toBeNull();
+
+    // A wrong code is refused and approves nothing.
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.verify'), ['stepUpCode' => '000000']))
+        ->assertSessionHasErrors('stepUpCode');
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved);
+
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.verify'), ['stepUpCode' => (string) $channel->codeFor('dev@acme.test')]))
+        ->assertRedirect(route('device'));
+
+    expect(DeviceCode::query()->value('status'))->toBe(GrantPollStatus::Approved)
+        ->and(flashed('deviceOutcome'))->toBe('approved');
+})->group('security');
+
+it('never takes an emailed code for a request it was not asked for', function () {
+    signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    lookUpDeviceCode($result->userCode);
+
+    // No challenge was raised for this request: the endpoint has nothing to confirm.
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.verify'), ['stepUpCode' => '123456']))
+        ->assertNotFound();
+
+    expect(DeviceCode::query()->value('status'))->not->toBe(GrantPollStatus::Approved);
 })->group('security');
 
 it('refuses the approval outright when Radar blocks it', function () {

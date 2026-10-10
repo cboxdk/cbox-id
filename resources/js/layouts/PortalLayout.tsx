@@ -1,6 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
-import { Brand } from '@/chrome/Brand';
+import { DoorBrand } from '@/chrome/DoorBrand';
 import { LanguagePicker } from '@/chrome/LanguagePicker';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Toaster } from '@/chrome/Toaster';
@@ -19,7 +19,7 @@ import { Icon, TooltipProvider } from '@/ui';
  * lead them somewhere their session cannot go.
  */
 export default function PortalLayout({ children }: { children: ReactNode }) {
-    const { app, title } = usePage<SharedProps>().props;
+    const { app, brand, title } = usePage<SharedProps>().props;
     const { locale, t } = useTranslator();
 
     useDocumentLanguage(locale);
@@ -35,7 +35,11 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
                     className="h-16 flex items-center justify-between px-5 sm:px-8 border-b"
                     style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
                 >
-                    <Brand />
+                    {/*
+                        The VENDOR's brand on their customer's environment — this portal is
+                        theirs, opened from a link they sent — and Cbox's mark otherwise.
+                    */}
+                    <DoorBrand brand={brand} home={null} />
 
                     <div className="flex items-center gap-3">
                         <span

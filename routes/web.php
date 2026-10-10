@@ -1163,6 +1163,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
         Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
         Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
+        // The emailed code a Radar challenge on the approval asks for.
+        Route::post('/device/verify', [DeviceApprovalController::class, 'verify'])->name('device.verify');
         Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
     });
 

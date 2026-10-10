@@ -113,5 +113,12 @@ return [
         'enter_another' => 'Connecter un autre appareil',
         'blocked' => 'Cette demande ne peut pas être autorisée d’ici. Réessayez depuis un réseau que vous utilisez habituellement, ou contactez votre administrateur.',
         'step_up' => 'Confirmez votre identité avant de connecter un nouvel appareil : cette connexion ne ressemble pas à vos connexions habituelles.',
+        'step_up_heading' => 'Confirmez votre identité',
+        'step_up_sent' => 'Nous avons envoyé un code à :email. Saisissez-le pour connecter l’appareil.',
+        'step_up_label' => 'Code reçu par e-mail',
+        'step_up_submit' => 'Confirmer et autoriser',
+        'step_up_resend' => 'Envoyer un nouveau code',
+        'step_up_invalid' => 'Ce code est incorrect ou a expiré. Vérifiez l’e-mail le plus récent et réessayez.',
+        'step_up_wait' => 'Un code vient d’être envoyé — utilisez-le, ou patientez une minute avant d’en demander un autre.',
     ],
 ];

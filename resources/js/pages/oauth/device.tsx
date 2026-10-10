@@ -19,8 +19,10 @@ type Props = PageProps<{
     client: { name: string; scopes: ScopeRow[] } | null;
     /** The code being approved — read back from the session, shown to compare with the TV. */
     userCode: string | null;
+    /** Radar challenged the approval: an emailed code is wanted first. */
+    stepUp: { sentTo: string } | null;
     me: { name: string; email: string | null; initial: string };
-    urls: { lookup: string; approve: string; deny: string; start: string };
+    urls: { lookup: string; approve: string; deny: string; verify: string; start: string };
 }>;
 
 /**
@@ -31,7 +33,7 @@ type Props = PageProps<{
  * visitor's language, one column, big targets, and three steps that each say exactly one
  * thing — the code, what is asking, and "you can go back to your TV now".
  */
-export default function Device({ client, userCode, me, urls }: Props) {
+export default function Device({ client, userCode, stepUp, me, urls }: Props) {
     const { deviceOutcome, deviceError } = usePage().flash;
     const { t } = useTranslator();
 
@@ -57,7 +59,7 @@ export default function Device({ client, userCode, me, urls }: Props) {
     }
 
     if (client !== null) {
-        return <Consent client={client} userCode={userCode} me={me} urls={urls} />;
+        return <Consent client={client} userCode={userCode} stepUp={stepUp} me={me} urls={urls} />;
     }
 
     return <CodeForm href={urls.lookup} error={deviceError} />;
@@ -131,11 +133,13 @@ function Outcome({
 function Consent({
     client,
     userCode,
+    stepUp,
     me,
     urls,
 }: {
     client: NonNullable<Props['client']>;
     userCode: string | null;
+    stepUp: Props['stepUp'];
     me: Props['me'];
     urls: Props['urls'];
 }) {
@@ -265,33 +269,39 @@ function Consent({
                 </p>
             )}
 
-            {/*
+            {stepUp !== null ? (
+                <StepUp sentTo={stepUp.sentTo} urls={urls} />
+            ) : (
+                <>
+                    {/*
                 DENY FIRST, and not for symmetry: somebody who does not recognise this
                 request is the person this screen most has to serve, and the safe answer
                 should not be the one they have to look for. Stacked full-width on a phone,
                 side by side where there is room.
             */}
-            <div className="mt-7 grid gap-2.5 sm:grid-cols-2">
-                <Button
-                    size="lg"
-                    className="w-full"
-                    loading={deny.processing}
-                    disabled={approve.processing}
-                    onClick={() => deny.post(urls.deny)}
-                >
-                    {t('oauth.device.deny')}
-                </Button>
-                <Button
-                    variant="primary"
-                    size="lg"
-                    className="w-full"
-                    loading={approve.processing}
-                    disabled={deny.processing}
-                    onClick={() => approve.post(urls.approve)}
-                >
-                    {t('oauth.device.approve')}
-                </Button>
-            </div>
+                    <div className="mt-7 grid gap-2.5 sm:grid-cols-2">
+                        <Button
+                            size="lg"
+                            className="w-full"
+                            loading={deny.processing}
+                            disabled={approve.processing}
+                            onClick={() => deny.post(urls.deny)}
+                        >
+                            {t('oauth.device.deny')}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            className="w-full"
+                            loading={approve.processing}
+                            disabled={deny.processing}
+                            onClick={() => approve.post(urls.approve)}
+                        >
+                            {t('oauth.device.approve')}
+                        </Button>
+                    </div>
+                </>
+            )}
 
             <p
                 className="mt-5 text-xs leading-relaxed"
@@ -300,6 +310,86 @@ function Consent({
                 {t('oauth.device.warning')}
             </p>
         </div>
+    );
+}
+
+/**
+ * Radar found this approval unusual: before the device is connected, the code just emailed
+ * to the account. It is the proof every account can give — a password, a passkey or a
+ * Google sign-in alike — and the device is approved the moment it is right, because the
+ * person already pressed Approve once.
+ */
+function StepUp({ sentTo, urls }: { sentTo: string; urls: Props['urls'] }) {
+    const form = useForm({ stepUpCode: '' });
+    const resend = useForm({});
+    const deny = useForm({});
+    const { t } = useTranslator();
+
+    return (
+        <form
+            className="mt-6 rounded-xl p-4 space-y-4"
+            style={{ border: '1px solid var(--accent-edge)', background: 'var(--accent-soft)' }}
+            onSubmit={(event) => {
+                event.preventDefault();
+                form.post(urls.verify);
+            }}
+        >
+            <div>
+                <h2 className="text-base font-semibold">{t('oauth.device.step_up_heading')}</h2>
+                <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    {t('oauth.device.step_up')} {t('oauth.device.step_up_sent', { email: sentTo })}
+                </p>
+            </div>
+
+            <Field
+                id="stepUpCode"
+                label={t('oauth.device.step_up_label')}
+                error={form.errors.stepUpCode}
+            >
+                {/* A code delivered TO this person — so here `one-time-code` is right. */}
+                <Input
+                    name="stepUpCode"
+                    autoFocus
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    enterKeyHint="go"
+                    scale="lg"
+                    className="mono text-center"
+                    style={{ fontSize: '1.3rem', letterSpacing: '0.2em' }}
+                    value={form.data.stepUpCode}
+                    onChange={(event) => form.setData('stepUpCode', event.target.value)}
+                />
+            </Field>
+
+            <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                loading={form.processing}
+            >
+                {t('oauth.device.step_up_submit')}
+            </Button>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                    size="lg"
+                    className="w-full"
+                    loading={deny.processing}
+                    onClick={() => deny.post(urls.deny)}
+                >
+                    {t('oauth.device.deny')}
+                </Button>
+                <Button
+                    size="lg"
+                    className="w-full"
+                    loading={resend.processing}
+                    onClick={() => resend.post(urls.approve)}
+                >
+                    {t('oauth.device.step_up_resend')}
+                </Button>
+            </div>
+        </form>
     );
 }
 
