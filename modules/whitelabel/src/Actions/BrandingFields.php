@@ -13,9 +13,10 @@ use Cbox\Id\Whitelabel\Support\PaletteTokens;
  * action.
  *
  * The two images are not input here. They are uploads — a PNG, a favicon — and the asset
- * store keeps them on this application's own origin, which is exactly why they are checked
- * as images by the console's upload form and never accepted as a URL somebody names (a
- * remote logo would be a beacon on every branded page). The API reads where they are.
+ * store keeps them on this application's own origin, never a URL somebody names (a remote
+ * logo would be a beacon on every branded page). They are written by
+ * `branding.appearance.set`, which takes the bytes as a data URI and checks them; this
+ * action only reads back where they are.
  */
 final class BrandingFields
 {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Platform\Onboarding;
 
 use App\Models\OnboardingDismissal;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
 use App\Platform\Console\ShellContext;
 use App\Platform\EnvironmentWorkspace;
 use App\Support\CliClient;
@@ -191,9 +193,11 @@ final readonly class EnvironmentChecklist
         }
 
         $appearance = $settings['appearance'] ?? null;
-        $logo = $settings['brand_logo_url'] ?? null;
 
-        return (is_array($appearance) && $appearance !== []) || (is_string($logo) && $logo !== '');
+        // An UPLOADED logo counts; a remote URL saved before uploads replaced it does not —
+        // it is no longer drawn anywhere, so it brands nothing.
+        return (is_array($appearance) && $appearance !== [])
+            || app(BrandImages::class)->url(BrandImage::Logo, null) !== null;
     }
 
     /** The workspace's team is more than its founder, or somebody has been asked to join. */

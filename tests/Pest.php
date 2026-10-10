@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\PointAtFirstRun;
+use App\Platform\Appearance\Appearance;
+use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
@@ -608,10 +610,11 @@ function enableSocialProvider(array $changes = []): TestResponse
  */
 function saveBranding(array $changes = [], bool $environmentPlane = false): TestResponse
 {
-    $name = $environmentPlane ? 'environment.whitelabel.branding' : 'whitelabel.branding';
+    // The white-label half of the ONE Branding page — its own form, its own action.
+    $name = $environmentPlane ? 'environment.branding' : 'branding';
 
     return test()->from(route($name))
-        ->post(route($name.'.save'), [
+        ->post(route($name.'.profile.update'), [
             'palette' => [],
             'appName' => 'Acme Identity',
             'emailFromName' => '',
@@ -2129,4 +2132,36 @@ function platformSubjectId(string $email): string
     expect($subject)->not->toBeNull("no platform-root subject {$email}");
 
     return (string) $subject?->id;
+}
+
+/**
+ * A real, decodable PNG as the base64 data: URI the Appearance editor and the management
+ * API send for a logo or favicon ({@see BrandImageUpload}).
+ */
+function pngDataUri(int $width = 40, int $height = 20): string
+{
+    $image = imagecreatetruecolor($width, $height);
+    imagefill($image, 0, 0, (int) imagecolorallocate($image, 30, 90, 200));
+
+    ob_start();
+    imagepng($image);
+    $bytes = (string) ob_get_clean();
+
+    return 'data:image/png;base64,'.base64_encode($bytes);
+}
+
+/**
+ * Press Save in the theme editor with these images changed — a data URI to store, null to
+ * remove — at the organization's own altitude on the organization console.
+ *
+ * @param  array<string, string|null>  $images
+ */
+function saveThemeImages(array $images, string $route = 'branding', string $preset = 'cbox'): TestResponse
+{
+    return test()->from(route($route))
+        ->post(route($route.'.update'), [
+            'theme' => Appearance::fromPreset($preset)->toArray(),
+            'images' => $images,
+            'environmentDefault' => false,
+        ]);
 }

@@ -15,6 +15,10 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\OrganizationTarget;
 use App\Platform\Appearance\Appearance;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Appearance\BrandImageUpload;
+use App\Platform\Appearance\InvalidBrandImage;
 use App\Platform\EnvironmentWorkspace;
 use Cbox\Id\Organization\Contracts\Organizations;
 
@@ -33,13 +37,13 @@ use Cbox\Id\Organization\Contracts\Organizations;
  */
 #[AsAction(
     name: 'branding.appearance.set',
-    summary: 'Set the hosted sign-in theme (preset, colours, corners, type, logo) for the environment default or one organization.',
+    summary: 'Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and favicon) for the environment default or one organization.',
     scope: 'branding:write',
     danger: Danger::Write,
     schema: 'Appearance',
     tag: 'Branding',
     rest: ['PUT', '/branding/appearance'],
-    consoleRoutes: ['appearance.update', 'environment.appearance.update', 'environment.organizations.branding.update'],
+    consoleRoutes: ['branding.update', 'environment.branding.update', 'environment.organizations.branding.update'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class SetAppearance implements Action
@@ -47,6 +51,7 @@ final readonly class SetAppearance implements Action
     public function __construct(
         private Organizations $organizations,
         private EnvironmentWorkspace $workspace,
+        private BrandImages $images,
     ) {}
 
     public static function input(): InputSchema
@@ -54,7 +59,8 @@ final readonly class SetAppearance implements Action
         return InputSchema::of([
             Field::string('organization_id')->nullable()->max(64)->describe('Theme this organization. Left out, the environment default.'),
             AppearanceFields::theme()->required(),
-            Field::string('logo')->nullable()->max(2048)->format('uri')->describe('An https URL for the logo; null removes it, left out keeps it.'),
+            AppearanceFields::image(BrandImage::Logo),
+            AppearanceFields::image(BrandImage::Favicon),
         ]);
     }
 
@@ -72,10 +78,32 @@ final readonly class SetAppearance implements Action
             throw ActionRefused::because('unreadable_palette', implode(' ', $failures), 'theme');
         }
 
-        $logo = $context->nullableString('logo');
+        /*
+         * THE IMAGES ARE CHECKED BEFORE ANYTHING IS WRITTEN, so a refused favicon never
+         * leaves a half-saved theme or an orphaned logo behind. Each is the bytes
+         * themselves, as a data: URI — never a URL: an image on a sign-in page is fetched
+         * by every visitor, and one hosted elsewhere tells its host who they all are.
+         *
+         * @var array<string, BrandImageUpload|null> $images  present = change; null = remove
+         */
+        $images = [];
 
-        if ($logo !== null && ! AppearanceFields::secureLogo(trim($logo))) {
-            throw ActionRefused::because('insecure_logo', 'The logo must be an https URL.', 'logo');
+        foreach (BrandImage::cases() as $kind) {
+            if (! $context->has($kind->value)) {
+                continue;
+            }
+
+            $given = $context->nullableString($kind->value);
+
+            try {
+                $images[$kind->value] = $given === null ? null : BrandImageUpload::fromDataUri($kind, $given);
+            } catch (InvalidBrandImage $refused) {
+                throw ActionRefused::because('invalid_'.$kind->value, $refused->getMessage(), $kind->value);
+            }
+        }
+
+        if ($images !== [] && ! $this->images->accepting() && array_filter($images) !== []) {
+            throw ActionRefused::because('uploads_unavailable', 'Image uploads are not available on this install: the white-label module that stores them is not enabled.', 'logo');
         }
 
         $payload = [
@@ -83,9 +111,22 @@ final readonly class SetAppearance implements Action
             'brand_color' => $appearance->light->primary,
         ];
 
-        // Left out, the logo stays as it is; null removes it.
-        if ($context->has('logo')) {
-            $payload['brand_logo_url'] = $logo === null ? null : trim($logo);
+        /*
+         * A LOGO DECISION RETIRES THE OLD URL. `brand_logo_url` is the remote address this
+         * field used to take. It is never fetched and no longer drawn; uploading a logo, or
+         * removing it, is the administrator's answer to the console's "upload your logo"
+         * notice, so the stale address goes with it.
+         */
+        if (array_key_exists(BrandImage::Logo->value, $images)) {
+            $payload['brand_logo_url'] = null;
+        }
+
+        foreach ($images as $kind => $upload) {
+            if ($upload !== null) {
+                $this->images->store($upload, $organizationId);
+            } else {
+                $this->images->remove(BrandImage::from($kind), $organizationId);
+            }
         }
 
         if ($organizationId === null) {

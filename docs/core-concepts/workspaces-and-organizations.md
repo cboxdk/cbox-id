@@ -144,7 +144,7 @@ here.
 | **Developers** | Applications, APIs, API keys, Webhooks, Hooks, Feature flags, Pipes |
 | **Connectors** | Catalog, Connections (connectors module) |
 | **AI agents** | Agents, Approvals, Connect |
-| **Branding** | Appearance, Branding (white-label module) |
+| **Branding** | Branding (the sign-in theme, logo and favicon; with the white-label module, the name, sender and palette) |
 | **Monitoring** | Audit log, Log streams, Usage, Sign-in activity, Audit trail, Exports & retention, Risk events (each from its module) |
 | **Advanced** | Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy login |
 | **Settings** | Settings |

@@ -135,7 +135,7 @@ class ConsoleNavigation
                 new NavPage('environment.agent-connect', 'Connect'),
             ),
             new NavArea('Branding', 'palette',
-                new NavPage('environment.appearance', 'Appearance'),
+                new NavPage('environment.branding', 'Branding'),
             ),
             new NavArea('Monitoring', 'chart',
                 new NavPage('environment.audit', Vocabulary::AUDIT_LOG),

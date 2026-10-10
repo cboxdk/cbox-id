@@ -6,6 +6,8 @@ namespace App\Providers;
 
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\Appearance\BrandContext;
+use App\Platform\Appearance\BrandImages;
+use App\Platform\Appearance\NoBrandImages;
 use App\Platform\BreachedPasswords;
 use App\Platform\Console\DashboardCards;
 use App\Platform\CurrentEnvironment;
@@ -111,6 +113,11 @@ final class PlatformServiceProvider extends ServiceProvider
          * colours on a page whose whole purpose is to wear the customer's.
          */
         $this->app->scoped(BrandContext::class);
+
+        // The uploaded logo and favicon. The white-label module binds the real store over
+        // this from its own provider; without it nothing is stored and an upload is
+        // refused with the reason. See BrandImages.
+        $this->app->bindIf(BrandImages::class, NoBrandImages::class);
 
         /*
          * The same shape for the hosted pages' LANGUAGE: the controller marks which page

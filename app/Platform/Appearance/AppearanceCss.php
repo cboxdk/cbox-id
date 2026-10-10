@@ -40,7 +40,12 @@ final class AppearanceCss
             .'--radius:'.$radius['radius'].';'
             .'--radius-md:'.$radius['md'].';'
             .'--radius-sm:'.$radius['sm'].';'
-            .'--font-sans:'.$appearance->fontStack().';';
+            // BOTH families. Headings are drawn in `--font-display` (app.css), and setting
+            // only `--font-sans` changed the paragraph under the heading while the heading
+            // stayed in the platform's face — the typeface control looked broken because,
+            // for the most visible text on the page, it was.
+            .'--font-sans:'.$appearance->fontStack().';'
+            .'--font-display:'.$appearance->fontStack().';';
 
         $css = ":root{{$root}}"
             ."@media(prefers-color-scheme:dark){:root:not([data-theme='light']){{$dark}}}"

@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Support\HtmlString;
+use Throwable;
 
 /**
  * THE TWO THINGS EVERY MAIL TEMPLATE NEEDS FROM THE CATALOGUE.
@@ -26,6 +30,29 @@ final class MailText
         $brand = config('cbox-id.branding.name', 'Cbox ID');
 
         return is_string($brand) && $brand !== '' ? $brand : 'Cbox ID';
+    }
+
+    /**
+     * The environment's UPLOADED logo as an absolute URL on this application, or null.
+     *
+     * Absolute because a mail client has no page to resolve a path against; on this
+     * application because the alternative — the remote logo URL the old Appearance page used to
+     * take — is a tracking pixel in every inbox it reaches, reporting when each message was
+     * opened and from where. The environment's default, not an organization's: mail is sent
+     * on the environment's behalf. Null outside an environment, and on any failure — a
+     * missing logo must never stop a sign-in link from being sent.
+     */
+    public static function logo(): ?string
+    {
+        try {
+            if (! app(EnvironmentContext::class)->has()) {
+                return null;
+            }
+
+            return app(BrandImages::class)->absoluteUrl(BrandImage::Logo, null);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

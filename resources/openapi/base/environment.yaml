@@ -2870,7 +2870,7 @@ components:
         muted: { type: string }
     Appearance:
       type: object
-      required: [organization_id, customized, theme, logo]
+      required: [organization_id, customized, theme, logo, favicon, remote_logo_ignored]
       properties:
         organization_id: { type: ["string", "null"], description: "null for the environment default." }
         customized: { type: boolean, description: "Whether this level has a theme of its own." }
@@ -2882,7 +2882,9 @@ components:
             font: { type: string }
             light: { $ref: "#/components/schemas/ThemeMode" }
             dark: { $ref: "#/components/schemas/ThemeMode" }
-        logo: { type: ["string", "null"] }
+        logo: { type: ["string", "null"], description: "The uploaded logo, served by this application at /brand-assets/…; null when none is uploaded at this level. Never a remote URL." }
+        favicon: { type: ["string", "null"], description: "The uploaded favicon, served the same way; null when none." }
+        remote_logo_ignored: { type: boolean, description: "A remote logo URL saved before logos became uploads is still stored at this level. It is never fetched and no longer shown on any hosted page; upload a logo (or send `logo: null`) to clear it." }
     WhitelabelBranding:
       type: object
       required: [organization_id, palette, app_name, email_from_name, email_template, logo_url, favicon_url]
@@ -2894,8 +2896,8 @@ components:
         app_name: { type: ["string", "null"] }
         email_from_name: { type: ["string", "null"] }
         email_template: { type: ["string", "null"] }
-        logo_url: { type: ["string", "null"], description: "Uploaded from the console." }
-        favicon_url: { type: ["string", "null"], description: "Uploaded from the console." }
+        logo_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)." }
+        favicon_url: { type: ["string", "null"], description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)." }
     CustomDomain:
       type: object
       required: [domain, verified_at, pending]

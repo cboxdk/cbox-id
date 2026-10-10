@@ -65,6 +65,10 @@ return [
         'forgot_password' => 'Passwort vergessen?',
         'or' => 'ODER',
         'continue_with' => 'Weiter mit :provider',
+        // The badge on the sign-in method this device used last, and what it means said in full
+        // for a screen reader.
+        'last_used' => 'Zuletzt verwendet',
+        'last_used_hint' => 'So haben Sie sich zuletzt auf diesem Gerät angemeldet.',
         'magic_link' => 'Anmeldelink per E-Mail senden',
         'passkey' => 'Mit Passkey anmelden',
         'passkey_failed' => 'Die Anmeldung mit Passkey ist fehlgeschlagen.',

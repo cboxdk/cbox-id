@@ -557,20 +557,29 @@ it('themes the environment default and one organization, and refuses an unreadab
 
     $this->withToken($key)->getJson('/api/v1/branding/appearance')->assertOk()->assertJsonPath('data.customized', false);
 
-    $this->withToken($key)->putJson('/api/v1/branding/appearance', [
+    // The logo is the image itself, as a data URI — stored and served by this application.
+    $logo = (string) $this->withToken($key)->putJson('/api/v1/branding/appearance', [
         'theme' => ['preset' => 'cbox', 'light' => ['primary' => '#123456']],
-        'logo' => 'https://cdn.example.com/logo.png',
+        'logo' => pngDataUri(),
+        'favicon' => pngDataUri(32, 32),
     ])->assertOk()
         ->assertJsonPath('data.customized', true)
         ->assertJsonPath('data.theme.light.primary', '#123456')
-        ->assertJsonPath('data.logo', 'https://cdn.example.com/logo.png');
+        ->assertJsonPath('data.remote_logo_ignored', false)
+        ->json('data.logo');
 
-    expect($environment->refresh()->settings['brand_color'] ?? null)->toBe('#123456');
+    expect($logo)->toContain('/brand-assets/brand/')
+        ->and($environment->refresh()->settings['brand_color'] ?? null)->toBe('#123456');
 
     // A logo left out stays; only null removes it.
     $this->withToken($key)->putJson('/api/v1/branding/appearance', ['theme' => ['preset' => 'cbox']])
         ->assertOk()
-        ->assertJsonPath('data.logo', 'https://cdn.example.com/logo.png');
+        ->assertJsonPath('data.logo', $logo);
+
+    $this->withToken($key)->putJson('/api/v1/branding/appearance', ['theme' => ['preset' => 'cbox'], 'logo' => null])
+        ->assertOk()
+        ->assertJsonPath('data.logo', null)
+        ->assertJsonPath('data.favicon', fn (?string $favicon): bool => is_string($favicon));
 
     $this->withToken($key)->putJson('/api/v1/branding/appearance', ['organization_id' => $org->id, 'theme' => ['light' => ['primary' => '#654321']]])
         ->assertOk()
@@ -582,8 +591,11 @@ it('themes the environment default and one organization, and refuses an unreadab
 
     $this->withToken($key)->putJson('/api/v1/branding/appearance', ['theme' => ['light' => ['background' => '#000000', 'foreground' => '#000000']]])
         ->assertUnprocessable()->assertJsonPath('error', 'unreadable_palette');
-    $this->withToken($key)->putJson('/api/v1/branding/appearance', ['theme' => ['preset' => 'cbox'], 'logo' => 'http://cdn.example.com/logo.png'])
-        ->assertUnprocessable()->assertJsonPath('error', 'insecure_logo');
+    // A URL is not an image: every visitor would fetch it from its host.
+    $this->withToken($key)->putJson('/api/v1/branding/appearance', ['theme' => ['preset' => 'cbox'], 'logo' => 'https://cdn.example.com/logo.png'])
+        ->assertUnprocessable()->assertJsonPath('error', 'invalid_logo');
+    $this->withToken($key)->putJson('/api/v1/branding/appearance', ['theme' => ['preset' => 'cbox'], 'favicon' => 'data:image/svg+xml;base64,'.base64_encode('<svg/>')])
+        ->assertUnprocessable()->assertJsonPath('error', 'invalid_favicon');
     $this->withToken($key)->putJson('/api/v1/branding/appearance', ['organization_id' => 'org_elsewhere', 'theme' => ['preset' => 'cbox']])
         ->assertUnprocessable()->assertJsonPath('error', 'organization_not_found');
 });

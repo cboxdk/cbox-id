@@ -607,6 +607,8 @@ final class PlatformAuth
         $this->applyPendingLink($subjectId);
         $this->recordOrganizationSignIn($subjectId);
 
+        // "Last used" on this device's sign-in page — the method, never the person.
+        LastSignInMethod::remember($amr);
     }
 
     /**
@@ -628,6 +630,8 @@ final class PlatformAuth
         $this->applyPendingLink($session->user_id);
         $this->recordOrganizationSignIn($session->user_id);
         app(Radar::class)->succeeded($request, $session->user_id);
+
+        LastSignInMethod::remember(array_values(array_filter((array) $session->amr, 'is_string')));
     }
 
     /**

@@ -3476,7 +3476,7 @@ paths:
     put:
       tags:
         - Branding
-      summary: 'Set the hosted sign-in theme (preset, colours, corners, type, logo) for the environment default or one organization.'
+      summary: 'Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and favicon) for the environment default or one organization.'
       description: 'Requires scope `branding:write`. Danger: write.'
       operationId: branding_appearance_set
       x-action: branding.appearance.set
@@ -3520,7 +3520,7 @@ paths:
                       maxLength: 32
                     font:
                       type: string
-                      description: 'Type family: system, geometric, serif.'
+                      description: 'Type family: system, inter, geometric, rounded, serif.'
                       maxLength: 32
                     light:
                       type: object
@@ -3558,9 +3558,14 @@ paths:
                   type:
                     - string
                     - 'null'
-                  description: 'An https URL for the logo; null removes it, left out keeps it.'
-                  format: uri
-                  maxLength: 2048
+                  description: 'The logo as a base64 data: URI (data:image/png;base64,…): PNG, JPEG or WebP, at most 1024 KB and 4096px on the longest side. SVG and remote URLs are refused. Null removes it; left out keeps it.'
+                  maxLength: 1398204
+                favicon:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The favicon as a base64 data: URI (data:image/png;base64,…): PNG, ICO or WebP, at most 256 KB and 1024px on the longest side. SVG and remote URLs are refused. Null removes it; left out keeps it.'
+                  maxLength: 349628
               required:
                 - theme
       responses:
@@ -3615,6 +3620,8 @@ paths:
       security:
         -
           EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
       responses:
@@ -20538,6 +20545,8 @@ components:
         - customized
         - theme
         - logo
+        - favicon
+        - remote_logo_ignored
       properties:
         organization_id:
           type:
@@ -20564,6 +20573,15 @@ components:
           type:
             - string
             - 'null'
+          description: 'The uploaded logo, served by this application at /brand-assets/…; null when none is uploaded at this level. Never a remote URL.'
+        favicon:
+          type:
+            - string
+            - 'null'
+          description: 'The uploaded favicon, served the same way; null when none.'
+        remote_logo_ignored:
+          type: boolean
+          description: 'A remote logo URL saved before logos became uploads is still stored at this level. It is never fetched and no longer shown on any hosted page; upload a logo (or send `logo: null`) to clear it.'
     WhitelabelBranding:
       type: object
       required:
@@ -20602,12 +20620,12 @@ components:
           type:
             - string
             - 'null'
-          description: 'Uploaded from the console.'
+          description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)."
         favicon_url:
           type:
             - string
             - 'null'
-          description: 'Uploaded from the console.'
+          description: "Uploaded with `PUT /branding/appearance` (the console's Branding page)."
     CustomDomain:
       type: object
       required:

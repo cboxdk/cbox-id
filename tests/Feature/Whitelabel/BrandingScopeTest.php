@@ -62,7 +62,7 @@ it('does not expose environment domain controls to an organization admin', funct
      * exists, and one a controller could have contradicted freely. What the page OFFERS is
      * the set of URLs it carries, and the only write among them is the branding save.
      */
-    $props = (array) test()->get(route('whitelabel.branding'))->assertOk()->inertiaProps();
+    $props = (array) test()->get(route('branding'))->assertOk()->inertiaProps();
 
     $urls = array_filter(
         $props,
@@ -70,8 +70,11 @@ it('does not expose environment domain controls to an organization admin', funct
         ARRAY_FILTER_USE_BOTH,
     );
 
-    expect(array_keys($urls))->toBe(['saveHref'])
-        ->and($urls['saveHref'])->toBe(route('whitelabel.branding.save'));
+    // The two writes are the page's own two saves — the sign-in theme and the name & email —
+    // both at this organization's altitude. Nothing about the environment's domain.
+    expect(array_keys($urls))->toEqualCanonicalizing(['saveHref', 'profileHref'])
+        ->and($urls['saveHref'])->toBe(route('branding.update'))
+        ->and($urls['profileHref'])->toBe(route('branding.profile.update'));
 });
 
 /**

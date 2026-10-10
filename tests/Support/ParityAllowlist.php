@@ -63,6 +63,8 @@ final class ParityAllowlist
             'device.approve',
             'device.deny',
             'device.lookup',
+            // …and the emailed code a Radar challenge on that approval asks for.
+            'device.verify',
             // A person answering an agent's held action — the same consent their phone
             // gives. As an action, a credential could approve its own held requests.
             'environment.approvals.actions.approve',

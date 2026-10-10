@@ -60,7 +60,7 @@ function moduleConsoleRoutes(): array
 {
     $hostRoutes = ['dashboard', 'usage', 'approvals', 'members', 'roles', 'connections',
         'directories', 'provisioning', 'governance', 'sod-policies', 'clients', 'webhooks',
-        'hooks', 'vault', 'audit', 'settings', 'appearance', 'account', 'get-started',
+        'hooks', 'vault', 'audit', 'settings', 'branding', 'account', 'get-started',
         // The Identity platform area — host pages, not module pages, and gated on what
         // the acting ORGANIZATION owns rather than on the membership role this file
         // sweeps for. An org admin who owns no identity providers is correctly refused

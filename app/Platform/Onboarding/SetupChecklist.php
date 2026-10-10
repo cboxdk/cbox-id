@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Platform\Onboarding;
 
 use App\Models\OnboardingDismissal;
+use App\Platform\Appearance\BrandImage;
+use App\Platform\Appearance\BrandImages;
 use App\Platform\Entitlements;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Models\Directory;
@@ -139,9 +141,10 @@ final readonly class SetupChecklist
         }
 
         $appearance = $settings['appearance'] ?? null;
-        $logo = $settings['brand_logo_url'] ?? null;
 
+        // An UPLOADED logo counts; a remote URL saved before uploads replaced it does not —
+        // it is no longer drawn anywhere, so it brands nothing.
         return (is_array($appearance) && $appearance !== [])
-            || (is_string($logo) && $logo !== '');
+            || app(BrandImages::class)->url(BrandImage::Logo, $organizationId) !== null;
     }
 }

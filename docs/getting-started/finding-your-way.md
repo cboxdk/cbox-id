@@ -32,7 +32,7 @@ click by click.
 | **Authorization** | Roles, Permissions, Fine-grained authorization, Access reviews, Role conflicts | What people may do once they are in |
 | **Developers** | Applications, APIs, API keys, Webhooks, Hooks, Feature flags, Pipes | What your code talks to |
 | **AI agents** | Agents, Approvals, Connect | Software that acts on this environment, and the MCP server |
-| **Branding** | Appearance | How the hosted sign-in page looks |
+| **Branding** | Branding | How the hosted sign-in page looks, the logo and favicon, and the name your mail is sent under |
 | **Monitoring** | Audit log, App audit logs, Log streams, Usage | What happened |
 | **Advanced** | Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy login | Set up once and rarely revisited |
 | **Settings** | Settings | The environment's id, issuer and discovery URL |
@@ -187,6 +187,6 @@ Three kinds of setting appear there:
 
 ### Brand the sign-in page
 
-**Branding › Appearance**. Choose a preset, set the colours, corners, typeface and logo,
-and check the live preview. To give one organization its own look, open its page, then
-**Settings › Branding**.
+**Branding**. Choose a preset, set the colours, corners and typeface, upload the logo and
+favicon, and check the live preview; the product name and email sender are further down the
+same page. To give one organization its own look, open its page, then its **Branding** tab.

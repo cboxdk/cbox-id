@@ -200,7 +200,10 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)
-            ->page('appearance', 'Appearance', order: 20);
+            // ONE page for the brand: the sign-in theme, logo and favicon, and — with the
+            // white-label module — the name, sender and palette. It was two ("Appearance"
+            // and the module's "Branding"), which both set the logo.
+            ->page('branding', 'Branding', order: 20);
 
         // Every user's own security — shown to members and admins alike (the app
         // layout gates the admin-only areas above by role, this one is universal).

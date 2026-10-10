@@ -13,6 +13,7 @@ use App\Platform\Appearance\BrandContext;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\LastSignInMethod;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
@@ -90,6 +91,13 @@ final readonly class LoginController extends PageController
             'pendingLink' => $auth->pendingLink()?->label(),
             'signupOpen' => $signup->isOpen(),
             'providers' => SocialProviderProps::forOrganization($organization?->id),
+            /*
+             * WHICH WAY THIS DEVICE SIGNED IN LAST — `google`, `passkey`, `password`,
+             * `magic_link`, `sso` — so the page can badge it "Last used". Read here, from a
+             * first-party HttpOnly cookie, rather than by script: the page draws a prop and
+             * nothing in the browser reads cookies. See {@see LastSignInMethod}.
+             */
+            'lastUsed' => LastSignInMethod::read($request),
         ]);
     }
 

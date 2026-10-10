@@ -221,8 +221,11 @@ it('takes a client ID metadata document client through /authorize and consent to
         'selfRegistered' => true,
         'documentHost' => 'agent.example',
         'clientUri' => 'https://agent.example',
-        'logoUri' => 'https://agent.example/logo.png',
     ]);
+
+    // …and its logo is NOT handed to the page: an image on the publisher's host would
+    // report everybody who reached this screen to the publisher.
+    expect($props['client'])->not->toHaveKey('logoUri');
 
     $token = (string) redeemConsent($props, AGENT_DOCUMENT)->assertOk()->json('access_token');
 
