@@ -201,6 +201,7 @@ final readonly class ShellPayload
                     badge: $feature !== null && ! $this->entitlements->entitledOrgFeature($feature)
                         ? 'Enterprise'
                         : null,
+                    keywords: ConsoleSynonyms::for($page->route),
                 );
             }
 
@@ -339,7 +340,7 @@ final readonly class ShellPayload
             active: $area->active,
             current: $area->current,
             pages: array_map(static fn (NavPageProps $page): NavPageProps => $page->route === 'environment.approvals'
-                ? new NavPageProps($page->route, $page->href, $page->label, $page->active, $page->badge, $waiting)
+                ? new NavPageProps($page->route, $page->href, $page->label, $page->active, $page->badge, $waiting, $page->keywords)
                 : $page, $area->pages),
         ), $areas);
     }
@@ -378,6 +379,7 @@ final readonly class ShellPayload
                         href: $page->href(),
                         label: $page->label,
                         active: $page->isCurrent(),
+                        keywords: ConsoleSynonyms::for($page->route),
                     ),
                     $area->pages,
                 ),

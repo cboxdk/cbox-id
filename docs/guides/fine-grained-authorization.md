@@ -6,7 +6,7 @@ description: Model who may do what to which of your app's own resources — docu
 
 # Fine-grained authorization
 
-**Console page:** Users & orgs › Fine-grained authorization in an environment console, with
+**Console page:** Authorization › Fine-grained authorization in an environment console, with
 the schema editor behind **Edit schema**.
 
 [Roles](roles.md) and [permissions](permissions.md) answer "may this person approve
@@ -236,7 +236,7 @@ reach this model at all: it belongs to the environment.
 
 ## In the console
 
-**Users & orgs › Fine-grained authorization** shows the schema's types and relations as they
+**Authorization › Fine-grained authorization** shows the schema's types and relations as they
 read, the tuples stored (filter by resource or subject), a box to write or delete one in
 the notation above, and a **check playground**: type a resource, a relation and a subject,
 and it answers exactly as the API would, with the revision it was decided at. A playground

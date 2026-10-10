@@ -69,7 +69,7 @@ export default function AppearancePage({
                 */
                 <p className="mb-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     The environment default, inherited by every organization that has not set its
-                    own. An organization's own theme is on its page, under Branding.
+                    own. An organization's own theme is on its page, under Settings › Branding.
                 </p>
             )}
 

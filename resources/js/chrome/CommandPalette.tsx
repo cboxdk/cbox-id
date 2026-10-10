@@ -1,10 +1,11 @@
 import { router, usePage } from '@inertiajs/react';
-import { Command } from 'cmdk';
+import { Command, defaultFilter } from 'cmdk';
 import { Dialog as Primitive } from 'radix-ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     MIN_QUERY,
     type PaletteAction,
+    paletteScore,
     readRecent,
     rememberRecent,
     type SearchItem,
@@ -50,7 +51,8 @@ function browserStorage(): Storage | undefined {
  *    (`App\Platform\Console\ConsoleSearch`). A pasted id that names one record is offered
  *    first, so Enter opens it;
  *  - GO TO: every page on the rail, from the same nav registry the rail draws — never a page
- *    that would 404;
+ *    that would 404 — found by its label AND by the other words for it ("SAML", "SCIM",
+ *    "tenant", "Google login"), which the server sends as each page's `keywords`;
  *  - ACTIONS: "Create app", "Rotate app secret…" — deep links to the forms, read from the
  *    action registry.
  *
@@ -191,6 +193,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                     label: page.label,
                     area: area.label,
                     icon: area.icon,
+                    keywords: page.keywords ?? [],
                 })),
             ),
         [areas],
@@ -237,6 +240,9 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                         <Command
                             loop
                             label="Search the console"
+                            filter={(value, search, keywords) =>
+                                paletteScore(defaultFilter, value, search, keywords)
+                            }
                             value={selected}
                             onValueChange={setSelected}
                         >
@@ -306,6 +312,10 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                         <Command.Item
                                             key={entry.key}
                                             value={`go ${entry.area} ${entry.label}`}
+                                            // The words a person arriving from another platform
+                                            // types — "SAML", "SCIM", "tenant", "Google login" —
+                                            // matched, never shown.
+                                            keywords={entry.keywords}
                                             className="cbx-menuitem"
                                             onSelect={() => go(entry.href)}
                                         >

@@ -2,7 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Badge, Button, ConfirmDelete, Icon, Kv, KvList, Panel, Pill } from '@/ui';
+import { Badge, Breadcrumb, Button, ConfirmDelete, Kv, KvList, Panel, Pill } from '@/ui';
 
 interface Violation {
     policy: string;
@@ -46,18 +46,7 @@ export default function RoleConflictDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Role conflicts
-                </Link>
+                <Breadcrumb href={indexHref} label="Role conflicts" />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{rule.name}</h1>
                     <Pill tone={rule.active ? 'success' : 'neutral'}>

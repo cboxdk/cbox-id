@@ -2,9 +2,9 @@ import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Field,
-    Icon,
     Input,
     OrganizationPickerField,
     PageHeader,
@@ -45,18 +45,7 @@ export default function CreateAccessReview({
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Access reviews
-            </Link>
+            <Breadcrumb href={indexHref} label="Access reviews" />
 
             <div className="mt-2">
                 <PageHeader
@@ -123,7 +112,9 @@ export default function CreateAccessReview({
                             <Input
                                 name="name"
                                 placeholder={
-                                    reviewingStaff ? 'Q3 admin & support access' : 'Q3 access review'
+                                    reviewingStaff
+                                        ? 'Q3 admin & support access'
+                                        : 'Q3 access review'
                                 }
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}

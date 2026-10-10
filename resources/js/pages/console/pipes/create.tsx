@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, CopyButton, Field, Icon, Input, Panel, Select, Textarea } from '@/ui';
+import { Breadcrumb, Button, CopyButton, Field, Input, Panel, Select, Textarea } from '@/ui';
 
 export interface CatalogueEntry {
     key: string;
@@ -56,18 +56,7 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Pipes
-                </Link>
+                <Breadcrumb href={indexHref} label="Pipes" />
                 <h1 className="cbx-page-title mt-2">New pipe</h1>
             </div>
 

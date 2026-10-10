@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Icon, Input, PageHeader, Panel } from '@/ui';
+import { Breadcrumb, Button, Checkbox, Field, Input, PageHeader, Panel } from '@/ui';
 
 type Props = PageProps<{
     indexHref: string;
@@ -13,18 +13,7 @@ export default function CreateFeatureFlag({ indexHref, storeHref }: Props) {
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Feature flags
-            </Link>
+            <Breadcrumb href={indexHref} label="Feature flags" />
 
             <div className="mt-2">
                 <PageHeader description="A switch your apps ask about. You choose who it is on for on the next page." />

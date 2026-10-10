@@ -1,7 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Field, Icon, Input, PageHeader, Panel, Textarea } from '@/ui';
+import { Breadcrumb, Button, Field, Input, PageHeader, Panel, Textarea } from '@/ui';
 
 type Props = PageProps<{
     /** Who this secret will belong to, named — "Acme", or "this environment". */
@@ -15,18 +15,7 @@ export default function CreateVaultSecret({ scopeLabel, indexHref, storeHref }: 
 
     return (
         <>
-            <Link
-                href={indexHref}
-                className="text-sm inline-flex items-center gap-1"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
-                <Icon
-                    name="chevron"
-                    className="w-3.5 h-3.5"
-                    style={{ transform: 'rotate(90deg)' }}
-                />
-                Token vault
-            </Link>
+            <Breadcrumb href={indexHref} label="Token vault" />
 
             <div className="mt-2">
                 <PageHeader description="A downstream API key your apps and agents present to a provider. It is sealed on store and brokered only to explicitly granted clients." />

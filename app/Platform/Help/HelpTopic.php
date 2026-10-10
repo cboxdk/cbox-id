@@ -68,6 +68,7 @@ enum HelpTopic: string
     case Staff = 'staff';
     case SupportAccess = 'support-access';
     case SignInRules = 'sign-in-rules';
+    case SignInMethods = 'sign-in-methods';
     case SamlApplications = 'saml-applications';
     case LegacyLogin = 'legacy-login';
     case Connectors = 'connectors';
@@ -135,6 +136,7 @@ enum HelpTopic: string
             self::Staff => 'Roles for your own people',
             self::SupportAccess => 'Signing in to an app as somebody else',
             self::SignInRules => 'The rules every sign-in has to meet',
+            self::SignInMethods => 'Every way into this environment',
             self::SamlApplications => 'Applications that trust this environment',
             self::LegacyLogin => 'Signing in through your old system',
             self::Connectors => 'Every connection, in one list',
@@ -258,11 +260,12 @@ enum HelpTopic: string
             self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
 
             self::RiskEvents => 'Sign-ins and requests that Cbox ID scored as risky enough to flag, newest first, with the score and the reasons behind it. Look here after a spike in failed sign-ins, or when someone reports a sign-in they did not make.',
+            self::SignInMethods => 'Every way a person can sign in here — password, passkeys, magic link, social login, enterprise SSO, a second factor — with whether it is on and where it is changed. Some are this environment\'s to decide, some each organization\'s, and some the deployment\'s, which the page names so you know who to ask.',
             self::Radar => 'Radar judges every sign-in and sign-up: credential stuffing, bot-like speed, impossible travel, new devices, anonymising networks and throwaway addresses, plus rules and allow and deny lists of your own. It records every verdict and, once you switch it to enforce, blocks or asks for a second factor. Read the decisions here before you enforce, and when someone says they cannot sign in.',
 
             self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
 
-            self::Branding => 'The palette, logo, app name and email sender your people see on the console and the hosted sign-in page. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its page, under Branding.',
+            self::Branding => 'The palette, logo, app name and email sender your people see on the console and the hosted sign-in page. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its page, under Settings › Branding.',
 
             self::Workspaces => 'A workspace is one signed-up company\'s home on this install, holding its projects, environments and team. Open one to walk its products and environments, or suspend it, which signs its members out and stops every environment it owns from serving sign-ins.',
 
@@ -326,6 +329,7 @@ enum HelpTopic: string
             self::PlatformOrganizations => 'core-concepts/workspaces-and-organizations',
             self::DataExports => 'security/compliance',
             self::RiskEvents => 'security/adaptive-risk',
+            self::SignInMethods => 'getting-started/finding-your-way',
             self::Radar => 'guides/radar',
             self::SignInActivity => 'operations/analytics',
             self::PlatformQueues => 'operations/queue-workers',

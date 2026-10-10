@@ -1,7 +1,8 @@
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { OrganizationHub } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     CopyButton,
@@ -45,18 +46,7 @@ export function OrganizationFrame({
     return (
         <div className="space-y-6">
             <div>
-                <Link
-                    href={hub.indexHref}
-                    className="text-sm inline-flex items-center gap-1"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-3.5 h-3.5"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    Organizations
-                </Link>
+                <Breadcrumb href={hub.indexHref} label="Organizations" />
                 <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
                     <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -87,7 +77,20 @@ export function OrganizationFrame({
 
             {portalUrl !== undefined && <PortalLinkRevealed url={portalUrl} />}
 
-            <LinkTabs tabs={hub.tabs} label={`${hub.name} pages`} />
+            <div>
+                <LinkTabs tabs={hub.tabs} label={`${hub.name} pages`} />
+                {/*
+                    The shown page's group, as a second row — Members beside its pending
+                    Invitations, the two audit logs, Settings' four pages. Fourteen tabs in
+                    one row ran off the edge of a laptop screen; nine tabs and a row for the
+                    group fit.
+                */}
+                <LinkTabs
+                    tabs={hub.subTabs}
+                    label={`${hub.tabs.find((tab) => tab.current)?.label ?? hub.name} pages`}
+                    variant="sub"
+                />
+            </div>
 
             {children}
 

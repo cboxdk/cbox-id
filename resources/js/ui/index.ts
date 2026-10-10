@@ -19,8 +19,10 @@ export {
 export { type AppApiKey, AppApiKeyList } from './AppApiKeyList';
 export { type AuditEventListLabels, AuditEventList, type AuditEventRow } from './AuditEventList';
 export { Avatar } from './Avatar';
+export { type AccessModel, AccessModelGuide } from './AccessModelGuide';
 export { AccessRoleHint, type AccessRoleOption } from './AccessRoleHint';
 export { Badge, type BadgeTone } from './Badge';
+export { Breadcrumb, type BreadcrumbProps } from './Breadcrumb';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { CertificateWarnings } from './CertificateWarnings';
 export { Checkbox } from './Checkbox';
