@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
-use Illuminate\Http\Request;
+use App\Platform\RouteLookup;
 use Illuminate\Routing\Route;
-use Illuminate\Routing\Router;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * WHERE AN ENVIRONMENT HANDOFF LANDS — the page the context switcher asked for, or none.
@@ -47,7 +45,7 @@ final readonly class HandoffTarget
 
     private const PATTERN = '#\A/admin(?:/[A-Za-z0-9_-]+)*\z#';
 
-    public function __construct(private Router $router) {}
+    public function __construct(private RouteLookup $routes) {}
 
     /**
      * The target if it is one this console may land on, else null.
@@ -99,15 +97,12 @@ final readonly class HandoffTarget
     /**
      * Which route this path resolves to, asked of the router rather than guessed from the
      * route list: the same matcher a real request would meet, with no domain or method
-     * surprises.
+     * surprises — and from this request's own origin, never `localhost`
+     * ({@see RouteLookup} has the production 400 that caused).
      */
     private function match(string $path): ?Route
     {
-        try {
-            return $this->router->getRoutes()->match(Request::create($path, 'GET'));
-        } catch (HttpExceptionInterface) {
-            return null;
-        }
+        return $this->routes->get($path);
     }
 
     private function key(): string

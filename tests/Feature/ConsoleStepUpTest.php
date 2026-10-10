@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Platform\EnvironmentSudo;
 use App\Platform\StepUpReason;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -392,4 +393,40 @@ it('tells the administrator why the step-up appeared', function (): void {
                 ->component('auth/sudo')
                 ->where('reason', null),
         );
+})->group('security');
+
+/**
+ * A CLICK IS AN INERTIA VISIT, and a gated page has to answer it with the step-up screen.
+ *
+ * Every link inside the environment console is followed with an XHR carrying `X-Inertia`
+ * and `X-Requested-With: XMLHttpRequest`. The gate answered that as a ceremony endpoint —
+ * a 403 JSON body Inertia can only show as an error modal — so Token vault, Legacy login,
+ * New agent and New log stream did nothing when clicked unless the administrator happened
+ * to have stepped up in the last few minutes. Found by crawling a production-shaped stack;
+ * every test here requested the page as a plain browser navigation, which was redirected
+ * correctly.
+ *
+ * The step-up then returns the administrator to the page they clicked, not to the page
+ * they clicked it from.
+ */
+it('answers an Inertia visit to a gated page with the step-up screen', function (string $route): void {
+    app(EnvironmentSudo::class)->forget();
+
+    // The version the client holds, as a real click sends it — without it Inertia answers
+    // a GET with its 409 asset-mismatch reload before any route middleware runs.
+    $this->withHeaders([
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+        'X-Requested-With' => 'XMLHttpRequest',
+    ])->get(route($route))->assertRedirect(route('environment.sudo'));
+
+    expect(session('environment.sudo.intended'))->toBe(route($route));
+})->with(['environment.vault', 'environment.legacy-login', 'environment.agents.create', 'environment.audit-streams.create'])->group('security');
+
+it('still answers a ceremony XHR with the JSON refusal', function (): void {
+    app(EnvironmentSudo::class)->forget();
+
+    $this->getJson(route('environment.vault'))
+        ->assertForbidden()
+        ->assertJsonPath('sudo', route('environment.sudo'));
 })->group('security');

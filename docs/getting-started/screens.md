@@ -261,6 +261,9 @@ a whole environment, filed by task in the words the market uses:
   provisioning, SAML apps, Legacy login: set up once and rarely revisited.
 - **Settings**, and **Connectors** when that module is on.
 
+![Users & orgs, Users](../screenshots/users.png)
+![Users & orgs, Organizations](../screenshots/organizations.png)
+
 It has no My account area. Your own password, passkeys and sessions belong to your
 workspace, so **My account** and **Switch user** in the account menu open on the
 workspace host.

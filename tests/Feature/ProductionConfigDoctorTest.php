@@ -31,6 +31,8 @@ function soundProductionConfig(): array
         'queue.default' => 'redis',
         'logging.default' => 'stderr',
         'health.security.token' => 'probe-token',
+        // A disk every process reaches — `s3` names the S3 driver in config/filesystems.php.
+        'cbox-id.audit_logs.export_disk' => 's3',
     ];
 }
 
@@ -94,4 +96,58 @@ it('warns when every log channel writes to the local disk, following stacks', fu
 it('warns when the queue runs inline', function (): void {
     expect(productionVerdicts([...soundProductionConfig(), 'queue.default' => 'sync']))
         ->toHaveKey('Queue runs inline', 'warn');
+});
+
+/*
+ * Found on a production-shaped stack: an audit-log export is written by the worker pod and
+ * downloaded through a web pod, and on the default `local` disk the web pod has no such
+ * file — the download was an empty CSV, answered 200. Brand images had the same shape and
+ * moved to the database; these files cannot, so the doctor says it out loud.
+ */
+it('fails production when files cross processes on a local disk and there is more than one replica', function (): void {
+    $verdicts = productionVerdicts([...soundProductionConfig(), 'cbox-id.audit_logs.export_disk' => 'local', 'cbox-id.deployment.replicas' => 2]);
+
+    expect($verdicts)->toHaveKey('Files are local to one machine', 'fail');
+});
+
+it('only warns about local files on exactly one machine, and names brand images only when they are on a disk', function (): void {
+    $one = [...soundProductionConfig(), 'cbox-id.audit_logs.export_disk' => 'local', 'cbox-id.deployment.replicas' => 1, 'queue-autoscale.cluster.enabled' => false];
+
+    expect(productionVerdicts($one))->toHaveKey('Files are local to one machine', 'warn');
+
+    $results = collect(app(ProductionConfigDoctorCheck::class)->run());
+    $files = $results->first(fn (HealthResult $r): bool => $r->label === 'Files are local to one machine');
+
+    expect($files?->detail)->not->toContain('Brand images');
+
+    expect(productionVerdicts([...soundProductionConfig(), 'whitelabel.assets.store' => 'disk', 'whitelabel.assets.disk' => 'public', 'cbox-id.deployment.replicas' => 2]))
+        ->toHaveKey('Files are local to one machine', 'fail');
+});
+
+it('counts the compliance archive only when it is written', function (): void {
+    $base = [...soundProductionConfig(), 'cbox-id.deployment.replicas' => 2, 'compliance.export.jsonl.disk' => 'local'];
+
+    expect(productionVerdicts([...$base, 'compliance.export.sink' => 'null']))->toHaveKey('Shared files', 'ok')
+        ->and(productionVerdicts([...$base, 'compliance.export.sink' => 'jsonl']))->toHaveKey('Files are local to one machine', 'fail');
+});
+
+it('fails production when brand assets are linked through public/storage and that link does not exist', function (): void {
+    $public = sys_get_temp_dir().'/cbox-id-doctor-public-'.bin2hex(random_bytes(4));
+    mkdir($public);
+    $original = public_path();
+    app()->usePublicPath($public);
+
+    try {
+        $config = [...soundProductionConfig(), 'whitelabel.assets.store' => 'disk', 'whitelabel.assets.disk' => 'public', 'filesystems.disks.public.url' => 'https://id.example/storage'];
+
+        expect(productionVerdicts($config))->toHaveKey('Brand asset links are dead', 'fail');
+
+        mkdir($public.'/storage');
+
+        expect(productionVerdicts($config))->toHaveKey('Brand asset links', 'ok');
+    } finally {
+        app()->usePublicPath($original);
+        @rmdir($public.'/storage');
+        @rmdir($public);
+    }
 });

@@ -25,6 +25,15 @@ use Cbox\Id\Console\ValueObjects\HealthResult;
  * manifest beside `replicas:`) or runs the queue manager as a cluster
  * (`queue-autoscale.cluster.enabled`, which coordinates through the cache), and WARNS on one.
  *
+ * FILES ARE THE SAME QUESTION, asked of the disks one process writes and another reads. An
+ * audit-log export is written by a queue worker and downloaded through a web replica; a brand
+ * logo is uploaded through one web replica and fetched through all of them. On one server
+ * that is one disk. On Kubernetes it is a disk per pod that disappears with the pod — the
+ * worker's CSV is not on the web pod that streams the download, and a logo uploaded on one
+ * replica 404s on the other — so a `local` disk for any of them FAILS once the deployment is
+ * scaled out. And a brand asset on a local disk is only reachable through the `public/storage`
+ * link, which `php artisan storage:link` makes and the production image does not have.
+ *
  * Outside production it reports nothing to fix: a developer's laptop is supposed to look
  * like this.
  */
@@ -49,7 +58,41 @@ class ProductionConfigDoctorCheck implements HealthCheck
             $this->queue(),
             $this->log(),
             $this->healthToken(),
+            $this->files(),
+            $this->brandAssetLinks(),
         ];
+    }
+
+    /**
+     * A brand asset on a local disk is served from `public/storage`, the link `storage:link`
+     * makes. Without it every uploaded logo and favicon is a dead link on the sign-in page.
+     */
+    private function brandAssetLinks(): HealthResult
+    {
+        if ($this->string('whitelabel.assets.store') !== 'disk') {
+            return HealthResult::ok('Brand asset links', 'brand images are served from the database');
+        }
+
+        $disk = $this->string('whitelabel.assets.disk') ?? 'public';
+        $url = $this->string("filesystems.disks.{$disk}.url") ?? '';
+
+        if ($this->diskDriver($disk) !== 'local' || ! str_contains($url, '/storage')) {
+            return HealthResult::ok('Brand asset links', "served by the `{$disk}` disk itself");
+        }
+
+        return is_dir(public_path('storage'))
+            ? HealthResult::ok('Brand asset links', 'public/storage is linked')
+            : HealthResult::fail(
+                'Brand asset links are dead',
+                "Brand assets are written to the local `{$disk}` disk and linked as {$url}/…, but public/storage does not exist, "
+                .'so every uploaded logo and favicon answers 404. Run `php artisan storage:link` where the files are written, or '
+                .'point WHITELABEL_ASSETS_DISK at shared storage with its own URL.',
+            );
+    }
+
+    private function diskDriver(string $disk): ?string
+    {
+        return $this->string("filesystems.disks.{$disk}.driver");
     }
 
     private function mail(): HealthResult
@@ -143,6 +186,60 @@ class ProductionConfigDoctorCheck implements HealthCheck
                 .'Set LOG_CHANNEL=stderr (or ship the files) so incidents leave a trace.',
             )
             : HealthResult::ok('Logs', 'written to '.implode(', ', $drivers === [] ? ['an unknown channel'] : $drivers));
+    }
+
+    /**
+     * FILES ONE PROCESS WRITES AND ANOTHER READS, on a disk only one of them has.
+     *
+     * An audit-log CSV export is written by the QUEUE (the worker pod) and downloaded
+     * through a WEB pod; a compliance JSONL bundle is appended by the scheduler. On a
+     * `local` disk each pod has its own, so the download a web replica serves is of a file
+     * that only exists on the worker — an empty CSV, answered 200 — and everything is gone
+     * the next time the pods are replaced, which on a continuously deployed cluster is
+     * every merge. Brand images used to be the third; they live in the database now
+     * (`whitelabel.assets.store`), unless a deployment asks for a disk.
+     *
+     * Same rule as the cache: a smell on one machine, a fault the moment there are two.
+     */
+    private function files(): HealthResult
+    {
+        $local = [];
+
+        foreach ($this->sharedDisks() as $purpose => $disk) {
+            if (($this->string("filesystems.disks.{$disk}.driver") ?? 'local') === 'local') {
+                $local[] = "{$purpose} (`{$disk}`)";
+            }
+        }
+
+        if ($local === []) {
+            return HealthResult::ok('Shared files', 'on a disk every process reaches');
+        }
+
+        $detail = 'These are written by one process and read by another, on a local disk: '.implode(', ', $local);
+
+        return $this->scaledOut() !== null
+            ? HealthResult::fail('Files are local to one machine', "{$detail} — and this deployment {$this->scaledOut()}, so they are missing wherever they were not written and lost when a pod is replaced. Point them at a shared disk (S3-compatible object storage).")
+            : HealthResult::warn('Files are local to one machine', "{$detail}. Fine on exactly one machine; give them a shared disk before adding a second.");
+    }
+
+    /**
+     * The disks a file goes through between two processes, by what the file is.
+     *
+     * @return array<string, string>
+     */
+    private function sharedDisks(): array
+    {
+        $disks = ['Audit-log exports' => $this->string('cbox-id.audit_logs.export_disk') ?? 'local'];
+
+        if ($this->string('compliance.export.sink') === 'jsonl') {
+            $disks['Compliance JSONL bundles'] = $this->string('compliance.export.jsonl.disk') ?? 'local';
+        }
+
+        if ($this->string('whitelabel.assets.store') === 'disk') {
+            $disks['Brand images'] = $this->string('whitelabel.assets.disk') ?? 'public';
+        }
+
+        return $disks;
     }
 
     private function healthToken(): HealthResult

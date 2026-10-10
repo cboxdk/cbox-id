@@ -34,6 +34,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -296,6 +297,43 @@ it('exports to CSV on the queue and hands the file out through a signed URL', fu
     $this->get(route('audit-logs.exports.download', $export['id']))->assertForbidden();
 
     expect(AuditEntry::query()->where('action', 'audit_log_export.created')->sole()->organization_id)->toBe($acme);
+});
+
+/*
+ * The worker writes the CSV and a web process streams it — on Kubernetes, two pods with two
+ * disks. With the export disk left at `local` the web pod had no file, `readStream()` answered
+ * null, and the download was a 200 with an empty CSV for an export that said `ready`.
+ */
+it('refuses a ready export whose file is not on the export disk, rather than handing out an empty CSV', function (): void {
+    Storage::fake('local');
+    Queue::fake();
+    Log::spy();
+    $key = auditKey();
+    $acme = auditOrg('acme-missing-file');
+
+    sendAuditEvents($key, [auditEvent($acme)])->assertCreated();
+
+    $export = $this->withToken($key)->postJson('/api/v1/audit-logs/exports', ['organization_id' => $acme])
+        ->assertCreated()
+        ->json('data');
+
+    // The worker — another pod — writes the file to ITS disk.
+    app(EnvironmentContext::class)->set(null);
+    (new GenerateAuditLogExport($export['id']))->handle(app(EnvironmentContext::class));
+    app(EnvironmentContext::class)->set(GenericEnvironment::of('env_test'));
+
+    $ready = $this->withToken($key)->getJson("/api/v1/audit-logs/exports/{$export['id']}")->assertOk()
+        ->assertJsonPath('data.state', 'ready')
+        ->json('data');
+
+    // The web pod that answers the download never had it.
+    Storage::disk('local')->delete((string) AuditLogExport::query()->findOrFail($export['id'])->path);
+
+    $this->get($ready['url'])->assertNotFound();
+
+    Log::shouldHaveReceived('error')->withArgs(
+        static fn (string $message, array $context): bool => str_contains($message, 'missing from the export disk') && $context['export'] === $export['id'],
+    )->once();
 });
 
 it('prunes past the retention from the front of each chain, which still verifies', function (): void {

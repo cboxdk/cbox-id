@@ -89,6 +89,7 @@ use App\Http\Controllers\Console\VaultController;
 use App\Http\Controllers\Console\WebhookController;
 use App\Http\Controllers\Dev\DesignSystemController;
 use App\Http\Controllers\DeviceApprovalController;
+use App\Http\Controllers\DocsRedirectController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
@@ -1911,6 +1912,16 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
  */
 Route::redirect('/workspace', '/projects');
 Route::redirect('/workspace/login', '/login');
+
+/*
+ * THE DOCUMENTATION'S ADDRESS ON THIS HOST. `/docs` is where people look for it, and the
+ * docs are published elsewhere (config/docs.php) — so it is a redirect, on every host,
+ * to the page the console's "Read the guide" links name. No plane gate and no auth: it
+ * discloses nothing but the public docs URL. See DocsRedirectController.
+ */
+Route::get('/docs/{page?}', DocsRedirectController::class)
+    ->where('page', '[A-Za-z0-9_\\-/]+(?:\\.md)?')
+    ->name('docs');
 
 /*
  * ONE URL PER PAGE — and the old spellings, answered with a 301.

@@ -70,8 +70,11 @@ jobs:
       # rubber stamp. If the new picture is the one you meant, run the Visual baselines
       # workflow and commit what it uploads.
       #
-      # `docs-screenshots` IS EXCLUDED. It is not a test — it rewrites docs/screenshots/*.png
-      # (tests/Browser/DocsScreenshotsTest.php). phpunit.xml excludes it too, but a
+      # `docs-screenshots` IS EXCLUDED. It rewrites docs/screenshots/*.png
+      # (tests/Browser/DocsScreenshotsTest.php), and runs in its own workflow on every
+      # release tag (docs-screenshots.yml), which proposes the pictures as a pull request.
+      # The pull-request half — every picture embedded, present and retaken — is
+      # DocsScreenshotsCatalogueTest, which runs here. phpunit.xml excludes it too, but a
       # `--exclude-group` on the command line REPLACES the XML's list rather than adding to
       # it, so naming it here keeps it out if a flag is ever added. One flag per group: Pest
       # reads `--exclude-group=a,b` as a single group with a comma in its name.

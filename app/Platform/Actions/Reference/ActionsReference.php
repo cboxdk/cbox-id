@@ -83,7 +83,7 @@ final readonly class ActionsReference
 
         foreach ($byTag as $tag => $tagged) {
             $lines[] = '| ['.$tag.'](#'.self::slug($tag).') | '.implode(', ', array_map(
-                static fn (ActionDefinition $action): string => '[`'.$action->name.'`](#'.self::slug($action->name).')',
+                static fn (ActionDefinition $action): string => '[`'.$action->name.'`](#'.self::anchor($action).')',
                 $tagged,
             )).' |';
         }
@@ -101,9 +101,15 @@ final readonly class ActionsReference
     }
 
     /**
-     * The heading anchor a Markdown renderer gives $heading — GitHub's rule, which is
-     * also Hugo's and most others': lowercase, punctuation other than `-` and `_`
-     * dropped, spaces to hyphens. `apps.secrets.rotate` is `#appssecretsrotate`.
+     * The heading anchor a Markdown renderer gives $heading — GitHub's rule: lowercase,
+     * punctuation other than `-` and `_` dropped, spaces to hyphens. `App audit logs` is
+     * `#app-audit-logs`.
+     *
+     * Used for the AREA headings only, whose names have no `_`: there GitHub and the docs
+     * site (cbox.dk, league/commonmark's slug, which drops `_` as well) agree, and
+     * tests/Feature/DocsLinksTest.php fails the moment an anchor works on one and not
+     * the other. An action's name has `_` in it, so an action is linked by
+     * {@see anchor()} instead.
      */
     public static function slug(string $heading): string
     {
@@ -111,6 +117,22 @@ final readonly class ActionsReference
         $slug = (string) preg_replace('/[^\p{L}\p{N}\s_-]/u', '', $slug);
 
         return str_replace(' ', '-', $slug);
+    }
+
+    /**
+     * The anchor an action is linked by: its own name, set on its heading explicitly.
+     *
+     * Not the heading's slug, because the two renderers that publish this page slug
+     * `organizations.portal_links.create` differently: GitHub keeps the `_`
+     * (`#organizationsportal_linkscreate`) and the docs site drops it
+     * (`#organizationsportallinkscreate`), so every Contents link to an action with an
+     * underscore was dead on cbox.dk while it worked on GitHub. An explicit
+     * `<a id="…">` is the same id on both, and the name is the anchor a reader would
+     * guess.
+     */
+    public static function anchor(ActionDefinition $action): string
+    {
+        return $action->name;
     }
 
     /**
@@ -123,7 +145,7 @@ final readonly class ActionsReference
         $fields = $this->fields($action);
 
         $lines = [
-            '### '.$action->name,
+            '### <a id="'.self::anchor($action).'"></a>'.$action->name,
             '',
             $action->summary,
             '',

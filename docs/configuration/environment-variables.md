@@ -107,6 +107,21 @@ Override the wordmark/hero without editing Blade.
 
 `CBOX_ID_BRAND_NAME` is also the product name in the hosted emails and on the error pages.
 
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `WHITELABEL_ASSETS_STORE` | Where uploaded logos and favicons are kept: `database` (a row every replica shares, served at `/brand-assets/…`) or `disk`. | `database` | Leave it. `disk` writes to `WHITELABEL_ASSETS_DISK` instead, which only works on one machine with `php artisan storage:link`. |
+| `WHITELABEL_ASSETS_DISK` | The filesystem disk for `WHITELABEL_ASSETS_STORE=disk`. | `public` | Only with the disk store. |
+
+## Documentation links
+
+Where the console's **Read the guide** links, the Get started page's quickstart link and
+this deployment's own `/docs` address point. `/docs` and `/docs/<page>` redirect there.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `DOCS_BASE_URL` | The documentation site's base; a page is linked as `<base>/<path under docs/><suffix>`. | `https://cbox.dk/products/cbox-id/docs` | Set `https://github.com/cboxdk/cbox-id/blob/main/docs` (with the `.md` suffix) to link GitHub's source view. Set it empty on an air-gapped install: every documentation link disappears and `/docs` answers 404. |
+| `DOCS_LINK_SUFFIX` | Appended to every page path. | *(empty)* | `.md` for GitHub's source view. |
+
 ## Languages
 
 The languages used by the hosted pages (sign-in, consent, Admin Portal) and the emails
@@ -469,7 +484,7 @@ envelope plus `Retry-After` and the `X-RateLimit-*` headers.
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `TRUSTED_PROXIES` | Which proxies' `X-Forwarded-*` headers to trust (`*` = trust all, or a comma-separated CIDR list). Correct forwarding makes the audit trail record the real client IP, keys rate limiting on it, and gets the issuer/cookie host right. | *(empty — trust nothing)* | **Set this on any deployment behind a proxy or load balancer.** Left empty, `X-Forwarded-*` is ignored: every audit entry records the proxy's address instead of the client's, and every per-IP rate limit — signup, the API backstop — collapses into one bucket shared by the whole platform. `*` is safe **only** when the app is reachable exclusively through your ingress (a k8s pod behind Traefik/Cloudflare, or a managed platform that fronts every request). If the app is directly reachable, pin this to your proxy CIDR(s). |
+| `TRUSTED_PROXIES` | Which proxies' `X-Forwarded-*` headers to trust (`*` = trust all, or a comma-separated CIDR list). Correct forwarding makes the audit trail record the real client IP, keys rate limiting on it, and gets the issuer/cookie host right. | *(empty — trust nothing)* | **Set this on any deployment behind a proxy or load balancer.** Left empty, `X-Forwarded-*` is ignored: every audit entry records the proxy's address instead of the client's, and every per-IP rate limit — signup, the API backstop — collapses into one bucket shared by the whole platform. `*` is safe **only** when the app is reachable exclusively through your ingress (a k8s pod behind Traefik/Cloudflare, or a managed platform that fronts every request). If the app is directly reachable, pin this to your proxy CIDR(s). Read through `config/trustedproxy.php`, so a value in `.env` survives `php artisan config:cache`. |
 
 ## Security posture (defaults you should keep)
 

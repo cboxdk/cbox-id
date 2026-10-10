@@ -50,6 +50,8 @@ For step-by-step help in your identity provider, see the guides for
 4. **Finish setup** when you are done. This closes the link for good. For a link that only
    shows audit logs, the button is **Done**.
 
+![The page a setup link opens, before Open setup](../screenshots/admin-portal-link.png)
+
 Things to know:
 
 - **The link works once.** After you choose **Open setup**, opening the link again shows

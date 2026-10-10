@@ -19,16 +19,32 @@ name, four apps, the customer organizations Acme Corp (Enterprise SSO and a veri
 domain), Globex (Directory Sync) and Initech, agents with approvals waiting, audit events, a
 webhook and a log stream. Light theme, 1440×900, viewport only.
 
-To regenerate them all:
+**They are retaken on every release.** The *Docs screenshots* workflow
+(`.github/workflows/docs-screenshots.yml`) runs on each release tag, and on demand from
+the Actions tab. It builds the app in the same Linux image and Chromium CI uses, takes
+every picture below, and opens a pull request against `main` with the ones that changed;
+it never pushes to `main`. Review the image diff in that PR before merging.
+
+The run is also a smoke test of every page pictured: it fails, and proposes nothing, if a
+page answers an error status, loads anything that fails, shows an error page, or the
+browser reports an uncaught exception, a console error or warning, or a broken image.
+
+To retake them locally:
 
 ```bash
+npm run build
 vendor/bin/pest --group=docs-screenshots
 ```
 
-The run overwrites the files below in place, so review the image diff before you commit it.
-The group is excluded from every normal test run (`phpunit.xml` and CI both exclude it).
-The pictures come from your local Chromium; the frontend must be built first
-(`npm run build`), or the pages render against stale assets.
+The run overwrites the files below in place. The group is excluded from every normal test
+run (`phpunit.xml` and CI both exclude it). Pictures taken on macOS render text slightly
+differently from the workflow's, so prefer the workflow's PR for anything you commit.
+
+**The list is fixed.** `tests/Support/DocsScreenshots.php` names every picture, and the
+normal test suite holds this folder to it: each file is taken by the generator, embedded
+by at least one page and listed below, and every picture a page embeds exists. To add one,
+add its name there, take it in `tests/Browser/DocsScreenshotsTest.php`, embed it in the
+page it illustrates, and add its row here.
 
 | File | Page |
 | --- | --- |

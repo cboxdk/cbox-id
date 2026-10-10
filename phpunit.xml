@@ -18,11 +18,12 @@
         </testsuite>
     </testsuites>
     <!-- `docs-screenshots` rewrites docs/screenshots/*.png from the running app
-         (tests/Browser/DocsScreenshotsTest.php). It is a generator, not a test, so a plain
+         (tests/Browser/DocsScreenshotsTest.php). It writes into the working tree, so a plain
          `vendor/bin/pest` leaves it out; asking for the group by name (the `group` option,
-         as that file's docblock shows) runs it, because a group asked for by name is taken
-         back off this list. A command line that passes its own `exclude-group` replaces
-         this list, so it must name this group too. -->
+         as that file's docblock shows, and as .github/workflows/docs-screenshots.yml does on
+         every release tag) runs it, because a group asked for by name is taken back off
+         this list. A command line that passes its own `exclude-group` replaces this list,
+         so it must name this group too. -->
     <groups>
         <exclude>
             <group>docs-screenshots</group>

@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\RouteLookup;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
-use Illuminate\Support\Facades\Route as Router;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * A REDIRECT THAT LEAVES THE INERTIA APP HAS TO SAY SO.
@@ -39,6 +38,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 final class RedirectOutsideInertia
 {
+    public function __construct(private readonly RouteLookup $routes) {}
+
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -93,14 +94,13 @@ final class RedirectOutsideInertia
         return $host === $request->getHost();
     }
 
+    /**
+     * Null on no match, or a match on a different verb: either way there is no page here
+     * to mount, so the caller treats it as leaving. A relative target is matched from
+     * this request's origin rather than `localhost` ({@see RouteLookup}).
+     */
     private function routeFor(string $target): ?Route
     {
-        try {
-            return Router::getRoutes()->match(Request::create($target, 'GET'));
-        } catch (HttpException) {
-            // No match, or matched on a different verb. Either way there is no page here
-            // to mount, so the caller treats it as leaving.
-            return null;
-        }
+        return $this->routes->get($target);
     }
 }

@@ -26,14 +26,14 @@ Danger is how much harm the action can do in the wrong hands: `read` only reads;
 
 | Area | Actions |
 |---|---|
-| [Environments](#environments) | [`platform.environments.create`](#platformenvironmentscreate), [`platform.environments.provision`](#platformenvironmentsprovision) |
-| [Operators](#operators) | [`platform.operators.create`](#platformoperatorscreate), [`platform.operators.set_status`](#platformoperatorsset_status) |
-| [Organizations](#organizations) | [`platform.organizations.create`](#platformorganizationscreate), [`platform.organizations.move`](#platformorganizationsmove), [`platform.organizations.set_status`](#platformorganizationsset_status) |
-| [Workspaces](#workspaces) | [`platform.workspaces.create`](#platformworkspacescreate), [`platform.workspaces.set_status`](#platformworkspacesset_status) |
+| [Environments](#environments) | [`platform.environments.create`](#platform.environments.create), [`platform.environments.provision`](#platform.environments.provision) |
+| [Operators](#operators) | [`platform.operators.create`](#platform.operators.create), [`platform.operators.set_status`](#platform.operators.set_status) |
+| [Organizations](#organizations) | [`platform.organizations.create`](#platform.organizations.create), [`platform.organizations.move`](#platform.organizations.move), [`platform.organizations.set_status`](#platform.organizations.set_status) |
+| [Workspaces](#workspaces) | [`platform.workspaces.create`](#platform.workspaces.create), [`platform.workspaces.set_status`](#platform.workspaces.set_status) |
 
 ## Environments
 
-### platform.environments.create
+### <a id="platform.environments.create"></a>platform.environments.create
 
 Create an environment on the deployment, with its own signing key. A domain is verified separately, by DNS.
 
@@ -50,7 +50,7 @@ Create an environment on the deployment, with its own signing key. A domain is v
 | `name` | string | yes | At most 190 characters. |
 | `domain` | string, nullable | no | The domain it will serve on, once verified by DNS. Checked to be free; not written yet. At most 190 characters. |
 
-### platform.environments.provision
+### <a id="platform.environments.provision"></a>platform.environments.provision
 
 Bootstrap an environment with its first organization and an owner administrator, so people can sign in to it.
 
@@ -72,7 +72,7 @@ Bootstrap an environment with its first organization and an owner administrator,
 
 ## Operators
 
-### platform.operators.create
+### <a id="platform.operators.create"></a>platform.operators.create
 
 Add a platform operator: a person with authority over the whole deployment.
 
@@ -90,7 +90,7 @@ Add a platform operator: a person with authority over the whole deployment.
 | `email` | string (email) | yes | At most 190 characters. |
 | `password` | string | yes | Write-only. At least 12 characters, and not one known from a breach. At least 12 characters. At most 200 characters. |
 
-### platform.operators.set_status
+### <a id="platform.operators.set_status"></a>platform.operators.set_status
 
 Suspend a platform operator, or reactivate one. Never yourself, and never the last active operator.
 
@@ -109,7 +109,7 @@ Suspend a platform operator, or reactivate one. Never yourself, and never the la
 
 ## Organizations
 
-### platform.organizations.create
+### <a id="platform.organizations.create"></a>platform.organizations.create
 
 Create an organization inside an environment, optionally under a parent organization of the same environment.
 
@@ -128,7 +128,7 @@ Create an organization inside an environment, optionally under a parent organiza
 | `type` | string | yes | One of `customer`, `reseller`. |
 | `parent_id` | string, nullable | no | An organization of the same environment to create it under. |
 
-### platform.organizations.move
+### <a id="platform.organizations.move"></a>platform.organizations.move
 
 Move an organization under another organization of the same environment, or to the top of its hierarchy.
 
@@ -146,7 +146,7 @@ Move an organization under another organization of the same environment, or to t
 | `organization_id` | string (path) | yes |  |
 | `parent_id` | string, nullable | no | The new parent, of the same environment; null for the top of the hierarchy. |
 
-### platform.organizations.set_status
+### <a id="platform.organizations.set_status"></a>platform.organizations.set_status
 
 Suspend an organization inside an environment (its members can no longer sign in to it) or reactivate it.
 
@@ -166,7 +166,7 @@ Suspend an organization inside an environment (its members can no longer sign in
 
 ## Workspaces
 
-### platform.workspaces.create
+### <a id="platform.workspaces.create"></a>platform.workspaces.create
 
 Create a workspace with its owner, first project and first environment; the owner is emailed a link to set their password.
 
@@ -185,7 +185,7 @@ Create a workspace with its owner, first project and first environment; the owne
 | `owner_name` | string | yes | At least 2 characters. At most 120 characters. |
 | `environment_limit` | integer | yes | The first project's environment allowance: 1, 2, 3, 5, 10 or 25. At least 1. At most 25. |
 
-### platform.workspaces.set_status
+### <a id="platform.workspaces.set_status"></a>platform.workspaces.set_status
 
 Suspend a workspace (its people can no longer sign in, its environments stop serving) or reactivate it.
 

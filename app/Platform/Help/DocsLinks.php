@@ -25,14 +25,29 @@ final readonly class DocsLinks
     /** A page under docs/ by its path (`quickstarts/laravel`), on the same terms. */
     public function page(string $path): ?string
     {
+        $home = $this->home();
+
+        if ($home === null) {
+            return null;
+        }
+
+        $suffix = config('docs.suffix');
+
+        return $home.'/'.ltrim($path, '/').(is_string($suffix) ? $suffix : '');
+    }
+
+    /**
+     * The documentation's front page — the configured base itself, without a trailing
+     * slash — or null when no docs site is configured.
+     */
+    public function home(): ?string
+    {
         $base = config('docs.base_url');
 
         if (! is_string($base) || trim($base) === '') {
             return null;
         }
 
-        $suffix = config('docs.suffix');
-
-        return rtrim($base, '/').'/'.ltrim($path, '/').(is_string($suffix) ? $suffix : '');
+        return rtrim(trim($base), '/');
     }
 }

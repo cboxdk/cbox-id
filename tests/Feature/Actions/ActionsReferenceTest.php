@@ -22,7 +22,8 @@ it('documents every action of a plane with its four doors', function (ActionPlan
 
     foreach (app(ActionRegistry::class)->forPlane($plane) as $action) {
         expect($page)
-            ->toContain('### '.$action->name."\n")
+            ->toContain('### <a id="'.$action->name.'"></a>'.$action->name."\n")
+            ->toContain('[`'.$action->name.'`](#'.$action->name.')')
             ->toContain('`'.$action->method.' /api/v1'.$action->documentedPath().'`')
             ->toContain('| MCP tool | `'.$action->toolName().'` |')
             ->toContain('| CLI | `cbox id '.str_replace('.', ' ', $action->name));
@@ -44,8 +45,19 @@ it('fails the check when a page has drifted, and names it', function (): void {
     }
 });
 
-it('anchors a heading the way a Markdown renderer does', function (): void {
-    expect(ActionsReference::slug('apps.secrets.rotate'))->toBe('appssecretsrotate')
-        ->and(ActionsReference::slug('App audit logs'))->toBe('app-audit-logs')
-        ->and(ActionsReference::slug('team.transfer_ownership'))->toBe('teamtransfer_ownership');
+it('anchors an area heading the way a Markdown renderer does', function (): void {
+    expect(ActionsReference::slug('App audit logs'))->toBe('app-audit-logs')
+        ->and(ActionsReference::slug('Admin Portal'))->toBe('admin-portal');
+});
+
+/*
+ * The Contents table linked `#organizationsportal_linkscreate` — GitHub's slug of the
+ * heading. The docs site (cbox.dk, league/commonmark) drops the `_` and gave the heading
+ * `organizationsportallinkscreate`, so 79 Contents links went nowhere there. An action is
+ * now linked by an explicit anchor that is its name, the same id on every renderer.
+ */
+it('links every action by an explicit anchor that is its name', function (): void {
+    $action = app(ActionRegistry::class)->named('organizations.portal_links.create');
+
+    expect(ActionsReference::anchor($action))->toBe('organizations.portal_links.create');
 });
