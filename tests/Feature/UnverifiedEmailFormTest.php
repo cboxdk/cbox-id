@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
@@ -99,4 +100,18 @@ it('tells the API caller nothing was needed once the address is confirmed', func
         ->assertSessionHas('status', 'Your email address is already confirmed.');
 
     expect(test()->get('https://cboxid.com/social-sign-in')->inertiaProps('auth.user.confirmUrl'))->toBeNull();
+});
+
+it('says the mail server is unreachable instead of answering 500', function (): void {
+    ['subjectId' => $subjectId] = provisionAccount();
+    signInAsMember($subjectId);
+    Mail::shouldReceive('to')->andThrow(new RuntimeException('Could not resolve host: postal.example'));
+
+    test()->from('https://cboxid.com/social-sign-in')
+        ->post('https://cboxid.com/account/email/confirmation')
+        ->assertRedirect('https://cboxid.com/social-sign-in')
+        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'cannot reach its mail server'));
+
+    // The failed attempt is not held against them.
+    expect(RateLimiter::attempts('email-confirmation:'.$subjectId))->toBe(0);
 });

@@ -114,13 +114,57 @@ class ProductionConfigDoctorCheck implements HealthCheck
         $mailer = $this->string('mail.default');
         $transport = $this->string("mail.mailers.{$mailer}.transport") ?? $mailer;
 
-        return in_array($transport, ['log', 'array'], true)
-            ? HealthResult::fail(
+        if (in_array($transport, ['log', 'array'], true)) {
+            return HealthResult::fail(
                 'Mail is not sent',
                 "MAIL_MAILER uses the `{$transport}` transport, so magic links, invitations, password resets and "
                 .'verification mail never leave the server. Configure a real mailer.',
-            )
-            : HealthResult::ok('Mail', "sent with `{$transport}`");
+            );
+        }
+
+        // A configured mailer is not a working one. Production named a Postal server whose
+        // DNS name had disappeared, this check said "sent with postal", and every link —
+        // confirmations, magic links, invitations — failed with a 500. The name, at least,
+        // has to resolve from here.
+        $host = is_string($transport) ? $this->mailHost($transport) : null;
+
+        if ($host !== null && ! $this->resolves($host)) {
+            return HealthResult::fail(
+                'Mail server unreachable',
+                "Mail goes through `{$transport}` at {$host}, but that name does not resolve from this server, so no "
+                .'magic link, invitation, password reset or confirmation can be sent. Fix the DNS record or the mailer '
+                .'settings (for Postal: POSTAL_URL), then run `php artisan postal:ping`.',
+            );
+        }
+
+        return HealthResult::ok('Mail', "sent with `{$transport}`".($host !== null ? " via {$host}" : ''));
+    }
+
+    /** The host the transport talks to, when this check can know it. */
+    private function mailHost(string $transport): ?string
+    {
+        $url = match ($transport) {
+            'postal' => $this->string('postal.servers.default.url'),
+            'smtp' => $this->string('mail.mailers.smtp.host'),
+            default => null,
+        };
+
+        if ($url === null) {
+            return null;
+        }
+
+        $host = str_contains($url, '://') ? parse_url($url, PHP_URL_HOST) : $url;
+
+        return is_string($host) && $host !== '' ? $host : null;
+    }
+
+    private function resolves(string $host): bool
+    {
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return true;
+        }
+
+        return gethostbyname($host) !== $host;
     }
 
     private function cache(): HealthResult

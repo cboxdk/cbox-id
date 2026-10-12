@@ -13,6 +13,7 @@ use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\ChangeOwnPasswordRequest;
 use App\Http\Requests\Account\SaveProfileRequest;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Social\OperatorProvider;
@@ -169,10 +170,12 @@ final readonly class AccountController extends PageController
 
     public function sendEmailConfirmation(): RedirectResponse
     {
-        $result = $this->act(SendEmailConfirmation::class, [], [], 'email');
-
-        if ($result instanceof RedirectResponse) {
-            return $result;
+        // The banner has no field to hang an error on: a refusal (too many links, or a mail
+        // server this deployment cannot reach) comes back as the page's error toast.
+        try {
+            $result = $this->runAction(SendEmailConfirmation::class, []);
+        } catch (ActionRefused $refused) {
+            return back()->with('error', $refused->getMessage());
         }
 
         $payload = $result->payload;
