@@ -115,6 +115,11 @@ it('opens a drawer that can actually reach the rest of the console', function ()
      * proof that this is the SHEET and not the page behind it — a nav label would not be,
      * since which pages a person's nav holds depends on their role.
      */
+    // The account is ONE row, folded: its actions appear only when the person asks for
+    // them, so the sheet's room goes to the navigation it was opened for.
+    $page->assertDontSee('Sign out');
+    $page->click('[aria-controls="mobile-account-actions"]');
+
     $page->assertSee('Sign out')
         ->assertSee('Toggle theme')
         // …and the navigation itself, grouped by AREA the way the rail is. A flat list of

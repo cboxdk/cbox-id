@@ -64,6 +64,7 @@ export function MobileNav({
     children,
 }: MobileNavProps) {
     const [open, setOpen] = useState(false);
+    const [accountOpen, setAccountOpen] = useState(false);
 
     return (
         <Primitive.Root open={open} onOpenChange={setOpen}>
@@ -153,76 +154,112 @@ export function MobileNav({
                         ))}
                     </nav>
 
+                    {/*
+                        THE ACCOUNT IS ONE ROW, NOT HALF THE SHEET. It used to be a pinned
+                        block of seven rows — name, address, My account, Switch user,
+                        Platform admin, Toggle theme, Sign out — that took the bottom half
+                        of a phone's sheet on every open and left the navigation, the reason
+                        the sheet was opened, a scrolling strip above it. Now: who you are
+                        on one line, and the account's actions folded behind it.
+                    */}
                     <div className="cbx-sheet-ft">
-                        {user !== null && (
-                            <div className="px-2 pb-1 min-w-0">
-                                <p className="text-[13px] font-medium truncate">{user.name}</p>
-                                {user.email !== null && (
-                                    <p
-                                        className="text-[11px] truncate"
-                                        style={{ color: 'var(--muted-foreground)' }}
-                                    >
-                                        {user.email}
-                                    </p>
+                        {accountOpen && (
+                            <div id="mobile-account-actions" className="flex flex-col gap-0.5 pb-1">
+                                {/*
+                                    Plain anchors throughout: on the environment console
+                                    every one of these is on the workspace's host, so it is
+                                    a page load rather than a visit.
+                                */}
+                                {workspaceSettingsUrl !== null && (
+                                    <a href={workspaceSettingsUrl} className="nav-link w-full">
+                                        <Icon
+                                            name="briefcase"
+                                            className="w-[1.15rem] h-[1.15rem]"
+                                        />
+                                        Workspace settings
+                                    </a>
                                 )}
+
+                                {/*
+                                    MY ACCOUNT only where the rail has no area for it — the
+                                    environment console, whose account pages are on the
+                                    workspace's host. Everywhere else it is a section above.
+                                */}
+                                {showAccountLink && accountUrl !== undefined && (
+                                    <a href={accountUrl} className="nav-link w-full">
+                                        <Icon name="user" className="w-[1.15rem] h-[1.15rem]" />
+                                        My account
+                                    </a>
+                                )}
+
+                                {switchUserUrl !== undefined && (
+                                    <a href={switchUserUrl} className="nav-link w-full">
+                                        <Icon name="switch" className="w-[1.15rem] h-[1.15rem]" />
+                                        Switch user
+                                    </a>
+                                )}
+
+                                {platformUrl !== null && (
+                                    <a href={platformUrl} className="nav-link w-full">
+                                        <Icon name="lock" className="w-[1.15rem] h-[1.15rem]" />
+                                        Platform admin
+                                    </a>
+                                )}
+
+                                <button
+                                    type="button"
+                                    className="nav-link w-full"
+                                    onClick={() => toggleTheme()}
+                                >
+                                    <Icon name="moon" className="w-[1.15rem] h-[1.15rem]" />
+                                    Toggle theme
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="nav-link w-full"
+                                    style={{ color: 'var(--destructive)' }}
+                                    onClick={() => router.post(logoutUrl)}
+                                >
+                                    <Icon name="logout" className="w-[1.15rem] h-[1.15rem]" />
+                                    Sign out
+                                </button>
                             </div>
                         )}
 
-                        {/*
-                            Plain anchors throughout: on the environment console every one
-                            of these is on the workspace's host, so it is a page load
-                            rather than a visit.
-                        */}
-                        {workspaceSettingsUrl !== null && (
-                            <a href={workspaceSettingsUrl} className="nav-link w-full">
-                                <Icon name="briefcase" className="w-[1.15rem] h-[1.15rem]" />
-                                Workspace settings
-                            </a>
-                        )}
-
-                        {/*
-                            MY ACCOUNT only where the rail has no area for it — the
-                            environment console, whose account pages are on the workspace's
-                            host. Everywhere else it is a section of the sheet above.
-                        */}
-                        {showAccountLink && accountUrl !== undefined && (
-                            <a href={accountUrl} className="nav-link w-full">
-                                <Icon name="user" className="w-[1.15rem] h-[1.15rem]" />
-                                My account
-                            </a>
-                        )}
-
-                        {switchUserUrl !== undefined && (
-                            <a href={switchUserUrl} className="nav-link w-full">
-                                <Icon name="switch" className="w-[1.15rem] h-[1.15rem]" />
-                                Switch user
-                            </a>
-                        )}
-
-                        {platformUrl !== null && (
-                            <a href={platformUrl} className="nav-link w-full">
-                                <Icon name="lock" className="w-[1.15rem] h-[1.15rem]" />
-                                Platform admin
-                            </a>
-                        )}
-
                         <button
                             type="button"
                             className="nav-link w-full"
-                            onClick={() => toggleTheme()}
+                            aria-expanded={accountOpen}
+                            aria-controls="mobile-account-actions"
+                            onClick={() => setAccountOpen((value) => !value)}
                         >
-                            <Icon name="moon" className="w-[1.15rem] h-[1.15rem]" />
-                            Toggle theme
-                        </button>
-
-                        <button
-                            type="button"
-                            className="nav-link w-full"
-                            style={{ color: 'var(--destructive)' }}
-                            onClick={() => router.post(logoutUrl)}
-                        >
-                            <Icon name="logout" className="w-[1.15rem] h-[1.15rem]" />
-                            Sign out
+                            <span className="cbx-mobilebar-initial shrink-0" aria-hidden="true">
+                                {(user?.name.trim().charAt(0).toUpperCase() ?? '') || 'C'}
+                            </span>
+                            <span className="min-w-0 flex-1 text-left">
+                                <span className="block text-[13px] font-medium truncate leading-tight">
+                                    {user?.name ?? 'Account'}
+                                </span>
+                                {user?.email != null && (
+                                    <span
+                                        className="block text-[11px] truncate leading-tight"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {user.email}
+                                    </span>
+                                )}
+                            </span>
+                            <Icon
+                                name="chevron"
+                                className={cn(
+                                    'w-4 h-4 shrink-0 transition-transform',
+                                    accountOpen ? '' : 'rotate-180',
+                                )}
+                            />
+                            <span className="sr-only">
+                                {accountOpen ? 'Hide account' : 'Show account'}
+                            </span>
                         </button>
                     </div>
                 </Primitive.Content>
