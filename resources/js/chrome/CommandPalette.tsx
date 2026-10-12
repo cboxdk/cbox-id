@@ -199,6 +199,24 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
         [areas],
     );
 
+    // Every environment the context switcher offers — the platform's own included, for an
+    // operator — as a destination: "Open Production", "Open Platform". A page load, like the
+    // switcher's own rows, because each one may be on another host.
+    const environments = useMemo(
+        () =>
+            (shell?.context?.projects ?? []).flatMap((project) =>
+                project.environments
+                    .filter((environment) => !environment.current)
+                    .map((environment) => ({
+                        key: `${project.id}-${environment.id}`,
+                        href: environment.href,
+                        label: environment.name,
+                        project: project.name,
+                    })),
+            ),
+        [shell],
+    );
+
     const typed = searchQuery(query);
     const searching = endpoint !== null && typed.length >= MIN_QUERY;
     // Only the answer to what is typed NOW — a slower, older answer is not shown under it.
@@ -325,6 +343,35 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                         </Command.Item>
                                     ))}
                                 </Command.Group>
+
+                                {environments.length > 0 && (
+                                    <Command.Group heading="Environments">
+                                        {environments.map((entry) => (
+                                            <Command.Item
+                                                key={entry.key}
+                                                value={`environment ${entry.project} ${entry.label}`}
+                                                keywords={[
+                                                    'environment',
+                                                    'console',
+                                                    'switch',
+                                                    'open',
+                                                ]}
+                                                className="cbx-menuitem"
+                                                onSelect={() => {
+                                                    setOpen(false);
+                                                    setQuery('');
+                                                    window.location.assign(entry.href);
+                                                }}
+                                            >
+                                                <Icon name="layers" className="w-4 h-4 shrink-0" />
+                                                <span className="min-w-0 flex-1">
+                                                    Open {entry.label}
+                                                </span>
+                                                <Hint>{entry.project}</Hint>
+                                            </Command.Item>
+                                        ))}
+                                    </Command.Group>
+                                )}
 
                                 {actions.length > 0 && (
                                     <Command.Group heading="Actions">

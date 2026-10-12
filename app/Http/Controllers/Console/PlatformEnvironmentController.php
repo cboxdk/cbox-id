@@ -15,6 +15,7 @@ use App\Platform\Console\EnvironmentLineage;
 use App\Platform\Console\EnvironmentLineages;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Help\HelpTopic;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 
 /**
@@ -115,6 +117,11 @@ final readonly class PlatformEnvironmentController extends ConsoleController
                         'users' => (int) ($userCounts[$environment->id] ?? 0),
                         'lineage' => $this->lineage($owner),
                         'provisionHref' => route('platform.environments.provision', $environment->id),
+                        // The platform root's own environment has a console now — its
+                        // operators', on this host — and this list is where they look for it.
+                        'consoleHref' => $owner->isPlatformRoot && app(PlaneResolver::class)->isMultiTenant() && Route::has('environment.home')
+                            ? route('environment.home')
+                            : null,
                     ];
                 })->all();
 

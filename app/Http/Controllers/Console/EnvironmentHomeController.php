@@ -32,11 +32,13 @@ final readonly class EnvironmentHomeController extends ConsoleController
 {
     public function index(EnvironmentChecklist $checklist): Response
     {
-        $membership = app(EnvironmentAdminAuth::class)->membership();
-        abort_if($membership === null, 403);
+        $admin = app(EnvironmentAdminAuth::class);
+        abort_unless($admin->check(), 403);
 
-        $subject = app(EnvironmentAdminAuth::class)->subjectId();
-        $progress = $checklist->toProps($membership->organization_id);
+        $subject = $admin->subjectId();
+        // The workspace whose membership opened this console; none on the platform root's,
+        // which its operators administer and no workspace owns.
+        $progress = $checklist->toProps($admin->workspaceId());
 
         return $this->page('environment/home', 'Overview', [
             /*

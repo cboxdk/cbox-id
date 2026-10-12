@@ -13,7 +13,7 @@ import { Toaster } from '@/chrome/Toaster';
 import { useDocumentLanguage } from '@/i18n';
 import { setNavPinned } from '@/lib/theme';
 import { OrganizationFrame } from '@/pages/environment/organizations/frame';
-import type { SharedProps } from '@/types';
+import type { SharedProps, ShellActsOn } from '@/types';
 import { Icon, PageApiEquivalents, TooltipProvider } from '@/ui';
 import { logout } from '@routes';
 import { exit as exitImpersonation } from '@routes/impersonation';
@@ -208,12 +208,14 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                                 accountHref={shell.accountHref}
                                 switchUserHref={shell.switchUserHref}
                                 platformHref={shell.platformMode ? null : shell.platformHref}
+                                platformEnvironmentHref={shell.platformEnvironmentHref}
                             />
                         </div>
                     </header>
 
                     <main id="main-content" className="flex-1 overflow-y-auto canvas-gradient">
                         <div className="p-6 lg:p-8 mx-auto w-full" style={{ maxWidth: '72rem' }}>
+                            {shell.actsOn !== null && <ActsOn actsOn={shell.actsOn} />}
                             {shell.notice !== null && (
                                 <div className="cbx-shell-notice" role="note">
                                     <Icon name="info" className="w-4 h-4 shrink-0" />
@@ -232,5 +234,54 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 </div>
             </div>
         </TooltipProvider>
+    );
+}
+
+const ACTS_ON_NOUN: Record<ShellActsOn['kind'], string> = {
+    environment: 'Environment',
+    workspace: 'Workspace',
+    organization: 'Organization',
+    platform: 'Platform admin',
+};
+
+const ACTS_ON_ICON = {
+    environment: 'layers',
+    workspace: 'briefcase',
+    organization: 'building',
+    platform: 'lock',
+} as const;
+
+/**
+ * WHAT THIS PAGE ACTS ON — `Environment: Production · Environment on acme.cboxid.com` — so
+ * nobody saves a setting believing it is somebody else's. On the platform's own environment
+ * it is a warning: that sign-in is every workspace owner's and every operator's.
+ */
+function ActsOn({ actsOn }: { actsOn: ShellActsOn }) {
+    const what = (
+        <span>
+            {ACTS_ON_NOUN[actsOn.kind]}: <span className="cbx-acts-on-what">{actsOn.label}</span>
+        </span>
+    );
+
+    // The platform's own environment: a heading and a sentence, read before anything is
+    // saved — not a breadcrumb-sized aside.
+    if (actsOn.critical) {
+        return (
+            <div className="cbx-acts-on" data-critical="true" role="note">
+                <Icon name="warning" className="w-4 h-4" />
+                <div className="min-w-0 flex-1">
+                    <p>{what}</p>
+                    {actsOn.detail !== null && <p>{actsOn.detail}</p>}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <p className="cbx-acts-on" data-critical="false">
+            <Icon name={ACTS_ON_ICON[actsOn.kind]} className="w-3.5 h-3.5" />
+            {what}
+            {actsOn.detail !== null && <span>· {actsOn.detail}</span>}
+        </p>
     );
 }

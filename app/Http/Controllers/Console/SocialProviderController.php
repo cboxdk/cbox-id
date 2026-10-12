@@ -17,7 +17,9 @@ use App\Http\Requests\Console\UpdateSocialProviderRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\PlaneResolver;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
@@ -152,7 +154,39 @@ final readonly class SocialProviderController extends ConsoleController
             'indexHref' => $this->url('social-providers', $environmentView || $this->organizationFilterProps($filter) === null ? null : ['organization' => $organizationId]),
             'storeHref' => $this->url('social-providers.store'),
             'help' => HelpProps::for(HelpTopic::SocialSignIn),
+            'audience' => $this->audience(),
         ]);
+    }
+
+    /**
+     * WHOSE SIGN-IN THESE BUTTONS ARE ON — said on the page, because the two answers are easy
+     * to mix up and a provider set up on the wrong one is invisible to the person who wanted
+     * it:
+     *
+     *  - on the PLATFORM ROOT's own environment console they are the buttons on the root's
+     *    `/login` — the sign-in every workspace owner and operator uses, and through it the
+     *    sign-in to every environment's console, whose administrators are root accounts;
+     *  - on a TENANT environment's console they are that environment's, for the people who
+     *    sign in to the vendor's apps — and NOT the console's own sign-in, which goes
+     *    through the root whatever the tenant offers.
+     *
+     * Null on an organization console, where the page already names its organization.
+     *
+     * @return array{kind: string, host: string, consoleHost: string|null}|null
+     */
+    private function audience(): ?array
+    {
+        if ($this->scope->plane() !== ConsolePlane::Environment) {
+            return null;
+        }
+
+        $planes = app(PlaneResolver::class);
+
+        return [
+            'kind' => app(EnvironmentAdminAuth::class)->onRootConsole() ? 'platform' : 'environment',
+            'host' => request()->getHost(),
+            'consoleHost' => $planes->isMultiTenant() ? $planes->consoleHost() : null,
+        ];
     }
 
     /**

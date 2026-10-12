@@ -15,10 +15,14 @@ use Illuminate\Routing\Route;
 |
 | The console's moved pages (`/admin/applications` → `/admin/apps`, `/clients` → `/apps`,
 | …) were registered with no gate of their own, so they answered on every host — while
-| the pages they point at do not. On cboxid.com, the platform root, there is no `/admin`
-| at all (it is the environment console, `plane:environment`), so 24 old addresses
-| answered `301 → /admin/… → 404` in production: a redirect whose only effect was to
-| move the 404 somewhere else.
+| the pages they point at do not. On cboxid.com, the platform root, there was no `/admin`
+| at all then, so 24 old addresses answered `301 → /admin/… → 404` in production: a
+| redirect whose only effect was to move the 404 somewhere else.
+|
+| There is an `/admin` on the root now — the root environment's own console, which its
+| operators administer — so there the old addresses redirect like anywhere else. Where
+| there is still no environment console (a name that merely resolves to the root, and a
+| single-tenant install) they 404 with it.
 |
 | An old address now carries the same EXISTENCE gates as the family it moved into, so it
 | answers on exactly the hosts its destination does, and 404s itself everywhere else.
@@ -105,6 +109,9 @@ it('lands every moved page on a page that exists, on the platform root', functio
 
     // The console's own old addresses still redirect on the root, where its pages are.
     $this->get('https://cboxid.com/clients')->assertStatus(301)->assertRedirect('/apps');
+
+    // …and so do the environment console's, now that the root environment has one.
+    $this->get('https://cboxid.com/admin/applications')->assertStatus(301)->assertRedirect('/admin/apps');
 });
 
 it('lands every moved page on a page that exists, on an environment\'s host', function (): void {
@@ -138,6 +145,17 @@ it('does not serve the environment console\'s old addresses where there is no en
     config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
     platformRootEnvironment();
 
-    $this->get('https://cboxid.com/admin/applications')->assertNotFound();
-    $this->get('https://cboxid.com/admin/applications/01JMOVEDPAGEPROBE0000000000')->assertNotFound();
+    // A name under the base domain that is no environment's resolves to the root's context
+    // — and is not the root's host, so it serves no environment console, old or new.
+    $this->get('https://nope.cboxid.com/admin/applications')->assertNotFound();
+    $this->get('https://nope.cboxid.com/admin/applications/01JMOVEDPAGEPROBE0000000000')->assertNotFound();
+    $this->get('https://nope.cboxid.com/admin/apps')->assertNotFound();
+});
+
+it('does not serve the environment console\'s old addresses on a single-tenant install', function (): void {
+    platformRootEnvironment();
+    $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    $this->get('https://'.$host.'/admin/applications')->assertNotFound();
+    $this->get('https://'.$host.'/admin/apps')->assertNotFound();
 });

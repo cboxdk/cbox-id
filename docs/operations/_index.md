@@ -17,6 +17,9 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
   rotation, health checks, audit/monitoring, upgrades, and the break-glass runbook.
 - [Queue workers](queue-workers.md) — running the queue manager on Kubernetes, a VM or a
   PaaS, the operator-only job monitor, and the health signal that says it is running.
+- [Administering the platform's own environment](platform-environment.md) — the root
+  environment's console at `/admin` on the root host, who administers it, the guards that
+  keep operators able to sign in, and `cbox-id:operator:grant`.
 - [Live smoke test](live-smoke-test.md) — a reproducible end-to-end run with the real
   clients (cbox CLI, an MCP client, both SDKs) against a live deployment.
 - [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your

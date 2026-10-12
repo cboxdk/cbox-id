@@ -10,6 +10,7 @@ use App\Http\Props\Shell\ContextProjectProps;
 use App\Http\Props\Shell\ShellContextProps;
 use App\Http\Props\Shell\SwitchOptionProps;
 use App\Platform\CurrentUser;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -47,6 +48,14 @@ use Illuminate\Support\Facades\Route;
  * are rows of the root environment, and that host's ambient scope is the tenant's — read
  * there, the person simply has no memberships. Same reason the handoff's redemption reads
  * them in the root.
+ *
+ * THE PLATFORM'S OWN ENVIRONMENT, FOR THOSE WHO RUN IT. A platform operator also sees the
+ * root environment — how every workspace owner and every operator signs in to Cbox ID — as
+ * one more environment they administer, under a "Platform" project, on every console they
+ * stand in: the workspace console at the root, platform admin, a tenant's environment
+ * console, and the root's own (where it is the current one). Nobody else ever does; the
+ * same question the root's console asks at its door ({@see EnvironmentAdminAuth::rootOperator()})
+ * is asked here, so the menu never offers it to somebody it would refuse.
  *
  * COST. This runs on every console page. A single-workspace person on the organization
  * console costs one membership read (already paid by the shell before this existed); a
@@ -98,6 +107,11 @@ final readonly class ShellContext
             );
         }
 
+        // The platform's own environment, for an operator at the root.
+        if ($this->planes->onAccountPlane() && $this->scope->isPlatformOperator()) {
+            $projects[] = $this->platformProject(current: false, to: $this->landingPath($activeRoute, onEnvironmentPlane: false));
+        }
+
         return new ShellContextProps(
             noun: $workspace ? 'Workspace' : 'Organization',
             workspaces: $this->workspaceOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
@@ -114,10 +128,12 @@ final readonly class ShellContext
      * because that is where the person's session is — this host holds an environment
      * binding and nothing else — and that door is what checks access and mints the token.
      */
-    public function forEnvironmentPlane(Membership $membership, ?string $activeRoute): ShellContextProps
+    public function forEnvironmentPlane(?Membership $membership, string $subjectId, ?string $activeRoute): ShellContextProps
     {
-        $subjectId = $membership->user_id;
-        $workspaceId = $membership->organization_id;
+        // The workspace whose membership opened this console — none on the platform root's,
+        // which its operators administer and no workspace owns.
+        $workspaceId = $membership?->organization_id;
+        $onRoot = $membership === null;
         $currentEnvironmentId = $this->environments->current()?->environmentKey();
         $to = $this->landingPath($activeRoute, onEnvironmentPlane: true);
 
@@ -127,26 +143,77 @@ final readonly class ShellContext
             $memberships,
             $workspaceId,
             fallbackName: null,
-            // Choosing a workspace is a POST to the workspace host, with a session this host
-            // does not have — so every row links to that console, where the switch is one
-            // click.
             openHref: $this->onWorkspaceHost('projects'),
         )) ?? [];
 
-        $projects = $this->root->run(fn (): array => $this->projectsOf(
-            organizationId: $workspaceId,
+        $projects = $membership === null ? [] : $this->root->run(fn (): array => $this->projectsOf(
+            organizationId: $membership->organization_id,
             subjectId: $subjectId,
             capabilities: OrganizationCapabilities::of($membership->role),
             currentEnvironmentId: $currentEnvironmentId,
             href: fn (string $id): string => $this->withTarget($this->onWorkspaceHost('environment.open', ['environment' => $id]), $to),
         )) ?? [];
 
+        if ($onRoot || $this->isOperator($subjectId)) {
+            $projects[] = $this->platformProject(current: $onRoot, to: $to);
+        }
+
+        if ($onRoot) {
+            // The first crumb names what this console belongs to: the platform, which the
+            // operator runs — with their own workspaces one click away beside it.
+            array_unshift($workspaces, new SwitchOptionProps(
+                id: 'platform',
+                label: 'Platform admin',
+                caption: 'Operator',
+                current: true,
+                openHref: Route::has('platform.workspaces') ? $this->onWorkspaceHost('platform.workspaces') : null,
+            ));
+        }
+
         return new ShellContextProps(
-            noun: 'Workspace',
+            noun: $onRoot ? 'Platform' : 'Workspace',
             workspaces: $workspaces,
             switchUrl: null,
             projects: $projects,
         );
+    }
+
+    /**
+     * The PLATFORM ROOT's environment as a row of the switcher — under a "Platform" project
+     * of its own, opening its console on the root's host at the same page where there is one.
+     *
+     * No handoff: that console is on the host the operator signed in to, and an operator
+     * standing on a tenant's console is sent straight there, where their root session is.
+     */
+    private function platformProject(bool $current, ?string $to): ContextProjectProps
+    {
+        $environment = $this->root->model();
+        $href = $this->onWorkspaceHost('environment.home');
+
+        if ($to !== null && $to !== '/admin') {
+            $host = $this->planes->consoleHost();
+            $href = $host === null ? url($to) : 'https://'.$host.$to;
+        }
+
+        return new ContextProjectProps(
+            id: 'platform',
+            // The product's own name: the platform's environment is Cbox ID's sign-in.
+            name: is_string($product = config('app.name')) && $product !== '' ? $product : 'Cbox ID',
+            current: $current,
+            environments: [new ContextEnvironmentProps(
+                id: is_string($id = $environment?->getKey()) ? $id : 'platform',
+                name: is_string($name = $environment?->name) && $name !== '' ? $name : 'Platform',
+                type: $environment?->type->value ?? 'production',
+                current: $current,
+                href: $href,
+            )],
+        );
+    }
+
+    /** Whether a platform-root subject runs this deployment — asked once per request ({@see ConsoleScope::subjectIsOperator()}). */
+    private function isOperator(string $subjectId): bool
+    {
+        return $this->scope->subjectIsOperator($subjectId);
     }
 
     /**

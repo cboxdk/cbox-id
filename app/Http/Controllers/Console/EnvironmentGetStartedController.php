@@ -160,8 +160,6 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
 
     private function workspaceId(): ?string
     {
-        $organizationId = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
-
-        return is_string($organizationId) && $organizationId !== '' ? $organizationId : null;
+        return app(EnvironmentAdminAuth::class)->workspaceId();
     }
 }

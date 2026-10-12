@@ -38,6 +38,8 @@ interface EnvironmentRow {
     users: number;
     lineage: Lineage;
     provisionHref: string;
+    /** The platform root's own environment console, on this host; null for every other row. */
+    consoleHref: string | null;
 }
 
 type Props = PageProps<{
@@ -354,6 +356,15 @@ function EnvironmentRows({
                 <Td className="text-right tabular-nums">{environment.users}</Td>
 
                 <Td className="text-right whitespace-nowrap">
+                    {environment.consoleHref !== null && (
+                        <a
+                            href={environment.consoleHref}
+                            className="text-sm font-medium hover:underline mr-3"
+                            aria-label={`Open the console of ${environment.name}, the platform's own environment`}
+                        >
+                            Open console
+                        </a>
+                    )}
                     <Button
                         size="sm"
                         onClick={onProvision}

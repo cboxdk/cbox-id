@@ -324,8 +324,13 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // organizations — somebody else's customer — and a key minted here is still the
         // workspace's act. So it is recorded where the workspace console records it: under
         // the workspace whose membership opened this console.
+        //
+        // The platform root's environment belongs to no workspace: its operators' acts are
+        // recorded on the environment's own trail by the action, and the environment is the
+        // scope they are recorded under.
         if ($this->onEnvironmentPlane()) {
-            $organizationId = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
+            $auth = app(EnvironmentAdminAuth::class);
+            $organizationId = $auth->workspaceId() ?? ($auth->admitsRootOperator() ? $auth->environmentId() : null);
 
             abort_unless(is_string($organizationId) && $organizationId !== '', 403);
 

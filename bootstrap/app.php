@@ -10,6 +10,7 @@ use App\Http\Middleware\AuthenticateWorkspaceApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforcePlane;
+use App\Http\Middleware\EnforceRootHostConsole;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
@@ -319,6 +320,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // What a customer's own organization console offers, on a customer's
             // environment host — the rest is the environment console's (see the class).
             'console.customer' => EnforceCustomerConsole::class,
+            'console.root' => EnforceRootHostConsole::class,
             // The hosted surfaces' language. Named so the route file can say which groups
             // are hosted — and the console groups, by not saying it, stay English.
             'locale' => ResolveLocale::class,

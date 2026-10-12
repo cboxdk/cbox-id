@@ -15,6 +15,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\RootSignInGuard;
 use App\Platform\SignInAudit;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
@@ -50,6 +51,7 @@ final readonly class RequireSso implements Action
     public function __construct(
         private AuthPolicies $policies,
         private SignInAudit $audit,
+        private RootSignInGuard $guard,
     ) {}
 
     public static function input(): InputSchema
@@ -80,6 +82,14 @@ final readonly class RequireSso implements Action
             sso: SsoEnforcement::Required,
             lockoutThreshold: $current->lockoutThreshold,
         );
+
+        // Required SSO refuses every other way in, so on the platform root's own environment
+        // an organization an operator belongs to may only require it while a working
+        // connection is there to sign in with ({@see RootSignInGuard}).
+        $this->guard->assertOperatorsKeepAWayIn([
+            'organization_sso' => [$organizationId => SsoEnforcement::Required],
+            'connections_gone' => $connection->isActive() ? [] : [(string) $connection->id],
+        ]);
 
         $this->policies->setForOrganization($organizationId, $policy);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Console\EnvironmentRefusedController;
 use App\Http\Middleware\SecurityHeaders;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\HandoffTarget;
@@ -12,9 +13,10 @@ use App\Platform\PlaneResolver;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class EnvironmentHandoffController extends Controller
 {
@@ -50,11 +52,19 @@ final class EnvironmentHandoffController extends Controller
         CspNonce $nonce,
         PlaneResolver $planes,
         HandoffTarget $targets,
-    ): RedirectResponse|Response {
-        $organizationId = $scope->organizationId();
+    ): SymfonyResponse {
+        // A person of the root with no organization at all — they signed in with Google and
+        // were never invited anywhere — is asked the same question below and refused the
+        // same way, rather than meeting the scope's own refusal as an error page.
+        try {
+            $organizationId = $scope->organizationId();
+        } catch (AuthorizationException) {
+            $organizationId = null;
+        }
+
         $subjectId = $scope->actorId();
 
-        if ($organizationId === null || $subjectId === '') {
+        if ($subjectId === '') {
             return redirect()->route('login');
         }
 
@@ -62,11 +72,17 @@ final class EnvironmentHandoffController extends Controller
         // environments. A viewer can reach an environment but must not be handed a live
         // env-admin token for it (the anti-escalation gate; the env-admin session guard
         // re-checks the same capability on redemption).
-        abort_unless(
-            $scope->capabilities()?->canManageEnvironments() === true
-            && in_array($environment, $members->accessibleEnvironmentIds($organizationId, $subjectId), true),
-            403,
-        );
+        //
+        // SAID, NOT A BLANK 403. This door is where somebody who opened an environment's
+        // console signed out lands after signing in at the root — with Google, a passkey,
+        // whatever the root offers — and a person who signed in fine but administers
+        // nothing there was shown an error page with no words on it. They are told whose
+        // console it is, that their sign-in worked, and where they can go instead.
+        if ($organizationId === null
+            || $scope->capabilities()?->canManageEnvironments() !== true
+            || ! in_array($environment, $members->accessibleEnvironmentIds($organizationId, $subjectId), true)) {
+            return app(EnvironmentRefusedController::class)->show($request, $environment);
+        }
 
         // The "member with no platform-root subject" branch that used to sit here is gone
         // with the row that made it possible. A member IS a subject: the actor id above is

@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Console\HandoffTarget;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlaneResolver;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -37,6 +42,22 @@ use Symfony\Component\HttpFoundation\Response;
  * two places that name it — the first-run screen refuses to install into it, and
  * `cbox-id:doctor` reports it — so a third answer that quietly opens a credential form
  * instead was the wrong one. The form is gone; this refuses out loud.
+ *
+ * THE PAGE THEY ASKED FOR SURVIVES THE TRIP. The bounce to the root carries the path that
+ * was requested (`/open/{environment}?to=/admin/users`), validated as an environment-console
+ * GET route here and again, signed, on redemption ({@see HandoffTarget}). So somebody who
+ * opens `acme.cboxid.com/admin/users` signed out signs in at the root — with whichever of
+ * the root's own sign-in methods they use: password, passkey, magic link, SSO, or the root
+ * environment's social providers — and lands on Users, not on the console's front page.
+ *
+ * THE PLATFORM ROOT'S OWN CONSOLE is the one place this door does not bounce. There the
+ * root environment is administered by the deployment's platform operators
+ * ({@see EnvironmentAdminAuth::rootOperator()}), who are signed in on this very host: a
+ * person with no session is sent to the root's sign-in page and brought back to the page
+ * they asked for; a person who is signed in but runs nothing here is answered 404, as the
+ * platform pages answer them; and an operator held by their organization's rules (a second
+ * factor to enrol, a password to change, a linked identity to confirm) is sent to the
+ * console that holds them, rather than walking around the hold through a second door.
  */
 final class AuthenticateEnvironmentAdmin
 {
@@ -44,6 +65,11 @@ final class AuthenticateEnvironmentAdmin
         private readonly EnvironmentAdminAuth $auth,
         private readonly EnvironmentContext $environments,
         private readonly PlaneResolver $planes,
+        private readonly HandoffTarget $targets,
+        private readonly MfaMandate $mfaMandate,
+        private readonly AdminPasswords $adminPasswords,
+        private readonly PasswordExpiry $passwordExpiry,
+        private readonly PlatformAuth $platformAuth,
     ) {}
 
     /**
@@ -51,6 +77,10 @@ final class AuthenticateEnvironmentAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if ($this->planes->onRootEnvironmentConsole($request->getHost())) {
+            return $this->rootConsole($request, $next);
+        }
+
         if ($this->auth->membership() !== null) {
             return $next($request);
         }
@@ -59,10 +89,14 @@ final class AuthenticateEnvironmentAdmin
         $environment = $this->environments->current();
 
         if ($root !== null && $environment !== null) {
-            // Pull flow: authenticate at the root, then handoff back to this env.
-            return redirect()->away(
-                'https://'.$root.route('environment.open', $environment->environmentKey(), false)
-            );
+            // Pull flow: authenticate at the root, then handoff back to this env — to the
+            // page that was asked for, when it is one this console serves.
+            $open = 'https://'.$root.route('environment.open', $environment->environmentKey(), false);
+            $to = $request->isMethod('GET') ? $this->targets->sanitize('/'.ltrim($request->path(), '/')) : null;
+
+            return redirect()->away($to === null || $to === '/admin'
+                ? $open
+                : $open.'?'.http_build_query(['to' => $to], '', '&', PHP_QUERY_RFC3986));
         }
 
         // Nowhere to send them. Behind `plane:environment` + `multi.tenant` the environment
@@ -79,6 +113,52 @@ final class AuthenticateEnvironmentAdmin
         // {@see \App\Platform\Health\TenancyHealthCheck} reports it — so it exists for the
         // one way in that is left: configuration changed after a good install.
         abort(503, 'This deployment is configured as multi-tenant but names no account host, so there is no console to sign in at. Set CBOX_ID_CONSOLE_HOST.');
+    }
+
+    /**
+     * The platform root's environment console: its operators, signed in on this host.
+     *
+     * @param  Closure(Request): Response  $next
+     */
+    private function rootConsole(Request $request, Closure $next): Response
+    {
+        $this->auth->enterRootConsole();
+
+        $operator = $this->auth->rootOperator();
+
+        if ($operator !== null) {
+            $subjectId = (string) $operator->subject_id;
+
+            // The holds the console's own sign-in gate applies ({@see Authenticate}), so the
+            // environment console is not a way round them. The console that applies them is
+            // one click away, on this same host.
+            if ($this->held($subjectId)) {
+                return redirect()->route('dashboard');
+            }
+
+            return $next($request);
+        }
+
+        // Signed in, and runs nothing here: the same answer the platform pages give, and for
+        // the same reason — a 403 would confirm to every account holder that this host has
+        // an environment console behind which the deployment's own sign-in is configured.
+        abort_if($this->auth->signedInRootSubject() !== null, 404);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Your session has expired.', 'redirect' => route('login')], 401);
+        }
+
+        // Signed out: the root's own sign-in page, and back here afterwards.
+        return redirect()->guest(route('login'));
+    }
+
+    /** Whether the console's sign-in gate would hold this person on its own pages first. */
+    private function held(string $subjectId): bool
+    {
+        return $this->adminPasswords->requiresChange($subjectId)
+            || $this->passwordExpiry->hasExpired($subjectId)
+            || $this->platformAuth->pendingLink($subjectId) !== null
+            || $this->mfaMandate->requiresEnrolment($subjectId);
     }
 
     /**
