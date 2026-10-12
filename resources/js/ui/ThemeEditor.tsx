@@ -19,7 +19,7 @@ import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 
 export interface ThemeEditorProps {
-    /** The theme as stored. The editor works on a copy until Save. */
+    /** The theme as stored. The editor works on a copy, reported through `onChange`. */
     value: Theme;
     presets: ThemeCatalogue;
     fonts: FontStacks;
@@ -29,7 +29,6 @@ export interface ThemeEditorProps {
     description?: React.ReactNode;
     /** Which thing is being themed, for the sentence under the preview. */
     scope?: 'environment' | 'organization';
-    saving?: boolean;
     /** The server's refusal, if the last save was rejected for contrast. */
     error?: string | null;
     /** The server's refusal of an image, per image. */
@@ -44,10 +43,16 @@ export interface ThemeEditorProps {
     /** Whether this install can store images at all (the white-label module). */
     imagesAccepted?: boolean;
     /**
-     * `images` holds only what CHANGED: a data URI to store, null to remove. An image the
-     * administrator did not touch is absent, so saving the colours never re-uploads it.
+     * Every edit, as it happens: the draft theme and the images that CHANGED — a data URI
+     * to store, null to remove. An image the administrator did not touch is absent, so
+     * saving the colours never re-uploads it.
+     *
+     * The editor has no Save of its own. It had one, in the page header, while the name &
+     * email panel below it had another — and a logo chosen here was discarded by whoever
+     * pressed the one nearer to them. The page that holds the editor saves everything on
+     * it at once, from a bar that appears where the change was made.
      */
-    onSave: (theme: Theme, images: ImageChanges) => void;
+    onChange: (theme: Theme, images: ImageChanges) => void;
 }
 
 export type ImageKind = 'logo' | 'favicon';
@@ -93,16 +98,20 @@ export function ThemeEditor({
     title,
     description,
     scope,
-    saving = false,
     error = null,
     imageErrors = NO_IMAGE_ERRORS,
     fontLabels = NO_FONT_LABELS,
     remoteLogoIgnored = false,
     imagesAccepted = true,
-    onSave,
+    onChange,
 }: ThemeEditorProps) {
     const [draft, setDraft] = useState<Theme>(value);
     const [images, setImages] = useState<ImageChanges>({});
+
+    // Reported after every edit — and once on mount, so the page's idea of the draft is
+    // the editor's own from the first frame (after a Discard, too). `onChange` is expected
+    // to be stable; a new one every render only reports the same draft again.
+    useEffect(() => onChange(draft, images), [draft, images, onChange]);
 
     const pickImage = useCallback((kind: ImageKind, next: string | null) => {
         setImages((current) => ({ ...current, [kind]: next }));
@@ -185,22 +194,7 @@ export function ThemeEditor({
 
     return (
         <div>
-            <PageHeader
-                title={title}
-                help={help}
-                description={description}
-                actions={
-                    <Button
-                        variant="primary"
-                        className="shrink-0"
-                        icon="check"
-                        loading={saving}
-                        onClick={() => onSave(draft, images)}
-                    >
-                        Save changes
-                    </Button>
-                }
-            />
+            <PageHeader title={title} help={help} description={description} />
 
             {/*
                 The server's refusal, shown where the person who caused it is looking.

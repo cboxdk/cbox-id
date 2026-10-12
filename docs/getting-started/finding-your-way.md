@@ -242,4 +242,6 @@ codes on **Authentication policy**, and the environment's providers on **Social 
 
 **Branding**. Choose a preset, set the colours, corners and typeface, upload the logo and
 favicon, and check the live preview; the product name and email sender are further down the
-same page. To give one organization its own look, open its page, then its **Branding** tab.
+same page. The page has one Save: a bar appears at the bottom of the screen with your first
+change and saves everything on the page at once, and leaving with changes unsaved asks
+first. To give one organization its own look, open its page, then its **Branding** tab.

@@ -612,16 +612,19 @@ function enableSocialProvider(array $changes = []): TestResponse
  */
 function saveBranding(array $changes = [], bool $environmentPlane = false): TestResponse
 {
-    // The white-label half of the ONE Branding page — its own form, its own action.
+    // The white-label half of the ONE Branding page, through the page's one Save — the way
+    // the page sends it when only the name & email changed.
     $name = $environmentPlane ? 'environment.branding' : 'branding';
 
     return test()->from(route($name))
-        ->post(route($name.'.profile.update'), [
-            'palette' => [],
-            'appName' => 'Acme Identity',
-            'emailFromName' => '',
-            'emailTemplate' => '',
-            ...$changes,
+        ->post(route($name.'.update'), [
+            'profile' => [
+                'palette' => [],
+                'appName' => 'Acme Identity',
+                'emailFromName' => '',
+                'emailTemplate' => '',
+                ...$changes,
+            ],
         ]);
 }
 

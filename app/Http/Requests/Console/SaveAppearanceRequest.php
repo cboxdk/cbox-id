@@ -8,7 +8,13 @@ use App\Platform\Appearance\BrandImageUpload;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * A hosted-sign-in theme, submitted by the editor.
+ * The Branding page's ONE save: the hosted-sign-in theme and its images, and the
+ * white-label name, sender, welcome mail and console palette beside them.
+ *
+ * Either half may be absent — the page sends only what changed — but not both. They were
+ * two forms with two Save buttons, and an administrator who uploaded a logo and pressed the
+ * Save nearest to them (the name & email one) saw "Branding saved." while the logo was
+ * thrown away.
  *
  * The SHAPE is validated here and the VALUES are not, because `Appearance::fromArray()`
  * already sanitizes every one of them on the way in — a colour that is not a six-digit hex
@@ -48,14 +54,28 @@ final class SaveAppearanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'theme' => ['required', 'array'],
-            'theme.light' => ['required', 'array'],
-            'theme.dark' => ['required', 'array'],
+            // The theme travels with any image change: the action that stores the images is
+            // the theme's own.
+            'theme' => ['required_without:profile', 'required_with:images', 'array'],
+            'theme.light' => ['required_with:theme', 'array'],
+            'theme.dark' => ['required_with:theme', 'array'],
             'images' => ['sometimes', 'array:logo,favicon'],
             'images.logo' => ['sometimes', 'nullable', 'string', 'max:1400100'],
             'images.favicon' => ['sometimes', 'nullable', 'string', 'max:349700'],
             'environmentDefault' => ['boolean'],
+            'profile' => ['sometimes', 'array'],
+            'profile.palette' => ['sometimes', 'array'],
+            'profile.palette.*' => ['nullable', 'string', 'max:100'],
+            'profile.appName' => ['nullable', 'string', 'max:120'],
+            'profile.emailFromName' => ['nullable', 'string', 'max:120'],
+            'profile.emailTemplate' => ['nullable', 'string', 'max:5000'],
         ];
+    }
+
+    /** Whether the theme half was sent — the page leaves it out when only the name changed. */
+    public function savesTheme(): bool
+    {
+        return $this->has('theme');
     }
 
     /**
@@ -65,6 +85,37 @@ final class SaveAppearanceRequest extends FormRequest
     {
         /** @var array<string, mixed> */
         return (array) $this->input('theme', []);
+    }
+
+    /**
+     * The white-label half, as `branding.whitelabel.set` takes it, or null when it was not
+     * sent. Blank names are null — "not set" — and the palette keeps only string tokens.
+     *
+     * @return array{palette: array<string, string>, app_name: ?string, email_from_name: ?string, email_template: string}|null
+     */
+    public function profile(): ?array
+    {
+        if (! $this->has('profile')) {
+            return null;
+        }
+
+        $palette = [];
+
+        foreach ((array) $this->input('profile.palette', []) as $token => $value) {
+            if (is_string($token)) {
+                $palette[$token] = is_string($value) ? trim($value) : '';
+            }
+        }
+
+        $blank = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
+        $template = $this->input('profile.emailTemplate');
+
+        return [
+            'palette' => $palette,
+            'app_name' => $blank($this->input('profile.appName')),
+            'email_from_name' => $blank($this->input('profile.emailFromName')),
+            'email_template' => is_string($template) ? $template : '',
+        ];
     }
 
     /**
