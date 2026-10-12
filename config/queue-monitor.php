@@ -48,7 +48,7 @@ use Cbox\LaravelQueueMonitor\Services\WorkerContextService;
 |    in whatever job somebody adds next, tokens and email addresses. Off, and
 |    enforced beyond this file — see App\Providers\QueueServiceProvider.
 |  - Its dashboard would answer at /queue-monitor on EVERY host, customer domains
-|    included, behind nothing but an APP_ENV check. It lives under /platform/queues
+|    included, behind nothing but an APP_ENV check. It lives under /admin/platform/queues
 |    here, for platform operators, on the platform root's host only.
 |  - Its REST API would be a second, token-less door. Off; and if it is ever turned
 |    on, it sits behind the same operator session as the dashboard.
@@ -278,7 +278,7 @@ return [
         // dashboard — the operator's browser session, on the platform root's host — never
         // the package's bare `api` group, which authenticates nobody.
         'enabled' => (bool) env('QUEUE_MONITOR_API_ENABLED', false),
-        'prefix' => 'platform/queues/api',
+        'prefix' => 'admin/platform/queues/api',
         'middleware' => ['web', 'plane:operator', 'platform.auth:optional', AuthenticateOperator::class],
         'rate_limit' => '60,1', // 60 requests per minute
         'default_limit' => env('QUEUE_MONITOR_API_DEFAULT_LIMIT', 50),
@@ -315,7 +315,7 @@ return [
         'enabled' => env('QUEUE_MONITOR_UI_ENABLED', true),
         // ONE URL, beneath the Platform section it is linked from. The package default
         // (`/queue-monitor`) is not registered at all.
-        'route_prefix' => 'platform/queues/monitor',
+        'route_prefix' => 'admin/platform/queues/monitor',
         // The same locks as every Platform page, plus the host bulkhead those pages do not
         // need and this one does (see App\Platform\Queues\QueueMonitorAccess), plus the
         // one CSP exception the dashboard's Alpine build requires — confined to these

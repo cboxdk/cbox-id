@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Props\Shell\ShellActsOnProps;
 use App\Platform\ApiKeys\ApiKeyPresence;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ShellPayload;
 use App\Platform\Console\Vocabulary;
 use App\Platform\ConsoleCurrentContext;
 use App\Platform\CurrentUser;
@@ -34,7 +36,7 @@ use Illuminate\Support\ServiceProvider;
  * is rebuilt. The console shipped two such ties (Logs/Security at 60, Settings/
  * Connectors at 70). Reserved: 10 Overview · 15 Workspace · 20 People · 30
  * Sign-in · 40 Access control · 50 Developers · 60 Connectors · 70 Audit log · 80 Settings ·
- * 90 My account · 100 Platform · 110 Insights · 120 Administration.
+ * 90 My account · 100 Platform.
  */
 final class ConsoleServiceProvider extends ServiceProvider
 {
@@ -230,66 +232,55 @@ final class ConsoleServiceProvider extends ServiceProvider
     }
 
     /**
-     * THE PLATFORM SECTION — whoever runs this deployment, standing above every customer.
+     * PLATFORM ADMIN — whoever runs this deployment, standing above every customer.
      *
-     * These pages had a console of their own: their own prefix, their own layout
-     * (`layouts/platform`), their own navigation tree, built by hand in
-     * `ConsoleNavigation::operator()`. Signing in at the root host and clicking through to
-     * `/platform` read as arriving somewhere else — a second product — when it is the same
-     * person, the same session, and the same rail with three more areas on it.
+     * ONE AREA, `Platform`, in the console an operator administers from. These pages have
+     * been three things in turn: a console of their own (own prefix, own layout, own
+     * navigation tree); three areas at the bottom of every operator's rail; and a "mode"
+     * of the organization console with a rail, an amber strip and a way out of its own. In
+     * the last shape an operator on the root host had two consoles — `/admin` for the
+     * platform's own environment, `/platform` for the deployment — and the account menu as
+     * the door between them.
      *
-     * So they are areas here, seeded into the same registry as everything above, and the
-     * one console renders them exactly the way it renders Billing or Webhooks. What made
-     * that possible is that the operator is a SUBJECT: `platform_operators` used to be a
-     * second credential store, and with no way to ask "is this session staff" the only way
-     * to gate these pages was to put a different door — and therefore a different shell —
-     * in front of them. The question has an answer now, so the gate is a feature like any
-     * other and the shell is the shell everybody else gets.
+     * Now they are one area of `/admin` ({@see ShellPayload}), drawn
+     * by the same shell as every other page there. What the strip said — that a click here
+     * acts on the whole install — is the line above every page instead
+     * ({@see ShellActsOnProps}), which every console page carries.
      *
-     * ORDERED LAST, BELOW `My account`, because that is what they are: extra items for the
-     * few people who administer the install, appended to the console every customer sees.
+     * ONE AREA RATHER THAN THREE, because they now share a rail with the environment
+     * console's ten: "Insights" and "Administration" beside "Monitoring" and "Advanced"
+     * were four words for two ideas, and fourteen icons is a rail nobody reads. Inside it,
+     * root first, then leaf: workspace → environment → the organizations in one, then the
+     * people who run it all, then how it is doing.
      *
-     * ROOT FIRST, THEN LEAF, inside the Platform area. The hierarchy is customer → project
-     * → environment, and this list used to read the other way (Environments, Customers,
-     * Organizations — the leaf, then the root, then a tenant inside the leaf). An operator
-     * was handed six planes called `production`, `staging`, `acme`, `acme-staging`,
-     * `billing-portal` and `demo-co` with no way to tell that `billing-portal` is Acme's.
+     * Registered here, in the organization console's registry, because a single-tenant
+     * install has no environment console: there the area is drawn in the organization
+     * console's rail, after My account, for the operators of the install.
      */
     private function platformAreas(NavRegistry $nav): void
     {
-        // ICONS DISTINCT AT 18px, which is the only size the collapsed rail draws them at
-        // — and the reason `rocket` rather than the `layers` this area carried in its own
-        // shell. It never shared a rail with `identity-platform` before, and that area is
-        // `layers` too: side by side they are one glyph appearing twice in a control whose
-        // whole job is to be told apart at a glance. Insights takes `chart` and
-        // Administration `lock`, both unused by the areas above.
+        // ICONS DISTINCT AT 18px, which is the only size the collapsed rail draws them at —
+        // `rocket` is used by no other area on either rail.
         // WORKSPACES, not "Customers": the word the workspace's own console uses for itself,
         // so an operator and the person on the phone to them say the same word.
-        $nav->area('platform', 'Platform', 'rocket', 100)
-            ->page('platform.workspaces', 'Workspaces', feature: 'platform.operator', order: 10)
-            ->page('platform.environments', 'Environments', feature: 'platform.operator', order: 20)
-            ->page('platform.organizations', Vocabulary::ORGANIZATIONS, feature: 'platform.operator', order: 30);
-
-        $nav->area('platform-insights', 'Insights', 'chart', 110)
-            ->page('platform.usage', 'Usage', feature: 'platform.operator', order: 10)
-            ->page('platform.search', 'Search', feature: 'platform.operator', order: 20)
+        $nav->area('platform', Vocabulary::PLATFORM, 'rocket', 100)
+            ->page('platform.workspaces', Vocabulary::WORKSPACES, feature: 'platform.operator', order: 10)
+            ->page('platform.environments', Vocabulary::ENVIRONMENTS, feature: 'platform.operator', order: 20)
+            ->page('platform.organizations', Vocabulary::ORGANIZATION_TREE, feature: 'platform.operator', order: 30)
+            // "Security" is gone, and its absence is the fix. It enrolled a SEPARATE operator
+            // TOTP factor that nothing ever verified: the operator sign-in door was retired
+            // when operators became ordinary subjects, so `OperatorMfa` had no reader left.
+            // An operator scanned a QR code, saw "enabled", pocketed recovery codes, and was
+            // protected by nothing, on the most privileged account on the deployment. The
+            // real factor is the subject's own, on `/account`, which `PlatformAuth` actually
+            // checks at sign-in. One person, one identity, one second factor.
+            ->page('platform.operators', Vocabulary::OPERATORS, feature: 'platform.operator', order: 40)
+            ->page('platform.usage', 'Usage', feature: 'platform.operator', order: 50)
             // Whether the background work — webhooks, sign-out notices, queued mail — is
             // being done. An install with no queue worker looks healthy everywhere else.
-            ->page('platform.queues', 'Queues', feature: 'platform.operator', order: 30);
-
-        // "Security" is gone, and its absence is the fix. It enrolled a SEPARATE operator
-        // TOTP factor that nothing ever verified: the operator sign-in door was retired
-        // when operators became ordinary subjects, so `OperatorMfa` had no reader left
-        // anywhere in the app or the framework — grep it and only the enrolment screen and
-        // its own implementation come back. An operator scanned a QR code, saw "enabled",
-        // pocketed recovery codes, and was protected by nothing, on the most privileged
-        // account on the deployment. The page even said so in its subtitle: "the second
-        // factor that protects everything on the Platform rail."
-        //
-        // The real factor is the subject's own, on `/account`, which `PlatformAuth`
-        // actually checks at sign-in. One person, one identity, one second factor.
-        $nav->area('platform-admin', 'Administration', 'lock', 120)
-            ->page('platform.operators', Vocabulary::OPERATORS, feature: 'platform.operator', order: 10);
+            ->page('platform.queues', 'Queues', feature: 'platform.operator', order: 60)
+            // Every environment at once — ⌘K searches the one this console stands in.
+            ->page('platform.search', 'Search', feature: 'platform.operator', order: 70);
     }
 
     /**

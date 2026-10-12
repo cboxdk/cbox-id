@@ -124,9 +124,10 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
 
     $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
 
-    expect($html)->not->toContain('/platform/');
+    expect($html)->not->toContain('/admin/platform');
 
-    $this->get('/platform')->assertNotFound();
+    $this->get('/admin/platform')->assertNotFound();
+    $this->get('/admin/platform/workspaces')->assertNotFound();
 })->group('security');
 
 /**
@@ -139,7 +140,7 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
  * check that read the subject session alone answered "nobody" across the entire account
  * console — which is precisely where an operator signs in.
  */
-it('gives the platform pages to an operator, as a mode of the same console', function (): void {
+it('gives the platform pages to an operator, as an area of the same console', function (): void {
     $member = anAccountOwner('staff@cbox.test');
 
     // The same person, holding an operator record. `create()` reuses the existing subject
@@ -148,39 +149,40 @@ it('gives the platform pages to an operator, as a mode of the same console', fun
 
     signInAsMember($member->id);
 
-    // ONE REGISTRY, ONE SHELL: the platform areas are areas of the one console, offered
+    // ONE REGISTRY, ONE SHELL: the Platform area is an area of the one console, offered
     // to an operator and to nobody else.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue()
         ->and(railRoutes())->toContain('platform.environments')
         ->and(railRoutes())->toContain('platform.operators');
 
     /*
-     * …BUT NOT ON EVERY RAIL. They used to be appended below the operator's own Settings
-     * on every page, so the controls that suspend a customer sat one icon from their own
-     * preferences with nothing to say which side of the line a page was on. Outside
-     * platform admin the rail is the operator's console; the door in is the account menu.
-     * Read off the shell the page is framed by, not the document: the areas are serialised
-     * into the response either way, slashes escaped.
+     * ON A SINGLE-TENANT INSTALL, IN THIS RAIL — not a mode with a rail of its own and an
+     * amber strip with a way out. It used to be one, so an operator moved between two
+     * consoles; the line above the page now says what a page acts on, which is what the
+     * strip was for. Read off the shell the page is framed by, not the document.
      */
     $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
     $hrefs = collect($shell['areas'])->pluck('href');
 
     expect($hrefs)->toContain(route('dashboard'))
-        ->and($hrefs)->not->toContain(route('platform.workspaces'))
-        ->and($shell['platformMode'])->toBeFalse()
-        ->and($shell['platformHref'])->toBe(route('platform.workspaces'));
+        ->and($hrefs)->toContain(route('platform.workspaces'))
+        ->and($shell)->not->toHaveKey('platformMode')
+        ->and($shell)->not->toHaveKey('exitPlatformHref')
+        // In the rail, so not a second time in the account menu.
+        ->and($shell['platformHref'])->toBeNull()
+        ->and($shell['section'])->toBeNull();
 
-    // INSIDE it, the rail is platform admin's alone, the mode is said, and there is a way
-    // out — the same session, the same shell, no second login.
+    // On a platform page: the same rail, the Platform area lit, and the line above the page
+    // saying it acts on the whole deployment — in the warning colours.
     $shell = (array) $this->get(route('platform.workspaces'))->assertOk()->inertiaProps('shell');
     $hrefs = collect($shell['areas'])->pluck('href');
 
     expect($hrefs)->toContain(route('platform.workspaces'))
-        ->and($hrefs)->toContain(route('platform.operators'))
-        ->and($hrefs)->not->toContain(route('dashboard'))
-        ->and($shell['platformMode'])->toBeTrue()
+        ->and($hrefs)->toContain(route('dashboard'))
+        ->and($shell['activeArea'])->toBe('platform')
         ->and($shell['section'])->toBe('Platform')
-        ->and($shell['exitPlatformHref'])->toBe(route('dashboard'));
+        ->and($shell['actsOn']['kind'])->toBe('platform')
+        ->and($shell['actsOn']['critical'])->toBeTrue();
 })->group('security');
 
 /**
@@ -283,7 +285,7 @@ it('lets an operator through the door it sent them to', function (): void {
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
     // Refused while signed out, and pointed at the account door.
-    $this->get('https://cboxid.com/platform')->assertRedirect(route('login'));
+    $this->get('https://cboxid.com/admin/platform/workspaces')->assertRedirect(route('login'));
 
     // Sign in the way that door actually does it.
     $outcome = signInAtLogin('staff@cbox.test', 'a-strong-unbreached-passphrase');
@@ -291,7 +293,7 @@ it('lets an operator through the door it sent them to', function (): void {
     expect($outcome->name)->toBe('Ok', 'the account door refused an operator its own gate points at');
 
     signInAsMember($member->id);
-    $this->get('https://cboxid.com/platform')
+    $this->get('https://cboxid.com/admin/platform/workspaces')
         ->assertSuccessful();
 })->group('security');
 
@@ -311,13 +313,13 @@ it('points a refused visitor at the sign-in this deployment actually serves', fu
     installedDeployment();
 
     // Single-host: the ordinary door.
-    $this->get('/platform')->assertRedirect(route('login'));
+    $this->get('/admin/platform/workspaces')->assertRedirect(route('login'));
 
     // SaaS: the account door, on the account host.
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
-    $this->get('https://cboxid.com/platform')->assertRedirect(route('login'));
+    $this->get('https://cboxid.com/admin/platform/workspaces')->assertRedirect(route('login'));
 })->group('security');
 
 /**
@@ -360,7 +362,7 @@ it('signs in an operator who has no account at all', function (): void {
     $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
     signInAsSubject($subjectId);
 
-    $this->get('https://cboxid.com/platform')->assertSuccessful();
+    $this->get('https://cboxid.com/admin/platform/workspaces')->assertSuccessful();
 })->group('security');
 
 /** A wrong password for a real operator is still refused. */
@@ -412,7 +414,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // exists at that address.
     signInAsSubject((string) $operator->subject_id);
 
-    $this->get('/platform')->assertNotFound();
+    $this->get('/admin/platform/workspaces')->assertNotFound();
     expect(app(ConsoleScope::class)->isPlatformOperator())
         ->toBeFalse('a suspended operator kept platform authority');
 

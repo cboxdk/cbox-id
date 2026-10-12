@@ -78,3 +78,37 @@ it('tells a workspace owner on the root where an environment\'s settings are, wi
         ->assertSee('is set for each environment')
         ->assertNoAccessibilityIssues();
 })->group('a11y');
+
+/*
+ * PLATFORM ADMIN, AS AN AREA OF THIS CONSOLE. It was a console of its own at `/platform`,
+ * with an amber strip and a rail of its own; it is the Platform area of `/admin` now, drawn
+ * by the same shell — and the line above the page carries the warning the strip did.
+ */
+it('draws platform admin inside the platform environment\'s console, without an accessibility issue', function (string $path, string $heading): void {
+    provisionAccount('owner@acme.example');
+    rootConsoleOperator();
+
+    visit($path)
+        ->assertSee($heading)
+        ->assertSee('Platform admin')
+        ->assertSee('The whole deployment')
+        // The environment's own areas are on the same rail.
+        ->assertSee('Authentication')
+        ->assertNoAccessibilityIssues()
+        ->assertNoJavaScriptErrors();
+
+    visit($path)->inDarkMode()
+        ->assertSee($heading)
+        ->assertNoAccessibilityIssues();
+
+    visit($path)->resize(390, 844)
+        ->assertSee($heading)
+        ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true)
+        ->assertNoAccessibilityIssues()
+        ->assertNoJavaScriptErrors();
+})->with([
+    'workspaces' => ['/admin/platform/workspaces', 'Workspaces'],
+    'environments' => ['/admin/platform/environments', 'Environments'],
+    'organization tree' => ['/admin/platform/organizations', 'Organization tree'],
+    'operators' => ['/admin/platform/operators', 'Operators'],
+])->group('a11y');

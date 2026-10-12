@@ -53,11 +53,14 @@ export function searchQuery(raw: string): string {
 }
 
 /**
- * Where this console's search lives, or null where there is none — the operator's platform
- * console searches every environment on a page of its own.
+ * Where this console's search lives, or null where there is none.
+ *
+ * Platform admin has no search of its own here: it is an area of a console that does — the
+ * platform environment's at `/admin`, or a single-tenant install's organization console — and
+ * ⌘K searches that. Every environment at once is Platform › Search, a page.
  */
-export function searchHref(altitude: string | undefined, platformMode: boolean): string | null {
-    if (platformMode || altitude === undefined) {
+export function searchHref(altitude: string | undefined): string | null {
+    if (altitude === undefined) {
         return null;
     }
 

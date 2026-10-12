@@ -41,10 +41,10 @@ under `/admin` (`/roles` and `/admin/roles`). Old paths answer with a 301, so a 
 still works. [Upgrading](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)
 lists them.
 
-The deployment's own pages (workspaces, environments, organizations, operators) are
-**platform admin**: reached from **Platform admin** in the account menu by whoever has
-authority over the deployment, with a rail of their own and a strip across the top that
-says so. They are no longer appended to every rail.
+The deployment's own pages (workspaces, environments, the organization tree, operators,
+usage, queues) are **platform admin**: the **Platform** area of the platform environment's
+console at `/admin/platform` on the root host, for whoever has authority over the
+deployment. **Platform admin** in the account menu goes there from the workspace console.
 
 ## The rail
 
@@ -71,7 +71,7 @@ Acme ▾  /  Checkout ▾  /  Production ▾ [PRODUCTION]  /  All organizations 
 - **All organizations ▾** (environment console only) filters every page to one of your
   customers.
 - **The avatar** opens the account menu: Workspace settings, My account, Switch user,
-  Platform admin (operators), Theme, Sign out.
+  Platform admin (operators, from a console it is not part of), Theme, Sign out.
 
 On a phone the context switcher moves into the navigation sheet, and the bottom bar names
 the environment and its type.
@@ -317,11 +317,14 @@ four thousand organizations is a real one.
 
 ### Platform admin
 
-For whoever runs the install, **Platform admin** in the account menu opens the platform
-pages. The rail there holds only Platform, Insights and Administration, and a strip across
-the top says **Platform admin** with **Exit platform admin** beside it. The topbar's old
-"target environment" menu is gone; re-point the platform pages from **Platform ›
-Environments**.
+For whoever runs the install, platform admin is the **Platform** area of the platform
+environment's console (`/admin/platform` on the root host), first on its rail, beside the
+environment's own areas. **Platform admin** in the account menu goes there from the
+workspace console. The line above every Platform page says **Platform admin: The whole
+deployment**, in the warning colours, because a click there acts on every workspace on the
+install. It used to be a separate console with a strip across the top and an **Exit
+platform admin** link; it is one console now. Re-point the platform pages at another
+environment from **Platform › Environments**.
 
 ![The context switcher](../screenshots/context-switcher.png)
 

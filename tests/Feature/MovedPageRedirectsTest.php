@@ -159,3 +159,139 @@ it('does not serve the environment console\'s old addresses on a single-tenant i
     $this->get('https://'.$host.'/admin/applications')->assertNotFound();
     $this->get('https://'.$host.'/admin/apps')->assertNotFound();
 });
+
+/*
+|--------------------------------------------------------------------------
+| PLATFORM ADMIN MOVED INTO `/admin` — every old address, deep links included
+|--------------------------------------------------------------------------
+|
+| `/platform/…` was a console of its own; it is the Platform area of `/admin` now. Operators
+| have these in bookmarks, runbooks and the replies support sent, and an email can carry a
+| workspace's or an organization's page by its id with a query string on the end. Each one
+| must land on the page itself, in one hop, with its query intact — on the root's host of a
+| multi-tenant deployment and on a single-tenant install, the two places platform admin is.
+*/
+
+/**
+ * Every old platform-admin address, by the id it carries and with a query where one makes
+ * sense, => the path and query it must land on.
+ *
+ * @return array<string, string>
+ */
+function platformMoves(string $workspace, string $organization): array
+{
+    $job = '9b2f7c1e-4d5a-4c3b-8e6f-0a1b2c3d4e5f';
+
+    return [
+        '/operator' => '/admin/platform',
+        '/platform' => '/admin/platform/environments',
+        // The query is kept whole — normalised to the order PHP sorts it in, as every
+        // moved page's is.
+        '/platform?q=prod&page=2' => '/admin/platform/environments?page=2&q=prod',
+        '/platform/workspaces' => '/admin/platform/workspaces',
+        '/platform/workspaces?q=acme' => '/admin/platform/workspaces?q=acme',
+        '/platform/workspaces/'.$workspace => '/admin/platform/workspaces/'.$workspace,
+        '/platform/workspaces/'.$workspace.'?utm_source=email' => '/admin/platform/workspaces/'.$workspace.'?utm_source=email',
+        '/platform/customers' => '/admin/platform/workspaces',
+        '/platform/customers/'.$workspace.'?ref=ticket-4271' => '/admin/platform/workspaces/'.$workspace.'?ref=ticket-4271',
+        '/platform/organizations' => '/admin/platform/organizations',
+        '/platform/organizations?q=acme' => '/admin/platform/organizations?q=acme',
+        '/platform/organizations/'.$organization => '/admin/platform/organizations/'.$organization,
+        '/platform/operators' => '/admin/platform/operators',
+        '/platform/usage' => '/admin/platform/usage',
+        '/platform/queues' => '/admin/platform/queues',
+        '/platform/queues/monitor' => '/admin/platform/queues/monitor',
+        '/platform/queues/monitor/job/'.$job => '/admin/platform/queues/monitor/job/'.$job,
+        '/platform/search?q=acme' => '/admin/platform/search?q=acme',
+        '/platform/search/jump/'.$organization => '/admin/platform/search/jump/'.$organization,
+    ];
+}
+
+/**
+ * Follow every old platform address on $host as the signed-in operator: one 301 to exactly
+ * the new address, which then answers them. Returns what did not.
+ *
+ * @param  array<string, string>  $moves
+ * @return list<string>
+ */
+function strandedPlatformMoves(string $host, array $moves): array
+{
+    $stranded = [];
+
+    foreach ($moves as $from => $to) {
+        $legacy = test()->get('https://'.$host.$from);
+        $location = (string) $legacy->headers->get('Location');
+        $landed = (string) parse_url($location, PHP_URL_PATH).(($query = parse_url($location, PHP_URL_QUERY)) ? '?'.$query : '');
+
+        if ($legacy->status() !== 301 || $landed !== $to) {
+            $stranded[] = "{$from} → {$legacy->status()} {$location} (expected 301 → {$to})";
+
+            continue;
+        }
+
+        // The monitor's job page answers for a job that exists; this one does not.
+        if (str_contains($to, '/monitor/job/')) {
+            continue;
+        }
+
+        $status = test()->get($location)->status();
+
+        if (! in_array($status, [200, 302], true)) {
+            $stranded[] = "{$from} → {$to} → {$status}";
+        }
+    }
+
+    return $stranded;
+}
+
+it('names every platform-admin page in the moved-pages table', function (): void {
+    $moved = collect(movedPages())->pluck(1)->map(static fn (string $to): string => (string) preg_replace('/01JMOVEDPAGEPROBE0000000000/', '{}', $to));
+
+    $pages = collect(app('router')->getRoutes()->getRoutes())
+        ->filter(static fn (Route $route): bool => str_starts_with((string) $route->getName(), 'platform.')
+            && in_array('GET', $route->methods(), true)
+            && str_starts_with($route->uri(), 'admin/platform/'))
+        ->map(static fn (Route $route): string => '/'.preg_replace('/\{[^}]+\}/', '{}', $route->uri()));
+
+    expect($pages->count())->toBeGreaterThanOrEqual(9)
+        ->and($pages->diff($moved)->values()->all())->toBe([], 'a platform-admin page with no old address pointing at it');
+});
+
+it('lands every old platform-admin address on its page, on the platform root', function (): void {
+    multiTenantDeployment();
+    config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
+    ['organization' => $workspace] = provisionAccount('owner@acme.example');
+    actAsOperator('ops@platform.test');
+    [$organization] = impersonationMember();
+
+    expect(strandedPlatformMoves('cboxid.com', platformMoves($workspace->id, $organization->id)))->toBe([]);
+})->group('security');
+
+it('lands every old platform-admin address on its page, on a single-tenant install', function (): void {
+    actAsOperator('ops@platform.test');
+    [$organization] = impersonationMember();
+    $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    // A single-tenant install has no workspaces of its own; an organization stands in for
+    // the id the old address carried.
+    expect(strandedPlatformMoves($host, platformMoves($organization->id, $organization->id)))->toBe([]);
+})->group('security');
+
+it('serves no old platform-admin address on a host that has no platform admin', function (): void {
+    multiTenantDeployment();
+    config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
+    platformRootEnvironment();
+
+    Environment::query()->create([
+        'name' => 'Acme',
+        'slug' => 'acme',
+        'type' => EnvironmentType::Production,
+        'status' => EnvironmentStatus::Active,
+        'is_default' => false,
+        'settings' => [],
+    ]);
+
+    foreach (array_keys(platformMoves('01JMOVEDPAGEPROBE0000000000', '01JMOVEDPAGEPROBE0000000000')) as $from) {
+        $this->get('https://acme.cboxid.com'.$from)->assertNotFound();
+    }
+})->group('security');

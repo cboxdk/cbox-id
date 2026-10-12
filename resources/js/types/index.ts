@@ -314,12 +314,10 @@ export interface CertificateWarning {
 export interface Shell {
     areas: NavArea[];
     activeArea: string | null;
-    /** "Platform" for the pages about the whole install, null for a customer's own. */
+    /** "Platform" for the pages about the whole install (platform admin), null elsewhere. */
     section: string | null;
     context: ShellContext;
     isOperator: boolean;
-    /** Inside platform admin — the install as a whole. Its own rail, strip and way out. */
-    platformMode: boolean;
     brandHref: string;
     navPinned: boolean;
     /** Absolute on the environment console: the person's own pages live on the workspace host. */
@@ -329,10 +327,11 @@ export interface Shell {
     altitude: 'workspace' | 'organization' | 'environment';
     /** The account menu's Workspace settings, where this person may change them. */
     workspaceSettingsHref: string | null;
-    /** The account menu's way into platform admin. Operators only. */
+    /**
+     * The account menu's way into platform admin — operators only, and only from a console
+     * it is not an area of (the workspace console on the root, a tenant's environment console).
+     */
     platformHref: string | null;
-    /** The platform strip's way out. Platform mode only. */
-    exitPlatformHref: string | null;
     /** A sentence above a page the rail does not offer, and where to go instead. */
     notice: ShellNotice | null;
     /** What a save on this page changes — the line above every page. */

@@ -5,7 +5,6 @@ import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/c
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { ContextSwitcher } from '@/chrome/ContextSwitcher';
 import { MobileNav } from '@/chrome/MobileNav';
-import { PlatformStrip } from '@/chrome/PlatformStrip';
 import { Rail } from '@/chrome/Rail';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Subnav } from '@/chrome/Subnav';
@@ -40,7 +39,12 @@ export interface ConsoleLayoutProps {
  *  - the topbar: where you ARE (workspace / project / environment), search, and who you
  *    are — and nothing that silently narrows the pages: a page about one organization says
  *    so in its own URL and draws that organization's header itself (`organizationHub`);
- *  - in platform admin, a strip above it all saying so, with the way out.
+ *  - above every page, what it acts on (`ActsOn`) — in the warning colours on the platform's
+ *    own environment and on platform admin, whose pages act on the whole deployment.
+ *
+ * Platform admin is not a layout of its own. It was: a strip across the top, a rail of its
+ * own and a way out, so an operator on the root host moved between two consoles. It is an
+ * area of the console now, and the line above the page is what says so.
  */
 export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const { shell, auth, title, environment, organizationHub } = usePage<SharedProps>().props;
@@ -119,6 +123,12 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const organization = auth.organization;
     const workspace = shell.context.workspaces.find((option) => option.current);
     const onEnvironment = shell.altitude === 'environment';
+    // The environment this console stands in, as the switcher names it — not the request's
+    // own: a page of platform admin READS whichever environment the operator pointed it
+    // at, while the console around it is still the platform environment's.
+    const standingIn = shell.context.projects
+        .flatMap((project) => project.environments)
+        .find((option) => option.current)?.name;
 
     // The context switcher — drawn in the topbar, and again in the phone's sheet, where the
     // topbar has no room for all of it.
@@ -143,11 +153,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 <Rail
                     areas={shell.areas}
                     brandHref={shell.brandHref}
-                    brandLabel={
-                        shell.platformMode
-                            ? 'Platform admin'
-                            : (workspace?.label ?? organization?.name ?? 'Console')
-                    }
+                    brandLabel={workspace?.label ?? organization?.name ?? 'Console'}
                     pinned={pinned}
                     onTogglePin={togglePin}
                 />
@@ -169,11 +175,9 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 <MobileNav
                     areas={shell.areas}
                     heading={
-                        shell.platformMode
-                            ? 'Platform admin'
-                            : onEnvironment
-                              ? (environment.name ?? 'Environment')
-                              : (workspace?.label ?? organization?.name ?? 'Console')
+                        onEnvironment
+                            ? (standingIn ?? environment.name ?? 'Environment')
+                            : (workspace?.label ?? organization?.name ?? 'Console')
                     }
                     subheading={onEnvironment ? (workspace?.label ?? null) : null}
                     user={auth.user}
@@ -183,16 +187,12 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                     showAccountLink={onEnvironment}
                     switchUserUrl={shell.switchUserHref}
                     workspaceSettingsUrl={shell.workspaceSettingsHref}
-                    platformUrl={shell.platformMode ? null : shell.platformHref}
+                    platformUrl={shell.platformHref}
                 >
                     <div className="cbx-ctx-sheet">{context}</div>
                 </MobileNav>
 
                 <div className="flex flex-col min-w-0 flex-1">
-                    {shell.platformMode && shell.exitPlatformHref !== null && (
-                        <PlatformStrip exitHref={shell.exitPlatformHref} />
-                    )}
-
                     <header className="cbx-topbar">
                         <div className="cbx-topbar-context">{context}</div>
 
@@ -207,7 +207,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                                 workspaceSettingsHref={shell.workspaceSettingsHref}
                                 accountHref={shell.accountHref}
                                 switchUserHref={shell.switchUserHref}
-                                platformHref={shell.platformMode ? null : shell.platformHref}
+                                platformHref={shell.platformHref}
                                 platformEnvironmentHref={shell.platformEnvironmentHref}
                             />
                         </div>
@@ -254,7 +254,8 @@ const ACTS_ON_ICON = {
 /**
  * WHAT THIS PAGE ACTS ON — `Environment: Production · Environment on acme.cboxid.com` — so
  * nobody saves a setting believing it is somebody else's. On the platform's own environment
- * it is a warning: that sign-in is every workspace owner's and every operator's.
+ * it is a warning: that sign-in is every workspace owner's and every operator's. On platform
+ * admin it is a warning too, with the lock: those pages act on every workspace at once.
  */
 function ActsOn({ actsOn }: { actsOn: ShellActsOn }) {
     const what = (
@@ -268,7 +269,10 @@ function ActsOn({ actsOn }: { actsOn: ShellActsOn }) {
     if (actsOn.critical) {
         return (
             <div className="cbx-acts-on" data-critical="true" role="note">
-                <Icon name="warning" className="w-4 h-4" />
+                <Icon
+                    name={actsOn.kind === 'platform' ? ACTS_ON_ICON.platform : 'warning'}
+                    className="w-4 h-4"
+                />
                 <div className="min-w-0 flex-1">
                     <p>{what}</p>
                     {actsOn.detail !== null && <p>{actsOn.detail}</p>}

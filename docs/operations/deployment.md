@@ -314,8 +314,10 @@ platform is empty and requires a setup token, which `php artisan cbox-id:setup-t
 prints on any instance of the deployment — so an internet-exposed box cannot be claimed by
 whoever finds it first. See [Installation](../getting-started/installation.md).
 
-Sign in at **`/workspace/login`** — the install command prints the URL — and open the
-**`/platform`** section, the deployment pages in that console's rail. From there
+Sign in at **`/login`** — the install command prints the URL — and open
+**`/admin/platform`**: on a multi-tenant deployment the **Platform** area of the platform
+environment's console at `/admin`, on a single-tenant one the **Platform** area of the
+console's rail. From there
 create your remaining environment(s) and use **Provision admin** on each to seed its
 first organization and owner-admin. Those org admins then sign in at `/login`.
 
