@@ -51,6 +51,12 @@ $suiteOwned = [
     // red build everybody learns to ignore. The suite does not test queue metrics; a
     // test that wants them turns them on through config().
     'QUEUE_METRICS_ENABLED' => 'false',
+    // The same trap in telemetry: its metric store defaults to REDIS, and every database
+    // query bumps a counter. Without a Redis each flush failed and was logged with a full
+    // stack trace — harmless per request, but the Connectors crawl makes thousands of
+    // requests in one process and the logger ran it out of memory on CI (and only on CI,
+    // for the reason above). In memory, metrics still count and can be asserted.
+    'TELEMETRY_STORE' => 'array',
     'PULSE_ENABLED' => 'false',
     'TELESCOPE_ENABLED' => 'false',
     'NIGHTWATCH_ENABLED' => 'false',
