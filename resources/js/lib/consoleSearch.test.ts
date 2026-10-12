@@ -28,11 +28,11 @@ describe('console search', () => {
         expect(searchQuery(' ada@example.com ')).toBe('ada@example.com');
     });
 
-    it('searches the console it is on, and nowhere on the operator console', () => {
-        expect(searchHref('environment', false)).toBe('/admin/search');
-        expect(searchHref('organization', false)).toBe('/search');
-        expect(searchHref('environment', true)).toBeNull();
-        expect(searchHref(undefined, false)).toBeNull();
+    it('searches the console it is on — platform admin included, which is part of one', () => {
+        expect(searchHref('environment')).toBe('/admin/search');
+        expect(searchHref('organization')).toBe('/search');
+        expect(searchHref('workspace')).toBe('/search');
+        expect(searchHref(undefined)).toBeNull();
     });
 
     it('remembers the last five records opened, newest first, without repeats, per host', () => {

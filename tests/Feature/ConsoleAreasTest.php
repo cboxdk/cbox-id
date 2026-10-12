@@ -312,11 +312,11 @@ it('lands every environment nav entry on a page titled and headed the way the en
 it('lands every platform nav entry on a page titled and headed the way the entry is labelled', function (): void {
     actAsOperator();
 
-    // From the REGISTRY, because the platform section is three areas of the one console
-    // now rather than a nav tree of its own. Filtered to the platform areas by key: the
+    // From the REGISTRY, because platform admin is an area of the one console rather than
+    // a nav tree of its own. Filtered to the platform area by key: the
     // organization areas beside them are covered by their own loop above, with a fixture
     // that admits them.
-    $platformAreas = ['platform', 'platform-insights', 'platform-admin'];
+    $platformAreas = ['platform'];
     $entries = [];
 
     foreach (Console::nav()->areas() as $area) {
@@ -331,12 +331,13 @@ it('lands every platform nav entry on a page titled and headed the way the entry
 
     $checked = assertNavEntryLabelsMatchTheirPages($entries, 'platform');
 
-    // Seven pages across three areas; anything less means the session stopped resolving
-    // and the loop is asserting nothing. It was seven, then six when the operator
-    // "Security" page was retired — it enrolled a second factor nothing verified, so the
-    // screen promised a protection that did not exist — and seven again with Insights ›
-    // Queues. The count is deliberately exact for the reason in the comment above: a
-    // changing number must be a decision, not a silent no-op.
+    // Seven pages in the one Platform area (three areas until they joined the platform
+    // environment's console); anything less means the session stopped resolving and the
+    // loop is asserting nothing. It was seven, then six when the operator "Security" page
+    // was retired — it enrolled a second factor nothing verified, so the screen promised a
+    // protection that did not exist — and seven again with Queues. The count is
+    // deliberately exact for the reason in the comment above: a changing number must be a
+    // decision, not a silent no-op.
     expect($checked)->toBe(7);
 });
 

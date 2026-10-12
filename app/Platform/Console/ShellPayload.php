@@ -17,7 +17,10 @@ use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
+use App\Providers\ConsoleServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -56,25 +59,25 @@ final readonly class ShellPayload
      *    their own projects and billing from them. That area gates every one of its pages
      *    on the membership role already, which is the authority for those capabilities.
      *
-     *  - the three `platform` areas, because this gate asks whether you administer the
-     *    organization you are currently ACTING FOR, and an operator's authority has
-     *    nothing to do with that. The person who runs the install is routinely a plain
-     *    member of the customer they are looking at, so leaving them to this gate hides
-     *    the platform section from exactly the people it exists for. Their own
-     *    `platform.operator` feature is the stronger gate and has already run: an area
-     *    survives to here only if its pages did.
+     *  - `platform`, because this gate asks whether you administer the organization you
+     *    are currently ACTING FOR, and an operator's authority has nothing to do with that.
+     *    The person who runs the install is routinely a plain member of the customer they
+     *    are looking at, so leaving them to this gate hides platform admin from exactly the
+     *    people it exists for. Their own `platform.operator` feature is the stronger gate
+     *    and has already run: the area survives to here only if its pages did.
      */
     private const MEMBER_AREAS = [
         'overview',
         'account',
         'identity-platform',
-        'platform',
-        'platform-insights',
-        'platform-admin',
+        self::PLATFORM_AREA,
     ];
 
-    /** Areas whose pages are about the whole install rather than one customer on it. */
-    private const PLATFORM_AREAS = ['platform', 'platform-insights', 'platform-admin'];
+    /**
+     * The registry area holding platform admin — the pages about the whole install rather
+     * than one customer on it ({@see ConsoleServiceProvider::platformAreas()}).
+     */
+    private const PLATFORM_AREA = 'platform';
 
     /**
      * The soft entitlement lock, by route. The page is shown and marked rather than
@@ -112,9 +115,10 @@ final readonly class ShellPayload
             return $memo['shell'] instanceof ShellProps ? $memo['shell'] : null;
         }
 
-        $shell = match ($this->scope->plane()) {
-            ConsolePlane::Environment => $this->environmentShell(),
-            ConsolePlane::Organization => $this->organizationShell(),
+        $shell = match (true) {
+            $this->onPlatformAdmin() => $this->platformAdminShell(),
+            $this->scope->plane() === ConsolePlane::Environment => $this->environmentShell(),
+            default => $this->organizationShell(),
         };
 
         $this->request->attributes->set(self::MEMO, ['shell' => $shell]);
@@ -139,16 +143,16 @@ final readonly class ShellPayload
         $workspace = $this->scope->atWorkspaceAltitude();
         $customer = $this->scope->atCustomerAltitude();
 
-        // PLATFORM ADMIN IS A MODE, NOT THREE MORE AREAS. The platform section used to be
-        // appended to the bottom of every rail an operator saw, so the controls that
-        // suspend a customer sat one icon below the operator's own Settings, with nothing
-        // to say which side of that line a page was on. Now the rail is one or the other:
-        // the platform areas inside /platform, everything else outside it, and the account
-        // menu is the door between them.
-        $platformMode = $isOperator && $this->request->routeIs('platform.*');
+        // A page of platform admin, drawn in this console — a single-tenant install's, whose
+        // rail carries the Platform area for its operators. (On a multi-tenant deployment
+        // these pages are drawn by the platform environment's console instead; see
+        // onPlatformAdmin().) Not a mode any more: the same rail, with the line above the
+        // page saying it acts on the whole deployment.
+        $platformPage = $this->request->routeIs('platform.*');
 
         // The organization console on the platform root's host is a workspace's console,
-        // for everybody: see RootHostConsole for what it keeps and where the rest went.
+        // for everybody: see RootHostConsole for what it keeps and where the rest went —
+        // platform admin included, which is an area of the platform environment's console.
         $rootHost = $this->planes->onAccountPlane();
 
         $areas = [];
@@ -165,10 +169,6 @@ final readonly class ShellPayload
 
         foreach (Console::nav()->areas() as $area) {
             if (! $isAdmin && ! in_array($area->key, self::MEMBER_AREAS, true)) {
-                continue;
-            }
-
-            if (in_array($area->key, self::PLATFORM_AREAS, true) !== $platformMode) {
                 continue;
             }
 
@@ -236,18 +236,13 @@ final readonly class ShellPayload
         return new ShellProps(
             areas: $areas,
             activeArea: $active?->key,
-            section: $platformMode ? 'Platform' : null,
+            section: $platformPage ? Vocabulary::PLATFORM : null,
             context: $this->context->forOrganizationPlane($this->activePageRoute($active)),
             isOperator: $isOperator,
-            platformMode: $platformMode,
             // A workspace's home is Projects; `dashboard` would hand it straight on to an
             // environment, which is not what clicking the brand mark in its own console
-            // means. In platform admin the brand mark stays in platform admin.
-            brandHref: route(match (true) {
-                $platformMode => 'platform.workspaces',
-                $workspace => 'projects',
-                default => 'dashboard',
-            }),
+            // means.
+            brandHref: route($workspace ? 'projects' : 'dashboard'),
             navPinned: NavPin::pinned($this->request),
             accountHref: route('account'),
             switchUserHref: route('accounts'),
@@ -257,13 +252,121 @@ final readonly class ShellPayload
                 && Route::has('organization-settings')
                     ? route('organization-settings')
                     : null,
-            platformHref: $isOperator ? route('platform.workspaces') : null,
-            exitPlatformHref: $platformMode ? route('dashboard') : null,
-            actsOn: $this->organizationActsOn($platformMode, $workspace),
+            // Platform admin is in ANOTHER console here — the platform environment's, at
+            // `/admin` on this host — so the account menu is the way there. On a
+            // single-tenant install it is in this rail, and a second link would be a
+            // second way to the same place.
+            platformHref: $isOperator && $rootHost && Route::has('platform.workspaces') ? route('platform.workspaces') : null,
+            actsOn: $this->organizationActsOn($platformPage, $workspace),
             // The platform's own environment console, beside platform admin in the account
             // menu: an operator at the root is one click from the environment they run.
             platformEnvironmentHref: $isOperator && $rootHost && Route::has('environment.home') ? route('environment.home') : null,
         );
+    }
+
+    /**
+     * Whether this request is PLATFORM ADMIN drawn inside the platform environment's
+     * console: a platform page (`/admin/platform/…`) on the root's own host of a
+     * multi-tenant deployment.
+     *
+     * Asked of the route and the HOST, not of {@see ConsoleScope::plane()} or the ambient
+     * environment, and both on purpose. The platform pages run the subject gate rather than
+     * the environment console's (see routes/web.php), so the plane answers "organization";
+     * and they READ whichever environment the operator has pointed them at, so the ambient
+     * environment is often a tenant's. Neither says which console the operator is standing
+     * in. The host does: on the root's host, `/admin` is the platform environment's console
+     * and these pages are its Platform area.
+     */
+    private function onPlatformAdmin(): bool
+    {
+        return $this->request->routeIs('platform.*')
+            && $this->planes->isMultiTenant()
+            && $this->planes->isPlatformRootHost($this->request->getHost())
+            && $this->scope->isPlatformOperator();
+    }
+
+    /**
+     * PLATFORM ADMIN, in the platform environment's console — the same rail, context and
+     * account menu as `/admin`'s own pages, with the Platform area lit and the line above
+     * the page saying it acts on the whole deployment.
+     *
+     * The operator is the signed-in subject here (the environment console's own gate, which
+     * would say so, is not on these routes), and the environment the console stands in is
+     * the platform root's — named explicitly rather than read from the request, which
+     * carries the environment the operator is READING.
+     */
+    private function platformAdminShell(): ?ShellProps
+    {
+        $subjectId = $this->scope->operator()?->subject_id;
+
+        if (! is_string($subjectId) || $subjectId === '') {
+            return null;
+        }
+
+        $rootId = app(PlatformRoot::class)->environment()?->environmentKey();
+
+        return $this->environmentConsole(
+            subjectId: $subjectId,
+            membership: null,
+            rootOperator: true,
+            environmentId: is_string($rootId) ? $rootId : null,
+            actsOn: $this->platformActsOn(),
+            section: Vocabulary::PLATFORM,
+        );
+    }
+
+    /**
+     * The Platform area as the environment console draws it — every page of the registry's
+     * `platform` area, for somebody already established as an operator.
+     *
+     * The registry's `platform.operator` feature is not asked again: it answers through the
+     * SUBJECT session, and on the environment console's own pages the person is an
+     * environment administrator instead ({@see ConsoleScope::actingSubjectId()}), so it
+     * would say "no" to the very operator the console's gate just admitted. The caller has
+     * already asked the stronger question.
+     *
+     * @param  list<string>  $claimed  every page route on the rail, for {@see routeIsCurrent()}
+     * @return list<NavAreaProps>
+     */
+    private function platformArea(array $claimed): array
+    {
+        foreach (Console::nav()->areas() as $area) {
+            if ($area->key !== self::PLATFORM_AREA) {
+                continue;
+            }
+
+            $pages = [];
+
+            foreach ($area->pages() as $page) {
+                $claimed[] = $page->route;
+            }
+
+            foreach ($area->pages() as $page) {
+                if ($page->feature !== null && $page->feature !== 'platform.operator' && ! Console::featureActive($page->feature)) {
+                    continue;
+                }
+
+                $pages[] = new NavPageProps(
+                    route: $page->route,
+                    href: route($page->route),
+                    label: $page->label,
+                    active: $this->routeIsCurrent($page->route, $claimed),
+                    keywords: ConsoleSynonyms::for($page->route),
+                );
+            }
+
+            return $pages === [] ? [] : [new NavAreaProps(
+                key: $area->key,
+                label: $area->label,
+                icon: $area->icon ?? 'rocket',
+                href: $pages[0]->href,
+                active: false,
+                current: false,
+                pages: $pages,
+            )];
+        }
+
+        return [];
     }
 
     /**
@@ -284,29 +387,62 @@ final readonly class ShellPayload
 
         // A tenant's administrator, through their workspace's membership — or, on the
         // platform root's own console, one of the operators who run the deployment.
-        $membership = $auth->membership();
         $operator = $auth->admitsRootOperator();
+
+        return $this->environmentConsole(
+            subjectId: $subjectId,
+            membership: $auth->membership(),
+            rootOperator: $operator,
+            environmentId: $auth->environmentId(),
+            actsOn: $this->environmentActsOn($operator),
+            section: null,
+        );
+    }
+
+    /**
+     * The environment console's chrome, for whoever administers it — and, on the platform
+     * root's own console, with the PLATFORM area first: platform admin is part of this
+     * console there, not a console of its own.
+     *
+     * First, because on the root this console is what the topbar's first crumb calls
+     * "Platform admin": the brand mark and a fresh sign-in land on Workspaces, and the
+     * environment's own areas follow it.
+     */
+    private function environmentConsole(
+        string $subjectId,
+        ?Membership $membership,
+        bool $rootOperator,
+        ?string $environmentId,
+        ShellActsOnProps $actsOn,
+        ?string $section,
+    ): ShellProps {
         // A workspace member on a tenant's console who also runs the deployment: platform
         // admin and the platform's own environment stay in their account menu.
-        $tenantOperator = ! $operator && $this->scope->subjectIsOperator($subjectId);
+        $tenantOperator = ! $rootOperator && $this->scope->subjectIsOperator($subjectId);
 
         $nav = $this->navigation->environment();
-        $areas = $this->withWaitingApprovals($this->markActive($this->fromConsoleNav($nav)));
+        $environmentAreas = $this->fromConsoleNav($nav);
+        $platform = $rootOperator ? $this->platformArea($nav->routes()) : [];
+
+        $areas = $this->withWaitingApprovals($this->markActive(
+            [...$platform, ...$environmentAreas],
+            fallbackKey: $this->request->routeIs('platform.*') ? ($platform[0]->key ?? null) : ($environmentAreas[0]->key ?? null),
+        ), $subjectId, $environmentId);
         $active = $this->activeArea($areas);
 
         return new ShellProps(
             areas: $areas,
             activeArea: $active?->key,
             // The environment console is already one environment's, and its name is in
-            // the topbar. A second word in the tab title would say nothing.
-            section: null,
+            // the topbar. A second word in the tab title would say nothing — except on a
+            // page of platform admin, which is about every environment at once.
+            section: $section,
             // THE WAY TO EVERY OTHER ENVIRONMENT, and back to the workspace. This console
             // had a back arrow and the environment's name as plain text; moving from
             // staging to production meant going back to Projects on another host and
             // opening it again.
             context: $this->context->forEnvironmentPlane($membership, $subjectId, $this->activePageRoute($active)),
-            isOperator: $operator,
-            platformMode: false,
+            isOperator: $rootOperator,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,
             navPinned: NavPin::pinned($this->request),
             accountHref: $this->context->onWorkspaceHost('account'),
@@ -315,9 +451,10 @@ final readonly class ShellPayload
             workspaceSettingsHref: $membership !== null && OrganizationCapabilities::of($membership->role)->canManageMembers()
                 ? $this->context->onWorkspaceHost('organization-settings')
                 : null,
-            // Platform admin is one click away from the console of the environment it runs.
-            platformHref: $operator || $tenantOperator ? $this->context->onWorkspaceHost('platform.workspaces') : null,
-            actsOn: $this->environmentActsOn($operator),
+            // Platform admin is one click away from the console of the environment a tenant
+            // operator is standing in. On the root's own console it is in the rail.
+            platformHref: $tenantOperator ? $this->context->onWorkspaceHost('platform.workspaces') : null,
+            actsOn: $actsOn,
             platformEnvironmentHref: $tenantOperator ? $this->context->onWorkspaceHost('environment.home') : null,
         );
     }
@@ -343,11 +480,30 @@ final readonly class ShellPayload
         return new ShellActsOnProps(kind: 'environment', label: $name, detail: 'Environment on '.$host);
     }
 
-    /** What a page of the organization console acts on: the deployment, a workspace or an organization. */
-    private function organizationActsOn(bool $platformMode, bool $workspace): ShellActsOnProps
+    /**
+     * What a page of platform admin acts on: the whole deployment — said in the warning
+     * colours, because a suspension or a new operator here reaches every workspace on it.
+     *
+     * This line is what the amber strip across the top of platform admin used to say, when
+     * platform admin was a console of its own. Every console page has the line now, so the
+     * warning is where every other page says what it acts on, rather than in a layout only
+     * these pages had.
+     */
+    private function platformActsOn(): ShellActsOnProps
     {
-        if ($platformMode) {
-            return new ShellActsOnProps(kind: 'platform', label: 'The whole deployment', detail: 'Platform admin: every workspace, environment and operator');
+        return new ShellActsOnProps(
+            kind: 'platform',
+            label: 'The whole deployment',
+            detail: 'Every workspace, environment and operator on '.$this->request->getHost().'. A suspension, a new environment or an operator change here applies across all of them.',
+            critical: true,
+        );
+    }
+
+    /** What a page of the organization console acts on: the deployment, a workspace or an organization. */
+    private function organizationActsOn(bool $platformPage, bool $workspace): ShellActsOnProps
+    {
+        if ($platformPage) {
+            return $this->platformActsOn();
         }
 
         $name = $this->user->organization()->name ?? 'Your organization';
@@ -394,16 +550,16 @@ final readonly class ShellPayload
      * count of everybody's would be a number most readers can do nothing about. One indexed
      * read on most pages (nothing young enough to wait answers it), two when something is.
      *
+     * The environment is NAMED rather than read from the request: on a page of platform
+     * admin the request carries the environment the operator is reading, and the
+     * Approvals on this rail are the platform environment's.
+     *
      * @param  list<NavAreaProps>  $areas
      * @return list<NavAreaProps>
      */
-    private function withWaitingApprovals(array $areas): array
+    private function withWaitingApprovals(array $areas, string $subjectId, ?string $environmentId): array
     {
-        $auth = app(EnvironmentAdminAuth::class);
-        $subjectId = $auth->subjectId();
-        $environmentId = $auth->environmentId();
-
-        if ($subjectId === null || $environmentId === null) {
+        if ($environmentId === null) {
             return $areas;
         }
 
@@ -479,7 +635,7 @@ final readonly class ShellPayload
      * @param  list<NavAreaProps>  $areas
      * @return list<NavAreaProps>
      */
-    private function markActive(array $areas, bool $fallback = true): array
+    private function markActive(array $areas, bool $fallback = true, ?string $fallbackKey = null): array
     {
         $activeKey = null;
 
@@ -501,8 +657,12 @@ final readonly class ShellPayload
         // one of its end-user pages): lighting "Workspace" above it, with Workspace's
         // sub-nav beside it and "Workspace" as its eyebrow, would claim the page is part
         // of the one area it is explicitly not.
+        //
+        // The FIRST area unless the caller names another: on the platform root's console
+        // the first area is Platform, and an environment page nobody listed belongs to the
+        // environment's own areas, not to platform admin.
         if ($fallback) {
-            $activeKey ??= $areas[0]->key ?? null;
+            $activeKey ??= $fallbackKey ?? $areas[0]->key ?? null;
         }
 
         return array_map(

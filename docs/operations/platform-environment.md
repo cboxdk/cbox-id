@@ -1,7 +1,7 @@
 ---
 title: Administering the platform's own environment
 weight: 6
-description: The platform root environment — how every workspace owner and operator signs in — has the same console, API and MCP tools as any environment. Who administers it, where, and the guards that keep its operators able to sign in.
+description: The platform root environment — how every workspace owner and operator signs in — has the same console, API and MCP tools as any environment, with platform admin as one area of that console. Who administers it, where, and the guards that keep its operators able to sign in.
 ---
 
 # Administering the platform's own environment
@@ -14,7 +14,8 @@ keys, webhooks, log streams, roles, feature flags, fine-grained authorization, p
 hooks and an audit log.
 
 Its **platform operators** administer it, with the same console, the same actions and the
-same API a tenant's administrators use.
+same API a tenant's administrators use. That console is also where they administer the
+deployment itself: **platform admin** is its **Platform** area.
 
 ## Where
 
@@ -29,13 +30,76 @@ same API a tenant's administrators use.
 
 Ways in, for an operator:
 
-- the account menu: **Platform environment**;
+- the account menu: **Platform environment**, or **Platform admin** for the Platform area;
 - the context switcher in the topbar: **Platform › Platform**, on every console;
 - ⌘K: type *Platform* and choose **Open Platform**;
-- **Platform admin › Environments**: **Open console** on the *Platform root* row.
+- **Platform › Environments**: **Open console** on the *Platform root* row.
 
 Every page says what it acts on, above the page. On the platform environment that line is
 a warning: *the platform's own environment … a change here applies to all of them.*
+
+## Platform admin
+
+The deployment's own pages are the first area of the same console, **Platform**, at
+`cboxid.com/admin/platform`:
+
+| Page | Address | What it is for |
+|---|---|---|
+| Workspaces | `/admin/platform/workspaces` | Every workspace on the install. Open one to walk its projects and environments; **Suspend** and **Reactivate** are on its row and its page. |
+| Environments | `/admin/platform/environments` | Every environment and who owns it. Create one, point platform admin at it, and **Provision admin** to seed its first organization and owner. |
+| Organization tree | `/admin/platform/organizations` | The organizations of the environment platform admin is pointed at, as the reseller → customer → sub-unit tree. Re-parent, suspend, and open one to start a **support session** (impersonation) as one of its members. |
+| Operators | `/admin/platform/operators` | Who runs the install. Add or suspend an operator. |
+| Usage | `/admin/platform/usage` | Sign-ins, users and tokens across every environment. |
+| Queues | `/admin/platform/queues` | Whether the queue workers are running, with the job monitor at `/admin/platform/queues/monitor`. |
+| Search | `/admin/platform/search` | One search across every environment. ⌘K searches the platform environment itself. |
+
+The line above each of these pages is the warning: *Platform admin: the whole deployment …
+a suspension, a new environment or an operator change here applies across all of them.*
+
+It is the same shell as the rest of `/admin`: the rail, the context switcher, ⌘K, the
+breadcrumbs and the account menu do not change when you move between Platform and the
+environment's own areas.
+
+Every write is the same action the operator API runs (`/api/v1/platform/…` on the root, and
+the root's MCP tools); the console address does not change the API's.
+
+**Who sees it.** Active platform operators, on the root's own host. Anybody else gets
+`404` for every `/admin/platform` address, signed in or not, and a tenant's host has no
+such address at all. On a single-tenant install there is no environment console; the same
+pages, at the same addresses, are a **Platform** area of the console's rail for its
+operators.
+
+### Support sessions
+
+On **Platform › Organization tree**, open an organization and choose **Impersonate** on a
+member (never an owner or admin), with a reason. You land on that member's console with a
+banner naming them and **Exit impersonation**. Platform admin and the platform environment's
+console answer `404` while it lasts. **Exit impersonation**, or the 30-minute limit, brings you back to
+**Platform › Organization tree**. A user of the platform environment itself can be
+impersonated the same way from **Users & orgs › Users**, and **Exit impersonation** returns you to the
+platform environment's console.
+
+### Old addresses
+
+Platform admin used to be a separate console at `/platform`. Every old page answers `301`
+to its new address, with the query string kept:
+
+| Old | New |
+|---|---|
+| `/platform` | `/admin/platform/environments` |
+| `/platform/workspaces`, `/platform/workspaces/{id}` | `/admin/platform/workspaces`, `/admin/platform/workspaces/{id}` |
+| `/platform/customers`, `/platform/customers/{id}` | `/admin/platform/workspaces`, `/admin/platform/workspaces/{id}` |
+| `/platform/organizations`, `/platform/organizations/{id}` | `/admin/platform/organizations`, `/admin/platform/organizations/{id}` |
+| `/platform/operators` | `/admin/platform/operators` |
+| `/platform/usage` | `/admin/platform/usage` |
+| `/platform/queues` | `/admin/platform/queues` |
+| `/platform/queues/monitor`, `/platform/queues/monitor/job/{uuid}` | `/admin/platform/queues/monitor`, `/admin/platform/queues/monitor/job/{uuid}` |
+| `/platform/search`, `/platform/search/jump/{id}` | `/admin/platform/search`, `/admin/platform/search/jump/{id}` |
+| `/operator` | `/admin/platform` |
+| `/platform/security` | `/account` |
+
+Form posts to the old addresses are not redirected; a page rendered before the move posts
+to the new address the next time it loads.
 
 A workspace owner who is not an operator gets `404` for `cboxid.com/admin`. They cannot
 name the root environment over REST or MCP either (`not_found`).
@@ -122,7 +186,8 @@ namespace; replace `<web-deployment>` with the name of your web Deployment:
 kubectl -n cbox-id exec -it deploy/<web-deployment> -- php artisan cbox-id:operator:grant owner@example.com
 ```
 
-The person can open `https://<root>/admin` on their next page load.
+The person can open `https://<root>/admin`, and platform admin at
+`https://<root>/admin/platform`, on their next page load.
 
 ## The workspace console on the root host
 
@@ -142,7 +207,8 @@ product's settings.
 - A write to one of those pages answers `404`.
 
 Single-tenant installs are unchanged. There the root environment is the product, and its
-organization console is its administration.
+organization console is its administration — with platform admin as its **Platform** area,
+at the same `/admin/platform` addresses, for its operators.
 
 ## Related
 

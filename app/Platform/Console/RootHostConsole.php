@@ -25,9 +25,13 @@ use Illuminate\Support\Facades\Route;
  * NOW EVERY PAGE ON THIS HOST ACTS ON WHAT IT SAYS:
  *
  *  - the workspace's own pages ({@see WorkspaceAltitude}: projects, team, keys, billing,
- *    settings, the team's own sign-in to Cbox, its activity log), the person's account,
- *    the landing pages, and platform admin are served as they were — except that an
- *    OPERATOR's every sign-in page is the platform environment's, the team's own included;
+ *    settings, the team's own sign-in to Cbox, its activity log), the person's account and
+ *    the landing pages are served as they were — except that an OPERATOR's every sign-in
+ *    page is the platform environment's, the team's own included;
+ *  - platform admin is not on this console's rail at all: it is the Platform area of the
+ *    platform environment's console (`/admin/platform/…`), and the account menu's
+ *    "Platform admin" is the way there. Its pages carry their own operator gate and never
+ *    this console's door, so only the rail has to leave them out;
  *  - a page that sets something an ENVIRONMENT owns — social login, sign-in methods,
  *    branding, apps, webhooks, roles… — is not served as the workspace's. An operator is
  *    sent to the same page of the platform root's own environment console
@@ -51,9 +55,6 @@ final readonly class RootHostConsole
 
     /** The sign-in area — the workspace team's own sign-in, at a workspace's altitude. */
     private const SIGN_IN_AREA = 'authentication';
-
-    /** Platform admin is the operators' section of this console, gated on its own. */
-    private const PLATFORM_AREAS = ['platform', 'platform-insights', 'platform-admin'];
 
     public function __construct(
         private ConsoleScope $scope,
@@ -80,8 +81,7 @@ final readonly class RootHostConsole
             return false;
         }
 
-        return in_array($area, self::PLATFORM_AREAS, true)
-            || ($area === 'overview' && in_array($route, self::OVERVIEW, true))
+        return ($area === 'overview' && in_array($route, self::OVERVIEW, true))
             || WorkspaceAltitude::keepsPage($area, $route);
     }
 

@@ -312,6 +312,8 @@ it('serves the operator API\'s own contract, publicly', function (): void {
 it('sends a bookmarked customers page to the workspaces one', function (): void {
     $workspace = provisionAccount()['organization'];
 
-    $this->get('/platform/customers?q=acme')->assertStatus(301)->assertRedirect('/platform/workspaces?q=acme');
-    $this->get("/platform/customers/{$workspace->id}")->assertStatus(301)->assertRedirect("/platform/workspaces/{$workspace->id}");
+    // Straight to where the workspaces page is now — inside `/admin` — not through
+    // `/platform/workspaces`, which moved too.
+    $this->get('/platform/customers?q=acme')->assertStatus(301)->assertRedirect('/admin/platform/workspaces?q=acme');
+    $this->get("/platform/customers/{$workspace->id}")->assertStatus(301)->assertRedirect("/admin/platform/workspaces/{$workspace->id}");
 });

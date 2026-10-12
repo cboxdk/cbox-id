@@ -235,8 +235,16 @@ final class Impersonation
             // running restores nothing: they come back to the sign-in door, not to a live
             // control-plane session. Re-read rather than trusted from the marker, because
             // the whole window is time in which it can have gone.
+            //
+            // OR STILL AN OPERATOR. The platform environment's own console is administered by
+            // the deployment's operators rather than through a workspace membership, and an
+            // operator who started a support session from its Users page holds no membership
+            // at all — so "still a member" alone signed them out on Exit, every time. The
+            // operator record is re-read the same way and for the same reason: one suspended
+            // in the meantime comes back to the sign-in door.
             $stillAMember = $this->platformRoot->run(
-                fn (): bool => $this->memberships->forUser($subjectId)->isNotEmpty(),
+                fn (): bool => $this->memberships->forUser($subjectId)->isNotEmpty()
+                    || $this->operators->findBySubject($subjectId) !== null,
             ) === true;
 
             // The anchor goes back only if the identity AND the authority did. An anchor
