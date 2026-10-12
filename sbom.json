@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:73a7b2fd-0f35-40d0-96be-0205de8dccda",
+    "serialNumber": "urn:uuid:71986e3b-4a30-492e-b4aa-550da831d6d6",
     "version": 1,
     "metadata": {
         "tools": [
@@ -1159,6 +1159,22 @@
             "version": "4.9.4",
             "purl": "pkg:composer/ramsey/uuid@4.9.4",
             "description": "A PHP library for generating and working with universally unique identifiers (UUIDs).",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/resend/resend-php@v1.16.0",
+            "group": "resend",
+            "name": "resend-php",
+            "version": "v1.16.0",
+            "purl": "pkg:composer/resend/resend-php@v1.16.0",
+            "description": "Resend PHP library.",
             "licenses": [
                 {
                     "license": {

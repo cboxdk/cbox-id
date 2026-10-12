@@ -33,7 +33,8 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1",
         "league/flysystem-aws-s3-v3": "^3.35",
-        "maxmind-db/reader": "^1.12"
+        "maxmind-db/reader": "^1.12",
+        "resend/resend-php": "^1.16"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
