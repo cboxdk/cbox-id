@@ -99,8 +99,11 @@ it('puts the customer first in the platform rail, above the environments inside 
     // Root → leaf. The list used to read Environments, Accounts, Organizations — and the
     // first entry was 'Customers', because a customer is not an account, and is 'Workspaces'
     // now — the word the customer's own console uses for itself.
+    // One Platform area now (it was three), so the people who run it and how it is doing
+    // follow the hierarchy rather than sitting in areas of their own. The organizations are
+    // the TREE, so the platform environment's console does not carry two "Organizations".
     expect(collect($platform->pages())->pluck('label')->all())
-        ->toBe(['Workspaces', 'Environments', 'Organizations']);
+        ->toBe(['Workspaces', 'Environments', 'Organization tree', 'Operators', 'Usage', 'Queues', 'Search']);
 });
 
 it('walks an operator from an account down to every environment its projects own', function (): void {

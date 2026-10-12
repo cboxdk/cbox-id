@@ -233,9 +233,9 @@ lasts is real.
 
 ## The job monitor
 
-**Platform › Insights › Queues** (`/platform/queues`) shows whether a manager is running
+**Platform › Queues** (`/admin/platform/queues`) shows whether a manager is running
 and how far behind each queue is. **Open job monitor** on that page opens the
-`cboxdk/laravel-queue-monitor` dashboard at `/platform/queues/monitor`: every job with its
+`cboxdk/laravel-queue-monitor` dashboard at `/admin/platform/queues/monitor`: every job with its
 status, duration, retries and failure message, and the autoscaler's scaling decisions.
 
 Who can open it:
@@ -262,7 +262,7 @@ The monitor still stores failure messages and stack traces. Keep job exceptions 
 secrets, the same rule `failed_jobs` already needs.
 
 **The REST API is off.** If you turn it on (`QUEUE_MONITOR_API_ENABLED=true`), it sits
-under `/platform/queues/api` behind the same operator session and host check as the
+under `/admin/platform/queues/api` behind the same operator session and host check as the
 dashboard.
 
 **Retention** runs on the scheduler:

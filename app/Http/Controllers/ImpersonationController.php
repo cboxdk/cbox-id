@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
-use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
@@ -38,7 +37,7 @@ final class ImpersonationController extends Controller
      *  - A justification is mandatory (PAM): start is rejected (422) without a
      *    reason, which is stored in the marker and recorded on the audit trail.
      */
-    public function start(Request $request, string $user, ConsoleScope $scope, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes): RedirectResponse
+    public function start(Request $request, string $user, ConsoleScope $scope, Memberships $memberships, Impersonation $impersonation): RedirectResponse
     {
         // Re-asked of the session that is actually here, not of a separate operator key:
         // one sign-in, one place that answers whether this person runs the deployment.
@@ -62,7 +61,7 @@ final class ImpersonationController extends Controller
 
         $impersonation->start($request, $operatorId, $user, $orgId, $reason);
 
-        return $this->landing($planes, 'platform.organizations');
+        return $this->landing();
     }
 
     /**
@@ -74,7 +73,7 @@ final class ImpersonationController extends Controller
      * this environment resolves to null → 403. Owners/admins are refused, and a
      * justification is mandatory, exactly as for operator impersonation.
      */
-    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes, Subjects $subjects): RedirectResponse
+    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, Subjects $subjects): RedirectResponse
     {
         // The acting administrator's SUBJECT id, not their membership's row id. The marker
         // records who is impersonating, and on exit that identity is resolved back into a
@@ -115,42 +114,34 @@ final class ImpersonationController extends Controller
 
         $impersonation->startAsMembership($request, $actorSubjectId, $user, $orgId, $request->string('reason')->toString());
 
-        return $this->landing($planes, 'environment.home');
+        return $this->landing();
     }
 
     /**
-     * Where an impersonation drops the operator, on the host they are standing on.
+     * Where an impersonation drops the person who started it: the console of the person
+     * they now ARE, on the host they are standing on — `/dashboard`, where the banner and
+     * its Exit button render.
      *
-     * `dashboard` used to 404 on the platform root — it was `plane:subject`, and the
-     * Impersonate button lives on `/platform/organizations`, which is the root. The 404
-     * page carries no chrome, so the exit control did not render either: the only way out
-     * was to POST `/impersonation/exit` by hand.
+     * Never the caller's own console. That was the rule — platform admin for an operator,
+     * the environment console's home for an environment administrator, on the root host —
+     * and it landed every one of them on a 404: both of those consoles are gated on the
+     * caller's authority, and the session that arrives there is the impersonated member's,
+     * who has none. A 404 has no chrome, so there was no banner and no Exit either; the
+     * only way out was to POST `/impersonation/exit` by hand. On a single-tenant install
+     * and a tenant's host the fork already answered `dashboard`, which is why it went
+     * unnoticed: the suite runs single-tenant.
      *
-     * The root serves `/dashboard` now, and this fork STAYS, because the reason it exists
-     * was never only that the route was absent. The dashboard renders the organization the
-     * SESSION names, and on the root the ambient environment is the root's — an operator
-     * who has pinned their console at a tenant and stepped into one of its members would
-     * be shown a console resolved against a different environment than the person they are
-     * impersonating belongs to. The caller's own console is the honest landing.
+     * Deliberately not a cross-host redirect to the member's own environment. The session
+     * is host-scoped — {@see EnvironmentHandoffController::openEnvironment()} mints a
+     * signed handoff token precisely because a session does not travel between hosts — so
+     * bouncing there would land the operator with no session at all.
      *
-     * Deliberately not a cross-host redirect to the tenant's own console either. The
-     * session is host-scoped — {@see EnvironmentHandoffController::openEnvironment()} mints a signed
-     * handoff token precisely because a session does not travel between hosts — so bouncing
-     * there would land an operator with no session at all, which is the same dead end
-     * wearing a different hostname. They stay where they are, where the banner and its Exit
-     * button render.
-     *
-     * The fallback is the caller's own console — the same pair {@see exit()} chooses
-     * between, for the same reason: an environment administrator has no platform pages.
+     * Exit is unchanged: it returns to the caller's own console ({@see exit()}), because by
+     * then the caller's own session is back.
      */
-    private function landing(PlaneResolver $planes, string $fallback): RedirectResponse
+    private function landing(): RedirectResponse
     {
-        // `onAccountPlane()` rather than the old `isMultiTenant() && ! onSubjectPlane()`,
-        // which is the same predicate written from the far side and differed on exactly
-        // one case: no environment resolved at all. Impersonation always starts from a
-        // console page that has one, and answering "the account plane" for a request with
-        // no environment was never the intent.
-        return redirect()->route($planes->onAccountPlane() ? $fallback : 'dashboard');
+        return redirect()->route('dashboard');
     }
 
     /**

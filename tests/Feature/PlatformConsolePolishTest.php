@@ -120,14 +120,16 @@ it('gives every platform page the eyebrow its rail area actually uses', function
     polishOperator();
 
     // All eight hand-wrote "Platform", so Usage and Search claimed an area the rail did
-    // not highlight, and so did Operators and Security.
+    // not highlight, and so did Operators and Security. They are one area now, so the
+    // hand-written word would be right again — and it is still read off the rail.
     $expected = [
         'platform.environments' => 'Platform',
         'platform.workspaces' => 'Platform',
         'platform.organizations' => 'Platform',
-        'platform.usage' => 'Insights',
-        'platform.search' => 'Insights',
-        'platform.operators' => 'Administration',
+        'platform.usage' => 'Platform',
+        'platform.queues' => 'Platform',
+        'platform.search' => 'Platform',
+        'platform.operators' => 'Platform',
     ];
 
     /*

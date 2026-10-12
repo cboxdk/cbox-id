@@ -198,12 +198,15 @@ icons; the choice is remembered in this browser.
 
 ### Platform admin
 
-Whoever runs the install reaches the platform pages (workspaces, environments, usage,
-queues, operators) from **Platform admin** in the account menu, not from the rail. Inside
-it the rail holds only the platform areas, and a strip across the top says **Platform
-admin** with **Exit platform admin** beside it, because a click there acts on every
-workspace on the install. Re-pointing the platform pages at another environment is done
-on **Platform › Environments**.
+Whoever runs the install reaches the platform pages (workspaces, environments, the
+organization tree, operators, usage, queues) as the **Platform** area of the platform
+environment's console, `/admin/platform` on the root host — the same console, rail and
+⌘K as the platform environment's own settings. From the workspace console, **Platform
+admin** in the account menu goes there. The line above every Platform page says
+**Platform admin: The whole deployment**, in the warning colours, because a click there
+acts on every workspace on the install. Re-pointing the platform pages at another
+environment is done on **Platform › Environments**. On a single-tenant install the same
+pages are a **Platform** area of the console's rail.
 
 ## Where you land after signing in
 

@@ -65,7 +65,7 @@ function browserStorage(): Storage | undefined {
  */
 export function CommandPalette({ areas }: CommandPaletteProps) {
     const { shell } = usePage<SharedProps>().props;
-    const endpoint = searchHref(shell?.altitude, shell?.platformMode ?? false);
+    const endpoint = searchHref(shell?.altitude);
     const scope = typeof window === 'undefined' ? '' : window.location.host;
 
     const [open, setOpen] = useState(false);

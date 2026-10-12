@@ -42,7 +42,7 @@ use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
- * PLATFORM › ORGANIZATIONS — every tenant in the TARGETED environment, as the management
+ * PLATFORM › ORGANIZATION TREE — every tenant in the TARGETED environment, as the management
  * tree (reseller → customer → sub-unit, arbitrary depth).
  *
  * Organizations are environment-owned, so every query here is naturally scoped to the
@@ -106,7 +106,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 ->whereIn('organization_id', $listedIds)
                 ->groupBy('organization_id')->pluck('c', 'organization_id');
 
-        return $this->page('console/platform/organizations', Vocabulary::ORGANIZATIONS, [
+        return $this->page('console/platform/organizations', Vocabulary::ORGANIZATION_TREE, [
             'help' => HelpProps::for(HelpTopic::PlatformOrganizations),
             'organizations' => $this->tree($organizations, $memberCounts),
             // The flat list the two parent selectors are built from.
