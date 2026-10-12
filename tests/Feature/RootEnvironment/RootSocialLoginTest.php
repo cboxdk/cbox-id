@@ -11,11 +11,9 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
-use Firebase\JWT\JWT;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\RootGoogle;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,122 +32,41 @@ use Illuminate\Testing\TestResponse;
 | RS256 id_token carrying the nonce the application issued, and the JWKS that verifies it.
 */
 
-const SOCIAL_ROOT_HOST = 'cboxid.com';
+const SOCIAL_ROOT_HOST = RootGoogle::HOST;
 
 beforeEach(function (): void {
-    multiTenantDeployment(SOCIAL_ROOT_HOST);
-    config([
-        'cbox-id.environments.base_domains' => [SOCIAL_ROOT_HOST],
-        // A real DNS lookup for accounts.google.com otherwise, on every outbound call.
-        'cbox-id.federation.verify_url' => false,
-    ]);
-
-    Http::fake([
-        'accounts.google.com/.well-known/openid-configuration' => Http::response([
-            'issuer' => 'https://accounts.google.com',
-            'authorization_endpoint' => 'https://accounts.google.com/o/oauth2/v2/auth',
-            'token_endpoint' => 'https://oauth2.googleapis.com/token',
-            'jwks_uri' => 'https://www.googleapis.com/oauth2/v3/certs',
-        ]),
-        'api.pwnedpasswords.com/*' => Http::response('', 200),
-    ]);
+    RootGoogle::deployment();
 
     $this->account = provisionAccount('owner@acme.example');
     $this->tenantHost = $this->account['environment']->slug.'.'.SOCIAL_ROOT_HOST;
 });
 
-/** A platform operator, signed in at the root with a confirmed address. */
+/*
+ * The fixture lives in {@see RootGoogle} so the link-at-sign-in tests can drive the same
+ * Google; these names stay because every test below reads as a sentence with them.
+ */
+
 function rootOperatorSignedIn(): string
 {
-    $existing = PlatformOperator::query()->where('email', 'ops@platform.test')->first();
-
-    if ($existing !== null) {
-        signInAsSubject((string) $existing->subject_id);
-
-        return (string) $existing->subject_id;
-    }
-
-    $operator = actAsOperator('ops@platform.test');
-    $subjectId = (string) $operator->subject_id;
-
-    app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($subjectId, 'ops@platform.test'));
-
-    return $subjectId;
+    return RootGoogle::operatorSignedIn();
 }
 
-/** Google, environment-wide, in the platform root's environment — as an operator does it, in its console. */
 function turnOnGoogleForThePlatform(): Connection
 {
-    test()->from('https://'.SOCIAL_ROOT_HOST.'/admin/social-sign-in?provider=google')
-        ->post('https://'.SOCIAL_ROOT_HOST.'/admin/social-sign-in', [
-            'provider' => 'google',
-            'clientId' => 'google-client-id',
-            'clientSecret' => 'google-client-secret',
-            'parameters' => [],
-            'forEnvironment' => true,
-        ])
-        ->assertSessionHasNoErrors()
-        ->assertRedirect();
-
-    $root = app(PlatformRoot::class)->model();
-
-    return app(EnvironmentContext::class)->runAs($root, static fn (): Connection => Connection::query()->where('provider', 'google')->sole());
+    return RootGoogle::turnOn();
 }
 
-/** Forget everybody: the next request is a stranger's browser. */
 function signedOutBrowser(): void
 {
-    app()->forgetScopedInstances();
-    session()->flush();
+    RootGoogle::signedOutBrowser();
 }
 
 /**
- * Click Google on the root's sign-in page and come back from Google signed in as $email —
- * returning the callback's response.
- *
  * @param  array<string, mixed>  $claims
  */
 function signInWithGoogleAtTheRoot(string $email, array $claims = [], ?string $tamperState = null): TestResponse
 {
-    $login = test()->get('https://'.SOCIAL_ROOT_HOST.'/login')->assertOk();
-    $google = collect($login->inertiaProps('providers'))->firstWhere('provider', 'google');
-
-    expect($google)->not->toBeNull('the root\'s sign-in page offers no Google button');
-
-    $start = test()->get((string) $google['url']);
-    $authorize = (string) $start->headers->get('Location');
-    parse_str((string) parse_url($authorize, PHP_URL_QUERY), $query);
-
-    // ONE redirect URI, on the root: the address the operator registered with Google.
-    expect($authorize)->toStartWith('https://accounts.google.com/o/oauth2/v2/auth?')
-        ->and((string) $query['redirect_uri'])->toStartWith('https://'.SOCIAL_ROOT_HOST.'/sso/oidc/')
-        ->and((string) $query['redirect_uri'])->toEndWith('/callback');
-
-    $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
-    openssl_pkey_export($key, $pem);
-    $details = openssl_pkey_get_details($key);
-    $b64 = static fn (string $bytes): string => rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
-
-    Http::fake([
-        'oauth2.googleapis.com/token' => Http::response(['id_token' => JWT::encode([
-            'iss' => 'https://accounts.google.com',
-            'aud' => 'google-client-id',
-            'sub' => 'google|'.md5($email),
-            'email' => $email,
-            'email_verified' => true,
-            'name' => 'Google Person',
-            'nonce' => $query['nonce'],
-            'iat' => time(),
-            'exp' => time() + 300,
-            ...$claims,
-        ], $pem, 'RS256', 'k1')]),
-        'www.googleapis.com/oauth2/v3/certs' => Http::response(['keys' => [[
-            'kty' => 'RSA', 'kid' => 'k1', 'use' => 'sig', 'alg' => 'RS256',
-            'n' => $b64($details['rsa']['n']), 'e' => $b64($details['rsa']['e']),
-        ]]]),
-    ]);
-
-    return test()->get((string) $query['redirect_uri'].'?'.http_build_query(['code' => 'the-code', 'state' => $tamperState ?? $query['state']]));
+    return RootGoogle::signIn($email, $claims, $tamperState);
 }
 
 /** Follow the root's open-environment door into the tenant's console, by its signed POST. */

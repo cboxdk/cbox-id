@@ -323,7 +323,6 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
         'activity',
         'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
         'environment.open',
-        'link.confirm', 'link.connect', 'link.decline',
         'organization.switch',
         'passkeys.register', 'passkeys.register.options',
         'password.change', 'password.change.update',

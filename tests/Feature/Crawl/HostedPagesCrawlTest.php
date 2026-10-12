@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Platform\AccountLinking\LinkHold;
+use App\Platform\AccountLinking\PendingLink;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -129,4 +132,41 @@ it('serves the device sign-in page a TV\'s QR code opens, every link it offers, 
     $this->get("https://{$host}/oauth/device/qr?user_code={$userCode}")
         ->assertOk()
         ->assertHeader('Content-Type', 'image/svg+xml');
+});
+
+it('serves the link step a social sign-in leads to, and every link it offers', function (): void {
+    $world = ConsoleCrawl::world();
+    $environment = $world->environment;
+    expect($environment)->not->toBeNull();
+
+    // A Google sign-in came back vouching for an address that already has an account on the
+    // environment — held, exactly as the callback holds it.
+    app(EnvironmentContext::class)->runAs($environment, function (): void {
+        $subject = app(Subjects::class)->findByEmail('peter@initech.example');
+
+        app(LinkHold::class)->put(PendingLink::hold(
+            principal: new FederatedPrincipal('social:google', 'google|crawl', 'peter@initech.example', 'Peter', raw: ['email_verified' => true]),
+            subjectId: (string) $subject?->id,
+            accountEmail: 'peter@initech.example',
+            providerLabel: 'Google',
+            providerKey: 'google',
+            operatorProvider: 'google',
+            challenged: false,
+            now: now()->getTimestamp(),
+        ));
+    });
+
+    ConsoleCrawl::productionShape();
+
+    $host = $environment->slug.'.'.ConsoleCrawl::ROOT;
+
+    $crawl = (new ConsoleCrawl($this))->crawl(
+        host: $host,
+        select: static fn (Route $route): bool => false,
+        parameters: [],
+        starts: ["https://{$host}/login/link"],
+    );
+
+    expect($crawl->failures)->toBe([], implode("\n", $crawl->failures))
+        ->and(array_keys($crawl->components))->toContain('auth/link-account');
 });

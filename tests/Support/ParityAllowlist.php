@@ -96,12 +96,14 @@ final class ParityAllowlist
             // Accepting an invitation is the invitee's own act, proved by the link they hold.
             'invitation.accept.store',
             'organization.invite.accept.store',
-            // Linking a social identity that matched an existing account: the person confirms.
-            'link.connect',
-            'link.decline',
             // Signing in, and every step of it.
             'login.attempt',
             'login.identify',
+            // The link step: a provider vouched for an address that already has an account,
+            // and the person proves that account is theirs before the identity is linked.
+            'login.link.cancel',
+            'login.link.code',
+            'login.link.verify',
             'login.magic-link',
             'login.step-up.resend',
             'login.step-up.verify',
