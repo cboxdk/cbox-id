@@ -22,12 +22,14 @@ jobs:
   #  1. The dev image loads Xdebug in develop,debug,coverage mode. Measured in this image
   #     on tests/Feature/Crawl: 229 s as shipped, 50 s with Xdebug off. Pint, at 569 s,
   #     was the same story. .github/php/ci.ini turns it off and OPcache on.
-  #  2. One process for ~5,900 tests. The suites now run under `pest --parallel`, one
-  #     worker per core, as they already do on a developer's machine.
+  #  2. One process for ~5,900 tests. The Unit and Feature suites now run in two halves
+  #     on two runners per database, each half under `pest --parallel` with one worker
+  #     per core, as they already do on a developer's machine.
   #
   # Every check that ran before still runs: lint and static analysis in `lint`, the Unit
-  # and Feature suites on sqlite in `test`, the browser suite (axe-core, smoke, visual
-  # baselines) in `browser`, and the Unit and Feature suites again on each server engine.
+  # and Feature suites on sqlite in `test` (two halves), the browser suite (axe-core,
+  # smoke, visual baselines) in `browser` (in one process: see that job), and the Unit and
+  # Feature suites again on each server engine (two halves each).
   # ---------------------------------------------------------------------------
   lint:
     # GITHUB-HOSTED, ALWAYS. The repository is public, so GitHub's runners cost nothing
@@ -46,6 +48,12 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      # Larastan boots the application, which wants an encryption key.
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force
 
       - name: Lint (Pint)
         run: vendor/bin/pint --test
@@ -67,6 +75,14 @@ jobs:
         # deployed application, not a library; a cell for a version it never runs on
         # tests a deployment nobody has.
         php: ['8.5']
+        # THE SUITE IN TWO HALVES, each on its own runner, each half under `--parallel`.
+        # Pest splits by test class using the timings in tests/.pest/shards.json, so the
+        # halves take about as long as each other; a class that file does not know yet is
+        # dealt round-robin and Pest prints a WARN — refresh it with
+        # `vendor/bin/pest --testsuite=Unit,Feature --parallel --update-shards` now and then.
+        # The two halves together are the whole suite, whatever the file says: it only
+        # decides which half a class lands in.
+        shard: [1, 2]
 
     # The toolchain is the cbox base image's dev tier, not a stack of setup actions: PHP,
     # Composer, Node 22 and Playwright's Chromium are baked in, pinned by the `-v1` release
@@ -98,8 +114,8 @@ jobs:
       # One worker per core, each with its own sqlite :memory: database. The OpenAPI,
       # actions-reference and i18n drift checks are tests in this suite
       # (OpenApiBuildTest, ActionsReferenceTest, HostedPageLanguageTest), so they run here.
-      - name: Tests (Unit + Feature, parallel)
-        run: vendor/bin/pest --testsuite=Unit,Feature --parallel
+      - name: Tests (Unit + Feature, parallel, half ${{ matrix.shard }} of 2)
+        run: vendor/bin/pest --testsuite=Unit,Feature --parallel --shard=${{ matrix.shard }}/2
 
   browser:
     runs-on: ubuntu-latest
@@ -148,8 +164,15 @@ jobs:
       # a `--exclude-group` on the command line REPLACES the XML's list rather than adding
       # to it, so naming it here keeps it out if a flag is ever added. One flag per group:
       # Pest reads `--exclude-group=a,b` as a single group with a comma in its name.
+      #
+      # ONE PROCESS, NOT `--parallel`. Pest can run browser tests in parallel, and on this
+      # runner it bought little (156 s against roughly as long in one process) while two
+      # tests that pass in one process failed: axe caught a toast mid fade-in (contrast
+      # 3.36) and a list was read before the delete's redirect had landed. Four Chromiums
+      # and four PHP servers on four cores make every wait in the suite a race. This job is
+      # not the longest one, so it keeps the timing the suite was written against.
       - name: Tests (Browser — axe-core a11y, real-browser smoke, visual)
-        run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots --parallel
+        run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots
 
   # ---------------------------------------------------------------------------
   # SUPPLY CHAIN — its own job so it ALWAYS runs.
@@ -215,6 +238,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        driver: [mysql, pgsql]
+        # Two halves of the suite per engine, as in `test`.
+        shard: [1, 2]
         include:
           # Kept green for self-hosters: MySQL is a supported production database.
           # Floored at 8.0.13 in the docs because that is where EXPRESSION column
@@ -232,7 +258,7 @@ jobs:
             image: postgres:18
             port: 5432
             health: pg_isready -U cbox_id -d cbox_id
-    name: ${{ matrix.image }}
+    name: ${{ matrix.image }} (${{ matrix.shard }}/2)
     services:
       db:
         image: ${{ matrix.image }}
@@ -312,5 +338,5 @@ jobs:
 
       # Browser tests are excluded on purpose: they need Chromium and prove
       # rendering, not persistence. This job is about the engine.
-      - name: Tests (Unit + Feature, parallel) on ${{ matrix.image }}
-        run: vendor/bin/pest --testsuite=Unit,Feature --parallel
+      - name: Tests (Unit + Feature, parallel, half ${{ matrix.shard }} of 2) on ${{ matrix.image }}
+        run: vendor/bin/pest --testsuite=Unit,Feature --parallel --shard=${{ matrix.shard }}/2

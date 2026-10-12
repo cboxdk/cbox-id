@@ -17,6 +17,11 @@
             <directory>tests/Browser</directory>
         </testsuite>
     </testsuites>
+    <!-- Inert unless CBOX_MEMORY_TRACE names a file: then it logs memory after every test,
+         which is how to find a test that leaves memory behind. See the class. -->
+    <extensions>
+        <bootstrap class="Tests\Support\Memory\TraceExtension"/>
+    </extensions>
     <!-- `docs-screenshots` rewrites docs/screenshots/*.png from the running app
          (tests/Browser/DocsScreenshotsTest.php). It writes into the working tree, so a plain
          `vendor/bin/pest` leaves it out; asking for the group by name (the `group` option,
@@ -39,11 +44,17 @@
         <!-- The suite boots the whole platform (Testbench + Pest 4 browser tests) and
              does not fit in a stock 128M. Setting it here means the plain, documented
              `vendor/bin/pest` works on any machine, instead of only where php.ini
-             happens to be generous or the caller remembered `-d memory_limit`. 2G, not 1G:
-             CI runs the whole suite in ONE process and what it holds grows from test to
-             test; the console crawls tipped 1G there once the suite passed ~5,600 tests,
-             although a crawl alone needs ~256M. Bring this back down with the leak fixed. -->
-        <ini name="memory_limit" value="2G"/>
+             happens to be generous or the caller remembered `-d memory_limit`.
+
+             1G is room, not need. Traced test by test (tests/Support/Memory), one process
+             running Unit + Feature ends near 480M without OPcache: every test boots a fresh
+             application, and re-compiling its config, routes and views leaves ~40K a test
+             on the heap that only OPcache avoids. With OPcache on for the CLI, as CI runs
+             it (.github/php/ci.ini), the same run stays flat after warm-up. It was briefly
+             2G after the console crawls tipped 1G near the end of a single-process CI run;
+             CI now runs the suites in parallel, a quarter of the tests a process.
+             If this has to go up again, trace it first. -->
+        <ini name="memory_limit" value="1G"/>
         <!-- The suite-owned infrastructure (APP_ENV, CACHE_STORE, QUEUE_CONNECTION,
              SESSION_DRIVER, …) is set in tests/bootstrap.php instead of here: `<env>`
              writes $_ENV and putenv() but not $_SERVER, which is the first place
