@@ -17,7 +17,9 @@ use App\Platform\MemberEmailVerification;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Throwable;
 
 /**
  * Mail yourself a link that confirms your email address.
@@ -76,7 +78,18 @@ final readonly class SendEmailConfirmation implements Action
         }
 
         RateLimiter::hit($key, self::DECAY_SECONDS);
-        $this->verification->sendConfirmation($subject);
+
+        // A mail server that cannot be reached is the deployment's problem, not the person's:
+        // say so in a sentence instead of a 500, and leave the detail in the log. The attempt
+        // is not counted against them — they did nothing wrong by clicking.
+        try {
+            $this->verification->sendConfirmation($subject);
+        } catch (Throwable $e) {
+            RateLimiter::clear($key);
+            Log::error('Could not send an email confirmation link', ['subject' => $subjectId, 'error' => $e->getMessage()]);
+
+            throw new ActionRefused('mail_unavailable', 'We could not send the email right now — this deployment cannot reach its mail server. Try again later; an administrator can also confirm your address with `php artisan cbox-id:users:confirm-email`.', 503);
+        }
 
         return ActionResult::item($subject, ['outcome' => 'sent', 'email' => $subject->email]);
     }

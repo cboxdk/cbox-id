@@ -197,3 +197,29 @@ it('fails brand assets on the r2 disk, which refuses the public objects they are
         // As shared storage it is fine; it is the public ACL R2 refuses.
         ->and($verdicts)->toHaveKey('Shared files', 'ok');
 });
+
+/*
+ * A configured mailer is not a working one: production named a Postal server whose DNS
+ * name had gone, the doctor said "sent with postal", and every link failed with a 500.
+ */
+it('fails production when the mail server\'s name does not resolve', function (): void {
+    $verdicts = productionVerdicts([
+        ...soundProductionConfig(),
+        'mail.default' => 'postal',
+        'mail.mailers.postal' => ['transport' => 'postal'],
+        'postal.servers.default.url' => 'https://postal.cbox-id-doctor-test.invalid',
+    ]);
+
+    expect($verdicts)->toHaveKey('Mail server unreachable', 'fail');
+});
+
+it('passes a mail server that resolves', function (): void {
+    $verdicts = productionVerdicts([
+        ...soundProductionConfig(),
+        'mail.default' => 'postal',
+        'mail.mailers.postal' => ['transport' => 'postal'],
+        'postal.servers.default.url' => 'https://127.0.0.1',
+    ]);
+
+    expect($verdicts)->toHaveKey('Mail', 'ok');
+});
