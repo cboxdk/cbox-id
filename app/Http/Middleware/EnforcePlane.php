@@ -47,8 +47,9 @@ use Symfony\Component\HttpFoundation\Response;
  *    plus the platform root's own host while `api.mcp.root_oauth` is on — where each serves
  *    the MCP slice of itself and nothing else (no OpenID Connect discovery: that stays
  *    `issuer`, and absent on the root).
- *  - `plane:environment` — the environment-admin console under `/admin`, reached by
- *    redeeming the account plane's signed handoff. Never on the account plane itself.
+ *  - `plane:environment` — the environment console under `/admin`: on a tenant host,
+ *    reached by redeeming the account plane's signed handoff; on the platform root's own
+ *    host, the root environment's console, administered by platform operators.
  *
  * `console` and `issuer` were ONE plane, named `subject`, and the conflation is what left
  * the platform root with no sign-in page: the root must not answer as an identity
@@ -58,7 +59,7 @@ use Symfony\Component\HttpFoundation\Response;
  * wider meaning.
  *
  * A session still carries no weight where its surface is absent: an account session gets
- * nothing on a tenant host, and an env-admin session nothing on the account plane.
+ * nothing on a tenant host, and a tenant's env-admin session nothing on the account plane.
  * Deny-by-default throughout — an unmapped host resolves to the platform root, so it is
  * refused by the same rules the root is.
  */
@@ -144,10 +145,13 @@ final class EnforcePlane
             // What an MCP client reads and writes before it can send anybody to sign in. A
             // HOST question at the root, like `console`: see PlaneResolver::servesRootMcpOAuth().
             'mcp-discovery' => $this->planes->servesIssuer() || $this->planes->servesRootMcpOAuth($request->getHost()),
-            // The environment-admin console. Asked as its own question rather than
-            // borrowed from `issuer`: same answer today, different reason, and a shared
-            // name is how two surfaces end up moving together when only one should.
-            'environment' => $this->planes->servesEnvironmentAdmin(),
+            // The environment console. Asked as its own question rather than borrowed from
+            // `issuer`, and the reason it was kept apart came true: the two answers parted
+            // when the root environment got its console, while the root stays an issuer
+            // for nobody.
+            // A HOST question at the root: the root environment's console is served on the
+            // root's own host and on no unmapped name that merely resolves there.
+            'environment' => $this->planes->servesEnvironmentAdmin($request->getHost()),
             // The staff console. It shipped with no bulkhead at all, so the Cbox
             // operator sign-in was served on every tenant subdomain AND on every
             // customer-controlled brand domain (whitelabel writes environments.domain,

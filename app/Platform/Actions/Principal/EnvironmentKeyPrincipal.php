@@ -7,6 +7,7 @@ namespace App\Platform\Actions\Principal;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
+use App\Platform\Actions\Approvals\PlatformRootApprovals;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Organization\Models\Environment;
@@ -71,9 +72,14 @@ final readonly class EnvironmentKeyPrincipal implements Principal
         return is_string($environment) && $environment !== '' ? $label.' in '.Str::limit($environment, 80) : $label;
     }
 
+    /**
+     * The key's own policy — raised to every write for a key of the platform root's own
+     * environment ({@see PlatformRootApprovals}), where every workspace owner and operator
+     * signs in.
+     */
     public function stepUpPolicy(): ?StepUpPolicy
     {
-        return StepUpPolicy::fromArray($this->key->step_up_policy);
+        return PlatformRootApprovals::raise(StepUpPolicy::fromArray($this->key->step_up_policy), (string) $this->key->environment_id);
     }
 
     /**

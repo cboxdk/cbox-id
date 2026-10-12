@@ -243,4 +243,63 @@ describe('CommandPalette', () => {
         await waitFor(() => expect(options()[0]).toContain('Enterprise SSO'));
         expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it("offers every other environment the switcher offers — the platform's own included — as a page load", async () => {
+        const assign = vi.fn<(href: string) => void>();
+        vi.stubGlobal('location', { ...window.location, assign, host: 'cboxid.com' });
+
+        setPageProps({
+            shell: {
+                altitude: 'workspace',
+                platformMode: false,
+                areas: AREAS,
+                context: {
+                    noun: 'Workspace',
+                    workspaces: [],
+                    switchUrl: null,
+                    projects: [
+                        {
+                            id: 'prj1',
+                            name: 'Storefront',
+                            current: false,
+                            environments: [
+                                {
+                                    id: 'env1',
+                                    name: 'Production',
+                                    type: 'production',
+                                    current: false,
+                                    href: 'https://cboxid.com/open/env1',
+                                },
+                            ],
+                        },
+                        {
+                            id: 'platform',
+                            name: 'Platform',
+                            current: false,
+                            environments: [
+                                {
+                                    id: 'root',
+                                    name: 'Platform',
+                                    type: 'production',
+                                    current: false,
+                                    href: 'https://cboxid.com/admin',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            } as unknown as Shell,
+        });
+
+        render(<CommandPalette areas={AREAS} />);
+        await userEvent.keyboard('{Meta>}k{/Meta}');
+        const input = await screen.findByRole('combobox');
+
+        await userEvent.type(input, 'Platform');
+        const option = await screen.findByRole('option', { name: /Open Platform/ });
+        await userEvent.click(option);
+
+        // Another host, possibly: never an Inertia visit, which is a same-origin XHR.
+        expect(assign).toHaveBeenCalledWith('https://cboxid.com/admin');
+    });
 });

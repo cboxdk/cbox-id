@@ -82,10 +82,10 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     $this->post('http://cboxid.com/sso/saml/idp/sso')->assertNotFound();
     $this->get('http://cboxid.com/sso/saml/idp/slo')->assertNotFound();
 
-    // …and the environment-admin door, which asks the same host question for its own
-    // reason: it is how an ACCOUNT reaches into an environment from the account plane, so
-    // it does not exist on the account plane itself.
-    $this->get('http://cboxid.com/admin/single-sign-on')->assertNotFound();
+    // …while the ENVIRONMENT CONSOLE is no part of the IdP surface, and is served on the
+    // root's own host for the root environment: its operators administer it there. A
+    // visitor with no session is sent to sign in, never shown the page.
+    $this->get('http://cboxid.com/admin/single-sign-on')->assertRedirect(route('login'));
 });
 
 /**

@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -22,40 +24,44 @@ uses(RefreshDatabase::class);
  */
 beforeEach(function (): void {
     multiTenantDeployment('cboxid.com');
+    config(['cbox-id.environments.base_domains' => ['cboxid.com'], 'cbox-id.federation.verify_url' => false]);
 });
 
-function rootOwnerPostsGoogle(bool $verified): TestResponse
+/*
+ * Where Google is set up for the root now: the platform environment's own console, as an
+ * operator (the root host's workspace pages no longer configure sign-in).
+ */
+function rootOperatorPostsGoogle(bool $verified): TestResponse
 {
-    ['subjectId' => $subjectId] = provisionAccount();
+    $operator = actAsOperator('op@platform.test');
 
     if ($verified) {
-        User::query()->withoutGlobalScopes()->whereKey($subjectId)->update(['email_verified_at' => now()]);
+        app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, 'op@platform.test'));
     }
 
-    signInAsMember($subjectId);
-    $form = 'https://cboxid.com/social-sign-in?provider=google';
-    $reserved = test()->get($form)->assertOk()->inertiaProps('template.reservedId');
+    $form = 'https://cboxid.com/admin/social-sign-in?provider=google';
+    test()->get($form)->assertOk();
 
-    return test()->from($form)->post('https://cboxid.com/social-sign-in', [
+    return test()->from($form)->post('https://cboxid.com/admin/social-sign-in', [
         'provider' => 'google',
         'clientId' => 'client.apps.googleusercontent.com',
         'clientSecret' => 'a-client-secret',
-        'reservedId' => $reserved,
+        'parameters' => [],
+        'forEnvironment' => true,
     ]);
 }
 
 it('sends an unconfirmed owner back to the form with the sentence that says what to do', function (): void {
-    rootOwnerPostsGoogle(verified: false)
-        ->assertRedirect('https://cboxid.com/social-sign-in?provider=google')
+    rootOperatorPostsGoogle(verified: false)
+        ->assertRedirect('https://cboxid.com/admin/social-sign-in?provider=google')
         ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'Confirm your email address before you add a sign-in provider') && str_contains($message, 'Send confirmation link'));
 });
 
 it('answers an Inertia visit the same way, never with the generic 403 page', function (): void {
-    ['subjectId' => $subjectId] = provisionAccount();
-    signInAsMember($subjectId);
+    actAsOperator('op@platform.test');
 
-    test()->from('https://cboxid.com/social-sign-in?provider=google')
-        ->post('https://cboxid.com/social-sign-in', ['provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y'], ['X-Inertia' => 'true'])
+    test()->from('https://cboxid.com/admin/social-sign-in?provider=google')
+        ->post('https://cboxid.com/admin/social-sign-in', ['provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y', 'forEnvironment' => true], ['X-Inertia' => 'true'])
         ->assertStatus(303)
         ->assertSessionHas('error');
 });
@@ -65,7 +71,7 @@ it('lets a confirmed owner past the gate', function (): void {
     // if any, is not the email gate's.
     Http::fake(['*' => Http::response('', 503)]);
 
-    $response = rootOwnerPostsGoogle(verified: true)->assertRedirect();
+    $response = rootOperatorPostsGoogle(verified: true)->assertRedirect();
 
     expect((string) session('error'))->not->toContain('Confirm your email address');
 });

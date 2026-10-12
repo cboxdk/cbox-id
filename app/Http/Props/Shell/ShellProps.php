@@ -76,6 +76,14 @@ final readonly class ShellProps implements Prop
         /** The platform strip's way OUT — the operator's own console. Platform mode only. */
         public ?string $exitPlatformHref = null,
         public ?ShellNoticeProps $notice = null,
+        /** What a save on this page changes — said above every page. */
+        public ?ShellActsOnProps $actsOn = null,
+        /**
+         * The account menu's way into the platform root's own environment console — the
+         * environment every workspace owner and operator signs in to. Operators only, and
+         * not on that console itself.
+         */
+        public ?string $platformEnvironmentHref = null,
     ) {}
 
     /**
@@ -99,6 +107,8 @@ final readonly class ShellProps implements Prop
             'platformHref' => $this->platformHref,
             'exitPlatformHref' => $this->exitPlatformHref,
             'notice' => $this->notice,
+            'actsOn' => $this->actsOn,
+            'platformEnvironmentHref' => $this->platformEnvironmentHref,
         ];
     }
 }

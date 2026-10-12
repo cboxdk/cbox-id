@@ -112,7 +112,21 @@ final class BrandContext
             return $name;
         }
 
-        if (! $this->door || ! app(PlaneResolver::class)->onCustomerEnvironment()) {
+        if (! $this->door) {
+            return null;
+        }
+
+        // THE PLATFORM ROOT'S OWN DOOR — `cboxid.com/login`, where every workspace owner and
+        // operator signs in. It is Cbox ID's own sign-in, so it keeps the product's name; but
+        // its environment has a Branding page like any other now (the root environment's
+        // console), and a logo or favicon uploaded there must show on the page it brands,
+        // exactly as a tenant's does. The colours and typeface already did: they come from
+        // {@see appearance()}, which reads the environment whatever the host.
+        if (app(PlaneResolver::class)->onAccountPlane()) {
+            return $this->rootHasImages() ? (is_string($app = config('app.name')) && $app !== '' ? $app : 'Cbox ID') : null;
+        }
+
+        if (! app(PlaneResolver::class)->onCustomerEnvironment()) {
             return null;
         }
 
@@ -202,6 +216,18 @@ final class BrandContext
         }
 
         return $narrowed;
+    }
+
+    /** Whether the platform root's environment has a logo or favicon of its own. */
+    private function rootHasImages(): bool
+    {
+        if ($this->environment() === null) {
+            return false;
+        }
+
+        $images = app(BrandImages::class);
+
+        return $images->url(BrandImage::Logo, null) !== null || $images->url(BrandImage::Favicon, null) !== null;
     }
 
     private function image(BrandImage $kind): ?string

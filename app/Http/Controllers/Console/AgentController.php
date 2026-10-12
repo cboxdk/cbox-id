@@ -171,7 +171,7 @@ final readonly class AgentController extends ConsoleController
     {
         $auth = app(EnvironmentAdminAuth::class);
 
-        abort_if($auth->membership() === null || $auth->environmentId() === null, 403);
+        abort_if(! $auth->check() || $auth->environmentId() === null, 403);
 
         return $auth;
     }

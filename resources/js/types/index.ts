@@ -335,6 +335,19 @@ export interface Shell {
     exitPlatformHref: string | null;
     /** A sentence above a page the rail does not offer, and where to go instead. */
     notice: ShellNotice | null;
+    /** What a save on this page changes — the line above every page. */
+    actsOn: ShellActsOn | null;
+    /** The account menu's way into the platform's own environment console. Operators only. */
+    platformEnvironmentHref: string | null;
+}
+
+/** `App\Http\Props\Shell\ShellActsOnProps` */
+export interface ShellActsOn {
+    kind: 'environment' | 'workspace' | 'organization' | 'platform';
+    label: string;
+    detail: string | null;
+    /** The platform's own environment: a change there reaches every workspace owner and operator. */
+    critical: boolean;
 }
 
 /** `App\Http\Props\Shell\ShellNoticeProps` */

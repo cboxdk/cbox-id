@@ -6,15 +6,17 @@ namespace App\Platform\Console;
 
 use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
-use App\Http\Props\Shell\ShellNoticeProps;
+use App\Http\Props\Shell\ShellActsOnProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Agents\ActionApprovalInbox;
+use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\PlaneResolver;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +95,7 @@ final readonly class ShellPayload
         private Request $request,
         private ShellContext $context,
         private ActionApprovalInbox $approvals,
+        private PlaneResolver $planes,
     ) {}
 
     /**
@@ -144,9 +147,11 @@ final readonly class ShellPayload
         // menu is the door between them.
         $platformMode = $isOperator && $this->request->routeIs('platform.*');
 
+        // The organization console on the platform root's host is a workspace's console,
+        // for everybody: see RootHostConsole for what it keeps and where the rest went.
+        $rootHost = $this->planes->onAccountPlane();
+
         $areas = [];
-        // Whether this page is one the workspace console does not offer — reached by URL.
-        $offRail = false;
 
         // Every page the registry names, so a page does not light up on a route another
         // page owns more specifically (see routeIsCurrent()).
@@ -176,11 +181,10 @@ final readonly class ShellPayload
                     continue;
                 }
 
-                // A WORKSPACE'S CONSOLE is the workspace, its team's sign-in and its log —
-                // see WorkspaceAltitude for why the rest is withheld rather than refused.
-                if ($workspace && ! WorkspaceAltitude::keepsPage($area->key, $page->route)) {
-                    $offRail = $offRail || $this->routeIsCurrent($page->route, $claimed);
-
+                // A WORKSPACE'S CONSOLE is the workspace, its team's sign-in and its log — and
+                // on the platform root's host that is the console, for everybody. The rest is
+                // set in an environment's console; see RootHostConsole.
+                if ($rootHost && ! RootHostConsole::railKeeps($area->key, $page->route, $isOperator)) {
                     continue;
                 }
 
@@ -213,7 +217,7 @@ final readonly class ShellPayload
 
             $areas[] = new NavAreaProps(
                 key: $area->key,
-                label: $workspace ? WorkspaceAltitude::label($area->key, $area->label) : $area->label,
+                label: $rootHost ? WorkspaceAltitude::label($area->key, $area->label) : $area->label,
                 // A plugin may register an area without one, and the rail is icons —
                 // rendering the blank is worse than rendering the wrong thing, because a
                 // blank square in the primary navigation reads as a broken build.
@@ -226,7 +230,7 @@ final readonly class ShellPayload
             );
         }
 
-        $areas = $this->markActive($areas, fallback: ! $offRail);
+        $areas = $this->markActive($areas);
         $active = $this->activeArea($areas);
 
         return new ShellProps(
@@ -255,11 +259,10 @@ final readonly class ShellPayload
                     : null,
             platformHref: $isOperator ? route('platform.workspaces') : null,
             exitPlatformHref: $platformMode ? route('dashboard') : null,
-            notice: $offRail ? new ShellNoticeProps(
-                message: 'This page manages your workspace’s own record in Cbox — the team that signs in to this console — not your product. Your apps, users and roles live in each environment’s console.',
-                href: route('projects'),
-                label: 'Go to Projects',
-            ) : null,
+            actsOn: $this->organizationActsOn($platformMode, $workspace),
+            // The platform's own environment console, beside platform admin in the account
+            // menu: an operator at the root is one click from the environment they run.
+            platformEnvironmentHref: $isOperator && $rootHost && Route::has('environment.home') ? route('environment.home') : null,
         );
     }
 
@@ -272,11 +275,20 @@ final readonly class ShellPayload
      */
     private function environmentShell(): ?ShellProps
     {
-        $membership = app(EnvironmentAdminAuth::class)->membership();
+        $auth = app(EnvironmentAdminAuth::class);
+        $subjectId = $auth->subjectId();
 
-        if ($membership === null) {
+        if ($subjectId === null) {
             return null;
         }
+
+        // A tenant's administrator, through their workspace's membership — or, on the
+        // platform root's own console, one of the operators who run the deployment.
+        $membership = $auth->membership();
+        $operator = $auth->admitsRootOperator();
+        // A workspace member on a tenant's console who also runs the deployment: platform
+        // admin and the platform's own environment stay in their account menu.
+        $tenantOperator = ! $operator && $this->scope->subjectIsOperator($subjectId);
 
         $nav = $this->navigation->environment();
         $areas = $this->withWaitingApprovals($this->markActive($this->fromConsoleNav($nav)));
@@ -292,18 +304,87 @@ final readonly class ShellPayload
             // had a back arrow and the environment's name as plain text; moving from
             // staging to production meant going back to Projects on another host and
             // opening it again.
-            context: $this->context->forEnvironmentPlane($membership, $this->activePageRoute($active)),
-            isOperator: false,
+            context: $this->context->forEnvironmentPlane($membership, $subjectId, $this->activePageRoute($active)),
+            isOperator: $operator,
             platformMode: false,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,
             navPinned: NavPin::pinned($this->request),
             accountHref: $this->context->onWorkspaceHost('account'),
             switchUserHref: $this->context->onWorkspaceHost('accounts'),
             altitude: ConsoleAltitude::Environment,
-            workspaceSettingsHref: OrganizationCapabilities::of($membership->role)->canManageMembers()
+            workspaceSettingsHref: $membership !== null && OrganizationCapabilities::of($membership->role)->canManageMembers()
                 ? $this->context->onWorkspaceHost('organization-settings')
                 : null,
+            // Platform admin is one click away from the console of the environment it runs.
+            platformHref: $operator || $tenantOperator ? $this->context->onWorkspaceHost('platform.workspaces') : null,
+            actsOn: $this->environmentActsOn($operator),
+            platformEnvironmentHref: $tenantOperator ? $this->context->onWorkspaceHost('environment.home') : null,
         );
+    }
+
+    /**
+     * What a page of the environment console acts on: this environment — and, on the
+     * platform root's own console, a sentence saying whose sign-in that is.
+     */
+    private function environmentActsOn(bool $root): ShellActsOnProps
+    {
+        $name = $this->environmentName() ?? 'This environment';
+        $host = $this->request->getHost();
+
+        if ($root) {
+            return new ShellActsOnProps(
+                kind: 'environment',
+                label: $name,
+                detail: 'The platform’s own environment on '.$host.': how every workspace owner and every operator signs in to Cbox ID, and the sign-in for every environment console. A change here applies to all of them.',
+                critical: true,
+            );
+        }
+
+        return new ShellActsOnProps(kind: 'environment', label: $name, detail: 'Environment on '.$host);
+    }
+
+    /** What a page of the organization console acts on: the deployment, a workspace or an organization. */
+    private function organizationActsOn(bool $platformMode, bool $workspace): ShellActsOnProps
+    {
+        if ($platformMode) {
+            return new ShellActsOnProps(kind: 'platform', label: 'The whole deployment', detail: 'Platform admin: every workspace, environment and operator');
+        }
+
+        $name = $this->user->organization()->name ?? 'Your organization';
+
+        if ($workspace) {
+            // Team sign-in says whose sign-in it is: the workspace's own team, signing in to
+            // Cbox ID — the one sign-in setting on this host, and the one easiest to mistake
+            // for the product's.
+            $route = (string) $this->request->route()?->getName();
+            $teamSignIn = (CustomerConsole::pageOf($route)[0] ?? null) === 'authentication' && RootHostConsole::keepsRoute($route);
+
+            return new ShellActsOnProps(
+                kind: 'workspace',
+                label: $name,
+                detail: $teamSignIn
+                    ? 'How your workspace’s own team signs in to Cbox ID — not your apps: their sign-in is set in each environment’s console.'
+                    : 'Your workspace: its projects, team, keys and billing. Sign-in for your apps is set in each environment’s console.',
+            );
+        }
+
+        if ($this->scope->ownsIdentityProviders()) {
+            return new ShellActsOnProps(kind: 'workspace', label: $name, detail: 'Workspace');
+        }
+
+        $environment = $this->environmentName();
+
+        return new ShellActsOnProps(
+            kind: 'organization',
+            label: $name,
+            detail: $environment === null ? 'Organization' : 'Organization in '.$environment,
+        );
+    }
+
+    /** The name of the environment this request stands in, or null — read once per request. */
+    private function environmentName(): ?string
+    {
+        return app(CurrentEnvironment::class)->name();
     }
 
     /**

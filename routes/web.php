@@ -657,7 +657,7 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
  * below stays REGISTERED, because on a single-tenant install and at the platform root this
  * group is the only console there is. See {@see \App\Platform\Console\CustomerConsole}.
  */
-Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer'])->group(function (): void {
+Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer', 'console.root'])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
 

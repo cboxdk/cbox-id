@@ -52,7 +52,22 @@ final class IntendedUrl
     /** The intended page for an end-user (subject) session, or null. */
     public static function pullForSubject(): ?string
     {
-        return self::pull(static fn (string $path): bool => ! str_starts_with($path, self::ADMIN_PREFIX));
+        // ON THE PLATFORM ROOT'S OWN HOST, `/admin` is a subject's console too: the root
+        // environment's, administered by the operators who sign in right here. An operator
+        // who opened `cboxid.com/admin/social-sign-in` signed out must land back on it after
+        // signing in — with a password, a passkey or Google — and there is no second
+        // identity on that host for the intent to belong to instead.
+        $rootConsole = self::onRootConsoleHost();
+
+        return self::pull(static fn (string $path): bool => $rootConsole || ! str_starts_with($path, self::ADMIN_PREFIX));
+    }
+
+    /** Whether this request is on the platform root's own host, where `/admin` is the root environment's console. */
+    private static function onRootConsoleHost(): bool
+    {
+        $request = request();
+
+        return app(PlaneResolver::class)->onRootEnvironmentConsole($request->getHost());
     }
 
     /**

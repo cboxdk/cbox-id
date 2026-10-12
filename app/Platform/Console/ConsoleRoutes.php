@@ -166,6 +166,9 @@ final class ConsoleRoutes
             // environment host a module page outside the admin portal is not there. Read
             // from the rail's own areas, so a module never has to know that console exists.
             'console.customer',
+            // …and on the platform root's host, the workspace console it is there: a page
+            // that sets something an environment owns is not served as the workspace's.
+            'console.root',
             'console.feature:'.$feature,
         ])->group(function () use ($uri, $component, $name): void {
             self::get($uri, $component)->name($name);
@@ -239,6 +242,7 @@ final class ConsoleRoutes
             EnforceImpersonationWindow::class,
             'platform.auth',
             'console.customer',
+            'console.root',
             'console.feature:'.$feature,
         ])->group(function () use ($verb, $uri, $action, $name): void {
             self::verb($verb, $uri, $action)->name($name);

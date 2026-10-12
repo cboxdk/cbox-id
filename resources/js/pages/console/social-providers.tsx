@@ -9,6 +9,7 @@ import {
     CopyButton,
     Field,
     FilterChips,
+    Icon,
     Input,
     OrganizationFilterChip,
     OrganizationPickerField,
@@ -148,6 +149,8 @@ type Props = PageProps<{
     indexHref: string;
     storeHref: string;
     help: HelpContent;
+    /** Whose sign-in these buttons are on — null on an organization console. */
+    audience: { kind: 'platform' | 'environment'; host: string; consoleHost: string | null } | null;
 }>;
 
 export default function SocialProviders({
@@ -167,6 +170,7 @@ export default function SocialProviders({
     indexHref,
     storeHref,
     help,
+    audience,
 }: Props) {
     const [removing, setRemoving] = useState<{ name: string; href: string } | null>(null);
     const [turningOff, setTurningOff] = useState<{
@@ -193,6 +197,8 @@ export default function SocialProviders({
             />
 
             <div className="mt-6 space-y-5">
+                {audience !== null && <AudienceNote audience={audience} />}
+
                 {organizationFilter !== null && (
                     <FilterChips>
                         <OrganizationFilterChip filter={organizationFilter} />
@@ -1037,3 +1043,43 @@ function EditPanel({ editing, cancelHref }: { editing: Editing; cancelHref: stri
 }
 
 SocialProviders.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+
+/**
+ * WHOSE SIGN-IN THIS IS. The platform's own environment and a tenant's have the same page
+ * and very different audiences, and a provider set up on the wrong one is a button nobody
+ * who wanted it ever sees.
+ */
+function AudienceNote({ audience }: { audience: NonNullable<Props['audience']> }) {
+    if (audience.kind === 'platform') {
+        return (
+            <p className="cbx-shell-notice" role="note">
+                <Icon name="info" className="w-4 h-4 shrink-0" />
+                <span className="min-w-0 flex-1">
+                    These are the buttons on <span className="mono">{audience.host}/login</span>:
+                    how every workspace owner and operator signs in to Cbox ID — and so the sign-in
+                    to every environment’s console, whose administrators are Cbox ID accounts.
+                    Register the redirect URI each provider shows with the provider; it is on{' '}
+                    <span className="mono">{audience.host}</span>.
+                </span>
+            </p>
+        );
+    }
+
+    return (
+        <p className="cbx-shell-notice" role="note">
+            <Icon name="info" className="w-4 h-4 shrink-0" />
+            <span className="min-w-0 flex-1">
+                These buttons are for the people who sign in to your apps, on{' '}
+                <span className="mono">{audience.host}</span>’s sign-in pages.
+                {audience.consoleHost !== null && (
+                    <>
+                        {' '}
+                        This console is not signed in to with them: administrators sign in through
+                        Cbox ID at <span className="mono">{audience.consoleHost}</span>, with its
+                        sign-in methods.
+                    </>
+                )}
+            </span>
+        </p>
+    );
+}

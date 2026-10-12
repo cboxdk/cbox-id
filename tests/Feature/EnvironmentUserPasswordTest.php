@@ -168,7 +168,9 @@ it('refuses a member without the environment-admin capability', function (): voi
      */
     $handoff = 'https://'.config('cbox-id.tenancy.account_host').'/open/'.$environment->id;
 
-    test()->get(route('environment.users.show', $userId))->assertRedirect($handoff);
+    // The page carries itself along (`to`), so the person lands back on it once they may;
+    // the write carries nothing — a POST is never replayed through a sign-in.
+    test()->get(route('environment.users.show', $userId))->assertRedirect($handoff.'?to='.rawurlencode('/admin/users/'.$userId));
     setUserPassword($userId)->assertRedirect($handoff);
 
     expect(app(Subjects::class)->verifyPassword($userId, 'the-original-passphrase'))->toBeTrue();

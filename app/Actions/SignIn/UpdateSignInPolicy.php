@@ -15,6 +15,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\OrganizationTarget;
 use App\Platform\RevokingAuthPolicies;
+use App\Platform\RootSignInGuard;
 use App\Platform\SignInAudit;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\SignInMethods;
@@ -53,6 +54,7 @@ final readonly class UpdateSignInPolicy implements Action
         private SignInAudit $audit,
         private EnvironmentContext $environments,
         private SignInMethods $methods,
+        private RootSignInGuard $guard,
     ) {}
 
     public static function input(): InputSchema
@@ -75,6 +77,16 @@ final readonly class UpdateSignInPolicy implements Action
                 throw ActionRefused::onFields('past_deployment_limit', $past);
             }
 
+            // The platform root's own environment is how every operator signs in: requiring
+            // SSO of everybody, or switching off the one method an operator has, is refused
+            // while it would leave one of them no way in ({@see RootSignInGuard}).
+            $this->guard->assertOperatorsKeepAWayIn([
+                'environment_sso' => $policy->sso,
+                'passkeys' => $policy->passkeys,
+                'magic_link' => $policy->magicLink,
+                'field' => 'sso',
+            ]);
+
             $this->policies->setForEnvironment($policy);
         } else {
             // Passkeys, magic links, session lengths and the bot challenge are decided once
@@ -95,6 +107,11 @@ final readonly class UpdateSignInPolicy implements Action
             if ($loosened !== []) {
                 throw ActionRefused::onFields('loosens_environment_baseline', $loosened);
             }
+
+            $this->guard->assertOperatorsKeepAWayIn([
+                'organization_sso' => [$organizationId => $policy->sso],
+                'field' => 'sso',
+            ]);
 
             $this->policies->setForOrganization($organizationId, $policy);
         }

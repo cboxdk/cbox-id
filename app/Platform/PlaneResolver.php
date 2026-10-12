@@ -29,13 +29,15 @@ use Cbox\Id\Platform\PlatformRoot;
  *
  *  - {@see servesConsole()} — does the console live here? Everywhere, the root included.
  *  - {@see servesIssuer()} — does an identity PROVIDER answer here? Never on the root.
- *  - {@see servesEnvironmentAdmin()} — is this an environment an account administers from
- *    the outside? Never on the root.
+ *  - {@see servesEnvironmentAdmin()} — is the environment console served here? On every
+ *    tenant host, and on the root's own host for the root environment, whose console its
+ *    platform operators use.
  *  - {@see onAccountPlane()} — is this the account plane itself? The root alone.
  *
- * The second and third share an answer today and are still asked separately, because they
- * are different questions about different surfaces and a shared answer is a coincidence of
- * this deployment shape rather than a fact about either. Collapsing two questions into one
+ * The second and third shared an answer once and were still asked separately, because they
+ * are different questions about different surfaces and a shared answer was a coincidence of
+ * the deployment shape rather than a fact about either — and they parted, when the root
+ * environment got the console its operators administer it from. Collapsing two questions into one
  * name is precisely how the console went missing from the root: "which host serves the
  * console" and "which host is an issuer" were one predicate, so withholding the issuer
  * surface withheld the console with it.
@@ -318,19 +320,41 @@ final class PlaneResolver
     }
 
     /**
-     * Whether the ENVIRONMENT-ADMIN door is served here — `/admin/*`, entered by redeeming
-     * the account plane's signed handoff.
+     * Whether the ENVIRONMENT CONSOLE is served here — `/admin/*`.
      *
-     * The same hosts {@see servesIssuer()} names, and asked separately because it is a
-     * different question that happens to share an answer. That console is how an ACCOUNT
-     * reaches INTO an environment it owns from the account plane; the account plane is not
-     * something it reaches into, and the platform root's own environment belongs to no
-     * account, so there is nobody the door could ever open for there. The operator area is
-     * how the root environment is administered.
+     * On a tenant environment's host, where an account reaches INTO an environment it
+     * administers by redeeming the platform root's signed handoff.
+     *
+     * AND ON THE PLATFORM ROOT'S OWN HOST, for the root environment. It used to be absent
+     * there, on the reasoning that "the root environment belongs to no account, so there is
+     * nobody the door could ever open for". That was true and beside the point: the root
+     * environment is how every workspace owner and every operator signs in to Cbox ID, and
+     * it has every setting a tenant's has — social providers, sign-in methods, branding, a
+     * typeface, SMS, Radar, apps, keys, webhooks. With no console for it, none of those
+     * could be set by anyone: "Google on cboxid.com" had no page. Its administrators are
+     * the deployment's platform operators ({@see EnvironmentAdminAuth::admitsRootOperator()}),
+     * and the console they get is the very same one a tenant's administrator gets, under
+     * the same paths.
+     *
+     * A HOST question at the root, like {@see servesConsole()}: an unmapped name resolves
+     * to the root environment too, and an environment console for the deployment's own
+     * sign-in served under `anything.cboxid.com` is a phishing surface nobody asked for.
+     * Only the root's exact host serves it.
      */
-    public function servesEnvironmentAdmin(): bool
+    public function servesEnvironmentAdmin(string $host): bool
     {
-        return $this->onTenantEnvironment();
+        return $this->onTenantEnvironment()
+            || ($this->isMultiTenant() && $this->contextIsPlatformRoot() && $this->isPlatformRootHost($host));
+    }
+
+    /**
+     * Whether this request is the PLATFORM ROOT's own environment console — `/admin/*` on
+     * the root host of a multi-tenant deployment. The one place the environment console
+     * is administered by platform operators rather than by a workspace's team.
+     */
+    public function onRootEnvironmentConsole(string $host): bool
+    {
+        return $this->isMultiTenant() && $this->contextIsPlatformRoot() && $this->isPlatformRootHost($host);
     }
 
     /**
@@ -513,13 +537,13 @@ final class PlaneResolver
     }
 
     /**
-     * The predicate {@see servesIssuer()} and {@see servesEnvironmentAdmin()} are both
-     * answered from: this request resolved to an environment, and it is not the platform
+     * The predicate {@see servesIssuer()} is answered from (and half of
+     * {@see servesEnvironmentAdmin()}): this request resolved to an environment, and it is not the platform
      * root's.
      *
      * A CONTEXT question, unlike {@see isPlatformRootHost()}, and correctly so — an
-     * unmapped host resolves to the platform root, which is exactly the "no issuer and no
-     * environment console here" this has to answer for it.
+     * unmapped host resolves to the platform root, which is exactly the "no issuer here"
+     * this has to answer for it.
      */
     private function onTenantEnvironment(): bool
     {

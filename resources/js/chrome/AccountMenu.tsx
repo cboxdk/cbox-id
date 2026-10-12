@@ -24,6 +24,8 @@ export interface AccountMenuProps {
     switchUserHref: string;
     /** Platform admin, for whoever runs the install; null for everybody else. */
     platformHref: string | null;
+    /** The platform's own environment console, for whoever runs the install; null otherwise. */
+    platformEnvironmentHref?: string | null;
 }
 
 /**
@@ -41,6 +43,7 @@ export function AccountMenu({
     accountHref,
     switchUserHref,
     platformHref,
+    platformEnvironmentHref = null,
 }: AccountMenuProps) {
     const signOut = useForm({});
     // Read when the menu opens, not at render: the theme is the document's, and a value
@@ -83,13 +86,22 @@ export function AccountMenu({
                     Switch user
                 </AccountMenuLink>
 
+                {(platformHref !== null || platformEnvironmentHref !== null) && (
+                    <DropdownMenuSeparator />
+                )}
                 {platformHref !== null && (
-                    <>
-                        <DropdownMenuSeparator />
-                        <AccountMenuLink href={platformHref} icon="lock">
-                            Platform admin
-                        </AccountMenuLink>
-                    </>
+                    <AccountMenuLink href={platformHref} icon="lock">
+                        Platform admin
+                    </AccountMenuLink>
+                )}
+                {/*
+                    The platform's own environment — the sign-in every workspace owner and
+                    operator uses: its social login, sign-in methods and branding.
+                */}
+                {platformEnvironmentHref !== null && (
+                    <AccountMenuLink href={platformEnvironmentHref} icon="layers">
+                        Platform environment
+                    </AccountMenuLink>
                 )}
 
                 <DropdownMenuSeparator />
