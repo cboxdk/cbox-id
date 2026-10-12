@@ -192,6 +192,8 @@ final readonly class DirectoryController extends ConsoleController
             fn (DirectoryProvider $option): bool => ! $option->isPull() || $connectors->has($option),
         ));
 
+        $asked = request()->string('provider')->toString();
+
         return $this->page('console/directories/create', 'New directory', [
             'providers' => array_map(fn (DirectoryProvider $provider): array => [
                 'value' => $provider->value,
@@ -214,6 +216,13 @@ final readonly class DirectoryController extends ConsoleController
                  */
                 'setup' => self::setupProps($provider),
             ], $providers),
+            /*
+             * The provider the link asked for (`?provider=workday`), when the form offers it —
+             * the Connectors catalog's "HR systems › Workday" opens this form with Workday
+             * chosen rather than with SCIM and a list to find it in. Anything else is the
+             * form's own default.
+             */
+            'selected' => in_array($asked, array_map(static fn (DirectoryProvider $option): string => $option->value, $providers), true) ? $asked : null,
             // "For which organization?" on the environment console; prefilled and locked
             // when the form was opened from an organization's own page.
             'organization' => $this->organizationPicker(),
@@ -417,6 +426,8 @@ final readonly class DirectoryController extends ConsoleController
             ])->values()->all(),
             // Asked once, so the buttons are not offered and then refused.
             'mayChange' => $this->mayChange($model),
+            // "No roles to map onto yet — define one under Roles" says where; this goes there.
+            'rolesHref' => $this->scope->serves('roles') ? $this->url('roles') : null,
             'indexHref' => $this->url('directories'),
             'urls' => [
                 'update' => $this->url('directories.update', $model->id),

@@ -77,6 +77,10 @@ final class ConsoleSynonyms
         'feature-flags' => ['flags', 'toggles', 'feature toggles', 'rollout', 'beta', 'kill switch'],
         'pipes' => ['connected accounts', 'third-party tokens', 'OAuth tokens', 'GitHub API', 'Google API', 'token exchange'],
 
+        // Connectors: every integration in one place, and every live one with its health.
+        'connectors.catalog' => ['integrations', 'connectors', 'marketplace', 'add an integration', 'connect an app', 'HR system', 'SIEM'],
+        'connectors.connections' => ['integrations', 'all connections', 'failing', 'broken integration', 'health', 'status'],
+
         // AI agents.
         'agents' => ['MCP', 'AI', 'management keys', 'service accounts', 'bots', 'LLM'],
         'approvals' => ['CIBA', 'human in the loop', 'pending', 'consent', 'step-up'],

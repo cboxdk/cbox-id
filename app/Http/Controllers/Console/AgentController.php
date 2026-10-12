@@ -118,6 +118,8 @@ final readonly class AgentController extends ConsoleController
                 'store' => route('environment.keys.store'),
                 'index' => route('environment.agents'),
                 'connect' => route('environment.agent-connect'),
+                // "…or on the Approvals page", twice on this form — a page it links to.
+                'approvals' => route('environment.approvals'),
             ],
         ]);
     }

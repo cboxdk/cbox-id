@@ -16,6 +16,13 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### `connectors.webhook_event_types` is gone
+
+Connectors › Connections now reads webhook endpoints directly, so it lists every endpoint
+whatever it subscribes to, paused ones included. The `webhook_event_types` key in
+`config/connectors.php` is no longer read; a published copy that still has it is harmless
+and can be deleted.
+
 ### Logos are uploads; remote logo URLs are no longer shown
 
 `PUT /api/v1/branding/appearance` (and the MCP tool `branding.appearance.set`) no longer

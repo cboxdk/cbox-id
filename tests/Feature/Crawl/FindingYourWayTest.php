@@ -8,6 +8,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\ConsoleCrawl;
 use Tests\Support\ProductionShape;
@@ -80,6 +81,11 @@ const FINDING_YOUR_WAY = [
     'environment.auth-policy' => [2, 'Change the password and MFA policy'],
     // i. The sign-in page's look.
     'environment.branding' => [1, 'Brand the sign-in page'],
+    // j. Connectors: the one place every integration is seen and started. Two clicks to a
+    //    setup form is only possible through it — Advanced › Outbound provisioning › New is
+    //    three — so this budget fails if the catalog's cards stop leading anywhere.
+    'environment.connectors.catalog' => [1, 'See every kind of integration'],
+    'environment.provisioning.create' => [2, 'Set up an outbound SCIM connection from Connectors'],
 ];
 
 /**
@@ -92,12 +98,21 @@ const FINDING_YOUR_WAY = [
  */
 const FINDING_YOUR_WAY_STATES = [
     '/admin/social-sign-in?provider=google' => [3, 'Turn on Google for the environment'],
+    // Connectors (1) › "Review failing" (2): every failing connection, failing first —
+    // the test below holds that the failing webhook is on it, one more click from its page.
+    '/admin/connectors/connections?status=failing' => [2, 'Find a failing webhook from Connectors'],
+    // Connectors (1) › HR systems › Workday (2): the directory form with Workday chosen.
+    '/admin/sync-in/new?provider=workday' => [2, 'Connect Workday from Connectors'],
 ];
 
 it('puts every task an environment administrator comes for a few clicks from home', function (): void {
     $world = ConsoleCrawl::world();
     $environment = $world->environment;
     expect($environment)->not->toBeNull();
+
+    // The demo's webhook has started failing — the thing "find a failing webhook" finds.
+    $webhook = (string) DB::table('webhook_endpoints')->where('environment_id', $environment->id)->value('id');
+    DB::table('webhook_endpoints')->where('id', $webhook)->update(['consecutive_failures' => 3, 'last_error' => 'HTTP 503 from the endpoint']);
 
     actAsEnvironmentAdmin($world->ownerId, $environment->id);
     ConsoleCrawl::productionShape();
@@ -141,6 +156,16 @@ it('puts every task an environment administrator comes for a few clicks from hom
         ->and($google['props']['organization']['allowsEnvironment'] ?? null)->toBeTrue()
         ->and(array_key_exists('selected', $google['props']['organization']) && $google['props']['organization']['selected'] === null)->toBeTrue()
         ->and($google['props']['template']['redirectUri'] ?? '')->toEndWith('/sso/oidc/'.($google['props']['template']['reservedId'] ?? '?').'/callback');
+
+    // …and "Review failing" lands on the failing webhook, first, linked to its own page —
+    // three clicks from home to the endpoint and its delivery log.
+    $failing = findingYourWayPage($this, $origin.'/admin/connectors/connections?status=failing', $version);
+    $first = $failing['props']['connections'][0] ?? [];
+
+    expect($first['type'] ?? null)->toBe('Webhook')
+        ->and($first['verdict'] ?? null)->toBe('failing')
+        ->and($first['href'] ?? null)->toBe($origin.'/admin/webhooks/'.$webhook)
+        ->and($urls[$origin.'/admin/webhooks/'.$webhook] ?? 99)->toBeLessThanOrEqual(3);
 });
 
 /**

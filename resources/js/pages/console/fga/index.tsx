@@ -98,6 +98,14 @@ export default function FineGrainedAuthorization({
                     <EmptyState
                         icon="layers"
                         equivalent="fga.schema.update"
+                        actions={
+                            <Button asChild variant="primary">
+                                <Link href={schemaHref}>
+                                    <Icon name="pencil" className="w-4 h-4" />
+                                    Define a schema
+                                </Link>
+                            </Button>
+                        }
                         title="No schema yet"
                         description="Start from the documents-in-folders example: owners, editors and viewers, with a folder's access inherited by everything in it. Tuples and checks need a schema first."
                     />

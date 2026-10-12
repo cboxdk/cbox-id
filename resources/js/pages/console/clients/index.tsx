@@ -133,6 +133,16 @@ export default function Clients({
                         <EmptyState
                             icon="clients"
                             equivalent="apps.create"
+                            actions={
+                                mayAdminister ? (
+                                    <Button asChild variant="primary">
+                                        <Link href={createHref}>
+                                            <Icon name="plus" className="w-4 h-4" />
+                                            New app
+                                        </Link>
+                                    </Button>
+                                ) : undefined
+                            }
                             title="No apps of your own yet"
                             help={help}
                             description={

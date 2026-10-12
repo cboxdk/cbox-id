@@ -90,6 +90,12 @@ final class ConsoleCrawl
     /** Every Inertia component a 200 rendered, so a test can say which pages it reached. @var array<string, true> */
     public array $components = [];
 
+    /** Every link {@see self::everyLink()} followed, by the URL that offered it. @var array<string, list<string>> */
+    public array $followed = [];
+
+    /** Whether a clicked route counts against {@see self::PER_ROUTE}; off for {@see self::everyLink()}. */
+    private bool $bounded = true;
+
     public function __construct(private readonly TestCase $test) {}
 
     /**
@@ -247,6 +253,31 @@ final class ConsoleCrawl
     }
 
     /**
+     * EVERY link one page offers, each followed as a click and held to the click rule — with
+     * no {@see self::PER_ROUTE} bound, which is what lets the route pass above finish but also
+     * what lets the twelfth "set up with this provider" shortcut on a hub page go unvisited.
+     *
+     * For a page whose whole job is leading somewhere — the Connectors catalog, whose every
+     * card is a set of links into other pages — "most of its links work" is not the claim.
+     */
+    public function everyLink(string $url): self
+    {
+        $this->version = (string) app(HandleInertiaRequests::class)->version(request());
+        $this->bounded = false;
+
+        try {
+            foreach ($this->visit($url, 'the test', 'start', inertia: true, strict: true) as $link => $key) {
+                $this->followed[$url][] = $link;
+                $this->visit($link, $url, 'prop:'.$key, inertia: true, strict: true);
+            }
+        } finally {
+            $this->bounded = true;
+        }
+
+        return $this;
+    }
+
+    /**
      * Request one URL — as a click does (an Inertia visit) or as a direct navigation —
      * following redirects and the protocol's 409 the way the client does, and return the
      * links the final page offers.
@@ -259,7 +290,7 @@ final class ConsoleCrawl
 
         // A clicked route is visited a bounded number of times, whatever the parameters:
         // the second Users detail page proves what the first did.
-        if ($strict && $route !== null) {
+        if ($strict && $this->bounded && $route !== null) {
             $name = (string) ($route->getName() ?? $route->uri());
             $this->visitsPerRoute[$name] = ($this->visitsPerRoute[$name] ?? 0) + 1;
 

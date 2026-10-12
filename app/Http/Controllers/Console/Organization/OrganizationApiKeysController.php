@@ -29,6 +29,9 @@ final readonly class OrganizationApiKeysController extends OrganizationTabContro
                 withHolder: true,
                 revokeHref: static fn (CustomerApiKey $key): string => route('environment.organizations.api-keys.revoke', ['organization' => $organization->id, 'key' => $key->id]),
             ),
+            // Nothing is minted here, so an empty list's next step is elsewhere: member keys
+            // exist once an app turns them on in its Settings.
+            'appsHref' => route('environment.clients'),
         ]);
     }
 }

@@ -1,4 +1,4 @@
-import { router, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -93,6 +93,8 @@ type Props = PageProps<{
     roles: RoleOption[];
     mayChange: boolean;
     indexHref: string;
+    /** The Roles page, where a role to map a group onto is defined; null where not served. */
+    rolesHref: string | null;
     urls: {
         update: string;
         rotate: string;
@@ -113,6 +115,7 @@ export default function DirectoryDetail({
     groups,
     roles,
     mayChange,
+    rolesHref,
     indexHref,
     urls,
 }: Props) {
@@ -216,8 +219,13 @@ export default function DirectoryDetail({
 
                                 {roles.length === 0 ? (
                                     <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                                        No roles to map onto yet — define one under Roles, or have
-                                        an app declare its own.
+                                        No roles to map onto yet — define one under{' '}
+                                        {rolesHref === null ? (
+                                            'Roles'
+                                        ) : (
+                                            <Link href={rolesHref}>Roles</Link>
+                                        )}
+                                        , or have an app declare its own.
                                     </p>
                                 ) : (
                                     <div className="mt-3 grid gap-2 sm:grid-cols-2">

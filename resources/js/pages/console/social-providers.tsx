@@ -140,6 +140,8 @@ type Props = PageProps<{
     organization: OrganizationPicker | null;
     /** Back to the environment's providers, from one organization's view on the environment console. */
     environmentHref: string | null;
+    /** The organization's Authentication policy, on the organization view; null otherwise. */
+    policyHref: string | null;
     /**
      * A single-tenant install's organization console, whose administrators are the
      * environment's: the environment's providers are managed here too, and the setup form
@@ -166,6 +168,7 @@ export default function SocialProviders({
     organizationFilter,
     organization,
     environmentHref,
+    policyHref,
     ownerChoice,
     indexHref,
     storeHref,
@@ -333,7 +336,20 @@ export default function SocialProviders({
                         )}
                         <Panel
                             title={`On ${organizationName ?? 'this organization'}’s sign-in page`}
-                            description="In the order people see them. Turning one of the environment's off here only takes the button off this page — it does not stop anyone signing in with it elsewhere. To make your identity provider the only way in, require SSO on Authentication policy."
+                            description={
+                                <>
+                                    In the order people see them. Turning one of the environment's
+                                    off here only takes the button off this page — it does not stop
+                                    anyone signing in with it elsewhere. To make your identity
+                                    provider the only way in, require SSO on{' '}
+                                    {policyHref === null ? (
+                                        'Authentication policy'
+                                    ) : (
+                                        <Link href={policyHref}>Authentication policy</Link>
+                                    )}
+                                    .
+                                </>
+                            }
                             action={
                                 environmentHref !== null ? (
                                     <Link href={environmentHref} className="btn btn-ghost btn-sm">

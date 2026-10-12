@@ -31,6 +31,8 @@ type Props = PageProps<{
     search: string;
     idp: { entityId: string; metadataUrl: string; ssoUrl: string };
     createHref: string;
+    /** Authentication › Enterprise SSO, the inbound direction. */
+    connectionsHref: string;
     help: HelpContent;
 }>;
 
@@ -56,6 +58,7 @@ export default function ServiceProviders({
     search,
     idp,
     createHref,
+    connectionsHref,
     help,
 }: Props) {
     const [term, setTerm] = useState(search);
@@ -80,7 +83,13 @@ export default function ServiceProviders({
         <>
             <PageHeader
                 help={help}
-                description="Applications that trust this environment as their SAML identity provider. To let people sign in with an account they already have elsewhere, use Authentication → Enterprise SSO."
+                description={
+                    <>
+                        Applications that trust this environment as their SAML identity provider. To
+                        let people sign in with an account they already have elsewhere, use{' '}
+                        <Link href={connectionsHref}>Authentication → Enterprise SSO</Link>.
+                    </>
+                }
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>

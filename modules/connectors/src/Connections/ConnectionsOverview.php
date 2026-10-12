@@ -4,201 +4,381 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Connectors\Connections;
 
+use App\Http\Controllers\Console\LogStreamController;
+use Carbon\CarbonInterface;
+use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\Id\Connectors\Contracts\ConnectorAnalytics;
 use Cbox\Id\Connectors\Enums\ConnectorCategory;
 use Cbox\Id\Connectors\ValueObjects\ConnectionSummary;
+use Cbox\Id\Directory\Enums\DirectoryProvider;
+use Cbox\Id\Directory\Enums\DirectorySyncStatus;
 use Cbox\Id\Directory\Models\Directory;
-use Cbox\Id\Federation\Contracts\Connections as FederationConnections;
+use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Federation\Models\Connection;
-use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
+use Cbox\Id\Federation\Models\ProviderOptOut;
+use Cbox\Id\Federation\ProviderCatalog;
+use Cbox\Id\Pipes\Models\Pipe;
+use Cbox\Id\Pipes\Models\PipeConnection;
+use Cbox\Id\Pipes\PipeProviderCatalog;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
-use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
-use Cbox\Id\Webhooks\Enums\WebhookEventType;
+use Cbox\Id\SamlIdp\Models\ServiceProvider;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
+use Cbox\LaravelSiem\Enums\StreamHealth;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Reads the four existing module CONTRACTS — never their concrete models directly —
- * to present one normalised, per-organization list of live connections across
- * outbound SCIM, webhooks and upstream federation. Everything is environment-scoped
- * by laravel-id's hard tenancy scope; this class adds no scoping of its own.
+ * Every live connection in the environment, across every connector type, in one
+ * normalised list — and what each one's own records say about how it is doing.
  *
- * It is deliberately honest about the public surface it stands on:
- *  - Provisioning exposes {@see ProvisioningConnections::active()} (environment-wide,
- *    ACTIVE connections) which it filters to the organization.
- *  - Webhooks exposes {@see WebhookRegistry::forOrganization()} (every ACTIVE endpoint the
- *    org's events can reach), narrowed here to the configured candidate event types —
- *    paused endpoints and endpoints subscribed only to an un-listed event type are not
- *    surfaced. It used to recover the same set by unioning {@see WebhookRegistry::matching()}
- *    over each candidate type, which was one full read of the endpoint table per candidate.
- *  - Federation exposes {@see FederationConnections::forOrganization()} — the single
- *    ACTIVE SSO connection for an organization; drafts/inactive are not listed.
- *  - Directory ({@see Directory}) has no per-organization listing on its public
- *    contract, so inbound directories are intentionally NOT enumerated here.
+ * IT READS THE ROWS, not the modules' "list" contracts, and that is the fix rather than a
+ * shortcut. The contracts each answered a narrower question than this list asks: the
+ * provisioning contract lists ACTIVE connections only, the webhook registry lists only the
+ * endpoints subscribed to a configured set of event types, federation answers one ACTIVE
+ * connection per organization, and Directory Sync has no listing at all — so a demo
+ * environment with an SSO connection, a SCIM directory, a webhook and a log stream showed
+ * "No connectors yet". Every model here is environment-owned, so laravel-id's hard tenancy
+ * scope bounds each query to this environment, exactly as it bounds the type's own page.
  *
- * Delivery health is layered on via {@see ConnectorAnalytics}, which is inert by
- * default — so the list renders with no analytics backend, just without badges.
+ * WHICH ROWS "REACH" AN ORGANIZATION, when one is named. Its own, and the environment's
+ * where the environment's applies to it — the same answer the type's own list gives when
+ * filtered to that organization: an environment-wide webhook, inline hook, SAML app or log
+ * stream carries this organization's data too; an environment social provider is on its
+ * sign-in page unless it opted out; an environment-wide provisioning connection pushes its
+ * people. With no organization, every row in the environment.
+ *
+ * Health comes first from the row (consecutive failures, last sync result, the stream's
+ * circuit), and a bound {@see ConnectorAnalytics} backend decorates it where it knows more.
+ * Nothing here writes.
  */
 class ConnectionsOverview
 {
-    /**
-     * @param  list<string>  $webhookEventTypes  candidate event types used to recover an org's endpoints
-     */
     public function __construct(
-        private readonly ProvisioningConnections $provisioning,
-        private readonly WebhookRegistry $webhooks,
-        private readonly FederationConnections $federation,
         private readonly ConnectorAnalytics $analytics,
-        private readonly array $webhookEventTypes,
     ) {}
 
     /**
-     * Every enumerable connection for an organization (null ⇒ the whole environment,
-     * which drops the organization-only federation lookup), each decorated with
-     * delivery health when an analytics backend is wired.
+     * Every connection that reaches an organization (null ⇒ the whole environment).
      *
      * @return list<ConnectionSummary>
      */
     public function forOrganization(?string $organizationId): array
     {
-        return [
-            ...$this->provisioningSummaries($organizationId),
-            ...$this->webhookSummaries($organizationId),
-            ...$this->federationSummaries($organizationId),
+        $summaries = [
+            ...$this->federation($organizationId),
+            ...$this->social($organizationId),
+            ...$this->directories($organizationId),
+            ...$this->provisioning($organizationId),
+            ...$this->samlApps($organizationId),
+            ...$this->webhooks($organizationId),
+            ...$this->hooks($organizationId),
+            ...$this->logStreams($organizationId),
+            ...$this->pipes(),
         ];
+
+        return array_map($this->decorate(...), $summaries);
     }
 
     /** How many connections are currently active for an organization. */
     public function activeCount(?string $organizationId): int
     {
-        $active = array_filter(
+        return count(array_filter(
             $this->forOrganization($organizationId),
             static fn (ConnectionSummary $summary): bool => $summary->isActive(),
-        );
-
-        return count($active);
+        ));
     }
 
-    /**
-     * @return list<ConnectionSummary>
-     */
-    private function provisioningSummaries(?string $organizationId): array
+    /** @return list<ConnectionSummary> */
+    private function federation(?string $organizationId): array
     {
+        $query = Connection::query()
+            ->whereNull('provider')
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
+            ->orderBy('name');
+
+        return array_values(array_map(static fn (Connection $connection): ConnectionSummary => new ConnectionSummary(
+            category: ConnectorCategory::Federation,
+            id: $connection->id,
+            name: $connection->name,
+            status: $connection->status->value,
+            target: strtoupper($connection->type->value),
+            organizationId: $connection->organization_id,
+        ), $query->get(['id', 'organization_id', 'name', 'status', 'type', 'provider'])->all()));
+    }
+
+    /** @return list<ConnectionSummary> */
+    private function social(?string $organizationId): array
+    {
+        $optedOut = $organizationId === null
+            ? []
+            : ProviderOptOut::query()->where('organization_id', $organizationId)->pluck('provider')->all();
+
+        $query = Connection::query()
+            ->whereNotNull('provider')
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
+                fn (Builder $owner): Builder => $owner->where('organization_id', $organizationId)->orWhereNull('organization_id'),
+            ))
+            ->orderBy('provider');
+
         $summaries = [];
 
-        foreach ($this->provisioning->active() as $connection) {
-            /** @var ProvisioningConnection $connection */
-            if ($organizationId !== null && ! $connection->isEnvironmentWide()
-                && ! in_array($organizationId, $connection->scopeOrganizationIds(), true)) {
+        foreach ($query->get(['id', 'organization_id', 'name', 'status', 'type', 'provider']) as $connection) {
+            /** @var Connection $connection */
+            if ($connection->organization_id === null && in_array($connection->provider, $optedOut, true)) {
                 continue;
             }
 
-            $summaries[] = $this->decorate(new ConnectionSummary(
+            $summaries[] = new ConnectionSummary(
+                category: ConnectorCategory::Social,
+                id: $connection->id,
+                name: $connection->name,
+                status: $connection->status->value,
+                target: ProviderCatalog::find((string) $connection->provider)->name ?? (string) $connection->provider,
+                organizationId: $connection->organization_id,
+            );
+        }
+
+        return $summaries;
+    }
+
+    /** @return list<ConnectionSummary> */
+    private function directories(?string $organizationId): array
+    {
+        $query = Directory::query()
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
+            ->orderBy('name');
+
+        $summaries = [];
+
+        foreach ($query->get(['id', 'organization_id', 'name', 'provider', 'status', 'last_synced_at', 'last_sync_error', 'last_sync_status']) as $directory) {
+            /** @var Directory $directory */
+            $failed = $directory->last_sync_status === DirectorySyncStatus::Failed || $directory->last_sync_error !== null;
+
+            $summaries[] = new ConnectionSummary(
+                category: $directory->provider->isHris() ? ConnectorCategory::Hris : ConnectorCategory::Directory,
+                id: $directory->id,
+                name: $directory->name,
+                status: $directory->status->value,
+                target: $directory->provider->label(),
+                organizationId: $directory->organization_id,
+                lastActivityAt: $directory->last_synced_at,
+                signal: match (true) {
+                    $failed => ConnectionSummary::FAILING,
+                    $directory->last_synced_at !== null => ConnectionSummary::HEALTHY,
+                    // A SCIM directory waits for its provider to push; a pull one for its first run.
+                    default => $directory->provider === DirectoryProvider::Scim ? null : ConnectionSummary::IDLE,
+                },
+                problem: $failed ? ($directory->last_sync_error ?? 'The last sync failed.') : null,
+            );
+        }
+
+        return $summaries;
+    }
+
+    /** @return list<ConnectionSummary> */
+    private function provisioning(?string $organizationId): array
+    {
+        $summaries = [];
+
+        foreach (ProvisioningConnection::query()->orderBy('name')->get() as $connection) {
+            /** @var ProvisioningConnection $connection */
+            $reaches = $organizationId === null
+                || $connection->organization_id === $organizationId
+                || $connection->isEnvironmentWide()
+                || in_array($organizationId, $connection->scopeOrganizationIds(), true);
+
+            if (! $reaches) {
+                continue;
+            }
+
+            $summaries[] = new ConnectionSummary(
                 category: ConnectorCategory::Provisioning,
                 id: $connection->id,
                 name: $connection->name,
                 status: $connection->status->value,
                 target: $connection->base_url,
-            ));
+                organizationId: $connection->organization_id,
+                lastActivityAt: $connection->last_success_at,
+                signal: self::deliverySignal($connection->consecutive_failures, $connection->circuit_opened_at, $connection->last_success_at),
+                problem: $connection->consecutive_failures > 0 ? $connection->last_error : null,
+            );
         }
 
         return $summaries;
     }
 
-    /**
-     * @return list<ConnectionSummary>
-     */
-    private function webhookSummaries(?string $organizationId): array
+    /** @return list<ConnectionSummary> */
+    private function samlApps(?string $organizationId): array
     {
+        $query = ServiceProvider::query()
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
+                fn (Builder $owner): Builder => $owner->where('organization_id', $organizationId)->orWhereNull('organization_id'),
+            ))
+            ->orderBy('entity_id');
+
+        return array_values(array_map(static fn (ServiceProvider $provider): ConnectionSummary => new ConnectionSummary(
+            category: ConnectorCategory::SamlApp,
+            id: $provider->id,
+            name: $provider->entity_id,
+            status: $provider->status->value,
+            target: $provider->acs_url,
+            organizationId: $provider->organization_id,
+        ), $query->get(['id', 'organization_id', 'entity_id', 'acs_url', 'status'])->all()));
+    }
+
+    /** @return list<ConnectionSummary> */
+    private function webhooks(?string $organizationId): array
+    {
+        $query = WebhookEndpoint::query()
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
+                fn (Builder $owner): Builder => $owner->where('organization_id', $organizationId)->orWhereNull('organization_id'),
+            ))
+            ->orderBy('url');
+
         $summaries = [];
 
-        // ONE read, then the same subscription test the registry was doing anyway.
-        //
-        // This used to call matching() once per candidate event type, and matching()
-        // ignores the type in SQL — it reads every active endpoint and filters in PHP. So
-        // five candidate types were five identical full reads per render, and the list is
-        // config: aligning it with the app's own catalogue, which names 24 event types,
-        // is a one-line edit that looks harmless and would have made it 24.
-        foreach ($this->webhooks->forOrganization($organizationId) as $endpoint) {
+        foreach ($query->get(['id', 'organization_id', 'url', 'status', 'consecutive_failures', 'circuit_opened_at', 'last_success_at', 'last_error']) as $endpoint) {
             /** @var WebhookEndpoint $endpoint */
-            if (! $this->subscribedToAnyCandidate($endpoint)) {
-                continue;
-            }
-
-            $summaries[] = $this->decorate(new ConnectionSummary(
+            $summaries[] = new ConnectionSummary(
                 category: ConnectorCategory::Webhook,
                 id: $endpoint->id,
-                name: $endpoint->url,
+                name: self::shortUrl($endpoint->url),
                 status: $endpoint->status->value,
                 target: $endpoint->url,
-            ));
+                organizationId: $endpoint->organization_id,
+                lastActivityAt: $endpoint->last_success_at,
+                signal: self::deliverySignal($endpoint->consecutive_failures, $endpoint->circuit_opened_at, $endpoint->last_success_at),
+                problem: $endpoint->consecutive_failures > 0 || $endpoint->circuit_opened_at !== null ? $endpoint->last_error : null,
+            );
+        }
+
+        return $summaries;
+    }
+
+    /** @return list<ConnectionSummary> */
+    private function hooks(?string $organizationId): array
+    {
+        $query = ExternalActionEndpoint::query()
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
+                fn (Builder $owner): Builder => $owner->where('organization_id', $organizationId)->orWhereNull('organization_id'),
+            ))
+            ->orderBy('url');
+
+        return array_values(array_map(static fn (ExternalActionEndpoint $endpoint): ConnectionSummary => new ConnectionSummary(
+            category: ConnectorCategory::Hook,
+            id: $endpoint->id,
+            name: $endpoint->hook_point->label(),
+            status: $endpoint->status->value,
+            target: $endpoint->url,
+            organizationId: $endpoint->organization_id,
+        ), $query->get(['id', 'organization_id', 'hook_point', 'url', 'status'])->all()));
+    }
+
+    /** @return list<ConnectionSummary> */
+    private function logStreams(?string $organizationId): array
+    {
+        $query = AuditStream::query()
+            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
+                fn (Builder $owner): Builder => $owner->where('organization_id', $organizationId)->orWhereNull('organization_id'),
+            ))
+            ->orderBy('name');
+
+        $summaries = [];
+
+        foreach ($query->get() as $stream) {
+            /** @var AuditStream $stream */
+            $health = $stream->health();
+
+            $summaries[] = new ConnectionSummary(
+                category: ConnectorCategory::LogStream,
+                id: $stream->id,
+                name: $stream->name,
+                status: $stream->enabled ? 'active' : 'paused',
+                target: LogStreamController::DESTINATIONS[$stream->destination->value],
+                organizationId: $stream->organization_id,
+                lastActivityAt: self::latest($stream->last_success_at, $stream->last_failure_at),
+                signal: match ($health) {
+                    StreamHealth::Degraded, StreamHealth::ActionRequired => ConnectionSummary::FAILING,
+                    StreamHealth::Paused => null,
+                    StreamHealth::Healthy => $stream->last_success_at === null ? ConnectionSummary::IDLE : ConnectionSummary::HEALTHY,
+                },
+                problem: in_array($health, [StreamHealth::Degraded, StreamHealth::ActionRequired], true) ? $stream->last_error : null,
+            );
         }
 
         return $summaries;
     }
 
     /**
-     * Whether an endpoint subscribes to anything this deployment listed as a candidate.
+     * The environment's pipes. A pipe belongs to no organization — it is where ANY person
+     * here connects an account — so it is listed whichever organization is asked about.
      *
-     * The same predicate the union of `matching()` calls expressed, said once: an endpoint
-     * appeared in that union if ANY candidate type matched it, and the de-duplication by
-     * id existed only to undo the repetition. A wildcard subscriber matches whatever the
-     * list contains, and an empty list offers nothing to match — which is the honest
-     * reading of a deployment that named no candidates, and what the loop did before.
+     * @return list<ConnectionSummary>
      */
-    private function subscribedToAnyCandidate(WebhookEndpoint $endpoint): bool
+    private function pipes(): array
     {
-        if (in_array(WebhookEventType::WILDCARD, $endpoint->event_types, true)) {
-            return $this->webhookEventTypes !== [];
+        $accounts = [];
+        $latest = [];
+
+        foreach (PipeConnection::query()->get(['pipe_id', 'connected_at', 'last_refreshed_at']) as $connection) {
+            /** @var PipeConnection $connection */
+            $accounts[$connection->pipe_id] = ($accounts[$connection->pipe_id] ?? 0) + 1;
+            $latest[$connection->pipe_id] = self::latest($latest[$connection->pipe_id] ?? null, self::latest($connection->connected_at, $connection->last_refreshed_at));
         }
 
-        foreach ($this->webhookEventTypes as $eventType) {
-            if (in_array($eventType, $endpoint->event_types, true)) {
-                return true;
-            }
-        }
+        return array_values(array_map(static function (Pipe $pipe) use ($accounts, $latest): ConnectionSummary {
+            $count = $accounts[$pipe->id] ?? 0;
 
-        return false;
+            return new ConnectionSummary(
+                category: ConnectorCategory::Pipe,
+                id: $pipe->id,
+                name: PipeProviderCatalog::find($pipe->provider)->name ?? $pipe->provider,
+                status: $pipe->enabled ? 'active' : 'disabled',
+                target: $count.' connected '.($count === 1 ? 'account' : 'accounts'),
+                lastActivityAt: $latest[$pipe->id] ?? null,
+            );
+        }, Pipe::query()->orderBy('provider')->get(['id', 'provider', 'enabled'])->all()));
     }
 
     /**
-     * @return list<ConnectionSummary>
+     * What a delivery row's own counters say: failing while it has consecutive failures or
+     * an open circuit, healthy once something got through, idle before anything was sent.
      */
-    private function federationSummaries(?string $organizationId): array
+    private static function deliverySignal(int $failures, ?CarbonInterface $circuitOpenedAt, ?CarbonInterface $lastSuccessAt): string
     {
-        if ($organizationId === null) {
-            return [];
+        return match (true) {
+            $failures > 0 || $circuitOpenedAt !== null => ConnectionSummary::FAILING,
+            $lastSuccessAt !== null => ConnectionSummary::HEALTHY,
+            default => ConnectionSummary::IDLE,
+        };
+    }
+
+    private static function latest(?CarbonInterface $a, ?CarbonInterface $b): ?CarbonInterface
+    {
+        if ($a === null || $b === null) {
+            return $a ?? $b;
         }
 
-        $connection = $this->federation->forOrganization($organizationId);
+        return $a->greaterThan($b) ? $a : $b;
+    }
 
-        if (! $connection instanceof Connection) {
-            return [];
+    /** `hooks.acme.test/events` for `https://hooks.acme.test/events`: the part a person reads. */
+    private static function shortUrl(string $url): string
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! is_string($host)) {
+            return $url;
         }
 
-        return [$this->decorate(new ConnectionSummary(
-            category: ConnectorCategory::Federation,
-            id: $connection->id,
-            name: $connection->name,
-            status: $connection->status->value,
-            target: $connection->type->value,
-        ))];
+        $path = parse_url($url, PHP_URL_PATH);
+
+        return $host.(is_string($path) && $path !== '/' ? $path : '');
     }
 
     private function decorate(ConnectionSummary $summary): ConnectionSummary
     {
         $health = $this->analytics->health($summary->category, $summary->id);
 
-        if ($health === null) {
-            return $summary;
-        }
-
-        return new ConnectionSummary(
-            category: $summary->category,
-            id: $summary->id,
-            name: $summary->name,
-            status: $summary->status,
-            target: $summary->target,
-            health: $health,
-        );
+        return $health === null ? $summary : $summary->withHealth($health);
     }
 }

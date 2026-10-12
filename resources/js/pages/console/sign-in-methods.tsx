@@ -24,6 +24,8 @@ type Props = PageProps<{
     /** On an organization's own console: whose sign-in this page describes. */
     organizationName: string | null;
     ssoOnly: boolean;
+    /** Authentication policy, where the require-SSO rule is relaxed. */
+    policyHref: string;
     sections: { title: string; description: string; rows: MethodRow[] }[];
     /** The per-organization table — the environment console only. */
     organizationsHref: string | null;
@@ -64,6 +66,7 @@ export default function SignInMethods({
     environmentName,
     organizationName,
     ssoOnly,
+    policyHref,
     sections,
     organizationsHref,
 }: Props) {
@@ -93,7 +96,8 @@ export default function SignInMethods({
                 <p className="cbx-callout" role="note">
                     Enterprise SSO is required{' '}
                     {onOrganization ? `for ${organizationName}` : 'for this environment'}, so every
-                    other way in is refused until that rule is relaxed on Authentication policy.
+                    other way in is refused until that rule is relaxed on{' '}
+                    <Link href={policyHref}>Authentication policy</Link>.
                 </p>
             )}
 

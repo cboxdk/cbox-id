@@ -69,6 +69,14 @@ export default function AuditLogSchemas({
                         <EmptyState
                             icon="layers"
                             equivalent="audit_logs.schemas.create"
+                            actions={
+                                <Button asChild variant="primary">
+                                    <Link href={createHref}>
+                                        <Icon name="plus" className="w-4 h-4" />
+                                        New schema
+                                    </Link>
+                                </Button>
+                            }
                             title="No schemas yet"
                             description="Every action is accepted as your app sends it. Add a schema for an action to have its events checked on arrival — a consistent log is decided when an event is written, not when somebody reads it."
                         />

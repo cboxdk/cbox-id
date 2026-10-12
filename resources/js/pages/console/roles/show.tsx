@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -45,6 +45,8 @@ type Props = PageProps<{
     catalog: CatalogEntry[];
     granted: string[];
     holders: Holder[];
+    /** Where a permission is written by hand; null where this console has no such page. */
+    permissionsHref: string | null;
     indexHref: string;
     urls: {
         update: string;
@@ -60,6 +62,7 @@ export default function RoleDetail({
     catalog,
     granted,
     holders,
+    permissionsHref,
     indexHref,
     urls,
 }: Props) {
@@ -152,6 +155,7 @@ export default function RoleDetail({
                 catalog={catalog}
                 granted={granted}
                 href={urls.permissions}
+                permissionsHref={permissionsHref}
             />
 
             {/*
@@ -248,12 +252,14 @@ function Permissions({
     catalog,
     granted,
     href,
+    permissionsHref,
 }: {
     readOnly: boolean;
     declaredByApp: boolean;
     catalog: CatalogEntry[];
     granted: string[];
     href: string;
+    permissionsHref: string | null;
 }) {
     const [pending, setPending] = useState<string | null>(null);
 
@@ -312,7 +318,21 @@ function Permissions({
                             <EmptyState
                                 icon="key"
                                 title="No permissions declared"
-                                description="An app registers its catalog over the SDK; the keys it declares appear here."
+                                description={
+                                    permissionsHref === null
+                                        ? 'An app registers its catalog over the SDK; the keys it declares appear here.'
+                                        : 'An app registers its catalog over the SDK, or you write one by hand; either way it appears here.'
+                                }
+                                actions={
+                                    permissionsHref === null ? undefined : (
+                                        <Button asChild>
+                                            <Link href={permissionsHref}>
+                                                <Icon name="plus" className="w-4 h-4" />
+                                                Write a permission
+                                            </Link>
+                                        </Button>
+                                    )
+                                }
                             />
                         ) : (
                             catalog.map((permission) => (

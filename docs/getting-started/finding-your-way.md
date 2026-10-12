@@ -48,8 +48,22 @@ click by click.
 | **Advanced** | Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy login | Set up once and rarely revisited |
 | **Settings** | Settings | The environment's id, issuer and discovery URL |
 
-Modules add pages to these areas when they are switched on. Examples are *Connectors*,
-*Sign-in activity*, *Risk events* and *Trusted devices*.
+Modules add pages to these areas when they are switched on. Examples are *Sign-in
+activity*, *Risk events* and *Trusted devices*.
+
+**Connectors**, between Developers and AI agents, is the one place to see and start every
+integration. Each integration still lives on its own page in the areas above; Connectors
+leads to it:
+
+- **Catalog** has a card for every kind: Enterprise SSO, Social login, Directory Sync, HR
+  systems, outbound SCIM provisioning, SAML apps, webhooks, hooks, log streams and Pipes. Each card shows how many are live and how many are failing. **Set up** opens that
+  kind's setup form, **Manage** opens its list, and **Guide** opens the guide. A provider on a
+  card, such as **Workday** or **Datadog**, opens the setup form with that provider already
+  chosen.
+- **Connections** lists every live connection of every kind. Each row shows its type,
+  organization, status and last activity, and links to the connection's own page. Failing
+  connections are listed first. Narrow the list by status, type or organization. **New
+  connection** opens the catalog.
 
 ### One organization's page
 
@@ -130,6 +144,17 @@ Alternatively, use **Authentication › Directory Sync › New directory**. Choo
 - an HR system: **Workday, BambooHR, Rippling, HiBob or Personio**.
 
 [Directory Sync](../guides/sync-users-in.md), [HR system sync](../guides/hris.md).
+
+### Set up an integration, or find the one that is failing
+
+1. **Connectors**. The catalog lists every kind of integration.
+2. **Set up** on a card, such as **Outbound SCIM provisioning**, opens its setup form. For an
+   HR system or a log stream, choose the provider on the card instead, such as **Workday** or
+   **Splunk HEC**, and the form opens with it chosen.
+
+When something is failing, the catalog says so at the top. **Review failing** lists every
+failing connection with its last error. Open one, such as a webhook, to see its deliveries
+and fix it. That is three clicks from the environment's home page.
 
 ### Find a user: their organizations, sessions and two-factor, and why a sign-in was challenged
 
