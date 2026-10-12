@@ -10,7 +10,9 @@
     layout table so a screen reader does not announce a grid, and every colour pair at
     4.5:1 or better — the old footer grey was 3.1:1 on this background, and the fine print
     on the card 3.3:1. The brand's own colour is only ever used where it was checked:
-    `onAccent` on the button and monogram, `accentText` for text on the card.
+    `onAccent` on the button and monogram, `accentText` for text on the card. The card's
+    top edge carries the brand's colour too, so a mail with no button (a code, a notice)
+    is still recognisably theirs.
 
     `color-scheme: light`, declared: the card is drawn on explicit light colours, and a
     client that inverts a mail it believes is dark-capable turns a brand colour into its
@@ -48,7 +50,7 @@
                     </tr></table>
                     @endif
                 </td></tr>
-                <tr><td style="background:#ffffff;border:1px solid #e4e7ec;border-radius:14px;padding:28px 24px">
+                <tr><td style="background:#ffffff;border:1px solid #e4e7ec;border-top:4px solid {{ $theme->accent }};border-radius:14px;padding:28px 24px">
                     {{ $slot }}
                 </td></tr>
                 <tr><td style="padding:18px 4px;color:#5b616e;font-size:12px;line-height:1.6">

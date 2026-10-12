@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Platform\Locale\MailLocale;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\Factory as Queue;
 use Illuminate\Mail\Mailable;
@@ -21,7 +22,7 @@ use Illuminate\Queue\SerializesModels;
  *    ({@see MailBrands}): the product name, the uploaded logo (an absolute URL on this
  *    application, never a remote image), the brand's colour on the button, the brand's
  *    sender name on the From line, and the footer.
- *  - IN THEIR LANGUAGE — every send site states it with `->locale()` ({@see \App\Platform\Locale\MailLocale}),
+ *  - IN THEIR LANGUAGE — every send site states it with `->locale()` ({@see MailLocale}),
  *    and the subject, the body and the text part all render inside it.
  *  - TWO PARTS — HTML and a plain-text alternative. A text part is what a screen reader in
  *    a text client, a smartwatch, a corporate gateway that strips HTML and every spam

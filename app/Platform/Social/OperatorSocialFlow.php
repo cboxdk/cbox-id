@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Social;
 
+use App\Platform\AccountLinking\EntraVerifiedEmail;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\OidcRelyingParty;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
@@ -130,6 +131,9 @@ class OperatorSocialFlow
                 'provider' => $provider->key(),
                 'email' => $resolved->email,
                 'email_verified' => $resolved->emailVerified === true || ($resolved->raw['email_verified'] ?? null) === true ? true : null,
+                // Microsoft Entra's stand-in for `email_verified`, which it never sends
+                // (see EntraVerifiedEmail). Carried only as the boolean it must be.
+                EntraVerifiedEmail::CLAIM => ($resolved->raw[EntraVerifiedEmail::CLAIM] ?? null) === true ? true : null,
             ], static fn (mixed $value): bool => $value !== null),
         );
     }

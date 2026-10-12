@@ -62,7 +62,7 @@ final readonly class BrandedEmailOtpChannel implements OtpChannel
         // life of the registry, and the mailer it would have captured is not necessarily the
         // one in place when the code is sent.
         Mail::to($delivery->recipient)
-            ->locale(HostedLocale::fromTag($delivery->locale)?->value ?? $this->locales->forRecipient())
+            ->locale(HostedLocale::fromTag($delivery->locale)->value ?? $this->locales->forRecipient())
             ->send($mail);
     }
 

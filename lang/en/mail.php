@@ -5,9 +5,9 @@ declare(strict_types=1);
 /*
  * THE MAIL THE HOSTED FLOWS SEND — rendered by PHP alone, never shipped to the browser.
  *
- * `:brand` is the deployment's configured product name (`cbox-id.branding.name`), never a
- * literal: a self-hosted install that renamed itself must not mail its users somebody
- * else's name. Every send site states the recipient's language with `->locale()`
+ * `:brand` is the product name of whoever the reader was dealing with — the organization's or
+ * environment's brand, else the deployment's `cbox-id.branding.name` ({@see \App\Mail\MailBrands})
+ * — never a literal: nobody must be mailed somebody else's name. Every send site states the recipient's language with `->locale()`
  * ({@see \App\Platform\Locale\MailLocale}).
  *
  * Lines that carry `<b>` around a name take the name already escaped and wrapped by the

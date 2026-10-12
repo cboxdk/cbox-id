@@ -4,5 +4,6 @@
     the text part — a screen reader in a text client, a watch, a gateway that strips HTML.
 --}}
 
---
+
+-- 
 {!! __('mail.layout.footer', ['year' => date('Y'), 'brand' => $brand]) !!}
