@@ -17,6 +17,7 @@ import {
     PasswordField,
     PasswordManagerIdentity,
     Pill,
+    ProviderMark,
     Select,
 } from '@/ui';
 
@@ -28,12 +29,26 @@ interface PasskeyRow {
     removeHref: string;
 }
 
-interface SocialProvider {
-    key: string;
+/** One linked sign-in identity — a provider account that can sign in as this one. */
+interface SignInIdentityRow {
+    id: string;
+    /** The catalogue key (`google`) — also the mark drawn — or `sso` for an organization's own. */
+    provider: string;
     label: string;
-    linked: boolean;
+    /** The address the provider gave when it was linked; null when it gave none. */
+    email: string | null;
+    linkedOn: string | null;
+    /** "2 days ago", or null when it has not signed in since this was recorded. */
+    lastUsed: string | null;
+    /** Null for an organization's single sign-on, which is not this page's to remove. */
+    disconnectHref: string | null;
+}
+
+/** A provider this environment offers that this account has not linked. */
+interface ConnectableProvider {
+    provider: string;
+    label: string;
     connectHref: string;
-    disconnectHref: string;
 }
 
 type Props = PageProps<{
@@ -64,7 +79,10 @@ type Props = PageProps<{
     passkeys: PasskeyRow[];
     /** Whether a passkey may be added here — off when the environment or deployment turned passkeys off. */
     passkeysEnabled: boolean;
-    socialProviders: SocialProvider[];
+    signInMethods: {
+        identities: SignInIdentityRow[];
+        connectable: ConnectableProvider[];
+    };
     session: { id: string; methods: string[]; signedIn: string | null } | null;
     otherSessions: number;
     urls: {
@@ -91,7 +109,7 @@ export default function Security({
     smsFactor,
     passkeys,
     passkeysEnabled,
-    socialProviders,
+    signInMethods,
     session,
     otherSessions,
     urls,
@@ -125,6 +143,12 @@ export default function Security({
 
             <ProfilePanel profile={profile} href={urls.profile} />
 
+            <SignInMethodsPanel
+                methods={signInMethods}
+                hasPassword={hasPassword}
+                passkeys={passkeys.length}
+            />
+
             <PasswordPanel hasPassword={hasPassword} email={profile.email} href={urls.password} />
 
             <TwoFactorPanel twoFactor={twoFactor} urls={urls} />
@@ -134,8 +158,6 @@ export default function Security({
             )}
 
             <PasskeyPanel passkeys={passkeys} name={profile.name} enabled={passkeysEnabled} />
-
-            {socialProviders.length > 0 && <SocialPanel providers={socialProviders} />}
 
             <SessionPanel session={session} otherSessions={otherSessions} urls={urls} />
         </div>
@@ -215,6 +237,7 @@ function PasswordPanel({
 
     return (
         <Panel
+            id="password"
             title="Password"
             description={
                 hasPassword
@@ -550,6 +573,7 @@ function PasskeyPanel({
      */
     return (
         <Panel
+            id="passkeys"
             title="Passkeys"
             description="Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password."
             action={
@@ -653,63 +677,169 @@ function PasskeyPanel({
     );
 }
 
-function SocialPanel({ providers }: { providers: SocialProvider[] }) {
+/**
+ * MY ACCOUNT › SIGN-IN METHODS — every way in to this account, in one place.
+ *
+ * It replaced "Connected accounts", which listed only the deployment operator's own
+ * providers and was absent entirely where Google was the environment's — so the sign-in
+ * page's "connect it from your account settings" pointed at nothing. This lists what the
+ * account HAS (password, passkeys, every linked provider account, whichever door it came
+ * through) and offers what the sign-in page offers.
+ *
+ * Connect is a plain link, not a client visit: it ends at the provider's own consent page,
+ * a cross-origin redirect a client-side navigation cannot follow. Disconnect asks first,
+ * and the server refuses it when it would leave no way in — the refusal is shown here.
+ */
+function SignInMethodsPanel({
+    methods,
+    hasPassword,
+    passkeys,
+}: {
+    methods: Props['signInMethods'];
+    hasPassword: boolean;
+    passkeys: number;
+}) {
     const { errors } = usePage().props;
-    const [disconnecting, setDisconnecting] = useState<SocialProvider | null>(null);
-    const unlinkError = typeof errors.unlink === 'string' ? errors.unlink : null;
+    const [disconnecting, setDisconnecting] = useState<SignInIdentityRow | null>(null);
+    const error = typeof errors.signInMethods === 'string' ? errors.signInMethods : null;
 
     return (
         <Panel
-            title="Connected accounts"
-            description="Link a social account to sign in with it. Linking is deliberate — we never merge accounts by email automatically."
+            id="sign-in-methods"
+            title="Sign-in methods"
+            description="Every way you can sign in. Linking is always deliberate — we never join two sign-ins because their email addresses match."
         >
-            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                {providers.map((provider) => (
-                    <li key={provider.key} className="flex items-center justify-between gap-4 py-3">
-                        <div className="flex items-center gap-3">
-                            <span className="font-medium">{provider.label}</span>
-                            {provider.linked && <Pill tone="success">Connected</Pill>}
+            <ul className="divide-y divide-[color:var(--border)]">
+                <li className="flex items-center justify-between gap-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Icon name="key" className="w-4 h-4 shrink-0" />
+                        <span className="text-sm font-medium">Password</span>
+                        {hasPassword ? (
+                            <Pill tone="success">Set</Pill>
+                        ) : (
+                            <Pill tone="neutral">Not set</Pill>
+                        )}
+                    </div>
+                    <a
+                        href="#password"
+                        className="text-sm font-medium underline underline-offset-2 shrink-0"
+                        style={{ color: 'var(--accent-strong)' }}
+                    >
+                        {hasPassword ? 'Change' : 'Set a password'}
+                    </a>
+                </li>
+
+                <li className="flex items-center justify-between gap-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Icon name="shield" className="w-4 h-4 shrink-0" />
+                        <span className="text-sm font-medium">Passkeys</span>
+                        <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                            {passkeys === 0
+                                ? 'None yet'
+                                : passkeys === 1
+                                  ? '1 passkey'
+                                  : `${passkeys} passkeys`}
+                        </span>
+                    </div>
+                    <a
+                        href="#passkeys"
+                        className="text-sm font-medium underline underline-offset-2 shrink-0"
+                        style={{ color: 'var(--accent-strong)' }}
+                    >
+                        Manage
+                    </a>
+                </li>
+
+                {methods.identities.map((identity) => (
+                    <li
+                        key={identity.id}
+                        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
+                    >
+                        <div className="flex items-center gap-3 min-w-0">
+                            <ProviderMark provider={identity.provider} />
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium">
+                                    {identity.label} <Pill tone="success">Linked</Pill>
+                                </p>
+                                <p
+                                    className="text-xs break-all"
+                                    style={{ color: 'var(--muted-foreground)' }}
+                                >
+                                    {[
+                                        identity.email,
+                                        identity.linkedOn === null
+                                            ? null
+                                            : `Linked ${identity.linkedOn}`,
+                                        identity.lastUsed === null
+                                            ? null
+                                            : `last used ${identity.lastUsed}`,
+                                    ]
+                                        .filter((part): part is string => part !== null)
+                                        .join(' · ')}
+                                </p>
+                            </div>
                         </div>
-                        {provider.linked ? (
+                        {identity.disconnectHref !== null ? (
                             <Button
                                 size="sm"
                                 variant="danger"
-                                aria-label={`Disconnect ${provider.label}`}
-                                onClick={() => setDisconnecting(provider)}
+                                aria-label={`Disconnect ${identity.label}${identity.email === null ? '' : ` (${identity.email})`}`}
+                                onClick={() => setDisconnecting(identity)}
                             >
                                 Disconnect
                             </Button>
                         ) : (
-                            <Button asChild size="sm">
-                                <a href={provider.connectHref}>Connect</a>
-                            </Button>
+                            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                Managed by your organization
+                            </span>
                         )}
                     </li>
                 ))}
             </ul>
 
-            {unlinkError !== null && (
+            {error !== null && (
                 <p className="field-error mt-2" role="alert">
-                    {unlinkError}
+                    {error}
                 </p>
+            )}
+
+            {methods.connectable.length > 0 && (
+                <div className="mt-4">
+                    <h3 className="text-sm font-medium">Connect another way to sign in</h3>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                        You sign in to the provider, and it is linked to you when you come back.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2.5">
+                        {methods.connectable.map((provider) => (
+                            <a
+                                key={provider.provider}
+                                href={provider.connectHref}
+                                className="btn btn-ghost"
+                            >
+                                <ProviderMark provider={provider.provider} />
+                                <span>Connect {provider.label}</span>
+                            </a>
+                        ))}
+                    </div>
+                </div>
             )}
 
             <Dialog
                 open={disconnecting !== null}
                 onOpenChange={(open) => !open && setDisconnecting(null)}
                 title={disconnecting === null ? '' : `Disconnect ${disconnecting.label}?`}
-                description="You stop being able to sign in with it. If it is your only way in, the change is refused."
+                description="You stop being able to sign in with it. If it is your only way in, the change is refused — set a password or add a passkey first."
                 footer={
                     <>
                         <Button onClick={() => setDisconnecting(null)}>Cancel</Button>
                         <Button
                             variant="danger"
                             onClick={() => {
-                                const provider = disconnecting;
+                                const identity = disconnecting;
                                 setDisconnecting(null);
 
-                                if (provider !== null) {
-                                    router.delete(provider.disconnectHref, {
+                                if (identity?.disconnectHref != null) {
+                                    router.delete(identity.disconnectHref, {
                                         preserveScroll: true,
                                     });
                                 }

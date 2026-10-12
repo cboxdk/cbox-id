@@ -161,52 +161,84 @@ environment and organization that invited them.
 
 ## Connecting a provider to an existing account
 
-Someone who already signs in with a password can add a provider from
-**My account › Connected accounts**. Doing so requires being signed in *and* completing
-the provider's own sign-in, so both sides are proven. They can disconnect it again from
-the same place — unless it is the only way they can get in, which we refuse.
+Someone who is signed in can add a provider from **My account › Sign-in methods**. The
+section lists every way into the account: whether a password is set, how many passkeys
+there are, and every linked provider account — its name, the address the provider gave,
+when it was linked and when it was last used. Under it is a **Connect** button for every
+provider this environment offers that is not linked yet.
+
+Connecting needs a fresh step-up (your password again, or a passkey) and then the
+provider's own sign-in, so both sides are proven. It comes back through the same redirect
+URI the sign-in button uses — the one you registered with the provider — so there is
+nothing extra to configure. The provider's address does not have to match the account's.
+
+**Disconnect** removes one linked identity. It is refused when it would leave the account
+with no way in at all — no password, no passkey and no other linked provider — and the page
+says so. An organization's own single sign-on is listed but cannot be disconnected here:
+it is how the organization knows the person, and their next sign-in through it would bring
+it straight back.
+
+Over the API: `DELETE /api/v1/me/sign-in-methods/{identity_id}` (action
+`account.sign_in_methods.disconnect`, scope `account:sign_in:write`), and the same action
+over MCP. Connecting is a browser ceremony and has no API equivalent.
 
 ## What happens when the email address is already taken
 
 This is the part worth understanding, because the obvious behaviour is the wrong one.
 
-Someone signs in with GitHub. GitHub says the address is `dana@acme.test`. That address
+Someone signs in with Google. Google says the address is `dana@acme.test`. That address
 already belongs to an account here. The tempting move is to treat it as the same person
 and sign them in.
 
-**We never do that.** An address a provider hands us is a claim, not proof. Some
-providers do verify addresses; others let you type whatever you like. Even for the ones
-that do, their verification is a statement about their relationship with that person,
-not about ours. If merging on a matching address were enough, anyone able to set an
-address at any connected provider could walk into the account that owns it.
+**We never do that.** An address a provider hands us is a claim, not proof of owning the
+account here. If merging on a matching address were enough, anyone able to get a provider
+to assert an address could walk into the account that uses it.
 
-So instead:
+Refusing outright is wrong too: the legitimate owner is stuck. So the sign-in stops on a
+**link step** — *"Link your Google account to dana@acme.test?"* — hosted, in the
+environment's branding and in the visitor's language:
 
-1. The identity is held aside, and the person is asked to sign in to the existing
-   account normally.
-2. Once signed in, we ask them plainly: *someone just signed in with GitHub as this
-   address — do you want to connect it?*
-3. **Yes** links the two, and they can use either from then on. **No** discards it and
-   changes nothing.
+1. The person proves they hold the existing account. What counts follows from what the
+   account already demands:
+   - an account with a **second factor** answers with it — the authenticator app (or a
+     recovery code), or a texted code. A password alone is not accepted, because a link is a
+     new way in that never asks for that factor again;
+   - otherwise the **password**, or a **one-time code mailed** to the account's own address
+     (no weaker than the password: a password reset needs nothing more);
+   - an account with neither gets the mailed code straight away.
+2. The provider identity is linked — on the provider's stable subject id, never the
+   address — and the person is signed in and sent where they were going, exactly as a
+   sign-in through that provider would have been. That includes the hand-off into a
+   tenant's `/admin` from the platform's sign-in page.
+3. **Don't link** drops it and changes nothing.
 
-Confirming proves three things at once: control of the provider account, control of
-this account, and intent. That is strictly more than a matching address ever showed.
+The rules around it:
 
-The held identity expires after ten minutes and is bound to the account that was asked.
-It cannot be claimed by a different account, including another one signed in in the same
-browser.
+- **Only when the provider vouched for the address.** Google's `email_verified`, GitHub's
+  verified address list, an organization's SSO for a domain it has verified. Otherwise the
+  person is told that the provider has not confirmed the address, and that they can sign in
+  another way and connect the provider from My account.
+- **Short-lived and single-use.** The held identity lives in the server-side session,
+  signed with the application key, for ten minutes. It is spent by the answer that links
+  it; five wrong answers drop it, and they count against the account's lockout too.
+- **Radar.** A block ends the attempt with a generic sentence. A challenge takes the
+  password off the table — a code from the inbox (or the second factor) is asked for
+  instead.
+- **SSO mandates.** If the account's organization requires its own single sign-on, a link
+  through any other provider is refused with the same explanation every other door gives.
+- **Email confirmation.** A code answered from the account's inbox confirms the address.
+  The provider's say-so never does.
+- **Audit.** Every link is recorded as `user.identity_linked` — by the person, with the
+  provider, the proof used (`password`, `email_code`, `totp`, …) and whether it came from
+  the link step or My account. A disconnect is `user.identity_unlinked`.
 
-### Why we do not require the addresses to match
+## When a sign-in with a provider does not complete
 
-An earlier version linked automatically when the held identity's address equalled the
-account's. That rule was wrong in both directions. It was too strict, because people
-have several addresses at one provider — a GitHub account may carry five, and the
-provider chooses which one to send — so legitimate links were silently discarded and
-the feature simply appeared not to work. It was also too weak, because it leaned on the
-provider having verified the address, which is the one assumption we had already decided
-not to make.
-
-If you cannot complete the sign-in, use password reset on the existing account.
+Whatever the reason — the person pressed Cancel at the provider, the sign-in link expired
+or was replayed, the provider's answer did not verify, the provider could not be reached,
+the provider was switched off, or a link was refused — they land on the sign-in page with
+a sentence saying which, in their language. Somebody already signed in (connecting from My
+account) sees it on My account instead.
 
 ## Signing up with a provider
 

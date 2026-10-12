@@ -46,11 +46,6 @@ return [
             'default' => "Welcome back. Access your organization's identity console.",
             'device' => 'Sign in to approve the device that is waiting.',
         ],
-        // Two sentences: the first is drawn bold.
-        'pending_link' => [
-            'lead' => 'Someone signed in with :provider using this email.',
-            'body' => "That email already has an account here. Sign in below and we'll ask whether you want to connect :provider to it.",
-        ],
         'magic' => [
             'sent_to' => 'We sent a one-time sign-in link to :email.',
             'dev_note' => "Shown because email isn't configured in this environment.",
@@ -96,11 +91,6 @@ return [
         'new_organization' => 'New organization?',
         'create_one' => 'Create one',
         'invalid_credentials' => 'Those credentials do not match our records.',
-        // Flashed back here by the social sign-in door.
-        'social' => [
-            'failed' => 'Sign-in with :provider was cancelled or failed.',
-            'unavailable' => 'Sign-in with :provider is unavailable right now.',
-        ],
         // Answered by the passkey sign-in endpoint and shown under its button.
         'passkey_errors' => [
             'challenge_expired' => 'Sign-in challenge expired. Try again.',
@@ -313,19 +303,52 @@ return [
         'invalid' => 'That invitation is invalid or has expired.',
     ],
 
-    'link_confirm' => [
-        'title' => 'Connect your account',
-        'heading' => 'Connect :provider?',
-        'lead' => 'Someone just signed in with :provider — an address that already belongs to your account.',
-        'lead_email' => 'Someone just signed in with :provider as :email — an address that already belongs to your account.',
-        // `:emphasis` is the bold opening phrase, its own line below.
-        'was_you' => ":emphasis, connect it and you'll be able to sign in with :provider or with your password from now on.",
-        'was_you_emphasis' => 'If that was you',
-        'was_not_you' => ':emphasis, decline. Someone else tried to sign in using your email address. Nothing will be added to your account, and your password still works as before.',
-        'was_not_you_emphasis' => "If it wasn't",
-        'decline' => "No, that wasn't me",
-        'connect' => 'Yes, connect :provider',
-        'disconnect_hint' => "You can disconnect :provider at any time from your account's security settings.",
+    // Why a social or single sign-on sign-in did not sign anybody in — shown on the page the
+    // person lands on, on every host. `:provider` is the name of the button they pressed.
+    'federation' => [
+        'this_provider' => 'the identity provider',
+        'expired' => 'That sign-in took too long or was already used. Please sign in again.',
+        'rejected' => 'We could not verify that sign-in with :provider. Please try again, or contact your administrator.',
+        'inactive' => 'Sign-in with :provider is not available here any more. Sign in another way, or ask your administrator to turn it back on.',
+        'cancelled' => 'Sign-in with :provider was cancelled or did not finish. Please try again.',
+        'unavailable' => ':provider cannot be reached right now. Please try again in a moment, or sign in another way.',
+        'incomplete' => 'That sign-in response from :provider was incomplete. Start again from your identity provider.',
+        'unverified' => ':provider has not confirmed that :email is yours, so we cannot link it to the account that uses that address. Sign in another way, then connect :provider under My account › Sign-in methods.',
+        'already_linked' => 'That :provider account is already linked to a different account here.',
+        'account_disabled' => 'This account has been deactivated. Contact your administrator.',
+        'link_expired' => 'That request to link :provider has expired or was already used. Sign in with :provider again to start over.',
+        'link_attempts_exhausted' => 'Too many wrong answers, so nothing was linked. Sign in with :provider again to start over.',
+        'refused' => 'We could not process this sign-in. Please try again later.',
+        'connect_session_changed' => 'You were signed out, or signed in as someone else, while connecting :provider, so nothing was linked. Sign in and try again.',
+    ],
+
+    // The link step: a provider vouched for an address that already has an account here.
+    'link_account' => [
+        'title' => 'Link your :provider account',
+        'heading' => 'Link your :provider account to :email?',
+        'lead' => 'You already have an account with this email address. Confirm it is yours and we will link :provider to it — then you can sign in with either.',
+        'challenged' => 'This sign-in looks unusual, so we need a code instead of your password.',
+        'totp_label' => 'Code from your authenticator app',
+        'recovery_label' => 'Recovery code',
+        'use_recovery' => 'Use a recovery code instead',
+        'use_totp' => 'Use your authenticator app instead',
+        'sms_label' => 'Code from the text message',
+        'send_sms' => 'Text me a code',
+        'use_sms' => 'Use a text message instead',
+        'password_label' => 'Your password',
+        'email_label' => 'Code from your email',
+        'send_email' => 'Email me a code instead',
+        'resend_email' => 'Send a new code',
+        'use_password' => 'Use your password instead',
+        'email_sent' => 'We sent a 6-digit code to :email.',
+        'sms_sent' => 'We texted a code to :number.',
+        'sms_failed' => 'We could not send a text message right now. Try again in a moment.',
+        'submit' => 'Link and sign in',
+        'cancel' => 'Don\'t link',
+        'not_you' => 'Didn\'t just sign in with :provider? Choose Don\'t link — nothing changes on your account.',
+        'wrong_password' => 'That password is not right.',
+        'linked' => ':provider is now linked to your account. You can sign in with it from now on.',
+        'cancelled' => 'Nothing was linked. Your account is exactly as it was.',
     ],
 
     'open_portal_setup' => [

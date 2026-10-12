@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Sso;
 
 use App\Http\Controllers\Controller;
+use App\Platform\AccountLinking\AccountLinking;
+use App\Platform\AccountLinking\ConnectFromAccount;
+use App\Platform\AccountLinking\ConnectIntent;
+use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\FederatedLanding;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\FederationFlow;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\ConnectionInactive;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
+use Cbox\Id\Federation\Exceptions\UnsafeFederationUrl;
 use Cbox\Id\Federation\OAuth2Client;
 use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
+use Cbox\Id\Identity\Exceptions\AccountInactive;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +43,8 @@ use Illuminate\Support\Facades\Log;
  * That is enough to say this browser controls that provider account. It says nothing
  * about the email address attached to it, which is why the principal goes through the
  * same federation flow as everything else — the one that refuses to merge into an
- * existing account by email.
+ * existing account by email, and hands an address that is already somebody's to the link
+ * step, where the catalogue's own "verified" flag decides whether a link is offered.
  */
 final class OAuth2CallbackController extends Controller
 {
@@ -45,6 +53,8 @@ final class OAuth2CallbackController extends Controller
         private readonly OAuth2Client $client,
         private readonly FederationFlow $flow,
         private readonly FederatedLanding $landing,
+        private readonly AccountLinking $linking,
+        private readonly ConnectFromAccount $connect,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -52,13 +62,14 @@ final class OAuth2CallbackController extends Controller
         $model = $this->connections->byId($connection);
 
         if ($model === null || ! $model->isActive() || $model->type !== ConnectionType::OAuth2) {
-            return $this->failed('That sign-in method is no longer available. Please sign in another way.');
+            return $this->landing->failed(FederationFailure::Inactive, ['provider' => $model === null ? '' : $model->name]);
         }
 
+        $label = ['provider' => $model->name];
         $template = ProviderCatalog::find((string) $model->provider);
 
         if ($template === null) {
-            return $this->failed('That sign-in method is no longer available. Please sign in another way.');
+            return $this->landing->failed(FederationFailure::Inactive, $label);
         }
 
         // Pulled, not read: replaying a callback finds nothing stashed.
@@ -68,10 +79,16 @@ final class OAuth2CallbackController extends Controller
         $state = $request->string('state')->toString();
         $code = $request->string('code')->toString();
 
+        // The provider said no — usually the person pressed Cancel on its consent screen.
+        // Believed only with the right state, so a forged error cannot put words on screen.
+        if ($expectedState !== null && $code === '' && $request->filled('error') && hash_equals($expectedState, $state)) {
+            return $this->landing->failed(FederationFailure::Cancelled, $label);
+        }
+
         // A stale state is routine — a bookmarked callback, the back button, a second
         // tab — so this sends people back to sign in rather than showing an error page.
         if ($expectedState === null || $code === '' || ! hash_equals($expectedState, $state)) {
-            return $this->failed('That sign-in link has expired. Please sign in again.');
+            return $this->landing->failed(FederationFailure::Expired, $label);
         }
 
         try {
@@ -82,7 +99,26 @@ final class OAuth2CallbackController extends Controller
                 url('/sso/oauth2/'.$model->id.'/callback'),
                 $model->id,
             );
+        } catch (InvalidAssertion|ConnectionInactive|UnsafeFederationUrl $e) {
+            Log::warning('cbox-id: OAuth 2.0 login rejected.', [
+                'connection_id' => $model->id,
+                'provider' => $model->provider,
+                'reason' => $e->getMessage(),
+            ]);
 
+            return $this->landing->failed(FederationFailure::Rejected, $label);
+        } catch (ConnectionException) {
+            return $this->landing->failed(FederationFailure::Unavailable, $label);
+        }
+
+        // Connecting from My account rides this callback too. See ConnectFromAccount.
+        $intent = ConnectIntent::claim($model->id);
+
+        if ($intent !== null) {
+            return $this->connect->finish($intent, $model, $principal);
+        }
+
+        try {
             $session = $this->flow->completeLogin($model, $principal);
         } catch (InvalidAssertion|ConnectionInactive $e) {
             Log::warning('cbox-id: OAuth 2.0 login rejected.', [
@@ -91,18 +127,14 @@ final class OAuth2CallbackController extends Controller
                 'reason' => $e->getMessage(),
             ]);
 
-            return $this->failed('We could not complete that sign-in. Please try again.');
+            return $this->landing->failed(FederationFailure::Rejected, $label);
+        } catch (AccountInactive) {
+            return $this->landing->failed(FederationFailure::AccountDisabled, $label);
         } catch (AccountExistsForEmail) {
-            return $this->failed(
-                'An account already exists for that email address. Sign in with your password first, then connect this provider from your account settings.'
-            );
+            // Never a silent merge: the link step asks them to prove the account is theirs.
+            return $this->linking->begin($request, $principal, $model, null, $model->name, (string) $model->provider);
         }
 
         return $this->landing->land($request, $session);
-    }
-
-    private function failed(string $message): RedirectResponse
-    {
-        return $this->landing->failed($message);
     }
 }

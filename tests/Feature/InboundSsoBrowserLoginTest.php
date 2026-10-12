@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
@@ -10,7 +11,6 @@ use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -22,6 +22,7 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Inertia\Support\SessionKey;
 
 uses(RefreshDatabase::class);
 
@@ -77,6 +78,21 @@ function ssoRootEnvironment(): Environment
 }
 
 /** Bind a validator that returns a principal for the given email, bypassing XML-DSig. */
+/**
+ * The sentence the sign-in page is DRAWING, read through the real route — not the session.
+ *
+ * These tests used to assert `session('errors')->first('email')`, and it held a message
+ * every time; the page never showed it, because it read its errors from its own form.
+ * That is the production bug this file now holds shut.
+ */
+function ssoProblemOnSignIn(string $host = ''): ?string
+{
+    $page = test()->get(($host === '' ? '' : 'https://'.$host).'/login')->assertOk();
+    $flash = $page->inertiaPage()['flash'] ?? [];
+
+    return is_array($flash) && is_string($flash['signInProblem'] ?? null) ? $flash['signInProblem'] : null;
+}
+
 function fakeAssertionFor(string $email): void
 {
     $principal = new FederatedPrincipal(
@@ -133,15 +149,12 @@ it('sends the user back to sign-in with a readable message when the assertion is
     ]);
 
     $response->assertRedirect(route('login'));
-    // `email`, not `identifier`: it is the key BOTH sign-in screens actually render.
-    // Under `identifier` the message reached the session and no view ever read it, so
-    // the user was returned to a blank form with nothing explaining the failure.
-    $response->assertSessionHasErrors('email');
 
-    // The message must not leak WHY the assertion failed — that is a forgery oracle.
-    $error = session('errors')->first('email');
-    expect($error)->not->toContain('signature')
-        ->and($error)->toContain('could not verify');
+    // On the page the person lands on — and without WHY the assertion failed, which
+    // would be a forgery oracle.
+    $error = (string) ssoProblemOnSignIn();
+    expect($error)->toBe(FederationFailure::Rejected->message(['provider' => 'Okta']))
+        ->and($error)->not->toContain('signature');
 
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
@@ -153,25 +166,41 @@ it('refuses an unknown or inactive connection without starting a session', funct
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
 
-it('explains the collision when an account already exists for that email', function (): void {
+it('explains the collision when an account already exists for an address the IdP has not vouched for', function (): void {
     $fixture = ssoConnection();
 
-    // A password account already owns this address.
+    // A password account already owns this address, and the assertion carries no
+    // verified-address claim the organization's domains stand behind.
     $existing = app(Subjects::class)->create('collide@acme.example', 'Existing', password: 'a-strong-unbreached-passphrase');
     app(Memberships::class)->add($fixture->org->id, $existing->id, MembershipRole::Member);
-
-    app()->bind(AssertionValidator::class, fn () => new class implements AssertionValidator
-    {
-        public function validate(Connection $connection, string $rawResponse): FederatedPrincipal
-        {
-            throw new AccountExistsForEmail('collide@acme.example');
-        }
-    });
+    fakeAssertionFor('collide@acme.example');
 
     $response = $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'x']);
 
     $response->assertRedirect(route('login'));
-    expect(session('errors')->first('email'))->toContain('already exists');
+    expect(ssoProblemOnSignIn())->toBe(FederationFailure::Unverified->message(['provider' => 'Okta', 'email' => 'collide@acme.example']))
+        ->and(session(PlatformAuth::SESSION_KEY))->toBeNull();
+});
+
+it('offers the link step when the organization vouches for the address', function (): void {
+    $fixture = ssoConnection();
+    app(Subjects::class)->create('vouched@acme.example', 'Existing', password: 'a-strong-unbreached-passphrase');
+
+    $principal = new FederatedPrincipal('saml', 'idp|vouched', 'vouched@acme.example', 'SSO User', $fixture->connection->id, emailVerified: true);
+    app()->bind(AssertionValidator::class, fn () => new class($principal) implements AssertionValidator
+    {
+        public function __construct(private readonly FederatedPrincipal $principal) {}
+
+        public function validate(Connection $connection, string $rawResponse): FederatedPrincipal
+        {
+            return $this->principal;
+        }
+    });
+
+    $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'x'])
+        ->assertRedirect(route('login.link'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
 
 /*
@@ -204,10 +233,7 @@ it('sends a root-host SSO failure to a sign-in that actually serves, not a 404',
     $response = $this->post('https://cboxid.com/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'forged']);
 
     $response->assertRedirect(route('login'));
-    $response->assertSessionHasErrors('email');
-    expect(session('errors')->first('email'))->toContain('could not verify');
-
-    $this->get('https://cboxid.com/login')->assertOk();
+    expect(ssoProblemOnSignIn('cboxid.com'))->toBe(FederationFailure::Rejected->message(['provider' => 'Okta']));
 
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
@@ -221,7 +247,7 @@ it('sends a root-host OIDC failure to a sign-in that actually serves, not a 404'
     $response = $this->get('https://cboxid.com/sso/oidc/con_does_not_exist/callback?state=x&code=y');
 
     $response->assertRedirect(route('login'));
-    expect(session('errors')->first('email'))->toContain('no longer active');
+    expect(ssoProblemOnSignIn('cboxid.com'))->toBe(FederationFailure::Inactive->message());
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
 
@@ -231,8 +257,11 @@ it('keeps the subject plane on /login when SSO fails there', function (): void {
 
     $response = $this->get('/sso/oidc/con_does_not_exist/callback?state=x&code=y');
 
+    // A bare install's /login bounces to first-run, so the one-shot is read where Inertia
+    // keeps it for the page — the rendering is held by the tests above and in
+    // tests/Feature/AccountLinking.
     $response->assertRedirect(route('login'));
-    expect(session('errors')->first('email'))->toContain('no longer active');
+    expect(session(SessionKey::FLASH_DATA)['signInProblem'] ?? null)->toBe(FederationFailure::Inactive->message());
 });
 
 /**
