@@ -166,11 +166,13 @@ jobs:
       # Pest reads `--exclude-group=a,b` as a single group with a comma in its name.
       #
       # ONE PROCESS, NOT `--parallel`. Pest can run browser tests in parallel, and on this
-      # runner it bought little (156 s against roughly as long in one process) while two
-      # tests that pass in one process failed: axe caught a toast mid fade-in (contrast
-      # 3.36) and a list was read before the delete's redirect had landed. Four Chromiums
-      # and four PHP servers on four cores make every wait in the suite a race. This job is
-      # not the longest one, so it keeps the timing the suite was written against.
+      # runner it halved the step (156 s against 313 s in one process), but two tests that
+      # pass in one process failed: axe caught a toast mid fade-in (contrast 3.36) and a
+      # list was read before the delete's redirect had landed. Four Chromiums and four PHP
+      # servers on four cores make every wait in the suite a race. In one process this job
+      # finishes with the slowest database half (~7 minutes), so it costs the wall time
+      # nothing and keeps the timing the suite was written against. If it becomes the
+      # longest job, fix those waits before reaching for `--parallel` here.
       - name: Tests (Browser — axe-core a11y, real-browser smoke, visual)
         run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots
 
