@@ -11,7 +11,7 @@ use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\InvitationAcceptController;
-use App\Http\Controllers\Auth\LinkConfirmController;
+use App\Http\Controllers\Auth\LinkAccountController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\OtpStepUpController;
@@ -120,6 +120,7 @@ use App\Http\Controllers\SocialController;
 use App\Http\Controllers\Sso\OAuth2CallbackController;
 use App\Http\Controllers\Sso\OAuth2RedirectController;
 use App\Http\Controllers\Sso\OidcCallbackController;
+use App\Http\Controllers\Sso\OidcRedirectController;
 use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
 use App\Http\Controllers\Sso\SamlMetadataController;
@@ -302,6 +303,10 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
  * nothing here just as it always did.
  */
 //
+// IN THE VISITOR'S LANGUAGE (`locale`): every one of these can end on the sign-in page with
+// a sentence saying why it did not sign anybody in, or send a link-step code, and both have
+// to be in the language the person was just reading.
+//
 // THROTTLED AND NoStore, matching the package routes these shadow. Re-registering them
 // here to escape `plane:issuer` also escaped `ApiServiceProvider`'s middleware, and the
 // two were lost silently: `route:list` showed `web` alone. These do XML signature
@@ -309,7 +314,7 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
 // unauthenticated work the platform does — and their responses carry a freshly minted
 // session, which no cache may keep.
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.saml.acs');
 // Our SP metadata, served from our half alone so a DRAFT's works — the framework's needs the
 // identity provider's half too, which is what an IdP importing it has not handed out yet.
@@ -323,8 +328,14 @@ Route::get('/sso/saml/{connection}/metadata', SamlMetadataController::class)
 // every Sign in with Apple with 405, which the person reads as a cancellation. The
 // controller takes `state` and `code` from the query or the body indifferently. CSRF is
 // exempted for this URI in bootstrap/app.php, where the reasoning lives.
+// The button's own leg. The framework's controller answers a switched-off connection or an
+// unreachable provider with JSON, which is right for an API and wrong for a button; this
+// shadows it and turns those into the sign-in page and a sentence (see the controller).
+Route::get('/sso/oidc/{connection}/redirect', OidcRedirectController::class)
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
+    ->name('sso.oidc.redirect');
 Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.oidc.callback');
 
 // The OAuth 2.0 pair — providers that are not OpenID Providers (GitHub, Discord,
@@ -336,10 +347,10 @@ Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackCon
 // fresh `state` and the callback a single-use `code` and then a freshly minted session —
 // no cache, shared or browser, may keep either answer.
 Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.oauth2.redirect');
 Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.oauth2.callback');
 
 /*
@@ -434,6 +445,28 @@ Route::post('/mfa/sms', [MfaController::class, 'verifySms'])->middleware('locale
 Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->middleware('locale')->name('login.step-up');
 Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->middleware('locale')->name('login.step-up.verify');
 Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->middleware('locale')->name('login.step-up.resend');
+
+/*
+ * THE LINK STEP — "Link your Google account to sn@cbox.dk?".
+ *
+ * A social or SSO sign-in came back vouching for an address that already belongs to an
+ * account here, through an identity that is not linked to it yet. Never a silent merge and
+ * never a dead end: the identity is held (signed, server-side, ten minutes, single use) and
+ * the person proves the existing account is theirs — its second factor, its password, or a
+ * code mailed to it — before the identity is linked and they are signed in. See
+ * {@see \App\Platform\AccountLinking\AccountLinking}.
+ *
+ * The same in-between state as `/mfa` and the step-up above, so the same shape: no guard,
+ * because the held link in the session IS the authorization and the page answers a missing
+ * one by sending the person back to sign in with a sentence. The answers are throttled per
+ * source here and per account inside.
+ */
+Route::middleware('locale')->group(function (): void {
+    Route::get('/login/link', [LinkAccountController::class, 'show'])->name('login.link');
+    Route::post('/login/link', [LinkAccountController::class, 'verify'])->middleware('throttle:20,1')->name('login.link.verify');
+    Route::post('/login/link/code', [LinkAccountController::class, 'send'])->middleware('throttle:10,1')->name('login.link.code');
+    Route::post('/login/link/cancel', [LinkAccountController::class, 'cancel'])->name('login.link.cancel');
+});
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
@@ -693,13 +726,6 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/password/change', [ChangePasswordController::class, 'edit'])->middleware('locale')->name('password.change');
     Route::post('/password/change', [ChangePasswordController::class, 'update'])->middleware('locale')->name('password.change.update');
 
-    // The social link confirmation. Same shape as the password hold above and for the
-    // same reason: reachable only by someone signed in who has an identity waiting on
-    // their answer, and exempt from the hold so the redirect cannot loop.
-    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->middleware('locale')->name('link.confirm');
-    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->middleware('locale')->name('link.connect');
-    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->middleware('locale')->name('link.decline');
-
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
     Route::get('/account', [AccountController::class, 'show'])->name('account');
@@ -734,6 +760,15 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::delete('/account/two-factor/sms', [AccountController::class, 'removeSms'])->name('account.mfa.sms.destroy');
         Route::delete('/account/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
         Route::delete('/account/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
+        // MY ACCOUNT › SIGN-IN METHODS. Disconnecting is an action (REST and MCP too);
+        // connecting sends this browser to the provider through the environment's own
+        // connection and links on the way back — a ceremony, so a GET that leaves.
+        Route::delete('/account/sign-in-methods/{identity}', [AccountController::class, 'disconnectSignInMethod'])
+            ->middleware(BlockDuringImpersonation::class)
+            ->name('account.sign-in-methods.destroy');
+        Route::get('/account/sign-in-methods/{connection}/connect', [AccountController::class, 'connectSignInMethod'])
+            ->middleware(BlockDuringImpersonation::class)
+            ->name('account.sign-in-methods.connect');
     });
 
     // WHERE YOU ARE SIGNED IN, AND WHAT CAN ACT AS YOU. Its own page rather than a fourth

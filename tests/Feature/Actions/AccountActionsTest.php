@@ -10,6 +10,7 @@ use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\IdentityLink;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
@@ -66,7 +67,7 @@ it('refuses every management key, and every bearer it does not know', function (
     $workspaceKey = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Owner key', MembershipRole::Owner)->plaintext;
     $environmentKey = app(EnvironmentApiKeys::class)->issue($account['environment']->id, 'Env key', ['users:write'])->plaintext;
 
-    expect(accountRoutes())->toHaveCount(13);
+    expect(accountRoutes())->toHaveCount(14);
 
     foreach (accountRoutes() as [$method, $path]) {
         $this->json($method, $path)->assertUnauthorized();
@@ -176,6 +177,42 @@ it('removes a passkey and unlinks a social account, never the last way in', func
         ->assertJsonPath('error', 'last_sign_in_method');
 
     expect(app(PlatformRoot::class)->run(fn (): array => app(Subjects::class)->linkedIdentities($social->id)))->toHaveCount(1);
+});
+
+it('disconnects one linked sign-in identity by its id, never somebody else\'s and never the last way in', function (): void {
+    ['subjectId' => $me] = provisionAccount();
+    ['subjectId' => $them] = provisionAccount('them@other.example');
+
+    [$mine, $theirs] = app(PlatformRoot::class)->run(function () use ($me, $them): array {
+        app(Subjects::class)->link($me, new FederatedPrincipal('social:google', 'google|me'));
+        app(Subjects::class)->link($them, new FederatedPrincipal('social:google', 'google|them'));
+
+        return [
+            IdentityLink::query()->where('user_id', $me)->sole(),
+            IdentityLink::query()->where('user_id', $them)->sole(),
+        ];
+    });
+
+    $token = myToken($me);
+
+    $this->withToken($token)->deleteJson("/api/v1/me/sign-in-methods/{$theirs->id}")->assertNotFound();
+    $this->withToken($token)->deleteJson("/api/v1/me/sign-in-methods/{$mine->id}")->assertNoContent();
+    $this->withToken($token)->deleteJson("/api/v1/me/sign-in-methods/{$mine->id}")->assertNotFound();
+
+    expect(IdentityLink::query()->withoutGlobalScopes()->whereKey($theirs->id)->exists())->toBeTrue()
+        ->and(app(PlatformRoot::class)->run(fn () => AuditEntry::query()->where('action', 'user.identity_unlinked')->sole()->actor_id))->toBe($me);
+
+    // No password, no passkey, one identity: kept, with the reason.
+    $only = app(PlatformRoot::class)->run(function (): IdentityLink {
+        $social = app(Subjects::class)->create('google-only@acme.example', 'Google Only');
+        app(Subjects::class)->link($social->id, new FederatedPrincipal('social:google', 'google|only'));
+
+        return IdentityLink::query()->where('user_id', $social->id)->sole();
+    });
+
+    $this->withToken(myToken($only->user_id))->deleteJson("/api/v1/me/sign-in-methods/{$only->id}")
+        ->assertUnprocessable()
+        ->assertJsonPath('error', 'last_sign_in_method');
 });
 
 it('mints and revokes its own API key, shown once, recorded as the person', function (): void {

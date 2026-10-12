@@ -288,10 +288,11 @@ it('lands a rejected assertion on a sign-in page that exists on the platform-roo
     $response = $this->post('http://cboxid.com/sso/saml/'.$connection->id.'/acs', ['SAMLResponse' => 'forged']);
 
     $response->assertRedirect(route('login'));
-    $response->assertSessionHasErrors('email');
 
     // Readable, and not an assertion-forgery oracle: the reason is logged, not shown.
-    $error = session('errors')->first('email');
+    // Read off the page it lands on — the one that used to drop it — not the session.
+    $flash = $this->get('http://cboxid.com/login')->assertOk()->inertiaPage()['flash'] ?? [];
+    $error = is_array($flash) ? (string) ($flash['signInProblem'] ?? '') : '';
     expect($error)->toContain('could not verify')
         ->and($error)->not->toContain('signature');
 

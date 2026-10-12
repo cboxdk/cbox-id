@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\AccountLinking\LinkHold;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Radar\Radar;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -13,10 +14,8 @@ use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\Exceptions\SmsFactorRefused;
 use Cbox\Id\Identity\Models\Session;
-use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Identity\ValueObjects\SmsCodeSent;
 use Cbox\Id\Migration\LegacyMigration;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
@@ -59,8 +58,6 @@ final class PlatformAuth
     private const OTP_PENDING_KEY = 'cbox.otp_pending';
 
     private const OTP_PURPOSE = 'login_step_up';
-
-    private const PENDING_LINK_KEY = 'cbox.pending_link';
 
     /** A precomputed hash so a login for a non-existent user still does the work. */
     private static ?string $timingHash = null;
@@ -604,7 +601,6 @@ final class PlatformAuth
         // Rotate the id to defeat session fixation (preserves the accounts set).
         session()->regenerate();
 
-        $this->applyPendingLink($subjectId);
         $this->recordOrganizationSignIn($subjectId);
 
         // "Last used" on this device's sign-in page — the method, never the person.
@@ -627,104 +623,10 @@ final class PlatformAuth
 
         session()->regenerate();
 
-        $this->applyPendingLink($session->user_id);
         $this->recordOrganizationSignIn($session->user_id);
         app(Radar::class)->succeeded($request, $session->user_id);
 
         LastSignInMethod::remember(array_values(array_filter((array) $session->amr, 'is_string')));
-    }
-
-    /**
-     * Hold a verified social identity aside while the user proves control of the
-     * existing account by signing in. Linking then completes automatically.
-     */
-    public function startPendingLink(FederatedPrincipal $principal): void
-    {
-        session()->put(self::PENDING_LINK_KEY, PendingLink::hold($principal, now()->getTimestamp())->toArray());
-    }
-
-    /**
-     * The held identity, or null when there is none, it has expired, or it is not the
-     * one this subject was asked about.
-     *
-     * Expiry is enforced on READ rather than by a scheduled sweep, because the session
-     * is the only place it lives — nothing else would ever come along to clear it.
-     */
-    public function pendingLink(?string $subjectId = null): ?PendingLink
-    {
-        $pending = PendingLink::fromArray(session()->get(self::PENDING_LINK_KEY));
-
-        if ($pending === null || $pending->expired(now()->getTimestamp())) {
-            session()->forget(self::PENDING_LINK_KEY);
-
-            return null;
-        }
-
-        if ($subjectId !== null && $pending->awaitingSubjectId !== $subjectId) {
-            return null;
-        }
-
-        return $pending;
-    }
-
-    /** Discard a held identity — the "No, that wasn't me" answer. */
-    public function discardPendingLink(): void
-    {
-        session()->forget(self::PENDING_LINK_KEY);
-    }
-
-    /**
-     * Attach the held identity to the account that was asked about, and only that one.
-     *
-     * This replaced an automatic link gated on the held identity's email matching the
-     * account's. That test was wrong in both directions. Too strict: people have several
-     * addresses at one provider — a GitHub account may carry five — so the legitimate
-     * owner's link was silently discarded and the flow simply appeared not to work. Too
-     * weak: it leant on the provider having verified the address, which is the one thing
-     * we had already decided we cannot assume. Discord will carry whatever someone typed.
-     *
-     * Asking outright is both safer and kinder. Confirming proves three things at once:
-     * control of the provider account (they completed its sign-in), control of this
-     * account (they authenticated here), and intent (they said so). No address equality
-     * is required, and none is implied.
-     */
-    public function confirmPendingLink(string $subjectId): bool
-    {
-        $pending = $this->pendingLink($subjectId);
-
-        if ($pending === null) {
-            return false;
-        }
-
-        session()->forget(self::PENDING_LINK_KEY);
-
-        try {
-            $this->subjects->link($subjectId, $pending->principal());
-        } catch (IdentityAlreadyLinked) {
-            // Attached elsewhere in the meantime. Nothing to do, and nothing to tell the
-            // user that would not also tell them where that identity lives.
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Bind a held identity to the account that just authenticated — WITHOUT linking it.
-     *
-     * Called from every path that establishes a session, so the interstitial cannot be
-     * dodged by arriving via magic link, MFA or an invitation instead of the password
-     * form. The link itself only ever happens in confirmPendingLink().
-     */
-    private function applyPendingLink(string $subjectId): void
-    {
-        $pending = $this->pendingLink();
-
-        if ($pending === null) {
-            return;
-        }
-
-        session()->put(self::PENDING_LINK_KEY, $pending->awaiting($subjectId)->toArray());
     }
 
     /**
@@ -870,7 +772,7 @@ final class PlatformAuth
             }
         }
 
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY]);
         $this->dropStepUp();
 
         if ($accounts !== []) {
@@ -980,7 +882,7 @@ final class PlatformAuth
     {
         session()->forget([
             self::SESSION_KEY, self::ORG_KEY, self::ACCOUNTS_KEY, self::ACTIVE_KEY,
-            self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY,
+            self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY,
         ]);
         session()->invalidate();
         session()->regenerateToken();

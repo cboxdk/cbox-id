@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Sso;
 
 use App\Http\Controllers\Controller;
+use App\Platform\AccountLinking\FederationFailure;
+use App\Platform\FederatedLanding;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
@@ -30,6 +32,7 @@ final class OAuth2RedirectController extends Controller
     public function __construct(
         private readonly Connections $connections,
         private readonly OAuth2Client $client,
+        private readonly FederatedLanding $landing,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -40,13 +43,13 @@ final class OAuth2RedirectController extends Controller
         // another tenant's host; this adds the status and protocol checks. An inactive
         // connection must not start a flow it cannot finish.
         if ($model === null || ! $model->isActive() || $model->type !== ConnectionType::OAuth2) {
-            abort(404);
+            return $this->landing->failed(FederationFailure::Inactive, ['provider' => $model === null ? '' : $model->name]);
         }
 
         $template = ProviderCatalog::find((string) $model->provider);
 
         if ($template === null) {
-            abort(404);
+            return $this->landing->failed(FederationFailure::Inactive, ['provider' => $model->name]);
         }
 
         try {
@@ -54,8 +57,9 @@ final class OAuth2RedirectController extends Controller
         } catch (InvalidAssertion) {
             // Half-configured, or stored against a provider that speaks OIDC. Either way
             // this flow cannot complete, and sending the browser to a provider now would
-            // fail at the callback where the person can do nothing about it.
-            abort(404);
+            // fail at the callback where the person can do nothing about it. Said on the
+            // sign-in page rather than as a bare 404, which reads as a broken link.
+            return $this->landing->failed(FederationFailure::Unavailable, ['provider' => $model->name]);
         }
 
         $state = bin2hex(random_bytes(16));

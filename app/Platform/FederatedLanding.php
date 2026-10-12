@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\AccountLinking\ConnectIntent;
+use App\Platform\AccountLinking\FederationFailure;
 use Cbox\Id\Identity\Models\Session;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 /**
  * Where an inbound federated sign-in lands once the assertion has been verified.
@@ -46,7 +49,7 @@ final class FederatedLanding
     }
 
     /**
-     * Where an inbound federated sign-in lands when it FAILS.
+     * Where an inbound federated sign-in lands when it FAILS — and the sentence it lands with.
      *
      * Kept beside {@see land()} rather than inlined at each callback, which is where it
      * started: both of them wrote `route('login')` on their error branch while `/login`
@@ -55,13 +58,35 @@ final class FederatedLanding
      * authentication at the IdP, so the person has every reason to believe SSO worked and
      * no way to learn it did not.
      *
-     * `email` is the error-bag key on purpose: it is the field the sign-in screen renders.
-     * The callbacks previously used `identifier`, which no view reads, so the message was
-     * silently dropped and the user was returned to a blank form with no indication of
-     * what had gone wrong.
+     * THE MESSAGE IS ON INERTIA'S FLASH CHANNEL, as `signInProblem`, and the sign-in page
+     * draws it as an alert. It used to go into the validation bag under `email`, on the
+     * theory that the email field renders it. It did not: the page reads its errors from
+     * its own form object, which is empty on a fresh load, so every sentence written here
+     * was silently dropped — the production report was an owner signing in with Google,
+     * being bounced to `/login`, and seeing nothing at all. The flash is one-shot (not
+     * written into the history entry, so Back does not resurrect it) and it is what the
+     * tests now assert on, through the real page, for every failure branch.
+     *
+     * SOMEBODY ALREADY SIGNED IN is not sent to `/login`, which the guest guard would bounce
+     * to the dashboard with the message lost. They are connecting a provider from My
+     * account, or adding a second account, and My account is where the answer belongs —
+     * on the console's toast, which every console layout draws.
+     *
+     * @param  array<string, string>  $replace  `provider` — the name the person clicked — and any other placeholder the sentence uses
      */
-    public function failed(string $message): RedirectResponse
+    public function failed(FederationFailure $reason, array $replace = []): RedirectResponse
     {
-        return redirect()->route('login')->withErrors(['email' => $message]);
+        // A connect that failed is over: the intent must not linger to be claimed by the
+        // next, unrelated callback through the same connection.
+        ConnectIntent::forget();
+
+        // The console is English; the sign-in page speaks the visitor's language.
+        if (session()->has(PlatformAuth::SESSION_KEY)) {
+            return redirect()->route('account')->with('error', $reason->message($replace, 'en'));
+        }
+
+        Inertia::flash('signInProblem', $reason->message($replace));
+
+        return redirect()->route('login');
     }
 }

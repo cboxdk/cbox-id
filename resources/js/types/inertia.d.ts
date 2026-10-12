@@ -32,6 +32,13 @@ declare module '@inertiajs/core' {
             magicSentTo?: string;
             /** Local installs only: the link itself, when there is no mail transport. */
             magicUrl?: string | null;
+            /**
+             * Sign-in: why the last social or single sign-on attempt did not sign anybody
+             * in, in the page's language — drawn as an alert on the sign-in page.
+             */
+            signInProblem?: string;
+            /** The link step: a code was mailed or texted, and where to (masked for a number). */
+            linkCodeSent?: string;
             /** Sign-in: this address signs in somewhere else, and no password will be taken. */
             mandate?: { organization: string; startUrl: string | null; reason: string };
             /** Password reset: the address a link was sent to, and the link on a local install. */

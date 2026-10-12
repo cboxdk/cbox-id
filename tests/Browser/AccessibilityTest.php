@@ -368,7 +368,7 @@ it('has no accessibility issues on the security page', function (): void {
         ->assertSee('Profile')
         // The panels, asserted rather than assumed — see the fixture's docblock.
         ->assertSee('Audit laptop')
-        ->assertSee('Connected accounts')
+        ->assertSee('Sign-in methods')
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->group('a11y');
