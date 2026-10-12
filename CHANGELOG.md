@@ -73,7 +73,11 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+<<<<<<< HEAD
 - **The phone menu gives its room to navigation.** The account block at the bottom of the mobile sheet — name, address and up to six actions — was pinned open and took half the sheet; it is now one row (initial, name, address) that folds the actions out when tapped.
+=======
+- **Signing in no longer ends on a blank white modal.** A workspace owner with one environment is sent from the dashboard to `/open/{environment}`, which answers with a self-submitting form to the environment host. The sign-in is an Inertia visit, so the client followed that redirect inside its request and drew the form as an empty modal. `/open` is now marked as leaving the app (`RedirectOutsideInertia::LEAVES`) and answers an Inertia visit with a real navigation (409 `X-Inertia-Location`).
+>>>>>>> origin/main
 - **Resend works as the mailer.** `resend/resend-php` is now a dependency, so `MAIL_MAILER=resend` with `RESEND_API_KEY` sends (the `resend` mailer and `services.resend.key` were configured, but the package Laravel's transport needs was missing).
 - **An unreachable mail server is said, not a 500.** "Send confirmation link" answers with a sentence when the deployment cannot reach its mail server (and does not count the attempt). `cbox-id:doctor` now fails **Mail server unreachable** when the mail server's name does not resolve — it used to report "sent with postal" for a Postal host that no longer existed. New `php artisan cbox-id:users:confirm-email {email}` (audited as `user.email_confirmed_by_operator`) confirms a platform-root person's address when mail cannot deliver the link.
 - **An unconfirmed email address can now be confirmed from the console.** Every console page shows a banner while the signed-in person's address is unconfirmed, with **Send confirmation link** (new action `account.email.confirmation.send`, `POST /api/v1/me/email/confirmation`, limited per person); an environment administrator on an environment host is sent to their account on the root host. Before, the refusal pointed at "your account page", which had no such button — and the signup resend sent nothing to an owner whose workspace already had an environment.

@@ -126,6 +126,7 @@ use App\Http\Controllers\Sso\SamlMetadataController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\RequireSignInMethod;
 use App\Http\Middleware\TargetEnvironment;
 use App\Http\WebRateLimiters;
@@ -859,7 +860,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 
     // Open an environment → signed handoff, POSTed by a self-submitting form → its own
     // admin console (no second login).
-    Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
+    // Answers with a self-submitting form to the environment host, not a page: an Inertia
+    // visit that lands here must become a real browser navigation.
+    Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])
+        ->defaults(RedirectOutsideInertia::LEAVES, true)
+        ->name('environment.open');
 
     Route::get('/team', [MemberController::class, 'index'])->name('members');
     Route::post('/team/invitations', [MemberController::class, 'invite'])->name('members.invite');
