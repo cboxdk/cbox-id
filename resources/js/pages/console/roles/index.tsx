@@ -348,11 +348,19 @@ function Row({
                     </Badge>
                 )}
 
-                <Icon
-                    name="chevron"
-                    className="w-4 h-4 shrink-0"
-                    style={{ color: 'var(--faint)', transform: 'rotate(-90deg)' }}
-                />
+                {/* The chevron promises a page, so it is a link to it — the row holds
+                    permission chips of its own and cannot itself be one. */}
+                <Link
+                    href={role.href}
+                    className="cbx-iconbtn shrink-0"
+                    aria-label={`Open ${role.name}`}
+                >
+                    <Icon
+                        name="chevron"
+                        className="w-4 h-4"
+                        style={{ color: 'var(--faint)', transform: 'rotate(-90deg)' }}
+                    />
+                </Link>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 mt-3">

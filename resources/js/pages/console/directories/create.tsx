@@ -40,6 +40,8 @@ interface ProviderOption {
 
 type Props = PageProps<{
     providers: ProviderOption[];
+    /** The provider the link asked for (`?provider=`), preselected; null for the default. */
+    selected: string | null;
     /** "For which organization?" — the environment console only; null where the form is about one already. */
     organization: OrganizationPicker | null;
     entitled: boolean;
@@ -49,6 +51,7 @@ type Props = PageProps<{
 
 export default function CreateDirectory({
     providers,
+    selected,
     organization,
     entitled,
     indexHref,
@@ -66,7 +69,7 @@ export default function CreateDirectory({
         credentials: Record<string, string>;
         customAttributes: string;
     }>({
-        provider: providers[0]?.value ?? 'scim',
+        provider: selected ?? providers[0]?.value ?? 'scim',
         organization: organization?.selected?.id ?? '',
         name: '',
         googleServiceAccountJson: '',

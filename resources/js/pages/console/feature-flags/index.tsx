@@ -67,6 +67,14 @@ export default function FeatureFlags({ help, flags, createHref }: Props) {
                     <EmptyState
                         icon="switch"
                         equivalent="feature_flags.create"
+                        actions={
+                            <Button asChild variant="primary">
+                                <Link href={createHref}>
+                                    <Icon name="plus" className="w-4 h-4" />
+                                    New flag
+                                </Link>
+                            </Button>
+                        }
                         title="No feature flags yet"
                         help={help}
                         description="A flag lets you ship a feature dark and turn it on for the people who should see it first, without a deploy."

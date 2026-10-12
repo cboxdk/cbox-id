@@ -14,18 +14,14 @@ use Cbox\Id\Connectors\Analytics\NullConnectorAnalytics;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Cbox\Id\Connectors\Contracts\ConnectorAnalytics;
-use Cbox\Id\Federation\Contracts\Connections as FederationConnections;
-use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
-use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * The Cbox ID connectors module. It plugs a unified connector catalog and a per-organization connections
- * console OVER the platform's existing Provisioning, Webhook, Directory and
- * Federation module contracts — making zero edits to the host and adding no schema.
- * Removed, the extra "Connectors" console area simply disappears; the host's own
- * scattered pages for each module are untouched and keep working.
+ * The Cbox ID connectors module: ONE place to see and start every integration the platform
+ * has — a catalog of the connector types, each leading into the console page that sets it
+ * up, and one list of every live connection with its health — over the pages that already
+ * exist for each type, adding no schema and no write of its own. Removed, the "Connectors"
+ * area simply disappears; the host's own pages for each type are untouched and keep working.
  *
  * Delivery-health analytics is referenced ONLY behind {@see ConnectorAnalytics},
  * whose default is inert — so the framework carries no column-store dependency and
@@ -46,13 +42,6 @@ class ConnectorsServiceProvider extends ServiceProvider
 
         $this->app->singleton(ConnectorCatalog::class);
 
-        $this->app->bind(ConnectionsOverview::class, fn (Application $app): ConnectionsOverview => new ConnectionsOverview(
-            $app->make(ProvisioningConnections::class),
-            $app->make(WebhookRegistry::class),
-            $app->make(FederationConnections::class),
-            $app->make(ConnectorAnalytics::class),
-            $this->webhookEventTypes(),
-        ));
     }
 
     public function boot(): void
@@ -135,19 +124,5 @@ class ConnectorsServiceProvider extends ServiceProvider
         $value = config('connectors.enabled', true);
 
         return is_bool($value) ? $value : (bool) $value;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function webhookEventTypes(): array
-    {
-        $value = config('connectors.webhook_event_types', []);
-
-        if (! is_array($value)) {
-            return [];
-        }
-
-        return array_values(array_filter($value, is_string(...)));
     }
 }

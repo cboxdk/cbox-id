@@ -1018,6 +1018,14 @@
         color: var(--muted-foreground);
         margin: 4px 0 0;
     }
+    /* A LINK INSIDE A SENTENCE IS UNDERLINED. Colour alone is not enough: the accent
+       against muted text is 1.07:1, so a reader who cannot tell the two hues apart sees
+       no link at all (axe: link-in-text-block). Only class-less anchors in running text —
+       buttons, nav items and cards style themselves. */
+    :where(.cbx-panel-desc, .cbx-empty p, p) > a:not([class]) {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
     /* Section heading inside a detail page. These were weighted <p>, so 24 pages
        skipped h1→h3 and the 720-line users/show had a one-node outline. Promoting
        them to real <h2> keeps the SAME dense system-ui face on purpose: at 14px in a
@@ -2582,6 +2590,53 @@
     .cbx-filter-chip-clear:hover {
         background: var(--surface-2);
         color: var(--foreground);
+    }
+
+    /* Connectors › Catalog. The card's name is stretched over the whole card (its ::after),
+       so the card is one target; the shortcuts and buttons sit above that layer. */
+    .cbx-connector-card {
+        transition:
+            border-color 120ms ease,
+            box-shadow 120ms ease;
+    }
+    .cbx-connector-card:hover {
+        border-color: color-mix(in oklch, var(--accent) 45%, var(--border));
+        box-shadow: var(--shadow-md, var(--shadow-sm));
+    }
+    .cbx-connector-card:focus-within {
+        border-color: var(--ring);
+    }
+    .cbx-connector-card-link {
+        color: var(--foreground);
+    }
+    .cbx-connector-card:hover .cbx-connector-card-link {
+        color: var(--accent-strong, var(--accent));
+    }
+    .cbx-connector-card-link:focus-visible {
+        outline: none;
+    }
+    .cbx-connector-card-link:focus-visible::after {
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    .cbx-connector-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 26px;
+        padding: 2px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--secondary);
+        color: var(--foreground);
+        font-size: 12px;
+        line-height: 1.3;
+    }
+    .cbx-connector-option:hover {
+        border-color: var(--muted-foreground);
+    }
+    .cbx-connector-option:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--ring);
     }
 
     /* One focus answer for every control here, matching .input:focus above. Radix moves

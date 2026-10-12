@@ -139,7 +139,7 @@ enum HelpTopic: string
             self::SignInMethods => 'Every way into this environment',
             self::SamlApplications => 'Applications that trust this environment',
             self::LegacyLogin => 'Signing in through your old system',
-            self::Connectors => 'Every connection, in one list',
+            self::Connectors => 'Every integration, in one place',
             self::LogStreaming => 'Sending the audit log to your own tools',
             self::AuditLogs => 'What your app records about each organization',
             self::FineGrainedAuthorization => 'Who may do what to which of your app\'s resources',
@@ -251,7 +251,7 @@ enum HelpTopic: string
 
             self::LegacyLogin => 'While you move off another system, an app can ask for the email and password of anyone not yet in Cbox ID to be checked against its old login endpoint. Test the endpoint before you approve it: a person it accepts is created here and never sent there again, but while it is down, nobody who has not moved yet can sign in.',
 
-            self::Connectors => 'An overview of the links between Cbox ID and other systems: syncing users out over SCIM, webhooks, and single sign-on federation. The catalog lists the kinds this install supports and Connections lists the ones that are live; each is set up on its own page.',
+            self::Connectors => 'Every link between Cbox ID and another system, in one place: single sign-on, social login, Directory Sync and HR systems, outbound provisioning, SAML apps, webhooks, hooks, log streams and pipes. The catalog starts any of them — each card opens the page where that kind is set up — and Connections lists every live one with whether it is working, failing first.',
 
             self::LogStreaming => 'Mirrors every audit log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
             self::AuditLogs => 'The audit events your app sends about each organization it serves — who did what inside your product, and when — kept per organization in a hash chain and shown to that organization\'s own admins. Use it when an organization you serve asks for an audit log of its account; define schemas to keep the events consistent.',

@@ -86,6 +86,8 @@ final readonly class ServiceProviderController extends ConsoleController
 
         return $this->page('environment/sso-providers/index', Vocabulary::SAML_APPS, [
             'help' => HelpProps::for(HelpTopic::SamlApplications),
+            // The other direction, which the description sends people to — as a link.
+            'connectionsHref' => route('environment.connections'),
             'providers' => array_map(static fn (ServiceProvider $provider): array => [
                 'id' => $provider->id,
                 'entityId' => $provider->entity_id,

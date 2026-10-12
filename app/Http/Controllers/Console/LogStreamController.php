@@ -61,8 +61,11 @@ final readonly class LogStreamController extends ConsoleController
      * TOTAL over the enum, and there is no fallback for that reason: a destination missing
      * from this map would render as its own snake_case value, which reads like a bug in
      * the page rather than a case somebody forgot. PHPStan holds the totality.
+     *
+     * Public because the Connectors catalog names the same destinations as its setup
+     * shortcuts, and two lists of vendor names would drift.
      */
-    private const DESTINATIONS = [
+    public const array DESTINATIONS = [
         'splunk_hec' => 'Splunk HEC',
         'elastic_ecs' => 'Elastic (ECS)',
         'graylog_gelf' => 'Graylog (GELF)',
@@ -142,6 +145,9 @@ final readonly class LogStreamController extends ConsoleController
              * different things and the form is otherwise identical.
              */
             'shipsWholeEnvironment' => $this->scope->plane() === ConsolePlane::Environment,
+            // The destination the link asked for (`?destination=datadog`), from the Connectors
+            // catalog's shortcuts; anything that is not one is the form's own default.
+            'selected' => Destination::tryFrom(request()->string('destination')->toString())?->value,
             'indexHref' => $this->url('audit-streams'),
             'storeHref' => $this->url('audit-streams.store'),
         ]);

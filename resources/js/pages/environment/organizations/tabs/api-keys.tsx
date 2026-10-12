@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import { type AppApiKey, AppApiKeyList, Panel } from '@/ui';
@@ -5,13 +6,15 @@ import { type AppApiKey, AppApiKeyList, Panel } from '@/ui';
 type Props = PageProps<{
     /** Every API key the organization's people hold for its apps. Seen and revoked, never minted here. */
     apiKeys: AppApiKey[];
+    /** Applications, where an app turns member API keys on. */
+    appsHref: string;
 }>;
 
 /**
  * AN ORGANIZATION › API KEYS — the keys its people created for its apps. The header and tabs
  * are the layout's (`../frame.tsx`).
  */
-export default function OrganizationApiKeys({ apiKeys }: Props) {
+export default function OrganizationApiKeys({ apiKeys, appsHref }: Props) {
     return (
         <Panel
             title="Member API keys"
@@ -22,8 +25,14 @@ export default function OrganizationApiKeys({ apiKeys }: Props) {
                 keys={apiKeys}
                 empty={{
                     title: 'No API keys',
-                    description:
-                        'Nobody in this organization has created a key for one of its apps.',
+                    description: (
+                        <>
+                            Nobody in this organization has created a key for one of its apps.
+                            People create their own under My account, for an app that turns member
+                            API keys on in its Settings — <Link href={appsHref}>see your apps</Link>
+                            .
+                        </>
+                    ),
                 }}
                 consequence="Whatever the holder has wired this key into stops working immediately. This cannot be undone."
             />

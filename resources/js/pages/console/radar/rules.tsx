@@ -103,6 +103,14 @@ export default function RadarRules({
                         <EmptyState
                             icon="sliders"
                             equivalent="radar.rules.create"
+                            actions={
+                                <Button asChild variant="primary">
+                                    <Link href={createHref}>
+                                        <Icon name="plus" className="w-4 h-4" />
+                                        New rule
+                                    </Link>
+                                </Button>
+                            }
                             title="No rules of your own"
                             description="Write one to allow, challenge or block on what you know about your users — challenge sign-ins from outside the countries you operate in, allow your office network past the velocity rules."
                         />

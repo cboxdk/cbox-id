@@ -76,7 +76,13 @@ it('excludes a provisioning connection scoped to a different organization', func
     expect($summaries)->toBe([]);
 });
 
-it('drops the organization-only federation lookup when scoping to the whole environment', function (): void {
+/**
+ * The whole environment is EVERY connection — an organization's SSO connection included. It
+ * used to drop federation entirely here, because the contract it read could only answer one
+ * organization at a time, so the environment-wide Connections list never showed a single SSO
+ * connection.
+ */
+it('lists every organization\'s SSO connection when scoping to the whole environment', function (): void {
     $org = $this->makeOrganization('Acme');
     $this->makeConnection($org->id, name: 'Okta');
     $this->registerProvisioningConnection(name: 'Env-wide');
@@ -84,7 +90,41 @@ it('drops the organization-only federation lookup when scoping to the whole envi
     $categories = collect(app(ConnectionsOverview::class)->forOrganization(null))->map->category;
 
     expect($categories)->toContain(ConnectorCategory::Provisioning)
-        ->and($categories)->not->toContain(ConnectorCategory::Federation);
+        ->and($categories)->toContain(ConnectorCategory::Federation);
+});
+
+/**
+ * A webhook subscribed to an event type nobody listed in config used to be missing: the
+ * registry contract could only find endpoints by event type.
+ */
+it('lists a webhook whatever it subscribes to, paused ones included', function (): void {
+    $org = $this->makeOrganization('Acme');
+    $endpoint = $this->registerWebhook($org->id, 'https://hooks.acme.test/billing', ['organization.updated'])->endpoint;
+    $endpoint->forceFill(['status' => 'paused'])->save();
+
+    $webhooks = collect(app(ConnectionsOverview::class)->forOrganization($org->id))
+        ->filter(fn ($summary): bool => $summary->category === ConnectorCategory::Webhook);
+
+    expect($webhooks)->toHaveCount(1)
+        ->and($webhooks->first()->status)->toBe('paused')
+        ->and($webhooks->first()->name)->toBe('hooks.acme.test/billing');
+});
+
+/**
+ * HEALTH FROM THE ROW, so every install has it: consecutive failures make a webhook failing,
+ * with the last error to say why.
+ */
+it('reads a failing webhook from its own failure counter', function (): void {
+    $org = $this->makeOrganization('Acme');
+    $endpoint = $this->registerWebhook($org->id, 'https://hooks.acme.test/events', ['auth.login'])->endpoint;
+    $endpoint->forceFill(['consecutive_failures' => 4, 'last_error' => 'HTTP 503 from the endpoint'])->save();
+
+    $summary = collect(app(ConnectionsOverview::class)->forOrganization($org->id))
+        ->first(fn ($summary): bool => $summary->category === ConnectorCategory::Webhook);
+
+    expect($summary->needsAttention())->toBeTrue()
+        ->and($summary->verdict())->toBe('failing')
+        ->and($summary->problem)->toBe('HTTP 503 from the endpoint');
 });
 
 it('counts only active connections', function (): void {

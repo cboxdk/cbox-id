@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -51,6 +51,8 @@ type Props = PageProps<{
     passwordsStillAllowed: boolean;
     entitled: boolean;
     indexHref: string;
+    /** Where require-SSO is turned off again; null where this console has no such page. */
+    policyHref: string | null;
     urls: {
         update: string;
         activate: string;
@@ -68,6 +70,7 @@ export default function ConnectionDetail({
     offeringMandate,
     passwordsStillAllowed,
     entitled,
+    policyHref,
     indexHref,
     urls,
 }: Props) {
@@ -205,8 +208,13 @@ export default function ConnectionDetail({
                                     <strong>including yours</strong>.
                                 </li>
                                 <li>
-                                    You can turn it off again on Authentication policy; sessions
-                                    that ended stay ended.
+                                    You can turn it off again on{' '}
+                                    {policyHref === null ? (
+                                        'Authentication policy'
+                                    ) : (
+                                        <Link href={policyHref}>Authentication policy</Link>
+                                    )}
+                                    ; sessions that ended stay ended.
                                 </li>
                             </ul>
                             <div className="mt-4 flex flex-wrap gap-2">

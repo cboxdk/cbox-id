@@ -101,6 +101,9 @@ final readonly class SignInMethodsController extends ConsoleController
             'environmentName' => $environment->name() ?? 'this environment',
             'organizationName' => $organizationName,
             'ssoOnly' => $ssoOnly,
+            // Where "relaxed on Authentication policy" happens — the callout names the page,
+            // so it links to it.
+            'policyHref' => $policyHref,
             'sections' => [
                 [
                     'title' => 'Ways in',

@@ -44,7 +44,7 @@ type Props = PageProps<{
     lifetimes: KeyLifetimeOption[];
     defaults: { name: string; preset: PresetId | null; lifetime: string };
     mcpUrl: string | null;
-    urls: { store: string; index: string; connect: string };
+    urls: { store: string; index: string; connect: string; approvals: string };
     help: HelpContent;
 }>;
 
@@ -107,7 +107,13 @@ export default function CreateAgent({
             <div className="mt-2">
                 <PageHeader
                     help={help}
-                    description="A management key for one agent. It can do only what its scopes allow, and the actions you choose wait for your approval — on your phone, or on the Approvals page."
+                    description={
+                        <>
+                            A management key for one agent. It can do only what its scopes allow,
+                            and the actions you choose wait for your approval — on your phone, or on
+                            the <Link href={urls.approvals}>Approvals page</Link>.
+                        </>
+                    }
                 />
             </div>
 
@@ -217,7 +223,14 @@ export default function CreateAgent({
 
                 <Panel
                     title="Approval"
-                    description="Which of its actions wait for a person. The agent gets a 202 with a short code, you approve on your phone or on the Approvals page, and it repeats the request — once."
+                    description={
+                        <>
+                            Which of its actions wait for a person. The agent gets a 202 with a
+                            short code, you approve on your phone or on the{' '}
+                            <Link href={urls.approvals}>Approvals page</Link>, and it repeats the
+                            request — once.
+                        </>
+                    }
                 >
                     <div className="space-y-5">
                         <RadioGroup

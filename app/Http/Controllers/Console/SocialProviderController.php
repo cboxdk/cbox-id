@@ -149,6 +149,12 @@ final readonly class SocialProviderController extends ConsoleController
             // page in the environment unless an organization is chosen — prefilled and
             // locked to the one the list is filtered to.
             'organization' => $this->organizationPicker(allowsEnvironment: true),
+            // "Require SSO on Authentication policy", on the organization view: its policy.
+            'policyHref' => match (true) {
+                $environmentView || $organizationId === null => null,
+                $this->scope->plane() === ConsolePlane::Environment => route('environment.organizations.policy', $organizationId),
+                default => $this->scope->serves('auth-policy') ? $this->url('auth-policy') : null,
+            },
             'environmentHref' => $this->scope->plane() === ConsolePlane::Environment && ! $environmentView
                 ? route('environment.social-providers')
                 : null,

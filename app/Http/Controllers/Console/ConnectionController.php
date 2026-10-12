@@ -491,6 +491,12 @@ final readonly class ConnectionController extends ConsoleController
             'passwordsStillAllowed' => $passwordsStillAllowed,
             // Gated on BOTH planes, which the environment copy was not.
             'entitled' => $this->entitledFor($model),
+            // Where require-SSO is turned off again — the offer below says so, and links it:
+            // this organization's policy tab on the environment console, the console's own
+            // policy page on an organization's.
+            'policyHref' => $this->scope->plane() === ConsolePlane::Environment
+                ? ($model->organization_id === null ? null : route('environment.organizations.policy', $model->organization_id))
+                : ($this->scope->serves('auth-policy') ? $this->url('auth-policy') : null),
             'indexHref' => $this->url('connections'),
             'urls' => [
                 'update' => $this->url('connections.update', $model->id),

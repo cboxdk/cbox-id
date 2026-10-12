@@ -14,6 +14,8 @@ type Props = PageProps<
     StreamChoices & {
         /** True on the environment plane, where a stream carries EVERY organization's trail. */
         shipsWholeEnvironment: boolean;
+        /** The destination the link asked for (`?destination=`), preselected; null for the default. */
+        selected: string | null;
         indexHref: string;
         storeHref: string;
     }
@@ -25,10 +27,12 @@ export default function CreateLogStream({
     datadogSites,
     assumedRoleAvailable,
     shipsWholeEnvironment,
+    selected,
     indexHref,
     storeHref,
 }: Props) {
-    const first = destinations[0];
+    const first =
+        destinations.find((destination) => destination.value === selected) ?? destinations[0];
     const form = useForm<StreamForm>({
         name: '',
         destination: first?.value ?? 'generic_json',

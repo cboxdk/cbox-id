@@ -300,6 +300,11 @@ final readonly class RoleController extends ConsoleController
             // user page in turn. A role you cannot see the holders of is a role you cannot
             // govern.
             'holders' => $this->holders($model, $subjects),
+            // The same pointer the create form has: with an empty catalog the next step is
+            // writing a permission, and on the environment console that is a page of its own.
+            'permissionsHref' => $this->scope->serves('permissions')
+                ? $this->url('permissions')
+                : null,
             'indexHref' => $this->url('roles'),
             'urls' => [
                 'update' => $this->url('roles.update', $model->id),
