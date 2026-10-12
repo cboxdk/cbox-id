@@ -23,6 +23,10 @@ export interface User {
     name: string;
     email: string | null;
     emailVerified: boolean;
+    /** Where "Send confirmation link" posts on this host, while the address is unconfirmed. */
+    confirmUrl?: string | null;
+    /** The person's account on the root host, where an environment administrator confirms. */
+    accountUrl?: string | null;
 }
 
 /** `App\Http\Props\Shared\OrganizationProps` */

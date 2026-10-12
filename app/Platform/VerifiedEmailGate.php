@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Console\ConsoleScope;
-use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * "Confirm your address before you can create anything."
@@ -52,7 +51,7 @@ class VerifiedEmailGate
      * "forbidden" reads as a bug in the product to the one person who can fix it in
      * seconds by opening their inbox.
      *
-     * @throws AuthorizationException
+     * @throws EmailNotVerified
      */
     public function require(string $what = 'create this'): void
     {
@@ -60,8 +59,8 @@ class VerifiedEmailGate
             return;
         }
 
-        throw new AuthorizationException(
-            'Confirm your email address before you '.$what.'. Check your inbox for the link we sent, or send a new one from your account page.'
+        throw new EmailNotVerified(
+            'Confirm your email address before you '.$what.'. Use “Send confirmation link” at the top of the console, then open the link in the email.'
         );
     }
 }

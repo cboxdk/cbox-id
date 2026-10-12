@@ -172,6 +172,43 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /me/email/confirmation:
+    post:
+      tags:
+        - Profile
+      summary: 'Mail yourself a link that confirms your email address.'
+      description: 'Requires scope `account:profile:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      operationId: account_email_confirmation_send
+      x-action: account.email.confirmation.send
+      x-scope: 'account:profile:write'
+      x-danger: write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /me/mfa/sms:
     delete:
       tags:

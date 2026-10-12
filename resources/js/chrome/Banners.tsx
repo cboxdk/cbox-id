@@ -39,6 +39,64 @@ export function SandboxBanner() {
 }
 
 /**
+ * AN UNCONFIRMED ADDRESS, AND THE BUTTON THAT FIXES IT.
+ *
+ * The console refuses changes from an address nobody has confirmed, and the refusal used
+ * to point at "your account page" — where nothing could send a link. An owner on
+ * cboxid.com was refused with no way forward. Now every console page says so up front, with
+ * the one click that resolves it.
+ */
+export function EmailConfirmationBanner() {
+    const { auth } = usePage<SharedProps>().props;
+    const [sending, setSending] = useState(false);
+    const user = auth.user;
+
+    if (user === null || user.emailVerified) {
+        return null;
+    }
+
+    const confirmUrl = user.confirmUrl ?? null;
+    const accountUrl = user.accountUrl ?? null;
+
+    return (
+        <div
+            className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2 text-xs font-semibold text-center"
+            style={{
+                background: 'color-mix(in oklch, var(--warning) 16%, var(--background))',
+                color: 'var(--warning-strong)',
+                borderBottom: '1px solid color-mix(in oklch, var(--warning) 30%, transparent)',
+            }}
+        >
+            <Icon name="mail" className="w-3.5 h-3.5 shrink-0" />
+            <span>
+                Confirm your email address{user.email ? ` (${user.email})` : ''} to make changes in the
+                console.
+            </span>
+            {confirmUrl !== null ? (
+                <button
+                    type="button"
+                    className="underline underline-offset-2"
+                    disabled={sending}
+                    onClick={() =>
+                        router.post(confirmUrl, {}, {
+                            preserveScroll: true,
+                            onStart: () => setSending(true),
+                            onFinish: () => setSending(false),
+                        })
+                    }
+                >
+                    {sending ? 'Sending…' : 'Send confirmation link'}
+                </button>
+            ) : accountUrl !== null ? (
+                <a className="underline underline-offset-2" href={accountUrl}>
+                    Send a link from your account
+                </a>
+            ) : null}
+        </div>
+    );
+}
+
+/**
  * A LIVE SUPPORT IMPERSONATION, and the only way out of it.
  *
  * Rendered from a shared prop rather than by a page, and that is the point: this control
