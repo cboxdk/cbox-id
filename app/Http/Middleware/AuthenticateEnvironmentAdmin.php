@@ -7,7 +7,6 @@ namespace App\Http\Middleware;
 use App\Platform\Console\HandoffTarget;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlaneResolver;
-use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -69,7 +68,6 @@ final class AuthenticateEnvironmentAdmin
         private readonly MfaMandate $mfaMandate,
         private readonly AdminPasswords $adminPasswords,
         private readonly PasswordExpiry $passwordExpiry,
-        private readonly PlatformAuth $platformAuth,
     ) {}
 
     /**
@@ -157,7 +155,6 @@ final class AuthenticateEnvironmentAdmin
     {
         return $this->adminPasswords->requiresChange($subjectId)
             || $this->passwordExpiry->hasExpired($subjectId)
-            || $this->platformAuth->pendingLink($subjectId) !== null
             || $this->mfaMandate->requiresEnrolment($subjectId);
     }
 

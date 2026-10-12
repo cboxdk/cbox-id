@@ -156,7 +156,7 @@ The probes are separate from it: liveness on `/up`, readiness on `/health/ready`
 - Watch the queue depth and failures (webhook delivery + event outbox ride it) and
   the scheduler (the cleanups depend on it). **Key retirement does not** —
   `cbox-id:keys:rotate` is not scheduled and never has been; you run it on your own
-  cadence. See [deployment](deployment.md#5-run-the-workers). Platform › Insights ›
+  cadence. See [deployment](deployment.md#5-run-the-workers). Platform ›
   Queues and the `queue_workers` check on `/health/status` show whether the queue manager
   is running and how far behind each queue is — see [Queue workers](queue-workers.md).
 - Alert on auth anomalies surfaced by risk scoring (`cboxdk/laravel-risk`) and on

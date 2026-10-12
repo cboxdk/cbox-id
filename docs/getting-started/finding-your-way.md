@@ -16,7 +16,8 @@ team, keys, billing, settings and your team's own sign-in to Cbox ID. How people
 your apps is set in an **environment's** console. Opening Social login, Branding or Sign-in
 methods on the root host shows a link to that page in each of your environments. Platform
 operators also have the **platform's own environment** at `cboxid.com/admin`, the same
-console for the environment everybody signs in to Cbox ID with
+console for the environment everybody signs in to Cbox ID with, and **platform admin** is
+its first area, **Platform**
 ([Administering the platform's own environment](../operations/platform-environment.md)). If you have used WorkOS, Clerk or Auth0, most things
 are where you would look first. This page shows the map, then walks the common tasks
 click by click.
@@ -47,6 +48,12 @@ click by click.
 | **Monitoring** | Audit log, App audit logs, Log streams, Usage | What happened |
 | **Advanced** | Admins & support, Token vault, Outbound provisioning, SAML apps, Legacy login | Set up once and rarely revisited |
 | **Settings** | Settings | The environment's id, issuer and discovery URL |
+
+On the root host, platform operators have one more area, first on the rail:
+
+| Area | Pages | What it is for |
+|---|---|---|
+| **Platform** | Workspaces, Environments, Organization tree, Operators, Usage, Queues, Search | The whole deployment: every workspace and environment, the operators, and support sessions. Every page says *Platform admin: the whole deployment* above it. |
 
 Modules add pages to these areas when they are switched on. Examples are *Sign-in
 activity*, *Risk events* and *Trusted devices*.
@@ -100,6 +107,7 @@ links in older notes keep working.
 | An organization had 14 tabs in one row, and the last ones were cut off on a laptop | 9 tabs, with related pages grouped under one tab |
 | Detail pages had a bare "‹ Back" link | A breadcrumb shows the area and the list |
 | ⌘K matched only page names, so "SAML" found SAML apps (the outbound direction) and "SCIM" found nothing | ⌘K also matches the words people use elsewhere |
+| Platform admin was a separate console at `/platform`, with its own rail and an amber strip | It is the **Platform** area of `cboxid.com/admin`; every `/platform` address redirects there |
 
 ## Task by task
 
@@ -237,6 +245,20 @@ On a single-tenant install there is no environment console: the same page is und
 the install's own organization (`php artisan cbox-id:installation-organization`) change the
 environment's settings there too — passkeys, magic links, sessions and text-message
 codes on **Authentication policy**, and the environment's providers on **Social login**. [Authentication policy and sign-in methods](../guides/authentication-policy.md).
+
+### Run the deployment (platform operators)
+
+From `cboxid.com/admin`, **Platform** is one click away; from any Platform page, the
+platform environment's own areas are one click away. The same test checks both.
+
+- **Suspend a workspace:** **Platform** (1) lists every workspace with **Suspend** on its
+  row; its own page (2) has the same control. **Reactivate** undoes it.
+- **Open an environment's console as an operator:** **Home** (1) from any Platform page is
+  the platform environment's console. On **Platform › Environments** (2), **Open console**
+  on the *Platform root* row does the same.
+- **Start a support session:** **Platform › Organization tree** (2), an organization (3),
+  then **Impersonate** on a member, with a reason.
+- **Add or suspend an operator:** **Platform › Operators** (2).
 
 ### Brand the sign-in page
 

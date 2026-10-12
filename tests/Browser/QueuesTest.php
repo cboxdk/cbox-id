@@ -30,7 +30,7 @@ it('draws a stopped manager and a queue that is behind', function (): void {
     Queue::connection('database')->pushRaw((string) json_encode(['displayName' => 'Probe', 'job' => 'none', 'data' => []]), 'default');
     $this->travelBack();
 
-    visit('/platform/queues')
+    visit('/admin/platform/queues')
         ->assertSee('Queues')
         ->assertSee('Not running')
         ->assertSee('Needs attention')
@@ -44,7 +44,7 @@ it('draws a stopped manager and a queue that is behind', function (): void {
 it('runs the job monitor under its own policy', function (): void {
     actAsOperator('monitor-browser@platform.test');
 
-    visit('/platform/queues/monitor')
+    visit('/admin/platform/queues/monitor')
         ->assertSee('Queue Monitor')
         // Alpine initialised — it strips `x-cloak` from everything it mounted. Under the
         // console's policy it cannot compile a single attribute and every one stays.

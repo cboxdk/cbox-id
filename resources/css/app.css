@@ -2669,44 +2669,6 @@
         white-space: normal;
     }
 
-    /* PLATFORM ADMIN, said above every page of it. The warning tone because that is
-       what it is: a click here acts on every workspace on the install. Full width and
-       worded, never a tint alone — colour is not an indicator (SC 1.4.1). */
-    .cbx-platform-strip {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 6px 12px;
-        padding: 8px 16px;
-        background: var(--warning-soft);
-        color: var(--warning-strong);
-        border-bottom: 1px solid color-mix(in oklch, var(--warning) 30%, transparent);
-        font-size: 13px;
-        line-height: 1.4;
-    }
-    .cbx-platform-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-weight: 700;
-        letter-spacing: 0.01em;
-    }
-    .cbx-platform-copy {
-        color: var(--foreground);
-    }
-    .cbx-platform-exit {
-        margin-left: auto;
-        font-weight: 600;
-        color: inherit;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-        border-radius: var(--radius-sm);
-    }
-    .cbx-platform-exit:focus-visible {
-        outline: 2px solid var(--ring);
-        outline-offset: 2px;
-    }
-
     /* THE CONTEXT SWITCHER — Workspace / Project / Environment, the topbar's left half.
        Each crumb is a quiet button; the menu it opens is a cmdk list in a popover, the
        same pairing as the Combobox. Active state is a filled background, never a bar. */
@@ -2937,7 +2899,10 @@
 
     /* What a save on this page changes — one line above every console page. Quiet for an
        ordinary environment, workspace or organization; in the warning colours for the
-       platform's own environment, whose sign-in is everybody's. */
+       platform's own environment, whose sign-in is everybody's, and for platform admin,
+       whose every page acts on the whole deployment. That second case is what the amber
+       strip across platform admin used to say, when it was a console of its own: worded,
+       never a tint alone — colour is not an indicator (SC 1.4.1). */
     .cbx-acts-on {
         display: flex;
         align-items: baseline;

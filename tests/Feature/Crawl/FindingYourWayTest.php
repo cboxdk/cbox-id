@@ -219,13 +219,76 @@ it('puts the environment\'s sign-in settings a few clicks from home on a single-
 });
 
 /**
+ * THE SAME WALK FOR AN OPERATOR ON THE ROOT HOST, whose console is the platform
+ * environment's `/admin` with platform admin as its Platform area. It used to be two
+ * consoles — `/admin` and `/platform` — with the account menu between them, which the walk
+ * cannot see and a person has to know about; now every task is on the rail.
+ *
+ * From the console's home: platform admin is one rail click away. From platform admin's own
+ * front page: the platform environment's settings are one rail click away. Both directions,
+ * because an operator starts in either.
+ */
+const FINDING_YOUR_WAY_OPERATOR_FROM_HOME = [
+    'platform.workspaces' => [1, 'See every workspace (each row can be suspended)'],
+    'platform.workspaces.show' => [2, 'Suspend a workspace from its own page'],
+    'platform.environments' => [2, 'See every environment, and provision one'],
+    'platform.organizations' => [2, 'Walk the organization tree of an environment'],
+    'platform.organization' => [3, 'Open an organization and start a support session'],
+    'platform.operators' => [2, 'Add or suspend an operator'],
+    'environment.social-providers' => [2, 'Turn on Google for the platform\'s own sign-in'],
+];
+
+const FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM = [
+    'environment.home' => [1, 'Open the platform environment\'s console'],
+    'environment.sign-in-methods' => [1, 'See how everybody signs in to the platform'],
+    'environment.users' => [1, 'Find a user of the platform environment'],
+    'platform.workspaces.show' => [1, 'Suspend a workspace from its own page'],
+];
+
+it('puts every task an operator comes for a few clicks away, in one console on the root host', function (): void {
+    $world = ConsoleCrawl::world();
+
+    actAsOperator('operator@'.ConsoleCrawl::ROOT);
+    ConsoleCrawl::productionShape();
+
+    // A workspace to suspend, and an organization in the environment platform admin reads.
+    expect($world->workspace)->not->toBeNull();
+
+    $origin = 'https://'.ConsoleCrawl::ROOT;
+    $version = (string) app(HandleInertiaRequests::class)->version(request());
+    $over = [];
+
+    foreach ([
+        '/admin' => FINDING_YOUR_WAY_OPERATOR_FROM_HOME,
+        '/admin/platform/workspaces' => FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM,
+    ] as $start => $tasks) {
+        $depths = findingYourWayWalk($this, $origin.$start, $version, maxDepth: 4, platform: true);
+
+        if (getenv('FINDING_YOUR_WAY_LOG') !== false) {
+            ksort($depths);
+            fwrite(STDERR, $start.' '.(string) json_encode($depths, JSON_PRETTY_PRINT));
+        }
+
+        foreach ($tasks as $route => [$budget, $task]) {
+            $took = $depths[$route] ?? null;
+
+            if ($took === null || $took > $budget) {
+                $over[] = sprintf('%s (%s, from %s): %s clicks, budget %d', $task, $route, $start, $took === null ? 'not reachable in 4' : (string) $took, $budget);
+            }
+        }
+    }
+
+    expect($over)->toBe([], "Tasks an operator cannot find in their budget:\n".implode("\n", $over));
+});
+
+/**
  * Breadth-first from $start, one level per click; returns route name => the fewest clicks
  * that reached it, and fills $urls with every URL => the fewest clicks that reached IT.
  *
  * @param  array<string, int>  $urls
  * @return array<string, int>
  */
-function findingYourWayWalk(TestCase $test, string $start, string $version, int $maxDepth, array &$urls = [], bool $environmentConsole = true): array
+function findingYourWayWalk(TestCase $test, string $start, string $version, int $maxDepth, array &$urls = [], bool $environmentConsole = true, bool $platform = false): array
 {
     $depths = [];
     $seen = [$start => true];
@@ -236,7 +299,7 @@ function findingYourWayWalk(TestCase $test, string $start, string $version, int 
         $next = [];
 
         foreach ($level as $url) {
-            $route = findingYourWayRoute($url, $environmentConsole);
+            $route = findingYourWayRoute($url, $environmentConsole, $platform);
 
             if ($route === null) {
                 continue;
@@ -273,8 +336,12 @@ function findingYourWayWalk(TestCase $test, string $start, string $version, int 
     return $depths;
 }
 
-/** The console GET page a URL is — the environment console's, or the organization console's — or null. */
-function findingYourWayRoute(string $url, bool $environmentConsole = true): ?Route
+/**
+ * The console GET page a URL is — the environment console's, or the organization console's
+ * — or null. With $platform, platform admin's pages count as the environment console's,
+ * which on the root host they are part of.
+ */
+function findingYourWayRoute(string $url, bool $environmentConsole = true, bool $platform = false): ?Route
 {
     try {
         $route = app(Router::class)->getRoutes()->match(Request::create($url, 'GET'));
@@ -285,7 +352,7 @@ function findingYourWayRoute(string $url, bool $environmentConsole = true): ?Rou
     $name = (string) $route->getName();
 
     $ours = $environmentConsole
-        ? str_starts_with($name, 'environment.')
+        ? str_starts_with($name, 'environment.') || ($platform && str_starts_with($name, 'platform.'))
         : $name !== '' && ! str_starts_with($name, 'environment.') && ! str_starts_with($name, 'platform.');
 
     return $ours

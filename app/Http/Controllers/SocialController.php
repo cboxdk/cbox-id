@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Mail\EmailVerificationMail;
+use App\Platform\AccountLinking\AccountLinking;
+use App\Platform\AccountLinking\FederationFailure;
+use App\Platform\AccountLinking\LinkProof;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\FederatedLanding;
 use App\Platform\IntendedUrl;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
@@ -20,6 +24,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
 use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -36,11 +41,10 @@ use Throwable;
  * than a third-party driver's absence of an opinion. See {@see OperatorSocialFlow}.
  *
  * The platform NEVER auto-merges accounts by email. A social sign-in only reaches an
- * existing account if that provider identity was explicitly linked earlier by an
- * authenticated user. Otherwise a first-seen identity gets its own account, or — if the
- * email is already taken — the sign-in is refused with guidance to link from Settings.
- * Linking proves control of both sides: the user is signed in AND completes the
- * provider's auth.
+ * existing account if that provider identity was explicitly linked: from My account by
+ * somebody signed in, or on the link step ({@see AccountLinking}) by somebody who proved
+ * the existing account is theirs. Otherwise a first-seen identity gets its own account.
+ * Linking proves control of both sides: the provider's sign-in AND this account.
  */
 final class SocialController extends Controller
 {
@@ -54,7 +58,7 @@ final class SocialController extends Controller
         return $this->start($request, $provider, route('social.callback', $provider));
     }
 
-    public function callback(string $provider, Request $request, Subjects $subjects, PlatformAuth $auth, MailLinks $links): RedirectResponse
+    public function callback(string $provider, Request $request, Subjects $subjects, PlatformAuth $auth, MailLinks $links, AccountLinking $linking, FederatedLanding $landing): RedirectResponse
     {
         $operator = $this->providers->find($provider);
 
@@ -62,8 +66,8 @@ final class SocialController extends Controller
 
         $principal = $this->resolve($request, $operator, route('social.callback', $provider));
 
-        if ($principal === null) {
-            return redirect()->route('login')->with('error', __('auth.login.social.failed', ['provider' => $operator->label()]));
+        if ($principal instanceof FederationFailure) {
+            return $landing->failed($principal, ['provider' => $operator->label()]);
         }
 
         try {
@@ -83,11 +87,9 @@ final class SocialController extends Controller
                 ));
             }
         } catch (AccountExistsForEmail) {
-            // Don't dead-end: hold the verified identity aside and ask the user to
-            // sign in to the existing account — linking then completes on login.
-            $auth->startPendingLink($principal);
-
-            return redirect()->route('login');
+            // Don't dead-end, and don't merge: the link step asks the person to prove the
+            // existing account is theirs, then links this identity and signs them in.
+            return $linking->begin($request, $principal, null, $operator->key(), $operator->label(), $operator->key());
         }
 
         // Refused under a mandate, and this is the least arguable of the doors. Every other
@@ -158,7 +160,7 @@ final class SocialController extends Controller
      * organization's Settings, which is not where the person started and which a
      * customer's console does not offer at all (see CustomerConsole).
      */
-    public function connectCallback(string $provider, Request $request, Subjects $subjects, CurrentUser $me): RedirectResponse
+    public function connectCallback(string $provider, Request $request, Subjects $subjects, CurrentUser $me, AccountLinking $linking): RedirectResponse
     {
         $operator = $this->providers->find($provider);
 
@@ -166,17 +168,19 @@ final class SocialController extends Controller
 
         $principal = $this->resolve($request, $operator, route('social.connect.callback', $provider));
 
-        if ($principal === null) {
-            return redirect()->route('account')->with('error', 'Connecting '.$operator->label().' was cancelled or failed.');
+        if ($principal instanceof FederationFailure) {
+            return redirect()->route('account')->with('error', $principal->message(['provider' => $operator->label()], 'en'));
         }
 
         try {
             $subjects->link($me->id(), $principal);
         } catch (IdentityAlreadyLinked) {
-            return redirect()->route('account')->with('error', 'That '.$operator->label().' account is already linked to another user.');
+            return redirect()->route('account')->with('error', FederationFailure::AlreadyLinked->message(['provider' => $operator->label()], 'en'));
         }
 
-        return redirect()->route('account')->with('status', $operator->label().' connected.');
+        $linking->recordLinked($me->id(), $principal, $operator->key(), LinkProof::SignedIn, 'account');
+
+        return redirect()->route('account')->with('status', $operator->label().' is connected. You can sign in with it from now on.');
     }
 
     /**
@@ -214,20 +218,21 @@ final class SocialController extends Controller
                 'reason' => $e->getMessage(),
             ]);
 
-            return redirect()->route('login')->with('error', __('auth.login.social.unavailable', ['provider' => $operator->label()]));
+            return app(FederatedLanding::class)->failed(FederationFailure::Unavailable, ['provider' => $operator->label()]);
         }
 
         return redirect()->away($url);
     }
 
     /**
-     * Complete the flow, or null when anything about it fails.
+     * Complete the flow, or say why it did not.
      *
-     * Null rather than an exception because every caller here does the same thing with
-     * it: send the person somewhere they can try again. The reason is logged rather than
-     * shown — a federation failure's detail is for whoever runs the deployment.
+     * The reason is a {@see FederationFailure} rather than null, so the page the person
+     * lands on can tell a Cancel at the provider from an expired link from a token that did
+     * not verify. The technical detail is logged, not shown — a federation failure's
+     * specifics are for whoever runs the deployment.
      */
-    private function resolve(Request $request, OperatorProvider $operator, string $redirectUri): ?FederatedPrincipal
+    private function resolve(Request $request, OperatorProvider $operator, string $redirectUri): FederatedPrincipal|FederationFailure
     {
         // Pulled, not read: a replayed callback finds nothing stashed and fails closed.
         $stashed = $request->session()->pull($this->stashKey($operator, $redirectUri));
@@ -238,19 +243,30 @@ final class SocialController extends Controller
         $state = $request->string('state')->toString();
         $code = $request->string('code')->toString();
 
-        if ($expectedState === null || $expectedNonce === null || $code === '' || ! hash_equals($expectedState, $state)) {
-            return null;
+        $stateMatches = $expectedState !== null && hash_equals($expectedState, $state);
+
+        // The provider answered with an error — believed only under the right state.
+        if ($stateMatches && $code === '' && $request->filled('error')) {
+            return FederationFailure::Cancelled;
+        }
+
+        if (! $stateMatches || $expectedNonce === null || $code === '') {
+            return FederationFailure::Expired;
         }
 
         try {
             return $this->flow->principal($operator, $code, $redirectUri, $expectedNonce);
         } catch (Throwable $e) {
-            Log::warning('cbox-id: operator social login rejected.', [
+            // An unreachable provider is worth telling apart from a token that did not
+            // verify: "try again in a moment" is true of one and not of the other.
+            $unreachable = $e instanceof ConnectionException;
+
+            Log::warning($unreachable ? 'cbox-id: operator social provider unreachable.' : 'cbox-id: operator social login rejected.', [
                 'provider' => $operator->key(),
                 'reason' => $e->getMessage(),
             ]);
 
-            return null;
+            return $unreachable ? FederationFailure::Unavailable : FederationFailure::Rejected;
         }
     }
 

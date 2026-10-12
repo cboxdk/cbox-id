@@ -51,7 +51,7 @@ system.
 
 Sign in at **`/login`** on the console host — the one door; there is no separate
 operator login (`/workspace/login` still redirects there). The deployment pages are the
-**Platform** area of that console (`/platform`), and they appear in the rail for whoever
+**Platform** area (`/admin/platform`), and they appear in the rail for whoever
 has authority over the deployment. From there create
 your environment(s) and use **Provision admin** on each to seed its first
 organization and owner-admin. Those org admins then sign in at `/login`; end users

@@ -17,7 +17,7 @@ Most "it returns 404" questions are a request sent to the wrong one.
 | Self-hosted | the host you installed on | a host per environment, under your own domain |
 | Who signs in | your workspace's team, and the operators who run the install | the environment's own users: your customers' people |
 | Is it an identity provider? | **No** on a multi-tenant install: discovery, JWKS and the token endpoint answer 404 | **Yes**: it is the `issuer` your apps use |
-| Consoles | the workspace console; for operators, **Platform admin** and the platform environment's own console (`/admin`) | the environment console (`/admin`) and your customers' organization console |
+| Consoles | the workspace console; for operators, the platform environment's own console (`/admin`), with platform admin as its **Platform** area (`/admin/platform`) | the environment console (`/admin`) and your customers' organization console |
 | Management API | `/api/v1/workspace`, `/api/v1/platform`, `/api/v1/me` | `/api/v1`, `/api/v1/me` |
 | MCP | `/mcp`: the workspace, every environment you administer (an operator: the platform's own too), your account | `/mcp`: that environment |
 
@@ -76,8 +76,9 @@ An environment you cannot reach, or another workspace's, answers `not_found`.
 
 **The platform's own environment** — the root environment, where every workspace owner
 and operator signs in — is one more environment to a platform operator: its console is
-`/admin` on the root host, and over REST and MCP it is named like any other. Nobody else
-can reach it. See [Administering the platform's own environment](../operations/platform-environment.md).
+`/admin` on the root host, and over REST and MCP it is named like any other. Platform admin
+is an area of that same console, `/admin/platform`; the operator API keeps its own path,
+`/api/v1/platform`. Nobody else can reach either. See [Administering the platform's own environment](../operations/platform-environment.md).
 
 ## Related
 

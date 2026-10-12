@@ -88,7 +88,7 @@ export default function Organization({
                     className="inline-flex items-center gap-1 text-sm"
                     style={{ color: 'var(--muted)' }}
                 >
-                    <span aria-hidden="true">&larr;</span> Back to organizations
+                    <span aria-hidden="true">&larr;</span> Back to the organization tree
                 </Link>
             </div>
 

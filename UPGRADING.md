@@ -23,6 +23,25 @@ whatever it subscribes to, paused ones included. The `webhook_event_types` key i
 `config/connectors.php` is no longer read; a published copy that still has it is harmless
 and can be deleted.
 
+### `/platform` moved to `/admin/platform`
+
+Platform admin is the **Platform** area of the platform environment's console now, at
+`/admin/platform/…` on the root host (on a single-tenant install, at the same paths in the
+console's rail). Every old page answers **301** to its new address with the query string
+kept, so bookmarks and links in mail keep working. As with the last move, a redirect is
+not a route:
+
+| What | Why | Fix |
+| --- | --- | --- |
+| Uptime monitors on `/platform` or `/platform/queues` | They answer **301**, not 200 | Point them at `/admin/platform/environments` and `/admin/platform/queues` |
+| Reverse-proxy / WAF rules matching `/platform*` | The traffic is on `/admin/platform*` now | Rewrite the location blocks; `/admin` already reaches the app on the root host |
+| Anything that POSTs to a `/platform/...` path | Writes are not redirected | Use the `/admin/platform/...` path |
+| `QUEUE_MONITOR_*` links or alerts naming `/platform/queues/monitor` | The monitor moved with the page that links it | `/admin/platform/queues/monitor` |
+
+The operator API is unchanged at `/api/v1/platform`, and `platform.*` route names are
+unchanged. The old `/platform` addresses, like the new ones, exist only on the root's own
+host of a multi-tenant deployment.
+
 ### Logos are uploads; remote logo URLs are no longer shown
 
 `PUT /api/v1/branding/appearance` (and the MCP tool `branding.appearance.set`) no longer
