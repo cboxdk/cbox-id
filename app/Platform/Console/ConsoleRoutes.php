@@ -56,23 +56,26 @@ final class ConsoleRoutes
      * The gates that decide whether the page at $to exists on the requesting host — the
      * same ones its own route group carries, minus who is asking.
      *
-     *  - `/admin/…` is the environment console: `plane:environment` (absent on the platform
-     *    root) and `multi.tenant` (absent on a single-tenant install), as {@see page()} and
-     *    routes/web.php register it.
-     *  - `/platform/…` has no plane gate: the operator section is reachable from every
-     *    console, and its own gate answers who may see it.
+     *  - `/admin/platform/…` is platform admin: `plane:operator`, the root's own host on a
+     *    multi-tenant deployment and any host on a single-tenant one. Checked FIRST, because
+     *    it is under `/admin` without being the environment console — a single-tenant
+     *    install has platform admin and no environment console, and an old `/platform/…`
+     *    bookmark there must still land.
+     *  - `/admin/…` is the environment console: `plane:environment` (on a tenant's host and
+     *    the root's own) and `multi.tenant` (absent on a single-tenant install), as
+     *    {@see page()} and routes/web.php register it.
      *  - Everything else is a console page, served on `plane:console`.
      *
      * @return list<string>
      */
     private static function movedGates(string $to): array
     {
-        if ($to === '/admin' || str_starts_with($to, '/admin/')) {
-            return ['web', 'plane:environment', 'multi.tenant'];
+        if ($to === '/admin/platform' || str_starts_with($to, '/admin/platform/')) {
+            return ['web', 'plane:operator'];
         }
 
-        if ($to === '/platform' || str_starts_with($to, '/platform/')) {
-            return ['web'];
+        if ($to === '/admin' || str_starts_with($to, '/admin/')) {
+            return ['web', 'plane:environment', 'multi.tenant'];
         }
 
         return ['web', 'plane:console'];

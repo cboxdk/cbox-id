@@ -102,7 +102,7 @@ function moduleConsoleRoutes(): array
     // Not dropped from coverage. OperatorAuthorityTest proves both halves on the same
     // pages — a non-operator gets 404 and sees no platform entry in their rail, an
     // operator gets the pages and the rail — which is strictly more than this asserts.
-    $platformAreas = ['platform', 'platform-insights', 'platform-admin'];
+    $platformAreas = ['platform'];
 
     $routes = [];
 

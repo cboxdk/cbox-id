@@ -30,14 +30,14 @@ final readonly class ShellProps implements Prop
         public array $areas,
         public ?string $activeArea,
         /**
-         * The word in the browser tab for the platform section, and null everywhere else.
+         * The word in the browser tab for platform admin, and null everywhere else.
          *
          * An operator works with many tabs open, and half the platform pages share a name
-         * with a page about the operator's OWN organization: "Usage" is this install's
-         * traffic in one and one customer's bill in the other. The platform section used
-         * to have its own shell, and that shell put the word in the title; folding it into
-         * the one console dropped it, and the tab strip stopped distinguishing the whole
-         * install from one customer on it.
+         * with a page beside them in the same console: "Usage" is this install's traffic
+         * under Platform and the platform environment's own under Monitoring. The platform
+         * section used to have its own shell, and that shell put the word in the title;
+         * folding it into the one console dropped it, and the tab strip stopped
+         * distinguishing the whole install from one environment on it.
          */
         public ?string $section,
         /**
@@ -46,13 +46,6 @@ final readonly class ShellProps implements Prop
          */
         public ShellContextProps $context,
         public bool $isOperator,
-        /**
-         * Whether this page is in PLATFORM ADMIN — the install as a whole, every customer
-         * on it. Drawn as a mode of its own (a strip, a rail of its own, a way out) because
-         * a click there can suspend a customer, and a page in the middle of the console
-         * looked like every other page.
-         */
-        public bool $platformMode,
         public string $brandHref,
         public bool $navPinned,
         /**
@@ -71,10 +64,16 @@ final readonly class ShellProps implements Prop
          * absolute on the environment console, for the same reason as `$accountHref`.
          */
         public ?string $workspaceSettingsHref = null,
-        /** The account menu's way INTO platform admin. Operators only. */
+        /**
+         * The account menu's way into platform admin — operators only, and only from a
+         * console it is not part of: the workspace console on the root, a tenant's
+         * environment console. Where platform admin is an area of the rail, null.
+         *
+         * There used to be a way OUT as well, beside an amber strip across platform admin,
+         * when it was a mode of its own. It is an area of the console now, and leaving it
+         * is clicking another area.
+         */
         public ?string $platformHref = null,
-        /** The platform strip's way OUT — the operator's own console. Platform mode only. */
-        public ?string $exitPlatformHref = null,
         public ?ShellNoticeProps $notice = null,
         /** What a save on this page changes — said above every page. */
         public ?ShellActsOnProps $actsOn = null,
@@ -97,7 +96,6 @@ final readonly class ShellProps implements Prop
             'section' => $this->section,
             'context' => $this->context,
             'isOperator' => $this->isOperator,
-            'platformMode' => $this->platformMode,
             'brandHref' => $this->brandHref,
             'navPinned' => $this->navPinned,
             'accountHref' => $this->accountHref,
@@ -105,7 +103,6 @@ final readonly class ShellProps implements Prop
             'altitude' => $this->altitude->value,
             'workspaceSettingsHref' => $this->workspaceSettingsHref,
             'platformHref' => $this->platformHref,
-            'exitPlatformHref' => $this->exitPlatformHref,
             'notice' => $this->notice,
             'actsOn' => $this->actsOn,
             'platformEnvironmentHref' => $this->platformEnvironmentHref,

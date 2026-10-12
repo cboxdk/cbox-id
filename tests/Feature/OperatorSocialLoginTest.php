@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\AccountLinking\FederationFailure;
+use App\Platform\AccountLinking\LinkHold;
 use App\Platform\PlatformAuth;
 use App\Platform\Social\OperatorProviders;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -412,16 +414,37 @@ it('never merges into an existing account by email', function () {
     // authenticated confirmation instead.
     $existing = app(Subjects::class)->create('newcomer@example.test', 'Existing', 'supersecret123');
 
-    $stash = googleSignInInProgress();
+    $stash = googleSignInInProgress(['email_verified' => true]);
 
+    // Held aside, on the link step — so the legitimate owner is not dead-ended, and
+    // nothing reaches the account until they prove it is theirs.
     $this->get('/auth/google/callback?code=auth-code&state='.$stash['state'])
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('login.link'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
         ->and(app(Subjects::class)->linkedIdentities($existing->id))->toBeEmpty();
 
-    // Held aside, so the legitimate owner is not dead-ended.
-    expect(app(PlatformAuth::class)->pendingLink())->not->toBeNull();
+    $this->get(route('login.link'))->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('auth/link-account')
+        ->where('provider.label', 'Google')
+        ->where('email', 'newcomer@example.test'));
+})->group('security');
+
+it('links an operator provider on the link step and signs the person in', function () {
+    $existing = app(Subjects::class)->create('newcomer@example.test', 'Existing', 'supersecret123');
+
+    $stash = googleSignInInProgress(['email_verified' => true]);
+    $this->get('/auth/google/callback?code=auth-code&state='.$stash['state'])
+        ->assertRedirect(route('login.link'));
+
+    $hold = (string) $this->get(route('login.link'))->inertiaProps('hold');
+
+    $this->from(route('login.link'))
+        ->post(route('login.link.verify'), ['hold' => $hold, 'method' => 'password', 'answer' => 'supersecret123'])
+        ->assertRedirect(route('dashboard'));
+
+    expect(collect(app(Subjects::class)->linkedIdentities($existing->id))->pluck('provider')->all())->toBe(['social:google'])
+        ->and(session()->has(PlatformAuth::SESSION_KEY))->toBeTrue();
 })->group('security');
 
 it('refuses a social sign-in when the subject\'s organization mandates SSO', function () {
@@ -460,9 +483,8 @@ it('refuses a social sign-in when the subject\'s organization mandates SSO', fun
         ->assertRedirect(route('login'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
-        // Not the "already taken, link it from Settings" hold — that is a different
-        // refusal with a different screen, and it would satisfy the redirect above.
-        ->and(app(PlatformAuth::class)->pendingLink())->toBeNull();
+        // Not the link step — that is a different screen, for a different situation.
+        ->and(session(LinkHold::SESSION_KEY))->toBeNull();
 
     nextRequest();
     $this->get(route('login'))
@@ -472,12 +494,18 @@ it('refuses a social sign-in when the subject\'s organization mandates SSO', fun
             ->hasFlash('mandate.startUrl', url("/sso/oidc/{$connection->id}/redirect")));
 })->group('security');
 
-it('keeps the held identity labelled by the catalogue', function () {
-    app(PlatformAuth::class)->startPendingLink(
-        new FederatedPrincipal('social:github', 'gh|1', 'someone@example.test', 'Someone')
-    );
+it('refuses to offer a link when Google has not said the address is verified', function () {
+    $existing = app(Subjects::class)->create('newcomer@example.test', 'Existing', 'supersecret123');
 
-    // "GitHub", not "Github" — the screen asking a security question should not look
-    // like it was assembled by ucfirst().
-    expect(app(PlatformAuth::class)->pendingLink()?->label())->toBe('GitHub');
-});
+    $stash = googleSignInInProgress();
+    $this->get('/auth/google/callback?code=auth-code&state='.$stash['state'])
+        ->assertRedirect(route('login'));
+
+    expect(session(LinkHold::SESSION_KEY))->toBeNull()
+        ->and(app(Subjects::class)->linkedIdentities($existing->id))->toBeEmpty();
+
+    nextRequest();
+    $this->get(route('login'))->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('auth/login')
+        ->hasFlash('signInProblem', FederationFailure::Unverified->message(['provider' => 'Google', 'email' => 'newcomer@example.test'])));
+})->group('security');

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Sso;
 
 use App\Http\Controllers\Controller;
+use App\Platform\AccountLinking\AccountLinking;
+use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\FederatedLanding;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -13,6 +15,7 @@ use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\ConnectionInactive;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
+use Cbox\Id\Identity\Exceptions\AccountInactive;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +38,7 @@ final class SamlAcsController extends Controller
         private readonly AssertionValidator $validator,
         private readonly FederationFlow $flow,
         private readonly FederatedLanding $landing,
+        private readonly AccountLinking $linking,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -47,17 +51,27 @@ final class SamlAcsController extends Controller
         // because those live in the OIDC controller's state/nonce stash. Without this,
         // the CSRF-exempt SAML ACS is a replay endpoint for OIDC connections.
         if ($model === null || ! $model->isActive() || $model->type !== ConnectionType::Saml) {
-            return $this->failed('That single sign-on connection is no longer active. Ask your IT administrator to re-enable it.');
+            return $this->landing->failed(FederationFailure::Inactive, ['provider' => $model === null ? '' : $model->name]);
         }
 
         $samlResponse = $request->input('SAMLResponse');
 
         if (! is_string($samlResponse) || $samlResponse === '') {
-            return $this->failed('That sign-in response was incomplete. Start again from your identity provider.');
+            return $this->landing->failed(FederationFailure::Incomplete, ['provider' => $model->name]);
         }
 
         try {
             $principal = $this->validator->validate($model, $samlResponse);
+        } catch (InvalidAssertion|ConnectionInactive $e) {
+            Log::warning('cbox-id: SAML assertion rejected.', [
+                'connection_id' => $model->id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return $this->landing->failed(FederationFailure::Rejected, ['provider' => $model->name]);
+        }
+
+        try {
             $session = $this->flow->completeLogin($model, $principal);
         } catch (InvalidAssertion|ConnectionInactive $e) {
             // Log the real reason; show the user something they can act on. The detail
@@ -67,11 +81,14 @@ final class SamlAcsController extends Controller
                 'reason' => $e->getMessage(),
             ]);
 
-            return $this->failed('We could not verify that sign-in. Please try again, or contact your IT administrator.');
+            return $this->landing->failed(FederationFailure::Rejected, ['provider' => $model->name]);
+        } catch (AccountInactive) {
+            return $this->landing->failed(FederationFailure::AccountDisabled, ['provider' => $model->name]);
         } catch (AccountExistsForEmail) {
-            return $this->failed(
-                'An account already exists for that email address. Sign in with your password first, then connect single sign-on from your account settings.'
-            );
+            // An address the organization has proven, already somebody's here: the same
+            // link step as a social sign-in. An assertion whose address is outside the
+            // organization's verified domains is not vouched for, and is told so.
+            return $this->linking->begin($request, $principal, $model, null, $model->name, 'sso');
         }
 
         // THE missing inch. The landing turns an already-started framework session into
@@ -79,15 +96,5 @@ final class SamlAcsController extends Controller
         // plane: a tenant host signs the subject in; the account host signs an account
         // MEMBER in, and refuses a subject that is not one.
         return $this->landing->land($request, $session);
-    }
-
-    /**
-     * Delegated to the landing so the ERROR branch forks on the plane exactly as the
-     * SUCCESS branch does. This route is not plane-gated, so on the account host a
-     * hard-coded `route('login')` here was a 404.
-     */
-    private function failed(string $message): RedirectResponse
-    {
-        return $this->landing->failed($message);
     }
 }

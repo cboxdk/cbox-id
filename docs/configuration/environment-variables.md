@@ -105,7 +105,9 @@ Override the wordmark/hero without editing Blade.
 | `CBOX_ID_BRAND_TAGLINE` | The sign-in hero headline. | `One identity layer for every app you ship.` | Set to your own tagline. |
 | `CBOX_ID_BRAND_TRUST_LINE` | Free text under the hero (e.g. a compliance note). | *(empty — on purpose)* | Set **only** if the claim is actually true for your deployment. Never ship an unearned certification badge. |
 
-`CBOX_ID_BRAND_NAME` is also the product name in the hosted emails and on the error pages.
+`CBOX_ID_BRAND_NAME` is also the product name on the error pages, and in the hosted emails
+of an environment that has no product name of its own on its Branding page (see
+[what every email carries](../guides/languages.md#what-every-email-carries)).
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
@@ -324,9 +326,9 @@ issuance and login.
 | `CBOX_ID_OTP_VERIFY_MAX` | Verification attempts one client may make per verify window. | `20` | Lower to harden. |
 | `CBOX_ID_OTP_VERIFY_RECIPIENT_MAX` | Verification attempts against one **recipient** per verify window. | `15` | As above. |
 | `CBOX_ID_OTP_VERIFY_WINDOW` | Length of the verify window, in seconds. | `900` (15m) | Pair with the two limits above. |
-| `CBOX_ID_OTP_EMAIL_SUBJECT` | Subject line of the code email. | `Your verification code` | Match your product voice. |
+| `CBOX_ID_OTP_EMAIL_SUBJECT` | Not used by Cbox ID: the code email's subject is translated and says what the code is for. (The framework's plain-text channel reads it.) | `Your verification code` | — |
 | `CBOX_ID_OTP_EMAIL_FROM_ADDRESS` | From address for the code email. | *(none — falls back to the app's `MAIL_FROM_ADDRESS`)* | Set to send codes from a different, well-aligned sender than the rest of your mail. |
-| `CBOX_ID_OTP_EMAIL_FROM_NAME` | From name for the code email. | *(none — falls back to `MAIL_FROM_NAME`)* | As above. |
+| `CBOX_ID_OTP_EMAIL_FROM_NAME` | From name for the code email, when the brand has no sender name of its own. | *(none — falls back to `MAIL_FROM_NAME`)* | As above. |
 
 ## Text messages (SMS)
 

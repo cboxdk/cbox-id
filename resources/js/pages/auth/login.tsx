@@ -4,7 +4,7 @@ import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
 import { isCancellation, passkeysSupported, signInWithPasskey } from '@/lib/passkeys';
 import type { PageProps } from '@/types';
-import { Button, Divider, Field, Input, PasswordField, ProviderMark } from '@/ui';
+import { Button, Divider, Field, Icon, Input, PasswordField, ProviderMark } from '@/ui';
 import { login as loginRoute, signup } from '@routes';
 import { attempt, identify, magicLink } from '@routes/login';
 import { request as forgotPassword } from '@routes/password';
@@ -20,8 +20,6 @@ type Props = PageProps<{
     purpose: string;
     /** What the identifier step captured. The server's old-input bag, stated as a prop. */
     email: string;
-    /** A social sign-in whose address already belongs to somebody here, waiting to be confirmed. */
-    pendingLink: string | null;
     signupOpen: boolean;
     providers: SocialProvider[];
     /** The environment's switches, under the deployment's. A method that is off is not drawn. */
@@ -37,15 +35,7 @@ type Props = PageProps<{
 /** The id the "last used" hint is referenced by — one per page, since one method is marked. */
 const LAST_USED_HINT = 'last-used-hint';
 
-export default function Login({
-    purpose,
-    email,
-    pendingLink,
-    signupOpen,
-    providers,
-    methods,
-    lastUsed,
-}: Props) {
+export default function Login({ purpose, email, signupOpen, providers, methods, lastUsed }: Props) {
     /*
      * ON THE FLASH CHANNEL, not in props.
      *
@@ -55,7 +45,8 @@ export default function Login({
      * claiming their address had been identified — or still showing a mandate that has
      * since been spent.
      */
-    const { identified, ssoOffer, ssoOfferLeads, magicSentTo, magicUrl, mandate } = usePage().flash;
+    const { identified, ssoOffer, ssoOfferLeads, magicSentTo, magicUrl, mandate, signInProblem } =
+        usePage().flash;
     const { t, rich } = useTranslator();
 
     const form = useForm({ email, password: '' });
@@ -146,17 +137,26 @@ export default function Login({
                 </span>
             )}
 
-            {pendingLink !== null && (
+            {/*
+                WHY THE LAST SIGN-IN DID NOT COMPLETE — a social or single sign-on door that
+                came back here instead of signing anybody in: a Cancel at the provider, an
+                expired link, a provider that has not vouched for the address. These used to
+                be written into the validation bag, which this page never reads on a fresh
+                load, so the person landed on a blank form after a sign-in that had worked
+                at Google. An alert, so it is announced as well as drawn.
+            */}
+            {signInProblem !== undefined && (
                 <div
-                    className="mt-5 rounded-lg px-3.5 py-3 text-sm"
+                    role="alert"
+                    className="mt-5 rounded-lg px-3.5 py-3 text-sm flex gap-2.5"
                     style={{
-                        background: 'var(--accent-soft)',
-                        color: 'var(--accent-strong)',
-                        border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                        background: 'var(--destructive-soft)',
+                        color: 'var(--destructive-strong)',
+                        border: '1px solid color-mix(in srgb, var(--destructive) 25%, transparent)',
                     }}
                 >
-                    <b>{t('auth.login.pending_link.lead', { provider: pendingLink })}</b>{' '}
-                    {t('auth.login.pending_link.body', { provider: pendingLink })}
+                    <Icon name="warning" className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{signInProblem}</span>
                 </div>
             )}
 

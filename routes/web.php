@@ -11,7 +11,7 @@ use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\InvitationAcceptController;
-use App\Http\Controllers\Auth\LinkConfirmController;
+use App\Http\Controllers\Auth\LinkAccountController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\OtpStepUpController;
@@ -120,6 +120,7 @@ use App\Http\Controllers\SocialController;
 use App\Http\Controllers\Sso\OAuth2CallbackController;
 use App\Http\Controllers\Sso\OAuth2RedirectController;
 use App\Http\Controllers\Sso\OidcCallbackController;
+use App\Http\Controllers\Sso\OidcRedirectController;
 use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
 use App\Http\Controllers\Sso\SamlMetadataController;
@@ -302,6 +303,10 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
  * nothing here just as it always did.
  */
 //
+// IN THE VISITOR'S LANGUAGE (`locale`): every one of these can end on the sign-in page with
+// a sentence saying why it did not sign anybody in, or send a link-step code, and both have
+// to be in the language the person was just reading.
+//
 // THROTTLED AND NoStore, matching the package routes these shadow. Re-registering them
 // here to escape `plane:issuer` also escaped `ApiServiceProvider`'s middleware, and the
 // two were lost silently: `route:list` showed `web` alone. These do XML signature
@@ -309,7 +314,7 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
 // unauthenticated work the platform does — and their responses carry a freshly minted
 // session, which no cache may keep.
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.saml.acs');
 // Our SP metadata, served from our half alone so a DRAFT's works — the framework's needs the
 // identity provider's half too, which is what an IdP importing it has not handed out yet.
@@ -323,8 +328,14 @@ Route::get('/sso/saml/{connection}/metadata', SamlMetadataController::class)
 // every Sign in with Apple with 405, which the person reads as a cancellation. The
 // controller takes `state` and `code` from the query or the body indifferently. CSRF is
 // exempted for this URI in bootstrap/app.php, where the reasoning lives.
+// The button's own leg. The framework's controller answers a switched-off connection or an
+// unreachable provider with JSON, which is right for an API and wrong for a button; this
+// shadows it and turns those into the sign-in page and a sentence (see the controller).
+Route::get('/sso/oidc/{connection}/redirect', OidcRedirectController::class)
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
+    ->name('sso.oidc.redirect');
 Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.oidc.callback');
 
 // The OAuth 2.0 pair — providers that are not OpenID Providers (GitHub, Discord,
@@ -336,10 +347,10 @@ Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackCon
 // fresh `state` and the callback a single-use `code` and then a freshly minted session —
 // no cache, shared or browser, may keep either answer.
 Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.oauth2.redirect');
 Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
-    ->middleware(['throttle:30,1', NoStore::class])
+    ->middleware(['throttle:30,1', NoStore::class, 'locale'])
     ->name('sso.oauth2.callback');
 
 /*
@@ -434,6 +445,28 @@ Route::post('/mfa/sms', [MfaController::class, 'verifySms'])->middleware('locale
 Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->middleware('locale')->name('login.step-up');
 Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->middleware('locale')->name('login.step-up.verify');
 Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->middleware('locale')->name('login.step-up.resend');
+
+/*
+ * THE LINK STEP — "Link your Google account to sn@cbox.dk?".
+ *
+ * A social or SSO sign-in came back vouching for an address that already belongs to an
+ * account here, through an identity that is not linked to it yet. Never a silent merge and
+ * never a dead end: the identity is held (signed, server-side, ten minutes, single use) and
+ * the person proves the existing account is theirs — its second factor, its password, or a
+ * code mailed to it — before the identity is linked and they are signed in. See
+ * {@see \App\Platform\AccountLinking\AccountLinking}.
+ *
+ * The same in-between state as `/mfa` and the step-up above, so the same shape: no guard,
+ * because the held link in the session IS the authorization and the page answers a missing
+ * one by sending the person back to sign in with a sentence. The answers are throttled per
+ * source here and per account inside.
+ */
+Route::middleware('locale')->group(function (): void {
+    Route::get('/login/link', [LinkAccountController::class, 'show'])->name('login.link');
+    Route::post('/login/link', [LinkAccountController::class, 'verify'])->middleware('throttle:20,1')->name('login.link.verify');
+    Route::post('/login/link/code', [LinkAccountController::class, 'send'])->middleware('throttle:10,1')->name('login.link.code');
+    Route::post('/login/link/cancel', [LinkAccountController::class, 'cancel'])->name('login.link.cancel');
+});
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
@@ -693,13 +726,6 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/password/change', [ChangePasswordController::class, 'edit'])->middleware('locale')->name('password.change');
     Route::post('/password/change', [ChangePasswordController::class, 'update'])->middleware('locale')->name('password.change.update');
 
-    // The social link confirmation. Same shape as the password hold above and for the
-    // same reason: reachable only by someone signed in who has an identity waiting on
-    // their answer, and exempt from the hold so the redirect cannot loop.
-    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->middleware('locale')->name('link.confirm');
-    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->middleware('locale')->name('link.connect');
-    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->middleware('locale')->name('link.decline');
-
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
     Route::get('/account', [AccountController::class, 'show'])->name('account');
@@ -734,6 +760,15 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::delete('/account/two-factor/sms', [AccountController::class, 'removeSms'])->name('account.mfa.sms.destroy');
         Route::delete('/account/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
         Route::delete('/account/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
+        // MY ACCOUNT › SIGN-IN METHODS. Disconnecting is an action (REST and MCP too);
+        // connecting sends this browser to the provider through the environment's own
+        // connection and links on the way back — a ceremony, so a GET that leaves.
+        Route::delete('/account/sign-in-methods/{identity}', [AccountController::class, 'disconnectSignInMethod'])
+            ->middleware(BlockDuringImpersonation::class)
+            ->name('account.sign-in-methods.destroy');
+        Route::get('/account/sign-in-methods/{connection}/connect', [AccountController::class, 'connectSignInMethod'])
+            ->middleware(BlockDuringImpersonation::class)
+            ->name('account.sign-in-methods.connect');
     });
 
     // WHERE YOU ARE SIGNED IN, AND WHAT CAN ACT AS YOU. Its own page rather than a fourth
@@ -1814,19 +1849,41 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 
 /*
 |--------------------------------------------------------------------------
-| Platform section — the pages that need authority over the deployment.
+| Platform admin — the pages that need authority over the deployment, under `/admin/platform`.
 |--------------------------------------------------------------------------
 |
-| Not a console. A SECTION of the one console, and the distinction is the whole
-| point: these pages sign in through the same door, render in the same shell and
-| appear in the same rail as every other page — they are simply the ones that
-| need authority over the deployment, the way Billing needs authority over an
+| Not a console. An AREA of the console an operator administers from, and the
+| distinction is the whole point: these pages sign in through the same door, render in
+| the same shell and sit in the same rail as every other page — they are simply the ones
+| that need authority over the deployment, the way Billing needs authority over an
 | account.
 |
-| No plane gate. Every other group here asks which host it is on, because the
-| host decides whether a surface exists. This one asks who you are, which is a
-| question with the same answer everywhere, so the section is reachable from
-| whichever console a person is standing in.
+| UNDER `/admin`, because that is where an operator administers. On a multi-tenant
+| deployment the root host's `/admin` is the platform's own environment console — the
+| sign-in every workspace owner and operator uses — and these pages are its "Platform"
+| area: the operator signs in once, lands in one console, and suspends a workspace two
+| clicks from the page that turns Google on for cboxid.com. They used to be a second
+| console at `/platform`, with a rail, an amber strip and a brand label of their own, so
+| an operator had two consoles on one host and a door between them in the account menu.
+| On a single-tenant install there is no environment console (the root environment IS
+| the product, administered from the organization console), so the same pages are a
+| "Platform" area of that console's rail instead — same paths, same names. Which shell
+| draws them is {@see \App\Platform\Console\ShellPayload}'s decision, not the route's.
+|
+| THE ROUTE NAMES DID NOT MOVE. `platform.workspaces` is still `platform.workspaces`: the
+| actions that declare these writes as their console routes, the parity sweep that holds
+| every write to one Action, and every `route()` call keep naming the same thing. Only
+| the path changed, and every old GET answers 301 (the moved-pages table below).
+|
+| `plane:operator` is the host bulkhead: the root's own host on a multi-tenant
+| deployment, any host on a single-tenant one — the same gate the queue monitor under
+| these pages carries. Without it `acme.cboxid.com/admin/platform` would reach the
+| operator gate on a tenant's host and answer it with a sign-in redirect; with it, the
+| address does not exist there, which is what a tenant's host should say about the
+| deployment's staff pages.
+|
+| The API plane's name is unchanged: `/api/v1/platform` (routes/api.php) is a different
+| surface, and every write here runs the same Action it does.
 */
 /*
  * Bookmarks. `/operator` was this section's address until the pages stopped being a
@@ -1835,14 +1892,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
  * went: somebody who has had one of these in their bar for a year should land on the page
  * that works, not on a 404 that reads as "it moved and nobody said where".
  *
- * No plane gate, matching the section they point at — and they disclose nothing a
- * `Location` header to a public sign-in does not.
+ * No plane gate on the two sign-in redirects — they disclose nothing a `Location` header
+ * to a public sign-in does not. `/operator` itself is in the moved-pages table below, with
+ * the gate of the pages it points at.
  */
-Route::redirect('/operator', '/platform');
 Route::redirect('/operator/login', '/login');
 Route::redirect('/operator/login/mfa', '/login');
 
-Route::prefix('platform')->group(function (): void {
+Route::prefix('admin/platform')->middleware('plane:operator')->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then
     // AuthenticateOperator asks whether the person it resolved runs this deployment.
     // Both are needed and in this order — the authority question is asked of CurrentUser,
@@ -1855,18 +1912,20 @@ Route::prefix('platform')->group(function (): void {
     // `platform.auth` would answer the first case itself, with the subject plane's
     // redirect, and the gate's own reasoning would never run.
     //
+    // NOT `env.admin`, although on the root these pages are drawn in the environment
+    // console. That gate marks the request as the root environment's console, and the
+    // pages below READ the environment the operator has pointed them at (TargetEnvironment)
+    // — the two cannot both be the ambient environment. The shell is told which console it
+    // is drawing by the route and the host instead ({@see ShellPayload::onPlatformAdmin()}).
+    //
     // TargetEnvironment comes last: the console's chosen plane must not be ambient while
     // the operator's own (platform-root) session is being looked up.
     Route::middleware(['platform.auth:optional', AuthenticateOperator::class, TargetEnvironment::class])->group(function (): void {
-        Route::get('/', [PlatformEnvironmentController::class, 'index'])->name('platform.environments');
-        Route::post('/environments', [PlatformEnvironmentController::class, 'store'])->name('platform.environments.store');
-        Route::post('/environments/{environment}/provision', [PlatformEnvironmentController::class, 'provision'])->name('platform.environments.provision');
-        Route::get('/usage', PlatformUsageController::class)->name('platform.usage');
-        Route::get('/search', PlatformSearchController::class)->name('platform.search');
-        // The queue workers' state. The job-by-job monitor it links to is registered by
-        // cboxdk/laravel-queue-monitor under `/platform/queues/monitor`, behind the same
-        // operator gate plus the host bulkhead — see config/queue-monitor.php.
-        Route::get('/queues', PlatformQueuesController::class)->name('platform.queues');
+        // The area's own address lands on its first page, the way the rail's icon does.
+        // Inside the gate, so a non-operator gets the same 404 here as on every page behind
+        // it; a redirect controller rather than a closure, like every console route.
+        Route::redirect('/', '/admin/platform/workspaces')->name('platform.home');
+
         // WORKSPACES — the customers on the install. `/customers` until the console's own
         // word for a customer became the URL's too; the old paths answer 301 (see the
         // moved-pages table below), and the writes, which nothing bookmarks, simply moved.
@@ -1883,24 +1942,35 @@ Route::prefix('platform')->group(function (): void {
         Route::post('/workspaces/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.workspaces.toggle');
         Route::post('/workspaces/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.workspaces.target');
         Route::post('/workspaces/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.workspaces.open');
+
+        // ENVIRONMENTS — every environment on the install. It was the section's front page
+        // (`/platform`), which is why the old bare address lands here rather than on the
+        // area's first page.
+        Route::get('/environments', [PlatformEnvironmentController::class, 'index'])->name('platform.environments');
+        Route::post('/environments', [PlatformEnvironmentController::class, 'store'])->name('platform.environments.store');
+        Route::post('/environments/{environment}/provision', [PlatformEnvironmentController::class, 'provision'])->name('platform.environments.provision');
+        Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
+
         Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
         Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('platform.organizations.store');
         Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('platform.organization');
         Route::post('/organizations/{organization}/status', [PlatformOrganizationController::class, 'toggle'])->name('platform.organizations.toggle');
         Route::post('/organizations/{organization}/parent', [PlatformOrganizationController::class, 'reparent'])->name('platform.organizations.reparent');
+
         Route::get('/operators', [OperatorRosterController::class, 'index'])->name('platform.operators');
         Route::post('/operators', [OperatorRosterController::class, 'store'])->name('platform.operators.store');
         Route::post('/operators/{operator}/status', [OperatorRosterController::class, 'toggle'])->name('platform.operators.toggle');
-        // Retired: it enrolled an operator TOTP factor nothing verified. A permanent
-        // redirect rather than a deletion, because operators have this bookmarked and the
-        // honest destination exists — their own account security, which the sign-in path
-        // actually checks. See the note in ConsoleServiceProvider.
-        Route::permanentRedirect('/security', '/account')->name('platform.security');
-        Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
 
         // Support impersonation — step into a tenant member's session. Authorized by
         // membership in the operator's currently-pinned plane (see the controller).
         Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('platform.impersonate');
+
+        Route::get('/usage', PlatformUsageController::class)->name('platform.usage');
+        // The queue workers' state. The job-by-job monitor it links to is registered by
+        // cboxdk/laravel-queue-monitor under `/admin/platform/queues/monitor`, behind the
+        // same operator gate plus the host bulkhead — see config/queue-monitor.php.
+        Route::get('/queues', PlatformQueuesController::class)->name('platform.queues');
+        Route::get('/search', PlatformSearchController::class)->name('platform.search');
 
         // Cross-plane jump: a search result lives in some plane B; the tenant detail
         // page is plane-scoped, so we first re-point the console at the result's
@@ -1908,6 +1978,15 @@ Route::prefix('platform')->group(function (): void {
         Route::get('/search/jump/{organization}', [OperatorController::class, 'jumpToOrganization'])->name('platform.search.jump');
     });
 });
+
+/*
+ * Retired: `/platform/security` enrolled an operator TOTP factor nothing verified. A
+ * permanent redirect rather than a deletion, because operators have it bookmarked and the
+ * honest destination exists — their own account security, which the sign-in path actually
+ * checks. See the note in ConsoleServiceProvider. On `plane:operator`, like the section it
+ * was part of.
+ */
+Route::permanentRedirect('/platform/security', '/account')->middleware('plane:operator')->name('platform.security');
 
 /*
 |--------------------------------------------------------------------------
@@ -2025,9 +2104,28 @@ foreach ([
     '/environment-keys' => '/keys',
     '/organization-settings' => '/workspace-settings',
 
-    // The platform section: a customer is a workspace, in the URL as on the page.
-    '/platform/customers' => '/platform/workspaces',
-    '/platform/customers/{organization}' => '/platform/workspaces/{organization}',
+    // PLATFORM ADMIN MOVED INTO `/admin`, where an operator administers everything else
+    // (see the section's own comment above). Every page an operator could have bookmarked,
+    // or a runbook, a support reply or an email could have linked: the list pages, every
+    // detail page by its id, and the queue monitor's own pages. Each answers on the hosts
+    // its destination does (`plane:operator`), keeps its query string, and lands on the
+    // page itself — never on a second hop through another old address.
+    '/operator' => '/admin/platform',
+    '/platform' => '/admin/platform/environments',
+    '/platform/workspaces' => '/admin/platform/workspaces',
+    '/platform/workspaces/{organization}' => '/admin/platform/workspaces/{organization}',
+    '/platform/organizations' => '/admin/platform/organizations',
+    '/platform/organizations/{organization}' => '/admin/platform/organizations/{organization}',
+    '/platform/operators' => '/admin/platform/operators',
+    '/platform/usage' => '/admin/platform/usage',
+    '/platform/queues' => '/admin/platform/queues',
+    '/platform/queues/monitor' => '/admin/platform/queues/monitor',
+    '/platform/queues/monitor/job/{uuid}' => '/admin/platform/queues/monitor/job/{uuid}',
+    '/platform/search' => '/admin/platform/search',
+    '/platform/search/jump/{organization}' => '/admin/platform/search/jump/{organization}',
+    // …and the platform section's older word for a workspace, straight to where it is now.
+    '/platform/customers' => '/admin/platform/workspaces',
+    '/platform/customers/{organization}' => '/admin/platform/workspaces/{organization}',
 
     // The environment console.
     '/admin/applications' => '/admin/apps',

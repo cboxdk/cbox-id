@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Account\DisconnectSignInMethod;
 use App\Actions\Account\RemovePasskey;
 use App\Actions\Account\RemoveSmsFactor;
 use App\Actions\Account\SendEmailConfirmation;
@@ -13,16 +14,18 @@ use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\ChangeOwnPasswordRequest;
 use App\Http\Requests\Account\SaveProfileRequest;
+use App\Platform\AccountLinking\ConnectFromAccount;
+use App\Platform\AccountLinking\SignInIdentities;
+use App\Platform\AccountLinking\SignInIdentity;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Social\OperatorProvider;
-use App\Platform\Social\OperatorProviders;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Carbon\CarbonInterface;
+use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PrivilegedSubjects;
@@ -34,7 +37,6 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\SmsFactorRefused;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
-use Cbox\Id\Identity\ValueObjects\LinkedIdentity;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
@@ -72,7 +74,7 @@ final readonly class AccountController extends PageController
 
     private const ENROL_DECAY = 300;
 
-    public function show(Request $request, Mfa $mfa, MfaMandate $mandate, Subjects $subjects, OperatorProviders $providers, SmsFactors $sms): Response
+    public function show(Request $request, Mfa $mfa, MfaMandate $mandate, SignInIdentities $identities, SmsFactors $sms): Response
     {
         $me = app(CurrentUser::class);
 
@@ -126,7 +128,7 @@ final readonly class AccountController extends PageController
             // takes the enrolment button away; the list stays, so a person can still see and
             // remove what they enrolled before.
             'passkeysEnabled' => app(SignInMethods::class)->passkeysEnabled(),
-            'socialProviders' => $this->socialProviders($providers, $subjects, $subjectId),
+            'signInMethods' => $this->signInMethods($identities, $subjectId, $organization?->id),
             'session' => $session === null ? null : [
                 'id' => $session->id,
                 'methods' => $session->amr ?? [],
@@ -412,6 +414,45 @@ final readonly class AccountController extends PageController
         return $result instanceof RedirectResponse ? $result : back()->with('status', ucfirst($provider).' disconnected.');
     }
 
+    /**
+     * Disconnect one linked sign-in identity through {@see DisconnectSignInMethod}, which
+     * keeps the last-way-in guard and refuses an organization's own single sign-on.
+     */
+    public function disconnectSignInMethod(string $identity): RedirectResponse
+    {
+        $result = $this->act(DisconnectSignInMethod::class, ['identity_id' => $identity], ['identity_id' => 'signInMethods'], 'signInMethods');
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Disconnected. You can no longer sign in with it.');
+    }
+
+    /**
+     * Connect a provider this environment offers, by signing in to it. The browser goes to
+     * the provider through the connection's own redirect URI and the callback links on the
+     * way back ({@see ConnectFromAccount}).
+     *
+     * Behind `sudo` on the route, like every new way in on this page. A connection that is
+     * not one this person is offered — another organization's, a switched-off one — is a
+     * 404, not a refusal: it is not theirs to know about.
+     */
+    public function connectSignInMethod(string $connection, Connections $connections, SignInIdentities $identities, ConnectFromAccount $connect): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
+
+        abort_unless($me->check(), 403);
+
+        $model = $connections->byId($connection);
+        $offered = collect($identities->connectable($identities->forSubject($me->id()), $me->organization()?->id))
+            ->contains(static fn (array $provider): bool => $model !== null && $provider['connectHref'] === route('account.sign-in-methods.connect', $model->id));
+
+        abort_if($model === null || ! $offered, 404);
+
+        $sessionId = $me->session()?->id;
+
+        abort_if($sessionId === null, 403);
+
+        return $connect->start($model, $me->id(), $sessionId);
+    }
+
     public function signOutOtherSessions(SessionManager $sessions): RedirectResponse
     {
         $me = app(CurrentUser::class);
@@ -479,23 +520,32 @@ final readonly class AccountController extends PageController
     }
 
     /**
-     * The providers this deployment offers, and which of them this person has linked.
+     * MY ACCOUNT › SIGN-IN METHODS: every linked identity, and every provider here that is
+     * not linked yet.
      *
-     * @return list<array<string, mixed>>
+     * It replaced "Connected accounts", which listed the deployment OPERATOR's providers
+     * (`services.google.*`) and nothing else — so on a deployment whose Google is the
+     * environment's own, set up in its console, the panel was absent entirely and the
+     * "connect it from your account settings" a refusal pointed at did not exist. This lists
+     * what the person has, whatever door it came through, and offers what the sign-in page
+     * offers.
+     *
+     * @return array{identities: list<array<string, mixed>>, connectable: list<array{provider: string, label: string, connectHref: string}>}
      */
-    private function socialProviders(OperatorProviders $providers, Subjects $subjects, string $subjectId): array
+    private function signInMethods(SignInIdentities $identities, string $subjectId, ?string $organizationId): array
     {
-        $linked = collect($subjects->linkedIdentities($subjectId))
-            ->map(static fn (LinkedIdentity $identity): string => $identity->provider)
-            ->all();
+        $linked = $identities->forSubject($subjectId);
 
-        return array_map(static fn (OperatorProvider $provider): array => [
-            'key' => $provider->key(),
-            'label' => $provider->label(),
-            'linked' => in_array($provider->identityProvider(), $linked, true),
-            'connectHref' => route('social.connect', $provider->key()),
-            'disconnectHref' => route('account.social.destroy', $provider->key()),
-        ], $providers->all());
+        return [
+            'identities' => array_map(static fn (SignInIdentity $identity): array => [
+                ...$identity->toArray(),
+                // Drawn as dates a person reads; the ISO forms above are the API's.
+                'linkedOn' => $identity->linkedAt?->format('M j, Y'),
+                'lastUsed' => $identity->lastUsedAt?->diffForHumans(),
+                'disconnectHref' => $identity->removable ? route('account.sign-in-methods.destroy', $identity->id) : null,
+            ], $linked),
+            'connectable' => $identities->connectable($linked, $organizationId),
+        ];
     }
 
     /**

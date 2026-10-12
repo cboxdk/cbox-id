@@ -151,9 +151,11 @@ immediately — it is the most sensitive account on the system.
 
 ## 3. Provision an environment and organization
 
-Sign in at **`/login`** on the console host, then open the **Platform** area at the
-bottom of the rail (the `/platform` pages), shown to whoever has authority over the
-deployment.
+Sign in at **`/login`** on the console host, then open the **Platform** area (the
+`/admin/platform` pages), shown to whoever has authority over the deployment: on a
+multi-tenant deployment it is the first area of the platform environment's console at
+`/admin` (**Platform admin** in the account menu goes there); on a single-tenant install it
+is at the bottom of the console's rail.
 From there create further environments, then use **Provision admin** to seed an
 environment's first organization and owner-admin. That admin signs in at `/login`.
 

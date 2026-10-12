@@ -32,7 +32,7 @@ use Inertia\Testing\AssertableInertia;
 |   QueueMonitorAccess    the package's auth callback, asking both questions again
 */
 
-const MONITOR = '/platform/queues/monitor';
+const MONITOR = '/admin/platform/queues/monitor';
 
 /** A customer environment served on a host of its own, on a multi-tenant deployment. */
 function tenantHost(): string
@@ -147,7 +147,7 @@ it('puts every monitor route behind every lock', function (): void {
     foreach ($routes as $route) {
         $middleware = $route->gatherMiddleware();
 
-        expect(str_starts_with($route->uri(), 'platform/queues/'))->toBeTrue("{$route->uri()} is outside /platform/queues")
+        expect(str_starts_with($route->uri(), 'admin/platform/queues/'))->toBeTrue("{$route->uri()} is outside /admin/platform/queues")
             ->and(in_array('plane:operator', $middleware, true) || in_array(EnforcePlane::class.':operator', $middleware, true))
             ->toBeTrue("{$route->uri()} has no host bulkhead")
             ->and(in_array(AuthenticateOperator::class, $middleware, true))->toBeTrue("{$route->uri()} has no operator gate");
@@ -159,7 +159,7 @@ it('keeps its REST API switched off', function (): void {
 
     expect(config('queue-monitor.api.enabled'))->toBeFalse();
 
-    $this->getJson('/platform/queues/api/jobs')->assertNotFound();
+    $this->getJson('/admin/platform/queues/api/jobs')->assertNotFound();
 })->group('security');
 
 it('gives the API the dashboard\'s locks, not the package\'s bare api group, if it is ever switched on', function (): void {
@@ -171,7 +171,7 @@ it('gives the API the dashboard\'s locks, not the package\'s bare api group, if 
 
     try {
         $api = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn (RoutingRoute $route): bool => str_starts_with($route->uri(), 'platform/queues/api/'));
+            ->filter(fn (RoutingRoute $route): bool => str_starts_with($route->uri(), 'admin/platform/queues/api/'));
 
         expect($api->count())->toBeGreaterThan(10);
 

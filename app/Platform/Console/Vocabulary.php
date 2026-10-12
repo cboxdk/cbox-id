@@ -36,6 +36,8 @@ use App\Providers\ConsoleServiceProvider;
  *  - Admins & support: an environment's own staff, holding roles across every
  *    organization in it.
  *  - Operators: the people who run this install — Cbox's own, on the hosted platform.
+ *  - Platform: the area of the console holding what acts on the whole deployment —
+ *    workspaces, environments, the organization tree, operators, usage, queues.
  *  - Enterprise SSO: people arriving with a company account (inbound SAML/OIDC).
  *    SAML apps is the opposite direction: applications that trust this environment.
  *  - Directory Sync: a directory pushing people IN over SCIM. Outbound provisioning
@@ -82,6 +84,25 @@ final class Vocabulary
     public const string ADMIN_AND_SUPPORT_ROLES = 'Admin & support roles';
 
     public const string OPERATORS = 'Operators';
+
+    // Platform admin — the deployment as a whole, an area of the console its operators use.
+
+    /** The rail area holding every page about the whole deployment rather than one environment. */
+    public const string PLATFORM = 'Platform';
+
+    /** Every workspace on the install, as platform admin lists them. */
+    public const string WORKSPACES = 'Workspaces';
+
+    /** Every environment on the install, as platform admin lists them. */
+    public const string ENVIRONMENTS = 'Environments';
+
+    /**
+     * Every organization of the environment platform admin is pointed at, as the management
+     * tree (reseller → customer → sub-unit). Not "Organizations": on the platform's own
+     * environment console that is the page one area up listing the ROOT environment's
+     * organizations, and the two sat on one rail under one word.
+     */
+    public const string ORGANIZATION_TREE = 'Organization tree';
 
     public const string ROLES = 'Roles';
 

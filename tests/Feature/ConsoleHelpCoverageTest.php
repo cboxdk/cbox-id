@@ -34,7 +34,7 @@ uses(RefreshDatabase::class);
  */
 
 /** The platform areas are the operator's, and have a fixture of their own below. */
-const HELP_PLATFORM_AREAS = ['platform', 'platform-insights', 'platform-admin'];
+const HELP_PLATFORM_AREAS = ['platform'];
 
 /** Every module feature on, so the modules' pages are on the rail and measured too. */
 function everyModuleOnForHelp(): void

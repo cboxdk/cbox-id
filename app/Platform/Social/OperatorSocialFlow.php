@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Social;
 
+use App\Platform\AccountLinking\EntraVerifiedEmail;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\OidcRelyingParty;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
@@ -117,9 +118,23 @@ class OperatorSocialFlow
             name: $resolved->name,
             connectionId: null,
             // The claim set is deliberately NOT carried. This principal can be held in
-            // the session by the pending-link flow, and a full id_token's claims are both
-            // more personal data than that needs and more than a session should hold.
-            raw: ['provider' => $provider->key()],
+            // the session by the link step, and a full id_token's claims are both more
+            // personal data than that needs and more than a session should hold.
+            //
+            // Two facts ARE: the address the provider gave (what My account shows beside
+            // the linked identity) and whether the provider itself said it had verified
+            // it — the link step offers a link only then (see VouchedEmail). It is NOT
+            // passed as the principal's `emailVerified`, which would mark a brand-new
+            // account's address confirmed on the provider's word; this product confirms
+            // addresses itself (see VerifiedEmailGate).
+            raw: array_filter([
+                'provider' => $provider->key(),
+                'email' => $resolved->email,
+                'email_verified' => $resolved->emailVerified === true || ($resolved->raw['email_verified'] ?? null) === true ? true : null,
+                // Microsoft Entra's stand-in for `email_verified`, which it never sends
+                // (see EntraVerifiedEmail). Carried only as the boolean it must be.
+                EntraVerifiedEmail::CLAIM => ($resolved->raw[EntraVerifiedEmail::CLAIM] ?? null) === true ? true : null,
+            ], static fn (mixed $value): bool => $value !== null),
         );
     }
 

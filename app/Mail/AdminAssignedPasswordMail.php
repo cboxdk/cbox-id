@@ -5,11 +5,6 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use Carbon\CarbonInterface;
-use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * Delivers a password an administrator set for a user directly to that user.
@@ -18,11 +13,8 @@ use Illuminate\Queue\SerializesModels;
  * on out-of-band — the console offers both because the right channel depends on how the
  * admin can already reach the person.
  */
-final class AdminAssignedPasswordMail extends Mailable
+final class AdminAssignedPasswordMail extends BrandedMailable
 {
-    use Queueable;
-    use SerializesModels;
-
     public function __construct(
         public string $password,
         public bool $temporary,
@@ -34,20 +26,24 @@ final class AdminAssignedPasswordMail extends Mailable
         public ?CarbonInterface $expiresAt = null,
     ) {}
 
-    public function envelope(): Envelope
+    protected function subjectLine(): string
     {
-        // Built inside the send's `withLocale()`, so `__()` here is already in the
-        // recipient's language; the send site states it (see App\Platform\Locale\MailLocale).
-        return new Envelope(subject: __('mail.admin_assigned_password.subject', ['brand' => MailText::brand()]));
+        $subject = __('mail.admin_assigned_password.subject', ['brand' => $this->brand()->name]);
+
+        return is_string($subject) ? $subject : '';
     }
 
-    public function content(): Content
+    protected function views(): array
     {
-        return new Content(view: 'mail.admin-assigned-password', with: [
-            'brand' => MailText::brand(),
+        return ['mail.admin-assigned-password', 'mail.text.admin-assigned-password'];
+    }
+
+    protected function data(): array
+    {
+        return [
             // `llll` is Carbon's localised "Wed, Oct 7, 2026 3:00 PM" — in English exactly
             // what `toDayDateTimeString()` produced before, in Danish "ons. 7. okt. 2026 15:00".
             'expiresOn' => $this->expiresAt?->copy()->locale(app()->getLocale())->isoFormat('llll'),
-        ]);
+        ];
     }
 }

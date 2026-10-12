@@ -37,7 +37,6 @@ final class Authenticate
         private readonly AdminPasswords $adminPasswords,
         private readonly PasswordExpiry $passwordExpiry,
         private readonly MfaMandate $mfaMandate,
-        private readonly PlatformAuth $auth,
     ) {}
 
     /**
@@ -157,15 +156,6 @@ final class Authenticate
             return redirect()->route('password.change');
         }
 
-        // A federated identity is waiting to be attached to THIS account and nobody has
-        // said yes yet. Held here rather than resolved at sign-in so it cannot be dodged
-        // by arriving through a path that skips the password form — magic link, MFA,
-        // invitation — and so the answer is always given by someone who is already
-        // authenticated. Both buttons on that screen end the hold; it never repeats.
-        if ($this->auth->pendingLink($subject->id) !== null) {
-            return redirect()->route('link.confirm');
-        }
-
         // A tenant that requires a second factor cannot enforce it by turning people
         // away — that locks out precisely the people who still need to enrol. Hold them
         // on the security page instead, which is where enrolment lives.
@@ -245,8 +235,7 @@ final class Authenticate
          * THE SUBMIT, NOT ONLY THE SCREEN.
          *
          * Each of these holds is ended by an action on the page it holds you on, and each
-         * of those actions is now its OWN route — `password.change.update`, `link.connect`,
-         * `link.decline`. Exempting only the GET names leaves the hold unsatisfiable: the
+         * of those actions is now its OWN route — `password.change.update`. Exempting only the GET names leaves the hold unsatisfiable: the
          * form posts, this bounces it back to the form, and the person is on a page whose
          * buttons cannot work. There is no way out of that loop, including signing out on
          * a deployment where `logout` were ever dropped from this list.
@@ -260,7 +249,6 @@ final class Authenticate
          */
         return $request->routeIs(
             'password.change', 'password.change.*',
-            'link.confirm', 'link.connect', 'link.decline',
             'logout',
             // `oauth.authorize.*` covers the approve and deny endpoints along with the
             // screen itself: they are the same act, split across three requests by the

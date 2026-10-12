@@ -50,7 +50,6 @@ describe('CommandPalette', () => {
         setPageProps({
             shell: {
                 altitude: 'environment',
-                platformMode: false,
                 areas: AREAS,
             } as unknown as Shell,
         });
@@ -125,9 +124,8 @@ describe('CommandPalette', () => {
 
     it('stays navigation-only where the console has no search', async () => {
         setPageProps({
+            // No altitude: a page drawn before the console knows which one it is in.
             shell: {
-                altitude: 'environment',
-                platformMode: true,
                 areas: AREAS,
             } as unknown as Shell,
         });
@@ -216,7 +214,7 @@ describe('CommandPalette', () => {
 
         // Navigation only, so the server's results cannot be what matched.
         setPageProps({
-            shell: { altitude: 'environment', platformMode: true, areas } as unknown as Shell,
+            shell: { areas } as unknown as Shell,
         });
 
         render(<CommandPalette areas={areas} />);
@@ -251,7 +249,6 @@ describe('CommandPalette', () => {
         setPageProps({
             shell: {
                 altitude: 'workspace',
-                platformMode: false,
                 areas: AREAS,
                 context: {
                     noun: 'Workspace',

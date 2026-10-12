@@ -20,6 +20,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\PlaneResolver;
+use App\Platform\Social\ProviderSetupSteps;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
@@ -586,7 +587,7 @@ final readonly class SocialProviderController extends ConsoleController
             'name' => $template->name,
             'protocol' => $template->isOidc() ? 'OpenID Connect' : 'OAuth 2.0',
             'documentationUrl' => $template->documentationUrl,
-            'setupSteps' => $template->setupSteps,
+            'setupSteps' => ProviderSetupSteps::for($template),
             'parameters' => array_map(static fn ($parameter): array => [
                 'key' => $parameter->key,
                 'label' => $parameter->label,

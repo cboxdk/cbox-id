@@ -148,6 +148,6 @@ final readonly class CreatePortalLink implements Action
             url: $url,
             intents: $scope->values(),
             expiresAt: $expiresAt,
-        ));
+        )->forOrganization($organizationId));
     }
 }

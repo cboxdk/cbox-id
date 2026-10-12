@@ -56,7 +56,6 @@ final readonly class LoginController extends PageController
 {
     public function show(
         Request $request,
-        PlatformAuth $auth,
         Organizations $organizations,
         SignupPolicy $signup,
         BrandContext $brand,
@@ -89,7 +88,6 @@ final readonly class LoginController extends PageController
             // address already in it. Laravel's old-input bag is server-side; a client
             // page cannot read it, so the server states it.
             'email' => is_string($old = $request->old('email')) ? $old : '',
-            'pendingLink' => $auth->pendingLink()?->label(),
             'signupOpen' => $signup->isOpen(),
             'providers' => SocialProviderProps::forOrganization($organization?->id),
             // The environment's own switches under the deployment's: a button for a method

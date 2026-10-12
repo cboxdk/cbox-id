@@ -41,7 +41,8 @@ it('sends a signed-out visitor to the one sign-in, not to a door of its own', fu
     // `workspace.login` carries `plane:account` — false when there is no host split, by
     // design — so pointing a self-hosted operator there points them at a 404. The gate
     // asks the deployment shape; see AuthenticateOperator::signInRoute().
-    $this->get('/platform')->assertRedirect(route('login'));
+    $this->get('/admin/platform')->assertRedirect(route('login'));
+    $this->get('/admin/platform/workspaces')->assertRedirect(route('login'));
     $this->get(route('platform.organizations'))->assertRedirect(route('login'));
 });
 
@@ -51,8 +52,10 @@ it('keeps the old operator URLs working, pointed at where those pages went', fun
     // `/operator/login` was a door of its own before the sign-in was unified, and
     // `/operator` was this section's address before it stopped being a console. Both are
     // in somebody's bookmark bar, and a 404 there reads as "it moved and nobody said
-    // where" rather than as a page that was retired.
-    $this->get('/operator')->assertRedirect('/platform');
+    // where" rather than as a page that was retired. `/operator` goes straight to where
+    // platform admin is now — not through `/platform`, which moved too.
+    $this->get('/operator')->assertStatus(301)->assertRedirect('/admin/platform');
+    $this->get('/platform')->assertStatus(301)->assertRedirect('/admin/platform/environments');
     $this->get('/operator/login')->assertRedirect('/login');
     $this->get('/operator/login/mfa')->assertRedirect('/login');
 });
@@ -60,7 +63,8 @@ it('keeps the old operator URLs working, pointed at where those pages went', fun
 it('lets a signed-in operator in', function (): void {
     actAsOperator();
 
-    $this->get('/platform')->assertOk();
+    $this->get('/admin/platform')->assertRedirect(route('platform.workspaces'));
+    $this->get('/admin/platform/environments')->assertOk();
     $this->get(route('platform.organizations'))->assertOk();
 });
 
@@ -78,7 +82,8 @@ it('404s a signed-in subject who does not run this deployment', function (): voi
     $subject = app(Subjects::class)->create('ordinary@acme.test', 'Ordinary', 'supersecret123');
     signInAsSubject($subject->id);
 
-    $this->get('/platform')->assertNotFound();
+    $this->get('/admin/platform')->assertNotFound();
+    $this->get('/admin/platform/workspaces')->assertNotFound();
     $this->get(route('platform.organizations'))->assertNotFound();
 
     // A route with no component behind it, so this is the ROUTE gate answering and not a

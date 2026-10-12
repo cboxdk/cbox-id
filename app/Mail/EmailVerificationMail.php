@@ -4,28 +4,19 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
-
-final class EmailVerificationMail extends Mailable
+final class EmailVerificationMail extends BrandedMailable
 {
-    use Queueable;
-    use SerializesModels;
-
     public function __construct(public string $url) {}
 
-    public function envelope(): Envelope
+    protected function subjectLine(): string
     {
-        // Built inside the send's `withLocale()`, so `__()` here is already in the
-        // recipient's language; the send site states it (see App\Platform\Locale\MailLocale).
-        return new Envelope(subject: __('mail.email_verification.subject', ['brand' => MailText::brand()]));
+        $subject = __('mail.email_verification.subject', ['brand' => $this->brand()->name]);
+
+        return is_string($subject) ? $subject : '';
     }
 
-    public function content(): Content
+    protected function views(): array
     {
-        return new Content(view: 'mail.email-verification', with: ['brand' => MailText::brand()]);
+        return ['mail.email-verification', 'mail.text.email-verification'];
     }
 }

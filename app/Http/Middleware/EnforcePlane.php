@@ -160,11 +160,12 @@ final class EnforcePlane
             // on a customer's own domain is a phishing surface and an unnecessary
             // disclosure. It belongs on the platform root, with the account plane.
             //
-            // The staff pages themselves no longer carry it: they became a SECTION of the
-            // one console (`/platform`), which asks who you are rather than which host you
-            // are on. The queue monitor (`/platform/queues/monitor`) does — it is a
-            // separate application with its own UI, and a staff tool has no business on a
-            // customer's origin. See config/queue-monitor.php.
+            // It guards platform admin (`/admin/platform/…`) and the queue monitor under it
+            // (`/admin/platform/queues/monitor`): on a multi-tenant deployment both exist on
+            // the root's own host and nowhere else, and on a single-tenant one on every
+            // host, because there is only one. A staff tool has no business on a customer's
+            // origin — not even as a sign-in redirect. See routes/web.php and
+            // config/queue-monitor.php.
             // A HOST question, not a context question — see PlaneResolver::onOperatorPlane().
             // Asking onAccountPlane() here meant an operator who used the environment
             // switcher 404'd out of the entire staff console, logout included.
