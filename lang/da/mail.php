@@ -39,6 +39,7 @@ return [
         'heading' => 'Bekræft din e-mail',
         'body' => 'Velkommen til :brand. Bekræft at dette er din e-mailadresse, så din konto er sikret. Linket kan kun bruges én gang og udløber om 24 timer.',
         'button' => 'Bekræft e-mailadresse',
+        'not_you' => 'Hvis du ikke har oprettet en konto hos :brand, kan du ignorere denne e-mail — der sker ingenting uden linket.',
     ],
 
     'admin_assigned_password' => [
@@ -67,6 +68,7 @@ return [
         'invited' => ':inviter har inviteret dig til at administrere :organization på :brand – konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
         'invited_as' => ':inviter har inviteret dig til at administrere :organization med rollen :role på :brand – konsollen til organisationens identitetsudbydere med miljøer, medlemmer og fakturering. Accepter for at vælge en adgangskode og logge ind.',
         'button' => 'Accepter invitation',
+        'note' => 'Hvis du ikke havde forventet invitationen, kan du ignorere den — der sker ingenting, før du accepterer.',
     ],
 
     'portal_link' => [
@@ -83,6 +85,7 @@ return [
         ],
         'button' => 'Start opsætningen',
         'expires' => 'Linket kan kun bruges én gang og virker indtil :date. Hvis det udløber, så bed om et nyt.',
+        'not_expected' => 'Hvis du ikke havde forventet dette, kan du ignorere det — der bliver ikke sat noget op, før nogen bruger linket.',
     ],
 
     'certificate_expiring' => [
@@ -94,5 +97,36 @@ return [
         'lead_expired' => 'Signeringscertifikatet for :connection, single sign-on-forbindelsen for :organization, udløb den :date. Ingen kan logge ind via den, før certifikatet er fornyet.',
         'what_to_do' => 'Bed den der administrerer jeres identitetsudbyder om det nye signeringscertifikat, og upload det derefter i jeres administrationskonsol – eller bed jeres administrator om et link til Admin Portal, så du kan uploade det der.',
         'why' => 'Du modtager denne e-mail fordi du er ejer eller administrator af organisationen på :brand.',
+    ],
+
+    'one_time_code' => [
+        'label' => 'Din kode',
+        'expires' => 'Den udløber om :count minut og kan kun bruges én gang.|Den udløber om :count minutter og kan kun bruges én gang.',
+        'never_share' => 'Del den ikke med nogen — :brand beder dig aldrig om den i telefonen, på chat eller pr. e-mail.',
+        'not_you_title' => 'Har du ikke bedt om den?',
+        'sign_in' => [
+            'subject' => 'Din loginkode til :brand',
+            'heading' => 'Bekræft at det er dig',
+            'lead' => 'Indtast denne kode for at gøre dit login på :brand færdigt.',
+            'not_you' => 'Indtast den ikke nogen steder, og ignorer bare denne e-mail. Hvis du har en konto hos :brand, så skift adgangskoden — den, der er nået så langt, kender den måske.',
+        ],
+        'device' => [
+            'subject' => 'Din kode til :brand til at godkende en enhed',
+            'heading' => 'Godkend et login på en anden enhed',
+            'lead' => 'Indtast denne kode for at godkende et login på :brand fra en anden enhed, fx et tv eller et kommandolinjeværktøj.',
+            'not_you' => 'Indtast den ikke nogen steder. Nogen prøver måske at få dig til at godkende deres enhed — sådan starter den slags angreb. Ignorer denne e-mail, så bliver intet godkendt.',
+        ],
+        'link' => [
+            'subject' => 'Din kode til :brand til at tilknytte en loginmetode',
+            'heading' => 'Tilknyt en loginmetode',
+            'lead' => 'Indtast denne kode for at tilknytte en ny måde at logge ind på til din konto hos :brand.',
+            'not_you' => 'Indtast den ikke nogen steder. Nogen prøver måske at koble deres login på din konto. Ignorer denne e-mail, så bliver intet tilknyttet.',
+        ],
+        'verify' => [
+            'subject' => 'Din bekræftelseskode til :brand',
+            'heading' => 'Din bekræftelseskode',
+            'lead' => 'Indtast denne kode hos :brand for at bekræfte, at e-mailadressen er din.',
+            'not_you' => 'Du kan ignorere denne e-mail — der sker ingenting uden koden.',
+        ],
     ],
 ];

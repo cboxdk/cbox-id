@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Platform\Otp\BrandedEmailOtpChannel;
 use Cbox\Id\Identity\Models\User;
 
 return [
@@ -217,6 +218,19 @@ return [
      * fr. A code outside that list is ignored rather than trusted: there is no catalogue
      * to show for it, and a page in a half-supported language is worse than English.
      */
+    /*
+     * One-time codes by EMAIL go out as Cbox ID's own mail — branded, in the reader's
+     * language, HTML with a text part, and worded for what the code is for — rather than
+     * the framework's plain English default. Only the `email` key is set here; the rest of
+     * the `otp` block (lengths, lifetimes, rate limits, the `sms` channel) is the
+     * framework's, merged in underneath. See App\Platform\Otp\BrandedEmailOtpChannel.
+     */
+    'otp' => [
+        'channels' => [
+            'email' => BrandedEmailOtpChannel::class,
+        ],
+    ],
+
     'locales' => [
         'default' => env('CBOX_ID_DEFAULT_LOCALE', 'en'),
         'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fr'),

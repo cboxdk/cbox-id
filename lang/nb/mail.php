@@ -39,6 +39,7 @@ return [
         'heading' => 'Bekreft e-postadressen din',
         'body' => 'Velkommen til :brand. Bekreft at dette er e-postadressen din for å fullføre sikringen av kontoen din. Lenken kan bare brukes én gang og utløper om 24 timer.',
         'button' => 'Bekreft e-postadresse',
+        'not_you' => 'Hvis du ikke har opprettet en konto hos :brand, kan du se bort fra denne e-posten – ingenting skjer uten lenken.',
     ],
 
     'admin_assigned_password' => [
@@ -67,6 +68,7 @@ return [
         'invited' => ':inviter har invitert deg til å administrere :organization på :brand – konsollen for organisasjonens identitetsleverandører: miljøer, medlemmer og fakturering. Godta for å angi et passord og logge inn.',
         'invited_as' => ':inviter har invitert deg til å administrere :organization som :role på :brand – konsollen for organisasjonens identitetsleverandører: miljøer, medlemmer og fakturering. Godta for å angi et passord og logge inn.',
         'button' => 'Godta invitasjonen',
+        'note' => 'Hvis du ikke ventet denne invitasjonen, kan du se bort fra den – ingenting skjer før du godtar.',
     ],
 
     'portal_link' => [
@@ -83,6 +85,7 @@ return [
         ],
         'button' => 'Start oppsettet',
         'expires' => 'Lenken kan brukes én gang, frem til :date. Hvis den utløper, ber du om en ny.',
+        'not_expected' => 'Hvis du ikke ventet dette, kan du se bort fra det – ingenting blir satt opp før noen bruker lenken.',
     ],
 
     // From the daily certificate scan, to an organization's owners and admins.
@@ -95,5 +98,36 @@ return [
         'lead_expired' => 'Signeringssertifikatet til :connection, single sign-on-tilkoblingen for :organization, utløp :date. Ingen kan logge inn via den før det er fornyet.',
         'what_to_do' => 'Be den som drifter identitetsleverandøren din, om det nye signeringssertifikatet, og last det deretter opp i administrasjonskonsollen – eller be administratoren din om en lenke til Admin Portal for å laste det opp.',
         'why' => 'Du mottar denne e-posten fordi du er eier eller administrator for denne organisasjonen på :brand.',
+    ],
+
+    'one_time_code' => [
+        'label' => 'Koden din',
+        'expires' => 'Den utløper om :count minutt og kan bare brukes én gang.|Den utløper om :count minutter og kan bare brukes én gang.',
+        'never_share' => 'Ikke del den med noen – :brand ber deg aldri om den på telefon, chat eller e-post.',
+        'not_you_title' => 'Har du ikke bedt om den?',
+        'sign_in' => [
+            'subject' => 'Innloggingskoden din for :brand',
+            'heading' => 'Bekreft at det er deg',
+            'lead' => 'Skriv inn denne koden for å fullføre innloggingen på :brand.',
+            'not_you' => 'Ikke skriv den inn noe sted, og se bort fra denne e-posten. Hvis du har en konto hos :brand, bør du bytte passordet – den som har kommet så langt, kan kjenne det.',
+        ],
+        'device' => [
+            'subject' => 'Koden din for :brand for å godkjenne en enhet',
+            'heading' => 'Godkjenn en innlogging på en annen enhet',
+            'lead' => 'Skriv inn denne koden for å godkjenne en innlogging på :brand fra en annen enhet, for eksempel en TV eller et kommandolinjeverktøy.',
+            'not_you' => 'Ikke skriv den inn noe sted. Noen prøver kanskje å få deg til å godkjenne enheten sin – det er slik denne typen angrep begynner. Se bort fra denne e-posten, så blir ingenting godkjent.',
+        ],
+        'link' => [
+            'subject' => 'Koden din for :brand for å koble til en innloggingsmetode',
+            'heading' => 'Koble til en innloggingsmetode',
+            'lead' => 'Skriv inn denne koden for å koble en ny måte å logge inn på til kontoen din hos :brand.',
+            'not_you' => 'Ikke skriv den inn noe sted. Noen prøver kanskje å koble innloggingen sin til kontoen din. Se bort fra denne e-posten, så blir ingenting koblet til.',
+        ],
+        'verify' => [
+            'subject' => 'Bekreftelseskoden din for :brand',
+            'heading' => 'Bekreftelseskoden din',
+            'lead' => 'Skriv inn denne koden hos :brand for å bekrefte at e-postadressen er din.',
+            'not_you' => 'Du kan se bort fra denne e-posten – ingenting skjer uten koden.',
+        ],
     ],
 ];

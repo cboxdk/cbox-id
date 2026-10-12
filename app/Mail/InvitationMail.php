@@ -4,12 +4,6 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
-
 /**
  * Invites somebody to JOIN an organization — to sign in to its apps as one of its people.
  *
@@ -19,11 +13,8 @@ use Illuminate\Queue\SerializesModels;
  * the keys to somebody's identity platform. They say different things now, from the
  * subject down.
  */
-final class InvitationMail extends Mailable
+final class InvitationMail extends BrandedMailable
 {
-    use Queueable;
-    use SerializesModels;
-
     public function __construct(
         public string $organization,
         public string $inviter,
@@ -34,19 +25,23 @@ final class InvitationMail extends Mailable
         public ?string $app = null,
     ) {}
 
-    public function envelope(): Envelope
+    protected function subjectLine(): string
     {
-        return new Envelope(subject: __('mail.invitation.subject', [
+        $subject = __('mail.invitation.subject', [
             'inviter' => $this->inviter,
             'organization' => $this->organization,
-        ]));
+        ]);
+
+        return is_string($subject) ? $subject : '';
     }
 
-    public function content(): Content
+    protected function views(): array
     {
-        return new Content(view: 'mail.invitation', with: [
-            'brand' => MailText::brand(),
-            'roleName' => MailText::role($this->role),
-        ]);
+        return ['mail.invitation', 'mail.text.invitation'];
+    }
+
+    protected function data(): array
+    {
+        return ['roleName' => MailText::role($this->role)];
     }
 }

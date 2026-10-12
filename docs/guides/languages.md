@@ -57,8 +57,34 @@ because most people use the menu before they have signed in.
   administrator works in says nothing about the reader's language. The page the email
   links to then follows the reader's own browser.
 
-Emails and error pages carry your deployment's product name (`CBOX_ID_BRAND_NAME`), not
-"Cbox ID".
+A one-time code (a sign-in step-up, approving a device, linking a sign-in method) goes out
+in the language of the page the person asked for it from, like a sign-in link.
+
+## What every email carries
+
+Every email is sent in the brand of whoever the reader was dealing with — the
+organization's when the email is about one (an invitation to it, its Admin Portal link,
+its certificate warning, a sign-in on its own page), otherwise the environment's:
+
+- **Name**: the product name on the Branding page; without one, on a customer's
+  environment, the environment's name (what its sign-in page is titled); otherwise the
+  deployment's `CBOX_ID_BRAND_NAME`.
+- **Logo**: the logo uploaded on the Branding page, served by this deployment from
+  the address in `APP_URL`. A remote image is never used: in an email that is a read
+  receipt.
+- **Colour**: the sign-in theme's primary colour, on the button and the top edge of the
+  card, with text on it that stays readable whatever colour you picked.
+- **Sender name**: the email sender on the Branding page; otherwise the brand's name when
+  the email is branded; otherwise `MAIL_FROM_NAME`. The address is always
+  `MAIL_FROM_ADDRESS`, which your SPF and DKIM records vouch for.
+
+Every email has a plain-text part as well as the HTML one.
+
+**Codes are never in the subject line.** It is common, and convenient, to put a code in
+the subject so it can be read from the notification. It can then also be read by anybody
+who sees the lock screen, a shared inbox's list or a watch, and every one of these codes is
+a second factor or a proof that the inbox is yours. The subject says what the code is for;
+the code is the first thing in the email.
 
 ## Changing the default and the list
 

@@ -242,7 +242,7 @@ final readonly class CertificateExpiryAlerts
                 connectionName: $connection->name,
                 expiresAt: $certificate->notAfter,
                 daysRemaining: $days,
-            ));
+            )->forOrganization($organizationId));
         }
     }
 
