@@ -555,14 +555,17 @@ it('edits one organization\'s profile from its own page and leaves the environme
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/branding')
-            ->where('profileHref', route('environment.organizations.branding.profile.update', (string) $organizationId)));
+            ->where('saveHref', route('environment.organizations.branding.update', (string) $organizationId)));
 
+    // The page's one Save, with only the name & email changed.
     $this->from(route('environment.organizations.branding', (string) $organizationId))
-        ->post(route('environment.organizations.branding.profile.update', (string) $organizationId), [
-            'palette' => [],
-            'appName' => 'Just This Tenant',
-            'emailFromName' => '',
-            'emailTemplate' => '',
+        ->post(route('environment.organizations.branding.update', (string) $organizationId), [
+            'profile' => [
+                'palette' => [],
+                'appName' => 'Just This Tenant',
+                'emailFromName' => '',
+                'emailTemplate' => '',
+            ],
         ])
         ->assertSessionHasNoErrors();
 

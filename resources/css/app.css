@@ -3091,6 +3091,60 @@
         }
     }
 
+    /* ── Save bar — a page's one Save, where the change was made. Sticky to the
+       bottom of the scrolling page (`main`), so it rides along beside the control
+       just changed and the preview; above the phone's navigation bar on a small
+       screen. Present only while something is unsaved. */
+    .cbx-savebar {
+        position: sticky;
+        bottom: calc(3.5rem + env(safe-area-inset-bottom) + 12px);
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 24px;
+        /* At the very end of the page the bar rests in its own place, above the
+           phone's navigation bar rather than over the last field. */
+        margin-bottom: calc(3.5rem + env(safe-area-inset-bottom) - 12px);
+        padding: 10px 10px 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        box-shadow: var(--shadow-lg);
+        animation: cbx-savebar-in var(--dur-menu) var(--ease);
+    }
+    @media (min-width: 1024px) {
+        .cbx-savebar {
+            bottom: 16px;
+            margin-bottom: 0;
+        }
+    }
+    .cbx-savebar-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        margin: 0;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    .cbx-savebar-actions {
+        display: flex;
+        flex-shrink: 0;
+        gap: 6px;
+    }
+    @keyframes cbx-savebar-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
     /* ── Underline tabs. Filtering one view, never navigation — a tab that changes what
        the page is ABOUT is a page with its own URL. The bottom border is on the LIST so
        the rule runs the full width and the active tab sits on it, rather than each tab

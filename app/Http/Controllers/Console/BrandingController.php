@@ -113,19 +113,26 @@ final readonly class BrandingController extends ConsoleController
             /*
              * The white-label half — name, sender, welcome mail, console palette — read
              * through the module's own action, or null without the module (or without a
-             * target). Its own form and its own Save, through its own action.
+             * target). Saved with the theme, by the page's one Save, at `saveHref`.
              */
             'profile' => $target === null ? null : $this->profile($environmentDefault ? null : $this->scope->organizationId()),
-            'profileHref' => $mayThemeEnvironment && ! $environmentDefault
-                ? route('environment.organizations.branding.profile.update')
-                : $this->url('branding.profile.update'),
         ]);
     }
 
     /**
-     * Save the theme through the ACTION the management API runs ({@see SetAppearance}),
-     * which refuses an unreadable palette — on both altitudes, so an operator cannot set an
-     * environment default that no tenant's users can read.
+     * THE PAGE'S ONE SAVE: the sign-in theme and its images through the action the
+     * management API runs ({@see SetAppearance}), and — in the same request — the name,
+     * sender, welcome mail and palette through the white-label module's own
+     * (`branding.whitelabel.set`). The page sends only the halves that changed.
+     *
+     * They were two forms with two Save buttons. An administrator uploaded a logo, scrolled
+     * to the Save nearest to them — the name & email one — and was told "Branding saved."
+     * while the logo, which that button never sent, was thrown away on the next load.
+     *
+     * The theme goes first; a refusal there (an unreadable palette, an image that is not one)
+     * stops the request before anything else is written. A refusal of the profile after a
+     * theme that saved comes back on the profile's own fields, so what is saved shows as
+     * saved and what is not is still on screen, marked.
      */
     public function update(SaveAppearanceRequest $request): RedirectResponse
     {
@@ -146,34 +153,53 @@ final readonly class BrandingController extends ConsoleController
                 'Only an environment administrator may change the environment default theme, on the environment\'s own Branding page.');
         }
 
-        /*
-         * `attempt()`, not `act()`: a refusal goes back WITHOUT the input. `act()` flashes
-         * the whole request into the session, and here that includes up to a megabyte of
-         * base64 image per refused save.
-         */
-        $result = $this->attempt(SetAppearance::class, [
-            // `requireOrganizationId()`, not the nullable reader: with none resolved this
-            // write would otherwise land wherever a downstream default pointed.
-            'organization_id' => $environmentDefault ? null : $this->scope->requireOrganizationId(),
-            // Through the sanitizer first, so the editor's extra keys (its name and image
-            // previews) never reach the action as theme fields.
-            'theme' => Appearance::fromArray($request->theme())->toArray(),
-            ...$request->images(),
-        ], ['theme' => 'theme', 'logo' => 'logo', 'favicon' => 'favicon'], 'theme');
+        $profile = $request->profile();
+        // Resolved BEFORE anything is written: a profile sent to an install without the
+        // module is a 404, not a theme saved and the rest dropped.
+        $profileAction = $profile === null ? null : $this->profileAction('branding.whitelabel.set');
+        abort_if($profile !== null && $profileAction === null, 404);
 
-        if ($result instanceof ActionRefused) {
-            $field = in_array($result->field, ['logo', 'favicon'], true) ? (string) $result->field : 'theme';
+        // `requireOrganizationId()`, not the nullable reader: with none resolved this write
+        // would otherwise land wherever a downstream default pointed.
+        $organizationId = $environmentDefault ? null : $this->scope->requireOrganizationId();
 
-            return back()->withErrors([$field => $result->getMessage()]);
+        if ($request->savesTheme()) {
+            /*
+             * `attempt()`, not `act()`: a refusal goes back WITHOUT the input. `act()` flashes
+             * the whole request into the session, and here that includes up to a megabyte of
+             * base64 image per refused save.
+             */
+            $result = $this->attempt(SetAppearance::class, [
+                'organization_id' => $organizationId,
+                // Through the sanitizer first, so the editor's extra keys (its name and image
+                // previews) never reach the action as theme fields.
+                'theme' => Appearance::fromArray($request->theme())->toArray(),
+                ...$request->images(),
+            ], ['theme' => 'theme', 'logo' => 'logo', 'favicon' => 'favicon'], 'theme');
+
+            if ($result instanceof ActionRefused) {
+                $field = in_array($result->field, ['logo', 'favicon'], true) ? (string) $result->field : 'theme';
+
+                return back()->withErrors([$field => $result->getMessage()]);
+            }
+        }
+
+        if ($profile !== null) {
+            $refused = $this->saveProfile($profileAction, $organizationId, $profile, 'profile.');
+
+            if ($refused !== null) {
+                return back()->withErrors($refused);
+            }
         }
 
         return back()->with('status', $environmentDefault ? 'Environment branding saved.' : 'Branding saved.');
     }
 
     /**
-     * Save the white-label half — the product's name, the email sender, the welcome mail
-     * and the console palette — through the module's own action, `branding.whitelabel.set`,
-     * at the same altitude as the theme. A 404 without the module: there is nothing to save.
+     * The white-label half alone — the product's name, the email sender, the welcome mail
+     * and the console palette — at the same altitude as the theme. The Branding page saves
+     * both halves through {@see self::update()}; this address stays for anything that posts
+     * the profile on its own. A 404 without the module: there is nothing to save.
      */
     public function updateProfile(Request $request): RedirectResponse
     {
@@ -202,27 +228,57 @@ final readonly class BrandingController extends ConsoleController
 
         $blank = static fn (mixed $value): ?string => is_string($value) && trim($value) !== '' ? trim($value) : null;
 
-        $result = $this->act($action, [
-            'organization_id' => $environmentDefault ? null : $this->scope->requireOrganizationId(),
+        $refused = $this->saveProfile($action, $environmentDefault ? null : $this->scope->requireOrganizationId(), [
             'palette' => $palette,
             'app_name' => $blank($request->input('appName')),
             'email_from_name' => $blank($request->input('emailFromName')),
             'email_template' => is_string($request->input('emailTemplate')) ? $request->input('emailTemplate') : '',
-        ], [
-            ...array_combine(
-                array_map(static fn (string $token): string => 'palette.'.$token, array_keys($palette)),
-                array_map(static fn (string $token): string => 'palette.'.$token, array_keys($palette)),
-            ),
-            'app_name' => 'appName',
-            'email_from_name' => 'emailFromName',
-            'email_template' => 'emailTemplate',
-        ], 'appName');
+        ], '');
 
-        if ($result instanceof RedirectResponse) {
-            return $result;
+        if ($refused !== null) {
+            return back()->withInput()->withErrors($refused);
         }
 
         return back()->with('status', 'Branding saved.');
+    }
+
+    /**
+     * Run `branding.whitelabel.set`, and hand back its refusal as form errors keyed by the
+     * page's own field names under `$prefix` — or null when it saved.
+     *
+     * @param  class-string<Action>  $action
+     * @param  array{palette: array<string, string>, app_name: ?string, email_from_name: ?string, email_template: string}  $profile
+     * @return array<string, string>|null
+     */
+    private function saveProfile(string $action, ?string $organizationId, array $profile, string $prefix): ?array
+    {
+        $fields = [
+            'app_name' => $prefix.'appName',
+            'email_from_name' => $prefix.'emailFromName',
+            'email_template' => $prefix.'emailTemplate',
+        ];
+
+        foreach (array_keys($profile['palette']) as $token) {
+            $fields['palette.'.$token] = $prefix.'palette.'.$token;
+        }
+
+        $result = $this->attempt($action, ['organization_id' => $organizationId, ...$profile], $fields, $prefix.'appName');
+
+        if (! $result instanceof ActionRefused) {
+            return null;
+        }
+
+        if ($result->fields !== []) {
+            $errors = [];
+
+            foreach ($result->fields as $name => $message) {
+                $errors[$fields[$name] ?? $prefix.'appName'] = $message;
+            }
+
+            return $errors;
+        }
+
+        return [($result->field === null ? null : ($fields[$result->field] ?? null)) ?? $prefix.'appName' => $result->getMessage()];
     }
 
     /**
