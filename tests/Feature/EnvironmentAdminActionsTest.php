@@ -560,7 +560,7 @@ it('refuses to create a user for an administrator who has not confirmed their ow
     test()->post(route('environment.users.store'), [
         'email' => 'stranger@elsewhere.example',
         'sendLink' => true,
-    ])->assertForbidden();
+    ])->assertStatus(303)->assertSessionHas('error'); // the unconfirmed-email sentence, back on the form
 
     // Neither the row nor the mail: a refusal that created the account and merely skipped
     // the email would leave a stranger's address claimed inside this environment.

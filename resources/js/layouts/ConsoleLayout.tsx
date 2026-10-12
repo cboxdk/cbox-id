@@ -1,7 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu } from '@/chrome/AccountMenu';
-import { ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
+import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { ContextSwitcher } from '@/chrome/ContextSwitcher';
 import { MobileNav } from '@/chrome/MobileNav';
@@ -136,6 +136,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
             <RouteAnnouncer />
             <Toaster />
             <SandboxBanner />
+            <EmailConfirmationBanner />
             <ImpersonationBanner exitUrl={exitImpersonation.url()} />
 
             <div className="flex h-full">

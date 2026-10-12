@@ -172,7 +172,10 @@ it('refuses a create from an account whose address we have not confirmed', funct
             'url' => 'https://example.test/hook',
             'eventTypes' => ['user.created'],
         ])
-        ->assertForbidden();
+        // Back to the form with the sentence, not the generic 403 page that hid it
+        // (UnverifiedEmailFormTest); the API still answers 403.
+        ->assertRedirect(route('webhooks.create'))
+        ->assertSessionHas('error');
 
     // The refusal has to be the absence of a webhook, not just an unhappy response.
     expect(app(WebhookRegistry::class)->matching($me->organizationId(), 'user.created'))->toBeEmpty();

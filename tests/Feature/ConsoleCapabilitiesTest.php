@@ -1870,7 +1870,7 @@ it('holds an unverified organization admin back from registering an app, and onl
     registerApp([
         'name' => 'Unverified App',
         'redirectUris' => 'https://unverified.example.test/callback',
-    ])->assertForbidden();
+    ])->assertStatus(303)->assertSessionHas('error'); // the unconfirmed-email sentence, back on the form
 
     expect(Client::query()->where('name', 'Unverified App')->exists())->toBeFalse();
 })->group('security');

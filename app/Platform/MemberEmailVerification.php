@@ -97,6 +97,30 @@ final class MemberEmailVerification
             return VerificationResendOutcome::AlreadyProvisioned;
         }
 
+        $this->sendConfirmation($subject);
+
+        return VerificationResendOutcome::Sent;
+    }
+
+    /**
+     * Mail a fresh confirmation link to the person's address — unless it is confirmed
+     * already, in which case nothing is sent and false comes back.
+     *
+     * The mailing half of {@see resend()}, without its signup-only conditions: the console's
+     * "Send confirmation link" needs exactly this for a person whose workspace has long had
+     * its environment (an owner who signed up before confirmation was enforced, or one the
+     * installer created), and resend() would answer them "already provisioned" and send
+     * nothing.
+     */
+    public function sendConfirmation(Subject $subject): bool
+    {
+        $subjectId = $subject->id;
+        $email = $subject->email;
+
+        if ($email === null || $email === '') {
+            return false;
+        }
+
         // A customer's people are subjects in the PLATFORM ROOT, and both the subject lookup
         // and the token table are environment-owned — a query run under a tenant's scope
         // would silently see nothing and issue a token into the wrong environment.
@@ -123,10 +147,13 @@ final class MemberEmailVerification
             return $this->links->route('verification.verify', $this->verification->issue($subjectId, $email));
         });
 
-        if (is_string($url)) {
-            Mail::to($email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($url));
+        if (! is_string($url)) {
+            return false;
         }
 
-        return VerificationResendOutcome::Sent;
+        Mail::to($email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($url));
+
+        return true;
+
     }
 }
