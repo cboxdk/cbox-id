@@ -39,6 +39,7 @@ return [
         'heading' => 'Confirmez votre adresse e-mail',
         'body' => 'Bienvenue sur :brand. Confirmez qu’il s’agit bien de votre adresse e-mail pour finir de sécuriser votre compte. Ce lien est à usage unique et expire dans 24 heures.',
         'button' => 'Confirmer l’adresse e-mail',
+        'not_you' => 'Si vous n’avez pas créé de compte :brand, vous pouvez ignorer cet e-mail — rien ne se passe sans le lien.',
     ],
 
     'admin_assigned_password' => [
@@ -67,6 +68,7 @@ return [
         'invited' => ':inviter vous invite à administrer :organization sur :brand — la console de ses fournisseurs d’identité : environnements, membres et facturation. Acceptez pour définir un mot de passe et vous connecter.',
         'invited_as' => ':inviter vous invite à administrer :organization en tant que :role sur :brand — la console de ses fournisseurs d’identité : environnements, membres et facturation. Acceptez pour définir un mot de passe et vous connecter.',
         'button' => 'Accepter l’invitation',
+        'note' => 'Si vous ne vous attendiez pas à cette invitation, vous pouvez l’ignorer — rien ne se passe tant que vous ne l’acceptez pas.',
     ],
 
     'portal_link' => [
@@ -83,6 +85,7 @@ return [
         ],
         'button' => 'Commencer la configuration',
         'expires' => 'Le lien fonctionne une seule fois, jusqu’au :date. S’il expire, demandez-en un nouveau.',
+        'not_expected' => 'Si vous ne vous y attendiez pas, vous pouvez ignorer cet e-mail — rien n’est configuré tant que personne n’utilise le lien.',
     ],
 
     'certificate_expiring' => [
@@ -94,5 +97,36 @@ return [
         'lead_expired' => 'Le certificat de signature de :connection, la connexion SSO de :organization, a expiré le :date. Personne ne peut se connecter par ce biais tant qu’il n’a pas été renouvelé.',
         'what_to_do' => 'Demandez à la personne qui gère votre fournisseur d’identité son nouveau certificat de signature, puis téléversez-le dans votre console d’administration — ou demandez à votre administrateur un lien vers le portail d’administration pour le téléverser.',
         'why' => 'Vous recevez ce message parce que vous êtes propriétaire ou administrateur de cette organisation sur :brand.',
+    ],
+
+    'one_time_code' => [
+        'label' => 'Votre code',
+        'expires' => 'Il expire dans :count minute et ne peut servir qu’une seule fois.|Il expire dans :count minutes et ne peut servir qu’une seule fois.',
+        'never_share' => 'Ne le communiquez à personne — :brand ne vous le demandera jamais par téléphone, par chat ou par e-mail.',
+        'not_you_title' => 'Vous ne l’avez pas demandé ?',
+        'sign_in' => [
+            'subject' => 'Votre code de connexion :brand',
+            'heading' => 'Confirmez que c’est bien vous',
+            'lead' => 'Saisissez ce code pour terminer votre connexion à :brand.',
+            'not_you' => 'Ne le saisissez nulle part et ignorez cet e-mail. Si vous avez un compte :brand, changez son mot de passe — la personne arrivée jusqu’ici le connaît peut-être.',
+        ],
+        'device' => [
+            'subject' => 'Votre code :brand pour approuver un appareil',
+            'heading' => 'Approuver une connexion sur un autre appareil',
+            'lead' => 'Saisissez ce code pour approuver une connexion à :brand sur un autre appareil, par exemple une télévision ou un outil en ligne de commande.',
+            'not_you' => 'Ne le saisissez nulle part. Quelqu’un essaie peut-être de vous faire approuver son appareil — c’est ainsi que commence ce type d’attaque. Ignorez cet e-mail et rien ne sera approuvé.',
+        ],
+        'link' => [
+            'subject' => 'Votre code :brand pour associer une méthode de connexion',
+            'heading' => 'Associer une méthode de connexion',
+            'lead' => 'Saisissez ce code pour associer un nouveau moyen de connexion à votre compte :brand.',
+            'not_you' => 'Ne le saisissez nulle part. Quelqu’un essaie peut-être de rattacher sa connexion à votre compte. Ignorez cet e-mail et rien ne sera associé.',
+        ],
+        'verify' => [
+            'subject' => 'Votre code de vérification :brand',
+            'heading' => 'Votre code de vérification',
+            'lead' => 'Saisissez ce code sur :brand pour confirmer que cette adresse e-mail est bien la vôtre.',
+            'not_you' => 'Vous pouvez ignorer cet e-mail — rien ne se passe sans le code.',
+        ],
     ],
 ];

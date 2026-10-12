@@ -39,6 +39,7 @@ return [
         'heading' => 'Bekräfta din e-postadress',
         'body' => 'Välkommen till :brand. Bekräfta att det här är din e-postadress för att slutföra säkringen av ditt konto. Länken kan bara användas en gång och går ut om 24 timmar.',
         'button' => 'Bekräfta e-postadress',
+        'not_you' => 'Om du inte har skapat ett konto hos :brand kan du ignorera det här mejlet — ingenting händer utan länken.',
     ],
 
     'admin_assigned_password' => [
@@ -67,6 +68,7 @@ return [
         'invited' => ':inviter har bjudit in dig att administrera :organization på :brand — konsolen för organisationens identitetsleverantörer: miljöer, medlemmar och fakturering. Acceptera för att välja ett lösenord och logga in.',
         'invited_as' => ':inviter har bjudit in dig att administrera :organization som :role på :brand — konsolen för organisationens identitetsleverantörer: miljöer, medlemmar och fakturering. Acceptera för att välja ett lösenord och logga in.',
         'button' => 'Acceptera inbjudan',
+        'note' => 'Om du inte väntade dig den här inbjudan kan du ignorera den — ingenting händer förrän du accepterar.',
     ],
 
     'portal_link' => [
@@ -83,6 +85,7 @@ return [
         ],
         'button' => 'Börja konfigurera',
         'expires' => 'Länken fungerar en gång, fram till :date. Om den går ut kan du be om en ny.',
+        'not_expected' => 'Om du inte väntade dig det här kan du ignorera det — ingenting konfigureras förrän någon använder länken.',
     ],
 
     'certificate_expiring' => [
@@ -94,5 +97,36 @@ return [
         'lead_expired' => 'Signeringscertifikatet för :connection, single sign-on-anslutningen för :organization, gick ut den :date. Ingen kan logga in via den förrän det har förnyats.',
         'what_to_do' => 'Be den som ansvarar för er identitetsleverantör om det nya signeringscertifikatet och ladda sedan upp det i administrationskonsolen — eller be din administratör om en länk till Admin Portal för att ladda upp det.',
         'why' => 'Du får det här mejlet eftersom du är ägare eller administratör för den här organisationen på :brand.',
+    ],
+
+    'one_time_code' => [
+        'label' => 'Din kod',
+        'expires' => 'Den går ut om :count minut och kan bara användas en gång.|Den går ut om :count minuter och kan bara användas en gång.',
+        'never_share' => 'Dela den inte med någon — :brand ber dig aldrig om den via telefon, chatt eller mejl.',
+        'not_you_title' => 'Har du inte bett om den?',
+        'sign_in' => [
+            'subject' => 'Din inloggningskod till :brand',
+            'heading' => 'Bekräfta att det är du',
+            'lead' => 'Ange den här koden för att slutföra inloggningen på :brand.',
+            'not_you' => 'Ange den inte någonstans, och ignorera det här mejlet. Om du har ett konto hos :brand, byt lösenord — den som kommit så här långt kan känna till det.',
+        ],
+        'device' => [
+            'subject' => 'Din kod till :brand för att godkänna en enhet',
+            'heading' => 'Godkänn en inloggning på en annan enhet',
+            'lead' => 'Ange den här koden för att godkänna en inloggning på :brand från en annan enhet, till exempel en tv eller ett kommandoradsverktyg.',
+            'not_you' => 'Ange den inte någonstans. Någon kanske försöker få dig att godkänna sin enhet — det är så den här typen av attack börjar. Ignorera det här mejlet så godkänns ingenting.',
+        ],
+        'link' => [
+            'subject' => 'Din kod till :brand för att koppla en inloggningsmetod',
+            'heading' => 'Koppla en inloggningsmetod',
+            'lead' => 'Ange den här koden för att koppla ett nytt sätt att logga in till ditt konto hos :brand.',
+            'not_you' => 'Ange den inte någonstans. Någon kanske försöker koppla sin inloggning till ditt konto. Ignorera det här mejlet så kopplas ingenting.',
+        ],
+        'verify' => [
+            'subject' => 'Din verifieringskod till :brand',
+            'heading' => 'Din verifieringskod',
+            'lead' => 'Ange den här koden hos :brand för att bekräfta att e-postadressen är din.',
+            'not_you' => 'Du kan ignorera det här mejlet — ingenting händer utan koden.',
+        ],
     ],
 ];
