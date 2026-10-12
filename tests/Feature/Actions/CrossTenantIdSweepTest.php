@@ -25,6 +25,7 @@ use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\IdentityLink;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -549,6 +550,7 @@ function sweepAccount(string $subjectId, array $fixture, string $organizationId)
         'customer_api_key' => (string) mintAppKey($fixture, $subjectId)->id,
         'application' => $fixture['clientId'],
         'social_provider' => 'github',
+        'identity' => (string) IdentityLink::query()->where('user_id', $subjectId)->value('id'),
         'pipe_provider' => 'github',
         'pipe_connection' => CrossTenantSweep::pipeConnection(CrossTenantSweep::pipe(), $subjectId),
     ];

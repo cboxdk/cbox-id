@@ -131,6 +131,7 @@ final class CrossTenantSweep
             'passkeys:passkey_id' => 'passkey',
             'sessions:session_id' => 'session',
             'social:provider' => 'social_provider',
+            'sign-in-methods:identity_id' => 'identity',
             'pipes:provider' => 'pipe_provider',
         ],
         'platform' => [
