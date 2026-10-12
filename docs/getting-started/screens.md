@@ -237,7 +237,8 @@ than minting areas of their own.
 page inherits — one page: a preset, four colours per mode, corners, the typeface, and the
 uploaded logo and favicon, edited against a live preview of the sign-in page; and, with the
 white-label module, the product name, the email sender, the welcome mail and the console's
-own palette. `/appearance` and the module's old Branding page redirect here.
+own palette. One Save, in a bar at the bottom of the screen while anything is unsaved, saves
+all of it. `/appearance` and the module's old Branding page redirect here.
 
 ![Settings](../screenshots/environment-settings.png)
 
