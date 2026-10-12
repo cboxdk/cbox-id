@@ -141,7 +141,7 @@ it('does not let an unverified account add a sign-in provider', function (): voi
     // people trust, and an unverified address may belong to somebody else.
     actingAsRole(MembershipRole::Owner, emailVerified: false);
 
-    enableSocialProvider()->assertForbidden();
+    enableSocialProvider()->assertStatus(303)->assertSessionHas('error'); // the unconfirmed-email sentence, back on the form
 })->group('security');
 
 it('shows a tenant own provider on its branded sign-in page', function (): void {

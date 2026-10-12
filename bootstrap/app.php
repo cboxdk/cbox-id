@@ -26,6 +26,7 @@ use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\TrustHostsExceptHealth;
+use App\Platform\EmailNotVerified;
 use App\Platform\Locale\LocaleResolver;
 use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
@@ -46,6 +47,7 @@ use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
@@ -337,6 +339,30 @@ return Application::configure(basePath: dirname(__DIR__))
         // rendered Laravel's default `{message, errors}` with no `error` key, and a
         // throttled request rendered a bare `{"message":"Too Many Attempts."}`. Those
         // are the two most common failures a generated client meets.
+        // AN UNCONFIRMED ADDRESS IS A SENTENCE ON THE FORM, not an "Access denied" page. The
+        // console's writes refuse until the person confirms their email, and the refusal
+        // carries the one thing to do — which the generic 403 page threw away. A form post
+        // goes back to its page with the sentence as the page's error; the API keeps its 403.
+        // Laravel has turned the AuthorizationException into an AccessDeniedHttpException by
+        // the time a render callback runs; the refusal itself is its previous exception.
+        $exceptions->render(function (AccessDeniedHttpException $e, Request $request): ?Response {
+            $refusal = $e->getPrevious();
+
+            if (! $refusal instanceof EmailNotVerified) {
+                return null;
+            }
+
+            if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+                return null;
+            }
+
+            if ($request->isMethodSafe() || $request->is('api/*')) {
+                return null;
+            }
+
+            return back(303)->with('error', $refusal->getMessage());
+        });
+
         $exceptions->render(ApiErrorRenderer::render(...));
 
         // THE ERROR PAGE IN THE LANGUAGE THE PERSON CHOSE. A hosted request has already

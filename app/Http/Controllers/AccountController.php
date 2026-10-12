@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Account\RemovePasskey;
 use App\Actions\Account\RemoveSmsFactor;
+use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
 use App\Http\Controllers\Console\RunsActions;
@@ -164,6 +165,22 @@ final readonly class AccountController extends PageController
         }
 
         return back()->with('status', 'Name updated.');
+    }
+
+    public function sendEmailConfirmation(): RedirectResponse
+    {
+        $result = $this->act(SendEmailConfirmation::class, [], [], 'email');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        $payload = $result->payload;
+        $email = is_string($payload['email'] ?? null) ? $payload['email'] : 'your address';
+
+        return back()->with('status', ($payload['outcome'] ?? null) === 'already_confirmed'
+            ? 'Your email address is already confirmed.'
+            : "We sent a confirmation link to {$email}. Open it to finish — it works in this browser or any other.");
     }
 
     public function updatePassword(ChangeOwnPasswordRequest $request, Subjects $subjects): RedirectResponse

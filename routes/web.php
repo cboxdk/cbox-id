@@ -716,6 +716,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * charging for nothing.
      */
     Route::patch('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+    // The console's "Send confirmation link" — the button the unconfirmed-email refusal
+    // points at. Limited per person inside the action as well.
+    Route::post('/account/email/confirmation', [AccountController::class, 'sendEmailConfirmation'])
+        ->middleware('throttle:verification-resend')
+        ->name('account.email.confirmation');
 
     Route::middleware('sudo')->group(function (): void {
         Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
