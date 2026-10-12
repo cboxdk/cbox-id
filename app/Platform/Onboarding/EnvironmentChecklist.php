@@ -151,7 +151,8 @@ final readonly class EnvironmentChecklist
             EnvironmentStep::CreateOrganization => Organization::query()
                 ->where('status', '!=', OrganizationStatus::Deleted->value)
                 ->exists(),
-            EnvironmentStep::ConnectSso => Connection::query()->exists(),
+            // An enterprise connection: turning Google on is Social login, not this step.
+            EnvironmentStep::ConnectSso => Connection::query()->whereNull('provider')->exists(),
             EnvironmentStep::ConnectAgent => EnvironmentApiKey::query()
                 ->whereNull('revoked_at')
                 ->whereNotNull('last_used_at')

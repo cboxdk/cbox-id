@@ -9,7 +9,6 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
-use Cbox\Id\Connectors\ValueObjects\ConnectionSummary;
 use Inertia\Response;
 
 /**
@@ -44,12 +43,8 @@ final readonly class CatalogController extends ConnectorsPage
          */
         $organizationId = $this->scope->organizationId();
 
-        /** @var array<string, list<ConnectionSummary>> $byCategory */
-        $byCategory = [];
-
-        foreach ($overview->forOrganization($organizationId) as $summary) {
-            $byCategory[$summary->category->value][] = $summary;
-        }
+        // One aggregate per type — the catalog needs counts, never the rows.
+        $counts = $overview->counts($organizationId);
 
         $types = [];
         $live = 0;
@@ -60,9 +55,9 @@ final readonly class CatalogController extends ConnectorsPage
                 continue;
             }
 
-            $rows = $byCategory[$descriptor->category->value] ?? [];
-            $count = count($rows);
-            $broken = count(array_filter($rows, static fn (ConnectionSummary $row): bool => $row->needsAttention()));
+            $tally = $counts[$descriptor->category->value] ?? ['total' => 0, 'active' => 0, 'failing' => 0];
+            $count = $tally['total'];
+            $broken = $tally['failing'];
             $live += $count;
             $failing += $broken;
 
@@ -83,7 +78,7 @@ final readonly class CatalogController extends ConnectorsPage
                 'group' => $descriptor->group,
                 'direction' => $descriptor->category->isOutbound() ? 'Outbound' : 'Inbound',
                 'count' => $count,
-                'active' => count(array_filter($rows, static fn (ConnectionSummary $row): bool => $row->isActive())),
+                'active' => $tally['active'],
                 'failing' => $broken,
                 'setupHref' => $this->setupHref($descriptor, $organizationId),
                 // The list itself, whatever the count: it is where a type's rows are managed,

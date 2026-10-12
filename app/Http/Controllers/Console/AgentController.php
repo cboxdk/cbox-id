@@ -13,12 +13,15 @@ use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Agents\AgentRoster;
 use App\Platform\Agents\AgentScope;
 use App\Platform\Agents\AgentScopes;
+use App\Platform\Console\KeyTabs;
+use App\Platform\Console\ShellContext;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\RootMcpOAuth;
+use App\Platform\PlaneResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
@@ -68,6 +71,9 @@ final readonly class AgentController extends ConsoleController
             'showAll' => $showAll,
             'environmentId' => $environmentId,
             'waitingForYou' => $me === null ? 0 : $inbox->waitingFor($me, $environmentId),
+            // The key kinds, as on API keys: this page IS the Secret keys tab, and Publishable
+            // and Workspace keys are one click away from it rather than a rail away.
+            'tabs' => app(KeyTabs::class)->for(KeyTabs::MANAGEMENT),
             'urls' => [
                 'create' => route('environment.agents.create'),
                 'connect' => route('environment.agent-connect'),
@@ -185,7 +191,7 @@ final readonly class AgentController extends ConsoleController
      * `oauth` says whether an MCP client may sign the person in there itself — the command
      * that needs nothing but the URL, offered first when it works ({@see RootMcpOAuth}).
      *
-     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool}|null
+     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool, workspaceKeysHref: string|null}|null
      */
     private function workspaceConnection(): ?array
     {
@@ -202,6 +208,10 @@ final readonly class AgentController extends ConsoleController
             'issuer' => $origin,
             'restBaseUrl' => $origin.'/api/v1',
             'oauth' => RootMcpOAuth::enabled() && $resource->dynamicClients,
+            // "Mint one under Keys › Workspace keys" — on the workspace's host, so absolute.
+            'workspaceKeysHref' => app(PlaneResolver::class)->consoleHost() === null
+                ? null
+                : app(ShellContext::class)->onWorkspaceHost('keys.workspace'),
         ];
     }
 

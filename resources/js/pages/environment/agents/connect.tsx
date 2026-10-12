@@ -36,6 +36,8 @@ interface WorkspaceProps {
     restBaseUrl: string;
     /** True while an MCP client may sign a person in at the root itself (`api.mcp.root_oauth`). */
     oauth: boolean;
+    /** Keys › Workspace keys on the workspace's host; null on a single-host deployment. */
+    workspaceKeysHref: string | null;
 }
 
 const CLIENTS: { id: ClientId; label: string }[] = [
@@ -194,7 +196,9 @@ function Snippet({ snippet }: { snippet: ClientSnippet }) {
                     className="mono text-xs rounded-lg px-3.5 py-3 overflow-x-auto"
                     style={{ background: 'var(--surface-2)', whiteSpace: 'pre' }}
                 >
-                    <pre className="m-0"><code>{snippet.code}</code></pre>
+                    <pre className="m-0">
+                        <code>{snippet.code}</code>
+                    </pre>
                 </section>
                 <div className="mt-2">
                     <CopyButton value={snippet.code} size="sm" label="Copy" />
@@ -311,8 +315,13 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                     <p className="text-sm font-medium">Or give an agent a workspace key</p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
                         A workspace key reaches the workspace itself — projects, environments, the
-                        team and keys — not inside an environment. Mint one under Keys › Workspace
-                        keys at the platform root.
+                        team and keys — not inside an environment. Mint one under{' '}
+                        {workspace.workspaceKeysHref === null ? (
+                            'Keys › Workspace keys'
+                        ) : (
+                            <a href={workspace.workspaceKeysHref}>Keys › Workspace keys</a>
+                        )}{' '}
+                        at the platform root.
                     </p>
                     <div className="mt-2">
                         <Snippet snippet={claudeCodeWorkspace(workspace.mcpUrl)} />

@@ -1,8 +1,9 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
+    Breadcrumb,
     Button,
     Checkbox,
     ConfirmDelete,
@@ -142,18 +143,14 @@ export default function RadarRuleEditor({
 
     return (
         <>
-            <PageHeader
-                help={help}
-                description="When EVERY condition holds, Radar takes this rule's action and asks no rule after it. Rules are asked after the allow and deny lists and before the built-in rules."
-                actions={
-                    <Button asChild>
-                        <Link href={rulesHref}>
-                            <Icon name="arrow-left" className="w-4 h-4" />
-                            Rules
-                        </Link>
-                    </Button>
-                }
-            />
+            <Breadcrumb href={rulesHref} label="Radar rules" />
+
+            <div className="mt-2">
+                <PageHeader
+                    help={help}
+                    description="When EVERY condition holds, Radar takes this rule's action and asks no rule after it. Rules are asked after the allow and deny lists and before the built-in rules."
+                />
+            </div>
 
             <form
                 className="mt-6 grid gap-5 card p-5"

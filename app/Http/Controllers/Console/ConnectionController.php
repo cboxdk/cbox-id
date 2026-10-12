@@ -81,7 +81,17 @@ final readonly class ConnectionController extends ConsoleController
          * the model's environment scope still bounds it. A filter naming no organization here
          * is an empty list, never this overview ({@see \App\Platform\Console\OrganizationFilter}).
          */
-        $query = $filter->apply(Connection::query())->orderByDesc('created_at');
+        $query = $filter->apply(Connection::query())
+            /*
+             * ENTERPRISE connections only. A social provider is stored as a federation
+             * connection too (with the catalogue key in `provider`), so an unfiltered query
+             * listed an environment's Google and GitHub buttons here as "SSO connections",
+             * with an organization column reading nothing — they are Social login's rows,
+             * and that page manages them. Every other count of "SSO connections" (the
+             * organization overview, Sign-in methods, the Admin Portal) already said this.
+             */
+            ->whereNull('provider')
+            ->orderByDesc('created_at');
 
         $term = trim($request->string('q')->toString());
 

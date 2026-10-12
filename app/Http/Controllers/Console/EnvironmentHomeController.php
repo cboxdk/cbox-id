@@ -72,7 +72,8 @@ final readonly class EnvironmentHomeController extends ConsoleController
                 [
                     'label' => 'Enterprise SSO',
                     'icon' => 'fingerprint',
-                    'count' => Connection::query()->count(),
+                    // Enterprise connections — not the social providers stored beside them.
+                    'count' => Connection::query()->whereNull('provider')->count(),
                     'href' => route('environment.connections'),
                 ],
                 [

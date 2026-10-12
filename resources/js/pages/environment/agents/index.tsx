@@ -13,6 +13,8 @@ import {
     type KeyLifecycle,
     KeyStatusPill,
     KeyTimeline,
+    type LinkTab,
+    LinkTabs,
     PageHeader,
     Panel,
     RevealedKey,
@@ -47,6 +49,8 @@ type Props = PageProps<{
     environmentId: string;
     waitingForYou: number;
     urls: { create: string; connect: string; approvals: string; index: string };
+    /** The key kinds, as on API keys — this page is the Secret keys tab. */
+    tabs: LinkTab[];
     help: HelpContent;
 }>;
 
@@ -57,6 +61,7 @@ export default function Agents({
     environmentId,
     waitingForYou,
     urls,
+    tabs,
     help,
 }: Props) {
     const { freshKey, freshKeyName } = usePage().flash;
@@ -79,6 +84,10 @@ export default function Agents({
                     </>
                 }
             />
+
+            <div className="mt-4">
+                <LinkTabs tabs={tabs} label="Key types" />
+            </div>
 
             <div className="mt-6 space-y-6">
                 {waitingForYou > 0 && (
