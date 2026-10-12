@@ -11,6 +11,8 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 
@@ -64,7 +66,50 @@ final class EnvironmentAdminAuth
         private readonly SessionManager $sessions,
         private readonly PlatformRoot $platformRoot,
         private readonly PlatformAuth $platformAuth,
+        private readonly PlatformOperators $operators,
     ) {}
+
+    /**
+     * Whether this request is the PLATFORM ROOT's environment console — set by the console's
+     * own gate ({@see AuthenticateEnvironmentAdmin}) when `/admin/*` is asked for on the
+     * root's own host, and never anywhere else.
+     *
+     * A per-request fact rather than something derived from the session, and that is the
+     * safety of it: an operator's ordinary root session is the very same session on every
+     * page of the workspace console and of platform admin, where they must stay a SUBJECT
+     * — an operator, a workspace owner — rather than become an environment administrator
+     * because of who they are. Only the environment console's own routes say "this is the
+     * environment plane"; everywhere else this stays false and {@see check()} answers for
+     * the tenant membership alone, exactly as before.
+     *
+     * Kept on the REQUEST, not on this object: a container that outlives a request (Octane,
+     * a test client making several) must not carry "this is the root's console" into the
+     * next one, where it would turn a workspace page into an environment one.
+     */
+    public const ROOT_CONSOLE = 'cbox.env_admin_root_console';
+
+    private ?string $operatorMemoKey = null;
+
+    private ?PlatformOperator $operatorMemo = null;
+
+    /**
+     * Mark this request as the platform root's environment console. Called by the gate,
+     * after the plane middleware has established that the host IS the root's own.
+     */
+    public function enterRootConsole(): void
+    {
+        request()->attributes->set(self::ROOT_CONSOLE, true);
+        $this->memoKey = null;
+        $this->memoMembership = null;
+        $this->operatorMemoKey = null;
+        $this->operatorMemo = null;
+    }
+
+    /** Whether this request is the platform root's environment console. */
+    public function onRootConsole(): bool
+    {
+        return request()->attributes->get(self::ROOT_CONSOLE) === true;
+    }
 
     /**
      * Per-request memo, KEYED ON THE INPUTS it was computed from. current() is consulted
@@ -120,6 +165,13 @@ final class EnvironmentAdminAuth
      */
     public function membership(): ?Membership
     {
+        // The root environment belongs to no workspace: on its console a membership grants
+        // nothing, whoever holds it and whatever it reaches. Operators are its
+        // administrators ({@see rootOperator()}).
+        if ($this->onRootConsole()) {
+            return null;
+        }
+
         $sessionId = session()->get(PlatformAuth::SESSION_KEY);
         $boundEnv = session()->get(self::ENV_KEY);
         $hostEnv = $this->environments->current()?->environmentKey();
@@ -141,10 +193,116 @@ final class EnvironmentAdminAuth
         return $this->memoMembership;
     }
 
+    /**
+     * The platform OPERATOR administering the root environment's console on this request,
+     * or null — always null anywhere but that console.
+     *
+     * The same live checks the tenant path makes, re-read per request: the session row is
+     * still active, the subject behind it is still admitted, and the operator record behind
+     * the subject is still ACTIVE (the framework lookup refuses a suspended one). Asked in
+     * the platform root, where the subject, its session and the operator all live — which
+     * on the root's own host is also the ambient environment, so this crosses nothing.
+     *
+     * NOT a workspace owner, NOT an organization admin of the root: the root environment is
+     * how every operator and every customer signs in, and a customer's owner configuring it
+     * would be configuring sign-in for every other customer's owner.
+     */
+    public function rootOperator(): ?PlatformOperator
+    {
+        if (! $this->onRootConsole()) {
+            return null;
+        }
+
+        $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+        $hostEnv = $this->environments->current()?->environmentKey();
+        $key = (is_string($sessionId) ? $sessionId : '')."\0".($hostEnv ?? '');
+
+        if ($this->operatorMemoKey === $key) {
+            return $this->operatorMemo;
+        }
+
+        $this->operatorMemoKey = $key;
+
+        return $this->operatorMemo = $this->resolveRootOperator($sessionId, $hostEnv);
+    }
+
+    /** Whether this request is administered by a platform operator on the root's console. */
+    public function admitsRootOperator(): bool
+    {
+        return $this->rootOperator() !== null;
+    }
+
+    /**
+     * The person signed in on the root console, whether or not they may administer it — so
+     * the gate can tell "sign in first" from "this is not yours".
+     */
+    public function signedInRootSubject(): ?string
+    {
+        $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+
+        return is_string($sessionId) && $sessionId !== '' ? $this->liveSubject($sessionId) : null;
+    }
+
+    /**
+     * The WORKSPACE whose membership opened this console — the organization a tenant
+     * environment's administrator acts for, where the workspace console records their acts.
+     * Null on the root environment's console, which no workspace owns.
+     */
+    public function workspaceId(): ?string
+    {
+        $organizationId = $this->membership()?->organization_id;
+
+        return is_string($organizationId) && $organizationId !== '' ? $organizationId : null;
+    }
+
     /** The platform-root subject id administering here, or null. */
     public function subjectId(): ?string
     {
-        $subjectId = $this->membership()?->user_id;
+        $subjectId = $this->membership()->user_id ?? $this->rootOperator()?->subject_id;
+
+        return is_string($subjectId) && $subjectId !== '' ? $subjectId : null;
+    }
+
+    private function resolveRootOperator(mixed $sessionId, ?string $hostEnv): ?PlatformOperator
+    {
+        $root = $this->platformRoot->environment()?->environmentKey();
+
+        if (! is_string($sessionId) || $sessionId === '' || $hostEnv === null || $root === null || $hostEnv !== $root) {
+            return null;
+        }
+
+        $subjectId = $this->liveSubject($sessionId);
+
+        if ($subjectId === null) {
+            return null;
+        }
+
+        return $this->platformRoot->run(fn (): ?PlatformOperator => $this->operators->findBySubject($subjectId));
+    }
+
+    /**
+     * The subject behind a live session in the platform root, or null — the session row
+     * active, the subject still admitted. Shared by both kinds of administrator.
+     */
+    private function liveSubject(string $sessionId): ?string
+    {
+        $subjectId = $this->platformRoot->run(function () use ($sessionId): ?string {
+            $session = $this->sessions->active($sessionId);
+
+            if ($session === null) {
+                return null;
+            }
+
+            $subject = $this->subjects->find($session->user_id);
+
+            if ($subject === null) {
+                return null;
+            }
+
+            return ($subject->admitsSignIn() ?? $this->subjects->isActive($session->user_id))
+                ? $session->user_id
+                : null;
+        });
 
         return is_string($subjectId) && $subjectId !== '' ? $subjectId : null;
     }
@@ -169,32 +327,10 @@ final class EnvironmentAdminAuth
         // Asking the session ROW, not just the cookie, is what a raw id in the session
         // could never do: a revoked or expired session is refused here, so revoking an
         // admin's sessions ends their console rather than merely their next sign-in.
-        $subjectId = $this->platformRoot->run(function () use ($sessionId): ?string {
-            $session = $this->sessions->active($sessionId);
-
-            if ($session === null) {
-                return null;
-            }
-
-            // The subject is the credential of record, so a deactivated one (removed
-            // member, unaccepted invitation) must lose the admin session immediately.
-            //
-            // Standing is read off the row already loaded when the resolver says
-            // ({@see Subject::admitsSignIn()}), and falls back to asking the contract when
-            // it does not — a host-bound Subjects implementation that predates the field
-            // keeps being asked rather than being assumed active. It was two identical
-            // `select * from users where id = ?` before, on every environment-console page
-            // and every Livewire round trip.
-            $subject = $this->subjects->find($session->user_id);
-
-            if ($subject === null) {
-                return null;
-            }
-
-            return ($subject->admitsSignIn() ?? $this->subjects->isActive($session->user_id))
-                ? $session->user_id
-                : null;
-        });
+        // The subject is the credential of record, so a deactivated one (removed member,
+        // unaccepted invitation) must lose the admin session immediately. Standing is read
+        // off the row already loaded when the resolver says ({@see Subject::admitsSignIn()}).
+        $subjectId = $this->liveSubject($sessionId);
 
         if (! is_string($subjectId) || $subjectId === '') {
             return null;
@@ -253,14 +389,22 @@ final class EnvironmentAdminAuth
         return $membership;
     }
 
+    /** Whether ANYBODY administers this environment on this request — either kind. */
     public function check(): bool
     {
-        return $this->membership() !== null;
+        return $this->membership() !== null || $this->rootOperator() !== null;
     }
 
-    /** The environment id the current admin session is anchored to, or null. */
+    /**
+     * The environment the current admin session administers, or null: the session's anchor
+     * on a tenant's host, the root environment itself on the root's console.
+     */
     public function environmentId(): ?string
     {
+        if ($this->rootOperator() !== null) {
+            return $this->environments->current()?->environmentKey();
+        }
+
         $env = session()->get(self::ENV_KEY);
 
         return is_string($env) && $env !== '' ? $env : null;
@@ -271,6 +415,8 @@ final class EnvironmentAdminAuth
         session()->forget(self::ENV_KEY);
         $this->memoKey = null;
         $this->memoMembership = null;
+        $this->operatorMemoKey = null;
+        $this->operatorMemo = null;
 
         // Through PlatformAuth, because what is being ended is a subject session: it
         // revokes the framework row and clears the held-account SET, neither of which

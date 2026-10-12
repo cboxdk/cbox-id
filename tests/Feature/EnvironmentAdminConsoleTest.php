@@ -202,8 +202,13 @@ it('bounces an unauthenticated tenant admin to the ROOT open-environment handoff
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
 
     // No credential form on the tenant host — the admin is sent to the root's
-    // "open environment" door, which authenticates once and hands off back here.
+    // "open environment" door, which authenticates once and hands off back here — to the
+    // page they asked for, which rides along as `to` and is validated at both ends.
     $this->get("https://{$host}/admin/organizations")
+        ->assertRedirect('https://cboxid.com/open/'.$envId.'?to=%2Fadmin%2Forganizations');
+
+    // The console's front page needs no target: it is where a handoff lands anyway.
+    $this->get("https://{$host}/admin")
         ->assertRedirect('https://cboxid.com/open/'.$envId);
 });
 

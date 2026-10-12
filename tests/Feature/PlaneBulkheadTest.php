@@ -157,15 +157,22 @@ it('refuses the console plane on a name that is not the platform root', function
 
 /**
  * The half of the old `plane:subject` that still holds: the platform root is an identity
- * provider for nobody, so the issuer surface and the environment-admin door are absent
- * there. Separating the console from these two is the whole of this change.
+ * provider for nobody, so the issuer surface is absent there.
+ *
+ * The ENVIRONMENT CONSOLE is not any more — on the root's own host. The root environment
+ * is how every workspace owner and operator signs in, and its operators administer it at
+ * `cboxid.com/admin` exactly as a tenant's administrators do theirs. Only on the root's
+ * exact host: a name that merely resolves to the root (an unmapped wildcard) serves no
+ * environment console, as it serves no sign-in form.
  */
-it('withholds the issuer surface and the environment console from the platform root', function (): void {
+it('withholds the issuer surface from the platform root, and serves its environment console only on its own host', function (): void {
     $root = planeGate('env_prod', 'env_prod');
     $tenant = planeGate('env_tenant_a', 'env_prod');
 
     expect(passesPlane($root, 'issuer', 'cboxid.com'))->toBeFalse()
-        ->and(passesPlane($root, 'environment', 'cboxid.com'))->toBeFalse()
+        ->and(passesPlane($root, 'environment', 'cboxid.com'))->toBeTrue()
+        ->and(passesPlane($root, 'environment', 'nope.cboxid.com'))->toBeFalse()
+        ->and(passesPlane($root, 'environment', 'anything.invalid'))->toBeFalse()
         ->and(passesPlane($tenant, 'issuer'))->toBeTrue()
         ->and(passesPlane($tenant, 'environment'))->toBeTrue();
 });
@@ -215,7 +222,7 @@ it('leaves the rest of the issuer surface absent on the platform root', function
     // of which ride `plane:issuer` and stay refused with the very client_id that opens
     // the token endpoints.
     expect(passesPlane($root, 'issuer', 'cboxid.com', $ours))->toBeFalse()
-        ->and(passesPlane($root, 'environment', 'cboxid.com', $ours))->toBeFalse();
+        ->and(passesPlane($root, 'keys', 'cboxid.com', $ours))->toBeTrue();
 })->group('security');
 
 it('serves the token endpoints on a tenant host for any client, first-party or not', function (): void {

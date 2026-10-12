@@ -7,7 +7,17 @@ description: Where everything is in the environment console — sign-in methods,
 # Finding your way
 
 The environment console (`/admin` on your environment's host) is grouped by task, in the
-words other identity platforms use. If you have used WorkOS, Clerk or Auth0, most things
+words other identity platforms use.
+
+**Which console am I in?** Every page says, in one line above it: *Environment:
+Production · Environment on acme.cboxid.com*, *Workspace: Acme*, or *Platform admin*. On the
+root host (`cboxid.com`) the console without `/admin` is your **workspace**: projects,
+team, keys, billing, settings and your team's own sign-in to Cbox ID. How people sign in to
+your apps is set in an **environment's** console. Opening Social login, Branding or Sign-in
+methods on the root host shows a link to that page in each of your environments. Platform
+operators also have the **platform's own environment** at `cboxid.com/admin`, the same
+console for the environment everybody signs in to Cbox ID with
+([Administering the platform's own environment](../operations/platform-environment.md)). If you have used WorkOS, Clerk or Auth0, most things
 are where you would look first. This page shows the map, then walks the common tasks
 click by click.
 
@@ -18,7 +28,8 @@ click by click.
 - **⌘K** (Ctrl+K on Windows and Linux): type a page's name, or the word you would use for
   it elsewhere. *SAML*, *OIDC*, *SCIM*, *HR system*, *Google login*, *tenant*, *RBAC*,
   *passkeys*, *MCP* and *logo* all find the right page. It also finds a user by email, an
-  organization or app by name, and any record by a pasted id.
+  organization or app by name, and any record by a pasted id. To open another environment,
+  type its name and choose **Open …**.
 - **Breadcrumbs** on every detail page, such as *Authentication / Enterprise SSO* above a
   connection. They lead back to the list the page belongs to.
 

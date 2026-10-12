@@ -452,7 +452,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     /** The environment console's own gate: a membership administering THIS environment. */
     private function assertEnvironmentAdmin(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        abort_unless(app(EnvironmentAdminAuth::class)->check(), 403);
     }
 
     private function resolve(string $organization): Organization

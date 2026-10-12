@@ -29,7 +29,7 @@ final readonly class EnvironmentOrganizationApiKeyController extends ConsoleCont
     {
         $organization = $this->organizationInUrl();
 
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        abort_unless(app(EnvironmentAdminAuth::class)->check(), 403);
         abort_if(Organization::query()->whereKey($organization)->doesntExist(), 404);
 
         $result = $this->act(RevokeCustomerApiKey::class, ['id' => $key, 'organization_id' => $organization]);

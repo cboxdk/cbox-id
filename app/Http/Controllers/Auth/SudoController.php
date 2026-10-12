@@ -86,7 +86,7 @@ final readonly class SudoController extends PageController
 
     public function showEnvironment(EnvironmentAdminAuth $admin): Response
     {
-        abort_if($admin->membership() === null, 403);
+        abort_unless($admin->check(), 403);
 
         return $this->page('auth/sudo', "Confirm it's you", [
             'reason' => StepUpReason::pending('environment.sudo'),
@@ -101,7 +101,7 @@ final readonly class SudoController extends PageController
         PlatformRoot $root,
         EnvironmentSudo $sudo,
     ): RedirectResponse {
-        abort_if($admin->membership() === null, 403);
+        abort_unless($admin->check(), 403);
 
         $subjectId = $admin->subjectId();
 

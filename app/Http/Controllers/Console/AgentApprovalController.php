@@ -360,9 +360,11 @@ final readonly class AgentApprovalController extends ConsoleController
     private function record(string $action, string $approvalId, string $actionName, string $actorId): void
     {
         $auth = app(EnvironmentAdminAuth::class);
-        $workspaceId = $auth->membership()?->organization_id;
+        // None on the platform root's console, which no workspace owns: the act is on the
+        // environment's own trail, and there is no workspace log to copy it to.
+        $workspaceId = $auth->workspaceId();
 
-        if (! is_string($workspaceId) || $workspaceId === '') {
+        if ($workspaceId === null) {
             return;
         }
 
@@ -378,6 +380,6 @@ final readonly class AgentApprovalController extends ConsoleController
 
     private function assertEnvironmentAdmin(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        abort_unless(app(EnvironmentAdminAuth::class)->check(), 403);
     }
 }

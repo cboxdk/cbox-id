@@ -92,6 +92,6 @@ final readonly class StaffController extends ConsoleController
 
     private function assertEnvironmentAdmin(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        abort_unless(app(EnvironmentAdminAuth::class)->check(), 403);
     }
 }

@@ -107,28 +107,48 @@ it('shrinks a workspace console to the workspace, its team\'s sign-in, its log a
         ->and($shell['notice'])->toBeNull();
 });
 
-it('says what a hidden page is when a workspace reaches it by URL, and does not refuse it', function (): void {
+it('answers a page an environment owns, reached by URL on the root, with where it is set', function (): void {
     ['subjectId' => $subjectId] = aWorkspace();
     signInAsMember($subjectId);
 
-    // Hidden, not redirected: an app a workspace registered in Cbox's environment before
-    // this change is still reachable, so it can still be deleted.
-    $shell = (array) $this->get('https://cboxid.com/roles')->assertOk()->inertiaProps('shell');
+    // Not the workspace's Roles page, which configured the workspace's own record in Cbox's
+    // environment while looking like the product's: the same URL now says roles are set in
+    // an environment's console, and offers the same page in each environment they may open.
+    $page = $this->get('https://cboxid.com/roles')->assertOk();
 
-    expect($shell['notice'])->toBeArray()
-        // …and the rail does not light an area above it: the page is not Workspace's.
-        ->and($shell['activeArea'])->toBeNull()
-        ->and($shell['notice']['href'])->toBe(route('projects'))
-        ->and($shell['notice']['message'])->toContain('not your product');
+    expect($page->inertiaPage()['component'])->toBe('console/configured-in-environment')
+        ->and($page->inertiaProps('label'))->toBe('Roles')
+        ->and($page->inertiaProps('samePage'))->toBeTrue()
+        // …and the switcher's rows carry that page along, so one click lands on it.
+        ->and(json_encode($page->inertiaProps('shell.context.projects')))->toContain(rawurlencode('/admin/roles'));
+
+    // The same for Social login, Branding and Sign-in methods — the pages that looked most
+    // like the platform's own sign-in.
+    foreach (['/social-sign-in', '/branding', '/sign-in-methods'] as $path) {
+        expect($this->get('https://cboxid.com'.$path)->assertOk()->inertiaPage()['component'])->toBe('console/configured-in-environment');
+    }
+
+    // A write to one is not there at all: nothing on this host configures the workspace's
+    // organization as though it were an environment.
+    $this->post('https://cboxid.com/roles', ['name' => 'Sneaky'])->assertNotFound();
 });
 
-it('keeps the full console for the people who run the deployment', function (): void {
+it('sends an operator from the root\'s organization pages to the platform environment\'s own', function (): void {
     aWorkspace();
 
     $operator = app(PlatformOperators::class)->create('op@platform.test', 'a-strong-operator-pass', 'Operator');
     signInAsSubject((string) $operator->subject_id);
 
-    expect(app(ConsoleScope::class)->atWorkspaceAltitude())->toBeFalse();
+    // What an operator means by "Social login on cboxid.com" is the platform's sign-in:
+    // the root environment's console, at the same page, with the same query.
+    $this->get('https://cboxid.com/social-sign-in?organization=x')->assertRedirect('https://cboxid.com/admin/social-sign-in?organization=x');
+    $this->get('https://cboxid.com/sign-in-methods')->assertRedirect('https://cboxid.com/admin/sign-in-methods');
+
+    // …and the rail on this host is the workspace console's for them too.
+    $rail = railOf('https://cboxid.com/account');
+
+    expect($rail)->not->toHaveKey('developers')
+        ->and($rail)->not->toHaveKey('directory');
 });
 
 it('keeps the full console on a single-tenant install, where the root environment IS the product', function (): void {

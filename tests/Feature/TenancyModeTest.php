@@ -63,15 +63,15 @@ it('treats a non-boolean statement as unstated rather than as true', function ()
 it('keeps the host bulkheads on when multi-tenancy is on', function (): void {
     // The consequence, not just the flag. The suite's ambient environment IS the default
     // one, so with the mode on this request is standing on the platform root: no issuer
-    // surface, no environment console. With it off there is no root to be on, and every
-    // host serves everything.
+    // surface, and no environment console under a name that is not the root's own. With it
+    // off there is no root to be on, and every host serves everything.
     config()->set('cbox-id.tenancy.multi_tenant', true);
     expect(planes()->servesIssuer())->toBeFalse()
-        ->and(planes()->servesEnvironmentAdmin())->toBeFalse();
+        ->and(planes()->servesEnvironmentAdmin('anything.invalid'))->toBeFalse();
 
     config()->set('cbox-id.tenancy.multi_tenant', false);
     expect(planes()->servesIssuer())->toBeTrue()
-        ->and(planes()->servesEnvironmentAdmin())->toBeTrue();
+        ->and(planes()->servesEnvironmentAdmin('anything.invalid'))->toBeTrue();
 })->group('security');
 
 it('serves multi-tenancy without subdomains, on per-tenant custom domains', function (): void {

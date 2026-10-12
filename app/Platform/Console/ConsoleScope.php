@@ -67,6 +67,9 @@ class ConsoleScope
 
     private ?string $nameRecord = null;
 
+    /** @var array<string, bool> memo for {@see subjectIsOperator()}, keyed on the subject asked about */
+    private array $operatorBySubject = [];
+
     /** @see bindOrganization() — the organization this request's URL names, environment plane only. */
     private ?string $boundOrganization = null;
 
@@ -92,6 +95,15 @@ class ConsoleScope
      */
     public function plane(): ConsolePlane
     {
+        // The platform root's environment console is the environment plane by its route,
+        // not by which sessions exist: its operators hold an ordinary subject session on
+        // this host, and if that ever resolved here (nothing on `/admin` runs the subject
+        // gate today) it must not turn the root's console into the operator's own
+        // organization's.
+        if ($this->environmentAdmin->onRootConsole()) {
+            return ConsolePlane::Environment;
+        }
+
         return $this->subject->check()
             ? ConsolePlane::Organization
             : ConsolePlane::Environment;
@@ -483,8 +495,14 @@ class ConsoleScope
             return AuditActor::system();
         }
 
-        return $this->plane() === ConsolePlane::Organization
-            ? AuditActor::user($actorId)
+        if ($this->plane() === ConsolePlane::Organization) {
+            return AuditActor::user($actorId);
+        }
+
+        // On the platform root's console, the deployment's operator — the actor the
+        // platform's own trail names them as, by the subject they sign in as.
+        return $this->environmentAdmin->admitsRootOperator()
+            ? AuditActor::operator($actorId)
             : AuditActor::organizationMember($actorId);
     }
 
@@ -545,6 +563,20 @@ class ConsoleScope
         return $this->operatorRecord = app(PlatformRoot::class)->run(
             fn (): ?PlatformOperator => $this->operators->findBySubject($subjectId),
         );
+    }
+
+    /**
+     * Whether a given platform-root subject runs this deployment — for a console that knows
+     * who is signed in but deliberately does not make them an operator here (an environment
+     * console, {@see actingSubjectId()}), and only wants to offer the way to where they are one.
+     */
+    public function subjectIsOperator(string $subjectId): bool
+    {
+        if (! array_key_exists($subjectId, $this->operatorBySubject)) {
+            $this->operatorBySubject[$subjectId] = app(PlatformRoot::class)->run(fn (): bool => $this->operators->findBySubject($subjectId) !== null) === true;
+        }
+
+        return $this->operatorBySubject[$subjectId];
     }
 
     /**
@@ -742,19 +774,25 @@ class ConsoleScope
     /**
      * Whether this console is a WORKSPACE's own — see {@see WorkspaceAltitude}.
      *
-     * Four conditions, each load-bearing. The organization console, because the environment
-     * console is already the product. The platform root of a multi-tenant deployment,
-     * because on a single-tenant install the root environment IS the product and hiding its
-     * administration would hide everything. An organization that owns identity providers,
-     * because every other organization's console is its product. And not an operator,
-     * whose job is the full console on whichever organization they are looking at.
+     * Three conditions, each load-bearing. The organization console, because the
+     * environment console is already the product. The platform root of a multi-tenant
+     * deployment, because on a single-tenant install the root environment IS the product and
+     * hiding its administration would hide everything. An organization that owns identity
+     * providers, because every other organization's console is its product.
+     *
+     * OPERATORS INCLUDED. There was a fourth — "and not an operator, whose job is the full
+     * console on whichever organization they are looking at" — and it is what put an
+     * operator on `cboxid.com/social-sign-in`, a page that looked like the platform's sign-in
+     * and configured their own workspace's organization. The platform's own environment
+     * has its console now (`/admin` on this host, {@see EnvironmentAdminAuth::rootOperator()}),
+     * and every organization in it is administered there; an operator's workspace console
+     * is the workspace's, like anybody's. See {@see RootHostConsole}.
      */
     public function atWorkspaceAltitude(): bool
     {
         return $this->plane() === ConsolePlane::Organization
             && $this->planes->onAccountPlane()
-            && $this->ownsIdentityProviders()
-            && ! $this->isPlatformOperator();
+            && $this->ownsIdentityProviders();
     }
 
     /**

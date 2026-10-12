@@ -7,6 +7,7 @@ namespace App\Platform\Actions\Principal;
 use App\Http\Controllers\EnvironmentHandoffController;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
+use App\Platform\Actions\Approvals\PlatformRootApprovals;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
@@ -20,6 +21,8 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\PlatformRoot;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -46,14 +49,39 @@ use Illuminate\Auth\Access\AuthorizationException;
  *
  * CRITICAL WAITS FOR THE PERSON, approved on their device in the platform root, as for
  * every token.
+ *
+ * OR A PLATFORM OPERATOR, BOUND TO THE PLATFORM ROOT'S OWN ENVIRONMENT ({@see forPlatformRoot()}).
+ * The root environment — how every workspace owner and operator signs in — belongs to no
+ * workspace, and its console is its operators' ({@see EnvironmentAdminAuth::rootOperator()}).
+ * The same principal, with the same rights on the same actions, so a token reaches exactly
+ * what that console reaches; what differs is who may be bound to it — an ACTIVE operator,
+ * asked again on every authorization rather than trusted from the moment of binding — and
+ * how the trail names them: as the deployment's operator.
  */
 final readonly class EnvironmentMemberPrincipal implements SignedInPerson, TokenAuthenticated
 {
     public function __construct(
         private RootSignIn $signIn,
         private Environment $environment,
-        private RootWorkspace $workspace,
+        private ?RootWorkspace $workspace,
+        private bool $platformOperator = false,
     ) {}
+
+    /**
+     * A platform operator's token, bound to the platform root's own environment. The caller
+     * has established that the person is an active operator and that $root IS the root;
+     * {@see authorize()} asks the first again on every action.
+     */
+    public static function forPlatformRoot(RootSignIn $signIn, Environment $root, ?RootWorkspace $workspace): self
+    {
+        return new self($signIn, $root, $workspace, platformOperator: true);
+    }
+
+    /** Whether this is an operator bound to the platform root's own environment. */
+    public function onPlatformRoot(): bool
+    {
+        return $this->platformOperator;
+    }
 
     /** The root-issued token this person signed in with ({@see TokenAuthenticated}). */
     public function token(): ?Introspection
@@ -86,7 +114,9 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
 
     public function auditActor(): AuditActor
     {
-        return AuditActor::organizationMember($this->signIn->subjectId);
+        return $this->platformOperator
+            ? AuditActor::operator($this->signIn->subjectId)
+            : AuditActor::organizationMember($this->signIn->subjectId);
     }
 
     public function authorize(ActionDefinition $action): void
@@ -99,11 +129,29 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
             throw new AuthorizationException("This sign-in was not granted the required scope: {$action->scope}.");
         }
 
+        if (! self::consoleRuns($action)) {
+            throw new AuthorizationException('You do not have permission to change this.');
+        }
+
+        // The platform root's own environment: its administrators are the deployment's
+        // ACTIVE operators — asked again here, so an operator suspended after the token was
+        // bound loses the root at the next action, as the console's door re-asks per request.
+        if ($this->platformOperator) {
+            $root = app(PlatformRoot::class)->environment()?->environmentKey();
+            $operator = app(PlatformRoot::class)->run(fn (): bool => app(PlatformOperators::class)->findBySubject($this->signIn->subjectId) !== null) === true;
+
+            if (! $operator || $root === null || $root !== (string) $this->environment->id) {
+                throw new AuthorizationException('Only a platform operator can change the platform\'s own environment.');
+            }
+
+            return;
+        }
+
         // Both the workspace's answer and the environment's own, asked again here so an
         // action reached any other way than the door that bound this principal still asks
         // them: the role administers environments and the membership reaches this one
         // ({@see EnvironmentAdminAuth}'s per-request re-check, for a token).
-        if (! self::consoleRuns($action)
+        if ($this->workspace === null
             || ! $this->workspace->capabilities()->canManageEnvironments()
             || ! in_array($this->environment->id, $this->workspace->environmentIds, true)) {
             throw new AuthorizationException('You do not have permission to change this.');
@@ -120,9 +168,14 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
         return '"'.$this->signIn->clientName.'" for '.$this->signIn->personName.' in '.$this->environment->name;
     }
 
+    /**
+     * Every critical action, as for any token — and in the platform root's own environment
+     * every write ({@see PlatformRootApprovals}).
+     */
     public function stepUpPolicy(): StepUpPolicy
     {
-        return new StepUpPolicy(Danger::Critical);
+        return PlatformRootApprovals::raise(new StepUpPolicy(Danger::Critical), (string) $this->environment->id)
+            ?? new StepUpPolicy(Danger::Critical);
     }
 
     public function approverSubjectId(): string
@@ -185,9 +238,10 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
         return (string) $this->environment->id;
     }
 
-    public function workspaceId(): string
+    /** The workspace whose membership bound this principal — none on the platform root's own environment. */
+    public function workspaceId(): ?string
     {
-        return $this->workspace->id;
+        return $this->platformOperator ? null : $this->workspace?->id;
     }
 
     /**

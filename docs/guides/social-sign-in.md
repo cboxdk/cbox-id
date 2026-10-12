@@ -64,6 +64,17 @@ the plain one, and every organization's. This is the usual case:
    you reload while you are in Google's console.
 4. Paste the client ID and secret Google gave you, then **Turn on Google for everyone**.
 
+**These buttons are for the people who sign in to your apps**, on your environment's hosted
+pages. Your environment's console (`/admin`) is not signed in to with them. Its
+administrators are Cbox ID accounts and sign in at the platform's root, with the platform's
+own sign-in methods. The page says which of the two it is.
+
+**Google on cboxid.com itself.** That is the platform's own environment. Its operators turn
+it on the same way, in that environment's console at `cboxid.com/admin`. The redirect URI to
+register is on the root host. The button then appears on `cboxid.com/login`, the sign-in
+for every workspace owner and operator and for every environment console. See
+[Administering the platform's own environment](../operations/platform-environment.md).
+
 On a single-tenant install, platform operators and owners of the install's own organization
 (see [Authentication policy](authentication-policy.md)) find the same form under
 **Sign-in › Social login** on the organization console, with **Who is it for?** set to **Every sign-in page in this

@@ -12,6 +12,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\RootSignInGuard;
 use App\Platform\SignInAudit;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 
@@ -37,7 +38,7 @@ use Cbox\Id\Federation\Enums\ConnectionStatus;
 )]
 final readonly class TurnOffSocialProvider implements Action
 {
-    public function __construct(private SignInAudit $audit) {}
+    public function __construct(private SignInAudit $audit, private RootSignInGuard $guard) {}
 
     public static function input(): InputSchema
     {
@@ -54,6 +55,10 @@ final readonly class TurnOffSocialProvider implements Action
         // Recorded once, on the change: turning off a provider that is already off is not
         // a second entry on the trail.
         if ($connection->status !== ConnectionStatus::Inactive) {
+            // The platform root's own environment: nobody may leave its operators without a
+            // way to sign in ({@see RootSignInGuard}). A no-op in every other environment.
+            $this->guard->assertOperatorsKeepAWayIn(['connections_gone' => [(string) $connection->id]]);
+
             $connection->status = ConnectionStatus::Inactive;
             $connection->save();
 

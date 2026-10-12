@@ -168,6 +168,30 @@ final class ConsoleCrawl
     }
 
     /**
+     * What a plain browser GET of every route `$select` accepts answers on `$host`, by route
+     * name — the status, after no redirects. Routes `$parameters` cannot name a URL for are
+     * left out. For a test that compares two consoles route by route rather than crawls one.
+     *
+     * @param  Closure(Route): bool  $select
+     * @param  array<string, string|null>  $parameters
+     * @return array<string, int>
+     */
+    public function answers(string $host, Closure $select, array $parameters): array
+    {
+        $answers = [];
+
+        foreach ($this->routes($select) as $route) {
+            $url = $this->urlFor($route, $host, $parameters);
+
+            if ($url !== null) {
+                $answers[(string) $route->getName()] = $this->request($url, inertia: false)->status();
+            }
+        }
+
+        return $answers;
+    }
+
+    /**
      * The persona's console: every GET route `$select` accepts, on `$host`, with what
      * `$parameters` can name for it. Routes it cannot name a URL for are not guessed.
      *
