@@ -70,11 +70,10 @@ it('does not expose environment domain controls to an organization admin', funct
         ARRAY_FILTER_USE_BOTH,
     );
 
-    // The two writes are the page's own two saves — the sign-in theme and the name & email —
-    // both at this organization's altitude. Nothing about the environment's domain.
-    expect(array_keys($urls))->toEqualCanonicalizing(['saveHref', 'profileHref'])
-        ->and($urls['saveHref'])->toBe(route('branding.update'))
-        ->and($urls['profileHref'])->toBe(route('branding.profile.update'));
+    // ONE write: the page's one Save — the sign-in theme, its images and the name & email
+    // together — at this organization's altitude. Nothing about the environment's domain.
+    expect(array_keys($urls))->toBe(['saveHref'])
+        ->and($urls['saveHref'])->toBe(route('branding.update'));
 });
 
 /**
