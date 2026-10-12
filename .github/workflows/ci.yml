@@ -6,11 +6,57 @@ on:
   pull_request:
 
 jobs:
-  test:
+  # ---------------------------------------------------------------------------
+  # HOW THIS WORKFLOW IS LAID OUT, AND WHY
+  #
+  # Every merge to main waits for the slowest job here before the release CronJob in
+  # cbox-infra deploys it (infra/kubernetes/cbox-id/release.yaml: it releases a commit
+  # once EVERY check run on it has completed and none failed; it does not read job
+  # names). So the jobs run side by side and none of them waits on another: keep it that
+  # way. A job behind a `needs:` is not guaranteed to have a check run before its
+  # dependency finishes, and in that gap every check that does exist can be green.
+  #
+  # The suite used to run in one PHP process per job and took 53 minutes of a ~67 minute
+  # run. Two things made it slow, and neither was the tests:
+  #
+  #  1. The dev image loads Xdebug in develop,debug,coverage mode. Measured in this image
+  #     on tests/Feature/Crawl: 229 s as shipped, 50 s with Xdebug off. Pint, at 569 s,
+  #     was the same story. .github/php/ci.ini turns it off and OPcache on.
+  #  2. One process for ~5,900 tests. The suites now run under `pest --parallel`, one
+  #     worker per core, as they already do on a developer's machine.
+  #
+  # Every check that ran before still runs: lint and static analysis in `lint`, the Unit
+  # and Feature suites on sqlite in `test`, the browser suite (axe-core, smoke, visual
+  # baselines) in `browser`, and the Unit and Feature suites again on each server engine.
+  # ---------------------------------------------------------------------------
+  lint:
     # GITHUB-HOSTED, ALWAYS. The repository is public, so GitHub's runners cost nothing
     # here, and an ephemeral runner is the only safe place for a pull request's code:
     # `composer install`, `npm ci` and the suite all execute code from the branch. The
     # org's own runners are for private repositories only.
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tune PHP for CI (Xdebug off, OPcache on)
+        run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Lint (Pint)
+        run: vendor/bin/pint --test
+
+      # --memory-limit is not optional: PHPStan's own default is 128M, which this
+      # analysis blows through. Without it the step passes only on a runner whose
+      # php.ini happens to set memory_limit=-1, and OOMs everywhere else.
+      - name: Static analysis (PHPStan/Larastan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
+
+  test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,13 +70,61 @@ jobs:
 
     # The toolchain is the cbox base image's dev tier, not a stack of setup actions: PHP,
     # Composer, Node 22 and Playwright's Chromium are baked in, pinned by the `-v1` release
-    # channel. The visual baselines are drawn in this same image
-    # (`visual-baselines.yml`), so the renderer that judges them is the one that drew them.
+    # channel.
     container:
       image: ghcr.io/cboxdk/php-baseimages/php-cli:${{ matrix.php }}-bookworm-dev-v1
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Tune PHP for CI (Xdebug off, OPcache on)
+        run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # The Feature suite renders the console layout, which resolves the Vite manifest.
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force
+
+      # One worker per core, each with its own sqlite :memory: database. The OpenAPI,
+      # actions-reference and i18n drift checks are tests in this suite
+      # (OpenApiBuildTest, ActionsReferenceTest, HostedPageLanguageTest), so they run here.
+      - name: Tests (Unit + Feature, parallel)
+        run: vendor/bin/pest --testsuite=Unit,Feature --parallel
+
+  browser:
+    runs-on: ubuntu-latest
+
+    # `browser` RUNS IN THE IMAGE `.github/workflows/visual-baselines.yml` draws the
+    # baselines in — the same php-cli 8.5 dev image as every job here. A baseline is a
+    # picture of ONE renderer, so judging it in another would fail for reasons nobody can
+    # act on. (It once ran on a self-hosted runner for pushes to main while the baselines
+    # were drawn on ubuntu-latest, and failed on every push for that alone.) Pictures drawn
+    # on a maintainer's macOS/arm64 laptop fail on Linux/x64 too (text rasterises
+    # differently, the pinned font is substituted). This job judges against pictures from
+    # its own kind of machine. Turning Xdebug off changes nothing a browser draws.
+    #
+    # WHEN ONE GOES RED: open the diff before regenerating anything. Regenerating a
+    # baseline because a test failed, without looking, is how a visual suite becomes a
+    # rubber stamp. If the new picture is the one you meant, run the Visual baselines
+    # workflow and commit what it uploads.
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tune PHP for CI (Xdebug off, OPcache on)
+        run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -46,40 +140,16 @@ jobs:
           cp .env.example .env || true
           php artisan key:generate --force
 
-      - name: Lint (Pint)
-        run: vendor/bin/pint --test
-
-      # --memory-limit is not optional: PHPStan's own default is 128M, which this
-      # analysis blows through. Without it the step passes only on a runner whose
-      # php.ini happens to set memory_limit=-1, and OOMs everywhere else.
-      - name: Static analysis (PHPStan/Larastan)
-        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
-
-      # `visual` RUNS IN THE IMAGE `.github/workflows/visual-baselines.yml` draws the
-      # baselines in — the same php-cli 8.5 dev image as this job. A baseline is a picture
-      # of one renderer, so judging it in another would fail for reasons nobody can act on.
-      # (It once ran on a self-hosted runner for pushes to main while the
-      # baselines were drawn on ubuntu-latest, and failed on every push for that alone.) That is the whole trick: a
-      # screenshot baseline is a picture of ONE renderer, and pictures drawn on a
-      # maintainer's macOS/arm64 laptop fail on Linux/x64 for reasons nobody can act on
-      # (text rasterises differently, the pinned font is substituted). This job judges
-      # against pictures from its own kind of machine.
-      #
-      # WHEN ONE GOES RED: open the diff before regenerating anything. Regenerating a
-      # baseline because a test failed, without looking, is how a visual suite becomes a
-      # rubber stamp. If the new picture is the one you meant, run the Visual baselines
-      # workflow and commit what it uploads.
-      #
       # `docs-screenshots` IS EXCLUDED. It rewrites docs/screenshots/*.png
       # (tests/Browser/DocsScreenshotsTest.php), and runs in its own workflow on every
       # release tag (docs-screenshots.yml), which proposes the pictures as a pull request.
       # The pull-request half — every picture embedded, present and retaken — is
-      # DocsScreenshotsCatalogueTest, which runs here. phpunit.xml excludes it too, but a
-      # `--exclude-group` on the command line REPLACES the XML's list rather than adding to
-      # it, so naming it here keeps it out if a flag is ever added. One flag per group: Pest
-      # reads `--exclude-group=a,b` as a single group with a comma in its name.
-      - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
-        run: vendor/bin/pest --exclude-group=docs-screenshots
+      # DocsScreenshotsCatalogueTest, which runs in `test`. phpunit.xml excludes it too, but
+      # a `--exclude-group` on the command line REPLACES the XML's list rather than adding
+      # to it, so naming it here keeps it out if a flag is ever added. One flag per group:
+      # Pest reads `--exclude-group=a,b` as a single group with a comma in its name.
+      - name: Tests (Browser — axe-core a11y, real-browser smoke, visual)
+        run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots --parallel
 
   # ---------------------------------------------------------------------------
   # SUPPLY CHAIN — its own job so it ALWAYS runs.
@@ -194,6 +264,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Tune PHP for CI (Xdebug off, OPcache on)
+        run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -218,7 +291,26 @@ jobs:
       - name: Migrate from empty (what a first deploy runs)
         run: php artisan migrate --force
 
+      # THE PARALLEL WORKERS EACH GET A DATABASE OF THEIR OWN. Laravel's parallel testing
+      # points worker N at `cbox_id_test_N` and creates it on first use, then migrates it
+      # once (RefreshDatabase). The migration above stays on `cbox_id` itself, which is
+      # what a first deploy migrates.
+      #
+      # PostgreSQL's POSTGRES_USER is a superuser and can create them. MySQL's
+      # MYSQL_USER is granted its own database and nothing else, so root grants it the
+      # test databases by name — the suite keeps running as the application's user,
+      # not as root.
+      - name: Let the app user create the per-worker test databases (MySQL)
+        if: matrix.driver == 'mysql'
+        run: |
+          php <<'PHP'
+          <?php
+          $pdo = new PDO('mysql:host=db;port=3306', 'root', 'root');
+          $pdo->exec("GRANT ALL PRIVILEGES ON `cbox\\_id\\_test\\_%`.* TO 'cbox_id'@'%'");
+          echo "granted cbox_id_test_* to cbox_id\n";
+          PHP
+
       # Browser tests are excluded on purpose: they need Chromium and prove
       # rendering, not persistence. This job is about the engine.
-      - name: Tests (Unit + Feature) on ${{ matrix.image }}
-        run: vendor/bin/pest --testsuite=Unit,Feature
+      - name: Tests (Unit + Feature, parallel) on ${{ matrix.image }}
+        run: vendor/bin/pest --testsuite=Unit,Feature --parallel
