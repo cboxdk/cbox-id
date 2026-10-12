@@ -55,6 +55,21 @@ final class MailLinks
     }
 
     /**
+     * A path this application serves — a brand image under `/brand-assets/…` — as an
+     * absolute URL fit to mail.
+     *
+     * The LOGO in a mail is the reason this exists. It was minted with `url()`, from the
+     * Host header like every other link here once was, and an image is worse than a link:
+     * the recipient does not even have to click. A poisoned host would have put a remote
+     * image in every forgot-password mail asked for under it — a read receipt, reporting
+     * when and from where each one was opened, to whoever owned that host.
+     */
+    public function to(string $path): string
+    {
+        return $this->fromCanonicalRoot(fn (): string => $this->url->to($path));
+    }
+
+    /**
      * A signed, expiring named route as an absolute URL fit to mail.
      *
      * The forced root is what makes the SIGNATURE the second half of the defence rather

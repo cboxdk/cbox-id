@@ -294,7 +294,7 @@ final readonly class TeamInvitationService implements TeamInvitations
             // from the Host header of whoever asked to send it — browser or API caller.
             url: $this->links->temporarySignedRoute('organization.invite.accept', now()->addDays(self::LINK_DAYS), ['token' => $token]),
             role: $invitation->role->label(),
-        ));
+        )->forOrganization($invitation->organization_id));
     }
 
     private function remember(Invitation $invitation, Inviter $inviter): void

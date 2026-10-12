@@ -470,6 +470,8 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
 
     private function mail(Invitation $invitation, string $token, Inviter $inviter, ?ReturnTarget $target): void
     {
+        // Drawn in the organization's own brand where it has one: the person is being asked
+        // to join IT, and its sign-in page is where the link lands.
         Mail::to($invitation->email)->locale(app(MailLocale::class)->forRecipient())->send(new InvitationMail(
             organization: $this->organizations->find($invitation->organization_id)->name ?? 'your team',
             inviter: $inviter->name,
@@ -478,7 +480,7 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             url: $this->links->route('invitation.accept', $token),
             role: $invitation->role->label(),
             app: $target?->appName,
-        ));
+        )->forOrganization($invitation->organization_id));
     }
 
     /** The pending invitation with this id IN this organization — bound in the WHERE clause. */

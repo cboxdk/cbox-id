@@ -5,9 +5,9 @@ declare(strict_types=1);
 /*
  * THE MAIL THE HOSTED FLOWS SEND — rendered by PHP alone, never shipped to the browser.
  *
- * `:brand` is the deployment's configured product name (`cbox-id.branding.name`), never a
- * literal: a self-hosted install that renamed itself must not mail its users somebody
- * else's name. Every send site states the recipient's language with `->locale()`
+ * `:brand` is the product name of whoever the reader was dealing with — the organization's or
+ * environment's brand, else the deployment's `cbox-id.branding.name` ({@see \App\Mail\MailBrands})
+ * — never a literal: nobody must be mailed somebody else's name. Every send site states the recipient's language with `->locale()`
  * ({@see \App\Platform\Locale\MailLocale}).
  *
  * Lines that carry `<b>` around a name take the name already escaped and wrapped by the
@@ -51,6 +51,7 @@ return [
         'heading' => 'Confirm your email',
         'body' => 'Welcome to :brand. Confirm this is your email address to finish securing your account. This link is single-use and expires in 24 hours.',
         'button' => 'Confirm email address',
+        'not_you' => 'If you didn\'t create a :brand account, you can ignore this email — nothing happens without the link.',
     ],
 
     'admin_assigned_password' => [
@@ -79,6 +80,7 @@ return [
         'invited' => ':inviter invited you to administer :organization on :brand — the console for its identity providers: environments, members and billing. Accept to set a password and sign in.',
         'invited_as' => ':inviter invited you to administer :organization as :role on :brand — the console for its identity providers: environments, members and billing. Accept to set a password and sign in.',
         'button' => 'Accept invitation',
+        'note' => 'If you weren\'t expecting this invitation, you can ignore it — nothing happens until you accept.',
     ],
 
     // An Admin Portal link, mailed to the customer's IT contact. :organization is bold in the lead.
@@ -96,6 +98,7 @@ return [
         ],
         'button' => 'Start setup',
         'expires' => 'The link works once, until :date. If it expires, ask for a new one.',
+        'not_expected' => 'If you weren\'t expecting this, you can ignore it — nothing is set up until somebody uses the link.',
     ],
 
     // From the daily certificate scan, to an organization's owners and admins. :connection
@@ -109,5 +112,39 @@ return [
         'lead_expired' => 'The signing certificate of :connection, the single sign-on connection for :organization, expired on :date. Nobody can sign in through it until it is renewed.',
         'what_to_do' => 'Ask whoever runs your identity provider for its new signing certificate, then upload it in your admin console — or ask your administrator for an Admin Portal link to upload it.',
         'why' => 'You are receiving this because you are an owner or administrator of this organization on :brand.',
+    ],
+
+    // A one-time code by email (App\Mail\OneTimeCodeMail), per flow: `sign_in` (a risky
+    // sign-in or a challenged sign-up), `device` (approving a TV or CLI sign-in), `link`
+    // (linking a sign-in method), `verify` (anything else). The code is never in the subject.
+    'one_time_code' => [
+        'label' => 'Your code',
+        'expires' => 'It expires in :count minute and works only once.|It expires in :count minutes and works only once.',
+        'never_share' => 'Don\'t share it with anyone — :brand will never ask you for it by phone, chat or email.',
+        'not_you_title' => 'Didn\'t ask for this?',
+        'sign_in' => [
+            'subject' => 'Your :brand sign-in code',
+            'heading' => 'Confirm it\'s you',
+            'lead' => 'Enter this code to finish signing in to :brand.',
+            'not_you' => 'Don\'t enter it anywhere, and you can ignore this email. If you have a :brand account, change its password — someone who got this far may know it.',
+        ],
+        'device' => [
+            'subject' => 'Your :brand code to approve a device',
+            'heading' => 'Approve a sign-in on another device',
+            'lead' => 'Enter this code to approve signing in to :brand on another device, such as a TV or a command-line tool.',
+            'not_you' => 'Don\'t enter it anywhere. Someone may be trying to get you to approve their device — that is how this kind of attack starts. Ignore this email and nothing is approved.',
+        ],
+        'link' => [
+            'subject' => 'Your :brand code to link a sign-in method',
+            'heading' => 'Link a sign-in method',
+            'lead' => 'Enter this code to link a new way of signing in to your :brand account.',
+            'not_you' => 'Don\'t enter it anywhere. Someone may be trying to attach their sign-in to your account. Ignore this email and nothing is linked.',
+        ],
+        'verify' => [
+            'subject' => 'Your :brand verification code',
+            'heading' => 'Your verification code',
+            'lead' => 'Enter this code on :brand to confirm this email address is yours.',
+            'not_you' => 'You can ignore this email — nothing happens without the code.',
+        ],
     ],
 ];

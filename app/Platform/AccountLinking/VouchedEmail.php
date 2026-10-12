@@ -41,6 +41,13 @@ use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
  *     framework (correctly, for its question) declines to carry Google's `email_verified`
  *     for a connection that organization does not own.
  *
+ * And one way for MICROSOFT ENTRA ID, which never sends `email_verified`: the optional
+ * `xms_edov` claim set to `true` ({@see EntraVerifiedEmail}). It stands where the provider's
+ * `email_verified` would — so an environment's or the operator's own Microsoft provider is
+ * taken at its word, and an ORGANIZATION's Entra connection only for an address in a domain
+ * that organization has proven, the same boundary the framework draws for any other claim
+ * ({@see OrganizationVouchedEmail}).
+ *
  * Anything else is no.
  */
 final class VouchedEmail
@@ -53,6 +60,15 @@ final class VouchedEmail
 
         if ($principal->emailVerified === true) {
             return true;
+        }
+
+        $entra = EntraVerifiedEmail::for($principal, $connection);
+
+        // An organization's own Entra connection: `xms_edov` counts exactly as far as the
+        // framework would let `email_verified` count — inside a domain that organization
+        // has proven, and nowhere else.
+        if ($entra && $connection !== null && $connection->organization_id !== null) {
+            return app(OrganizationVouchedEmail::class)->verified($connection, $principal->email, true) === true;
         }
 
         $environmentOwnedCatalogue = $connection !== null
@@ -70,6 +86,6 @@ final class VouchedEmail
 
         // Strictly the boolean `true` (OIDC Core §5.1). A string "true" is a provider that
         // does not follow the spec, and guessing what it meant is the wrong side to err on.
-        return ($principal->raw['email_verified'] ?? null) === true;
+        return ($principal->raw['email_verified'] ?? null) === true || $entra;
     }
 }

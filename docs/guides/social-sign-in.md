@@ -39,6 +39,14 @@ multi-tenant `common` endpoint publishes an issuer with a placeholder in it rath
 a real one, and we refuse that on purpose: accepting it would mean accepting tokens
 issued by any Entra tenant in the world, not just yours.
 
+Entra also never sends `email_verified`. Its way of saying an address is verified is the
+optional **`xms_edov`** claim ("email domain owner verified"): `true` when the address is
+in a domain your tenant has verified. Add it to the app registration, or a person whose
+address already has an account here cannot link their Microsoft sign-in to it (see
+[the link step](#what-happens-when-the-email-address-is-already-taken)): **Token configuration › Add optional
+claim › ID**, tick `email` and `xms_edov`, and accept the Microsoft Graph permission it
+asks for. The setup steps beside the form say the same.
+
 Two of these behave differently enough to call out.
 
 **GitHub** is not an OpenID Provider. There is no `id_token` and no signature over the
@@ -215,7 +223,9 @@ environment's branding and in the visitor's language:
 The rules around it:
 
 - **Only when the provider vouched for the address.** Google's `email_verified`, GitHub's
-  verified address list, an organization's SSO for a domain it has verified. Otherwise the
+  verified address list, Microsoft Entra's `xms_edov: true` (see above), an organization's
+  SSO for a domain it has verified. An organization's own Entra connection counts only
+  inside a domain that organization has verified, the same as any other claim. Otherwise the
   person is told that the provider has not confirmed the address, and that they can sign in
   another way and connect the provider from My account.
 - **Short-lived and single-use.** The held identity lives in the server-side session,
