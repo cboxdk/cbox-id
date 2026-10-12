@@ -16,6 +16,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class EnvironmentHandoffController extends Controller
@@ -53,6 +54,12 @@ final class EnvironmentHandoffController extends Controller
         PlaneResolver $planes,
         HandoffTarget $targets,
     ): SymfonyResponse {
+        // An Inertia visit (a <Link>, or a redirect the client followed) cannot mount a
+        // self-submitting form: send the browser here for real.
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($request->fullUrl());
+        }
+
         // A person of the root with no organization at all — they signed in with Google and
         // were never invited anywhere — is asked the same question below and refused the
         // same way, rather than meeting the scope's own refusal as an error page.

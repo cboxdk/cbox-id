@@ -38,6 +38,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class RedirectOutsideInertia
 {
+    /** The route default a controller route sets when it does not answer with a page. */
+    public const string LEAVES = 'leaves_inertia';
+
     public function __construct(private readonly RouteLookup $routes) {}
 
     /**
@@ -73,6 +76,13 @@ final class RedirectOutsideInertia
         // Unroutable — a static file, a path this deployment does not serve. Whatever it
         // is, it is not a page this client can mount, so let the browser go and get it.
         if ($route === null) {
+            return false;
+        }
+
+        // A route that answers with something other than a page — the environment handoff's
+        // self-submitting form — says so ({@see self::LEAVES}). Followed inside the XHR it
+        // rendered as a blank white modal over the sign-in page on every operator's login.
+        if (($route->defaults[self::LEAVES] ?? false) === true) {
             return false;
         }
 
