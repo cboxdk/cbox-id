@@ -195,6 +195,12 @@ return [
         'add' => 'Se connecter avec un autre compte',
     ],
 
+    'signed_out' => [
+        'title' => 'Déconnecté',
+        'heading' => 'Vous êtes déconnecté',
+        'lead' => 'Vous avez été déconnecté sur cet appareil, y compris de chaque console ouverte depuis cette connexion. Reconnectez-vous pour continuer.',
+    ],
+
     'accept_invite' => [
         'title' => 'Accepter l’invitation',
         'heading' => 'Acceptez votre invitation',

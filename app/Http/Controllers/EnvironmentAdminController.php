@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Auth\SignedOutController;
 use App\Platform\Console\HandoffTarget;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IntendedUrl;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\SignInLineage;
 use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -49,6 +51,7 @@ final class EnvironmentAdminController extends Controller
         EnvironmentAdminAuth $auth,
         SubjectCredentialGate $gate,
         HandoffTarget $targets,
+        SignInLineage $lineage,
     ): RedirectResponse {
         // The old shape — a link with `?token=` — is refused without reading it. The
         // refusal lands on the env-admin gate, which bounces a signed-in member back
@@ -135,7 +138,27 @@ final class EnvironmentAdminController extends Controller
             return $this->sealed(redirect()->route('admin.login'));
         }
 
+        // THE SIGN-IN IT WAS MINTED FROM, which must still be going on. The account host
+        // seals the sessions its browser held into the form, bound to this token
+        // ({@see SignInLineage}). No seal, a seal for another token, or a sign-in that has
+        // since ended — signed out, revoked, expired — and the handoff buys nothing, however
+        // fresh the token: signing out at the account host has to close the door a handoff
+        // already in flight was about to open. The refusal lands on the gate, which mints
+        // again from a live session or sends the person to sign in.
+        $parents = $lineage->open($token, $request->request->get(SignInLineage::FIELD));
+
+        if ($parents === null || ! $lineage->vouches($grant->subjectId, $parents)) {
+            return $this->sealed(redirect()->route('admin.login'));
+        }
+
         $auth->establish($grant->subjectId, $hostEnv);
+
+        // …and tie the console session to it, so signing out on either host ends both.
+        $consoleSession = session()->get(EnvironmentAdminAuth::SESSION_KEY);
+
+        if (is_string($consoleSession) && $consoleSession !== '') {
+            $lineage->link($consoleSession, $parents);
+        }
 
         // NOT `redirect()->intended()`. This host serves two identities that share one
         // session, and `url.intended` is written by whichever of them was refused last —
@@ -163,7 +186,10 @@ final class EnvironmentAdminController extends Controller
     {
         $auth->logout($request);
 
-        return redirect()->route('admin.login');
+        // NOT `admin.login`. That is the console's gate, and a gate's job is to get a
+        // signed-out administrator back in: it bounced to the account host, which minted a
+        // handoff and put them straight back into the console they had just left.
+        return SignedOutController::landing(fromConsole: true);
     }
 
     /**

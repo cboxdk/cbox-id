@@ -102,6 +102,7 @@ it('marks the method this device signed in with last, after signing out', functi
     // …and out again.
     $page->click('button.cbx-avatar-btn');
     $page->click('[role="menuitem"]:has-text("Sign out")');
+    $page->assertSee('You\'re signed out')->click('Sign in');
 
     // The sign-in page now badges the email step — where a password starts — and says why
     // to a screen reader, as a description of the button rather than part of its name.

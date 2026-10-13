@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\PlatformAuth;
 use App\Providers\ConsoleServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -224,7 +223,7 @@ it('does not make an environment administrator an operator', function (): void {
     // authority.
     $root = app(PlatformRoot::class);
     $subject = $root->run(fn () => app(Subjects::class)->find($member->id));
-    $session = $root->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
+    $session = $root->run(fn () => app(SessionManager::class)->active((string) session(EnvironmentAdminAuth::SESSION_KEY)));
     app(CurrentUser::class)->set($subject, $session, null);
 
     expect(app(EnvironmentAdminAuth::class)->check())

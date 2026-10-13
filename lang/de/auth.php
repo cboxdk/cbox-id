@@ -196,6 +196,12 @@ return [
         'add' => 'Als andere Person anmelden',
     ],
 
+    'signed_out' => [
+        'title' => 'Abgemeldet',
+        'heading' => 'Sie sind abgemeldet',
+        'lead' => 'Sie wurden auf diesem Gerät abgemeldet, auch von jeder Konsole, die Sie mit dieser Anmeldung geöffnet haben. Melden Sie sich erneut an, um fortzufahren.',
+    ],
+
     'accept_invite' => [
         'title' => 'Einladung annehmen',
         'heading' => 'Ihre Einladung annehmen',

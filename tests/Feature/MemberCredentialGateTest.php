@@ -174,7 +174,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
     // environment whose OWNER is not active, so the tenant host stops resolving at all,
     // falls back to the platform root, and `plane:subject` 404s the whole console. The
     // redemption never reaches a controller.
-    $this->post('/admin/handoff', ['token' => $token])->assertNotFound();
+    $this->post('/admin/handoff', handoffFields($token, $result->owner->id))->assertNotFound();
 
     // The INNER check, driven at the controller because the wall above is now the reason
     // an HTTP request cannot reach it. Not redundant with the wall: host resolution is
@@ -185,7 +185,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
 
     $response = app()->call(
         [app(EnvironmentAdminController::class), 'handoff'],
-        ['request' => Request::create('/admin/handoff', 'POST', ['token' => $token])],
+        ['request' => Request::create('/admin/handoff', 'POST', handoffFields($token, $result->owner->id))],
     );
 
     expect($response)->toBeInstanceOf(RedirectResponse::class)
@@ -222,7 +222,7 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
 
         if ($form !== null) {
             $chain[] = 'POST '.$form['action'];
-            $response = $test->post($form['action'], ['token' => $form['token']]);
+            $response = $test->post($form['action'], $form['fields']);
 
             continue;
         }
@@ -239,7 +239,10 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
  * The action and token of the handoff page's self-submitting form, or null when the
  * response is not that page.
  *
- * @return array{action: string, token: string}|null
+ * Every hidden field rides along, as the browser's submission would carry them: the
+ * token, and the sealed sign-in it was minted from.
+ *
+ * @return array{action: string, token: string, fields: array<string, string>}|null
  */
 function handoffForm(TestResponse $response): ?array
 {
@@ -251,9 +254,18 @@ function handoffForm(TestResponse $response): ?array
         return null;
     }
 
+    preg_match_all('#<input type="hidden" name="([^"]+)" value="([^"]*)">#', $html, $inputs, PREG_SET_ORDER);
+
+    $fields = [];
+
+    foreach ($inputs as $input) {
+        $fields[html_entity_decode($input[1])] = html_entity_decode($input[2]);
+    }
+
     return [
         'action' => html_entity_decode($action[1]),
         'token' => html_entity_decode($token[1]),
+        'fields' => $fields,
     ];
 }
 
@@ -381,7 +393,7 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     signInAsMember($result->owner->id);
 
     // Same as above: the host the fixture serves on, not the one this file used to name.
-    $refused = $this->post('https://'.$result->environment->domain.'/admin/handoff', ['token' => $token]);
+    $refused = $this->post('https://'.$result->environment->domain.'/admin/handoff', handoffFields($token, $subjectId));
     $refused->assertRedirect();
     nextRequest();
 

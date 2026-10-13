@@ -8,11 +8,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 /*
- * THE BLANK WHITE MODAL AFTER SIGN-IN. Signing in on cboxid.com is an Inertia visit; the
- * dashboard of a workspace with one environment redirects to `/open/{environment}`, which
- * answers with a self-submitting form to the environment host — not a page. The client
- * followed that redirect inside its XHR, got HTML, and drew it as an empty modal over the
- * sign-in form. Every owner with one environment met it on every sign-in.
+ * THE BLANK WHITE MODAL AFTER SIGN-IN. Signing in on cboxid.com is an Inertia visit; a
+ * sign-in that started at an environment's console redirects to `/open/{environment}`,
+ * which answers with a self-submitting form to the environment host — not a page. The
+ * client followed that redirect inside its XHR, got HTML, and drew it as an empty modal
+ * over the sign-in form.
  */
 beforeEach(function (): void {
     multiTenantDeployment('cboxid.com');
@@ -25,10 +25,16 @@ function inertiaVisit(): array
 }
 
 it('turns an Inertia visit that redirects to the handoff into a real navigation', function (): void {
-    ['subjectId' => $subjectId, 'environment' => $environment] = provisionAccount();
-    signInAsMember($subjectId);
+    ['environment' => $environment] = provisionAccount();
 
-    $response = test()->get('https://cboxid.com/dashboard', inertiaVisit());
+    // Signed out at the environment's console: sent to the account host's door, and from
+    // there to sign in — the one sign-in that is meant to end in that console.
+    test()->get('https://cboxid.com/open/'.$environment->id)->assertRedirect('https://cboxid.com/login');
+
+    $response = test()->from('https://cboxid.com/login')->post('https://cboxid.com/login', [
+        'email' => 'owner@acme.example',
+        'password' => 'a-strong-unbreached-passphrase',
+    ], inertiaVisit());
 
     $response->assertStatus(409);
     expect($response->headers->get('X-Inertia-Location'))->toContain('/open/'.$environment->id);

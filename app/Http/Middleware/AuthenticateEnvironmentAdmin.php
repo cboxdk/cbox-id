@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Platform\Console\HandoffTarget;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlaneResolver;
+use App\Platform\SignedInPage;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -80,7 +81,7 @@ final class AuthenticateEnvironmentAdmin
         }
 
         if ($this->auth->membership() !== null) {
-            return $next($request);
+            return SignedInPage::serve($request, $next);
         }
 
         $root = $this->rootHost();
@@ -134,7 +135,7 @@ final class AuthenticateEnvironmentAdmin
                 return redirect()->route('dashboard');
             }
 
-            return $next($request);
+            return SignedInPage::serve($request, $next);
         }
 
         // Signed in, and runs nothing here: the same answer the platform pages give, and for

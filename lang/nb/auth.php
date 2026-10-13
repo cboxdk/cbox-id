@@ -195,6 +195,12 @@ return [
         'add' => 'Logg inn som en annen',
     ],
 
+    'signed_out' => [
+        'title' => 'Logget ut',
+        'heading' => 'Du er logget ut',
+        'lead' => 'Du er logget ut på denne enheten, også fra alle konsollene du åpnet fra denne innloggingen. Logg inn igjen for å fortsette.',
+    ],
+
     'accept_invite' => [
         'title' => 'Godta invitasjon',
         'heading' => 'Godta invitasjonen',

@@ -132,6 +132,12 @@ Environment administrators are platform-root accounts. Somebody who opens
    foreign or tampered target is dropped, and the person lands on the console's home
    instead.
 
+Signing out of `acme.cboxid.com/admin` signs the person out of `cboxid.com` too, and out
+of every other console that sign-in opened. A handoff whose sign-in has ended is refused,
+even if it was never used. The tenant's own users signed in on `acme.cboxid.com` are a
+separate context: the console's sign-out leaves them signed in, and theirs leaves the
+console open.
+
 Somebody who signs in fine but administers nothing in that environment sees **You don't
 administer this environment**. The page says their sign-in worked and offers
 **Switch user** and their projects.

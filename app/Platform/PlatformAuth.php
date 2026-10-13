@@ -17,6 +17,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\SmsFactorRefused;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\SmsCodeSent;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Migration\LegacyMigration;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -567,17 +568,11 @@ final class PlatformAuth
         // load-bearing on whatever else happens to refuse first.
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
-        // AND THE ENVIRONMENT-ADMIN ANCHOR. On a tenant host the admin console and the
-        // tenant's own end-user pages share one cookie and one session key, so a subject
-        // signing in here REPLACES an admin session that was there — but the anchor
-        // survived `regenerate()`, leaving a session that claimed to administer the
-        // environment while naming a session row the platform root has never heard of.
-        // Every request then paid for a root lookup to be told no.
-        //
-        // Safe for the admin door itself: {@see EnvironmentAdminAuth::establish()} calls
-        // this first and writes the anchor afterwards, deliberately, so that an anchor
-        // never stands alone.
-        session()->forget(EnvironmentAdminAuth::ENV_KEY);
+        // NOT THE ENVIRONMENT-ADMIN CONTEXT. On a tenant's host the admin console and the
+        // tenant's own end-user pages share one cookie, but they are two contexts with two
+        // sets of keys ({@see EnvironmentAdminAuth::SESSION_KEY}): a person signing in to
+        // the tenant's apps here does not sign its administrator out of the console, and
+        // the other way round.
 
         // Pin to the caller-supplied org when given (impersonation authorizes against
         // a SPECIFIC org — the session must land there, not in the subject's oldest
@@ -608,13 +603,51 @@ final class PlatformAuth
     }
 
     /**
+     * Start a platform session for an environment's ADMIN CONTEXT — the session a redeemed
+     * handoff becomes on a tenant's host — WITHOUT putting it in this browser's held
+     * accounts.
+     *
+     * The held set and the active key are the END-USER context on a tenant's host: the
+     * tenant's own people, signed in to its apps. The administrator is kept apart from
+     * them ({@see EnvironmentAdminAuth::SESSION_KEY}), so that signing out of either
+     * context leaves the other one alone. Everything else a sign-in does happens here as
+     * it does in {@see establish()}: the row, Radar's record of the device, the
+     * organization's sign-in entry.
+     *
+     * @param  list<string>  $amr
+     */
+    public function startDetached(Request $request, string $subjectId, array $amr): Session
+    {
+        $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
+
+        $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
+
+        app(Radar::class)->succeeded($request, $subjectId);
+
+        $this->recordOrganizationSignIn($subjectId);
+
+        return $session;
+    }
+
+    /**
+     * Whether this request stands in the PLATFORM ROOT — the account host, where the root's
+     * own session is the admin context — rather than on a tenant environment's host, where
+     * the held accounts are the tenant's end users.
+     */
+    public function onPlatformRoot(): bool
+    {
+        $root = $this->platformRoot->environment()?->environmentKey();
+
+        return $root === null || $root === app(EnvironmentContext::class)->current()?->environmentKey();
+    }
+
+    /**
      * Adopt a framework session that was already started (e.g. by magic-link
      * redemption) into the browser cookie.
      */
     public function adopt(Request $request, Session $session): void
     {
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
-        session()->forget(EnvironmentAdminAuth::ENV_KEY);
 
         $organizationId = $session->organization_id
             ?? $this->memberships->forUser($session->user_id)->value('organization_id');
@@ -788,21 +821,57 @@ final class PlatformAuth
     }
 
     /**
-     * Log out of every signed-in account and tear the browser session down.
+     * SIGN OUT: every account this browser holds, everywhere that sign-in reached, and tear
+     * the browser session down. What "Log out" means on every host — the account console,
+     * an environment's admin console, My account, the platform root's own console.
+     *
+     * NOT THIS HOST'S ROWS ALONE. An environment console's session is a platform-root
+     * session minted by a handoff from the account host, behind a different cookie on a
+     * different origin. Ending only the row this cookie names left the other host signed
+     * in, and its open-environment door minted a fresh handoff straight back into the
+     * console the person had just left. So the whole sign-in is ended
+     * ({@see SignInLineage::family()}): the sessions held here, the account-host sessions
+     * they were handed off from, and every console session handed off from those — on
+     * other tabs too, since the rows are what every host asks.
+     *
+     * Revoked in the platform root as well as the ambient scope: on an environment's host
+     * the ambient scope is the tenant's, where the administrator's own row is not, and a
+     * revoke asked there found nothing and ended nothing.
      */
     public function logoutAll(Request $request): void
     {
-        foreach ($this->accountsMap() as $held) {
-            $this->sessions->revoke($held->sessionId);
-        }
+        $lineage = app(SignInLineage::class);
 
-        $sessionId = session()->get(self::SESSION_KEY);
-
-        if (is_string($sessionId)) {
-            $this->sessions->revoke($sessionId);
+        if ($this->onPlatformRoot()) {
+            $lineage->revoke($lineage->family($this->heldSessionIds()));
+        } else {
+            // On a tenant's host the held accounts are the END-USER context — the tenant's
+            // own people, whose rows live in the tenant. Only those end, and nothing they
+            // could be linked to: the environment console's administrator on this host is
+            // another context and stays signed in ({@see EnvironmentAdminAuth::logout()}).
+            $lineage->revokeHere($this->heldSessionIds());
         }
 
         $this->tearDown();
+    }
+
+    /**
+     * The framework session ids this browser holds — every held account, and the active
+     * one's derived key — on this host.
+     *
+     * @return list<string>
+     */
+    public function heldSessionIds(): array
+    {
+        $ids = array_map(static fn (HeldAccount $held): string => $held->sessionId, array_values($this->accountsMap()));
+
+        $sessionId = session()->get(self::SESSION_KEY);
+
+        if (is_string($sessionId) && $sessionId !== '') {
+            $ids[] = $sessionId;
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**
@@ -884,7 +953,19 @@ final class PlatformAuth
             self::SESSION_KEY, self::ORG_KEY, self::ACCOUNTS_KEY, self::ACTIVE_KEY,
             self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY,
         ]);
+
+        // THE OTHER CONTEXT SURVIVES. On a tenant's host this browser session may also
+        // carry the environment console's administrator, who did not sign out: their keys
+        // are put back into the fresh session ({@see EnvironmentAdminAuth::CONTEXT_KEYS}).
+        // On the platform root there is no second context — the root's session IS the
+        // admin one — so nothing is carried over there.
+        $admin = $this->onPlatformRoot() ? [] : EnvironmentAdminAuth::snapshot();
+
         session()->invalidate();
         session()->regenerateToken();
+
+        foreach ($admin as $key => $value) {
+            session()->put($key, $value);
+        }
     }
 }

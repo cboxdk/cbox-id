@@ -6,8 +6,10 @@ namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\IntendedUrl;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
+use App\Platform\SignedInPage;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -71,20 +73,14 @@ final class Authenticate
 
         if ($session === null) {
             /*
-             * NOT AN ENVIRONMENT ADMINISTRATOR'S SESSION. Theirs is a platform-root session
-             * anchored to this host ({@see EnvironmentAdminAuth}), so it never resolves under
-             * the tenant scope this middleware reads in — and forgetting it signed the
-             * administrator out of their console the moment their browser touched a tenant
-             * page that resolves a subject. /oauth/authorize is one: opening an app, or
-             * starting a support session that hands the browser to one, cost the console.
-             *
-             * Left in place, it still grants nothing HERE — CurrentUser stays empty below,
-             * exactly as for a guest — and EnvironmentAdminAuth re-verifies it on every
-             * request, so a revoked one is refused there rather than preserved.
+             * ONLY THIS CONTEXT'S KEY. An environment administrator's session on a tenant's
+             * host is the ADMIN context's, under a key of its own
+             * ({@see EnvironmentAdminAuth::SESSION_KEY}), so forgetting a dead end-user key
+             * here no longer costs the console anything. It used to be the same key, and
+             * a tenant page that resolved a subject — /oauth/authorize, say — signed the
+             * administrator out of their console.
              */
-            if (app(EnvironmentAdminAuth::class)->membership() === null) {
-                $request->session()->forget(PlatformAuth::SESSION_KEY);
-            }
+            $request->session()->forget(PlatformAuth::SESSION_KEY);
 
             $this->current->clear();
 
@@ -148,8 +144,11 @@ final class Authenticate
 
         $this->current->set($subject, $session, $organization, $role);
 
+        // A signed-in page is drawn for this session only: kept out of the browser's caches,
+        // and its Inertia page state encrypted in history, so that after signing out the
+        // Back button asks the server again instead of redrawing it ({@see SignedInPage}).
         if ($this->exemptFromHolds($request)) {
-            return $next($request);
+            return SignedInPage::serve($request, $next);
         }
 
         if ($this->mustChangePassword($request, $subject->id)) {
@@ -173,7 +172,7 @@ final class Authenticate
                 ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
         }
 
-        return $next($request);
+        return SignedInPage::serve($request, $next);
     }
 
     /**
@@ -304,6 +303,12 @@ final class Authenticate
         // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
         // /oauth/authorize?…) is returned to complete it after logging in.
         $redirect = redirect()->guest(route('login'));
+
+        // On its way to open an environment's console: stamped, so the sign-in that follows
+        // takes them there — and only the sign-in that follows ({@see IntendedUrl::pullForSubject()}).
+        if ($request->routeIs('environment.open')) {
+            IntendedUrl::rememberEnvironmentOpen();
+        }
 
         // An XHR — an Inertia visit or a plain fetch — cannot follow a cross-page redirect
         // into a sign-in form, so it is told where to go instead. This used to name

@@ -219,6 +219,12 @@ return [
         'add' => 'Sign in as someone else',
     ],
 
+    'signed_out' => [
+        'title' => 'Signed out',
+        'heading' => 'You\'re signed out',
+        'lead' => 'You have been signed out on this device, including every console you opened from this sign-in. Sign in again to continue.',
+    ],
+
     'accept_invite' => [
         'title' => 'Accept invitation',
         'heading' => 'Accept your invitation',

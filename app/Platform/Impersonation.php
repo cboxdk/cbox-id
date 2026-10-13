@@ -147,7 +147,12 @@ final class Impersonation
         // …and put aside the identity itself, for the same reason the operator branch
         // does: an env admin is an ordinary signed-in subject, and left in place they
         // would still be that person inside the impersonated session, one switch away.
-        $suspended = $this->suspendPrincipal($request);
+        //
+        // On a tenant's host the administrator's session is the ADMIN context's, under its
+        // own key ({@see EnvironmentAdminAuth::SESSION_KEY}); on the platform root's own
+        // console it is the root's ordinary session.
+        $adminSession = $request->session()->get(EnvironmentAdminAuth::SESSION_KEY);
+        $suspended = $this->suspendPrincipal($request, is_string($adminSession) && $adminSession !== '' ? $adminSession : null);
 
         $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
             actorType: ActorType::OrganizationMember,
@@ -251,8 +256,12 @@ final class Impersonation
             // without a session authenticates nobody, but leaving one behind for whoever
             // holds the browser next is exactly the sort of half-restored state this method
             // exists to avoid.
-            if ($stillAMember && $this->resumePrincipal($request, $marker, $subjectId) && $marker->environmentKey !== null) {
-                $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
+            //
+            // A tenant console's administrator comes back into the ADMIN context, under its
+            // own key; an operator from the platform root's own console, into the root's
+            // ordinary session, which is that console's.
+            if ($stillAMember) {
+                $this->resumePrincipal($request, $marker, $subjectId, adminContext: $marker->environmentKey);
             }
         } else {
             $this->restoreOperator($request, $marker);
@@ -291,19 +300,17 @@ final class Impersonation
      * Any OTHER account the browser held is dropped and not resumed. One acting principal
      * went in, one comes back.
      */
-    private function suspendPrincipal(Request $request): SuspendedIdentity
+    private function suspendPrincipal(Request $request, ?string $sessionId = null): SuspendedIdentity
     {
-        $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
+        $sessionId ??= $request->session()->get(PlatformAuth::SESSION_KEY);
 
         $this->forgetSubjectSession($request);
-        $request->session()->forget([
-            // The environment ANCHOR, on both doors. The account-member branch captures
-            // it first so exit can put it back; the operator branch simply drops it,
-            // because an impersonated session must not inherit a binding either — the
-            // identity behind it is gone, and a selection left over from someone who is
-            // not here is not a selection.
-            EnvironmentAdminAuth::ENV_KEY,
-        ]);
+        // The whole ADMIN context, anchor included, on both doors. The account-member
+        // branch captures it first so exit can put it back; the operator branch simply
+        // drops it, because an impersonated session must not inherit a binding either —
+        // the identity behind it is gone, and a selection left over from someone who is
+        // not here is not a selection.
+        $request->session()->forget(EnvironmentAdminAuth::CONTEXT_KEYS);
         $this->target->release();
 
         return new SuspendedIdentity(
@@ -358,7 +365,7 @@ final class Impersonation
      * the sign-in door, which is what a revoked session, a deleted operator or a member
      * unlinked during the window has to look like.
      */
-    private function resumePrincipal(Request $request, ImpersonationMarker $marker, ?string $subjectId): bool
+    private function resumePrincipal(Request $request, ImpersonationMarker $marker, ?string $subjectId, ?string $adminContext = null): bool
     {
         $sessionId = $marker->suspended->subjectSessionId;
 
@@ -378,7 +385,11 @@ final class Impersonation
             return false;
         }
 
-        $this->platformAuth->adopt($request, $session);
+        if ($adminContext !== null) {
+            app(EnvironmentAdminAuth::class)->resume($session->id, $adminContext);
+        } else {
+            $this->platformAuth->adopt($request, $session);
+        }
 
         return true;
     }

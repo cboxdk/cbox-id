@@ -99,7 +99,7 @@ it('redeems a signed handoff into an env-admin session', function (): void {
     $subjectId = $member->user_id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $envId);
 
-    $this->post('/admin/handoff', ['token' => $token])->assertRedirect(route('environment.home'));
+    $this->post('/admin/handoff', handoffFields($token, $subjectId))->assertRedirect(route('environment.home'));
 
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($subjectId)
         ->and(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
@@ -414,7 +414,7 @@ it('does not follow an end-user page an admin was bounced off', function (): voi
 
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
 
-    $this->post('/admin/handoff', ['token' => $token])->assertRedirect(route('environment.home'));
+    $this->post('/admin/handoff', handoffFields($token, (string) $member->user_id))->assertRedirect(route('environment.home'));
 
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($member->user_id)
         // And it is consumed, not left for the next sign-in on the other plane to trip on.
@@ -434,18 +434,18 @@ it('still resumes a page inside the admin console', function (): void {
 
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
 
-    $this->post('/admin/handoff', ['token' => $token])
+    $this->post('/admin/handoff', handoffFields($token, (string) $member->user_id))
         ->assertRedirect('https://'.$host.'/admin/organizations');
 });
 
 /**
- * The other half of the same collision. A subject signing in on this host REPLACES whatever
- * admin session was there — one cookie, one session key — but the environment anchor
- * survived `regenerate()`, leaving a session that claimed to administer the environment
- * while naming a session row the platform root has never heard of. Harmless in effect,
- * because the resolver refuses it, and a root lookup on every single request to say so.
+ * The other half of the same collision, and the reverse of what it used to assert. A subject
+ * signing in on this host used to REPLACE the admin session there — one cookie, one session
+ * key — and the anchor had to be dropped by hand. The two are separate contexts now, each
+ * under its own keys ({@see EnvironmentAdminAuth::SESSION_KEY}): the tenant's end user
+ * signing in leaves the administrator administering, and neither names the other's row.
  */
-it('drops the admin anchor when a subject signs in on the same host', function (): void {
+it('keeps the admin context when a subject of the tenant signs in on the same host', function (): void {
     ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
     serveOnTestHost($env);
 
@@ -457,11 +457,17 @@ it('drops the admin anchor when a subject signs in on the same host', function (
         fn () => app(Subjects::class)->create('enduser@acme.example', 'End User', 'a-strong-unbreached-passphrase'),
     );
 
-    app(PlatformAuth::class)->establish(request(), $subject->id, ['pwd']);
+    app(EnvironmentContext::class)->runAs(
+        GenericEnvironment::of($envId),
+        fn () => app(PlatformAuth::class)->establish(request(), $subject->id, ['pwd']),
+    );
 
-    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBeNull()
-        ->and(app(EnvironmentAdminAuth::class)->subjectId())->toBeNull();
-});
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
+
+    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId)
+        ->and(session(EnvironmentAdminAuth::SESSION_KEY))->not->toBe(session(PlatformAuth::SESSION_KEY))
+        ->and(app(EnvironmentAdminAuth::class)->subjectId())->toBe($member->user_id);
+})->group('security');
 
 /**
  * THE HANDOFF TOKEN NEVER SITS IN A URL.
@@ -533,7 +539,7 @@ it('marks every handoff answer no-store and no-referrer', function (): void {
 
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
 
-    $redeemed = $this->post('/admin/handoff', ['token' => $token])
+    $redeemed = $this->post('/admin/handoff', handoffFields($token, (string) $member->user_id))
         ->assertRedirect(route('environment.home'))
         ->assertHeader('Referrer-Policy', 'no-referrer');
     expect((string) $redeemed->headers->get('Cache-Control'))->toContain('no-store');
