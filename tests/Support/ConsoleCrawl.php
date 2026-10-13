@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Platform\EnvironmentSudo;
+use App\Platform\StepUpPrompt;
+use App\Platform\Sudo;
 use Cbox\Id\Organization\Models\Environment;
 use Closure;
 use Database\Seeders\DemoEnvironmentSeeder;
@@ -316,6 +319,29 @@ final class ConsoleCrawl
                 }
 
                 continue;
+            }
+
+            /*
+             * A STEP-UP, ASKED IN PLACE. The client opens "Confirm it's you" over the page the
+             * link was on and, once the person confirms, replays this same visit. The crawler
+             * is the person at the keyboard: it opens the window of the plane the refusal
+             * names — that plane's and no other's — and makes the request again, so a gated
+             * link is held to what it LANDS on rather than counted dead for asking.
+             */
+            if ($status === 403 && $response->headers->has(StepUpPrompt::HEADER) && $hop === 0) {
+                $plane = $response->json('step_up.plane');
+
+                if ($plane === 'environment') {
+                    app(EnvironmentSudo::class)->confirm();
+
+                    continue;
+                }
+
+                if ($plane === 'organization') {
+                    app(Sudo::class)->confirm();
+
+                    continue;
+                }
             }
 
             if ($status >= 300 && $status < 400 && $response->headers->has('Location')) {

@@ -24,7 +24,7 @@ the device sign-in page a TV's QR code opens ([Sign in on TVs and devices](sign-
 the Admin Portal, the error pages, and the emails those flows send.
 
 The **admin console stays in English**, whatever language your browser prefers. So does
-the console's own "confirm it's you" screen.
+the console's own "confirm it's you" prompt, both the dialog and the full-page screen.
 
 ## How a visitor's language is chosen
 

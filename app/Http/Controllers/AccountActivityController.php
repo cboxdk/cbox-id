@@ -78,6 +78,7 @@ final readonly class AccountActivityController extends PageController
         'user.mfa_recovery_used' => 'A recovery code was used',
         'user.mfa_recovery_generated' => 'New recovery codes generated',
         'user.passkey_registered' => 'Passkey added',
+        'user.passkey_renamed' => 'Passkey renamed',
         'user.passkey_authenticated' => 'Signed in with a passkey',
         'user.email_verified' => 'Email address verified',
         'user.magic_link_requested' => 'Sign-in link requested',

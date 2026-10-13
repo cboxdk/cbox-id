@@ -245,9 +245,16 @@ all of it. `/appearance` and the module's old Branding page redirect here.
 ### My account
 
 *Security · Sessions & activity · My API keys.* The signed-in person's own credentials: two-factor
-authentication, **passkey** enrolment, and sessions (auth methods, expiry,
+authentication, **passkeys**, and sessions (auth methods, expiry,
 sign-out-everywhere). Shown to members and admins alike; every area above is role-gated,
 this one is not.
+
+Each passkey is listed with its name, the date it was added and when it last signed you in.
+A new one is named after the password manager or authenticator that made it (*iCloud
+Keychain*, *Google Password Manager*, *1Password*, *Windows Hello*…) or, when the passkey
+does not say, after the browser and system (*Passkey on Chrome · macOS*); you can keep that
+name or type your own, and **Rename** changes it later. Renaming needs no password: a name
+is a label, not a credential.
 
 No screenshot of its own. The 2026-07-13 image above filed these settings under
 *Settings*, which is where they used to live.

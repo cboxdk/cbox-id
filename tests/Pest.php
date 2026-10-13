@@ -16,6 +16,7 @@ use App\Platform\EnvironmentSudo;
 use App\Platform\OperatorEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -879,6 +880,25 @@ function inertiaRequest(Closure $call): TestResponse
     } finally {
         test()->withoutHeader('X-Inertia');
     }
+}
+
+/**
+ * The answer a gated click gets when the step-up has lapsed: the in-place "Confirm it's
+ * you" refusal ({@see StepUpPrompt}) — a 403 the page turns into a dialog
+ * and then replays — on the plane named, and never a redirect away from the page.
+ */
+function assertAskedToStepUp(TestResponse $response, string $plane = 'organization'): TestResponse
+{
+    $confirm = $plane === 'environment' ? route('environment.sudo.confirm') : route('sudo.confirm');
+
+    $response->assertForbidden()
+        ->assertHeader(StepUpPrompt::HEADER, $confirm)
+        ->assertJsonPath('step_up.plane', $plane)
+        ->assertJsonPath('step_up.confirm', $confirm);
+
+    expect($response->headers->get('Location'))->toBeNull();
+
+    return $response;
 }
 
 /** Rename yourself from the security page. The one write there that needs no step-up. */

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\Account\DisconnectSignInMethod;
 use App\Actions\Account\RemovePasskey;
 use App\Actions\Account\RemoveSmsFactor;
+use App\Actions\Account\RenamePasskey;
 use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
@@ -20,6 +21,8 @@ use App\Platform\AccountLinking\SignInIdentity;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Passkeys\PasskeyName;
+use App\Platform\Passkeys\RecordsPasskeyUse;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -48,7 +51,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * "MY ACCOUNT" — every person's self-service security centre: their name, their password,
@@ -117,11 +122,13 @@ final readonly class AccountController extends PageController
                 ->get()
                 ->map(static fn (WebAuthnCredential $passkey): array => [
                     'id' => $passkey->id,
-                    'name' => $passkey->name ?? 'Passkey',
+                    'name' => $passkey->name ?? PasskeyName::FALLBACK,
                     'added' => $passkey->getAttribute('created_at') instanceof CarbonInterface
                         ? $passkey->getAttribute('created_at')->format('M j, Y')
                         : null,
-                    'signCount' => $passkey->sign_count,
+                    // "2 days ago", or null when it has not signed in since this was recorded.
+                    'lastUsed' => RecordsPasskeyUse::lastUsedAt($passkey)?->diffForHumans(),
+                    'renameHref' => route('account.passkeys.update', $passkey->id),
                     'removeHref' => route('account.passkeys.destroy', $passkey->id),
                 ])->values()->all(),
             // Whether a passkey may be ADDED here. Off for the environment (or the deployment)
@@ -404,6 +411,20 @@ final readonly class AccountController extends PageController
     }
 
     /**
+     * Rename one of your passkeys through {@see RenamePasskey}. Not behind the step-up — a
+     * label grants nothing — and somebody else's passkey is a 404, as for removing one.
+     */
+    public function renamePasskey(Request $request, string $passkey): RedirectResponse
+    {
+        $result = $this->act(RenamePasskey::class, [
+            'passkey_id' => $passkey,
+            'name' => $request->string('name')->toString(),
+        ], ['name' => 'passkeyName'], 'passkeyName');
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Passkey renamed.');
+    }
+
+    /**
      * Disconnect a social account through {@see UnlinkSocialAccount}, which keeps the
      * LAST-FACTOR GUARD: never strip the only remaining way to sign in.
      */
@@ -434,11 +455,22 @@ final readonly class AccountController extends PageController
      * not one this person is offered — another organization's, a switched-off one — is a
      * 404, not a refusal: it is not theirs to know about.
      */
-    public function connectSignInMethod(string $connection, Connections $connections, SignInIdentities $identities, ConnectFromAccount $connect): RedirectResponse
+    public function connectSignInMethod(Request $request, string $connection, Connections $connections, SignInIdentities $identities, ConnectFromAccount $connect): SymfonyResponse
     {
         $me = app(CurrentUser::class);
 
         abort_unless($me->check(), 403);
+
+        /*
+         * THE BUTTON IS AN INERTIA VISIT, so a stale step-up is asked for in place — the
+         * dialog opens on My account and this visit is replayed once the password is in.
+         * Past the gate, the browser is sent here FOR REAL: the provider's sign-in page is
+         * another origin (and SAML's is a self-submitting form) that an XHR cannot follow.
+         * Nothing has been started yet, so the real navigation starts it exactly once.
+         */
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($request->fullUrl());
+        }
 
         $model = $connections->byId($connection);
         $offered = collect($identities->connectable($identities->forSubject($me->id()), $me->organization()?->id))

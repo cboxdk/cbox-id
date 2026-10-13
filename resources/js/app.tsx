@@ -1,6 +1,8 @@
-import { createInertiaApp, type ResolvedComponent } from '@inertiajs/react';
+import { createInertiaApp, type ResolvedComponent, router } from '@inertiajs/react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { AppErrorBoundary } from '@/chrome/AppErrorBoundary';
+import { StepUpDialog } from '@/chrome/StepUpDialog';
+import { installStepUp } from '@/lib/stepUp';
 import type { SharedProps } from '@/types';
 
 /**
@@ -12,6 +14,14 @@ import type { SharedProps } from '@/types';
  * see `resources/views/app.blade.php`) and the JavaScript that follows is one page's
  * worth, not a hundred.
  */
+
+/**
+ * STEP-UP IN PLACE, for every visit. Installed before the first visit can be made, so a
+ * click on any gated button — in any layout, on either plane — that the server answers
+ * with "confirm it's you first" opens the dialog on the page it was made from and is
+ * replayed once the password is in (see `lib/stepUp`).
+ */
+installStepUp(router);
 
 const pages = import.meta.glob<{ default: ResolvedComponent }>('./pages/**/*.tsx');
 
@@ -87,6 +97,8 @@ void createInertiaApp<SharedProps>({
         const app = (
             <AppErrorBoundary>
                 <App {...props} />
+                {/* Beside the page rather than in a layout, so every layout gets it. */}
+                <StepUpDialog />
             </AppErrorBoundary>
         );
 

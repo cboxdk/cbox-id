@@ -743,6 +743,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * charging for nothing.
      */
     Route::patch('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+    // Renaming a passkey is outside the step-up for the same reason the name above is: a
+    // label is not a credential, and changing it grants nothing. Adding and removing one
+    // are behind it.
+    Route::patch('/account/passkeys/{passkey}', [AccountController::class, 'renamePasskey'])->name('account.passkeys.update');
     // The console's "Send confirmation link" — the button the unconfirmed-email refusal
     // points at. Limited per person inside the action as well.
     Route::post('/account/email/confirmation', [AccountController::class, 'sendEmailConfirmation'])

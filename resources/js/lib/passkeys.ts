@@ -1,3 +1,5 @@
+import { challengeFrom, requestStepUp, type StepUpOptions } from './stepUp';
+
 /**
  * WEBAUTHN, over same-origin fetches only.
  *
@@ -46,6 +48,12 @@ const csrf = (): string =>
 /** Thrown when the server refuses, carrying its own message rather than a status code. */
 export class PasskeyError extends Error {}
 
+/**
+ * The person dismissed the "Confirm it's you" dialog. Not a failure — nothing is reported,
+ * exactly as for a dismissed system prompt ({@see isCancellation}).
+ */
+export class StepUpDeclined extends Error {}
+
 interface PostResult {
     redirect?: string;
     sudo?: string;
@@ -53,7 +61,11 @@ interface PostResult {
     [key: string]: unknown;
 }
 
-async function post(url: string, body?: Record<string, unknown>): Promise<PostResult> {
+async function post(
+    url: string,
+    body?: Record<string, unknown>,
+    stepUp: StepUpOptions = {},
+): Promise<PostResult> {
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -69,18 +81,20 @@ async function post(url: string, body?: Record<string, unknown>): Promise<PostRe
 
     if (!response.ok) {
         /*
-         * A step-up is not a failure. Removing a passkey is gated on a fresh password,
-         * and the server answers with where to go and prove it — so the person is sent
-         * there and comes back, rather than being told "forbidden" at the one moment they
-         * are trying to secure their own account.
-         *
-         * The promise never settles because the page is navigating away; resolving it
-         * would let the caller show a result for a flow that is no longer on screen.
+         * A step-up is not a failure. Adding a passkey is gated on a fresh password, and
+         * the server says so with a challenge rather than a bare "forbidden" — so the
+         * person is asked IN PLACE, and the same request is made again once they have
+         * confirmed. It used to send the browser to the full-page step-up, which came back
+         * to My account and never to the ceremony: the passkey was simply never created.
          */
-        if (response.status === 403 && typeof data.sudo === 'string') {
-            window.location.assign(data.sudo);
+        const challenge = challengeFrom(response.status, response.headers, data);
 
-            return new Promise<PostResult>(() => {});
+        if (challenge !== null) {
+            if (!(await requestStepUp(challenge, stepUp))) {
+                throw new StepUpDeclined('Not confirmed.');
+            }
+
+            return post(url, body, stepUp);
         }
 
         throw new PasskeyError(
@@ -118,9 +132,31 @@ type RequestOptions = Omit<PublicKeyCredentialRequestOptions, 'challenge' | 'all
     allowCredentials?: (Omit<PublicKeyCredentialDescriptor, 'id'> & { id: string })[];
 };
 
-/** Enrol a new passkey on this device. */
-export async function registerPasskey(name: string, base = '/passkeys'): Promise<void> {
-    const options = (await post(`${base}/register/options`)) as unknown as CreationOptions;
+/** The passkey the server stored: its id, the name it was given, and where to rename it. */
+export interface RegisteredPasskey {
+    id: string;
+    name: string;
+    renameHref: string;
+}
+
+/**
+ * Enrol a new passkey on this device.
+ *
+ * `suggestedName` is the fallback the server uses when it cannot tell which password
+ * manager or authenticator made the passkey ({@see defaultPasskeyName}); the name it
+ * settled on comes back, for the person to keep or change.
+ *
+ * If the step-up has lapsed, the "Confirm it's you" dialog opens first and its last step is
+ * a "Continue" button: the ceremony below runs inside that click, because WebAuthn needs a
+ * fresh user gesture and the password round-trip has spent the one that opened it.
+ */
+export async function registerPasskey(
+    suggestedName: string,
+    base = '/passkeys',
+): Promise<RegisteredPasskey | null> {
+    const options = (await post(`${base}/register/options`, undefined, {
+        continueLabel: 'Continue: create passkey',
+    })) as unknown as CreationOptions;
 
     const publicKey: PublicKeyCredentialCreationOptions = {
         ...options,
@@ -136,7 +172,9 @@ export async function registerPasskey(name: string, base = '/passkeys'): Promise
         })),
     };
 
-    const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+    const credential = (await navigator.credentials.create({
+        publicKey,
+    })) as PublicKeyCredential | null;
 
     if (credential === null) {
         throw new PasskeyError('No passkey was created.');
@@ -144,8 +182,8 @@ export async function registerPasskey(name: string, base = '/passkeys'): Promise
 
     const response = credential.response as AuthenticatorAttestationResponse;
 
-    await post(`${base}/register`, {
-        name,
+    const stored = await post(`${base}/register`, {
+        name: suggestedName,
         id: credential.id,
         type: credential.type,
         response: {
@@ -154,6 +192,60 @@ export async function registerPasskey(name: string, base = '/passkeys'): Promise
             transports: response.getTransports ? response.getTransports() : [],
         },
     });
+
+    const passkey = stored.passkey;
+
+    return typeof passkey === 'object' &&
+        passkey !== null &&
+        typeof (passkey as RegisteredPasskey).id === 'string' &&
+        typeof (passkey as RegisteredPasskey).name === 'string' &&
+        typeof (passkey as RegisteredPasskey).renameHref === 'string'
+        ? (passkey as RegisteredPasskey)
+        : null;
+}
+
+/**
+ * A name for a passkey when nothing better is known: "Passkey on Chrome · macOS".
+ *
+ * The server prefers the authenticator's own name (iCloud Keychain, 1Password, Windows
+ * Hello…) whenever the passkey says which it is; this is only what it falls back to, so
+ * it has to be honest rather than clever — the browser and the system, read the way the
+ * browser reports them.
+ */
+export function defaultPasskeyName(userAgent: string = navigator.userAgent): string {
+    const browser = /Edg\//.test(userAgent)
+        ? 'Edge'
+        : /OPR\//.test(userAgent)
+          ? 'Opera'
+          : /Firefox\//.test(userAgent)
+            ? 'Firefox'
+            : /Chrome\//.test(userAgent) || /CriOS\//.test(userAgent)
+              ? 'Chrome'
+              : /Safari\//.test(userAgent)
+                ? 'Safari'
+                : null;
+
+    const system = /iPhone/.test(userAgent)
+        ? 'iPhone'
+        : /iPad/.test(userAgent)
+          ? 'iPad'
+          : /Android/.test(userAgent)
+            ? 'Android'
+            : /Mac OS X|Macintosh/.test(userAgent)
+              ? 'macOS'
+              : /Windows/.test(userAgent)
+                ? 'Windows'
+                : /CrOS/.test(userAgent)
+                  ? 'ChromeOS'
+                  : /Linux/.test(userAgent)
+                    ? 'Linux'
+                    : null;
+
+    if (browser === null && system === null) {
+        return 'Passkey';
+    }
+
+    return `Passkey on ${[browser, system].filter((part): part is string => part !== null).join(' · ')}`;
 }
 
 /**
@@ -177,7 +269,9 @@ export async function signInWithPasskey(base = '/passkeys'): Promise<string | nu
         })),
     };
 
-    const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
+    const credential = (await navigator.credentials.get({
+        publicKey,
+    })) as PublicKeyCredential | null;
 
     if (credential === null) {
         throw new PasskeyError('No passkey was offered.');
@@ -207,5 +301,8 @@ export async function signInWithPasskey(base = '/passkeys'): Promise<string | nu
  * message that appears when something really did fail.
  */
 export function isCancellation(error: unknown): boolean {
-    return error instanceof DOMException && error.name === 'NotAllowedError';
+    return (
+        error instanceof StepUpDeclined ||
+        (error instanceof DOMException && error.name === 'NotAllowedError')
+    );
 }

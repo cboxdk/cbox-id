@@ -29,6 +29,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Throwable;
 
 /**
@@ -150,8 +152,14 @@ final class SocialController extends Controller
     /**
      * Begin linking a provider to the SIGNED-IN account (authenticated route).
      */
-    public function connect(string $provider, Request $request): RedirectResponse
+    public function connect(string $provider, Request $request): SymfonyResponse
     {
+        // Reached by an Inertia visit, past an in-place step-up: leave for real, so the
+        // flow starts on a document navigation that can follow the provider's redirect.
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($request->fullUrl());
+        }
+
         return $this->start($request, $provider, route('social.connect.callback', $provider));
     }
 

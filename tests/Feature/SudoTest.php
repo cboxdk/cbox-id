@@ -40,15 +40,18 @@ function signIn(): string
     return $subject->id;
 }
 
-it('redirects a sensitive action to sudo when not recently confirmed', function (): void {
+it('asks for the step-up in place when a sensitive action was not recently confirmed', function (): void {
     signIn();
 
-    regenerateRecoveryCodes()->assertRedirect(route('sudo'));
+    // The page opens "Confirm it's you" over itself and replays this click once the
+    // password is in — it is not sent away to a screen that comes back without it.
+    assertAskedToStepUp(regenerateRecoveryCodes());
 
     /*
-     * …and it remembers where to send them back to: the PAGE, taken from the referer,
-     * rather than the POST endpoint — otherwise re-entering a password would land somebody
-     * on an action by GET and earn them a 405.
+     * …and it still remembers where the FULL-PAGE screen would send them back to, for a
+     * browser that ends up there: the PAGE, taken from the referer, rather than the POST
+     * endpoint — otherwise re-entering a password would land somebody on an action by GET
+     * and earn them a 405.
      *
      * ROOT-RELATIVE, which is the middleware's own invariant: the value is what sudo later
      * redirects to, so keeping only the path is what stops a crafted referer turning the
@@ -76,15 +79,15 @@ it('sends TOTP enrollment through sudo when not recently confirmed', function ()
     signIn();
 
     // enrollTotp overwrites any existing secret — it must not run from a stale session.
-    // Without a fresh step-up, the route redirects to re-auth.
-    beginMfaEnrolment()->assertRedirect(route('sudo'));
+    // Without a fresh step-up, the click is held for a re-auth.
+    assertAskedToStepUp(beginMfaEnrolment());
 });
 
 it('sends provider unlink through sudo when not recently confirmed', function (): void {
     $id = signIn();
     app(Subjects::class)->link($id, new FederatedPrincipal('social:google', 'google|1'));
 
-    unlinkSocialProvider('google')->assertRedirect(route('sudo'));
+    assertAskedToStepUp(unlinkSocialProvider('google'));
 });
 
 it('refuses to unlink a user\'s only sign-in method', function (): void {

@@ -12,6 +12,8 @@ use App\Http\Requests\Console\ProbeLegacyLoginRequest;
 use App\Platform\EnvironmentSudo;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Migration\LegacyLoginApprovals;
+use App\Platform\StepUpPlane;
+use App\Platform\StepUpPrompt;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -133,8 +135,18 @@ final readonly class LegacyLoginController extends ConsoleController
      */
     private function assertFreshStepUp(): void
     {
-        if (! app(EnvironmentSudo::class)->confirmed()) {
-            throw new AuthorizationException('Confirm it is you before changing where sign-ins are sent.');
+        if (app(EnvironmentSudo::class)->confirmed()) {
+            return;
         }
+
+        $reason = 'Approving or withdrawing a legacy login changes where sign-ins are sent.';
+
+        // A click on the page gets the in-place dialog, and the click is replayed once the
+        // password is in; anything else is refused outright, as it always was.
+        if (StepUpPrompt::inPlace(request())) {
+            StepUpPrompt::demand(request(), StepUpPlane::Environment, route('environment.legacy-login'), $reason);
+        }
+
+        throw new AuthorizationException('Confirm it is you before changing where sign-ins are sent.');
     }
 }

@@ -396,29 +396,29 @@ it('tells the administrator why the step-up appeared', function (): void {
 })->group('security');
 
 /**
- * A CLICK IS AN INERTIA VISIT, and a gated page has to answer it with the step-up screen.
+ * A CLICK IS AN INERTIA VISIT, and a gated page answers it with the step-up — IN PLACE.
  *
  * Every link inside the environment console is followed with an XHR carrying `X-Inertia`
- * and `X-Requested-With: XMLHttpRequest`. The gate answered that as a ceremony endpoint —
- * a 403 JSON body Inertia can only show as an error modal — so Token vault, Legacy login,
- * New agent and New log stream did nothing when clicked unless the administrator happened
- * to have stepped up in the last few minutes. Found by crawling a production-shaped stack;
- * every test here requested the page as a plain browser navigation, which was redirected
- * correctly.
+ * and `X-Requested-With: XMLHttpRequest`. The gate once answered that as a ceremony
+ * endpoint — a bare 403 Inertia could only show as an error modal — so Token vault, Legacy
+ * login, New agent and New log stream did nothing when clicked. It then answered with a
+ * redirect to the full-page step-up, which worked but took the administrator off the page
+ * they were on. Now it is the step-up refusal the console turns into a "Confirm it's you"
+ * dialog over the page, and the click is replayed once the password is in.
  *
- * The step-up then returns the administrator to the page they clicked, not to the page
- * they clicked it from.
+ * The full-page screen still knows the page to come back to, for a browser that ends up
+ * there instead (a link opened in a new tab is a document navigation).
  */
-it('answers an Inertia visit to a gated page with the step-up screen', function (string $route): void {
+it('answers an Inertia visit to a gated page with the in-place step-up', function (string $route): void {
     app(EnvironmentSudo::class)->forget();
 
     // The version the client holds, as a real click sends it — without it Inertia answers
     // a GET with its 409 asset-mismatch reload before any route middleware runs.
-    $this->withHeaders([
+    assertAskedToStepUp($this->withHeaders([
         'X-Inertia' => 'true',
         'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
         'X-Requested-With' => 'XMLHttpRequest',
-    ])->get(route($route))->assertRedirect(route('environment.sudo'));
+    ])->get(route($route)), 'environment');
 
     expect(session('environment.sudo.intended'))->toBe(route($route));
 })->with(['environment.vault', 'environment.legacy-login', 'environment.agents.create', 'environment.audit-streams.create'])->group('security');
