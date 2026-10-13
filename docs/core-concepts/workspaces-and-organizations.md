@@ -210,16 +210,29 @@ pages are a **Platform** area of the console's rail.
 
 ## Where you land after signing in
 
-A workspace member lands where they work:
+A workspace member lands on **Projects**, which lists every environment with **Open
+console** beside it. Signing in at `cboxid.com` never opens an environment's console by
+itself.
 
-- If exactly one active environment is reachable and your built-in role may administer
-  environments (Owner, Admin or Developer), you go straight into that environment's
-  console. It is the same signed handoff **Open console** on Projects uses.
-- Otherwise you land on **Projects**, which lists every environment with **Open console**
-  beside it.
+The one exception is a sign-in that started at an environment's console. If you open
+`acme.cboxid.com/admin/users` signed out, you sign in at `cboxid.com` and land back on
+that page. This only works within 15 minutes of being sent to sign in, and only in the
+browser that was sent.
 
-The workspace crumb in an environment console links to Projects, not to this landing, or
-it would send you straight back into the environment.
+## Signing out
+
+**Sign out** signs you out of the context you are in, everywhere that context reached.
+
+- **Your Cbox ID sign-in** (the workspace console, My account, the platform console, and
+  every environment console you opened from them): signing out of any of them signs you
+  out of all of them, for every account the browser holds, in every tab. You land on
+  **You're signed out**, and every console asks you to sign in again.
+- **A tenant's own users** on the tenant's host (its sign-in page, its My account, its apps'
+  sign-out): signing out there ends only their session. It never closes the environment
+  console on the same host, and closing the console never signs them out.
+
+Sign-ins on your other devices stay signed in. To end those as well, use **Sign out other
+sessions** in My account.
 
 ## Related
 

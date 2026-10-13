@@ -129,19 +129,19 @@ it('lands a redeemed handoff on its target, and on the home page when the target
 
     // Signed for this token: lands where it was asked to.
     $token = $handoff->mint($member->user_id, $envId);
-    $this->post('/admin/handoff', ['token' => $token, 'to' => '/admin/users', 'to_sig' => $targets->sign($token, '/admin/users')])
+    $this->post('/admin/handoff', [...handoffFields($token, $member->user_id), 'to' => '/admin/users', 'to_sig' => $targets->sign($token, '/admin/users')])
         ->assertRedirect('/admin/users');
 
     expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
 
     // The path swapped in transit — the session is still established, the target is not.
     $token = $handoff->mint($member->user_id, $envId);
-    $this->post('/admin/handoff', ['token' => $token, 'to' => '/admin/roles', 'to_sig' => $targets->sign($token, '/admin/users')])
+    $this->post('/admin/handoff', [...handoffFields($token, $member->user_id), 'to' => '/admin/roles', 'to_sig' => $targets->sign($token, '/admin/users')])
         ->assertRedirect(route('environment.home'));
 
     // An off-site target, however it is signed, never becomes a Location.
     $token = $handoff->mint($member->user_id, $envId);
-    $this->post('/admin/handoff', ['token' => $token, 'to' => '//evil.example', 'to_sig' => $targets->sign($token, '//evil.example')])
+    $this->post('/admin/handoff', [...handoffFields($token, $member->user_id), 'to' => '//evil.example', 'to_sig' => $targets->sign($token, '//evil.example')])
         ->assertRedirect(route('environment.home'));
 });
 

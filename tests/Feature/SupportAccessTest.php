@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
@@ -247,7 +248,7 @@ it('mints nothing for the session once the administrator is no longer signed in 
 
     startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
 
-    $consoleSession = (string) session(PlatformAuth::SESSION_KEY);
+    $consoleSession = (string) session(EnvironmentAdminAuth::SESSION_KEY);
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->revoke($consoleSession));
 
     nextRequest();

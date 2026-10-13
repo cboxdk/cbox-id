@@ -456,6 +456,10 @@ final readonly class ShellPayload
             platformHref: $tenantOperator ? $this->context->onWorkspaceHost('platform.workspaces') : null,
             actsOn: $actsOn,
             platformEnvironmentHref: $tenantOperator ? $this->context->onWorkspaceHost('environment.home') : null,
+            // A tenant's console signs out of the ADMIN context, not the tenant's end-user
+            // session that shares this host. On the platform root's own console the admin
+            // context IS the root's session, which `/logout` ends.
+            logoutHref: $rootOperator ? route('logout') : route('admin.logout'),
         );
     }
 

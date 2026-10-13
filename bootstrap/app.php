@@ -12,6 +12,7 @@ use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\KeepAdminContextThroughEndUserLogout;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
@@ -256,6 +257,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
+
+        // An app's RP-initiated sign-out on a tenant's host ends the tenant's END USER and
+        // nothing else: the environment console's administrator sharing the cookie is
+        // another context. After SetEnvironment, which says whose host this is.
+        $middleware->appendToGroup('web', KeepAdminContextThroughEndUserLogout::class);
 
         // An UNINSTALLED deployment has exactly one surface: the first-run screen. In
         // the web group rather than on individual routes because the property is about

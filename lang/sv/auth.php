@@ -195,6 +195,12 @@ return [
         'add' => 'Logga in som någon annan',
     ],
 
+    'signed_out' => [
+        'title' => 'Utloggad',
+        'heading' => 'Du är utloggad',
+        'lead' => 'Du har loggats ut på den här enheten, även från alla konsoler du öppnade från den här inloggningen. Logga in igen för att fortsätta.',
+    ],
+
     'accept_invite' => [
         'title' => 'Acceptera inbjudan',
         'heading' => 'Acceptera din inbjudan',

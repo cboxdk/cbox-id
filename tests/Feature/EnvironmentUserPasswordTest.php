@@ -177,6 +177,9 @@ it('refuses a member without the environment-admin capability', function (): voi
 
     // Followed LAST: asking for the handoff moves this client — and the environment
     // context with it — onto the account host, so everything scoped to the tenant
-    // environment has to have been asked already.
+    // environment has to have been asked already. Signed in at the account host, as the
+    // person who reached this console was: the console's session is the tenant host's own
+    // ADMIN context, and the account host has its own.
+    signInAsSubject($viewerSubjectId);
     test()->get($handoff)->assertForbidden();
 });

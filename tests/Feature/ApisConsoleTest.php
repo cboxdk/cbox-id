@@ -10,7 +10,6 @@ use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\PlaneResolver;
-use App\Platform\PlatformAuth;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\Apis;
@@ -464,7 +463,7 @@ it('is reached only through the session it was minted for', function (): void {
     crudSetup();
     taxApiThroughConsole();
 
-    session()->forget(PlatformAuth::SESSION_KEY);
+    session()->forget(EnvironmentAdminAuth::SESSION_KEY);
 
     expect(test()->get(route('environment.apis'))->status())->not->toBe(200);
 })->group('security');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Auth\SignedOutController;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\PlatformAuth;
@@ -27,7 +28,23 @@ final class SessionController extends Controller
             return redirect()->route($marker->isMembership() ? 'environment.home' : 'platform.organizations');
         }
 
-        $auth->logout($request);
+        // SIGN OUT OF THE CONTEXT THIS IS. Every account the browser holds here — it used to
+        // end only the active one.
+        //
+        //  - On the account host (`cboxid.com`) that is the ADMIN context: the root's
+        //    session, and every environment console handed off from it on any tenant's
+        //    host ({@see PlatformAuth::logoutAll()}). It lands on "You're signed out".
+        //  - On a tenant's host it is the END-USER context — the tenant's hosted sign-in and
+        //    My account. Only those sessions end; the environment console's administrator
+        //    on the same host is another context and stays signed in (the console's own
+        //    Sign out is `admin.logout`). It lands on the tenant's sign-in, as it always has.
+        $root = $auth->onPlatformRoot();
+
+        $auth->logoutAll($request);
+
+        if ($root) {
+            return SignedOutController::landing(fromConsole: false);
+        }
 
         return redirect()->route('login')->with('status', 'You have been signed out.');
     }

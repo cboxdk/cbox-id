@@ -6,6 +6,7 @@ namespace App\Platform;
 
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -26,9 +27,17 @@ use Illuminate\Http\Request;
  * THERE IS NO SEPARATE ADMIN IDENTITY. This used to hold the administering subject's id
  * under a key of its own, which was a second place claiming to answer "who is this" — the
  * same duplication the account plane had, and the same one that produced sign-in loops
- * there. An admin session is now the ORDINARY subject session {@see PlatformAuth} mints,
- * so revoking a person's sessions (a password reset does) ends their admin console too,
- * which a session assembled out of a raw id could never do.
+ * there. An admin session is an ORDINARY platform-root session ROW, minted by
+ * {@see PlatformAuth}, so revoking a person's sessions (a password reset does) ends their
+ * admin console too, which a session assembled out of a raw id could never do.
+ *
+ * TWO CONTEXTS, ONE COOKIE. On a tenant's host the browser session also carries the
+ * tenant's own END-USER context: its hosted sign-in, its My account, its SSO session for
+ * the tenant's apps — {@see PlatformAuth}'s held accounts and active key. The admin context
+ * keeps its row under a key of its own ({@see SESSION_KEY}), so the two never overwrite
+ * each other, and signing out of one leaves the other signed in: an administrator signing
+ * out of the console does not sign the tenant's end user out, and an end user signing out
+ * (My account, or an app's RP-initiated logout) does not close the console.
  *
  * WHAT IS LEFT IS AN ANCHOR, NOT AN IDENTITY. {@see ENV_KEY} names the ONE environment
  * this session administers, and it is re-checked against the request's host-resolved
@@ -57,6 +66,20 @@ final class EnvironmentAdminAuth
      * only thing about an admin session that is not simply "who is signed in".
      */
     public const ENV_KEY = 'cbox.env_admin_env';
+
+    /**
+     * The platform-root session row behind an environment console on a tenant's host — the
+     * ADMIN context, kept apart from the end-user context's {@see PlatformAuth::SESSION_KEY}.
+     * (On the platform root's own console the admin context IS the root's session, and that
+     * key is the one read.)
+     */
+    public const SESSION_KEY = 'cbox.env_admin_session';
+
+    /**
+     * Everything the admin context holds in the browser session — what its sign-out ends,
+     * and what an end user's sign-out on the same host carries over untouched.
+     */
+    public const CONTEXT_KEYS = [self::SESSION_KEY, self::ENV_KEY, EnvironmentSudo::SESSION_KEY];
 
     public function __construct(
         private readonly Memberships $memberships,
@@ -141,16 +164,70 @@ final class EnvironmentAdminAuth
      */
     public function establish(string $subjectId, string $environmentId, array $amr = ['handoff']): void
     {
-        $this->platformRoot->run(function () use ($subjectId, $amr): bool {
-            $this->platformAuth->establish(request(), $subjectId, $amr);
+        $session = $this->platformRoot->run(
+            fn (): Session => $this->platformAuth->startDetached(request(), $subjectId, $amr),
+        );
 
-            return true;
-        });
+        if (! $session instanceof Session) {
+            return;
+        }
 
-        // After establish(), which regenerates the id: regeneration preserves data, so
-        // the order is cosmetic — but an anchor written before the identity would be an
-        // anchor that briefly stood alone, and that is the state this class exists to
-        // never be in.
+        $this->bind($session->id, $environmentId);
+    }
+
+    /**
+     * Put an admin session that already exists back in place — the administrator coming
+     * back from a support session ({@see Impersonation::exit()}). The caller has checked
+     * the row is live and theirs.
+     */
+    public function resume(string $sessionId, string $environmentId): void
+    {
+        $this->bind($sessionId, $environmentId);
+    }
+
+    /**
+     * What the admin context holds in the browser session right now, key by key — to carry
+     * it across something that resets the END-USER context on the same host.
+     *
+     * Read one key at a time: the keys are dotted, and the session stores them nested, so
+     * `session()->only()` would find none of them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function snapshot(): array
+    {
+        $held = [];
+
+        foreach (self::CONTEXT_KEYS as $key) {
+            if (session()->has($key)) {
+                $held[$key] = session()->get($key);
+            }
+        }
+
+        return $held;
+    }
+
+    /** The admin context's session row on this request, or null. */
+    public function sessionId(): ?string
+    {
+        $id = session()->get($this->onRootConsole() ? PlatformAuth::SESSION_KEY : self::SESSION_KEY);
+
+        return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    private function bind(string $sessionId, string $environmentId): void
+    {
+        // A step-up attests to the session it was confirmed in, and this is a new one.
+        // Only the ADMIN context's step-up: the end user's on this host is theirs.
+        session()->forget(EnvironmentSudo::SESSION_KEY);
+
+        // A privilege transition: a fresh id, so a session id planted beforehand is not the
+        // one that ends up administering the environment.
+        session()->regenerate();
+
+        // The identity first and the anchor after it: an anchor that briefly stood alone is
+        // the state this class exists to never be in.
+        session()->put(self::SESSION_KEY, $sessionId);
         session()->put(self::ENV_KEY, $environmentId);
 
         // The session just changed under us; drop any memoised resolution.
@@ -172,7 +249,7 @@ final class EnvironmentAdminAuth
             return null;
         }
 
-        $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+        $sessionId = session()->get(self::SESSION_KEY);
         $boundEnv = session()->get(self::ENV_KEY);
         $hostEnv = $this->environments->current()?->environmentKey();
 
@@ -410,17 +487,33 @@ final class EnvironmentAdminAuth
         return is_string($env) && $env !== '' ? $env : null;
     }
 
+    /**
+     * Sign out of the ADMIN context on a tenant's host — and of everything that sign-in
+     * reached: the console's row, the account-host sessions it was handed off from, and
+     * every other console handed off from those ({@see SignInLineage}). Without the account
+     * host, the console's gate sent the person to the account host's open-environment door,
+     * which minted a handoff straight back in.
+     *
+     * The END-USER context on this host is left exactly as it was: the tenant's own people
+     * signed in here are another context, and their keys are not touched.
+     */
     public function logout(Request $request): void
     {
-        session()->forget(self::ENV_KEY);
+        $sessionId = session()->get(self::SESSION_KEY);
+
+        if (is_string($sessionId) && $sessionId !== '') {
+            $lineage = app(SignInLineage::class);
+            $lineage->revoke($lineage->family([$sessionId]));
+        }
+
+        session()->forget(self::CONTEXT_KEYS);
         $this->memoKey = null;
         $this->memoMembership = null;
         $this->operatorMemoKey = null;
         $this->operatorMemo = null;
 
-        // Through PlatformAuth, because what is being ended is a subject session: it
-        // revokes the framework row and clears the held-account SET, neither of which
-        // invalidating the cookie alone would reach.
-        $this->platformAuth->logoutAll($request);
+        // A fresh id and token for what is left — the end-user context, if there is one.
+        session()->migrate(true);
+        session()->regenerateToken();
     }
 }

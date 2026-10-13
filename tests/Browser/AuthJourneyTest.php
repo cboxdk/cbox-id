@@ -94,7 +94,15 @@ it('signs a person in through the form and back out again', function (): void {
      */
     $page->click('[role="menuitem"]:has-text("Sign out")');
 
+    // A page that says so, not a sign-in door: a door can let somebody back in by itself.
+    $page->assertSee('You\'re signed out')
+        ->assertPathIs('/signed-out');
+
+    // Back does not redraw the console from the browser's history: the page state was
+    // encrypted and its key cleared on the way out, so the server is asked, and says no.
+    $page->back();
     $page->assertSee('Welcome back. Access your organization')
+        ->assertDontSee('Welcome back, Ada')
         ->assertPathIs('/login');
 
     // The console is genuinely closed behind them, not merely navigated away from: asked

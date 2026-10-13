@@ -181,7 +181,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                     }
                     subheading={onEnvironment ? (workspace?.label ?? null) : null}
                     user={auth.user}
-                    logoutUrl={logout.url()}
+                    logoutUrl={shell.logoutHref ?? logout.url()}
                     showEnvironment={shell.altitude !== 'workspace'}
                     accountUrl={shell.accountHref}
                     showAccountLink={onEnvironment}
@@ -203,7 +203,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
                             <AccountMenu
                                 user={auth.user}
-                                logoutUrl={logout.url()}
+                                logoutUrl={shell.logoutHref ?? logout.url()}
                                 workspaceSettingsHref={shell.workspaceSettingsHref}
                                 accountHref={shell.accountHref}
                                 switchUserHref={shell.switchUserHref}

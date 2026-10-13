@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\RevokingAuthPolicies;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -184,7 +185,7 @@ it('ends the environment\'s sessions when the sign-in rules page mandates SSO', 
 
     // A tenant subject of the environment being administered.
     $tenantSession = aPasswordSession('tenant-user@acme.test');
-    $adminSessionId = session(PlatformAuth::SESSION_KEY);
+    $adminSessionId = session(EnvironmentAdminAuth::SESSION_KEY);
 
     /*
      * THE PAGE WARNS FIRST, and the fact it warns on is a prop.

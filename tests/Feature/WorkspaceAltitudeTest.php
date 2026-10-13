@@ -42,15 +42,17 @@ function railOf(string $url): array
         ->all();
 }
 
-it('lands a workspace member with one environment straight in that environment\'s console', function (): void {
-    ['subjectId' => $subjectId, 'environment' => $environment] = aWorkspace();
+it('lands a workspace member with one environment on Projects, not inside that environment\'s console', function (): void {
+    ['subjectId' => $subjectId] = aWorkspace();
     signInAsMember($subjectId);
 
-    // `/dashboard` is where every sign-in lands. Through the same signed handoff Projects ›
-    // Open uses — not a link to the tenant host, which would meet a door with no session.
-    $this->get('https://cboxid.com/dashboard')
-        ->assertRedirect(route('environment.open', $environment->id));
-});
+    // `/dashboard` is where every sign-in lands. It used to mint a handoff into the one
+    // environment, so every sign-in at the account host — Google included — dropped the
+    // person into a tenant console they had not asked to open. The console opens when
+    // somebody asks for it: Projects › Open console, the switcher, or a sign-in that
+    // started at that console's own /admin.
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
+})->group('security');
 
 it('lands a workspace with several environments on Projects, where each has its own console', function (): void {
     ['subjectId' => $subjectId, 'project' => $project] = aWorkspace();

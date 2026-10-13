@@ -197,6 +197,12 @@ return [
         'add' => 'Log ind som en anden',
     ],
 
+    'signed_out' => [
+        'title' => 'Logget ud',
+        'heading' => 'Du er logget ud',
+        'lead' => 'Du er logget ud på denne enhed, også fra alle de konsoller, du åbnede fra dette login. Log ind igen for at fortsætte.',
+    ],
+
     'accept_invite' => [
         'title' => 'Accepter invitation',
         'heading' => 'Accepter din invitation',

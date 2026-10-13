@@ -10,6 +10,8 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\HandoffTarget;
 use App\Platform\CspNonce;
 use App\Platform\PlaneResolver;
+use App\Platform\PlatformAuth;
+use App\Platform\SignInLineage;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
@@ -53,6 +55,8 @@ final class EnvironmentHandoffController extends Controller
         CspNonce $nonce,
         PlaneResolver $planes,
         HandoffTarget $targets,
+        PlatformAuth $auth,
+        SignInLineage $lineage,
     ): SymfonyResponse {
         // An Inertia visit (a <Link>, or a redirect the client followed) cannot mount a
         // self-submitting form: send the browser here for real.
@@ -102,6 +106,12 @@ final class EnvironmentHandoffController extends Controller
         // it is re-resolved on redemption, not carried in the token.
         $token = $handoff->mint($subjectId, $env->id);
         $query = ['token' => $token];
+
+        // WHICH SIGN-IN THIS IS, sealed to this token: the sessions this browser holds here.
+        // The console session the redemption mints is linked to them, so signing out on
+        // either host ends both ({@see SignInLineage}) — and a handoff whose sign-in has
+        // already ended is refused on arrival.
+        $query[SignInLineage::FIELD] = $lineage->seal($token, $auth->heldSessionIds());
 
         // THE PAGE TO LAND ON, when the topbar's environment switcher asked for one — so
         // Users in staging opens as Users in production. Validated here and again on

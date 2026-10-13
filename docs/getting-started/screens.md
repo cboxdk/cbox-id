@@ -146,9 +146,10 @@ your product. [Workspaces &
 organizations](../core-concepts/workspaces-and-organizations.md#the-workspace-console)
 explains why they are hidden rather than redirected.
 
-After signing in, a member with exactly one environment they may administer lands in that
-environment's console; everyone else lands on **Projects**, where each environment has
-**Open console**.
+After signing in, a member lands on **Projects**, where each environment has **Open
+console**. **Sign out** on any console signs you out of every console that sign-in
+opened, and lands on **You're signed out**. It does not sign out a tenant's own users on
+the same host.
 
 ## The organization console, area by area
 

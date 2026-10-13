@@ -323,6 +323,8 @@ export interface Shell {
     /** Absolute on the environment console: the person's own pages live on the workspace host. */
     accountHref: string;
     switchUserHref: string;
+    /** Where Sign out posts: the admin context's own logout on a tenant's console, else `/logout`. */
+    logoutHref?: string | null;
     /** `App\Platform\Console\ConsoleAltitude` — which console this page is drawn in. */
     altitude: 'workspace' | 'organization' | 'environment';
     /** The account menu's Workspace settings, where this person may change them. */

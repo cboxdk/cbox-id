@@ -83,6 +83,13 @@ final readonly class ShellProps implements Prop
          * not on that console itself.
          */
         public ?string $platformEnvironmentHref = null,
+        /**
+         * Where the account menu's Sign out posts. An environment's console on a tenant's
+         * host signs out of the ADMIN context only (`admin.logout`): the tenant's own
+         * end-user session on that host is another context and stays signed in. Null means
+         * the ordinary `/logout`.
+         */
+        public ?string $logoutHref = null,
     ) {}
 
     /**
@@ -106,6 +113,7 @@ final readonly class ShellProps implements Prop
             'notice' => $this->notice,
             'actsOn' => $this->actsOn,
             'platformEnvironmentHref' => $this->platformEnvironmentHref,
+            'logoutHref' => $this->logoutHref,
         ];
     }
 }

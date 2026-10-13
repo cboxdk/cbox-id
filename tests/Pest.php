@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\EnvironmentHandoffController;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\BrandImageUpload;
@@ -16,6 +17,7 @@ use App\Platform\EnvironmentSudo;
 use App\Platform\OperatorEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\SignInLineage;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
@@ -331,6 +333,29 @@ function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $e
     }
 
     app(EnvironmentAdminAuth::class)->establish($subjectId, $environmentId);
+}
+
+/**
+ * The form a handoff is redeemed with, for a test that minted the token itself.
+ *
+ * A redemption needs the SIGN-IN it was minted from as well as the token: the account
+ * host seals the sessions its browser holds into the form, and the environment's host
+ * refuses a handoff whose sign-in is missing or over ({@see SignInLineage}). The real door
+ * ({@see EnvironmentHandoffController}) writes both; this stands in
+ * for it with a live platform-root session of the subject's own, unless one is given.
+ *
+ * @return array{token: string, lineage: string}
+ */
+function handoffFields(string $token, string $subjectId, ?string $parentSessionId = null): array
+{
+    $parentSessionId ??= (string) app(PlatformRoot::class)->run(
+        fn (): string => app(SessionManager::class)->start($subjectId, null, ['pwd'])->id,
+    );
+
+    return [
+        'token' => $token,
+        SignInLineage::FIELD => app(SignInLineage::class)->seal($token, [$parentSessionId]),
+    ];
 }
 
 /**
@@ -1752,6 +1777,12 @@ function actingAsRole(MembershipRole $role, bool $emailVerified = true): array
     // `not 403` were asserting against a 302 to /login and passed whatever the page did —
     // including a 500, a 404, or the very cross-plane 403 they were written to catch.
     session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    // …AS THIS PERSON AND NOBODY ELSE. The environment console's administrator keeps a
+    // context of their own on a tenant's host ({@see EnvironmentAdminAuth::SESSION_KEY}),
+    // which a subject signing in no longer displaces; a test that means "the browser is
+    // now this role" has to put it aside, as it used to be put aside by accident.
+    session()->forget(EnvironmentAdminAuth::CONTEXT_KEYS);
 
     return [$subject->id, $org];
 }

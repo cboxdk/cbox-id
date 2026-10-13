@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\PlatformAuth;
+use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -43,20 +43,22 @@ it('keeps the console session when the administrator\'s browser opens an app', f
     authorizeRequest(['client_id' => $clientId, 'redirect_uri' => 'https://parcels.test/callback'])
         ->assertRedirect(route('login'));
 
-    expect(session(PlatformAuth::SESSION_KEY))->toBeString();
+    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeString();
     $this->get(route('environment.home'))->assertOk();
 })->group('security');
 
-it('still forgets an administrator session that has been revoked', function (): void {
+it('still refuses an administrator session that has been revoked', function (): void {
     crudSetup();
     $clientId = firstPartyEnvironmentApp();
 
-    $sessionId = (string) session(PlatformAuth::SESSION_KEY);
+    $sessionId = (string) session(EnvironmentAdminAuth::SESSION_KEY);
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->revoke($sessionId));
 
     authorizeRequest(['client_id' => $clientId, 'redirect_uri' => 'https://parcels.test/callback']);
 
-    // Only a LIVE administrator session is spared; a revoked one is gone, as a revoked
-    // subject session always was.
-    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
+    // Only a LIVE administrator session opens the console; a revoked one is refused by the
+    // console's own gate, which re-reads the row on every request.
+    nextRequest();
+    $this->get(route('environment.home'))->assertRedirect();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 })->group('security');

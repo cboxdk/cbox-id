@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\SignedOutController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Auth\SudoController;
 use App\Http\Controllers\ConnectedServiceController;
@@ -489,6 +490,11 @@ Route::middleware([BlockDuringImpersonation::class, 'locale'])->group(function (
 });
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
+
+// Where every sign-out lands, on every host — a page, not a door. Sending people to a sign-in
+// door instead let an environment console's gate hand them straight back in
+// ({@see SignedOutController}). Ungated: it must render whoever asks, and never redirect.
+Route::get('/signed-out', [SignedOutController::class, 'show'])->middleware('locale')->name('signed-out');
 
 // Exit impersonation. Gated on the marker (not operator auth) inside the
 // controller — while impersonating the browser is purely the subject, with no
