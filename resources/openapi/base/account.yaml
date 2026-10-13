@@ -147,6 +147,14 @@ components:
         id: { type: string }
         name: { type: ["string", "null"] }
         email: { type: ["string", "null"], format: email }
+    Passkey:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string, description: "What you call it — one to 64 characters." }
+        created_at: { type: ["string", "null"], format: date-time }
+        last_used_at: { type: ["string", "null"], format: date-time, description: "When it last signed you in; null if it never has since this was recorded." }
     SessionsRevoked:
       type: object
       required: [revoked]

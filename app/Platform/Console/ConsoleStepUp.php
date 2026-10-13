@@ -7,7 +7,8 @@ namespace App\Platform\Console;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireSudo;
 use App\Platform\EnvironmentSudo;
-use App\Platform\StepUpReason;
+use App\Platform\StepUpPlane;
+use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 
 /**
@@ -64,6 +65,11 @@ final class ConsoleStepUp
      * The step-up route this action must clear first, or null when the window is already
      * open. A non-null answer has ALREADY recorded where to return to.
      *
+     * Only a document navigation ever gets the route back. A request a script made — an
+     * Inertia visit, which is every click in this console — is answered by a thrown
+     * {@see StepUpPrompt} refusal instead, which the page turns into an in-place dialog and
+     * then replays; the caller's `return to_route(...)` is never reached for it.
+     *
      * The caller names the page under both of its route names, because the merged
      * components are reached under a different one on each plane and only the component
      * knows which pair it belongs to. It cannot be read off the request instead: a
@@ -81,7 +87,7 @@ final class ConsoleStepUp
         if ($this->onEnvironmentPlane()) {
             return $this->confirmed(
                 $this->environment->confirmed(),
-                'environment.sudo',
+                StepUpPlane::Environment,
                 $environmentRoute,
                 $parameters,
                 $reason,
@@ -90,7 +96,7 @@ final class ConsoleStepUp
 
         return $this->confirmed(
             $this->organization->confirmed(),
-            'sudo',
+            StepUpPlane::Organization,
             $organizationRoute,
             $parameters,
             $reason,
@@ -103,9 +109,9 @@ final class ConsoleStepUp
     }
 
     /**
-     * The step-up route name doubles as the session prefix its own screen reads back:
-     * `sudo` owns `sudo.intended`, `environment.sudo` owns `environment.sudo.intended`,
-     * and the account plane spells its pair the same way. One string rather than two so
+     * The plane's value ({@see StepUpPlane}) is both the step-up route name and the session
+     * prefix its own screen reads back: `sudo` owns `sudo.intended`, `environment.sudo` owns
+     * `environment.sudo.intended`. One value rather than two strings so
      * a page cannot be sent to one plane's screen while its intent is filed under the
      * other's — which would strand the administrator on the environment home page after
      * a confirmation that worked.
@@ -114,7 +120,7 @@ final class ConsoleStepUp
      */
     private function confirmed(
         bool $open,
-        string $sudo,
+        StepUpPlane $plane,
         string $returnRoute,
         array $parameters,
         string $reason,
@@ -123,11 +129,19 @@ final class ConsoleStepUp
             return null;
         }
 
-        $intended = route($returnRoute, $parameters);
+        /*
+         * IN PLACE WHEN A SCRIPT ASKED — which, in this console, is every click.
+         *
+         * Answering an Inertia write with "go to the step-up screen" brought the
+         * administrator back to the page and never to the action: the secret was not
+         * rotated, the hook not registered, and nothing said why. {@see StepUpPrompt}
+         * throws the refusal the page turns into a dialog, and the page replays this exact
+         * request once the password is in. A document navigation (a create page opened in
+         * a new tab) still gets the route back, and the caller redirects to the full page
+         * as it always has — which is why the intent below is recorded either way.
+         */
+        StepUpPrompt::demand(request(), $plane, route($returnRoute, $parameters), $reason);
 
-        session()->put($sudo.'.intended', $intended);
-        StepUpReason::record($sudo, $reason, $intended);
-
-        return $sudo;
+        return $plane->value;
     }
 }

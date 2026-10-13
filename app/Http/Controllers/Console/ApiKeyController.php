@@ -14,7 +14,8 @@ use App\Platform\Console\KeyTabs;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
-use App\Platform\StepUpReason;
+use App\Platform\StepUpPlane;
+use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -179,11 +180,8 @@ final readonly class ApiKeyController extends ConsoleController
             return null;
         }
 
-        $intended = route('keys.workspace');
-
-        session()->put('sudo.intended', $intended);
-        StepUpReason::record('sudo', $reason, $intended);
-
-        return to_route('sudo');
+        // In place for a click (thrown, and replayed by the page once confirmed); the full
+        // page, coming back to the keys, for anything else.
+        return StepUpPrompt::demand(request(), StepUpPlane::Organization, route('keys.workspace'), $reason);
     }
 }

@@ -48,10 +48,10 @@ it('requires step-up before signing out other sessions', function (): void {
     session([PlatformAuth::SESSION_KEY => $current->id]);
     app(CurrentUser::class)->set($subject, $current, $org, MembershipRole::Owner);
 
-    // No sudo confirmation -> redirected, nothing revoked. The gate is route middleware
-    // now rather than a check at the top of the action, which is what makes it impossible
-    // for a new write on this page to be added without it.
-    signOutOtherSessions()->assertRedirect(route('sudo'));
+    // No sudo confirmation -> asked to step up in place, nothing revoked. The gate is route
+    // middleware now rather than a check at the top of the action, which is what makes it
+    // impossible for a new write on this page to be added without it.
+    assertAskedToStepUp(signOutOtherSessions());
 
     expect(Session::query()->whereKey($other->id)->value('revoked_at'))->toBeNull();
 });

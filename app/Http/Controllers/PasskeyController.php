@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\Passkeys\PasskeyProviders;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
@@ -78,17 +79,31 @@ final class PasskeyController extends Controller
             return $this->error('Registration challenge expired. Try again.');
         }
 
-        $name = $request->string('name')->toString() ?: 'Passkey';
+        /*
+         * THE NAME IT STARTS WITH: the password manager or authenticator that made it, when
+         * the passkey says which (iCloud Keychain, 1Password, Windows Hello…), otherwise the
+         * page's own "Passkey on Chrome · macOS". Either way the person is shown it next and
+         * can change it — this is only the best default available, never a claim.
+         */
+        $name = PasskeyProviders::defaultName($request->getContent(), $request->string('name')->toString());
 
         try {
-            $passkeys->register($me->id(), $challenge, $request->getContent(), $name);
+            $credential = $passkeys->register($me->id(), $challenge, $request->getContent(), $name);
         } catch (InvalidAssertionResponse|UnsupportedCredential $e) {
             return $this->error('That passkey could not be verified.');
         } catch (Throwable) {
             return $this->error('Something went wrong registering that passkey.');
         }
 
-        return new JsonResponse(['ok' => true]);
+        return new JsonResponse([
+            'ok' => true,
+            // What the page needs to offer "Name this passkey" straight away.
+            'passkey' => [
+                'id' => $credential->id,
+                'name' => $credential->name ?? $name,
+                'renameHref' => route('account.passkeys.update', $credential->id),
+            ],
+        ]);
     }
 
     public function loginOptions(Request $request): JsonResponse

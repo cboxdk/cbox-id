@@ -429,6 +429,64 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - 'Sign-in methods'
+      summary: 'Rename one of your passkeys.'
+      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      operationId: account_passkeys_rename
+      x-action: account.passkeys.rename
+      x-scope: 'account:sign_in:write'
+      x-danger: write
+      parameters:
+        -
+          name: passkey_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 'What to call the passkey: one to 64 characters, no line breaks.'
+                  minLength: 1
+                  maxLength: 64
+              required:
+                - name
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Passkey'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   '/me/pipes/{provider}':
     delete:
       tags:
@@ -789,6 +847,28 @@ components:
             - string
             - 'null'
           format: email
+    Passkey:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: 'What you call it — one to 64 characters.'
+        created_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When it last signed you in; null if it never has since this was recorded.'
     SessionsRevoked:
       type: object
       required:

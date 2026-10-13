@@ -1,5 +1,5 @@
 import { Dialog as Primitive } from 'radix-ui';
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, type RefObject, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon } from './Icon';
 
@@ -16,6 +16,17 @@ export interface DialogProps {
     /** The buttons, right-aligned in a footer. Destructive last, cancel first. */
     footer?: ReactNode;
     size?: 'sm' | 'md' | 'lg';
+    /**
+     * The control focus moves to when the dialog opens — the password field of a "Confirm
+     * it's you", the name field of a rename. Without it Radix focuses the first tabbable
+     * element, which in this layout is the header's close button: correct for a
+     * confirmation, wrong for a dialog whose whole job is one field.
+     *
+     * A ref rather than `autoFocus` on the field, because `autoFocus` moves focus before
+     * Radix looks — so Radix never fires its open event, the opener is never recorded, and
+     * focus has nowhere to return to on close.
+     */
+    initialFocus?: RefObject<HTMLElement | null>;
     children?: ReactNode;
 }
 
@@ -32,16 +43,23 @@ export interface DialogProps {
  * `document.activeElement` is still whatever opened it. Catching it there is the only
  * point at which that element is still knowable.
  */
-function useReturnFocus(): {
-    onOpenAutoFocus: () => void;
+function useReturnFocus(initialFocus?: RefObject<HTMLElement | null>): {
+    onOpenAutoFocus: (event: Event) => void;
     onCloseAutoFocus: (event: Event) => void;
 } {
     const returnTo = useRef<HTMLElement | null>(null);
 
     return {
-        onOpenAutoFocus: () => {
+        onOpenAutoFocus: (event) => {
             const active = document.activeElement;
             returnTo.current = active instanceof HTMLElement ? active : null;
+
+            const target = initialFocus?.current;
+
+            if (target !== null && target !== undefined) {
+                event.preventDefault();
+                target.focus();
+            }
         },
         onCloseAutoFocus: (event) => {
             if (returnTo.current === null || !returnTo.current.isConnected) {
@@ -72,9 +90,10 @@ export function Dialog({
     description,
     footer,
     size = 'md',
+    initialFocus,
     children,
 }: DialogProps) {
-    const returnFocus = useReturnFocus();
+    const returnFocus = useReturnFocus(initialFocus);
 
     return (
         <Primitive.Root open={open} onOpenChange={onOpenChange}>

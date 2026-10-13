@@ -30,10 +30,35 @@ These are behaviours the app ships that an operator should understand.
 ### Step-up authentication (`/sudo`)
 
 Sensitive actions (managing operators, rotating credentials, changing security
-settings) require **re-authentication into a short-lived elevated "sudo" session**
-even when the user is already signed in. The user is sent to `/sudo` to confirm a
-credential; the elevation is time-boxed and does not persist for the whole session.
-This limits the blast radius of a hijacked, already-authenticated session.
+settings, adding a passkey or connecting a sign-in method) require **re-authentication
+into a short-lived elevated "sudo" session** even when the user is already signed in.
+The elevation lasts 15 minutes and does not persist for the whole session. This limits
+the blast radius of a hijacked, already-authenticated session.
+
+**The prompt opens where the person is.** When a click needs a fresh step-up, the page
+shows a **Confirm it's you** dialog with the reason the action gave ("Adding a passkey
+gives you a new way to sign in."). Once the password is accepted, the action the person
+clicked runs: the same request, with the same data. A passkey enrolment ends the dialog
+on a **Continue: create passkey** button, because browsers only run the passkey ceremony
+inside a click. A wrong password is shown in the dialog and nothing runs. Five wrong
+attempts lock the prompt for a minute, exactly as on the full-page form.
+
+How it works, for anyone integrating with the console's endpoints:
+
+- A gated request made by a script (an Inertia visit or a JSON call) is refused with
+  `403`, the header `X-Cbox-Step-Up: <confirm URL>` and a body
+  `{ "error", "sudo", "step_up": { "plane", "confirm", "reason" } }`. `sudo` is the
+  full-page screen, for a client that cannot show a dialog.
+- The dialog posts `{ "password" }` as JSON to the confirm URL and gets `200
+  { "confirmed": true }`, `422` with `errors.password`, or `429` with `Retry-After`.
+- A page opened directly (a bookmark, a link opened in a new tab) still goes to the
+  full-page `/sudo` screen and comes back to that page. Opened with nothing pending,
+  `/sudo` returns you to the page you came from.
+
+There are two separate step-ups. The organization console and My account use `/sudo`,
+which checks the signed-in person's password. The environment console uses
+`/admin/sudo`, which checks the administrator's own platform account. Confirming one
+never opens the other. Neither is offered during an impersonation.
 
 ### Organization switcher
 

@@ -1,7 +1,13 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import { isCancellation, PasskeyError, passkeysSupported, registerPasskey } from '@/lib/passkeys';
+import {
+    defaultPasskeyName,
+    isCancellation,
+    PasskeyError,
+    passkeysSupported,
+    registerPasskey,
+} from '@/lib/passkeys';
 import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
@@ -25,8 +31,17 @@ interface PasskeyRow {
     id: string;
     name: string;
     added: string | null;
-    signCount: number;
+    /** "2 days ago", or null when it has not signed in since this was recorded. */
+    lastUsed: string | null;
+    renameHref: string;
     removeHref: string;
+}
+
+/** Which passkey the naming dialog is about, and whether it was just created. */
+interface Naming {
+    name: string;
+    renameHref: string;
+    fresh: boolean;
 }
 
 /** One linked sign-in identity — a provider account that can sign in as this one. */
@@ -157,7 +172,7 @@ export default function Security({
                 <SmsPanel sms={smsFactor} totpEnabled={twoFactor.enabled} urls={urls} />
             )}
 
-            <PasskeyPanel passkeys={passkeys} name={profile.name} enabled={passkeysEnabled} />
+            <PasskeyPanel passkeys={passkeys} enabled={passkeysEnabled} />
 
             <SessionPanel session={session} otherSessions={otherSessions} urls={urls} />
         </div>
@@ -518,15 +533,7 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
     );
 }
 
-function PasskeyPanel({
-    passkeys,
-    name,
-    enabled,
-}: {
-    passkeys: PasskeyRow[];
-    name: string;
-    enabled: boolean;
-}) {
+function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: boolean }) {
     /*
      * READ ONCE, LAZILY, rather than in an effect.
      *
@@ -539,17 +546,30 @@ function PasskeyPanel({
     const [message, setMessage] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [removing, setRemoving] = useState<PasskeyRow | null>(null);
+    const [naming, setNaming] = useState<Naming | null>(null);
 
+    /*
+     * ADD, IN ONE GO. If the step-up has lapsed the "Confirm it's you" dialog opens right
+     * here, and its last step is a "Continue: create passkey" button the ceremony runs
+     * inside (WebAuthn needs a fresh click). Then the new passkey is offered a name — the
+     * provider's own when the passkey says which, "Passkey on Chrome · macOS" otherwise —
+     * which the person can keep or change.
+     */
     const add = useCallback(async () => {
         setBusy(true);
         setMessage(null);
 
         try {
-            await registerPasskey(`${name}'s device`);
+            const created = await registerPasskey(defaultPasskeyName());
             router.reload({ only: ['passkeys'] });
+
+            if (created !== null) {
+                setNaming({ name: created.name, renameHref: created.renameHref, fresh: true });
+            }
         } catch (error) {
-            // A person who dismissed the platform's own prompt did not fail at anything,
-            // and telling them they did is how a page teaches somebody it is broken.
+            // A person who dismissed the platform's own prompt — or the step-up — did not
+            // fail at anything, and telling them they did is how a page teaches somebody
+            // it is broken.
             setMessage(
                 isCancellation(error)
                     ? null
@@ -560,7 +580,7 @@ function PasskeyPanel({
         } finally {
             setBusy(false);
         }
-    }, [name]);
+    }, []);
 
     /*
      * THE PANEL STAYS EVEN WHERE PASSKEYS DO NOT WORK — only the enrolment button goes.
@@ -612,36 +632,67 @@ function PasskeyPanel({
                     {passkeys.map((passkey) => (
                         <li
                             key={passkey.id}
-                            className="flex items-center justify-between gap-4 py-3"
+                            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
                         >
                             <div className="flex items-center gap-3 min-w-0">
                                 <Icon
-                                    name="shield"
+                                    name="fingerprint"
                                     className="w-4 h-4 shrink-0"
                                     style={{ color: 'var(--success-strong)' }}
                                 />
                                 <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate">{passkey.name}</p>
+                                    <p className="text-sm font-medium break-words">
+                                        {passkey.name}
+                                    </p>
                                     <p
                                         className="text-xs"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        Added {passkey.added ?? 'unknown'} · sign-count{' '}
-                                        {passkey.signCount}
+                                        {[
+                                            `Added ${passkey.added ?? 'on an unknown date'}`,
+                                            passkey.lastUsed === null
+                                                ? 'not used to sign in yet'
+                                                : `last used ${passkey.lastUsed}`,
+                                        ].join(' · ')}
                                     </p>
                                 </div>
                             </div>
-                            <Button
-                                size="sm"
-                                variant="danger"
-                                aria-label={`Remove ${passkey.name}`}
-                                onClick={() => setRemoving(passkey)}
-                            >
-                                Remove
-                            </Button>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                    size="sm"
+                                    aria-label={`Rename ${passkey.name}`}
+                                    onClick={() =>
+                                        setNaming({
+                                            name: passkey.name,
+                                            renameHref: passkey.renameHref,
+                                            fresh: false,
+                                        })
+                                    }
+                                >
+                                    Rename
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    aria-label={`Remove ${passkey.name}`}
+                                    onClick={() => setRemoving(passkey)}
+                                >
+                                    Remove
+                                </Button>
+                            </div>
                         </li>
                     ))}
                 </ul>
+            )}
+
+            {naming !== null && (
+                // Keyed, so each passkey's dialog starts from its own name — never from the
+                // draft the last one was left with.
+                <PasskeyNameDialog
+                    key={`${naming.renameHref}:${String(naming.fresh)}`}
+                    naming={naming}
+                    onClose={() => setNaming(null)}
+                />
             )}
 
             {/*
@@ -678,6 +729,97 @@ function PasskeyPanel({
 }
 
 /**
+ * NAME A PASSKEY — straight after adding one, or later from the list.
+ *
+ * After adding, the field is filled with the name the server chose (the password manager
+ * that made it, or the browser and system), so "Keep this name" is one click and costs
+ * nothing: the passkey already has that name. Saving runs the same action the API and MCP
+ * run (`account.passkeys.rename`), so the rule — 1 to 64 characters, no line breaks — and
+ * the audit entry are the same at every door.
+ */
+function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () => void }) {
+    const form = useForm({ name: naming.name });
+    const field = useRef<HTMLInputElement>(null);
+    const { errors } = usePage().props;
+    const serverError = typeof errors.passkeyName === 'string' ? errors.passkeyName : null;
+
+    const trimmed = form.data.name.trim();
+    const localError =
+        trimmed === ''
+            ? null
+            : [...trimmed].length > 64
+              ? 'Keep the name to 64 characters or fewer.'
+              : null;
+
+    return (
+        <Dialog
+            open
+            size="sm"
+            initialFocus={field}
+            onOpenChange={(open) => !open && onClose()}
+            title={naming.fresh ? 'Passkey added — name it' : 'Rename passkey'}
+            description={
+                naming.fresh
+                    ? 'Give it a name you will recognise later, like the device or password manager it lives in. You can change it any time.'
+                    : 'A name you will recognise later, like the device or password manager it lives in.'
+            }
+            footer={
+                <>
+                    <Button onClick={onClose}>{naming.fresh ? 'Keep this name' : 'Cancel'}</Button>
+                    <Button
+                        type="submit"
+                        form="cbx-passkey-name"
+                        variant="primary"
+                        loading={form.processing}
+                        disabled={trimmed === '' || localError !== null}
+                    >
+                        Save name
+                    </Button>
+                </>
+            }
+        >
+            <form
+                id="cbx-passkey-name"
+                onSubmit={(event) => {
+                    event.preventDefault();
+
+                    if (trimmed === '' || localError !== null) {
+                        return;
+                    }
+
+                    form.transform((data) => ({ name: data.name.trim() }));
+                    form.patch(naming.renameHref, {
+                        preserveScroll: true,
+                        onSuccess: (page) => {
+                            const after = (page.props.errors ?? {}) as Record<string, unknown>;
+
+                            if (typeof after.passkeyName !== 'string') {
+                                onClose();
+                            }
+                        },
+                    });
+                }}
+            >
+                <Field
+                    label="Name"
+                    hint="Up to 64 characters."
+                    error={localError ?? serverError ?? form.errors.name}
+                >
+                    <Input
+                        ref={field}
+                        name="name"
+                        autoComplete="off"
+                        maxLength={64}
+                        value={form.data.name}
+                        onChange={(event) => form.setData('name', event.target.value)}
+                    />
+                </Field>
+            </form>
+        </Dialog>
+    );
+}
+
+/**
  * MY ACCOUNT › SIGN-IN METHODS — every way in to this account, in one place.
  *
  * It replaced "Connected accounts", which listed only the deployment operator's own
@@ -686,9 +828,10 @@ function PasskeyPanel({
  * account HAS (password, passkeys, every linked provider account, whichever door it came
  * through) and offers what the sign-in page offers.
  *
- * Connect is a plain link, not a client visit: it ends at the provider's own consent page,
- * a cross-origin redirect a client-side navigation cannot follow. Disconnect asks first,
- * and the server refuses it when it would leave no way in — the refusal is shown here.
+ * Connect is an Inertia link: the visit clears the step-up in place, and the server then
+ * answers it with a real navigation (`Inertia::location`), because the provider's consent
+ * page is another origin a client-side visit cannot follow. Disconnect asks first, and the
+ * server refuses it when it would leave no way in — the refusal is shown here.
  */
 function SignInMethodsPanel({
     methods,
@@ -811,14 +954,21 @@ function SignInMethodsPanel({
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2.5">
                         {methods.connectable.map((provider) => (
-                            <a
+                            /*
+                                An Inertia visit, so a lapsed step-up is asked for HERE, in
+                                the "Confirm it's you" dialog, and the click carries on once
+                                it is answered; the server then sends the browser to the
+                                provider for real. Still an anchor: it can be opened in a new
+                                tab, which takes the full-page step-up instead.
+                            */
+                            <Link
                                 key={provider.provider}
                                 href={provider.connectHref}
                                 className="btn btn-ghost"
                             >
                                 <ProviderMark provider={provider.provider} />
                                 <span>Connect {provider.label}</span>
-                            </a>
+                            </Link>
                         ))}
                     </div>
                 </div>

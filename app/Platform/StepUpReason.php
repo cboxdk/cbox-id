@@ -22,6 +22,37 @@ namespace App\Platform;
  */
 final readonly class StepUpReason
 {
+    /**
+     * WHAT A ROUTE-GATED STEP-UP SAYS, by route name.
+     *
+     * The action-level gate always passes its own sentence. The route middlewares had none
+     * to pass, so every prompt they raised read "This is a protected action" — including the
+     * one in front of adding a passkey, which is the step-up people meet most. A route
+     * named here says what is waiting instead; one that is not says the generic sentence,
+     * which is still true.
+     *
+     * @var array<string, string>
+     */
+    public const array ROUTES = [
+        'passkeys.register.options' => 'Adding a passkey gives you a new way to sign in.',
+        'passkeys.register' => 'Adding a passkey gives you a new way to sign in.',
+        'account.sign-in-methods.connect' => 'Connecting an account gives you a new way to sign in.',
+        'social.connect' => 'Connecting an account gives you a new way to sign in.',
+        'social.connect.callback' => 'Connecting an account gives you a new way to sign in.',
+        'account.password.update' => 'Changing your password changes how you sign in.',
+        'account.mfa.enrol' => 'Setting up an authenticator app changes how you sign in.',
+        'account.mfa.confirm' => 'Setting up an authenticator app changes how you sign in.',
+        'account.mfa.recovery-codes' => 'New recovery codes replace the ones you have, and are shown once.',
+        'account.mfa.sms.enrol' => 'Adding a phone number changes how you sign in.',
+        'account.mfa.sms.confirm' => 'Adding a phone number changes how you sign in.',
+        'account.mfa.sms.destroy' => 'Removing your phone number changes how you sign in.',
+        'account.passkeys.destroy' => 'Removing a passkey changes how you sign in.',
+        'account.social.destroy' => 'Disconnecting an account changes how you sign in.',
+        'account.sign-in-methods.destroy' => 'Disconnecting an account changes how you sign in.',
+        'account.sessions.revoke-others' => 'Signing out everywhere else ends every other session at once.',
+        'settings.organization.destroy' => 'Closing the organization removes it for everyone in it.',
+    ];
+
     public function __construct(
         public string $sentence,
         public string $intended,
@@ -48,6 +79,12 @@ final readonly class StepUpReason
         return $reason instanceof self && is_string($intended) && $reason->intended === $intended
             ? $reason->sentence
             : null;
+    }
+
+    /** The sentence a route-gated step-up shows for `$route`, or null for the generic one. */
+    public static function forRoute(?string $route): ?string
+    {
+        return $route === null ? null : (self::ROUTES[$route] ?? null);
     }
 
     /** Spent alongside the intent it belongs to, once the step-up is through. */

@@ -40,8 +40,8 @@ final class AccountScopes
             'description' => 'Create and revoke your own API keys for the apps built on this environment. A new key is shown once.',
         ],
         'account:sign_in:write' => [
-            'label' => 'Remove sign-in methods',
-            'description' => 'Remove one of your passkeys or your phone number for text-message codes, or disconnect a social account — never the last way you can sign in.',
+            'label' => 'Manage your sign-in methods',
+            'description' => 'Rename or remove one of your passkeys, remove your phone number for text-message codes, or disconnect a social account — never the last way you can sign in.',
         ],
         'account:pipes:write' => [
             'label' => 'Disconnect your connected services',

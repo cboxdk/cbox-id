@@ -27,6 +27,7 @@ use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
+use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\WorkspaceApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
@@ -34,6 +35,7 @@ use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
+use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
@@ -118,6 +120,10 @@ class AppServiceProvider extends ServiceProvider
         // …and what it does is recorded as ITS act: the framework services behind the
         // management API write their own audit entries, mostly with no actor at all.
         $this->app->extend(AuditLog::class, fn (AuditLog $inner): AuditLog => new EnvironmentKeyAuditLog($inner));
+
+        // When each passkey last signed somebody in, for My account's list — stamped at
+        // every door a passkey signs in at, because they all go through this contract.
+        $this->app->extend(Passkeys::class, fn (Passkeys $inner): Passkeys => new RecordsPasskeyUse($inner));
 
         // One CSP nonce per request. `scoped` and not `singleton`: on a long-lived worker
         // a singleton would hand the same value to every request the process ever serves,
