@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Http\Props\Shared\LinkTabProps;
+use App\Platform\PlaneResolver;
+use Illuminate\Support\Facades\Route;
 
 /**
  * THE KEYS PAGE'S TABS — which kinds of key this console issues, and which of them this
@@ -16,9 +18,12 @@ use App\Http\Props\Shared\LinkTabProps;
  *
  *  - the WORKSPACE console: Secret keys (management keys) for any environment the person
  *    may reach, and Workspace keys;
- *  - the ENVIRONMENT console: Secret keys and Publishable keys (frontend keys). Its secret
- *    keys are listed as the agents that hold them, so that tab leads to AI agents › Agents
- *    rather than drawing the same list twice.
+ *  - the ENVIRONMENT console: Secret keys and Publishable keys (frontend keys), and
+ *    Workspace keys on the workspace's own host. Its secret keys are listed as the agents
+ *    that hold them, so that tab IS AI agents › Agents — which draws these tabs too, so an
+ *    agent's key and the other kinds are one click apart in both directions. Workspace keys
+ *    reach the workspace rather than this environment and live on the workspace's host, so
+ *    that tab is an absolute link there ({@see ShellContext::onWorkspaceHost()}).
  *
  * Secret keys come first on both, because they are the ones a developer reaches for. A
  * tab the person may not open is not drawn, by the same questions the tab's own page asks.
@@ -33,7 +38,11 @@ final readonly class KeyTabs
 
     public const FRONTEND = 'frontend';
 
-    public function __construct(private ConsoleScope $scope) {}
+    public function __construct(
+        private ConsoleScope $scope,
+        private PlaneResolver $planes,
+        private ShellContext $shell,
+    ) {}
 
     /**
      * @return list<LinkTabProps>
@@ -48,6 +57,12 @@ final readonly class KeyTabs
             // agents that hold them, so the tab leads to AI agents › Agents.
             $tabs[] = new LinkTabProps(self::MANAGEMENT, Vocabulary::SECRET_KEYS, route('environment.agents'), $current === self::MANAGEMENT);
             $tabs[] = new LinkTabProps(self::FRONTEND, Vocabulary::PUBLISHABLE_KEYS, route('environment.keys.frontend'), $current === self::FRONTEND);
+
+            // Only where there IS a workspace host to send them to: a single-host deployment
+            // has no second origin, and the same path here would be a page this host refuses.
+            if ($this->planes->consoleHost() !== null && Route::has('keys.workspace')) {
+                $tabs[] = new LinkTabProps(self::WORKSPACE, Vocabulary::WORKSPACE_KEYS, $this->shell->onWorkspaceHost('keys.workspace'), false);
+            }
 
             return $tabs;
         }

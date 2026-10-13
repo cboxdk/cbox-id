@@ -86,7 +86,9 @@ it('gives the environment console its management keys as Agents, and its fronten
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('title', 'API keys'));
 
-    expect(keyTabsOn(route('environment.keys.frontend')))->toBe(['management', 'frontend']);
+    // …and the workspace's own keys, on the workspace's host: one tab away from either page
+    // rather than another host's rail away (tests/Feature/AgentKeyTabsTest.php).
+    expect(keyTabsOn(route('environment.keys.frontend')))->toBe(['management', 'frontend', 'workspace']);
 });
 
 it('mints a management key for the environment the console stands on, on the workspace\'s record', function (): void {

@@ -9,6 +9,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
+use Cbox\Id\Connectors\Enums\ConnectorCategory;
 use Cbox\Id\Connectors\ValueObjects\ConnectionSummary;
 use Cbox\Id\Connectors\ValueObjects\ConnectorDescriptor;
 use Illuminate\Http\Request;
@@ -59,42 +60,31 @@ final readonly class ConnectionsController extends ConnectorsPage
             }
         }
 
-        // Only types this console serves: a row nobody here can open is a row this page
-        // cannot explain. An unknown organization in the filter is an empty list, never
-        // the unfiltered one.
-        $all = $filter->unknown ? [] : array_values(array_filter(
-            $overview->forOrganization($organizationId),
-            static fn (ConnectionSummary $row): bool => isset($offered[$row->category->value]),
-        ));
-
         $type = $request->string('type')->toString();
-        $type = $catalog->find($type) !== null && isset($offered[$catalog->find($type)->category->value]) ? $type : '';
+        $chosen = $catalog->find($type);
+        $type = $chosen !== null && isset($offered[$chosen->category->value]) ? $type : '';
         $status = $request->string('status')->toString();
         $status = array_key_exists($status, self::STATUSES) ? $status : '';
 
-        $ofType = $type === ''
-            ? $all
-            : array_values(array_filter($all, static fn (ConnectionSummary $row): bool => $offered[$row->category->value]->key === $type));
+        // Only types this console serves: a row nobody here can open is a row this page
+        // cannot explain.
+        $categories = array_values(array_map(static fn (ConnectorDescriptor $descriptor): ConnectorCategory => $descriptor->category, $offered));
+        $listed = $type === '' ? $categories : [$catalog->find($type)->category ?? $categories[0]];
 
-        $rows = $status === ''
-            ? $ofType
-            : array_values(array_filter($ofType, static fn (ConnectionSummary $row): bool => self::hasStatus($row, $status)));
-
-        $order = array_flip(array_keys($offered));
-
-        usort($rows, static fn (ConnectionSummary $a, ConnectionSummary $b): int => [! $a->needsAttention(), $order[$a->category->value], strtolower($a->name)]
-            <=> [! $b->needsAttention(), $order[$b->category->value], strtolower($b->name)]);
-
+        // One aggregate per type for the filters' counts, and the page itself from the
+        // database — failing first, then by type, then by name — so the list reads fifty
+        // rows whatever the environment holds. An unknown organization in the filter is an
+        // empty list, never the unfiltered one.
+        $counts = $filter->unknown ? [] : $overview->counts($organizationId, $categories);
         $page = max(1, $request->integer('page', 1));
-        $paginator = new LengthAwarePaginator(
-            array_slice($rows, ($page - 1) * self::PER_PAGE, self::PER_PAGE),
-            count($rows),
-            self::PER_PAGE,
-            $page,
-        );
+        $found = $filter->unknown || $listed === []
+            ? ['rows' => [], 'total' => 0]
+            : $overview->page($organizationId, $listed, $status, self::PER_PAGE, $page);
+
+        $paginator = new LengthAwarePaginator($found['rows'], $found['total'], self::PER_PAGE, $page);
 
         $names = $this->scope->organizationNames(array_values(array_filter(
-            array_map(static fn (ConnectionSummary $row): ?string => $row->organizationId, $paginator->items()),
+            array_map(static fn (ConnectionSummary $row): ?string => $row->organizationId, $found['rows']),
         )));
 
         $base = $this->url('connectors.connections');
@@ -106,25 +96,29 @@ final readonly class ConnectionsController extends ConnectorsPage
 
         return $this->page('connectors::connections', 'Connections', [
             'help' => HelpProps::for(HelpTopic::Connectors),
-            'connections' => array_map(fn (ConnectionSummary $row): array => $this->row($row, $offered[$row->category->value], $names), $paginator->items()),
+            'connections' => array_map(fn (ConnectionSummary $row): array => $this->row($row, $offered[$row->category->value], $names), $found['rows']),
             'pagination' => PaginationProps::from($paginator),
             'filtered' => $type !== '' || $status !== '',
             'types' => [
-                ['key' => '', 'label' => 'Every type', 'count' => count($all), 'href' => $this->withQuery($base, array_diff_key($keep, ['type' => 1])), 'selected' => $type === ''],
+                ['key' => '', 'label' => 'Every type', 'count' => self::sum($counts, $categories, 'total'), 'href' => $this->withQuery($base, array_diff_key($keep, ['type' => 1])), 'selected' => $type === ''],
                 ...array_values(array_map(fn (ConnectorDescriptor $descriptor): array => [
                     'key' => $descriptor->key,
                     'label' => $descriptor->name,
-                    'count' => count(array_filter($all, static fn (ConnectionSummary $row): bool => $row->category === $descriptor->category)),
+                    'count' => $counts[$descriptor->category->value]['total'] ?? 0,
                     'href' => $this->withQuery($base, [...$keep, 'type' => $descriptor->key]),
                     'selected' => $type === $descriptor->key,
                 ], $offered)),
             ],
             'statuses' => [
-                ['key' => '', 'label' => 'All', 'count' => count($ofType), 'href' => $this->withQuery($base, array_diff_key($keep, ['status' => 1])), 'selected' => $status === ''],
+                ['key' => '', 'label' => 'All', 'count' => self::sum($counts, $listed, 'total'), 'href' => $this->withQuery($base, array_diff_key($keep, ['status' => 1])), 'selected' => $status === ''],
                 ...array_map(fn (string $key, string $label): array => [
                     'key' => $key,
                     'label' => $label,
-                    'count' => count(array_filter($ofType, static fn (ConnectionSummary $row): bool => self::hasStatus($row, $key))),
+                    'count' => match ($key) {
+                        'failing' => self::sum($counts, $listed, 'failing'),
+                        'active' => self::sum($counts, $listed, 'active'),
+                        default => self::sum($counts, $listed, 'total') - self::sum($counts, $listed, 'active'),
+                    },
                     'href' => $this->withQuery($base, [...$keep, 'status' => $key]),
                     'selected' => $status === $key,
                 ], array_keys(self::STATUSES), self::STATUSES),
@@ -165,12 +159,21 @@ final readonly class ConnectionsController extends ConnectorsPage
         ];
     }
 
-    private static function hasStatus(ConnectionSummary $row, string $status): bool
+    /**
+     * One count across several types.
+     *
+     * @param  array<string, array{total: int, active: int, failing: int}>  $counts
+     * @param  list<ConnectorCategory>  $categories
+     * @param  'total'|'active'|'failing'  $field
+     */
+    private static function sum(array $counts, array $categories, string $field): int
     {
-        return match ($status) {
-            'failing' => $row->needsAttention(),
-            'active' => $row->isActive(),
-            default => ! $row->isActive(),
-        };
+        $total = 0;
+
+        foreach ($categories as $category) {
+            $total += $counts[$category->value][$field] ?? 0;
+        }
+
+        return $total;
     }
 }

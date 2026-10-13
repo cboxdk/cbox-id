@@ -5,11 +5,14 @@ declare(strict_types=1);
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Cbox\Id\Connectors\Enums\ConnectorCategory;
 use Cbox\Id\Connectors\ValueObjects\ConnectionSummary;
+use Cbox\Id\Directory\Contracts\Directories;
+use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
 use Cbox\Id\Organization\Testing\InteractsWithOrganizations;
 use Cbox\Id\Provisioning\Testing\InteractsWithProvisioning;
 use Cbox\Id\Webhooks\Testing\InteractsWithWebhooks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithFederation::class, InteractsWithProvisioning::class, InteractsWithWebhooks::class);
 
@@ -133,4 +136,44 @@ it('counts only active connections', function (): void {
     $this->registerWebhook($org->id, 'https://hooks.acme.test/events', ['auth.login']);
 
     expect(app(ConnectionsOverview::class)->activeCount($org->id))->toBe(2);
+});
+
+/**
+ * PAGED IN THE DATABASE, failing first. The list used to load every connection in the
+ * environment and sort it in PHP; one page now reads one page of rows — the rest are only
+ * counted — with the order the database gives: failing first, then by type, then by name.
+ */
+it('reads one page of connections from the database, failing first', function (): void {
+    $org = $this->makeOrganization('Acme');
+
+    foreach (range(1, 12) as $n) {
+        app(Directories::class)->register($org->id, sprintf('Directory %02d', $n));
+    }
+
+    $this->registerWebhook($org->id, 'https://hooks.acme.test/fine', ['auth.login']);
+    $broken = $this->registerWebhook($org->id, 'https://hooks.acme.test/broken', ['auth.login'])->endpoint;
+    $broken->forceFill(['consecutive_failures' => 2, 'last_error' => 'HTTP 500'])->save();
+
+    $loaded = 0;
+    Event::listen('eloquent.retrieved: '.Directory::class, function () use (&$loaded): void {
+        $loaded++;
+    });
+
+    $overview = app(ConnectionsOverview::class);
+    $every = ConnectorCategory::cases();
+    $first = $overview->page($org->id, $every, '', 5, 1);
+
+    expect($first['total'])->toBe(14)
+        ->and($first['rows'])->toHaveCount(5)
+        ->and($first['rows'][0]->id)->toBe($broken->id)
+        ->and($first['rows'][1]->name)->toBe('Directory 01')
+        ->and($loaded)->toBe(4);
+
+    $last = $overview->page($org->id, $every, '', 5, 3);
+
+    expect(collect($last['rows'])->map->name->all())->toBe(['Directory 10', 'Directory 11', 'Directory 12', 'hooks.acme.test/fine'])
+        ->and($overview->page($org->id, $every, 'failing', 5, 1)['total'])->toBe(1)
+        ->and($overview->page($org->id, [ConnectorCategory::Webhook], '', 5, 1)['total'])->toBe(2)
+        ->and($overview->counts($org->id)['webhook'])->toBe(['total' => 2, 'active' => 2, 'failing' => 1])
+        ->and($overview->counts($org->id)['directory']['total'])->toBe(12);
 });

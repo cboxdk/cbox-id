@@ -284,7 +284,9 @@ final readonly class RadarController extends ConsoleController
 
     private function editor(?RadarRule $rule): Response
     {
-        return $this->page('console/radar/rule', Vocabulary::RADAR, [
+        // Titled by the rule, like every other detail page: "Radar" over a rule's editor
+        // said which area it was in — the breadcrumb says that — and not which rule.
+        return $this->page('console/radar/rule', $rule === null ? 'New rule' : $rule->name, [
             'help' => HelpProps::for(HelpTopic::Radar),
             'rule' => $rule === null ? null : RadarPresenter::rule($rule),
             'fields' => array_map(static fn (RadarField $field): array => [
