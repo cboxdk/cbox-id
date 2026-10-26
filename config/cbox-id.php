@@ -77,6 +77,24 @@ return [
         'client_id_metadata_documents' => [
             'enabled' => (bool) env('CBOX_ID_CIMD_ENABLED', true),
         ],
+
+        /*
+         * Resource servers of OTHER Cbox apps that sign people in here, e.g. an app's own
+         * MCP server, declared by the deployment: `CBOX_ID_PROTECTED_RESOURCES` is a JSON
+         * list of the framework's entries. With `dynamic_clients`, a client that
+         * registered itself (Claude, ChatGPT) may be audienced to it, and the person still
+         * consents on every such sign-in:
+         *
+         *   [{"identifier":"https://studio.cboxsites.com/mcp","name":"Cbox Sites",
+         *     "scopes":["mcp:read","mcp:write"],"dynamic_clients":true}]
+         *
+         * The resource serves its own RFC 9728 document; this side only issues the
+         * audienced tokens. This app's `/mcp` is added on top (App\Mcp\McpProtectedResources).
+         */
+        'protected_resources' => array_values(array_filter(
+            (array) json_decode((string) env('CBOX_ID_PROTECTED_RESOURCES', '[]'), true),
+            'is_array',
+        )),
     ],
 
     /*
