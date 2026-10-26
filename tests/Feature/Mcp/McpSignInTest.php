@@ -160,6 +160,46 @@ it('refuses at /authorize a resource a self-registered client may not be audienc
     expect($location)->toStartWith(MCP_CALLBACK)->toContain('error=invalid_target');
 })->group('security');
 
+it('signs a person in to another Cbox app\'s MCP server the deployment declared', function (): void {
+    // What CBOX_ID_PROTECTED_RESOURCES holds for Cbox Sites.
+    config(['cbox-id.oauth.protected_resources' => [
+        ['identifier' => 'https://studio.cboxsites.com/mcp', 'name' => 'Cbox Sites', 'scopes' => ['mcp:read', 'mcp:write'], 'dynamic_clients' => true],
+    ]]);
+    [$subject] = mcpSignedIn();
+    $registered = registerMcpClient()->assertCreated();
+    $clientId = (string) $registered->json('client_id');
+
+    expect(explode(' ', (string) $registered->json('scope')))->toContain('mcp:read', 'mcp:write');
+
+    $props = consentScreen([
+        'client_id' => $clientId,
+        'redirect_uri' => MCP_CALLBACK,
+        'scope' => 'mcp:read mcp:write offline_access',
+        'resource' => 'https://studio.cboxsites.com/mcp',
+    ]);
+
+    expect($props['client']['selfRegistered'])->toBeTrue();
+
+    $location = (string) leftFor(answerConsent($props));
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+    $token = (string) test()->post('/oauth/token', [
+        'grant_type' => 'authorization_code',
+        'code' => $query['code'],
+        'redirect_uri' => MCP_CALLBACK,
+        'client_id' => $clientId,
+        'code_verifier' => pkcePair()['verifier'],
+        'resource' => 'https://studio.cboxsites.com/mcp',
+    ])->assertOk()->json('access_token');
+
+    $claims = json_decode((string) base64_decode(strtr(explode('.', $token)[1], '-_', '+/')), true);
+
+    // Audienced to Cbox Sites alone, with its scopes: no use at this app's own /mcp.
+    expect($claims['aud'])->toBe('https://studio.cboxsites.com/mcp')
+        ->and($claims['sub'])->toBe($subject)
+        ->and(explode(' ', (string) $claims['scope']))->toContain('mcp:read', 'mcp:write')
+        ->and(explode(' ', (string) $claims['scope']))->not->toContain('webhooks:read');
+});
+
 it('closes /mcp to self-registered clients when the operator says so', function (): void {
     mcpSignedIn();
     $clientId = (string) registerMcpClient()->assertCreated()->json('client_id');
