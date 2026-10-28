@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Props\Auth\SocialProviderProps;
 use App\Http\Requests\OAuth\ChooseOrganizationRequest;
 use App\Http\Requests\OAuth\CreateOrganizationRequest;
 use App\Platform\CurrentUser;
@@ -391,7 +392,17 @@ final readonly class OAuthConsentController extends PageController
                     'The user is not signed in and prompt=none forbids interaction.');
             }
 
-            return $this->interrupt($request, $authorization, route('login'));
+            /*
+             * `idp_hint=google`: the app drew its own "Continue with Google" and the person
+             * pressed it, so the sign-in page would only ask them to press it again. Straight
+             * to that provider instead — one of the buttons the sign-in page would have
+             * offered, nothing else. A hint naming anything else is ignored and the page is
+             * shown. It cannot loop: a sign-in that fails there lands on the page, and the
+             * resumed request does not carry the hint.
+             */
+            $hinted = $this->hintedProvider($from('idp_hint'));
+
+            return $this->interrupt($request, $authorization, $hinted ?? route('login'));
         }
 
         /*
@@ -1081,6 +1092,22 @@ final readonly class OAuthConsentController extends PageController
      * The resume URL is stashed as the intended destination, or they land on the console
      * and the relying party's callback never fires.
      */
+    /** Where a social button the sign-in page offers starts, for a hint naming its provider; or null. */
+    private function hintedProvider(mixed $hint): ?string
+    {
+        if (! is_string($hint) || $hint === '') {
+            return null;
+        }
+
+        foreach (SocialProviderProps::forOrganization(null) as $provider) {
+            if ($provider->provider === $hint) {
+                return $provider->url;
+            }
+        }
+
+        return null;
+    }
+
     private function interrupt(Request $request, PendingAuthorization $authorization, string $to): RedirectResponse
     {
         $request->session()->put('url.intended', $this->resumeUrl($authorization));

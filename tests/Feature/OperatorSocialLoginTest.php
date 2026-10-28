@@ -13,6 +13,8 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -21,6 +23,7 @@ use Cbox\Ssrf\Contracts\UrlGuard;
 use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
@@ -509,3 +512,45 @@ it('refuses to offer a link when Google has not said the address is verified', f
         ->component('auth/login')
         ->hasFlash('signInProblem', FederationFailure::Unverified->message(['provider' => 'Google', 'email' => 'newcomer@example.test'])));
 })->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Started from an app's own button
+|--------------------------------------------------------------------------
+*/
+
+/** A signed-out authorization request, as an app that draws its own "Continue with Google" sends it. */
+function hintedAuthorize(string $hint): TestResponse
+{
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-hint'));
+    $client = app(ClientRegistry::class)->register(
+        new NewClient('App', redirectUris: ['https://app.test/cb'], organizationId: $org->id),
+    )->client;
+
+    return test()->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'state-1',
+        'code_challenge' => str_repeat('a', 43),
+        'code_challenge_method' => 'S256',
+        'idp_hint' => $hint,
+    ]));
+}
+
+it('goes straight to the provider an idp_hint names, and resumes the request afterwards', function () {
+    fakeGoogleDiscovery();
+
+    hintedAuthorize('google')->assertRedirect(route('social.redirect', 'google'));
+
+    // The request is what the provider's callback returns to, and the hint is not in it:
+    // signed in, the resumed request has nothing left to skip.
+    expect(session('url.intended'))->toContain('/oauth/authorize?')->not->toContain('idp_hint');
+});
+
+it('shows the sign-in page for a hint that names no provider it offers', function () {
+    fakeGoogleDiscovery();
+
+    hintedAuthorize('myspace')->assertRedirect(route('login'));
+});
