@@ -245,6 +245,21 @@ the same flow.
 Guessing is rate limited per email address, not just per key — an attacker spreading
 attempts across pages holding the same key would otherwise sit under a per-key limit.
 
+### Social buttons, from your own page
+
+`config().social` lists the providers the sign-in page offers. A social sign-in runs on the
+provider's own redirect, so it cannot finish on your page, but it does not have to stop on
+the hosted page either. Send the authorize request with `idp_hint` set to the provider's
+key, and a signed-out person goes straight to that provider:
+
+```
+/oauth/authorize?client_id=…&redirect_uri=…&…&idp_hint=google
+```
+
+With `cboxdk/laravel-id-client`, `CboxId::redirect(idpHint: 'google')`. A key the sign-in
+page would not offer is ignored and the page is shown. A provider sign-in that fails lands
+on the sign-in page, never back at the provider.
+
 ## 8. Organizations
 
 A person can belong to several organizations, and every token is for one of them. To ask

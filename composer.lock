@@ -718,16 +718,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v1.26.1",
+            "version": "v1.26.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "680a818c9403709bc8f7232df94700554a834639"
+                "reference": "4b978aa29a895235871421e8db03f2b28ef9dac3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/680a818c9403709bc8f7232df94700554a834639",
-                "reference": "680a818c9403709bc8f7232df94700554a834639",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/4b978aa29a895235871421e8db03f2b28ef9dac3",
+                "reference": "4b978aa29a895235871421e8db03f2b28ef9dac3",
                 "shasum": ""
             },
             "require": {
@@ -790,9 +790,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v1.26.1"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.26.2"
             },
-            "time": "2026-10-27T09:49:24+00:00"
+            "time": "2026-10-28T13:16:56+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",
