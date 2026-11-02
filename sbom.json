@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:0f3be79d-0771-4752-a9e8-95119ab330e8",
+    "serialNumber": "urn:uuid:2b52e387-2f4a-4d8c-b560-9701e2ffd72f",
     "version": 1,
     "metadata": {
         "tools": [
@@ -1441,11 +1441,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/mime@v8.1.7",
+            "bom-ref": "pkg:composer/symfony/mime@v8.1.10",
             "group": "symfony",
             "name": "mime",
-            "version": "v8.1.7",
-            "purl": "pkg:composer/symfony/mime@v8.1.7",
+            "version": "v8.1.10",
+            "purl": "pkg:composer/symfony/mime@v8.1.10",
             "description": "Allows manipulating MIME messages",
             "licenses": [
                 {
