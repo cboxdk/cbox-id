@@ -279,7 +279,7 @@ it('takes a client ID metadata document client through /authorize and consent to
     expect(Client::query()->where('client_id', AGENT_DOCUMENT)->exists())->toBeFalse();
 });
 
-it('holds a metadata document client to the exact redirect URIs it published', function (): void {
+it('holds a metadata document client to the redirect URIs it published, the loopback port floating', function (): void {
     mcpSignedIn();
 
     $this->fakeClientMetadataDocuments()->serve(AGENT_DOCUMENT, [
@@ -288,14 +288,26 @@ it('holds a metadata document client to the exact redirect URIs it published', f
         'redirect_uris' => [MCP_CALLBACK],
     ]);
 
-    // A registered client's loopback port may float; a document's may not.
-    $refused = authorizeRequest([
+    // A loopback port may float for a document client as for a registered one (RFC 8252
+    // §7.3, OAuth 2.1 §8.4.2): a native client binds whatever port is free when it signs in.
+    $props = consentScreen([
         'client_id' => AGENT_DOCUMENT,
         'redirect_uri' => 'http://127.0.0.1:9999/callback',
+        'scope' => 'audit:read',
         'resource' => mcpResourceId(),
-    ])->assertOk();
+    ]);
+    expect($props['client']['documentHost'] ?? null)->toBe('agent.example');
 
-    expect(consentRefusal($refused))->toBe(__('oauth.failure.redirect_mismatch'));
+    // Another path, or a host that is not loopback, is not the published URI.
+    foreach (['http://127.0.0.1:9999/other', 'https://agent.example/callback'] as $redirectUri) {
+        $refused = authorizeRequest([
+            'client_id' => AGENT_DOCUMENT,
+            'redirect_uri' => $redirectUri,
+            'resource' => mcpResourceId(),
+        ])->assertOk();
+
+        expect(consentRefusal($refused))->toBe(__('oauth.failure.redirect_mismatch'));
+    }
 })->group('security');
 
 it('renders, never redirects, a metadata document it cannot use', function (): void {
