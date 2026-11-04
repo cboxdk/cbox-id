@@ -22,7 +22,7 @@ export type { MessageKey } from './keys';
  *
  * WHY KEYS ARE TYPED. `MessageKey` is generated from the English catalogue by
  * `php artisan i18n:types`, so a page that asks for a key English does not have fails
- * `tsc`, not a person reading the page in Swedish. LangParityTest holds the other five
+ * `tsc`, not a person reading the page in Swedish. LangParityTest holds all other
  * languages to the same key set.
  */
 

@@ -1,3 +1,4 @@
+import { fatalCopy } from '@/i18n/fatal';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface Props {
@@ -46,21 +47,17 @@ export class AppErrorBoundary extends Component<Props, State> {
             return this.props.children;
         }
 
-        const danish = typeof document !== 'undefined' && document.documentElement.lang === 'da';
+        const [title, description, reload, dashboard] = fatalCopy(
+            typeof document === 'undefined' ? 'en' : document.documentElement.lang,
+        );
 
         return (
             // `data-app-error` is how the docs-screenshot run (tests/Browser/DocsScreenshotsTest.php)
             // tells this fallback from the page it was meant to photograph.
             <main id="main-content" className="auth-shell" data-app-error="">
                 <div className="card" style={{ maxWidth: '32rem', padding: '2rem' }}>
-                    <h1 className="cbx-page-title">
-                        {danish ? 'Der opstod en fejl' : 'Something went wrong'}
-                    </h1>
-                    <p className="cbx-page-desc">
-                        {danish
-                            ? 'Siden kunne ikke vises. Genindlæs den for at hente den fra serveren igen. Det løser de fleste fejl.'
-                            : 'This page could not be displayed. Reloading it starts over from the server, which resolves most causes.'}
-                    </p>
+                    <h1 className="cbx-page-title">{title}</h1>
+                    <p className="cbx-page-desc">{description}</p>
 
                     {import.meta.env.DEV && (
                         <pre
@@ -84,10 +81,10 @@ export class AppErrorBoundary extends Component<Props, State> {
                             className="btn btn-primary"
                             onClick={() => window.location.reload()}
                         >
-                            {danish ? 'Genindlæs siden' : 'Reload this page'}
+                            {reload}
                         </button>
                         <a className="btn btn-secondary" href="/">
-                            {danish ? 'Gå til dashboardet' : 'Go to the dashboard'}
+                            {dashboard}
                         </a>
                     </div>
                 </div>

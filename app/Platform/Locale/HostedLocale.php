@@ -26,6 +26,10 @@ enum HostedLocale: string
     case Swedish = 'sv';
     case NorwegianBokmal = 'nb';
     case French = 'fr';
+    case Finnish = 'fi';
+    case Spanish = 'es';
+    case Italian = 'it';
+    case Dutch = 'nl';
 
     /**
      * The language's name IN ITSELF — what the picker shows.
@@ -42,6 +46,10 @@ enum HostedLocale: string
             self::Swedish => 'Svenska',
             self::NorwegianBokmal => 'Norsk bokmål',
             self::French => 'Français',
+            self::Finnish => 'Suomi',
+            self::Spanish => 'Español',
+            self::Italian => 'Italiano',
+            self::Dutch => 'Nederlands',
         };
     }
 

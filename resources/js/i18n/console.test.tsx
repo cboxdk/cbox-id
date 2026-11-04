@@ -78,3 +78,20 @@ describe('console languages', () => {
         expect(confirm).toHaveBeenCalledOnce();
     });
 });
+
+it.each([
+    ['de', 'Speichern'],
+    ['sv', 'Spara'],
+    ['nb', 'Lagre'],
+    ['fi', 'Tallenna'],
+    ['fr', 'Enregistrer'],
+    ['es', 'Guardar'],
+    ['it', 'Salva'],
+    ['nl', 'Opslaan'],
+] as const)('reads the real %s catalogue and preserves interpolated user data', (locale, save) => {
+    const { messages } = consoleI18n(locale);
+    const translator = createTranslator(locale, messages);
+    expect(translator.t('console.save_1509f561')).toBe(save);
+    const name = 'Delete <Acme> & :unknown';
+    expect(translator.t('console.account_menu_value0_6ab6a9a2', { value0: name })).toContain(name);
+});

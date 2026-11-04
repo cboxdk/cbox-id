@@ -21,6 +21,7 @@ use Illuminate\Testing\TestResponse;
  */
 beforeEach(function (): void {
     installedDeployment();
+    config()->set('cbox-id.locales.enabled', HostedLocale::codes());
 });
 
 /**
@@ -142,6 +143,10 @@ it('names each language in itself for the picker', function (): void {
         'sv' => 'Svenska',
         'nb' => 'Norsk bokmål',
         'fr' => 'Français',
+        'fi' => 'Suomi',
+        'es' => 'Español',
+        'it' => 'Italiano',
+        'nl' => 'Nederlands',
     ]);
 });
 
@@ -154,7 +159,7 @@ it('renders the console in Danish when the browser prefers it', function (): voi
     $response->assertOk()->assertSee('<html lang="da"', false)->assertHeader('Content-Language', 'da');
     $props = (array) $response->inertiaProps();
     expect($props['i18n']['locale'])->toBe('da')
-        ->and(collect($props['i18n']['locales'])->pluck('code')->all())->toBe(['en', 'da'])
+        ->and(collect($props['i18n']['locales'])->pluck('code')->all())->toBe(HostedLocale::codes())
         ->and($props['i18n']['messages']['console.my_account_b53181a4'])->toBe('Min konto');
 });
 
@@ -217,7 +222,7 @@ it('does not let hosted language restrictions remove Danish from the console', f
 
     $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')->get(route('dashboard'));
     $response->assertOk()->assertHeader('Content-Language', 'da');
-    expect(collect(((array) $response->inertiaProps())['i18n']['locales'])->pluck('code')->all())->toBe(['en', 'da']);
+    expect(collect(((array) $response->inertiaProps())['i18n']['locales'])->pluck('code')->all())->toBe(HostedLocale::codes());
 });
 
 it('rejects unsupported console language choices without changing the preference', function (mixed $locale): void {
@@ -225,14 +230,14 @@ it('rejects unsupported console language choices without changing the preference
         ->assertUnprocessable()
         ->assertJsonValidationErrors('locale')
         ->assertCookieMissing(ResolveConsoleLocale::COOKIE);
-})->with(['fr', 'de', '<script>alert(1)</script>', '', 'array' => [['da']]]);
+})->with(['ja', 'pl', '<script>alert(1)</script>', '', 'array' => [['da']]]);
 
 it('falls back to English for unsupported browser and cookie languages in the console', function (): void {
     ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
     signInAsMember($subjectId);
 
-    $response = test()->withHeader('Accept-Language', 'fr')
-        ->withCookie(ResolveConsoleLocale::COOKIE, 'fr')
+    $response = test()->withHeader('Accept-Language', 'ja')
+        ->withCookie(ResolveConsoleLocale::COOKIE, 'ja')
         ->get(route('dashboard'));
     $response->assertOk()->assertHeader('Content-Language', 'en')->assertSee('<html lang="en"', false);
     expect(((array) $response->inertiaProps())['i18n']['locale'])->toBe('en');
@@ -281,3 +286,25 @@ it('translates built-in security rules and fields without changing their keys or
     expect($field['label'])->toBe('Land')->and($field['type'])->toBe('country')
         ->and($field['operators'][0]['value'])->toBe('eq')->and($field['operators'][0]['label'])->toBe('er');
 });
+
+it('persists every supported console language independently of hosted policy', function (string $locale): void {
+    actAsEnvironmentAdminOfATenant();
+    config()->set('cbox-id.locales.enabled', ['en']);
+    test()->from(route('environment.users'))
+        ->post(route('console.locale.update'), ['locale' => $locale])
+        ->assertRedirect(route('environment.users'))
+        ->assertCookie(ResolveConsoleLocale::COOKIE, $locale);
+
+    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, $locale)->get(route('environment.users'));
+    $response->assertOk()->assertHeader('Content-Language', $locale);
+    $props = (array) $response->inertiaProps();
+    expect($props['i18n']['locale'])->toBe($locale)
+        ->and(array_column($props['i18n']['locales'], 'code'))->toBe(HostedLocale::codes())
+        ->and($props['title'])->toBe(trans('console.users_6b0cc904', [], $locale));
+})->with(HostedLocale::codes());
+
+it('resolves regional tags for the additional hosted languages', function (string $header, string $expected): void {
+    expect(i18nOf(signInPageIn($header))['locale'])->toBe($expected);
+})->with([
+    ['fi-FI', 'fi'], ['es-ES', 'es'], ['it-IT', 'it'], ['nl-NL', 'nl'], ['nl-BE', 'nl'],
+]);

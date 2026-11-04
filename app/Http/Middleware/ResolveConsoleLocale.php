@@ -24,7 +24,7 @@ final class ResolveConsoleLocale
         foreach ($candidates as $candidate) {
             $accepted = HostedLocale::fromTag(is_string($candidate) ? $candidate : null);
 
-            if (in_array($accepted, [HostedLocale::English, HostedLocale::Danish], true)) {
+            if ($accepted !== null) {
                 $locale = $accepted;
                 break;
             }

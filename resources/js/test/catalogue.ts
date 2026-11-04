@@ -2,7 +2,9 @@ import { execFileSync } from 'node:child_process';
 import type { SharedProps } from '@/types';
 
 /** Tests consume the real PHP catalogue, not a second copy of English labels. */
-export function consoleI18n(locale: 'en' | 'da' = 'en'): NonNullable<SharedProps['i18n']> {
+export function consoleI18n(
+    locale: 'en' | 'da' | 'de' | 'sv' | 'nb' | 'fr' | 'fi' | 'es' | 'it' | 'nl' = 'en',
+): NonNullable<SharedProps['i18n']> {
     const messages = JSON.parse(
         execFileSync(
             'php',
@@ -19,6 +21,14 @@ export function consoleI18n(locale: 'en' | 'da' = 'en'): NonNullable<SharedProps
         locales: [
             { code: 'en', name: 'English' },
             { code: 'da', name: 'Dansk' },
+            { code: 'de', name: 'Deutsch' },
+            { code: 'sv', name: 'Svenska' },
+            { code: 'nb', name: 'Norsk bokmål' },
+            { code: 'fr', name: 'Français' },
+            { code: 'fi', name: 'Suomi' },
+            { code: 'es', name: 'Español' },
+            { code: 'it', name: 'Italiano' },
+            { code: 'nl', name: 'Nederlands' },
         ],
         messages,
     };

@@ -10,6 +10,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- German, Swedish, Norwegian Bokmål, Finnish, French, Spanish, Italian and Dutch in the signed-in app. Finnish, Spanish, Italian and Dutch also cover hosted login, the Admin Portal, mail and validation. Core terms are reviewed; the new catalogues are machine-translated and checked for key, placeholder and plural parity.
+
 - Danish and English throughout the signed-in app, including organization and platform administration. Choose a language in the account menu; the browser remembers it independently of hosted sign-in language settings.
 
 - **`idp_hint` on `/oauth/authorize`.** An app that draws its own "Continue with Google" sends `idp_hint=google`, and a signed-out person goes straight to that provider instead of to the sign-in page where they had to press Google again. Only a provider the sign-in page would offer is honoured; anything else shows the page. A failed provider sign-in lands on the sign-in page, and the resumed request carries no hint, so it cannot loop. `laravel-id-client` 0.15.1 sends it as `redirect(idpHint: 'google')`.

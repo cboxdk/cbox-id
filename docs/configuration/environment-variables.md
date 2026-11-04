@@ -133,7 +133,7 @@ in its own settings. See the [languages guide](../guides/languages.md).
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_DEFAULT_LOCALE` | The language used when neither the app (`ui_locales`), the visitor's own pick nor their browser names one that is switched on. Also the language of emails an administrator sends. | `en` | When most of your users share a language other than English. |
-| `CBOX_ID_LOCALES` | Comma-separated list of the languages that are switched on. The order sets the order of the language menu. Supported: `en`, `da`, `de`, `sv`, `nb`, `fr`; other codes are ignored. | `en,da,de,sv,nb,fr` | To leave out languages you cannot support people in. |
+| `CBOX_ID_LOCALES` | Comma-separated list of the languages that are switched on. The order sets the order of the language menu. Supported: `en`, `da`, `de`, `sv`, `nb`, `fr`, `fi`, `es`, `it`, `nl`; other codes are ignored. | `en,da,de,sv,nb,fr,fi,es,it,nl` | To leave out languages you cannot support people in. |
 
 ## Login lockout
 

@@ -10,7 +10,7 @@ use Illuminate\Translation\Translator;
 
 /**
  * Per-surface catalogues shared with Inertia. Hosted groups receive their existing
- * six-language namespaces; signed-in pages receive the English/Danish console catalogue.
+ * namespaces; signed-in pages receive the console catalogue in the selected language.
  * Scoped to the request: PageController marks the component before props are resolved.
  * Missing translations fall back per key to English; catalogue parity is tested.
  */
@@ -72,7 +72,7 @@ final class HostedTranslations
         return new I18nProps(
             locale: $locale,
             locales: in_array('console', $this->namespaces, true)
-                ? [HostedLocale::English, HostedLocale::Danish]
+                ? HostedLocale::cases()
                 : $this->locales->enabled(),
             messages: $messages,
         );

@@ -38,3 +38,31 @@ it('renders platform administration in Danish at a phone width', function (): vo
         ->and($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
     $page->screenshot(false, 'console-languages-danish-platform-mobile');
 });
+
+it('switches through every additional language from the mobile account menu', function (): void {
+    actAsEnvironmentAdminOfATenant();
+    $page = visit('/admin/users')->on()->mobile()->assertSee('Users');
+    foreach ([
+        ['de', 'Deutsch', 'Benutzer'],
+        ['sv', 'Svenska', 'Användare'],
+        ['nb', 'Norsk bokmål', 'Brukere'],
+        ['fi', 'Suomi', 'Käyttäjät'],
+        ['fr', 'Français', 'Utilisateurs'],
+        ['es', 'Español', 'Usuarios'],
+        ['it', 'Italiano', 'Utenti'],
+        ['nl', 'Nederlands', 'Gebruikers'],
+    ] as [$locale, $name, $title]) {
+        $page->click('.cbx-avatar-btn')
+            ->click('[role="menuitemradio"]:has-text("'.$name.'")')
+            ->assertSee($title)
+            ->assertNoJavaScriptErrors();
+        expect($page->script('document.documentElement.lang'))->toBe($locale)
+            ->and($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
+        if (in_array($locale, ['de', 'fi', 'nl'], true)) {
+            $page->screenshot(false, 'console-language-'.$locale.'-mobile');
+        }
+    }
+    $page->script('window.location.reload()');
+    $page->assertSee('Gebruikers')->assertNoJavaScriptErrors();
+    expect($page->script('document.documentElement.lang'))->toBe('nl');
+});

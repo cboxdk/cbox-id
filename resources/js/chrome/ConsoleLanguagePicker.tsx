@@ -1,5 +1,6 @@
 import { update } from '@routes/console/locale';
-import { router } from '@inertiajs/react';
+import type { SharedProps } from '@/types';
+import { usePage, router } from '@inertiajs/react';
 import { DropdownMenu } from 'radix-ui';
 import { useTranslator } from '@/i18n';
 import { Icon } from '@/ui';
@@ -7,6 +8,7 @@ import { Icon } from '@/ui';
 /** A browser preference, independent of the customer's hosted-language policy. */
 export function ConsoleLanguagePicker() {
     const { locale, t } = useTranslator();
+    const languages = usePage<SharedProps>().props.i18n?.locales ?? [];
 
     return (
         <>
@@ -24,10 +26,7 @@ export function ConsoleLanguagePicker() {
                     )
                 }
             >
-                {[
-                    { code: 'da', name: 'Dansk' },
-                    { code: 'en', name: 'English' },
-                ].map((language) => (
+                {languages.map((language) => (
                     <DropdownMenu.RadioItem
                         key={language.code}
                         value={language.code}
