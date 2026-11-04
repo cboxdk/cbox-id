@@ -131,7 +131,7 @@ it('draws the console shell in the dark the way it was drawn', function (): void
 it('draws a long form the way it was drawn', function (): void {
     anOwnerForPictures();
 
-    // Fields, a fieldset of twenty-four checkboxes, and a submit — the densest layout in
+    // Fields, a fieldset of event checkboxes, and a submit — the densest layout in
     // the console and the one most likely to shift when a spacing token moves.
     visit('/webhooks/new')
         ->assertSee('New webhook')

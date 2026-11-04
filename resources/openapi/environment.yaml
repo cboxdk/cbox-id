@@ -110,6 +110,7 @@ tags:
   - name: Sign-in
   - name: 'Enterprise SSO'
   - name: 'Token vault'
+  - name: 'User properties'
   - name: Webhooks
 paths:
   /access-reviews:
@@ -8436,6 +8437,123 @@ paths:
               description: 'Seconds to wait before retrying.'
               schema:
                 type: integer
+  '/oauth/users/{user}/properties/{namespace}':
+    servers:
+      -
+        url: 'https://{host}'
+        variables:
+          host:
+            default: acme.cboxid.com
+    parameters:
+      -
+        name: user
+        in: path
+        required: true
+        schema:
+          type: string
+      -
+        name: namespace
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
+      -
+        name: DPoP
+        in: header
+        required: false
+        description: 'Required proof when the access token is DPoP-bound; use the DPoP authorization scheme for that token.'
+        schema:
+          type: string
+    get:
+      tags:
+        - 'User properties'
+      summary: 'Read shared preferences or namespaced custom metadata'
+      description: |
+        Requires user_properties:read and an explicit reader grant for the OAuth client
+        in this namespace. A user token can read only its own subject; an explicitly
+        granted client-credentials token can read active users in its environment.
+        Tokens must target this issuer, not another protected resource.
+        An unwritten document returns an empty object and version 0.
+      security:
+        -
+          UserPropertiesAccessToken: []
+      responses:
+        200:
+          description: 'Current document and concurrency version, without a management API envelope.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPropertySnapshot'
+        401:
+          description: 'Missing or invalid access token, audience or DPoP proof.'
+        403:
+          description: 'Missing scope, namespace grant or permission to act for this user.'
+        404:
+          description: 'User is missing or inactive.'
+    patch:
+      tags:
+        - 'User properties'
+      summary: 'Patch shared preferences or namespaced custom metadata'
+      description: |
+        Requires user_properties:write and explicit reader and writer grants. Subject,
+        audience and DPoP restrictions are the same as GET. Send the latest version;
+        a stale version returns 409. Set replaces whole top-level keys, remove deletes
+        them; dots in keys are literal. Custom null is a value, not deletion.
+        The reserved preferences namespace validates the shared preference schema;
+        custom namespaces use the contract agreed by their apps. No-op changes retain
+        the version and emit no event. Limit 100 keys, 16 KiB and 16 nesting levels per
+        document; request body limit 32 KiB.
+      security:
+        -
+          UserPropertiesAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - version
+              properties:
+                version:
+                  type: integer
+                  minimum: 0
+                set:
+                  type: object
+                  additionalProperties: true
+                  maxProperties: 100
+                remove:
+                  type: array
+                  maxItems: 100
+                  uniqueItems: true
+                  items:
+                    type: string
+                    maxLength: 128
+                    pattern: '^[a-zA-Z][a-zA-Z0-9_.-]{0,127}$'
+            example:
+              version: 0
+              set:
+                theme: dark
+              remove: []
+      responses:
+        200:
+          description: 'Updated document and concurrency version.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPropertySnapshot'
+        401:
+          description: 'Missing or invalid access token, audience or DPoP proof.'
+        403:
+          description: 'Missing scope, namespace grant or permission to act for this user.'
+        404:
+          description: 'User is missing or inactive.'
+        409:
+          description: 'Version conflict. Read the current document and reconcile the intended keys.'
+        422:
+          description: 'Invalid patch, preference value or document limit.'
   /organizations:
     get:
       operationId: organizations_list
@@ -16974,6 +17092,135 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/user-property-namespaces/{name}':
+    put:
+      tags:
+        - 'User properties'
+      summary: 'Create or replace the app and webhook grants for a user-property namespace. Empty grants revoke access without deleting user data.'
+      description: 'Requires scope `user_property_namespaces:write`. Danger: critical.'
+      operationId: user_property_namespaces_configure
+      x-action: user_property_namespaces.configure
+      x-scope: 'user_property_namespaces:write'
+      x-danger: critical
+      parameters:
+        -
+          name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                readers:
+                  type: array
+                  description: 'OAuth client ids allowed to read. Omit or use an empty list to revoke all access.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 190
+                writers:
+                  type: array
+                  description: 'Reader client ids also allowed to write.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 190
+                webhooks:
+                  type: object
+                  description: 'Map webhook endpoint ids to reader client ids. Omit to remove all webhook grants.'
+                  properties: {}
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'User properties'
+      summary: 'Read the app and webhook grants for a user-property namespace.'
+      description: 'Requires scope `user_property_namespaces:read`. Danger: read.'
+      operationId: user_property_namespaces_show
+      x-action: user_property_namespaces.show
+      x-scope: 'user_property_namespaces:read'
+      x-danger: read
+      parameters:
+        -
+          name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /users:
     get:
       operationId: users_list
@@ -18528,6 +18775,8 @@ paths:
                     enum:
                       - user.created
                       - user.updated
+                      - user.preferences.updated
+                      - user.metadata.updated
                       - user.deactivated
                       - user.login
                       - user.reactivated
@@ -19096,6 +19345,11 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
+    UserPropertiesAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Issuer-audience OAuth access token with user_properties:read or user_properties:write and an explicit namespace grant. DPoP-bound tokens require the DPoP authorization scheme and proof header. An environment management API key is not accepted.'
     EnvironmentApiKey:
       type: http
       scheme: bearer
@@ -19264,6 +19518,25 @@ components:
       schema:
         type: string
   schemas:
+    UserPropertySnapshot:
+      type: object
+      required:
+        - user_id
+        - namespace
+        - data
+        - version
+      additionalProperties: false
+      properties:
+        user_id:
+          type: string
+        namespace:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+        version:
+          type: integer
+          minimum: 0
     ManagementKey:
       type: object
       description: 'A management key of this environment. `token` is present once, on the answer that minted it, and never again.'

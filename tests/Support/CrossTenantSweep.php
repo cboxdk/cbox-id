@@ -109,6 +109,7 @@ final class CrossTenantSweep
             'pipes:id' => 'pipe',
             'connections:connection_id' => 'pipe_connection',
             'users:id' => 'member',
+            'user-property-namespaces:name' => 'user_property_namespace',
             'environment-roles:role_id' => 'staff_role',
             'sessions:session_id' => 'session',
             'webhooks:id' => 'webhook',
@@ -260,6 +261,8 @@ final class CrossTenantSweep
             $w['invitation'] = $run('invitations.send', ['organization_id' => $w['organization'], 'email' => "invitee-{$slug}@sweep.example"])['id'];
             $w['organization_domain'] = $run('organizations.domains.add', ['organization_id' => $w['organization'], 'domain' => "org-{$slug}.sweep.example"])['id'];
 
+            $w['user_property_namespace'] = 'sweep-'.strtolower($slug);
+            $run('user_property_namespaces.configure', ['name' => $w['user_property_namespace']]);
             $w['api_scope'] = "sweep:{$slug}";
             $w['api'] = $run('apis.create', ['identifier' => "https://api-{$slug}.sweep.example", 'name' => 'Sweep API '.$label, 'scopes' => [['key' => $w['api_scope'], 'description' => 'Sweep']]])['id'];
 

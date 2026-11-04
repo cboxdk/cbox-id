@@ -83,6 +83,7 @@ const SWEEP_FOREIGN_ENVIRONMENT = 'env_sweep_foreign';
  * @var array<string, string>
  */
 const SWEEP_UNSWEPT = [
+    'user_property_namespaces.configure' => 'PUT upserts a namespace name in the caller environment; GET is swept and namespace grants validate app and endpoint environment ownership.',
     // Its id is a NAME the caller chooses, and the request defines it: there is no foreign
     // one. The parent `{id}` is swept like any other.
     'apis.scopes.define' => 'PUT defines the scope {key} names; the parent API id is swept by apis.scopes.remove.',
