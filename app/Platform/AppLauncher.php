@@ -15,7 +15,7 @@ final readonly class AppLauncher
     /** @return list<array<string, mixed>> */
     public function apps(): array
     {
-        if (! $this->me->check()) {
+        if (! $this->me->check() || ! $this->catalog->hasPublishedApps()) {
             return [];
         }
 

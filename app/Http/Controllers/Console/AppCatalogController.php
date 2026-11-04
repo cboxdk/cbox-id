@@ -6,8 +6,10 @@ namespace App\Http\Controllers\Console;
 
 use App\Actions\AppCatalog\DeleteCatalogApp;
 use App\Actions\AppCatalog\SaveCatalogApp;
+use App\Http\Props\Shared\HelpProps;
 use App\Platform\AppCatalog\AppCatalog;
 use App\Platform\AppCatalog\CatalogEntry;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\FeatureFlags\Contracts\FeatureFlags;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -24,6 +26,7 @@ final readonly class AppCatalogController extends ConsoleController
         $this->scope->assertMayAdministerEnvironment();
 
         return $this->page('console/app-catalog/index', 'App catalog', [
+            'help' => HelpProps::for(HelpTopic::AppCatalog),
             'entries' => CatalogEntry::query()->orderBy('position')->orderBy('key')->get()->map(fn (CatalogEntry $entry): array => [
                 ...$catalog->present($entry, true), 'editHref' => route('environment.app-catalog.edit', $entry->key),
             ])->all(),

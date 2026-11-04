@@ -225,7 +225,8 @@ it('keeps the most-loaded console pages within budget', function (string $route,
     'dashboard' => ['dashboard', 75],
     // The live MFA check adds three bounded reads (memberships, TOTP and SMS).
     // Repeated statements and per-organization growth remain checked below.
-    'settings' => ['settings', 33],
+    // One bounded existence read for the shared app catalog; no per-organization reads.
+    'settings' => ['settings', 34],
 ]);
 
 /**

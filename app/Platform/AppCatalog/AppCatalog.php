@@ -14,6 +14,7 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
@@ -23,6 +24,11 @@ use Illuminate\Validation\ValidationException;
 final readonly class AppCatalog
 {
     public function __construct(private Subjects $subjects, private Memberships $memberships, private FeatureFlags $flags, private IssuerResolver $issuer, private AuditLog $audit) {}
+
+    public function hasPublishedApps(): bool
+    {
+        return CatalogEntry::query()->where('enabled', true)->exists();
+    }
 
     public function find(string $key): CatalogEntry
     {
@@ -112,13 +118,15 @@ final readonly class AppCatalog
         if (! $this->subjects->isActive($userId)) {
             return [];
         }
-        $organizations = [];
+        $membershipIds = [];
         foreach ($this->memberships->forUser($userId) as $membership) {
-            if ($this->memberships->activeRole($membership->organization_id, $userId) !== null
-                && Organization::query()->whereKey($membership->organization_id)->where('status', 'active')->exists()) {
-                $organizations[] = $membership->organization_id;
+            if ($membership->status === MembershipStatus::Active) {
+                $membershipIds[] = $membership->organization_id;
             }
         }
+        $organizations = $membershipIds === [] ? [] : array_values(Organization::query()
+            ->whereIn('id', $membershipIds)->where('status', 'active')->get()
+            ->map(static fn (Organization $organization): string => $organization->id)->all());
         if ($organizationId !== null && ! in_array($organizationId, $organizations, true)) {
             throw new AuthorizationException('Choose an active organization you belong to.');
         }

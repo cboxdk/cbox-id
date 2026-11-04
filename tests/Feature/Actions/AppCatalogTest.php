@@ -17,6 +17,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\FakeDelegatedTokens;
 
 function catalogInput(array $overrides = []): array
@@ -101,4 +102,27 @@ it('serves content-addressed icons and rotates their URL when removed', function
     $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
     $this->withToken($token)->putJson('/api/v1/app-catalog/id', catalogInput(['version' => 1, 'icon' => null]))->assertOk()->assertJsonPath('data.icon_url', null);
     $this->get($url)->assertNotFound();
+});
+
+it('reads a populated catalog without per-organization membership queries', function (): void {
+    $ada = app(Subjects::class)->create('ada@catalog.example', 'Ada')->id;
+    $catalog = app(AppCatalog::class);
+    $catalog->save('billing', CatalogEntryData::fromArray(catalogInput()));
+    $counts = [];
+    foreach (range(1, 9) as $number) {
+        $organization = app(Organizations::class)->create(new NewOrganization('Org '.$number, 'catalog-org-'.$number));
+        app(Memberships::class)->add($organization->id, $ada, MembershipRole::Member);
+        if (! in_array($number, [1, 9], true)) {
+            continue;
+        }
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        try {
+            expect($catalog->forUser($ada))->toHaveCount(1);
+            $counts[] = count(DB::getQueryLog());
+        } finally {
+            DB::disableQueryLog();
+        }
+    }
+    expect($counts[1])->toBe($counts[0]);
 });

@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { CatalogAppIcon } from '@/chrome/AppSwitcher';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { CatalogApp, PageProps } from '@/types';
+import type { CatalogApp, HelpContent, PageProps } from '@/types';
 import { Button, PageHeader, Panel } from '@/ui';
 
 export interface CatalogEntry extends CatalogApp {
@@ -16,11 +16,17 @@ export interface CatalogEntry extends CatalogApp {
 export default function AppCatalog({
     entries,
     createHref,
-}: PageProps<{ entries: (CatalogEntry & { editHref: string })[]; createHref: string }>) {
+    help,
+}: PageProps<{
+    entries: (CatalogEntry & { editHref: string })[];
+    createHref: string;
+    help: HelpContent;
+}>) {
     return (
         <>
             <PageHeader
                 title="App catalog"
+                help={help}
                 description="Publish the apps people see in their app switcher. Each app still controls sign-in and access."
             />
             <Button asChild variant="primary">
