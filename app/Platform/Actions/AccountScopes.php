@@ -23,6 +23,7 @@ final class AccountScopes
      * @var array<string, array{label: string, description: string}>
      */
     public const array SCOPES = [
+        'account:apps:read' => ['label' => 'Read your app catalog', 'description' => 'List the published apps visible to you.'],
         'account:profile:write' => [
             'label' => 'Change your profile',
             'description' => 'Change the display name on your account.',

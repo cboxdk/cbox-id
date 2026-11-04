@@ -382,7 +382,7 @@ export default function CreateClient({
                 {/*
                     The environment plane's own capability. An app with no organization is
                     the platform's own: marked first-party it skips the consent screen for
-                    EVERY organization here and appears in each of their launchers — so it
+                    EVERY organization here — so it
                     is offered only where somebody holds all of them.
                 */}
                 {mayScopeEnvironmentWide && (

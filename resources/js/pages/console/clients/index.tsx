@@ -196,8 +196,8 @@ export default function Clients({
 
             {/*
                 Apps the ENVIRONMENT owns rather than the organization being administered:
-                not registered here, but a first-party one is in this organization's
-                launcher — so the page stays consistent with the dashboard rather than
+                not registered here, but a first-party one can skip this organization's
+                consent screen — so the page shows those integrations rather than
                 looking like it lost an app.
             */}
             {!showsEveryOrganization && platformApps.length > 0 && (

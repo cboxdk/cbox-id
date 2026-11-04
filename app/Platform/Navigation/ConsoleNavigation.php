@@ -107,6 +107,7 @@ class ConsoleNavigation
             ),
             new NavArea('Developers', 'code',
                 new NavPage('environment.clients', Vocabulary::APPLICATIONS),
+                new NavPage('environment.app-catalog', 'App catalog'),
                 // The resource servers apps get tokens FOR, and the scopes each owns.
                 new NavPage('environment.apis', 'APIs'),
                 // This environment's publishable keys, with its secret keys as the other

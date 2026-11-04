@@ -102,6 +102,8 @@ tags:
   -
     name: Governance
   -
+    name: 'App catalog'
+  -
     name: 'Audit log'
   -
     name: 'App audit logs'
@@ -1229,6 +1231,322 @@ paths:
           $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /app-catalog:
+    get:
+      tags:
+        - 'App catalog'
+      summary: 'List catalog apps, including drafts and visibility settings.'
+      description: 'Requires scope `app_catalog:read`. Danger: read.'
+      operationId: app_catalog_list
+      x-action: app_catalog.list
+      x-scope: 'app_catalog:read'
+      x-danger: read
+      parameters:
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - name
+                        - description
+                        - launch_url
+                        - icon_url
+                        - position
+                        - version
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - 'null'
+                        launch_url:
+                          type: string
+                          format: uri
+                        icon_url:
+                          type:
+                            - string
+                            - 'null'
+                        position:
+                          type: integer
+                        version:
+                          type: integer
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/app-catalog/{key}':
+    delete:
+      tags:
+        - 'App catalog'
+      summary: 'Remove a catalog app without deleting its OAuth clients or user data.'
+      description: 'Requires scope `app_catalog:write`. Danger: destructive.'
+      operationId: app_catalog_delete
+      x-action: app_catalog.delete
+      x-scope: 'app_catalog:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+                  minimum: 1
+              required:
+                - version
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - 'App catalog'
+      summary: 'Create or replace a catalog app, its icon and visibility. Version zero creates; a stale version conflicts.'
+      description: 'Requires scope `app_catalog:write`. Danger: write.'
+      operationId: app_catalog_save
+      x-action: app_catalog.save
+      x-scope: 'app_catalog:write'
+      x-danger: write
+      parameters:
+        -
+          name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+                  minimum: 0
+                name:
+                  type: string
+                  maxLength: 120
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 300
+                launch_url:
+                  type: string
+                  description: 'Explicit HTTPS entry point. Never inferred from OAuth redirects.'
+                  maxLength: 2048
+                enabled:
+                  type: boolean
+                position:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                audience:
+                  type: string
+                  enum:
+                    - everyone
+                    - organizations
+                    - users
+                organization_ids:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 64
+                user_ids:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 64
+                client_ids:
+                  type: array
+                  description: 'Environment-wide OAuth client ids associated with this app. Does not grant access.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 190
+                required_feature:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Optional feature-flag key. Hidden when off for this person and organization.'
+                  maxLength: 64
+                icon:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'PNG, JPEG or WebP data URI, up to 128 KiB and 512 pixels. Omit to retain; null clears. SVG and remote URLs are refused.'
+                  maxLength: 180000
+              required:
+                - version
+                - name
+                - launch_url
+                - enabled
+                - position
+                - audience
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'App catalog'
+      summary: 'Read a catalog app and its publication settings.'
+      description: 'Requires scope `app_catalog:read`. Danger: read.'
+      operationId: app_catalog_show
+      x-action: app_catalog.show
+      x-scope: 'app_catalog:read'
+      x-danger: read
+      parameters:
+        -
+          name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:

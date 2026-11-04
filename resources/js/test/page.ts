@@ -13,6 +13,7 @@ import type { SharedProps } from '@/types';
  * default, mutable per test through {@see setPageProps}, and reset between tests.
  */
 export const DEFAULT_PAGE_PROPS: SharedProps = {
+    appCatalog: [],
     app: {
         name: 'Cbox ID',
         tagline: 'One identity layer for every app you ship.',

@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountApiKeyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\AppCatalogIconController;
 use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Console\AgentApprovalController;
 use App\Http\Controllers\Console\AgentController;
 use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
+use App\Http\Controllers\Console\AppCatalogController;
 use App\Http\Controllers\Console\AuditController;
 use App\Http\Controllers\Console\AuditLogController;
 use App\Http\Controllers\Console\AuthPolicyController;
@@ -1690,6 +1692,13 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Feature flags — the switches the environment's apps ask about per user and
         // organization. This console only: a flag is read by every app and organization in
         // the environment, so it is the environment's to define.
+        Route::get('/app-catalog', [AppCatalogController::class, 'index'])->name('environment.app-catalog');
+        Route::get('/app-catalog/lookup', [AppCatalogController::class, 'lookup'])->name('environment.app-catalog.lookup');
+        Route::get('/app-catalog/new', [AppCatalogController::class, 'create'])->name('environment.app-catalog.create');
+        Route::get('/app-catalog/{key}/edit', [AppCatalogController::class, 'edit'])->name('environment.app-catalog.edit');
+        Route::put('/app-catalog/{key}', [AppCatalogController::class, 'save'])->name('environment.app-catalog.save');
+        Route::delete('/app-catalog/{key}', [AppCatalogController::class, 'destroy'])->name('environment.app-catalog.destroy');
+
         Route::get('/feature-flags', [FeatureFlagController::class, 'index'])->name('environment.feature-flags');
         Route::get('/feature-flags/new', [FeatureFlagController::class, 'create'])->name('environment.feature-flags.create');
         Route::post('/feature-flags', [FeatureFlagController::class, 'store'])->name('environment.feature-flags.store');
@@ -2186,3 +2195,5 @@ foreach ([
 Route::middleware(['api', ApiResolveEnvironment::class, 'throttle:60,1'])
     ->get('/.well-known/cbox-cli', CliBootstrapController::class)
     ->name('cli.bootstrap');
+
+Route::get('/app-icons/{id}/{hash}', AppCatalogIconController::class)->middleware(ApiResolveEnvironment::class)->where('hash', '[a-f0-9]{64}')->name('app-catalog.icon');

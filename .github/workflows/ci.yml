@@ -156,6 +156,12 @@ jobs:
           cp .env.example .env || true
           php artisan key:generate --force
 
+      - name: Frontend types and component tests
+        run: |
+          node --test bin/lib/wayfinder-compat.test.mjs
+          npm run typecheck
+          npm test
+
       # `docs-screenshots` IS EXCLUDED. It rewrites docs/screenshots/*.png
       # (tests/Browser/DocsScreenshotsTest.php), and runs in its own workflow on every
       # release tag (docs-screenshots.yml), which proposes the pictures as a pull request.

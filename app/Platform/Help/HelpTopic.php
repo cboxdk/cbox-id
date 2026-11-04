@@ -42,6 +42,7 @@ enum HelpTopic: string
     case Apis = 'apis';
     case Webhooks = 'webhooks';
     case InlineHooks = 'inline-hooks';
+    case AppCatalog = 'app-catalog';
     case FeatureFlags = 'feature-flags';
     case TokenVault = 'token-vault';
     case Pipes = 'pipes';
@@ -110,6 +111,7 @@ enum HelpTopic: string
             self::Apis => __('console.your_apis_and_who_may_call_them_2052cd06'),
             self::Webhooks => __('console.getting_told_when_something_happens_2816559c'),
             self::InlineHooks => __('console.having_a_say_while_it_happens_15efcb5d'),
+            self::AppCatalog => 'Your shared app list',
             self::FeatureFlags => __('console.features_on_for_some_not_all_57ba7057'),
             self::TokenVault => __('console.credentials_your_apps_use_elsewhere_db36cae9'),
             self::Pipes => __('console.calling_other_services_as_your_users_aed68939'),
@@ -197,6 +199,7 @@ enum HelpTopic: string
 
             self::InlineHooks => __('console.these_run_in_the_middle_of_an_operation_not__c325ec80'),
 
+            self::AppCatalog => 'The app catalog is the list your products show in their app switcher. Publish each app with a launch URL and icon, then choose who can see it. Each app still controls sign-in and access.',
             self::FeatureFlags => __('console.a_feature_flag_is_a_switch_your_apps_ask_abo_9a43d208'),
 
             self::Pipes => __('console.each_pipe_lets_people_connect_their_own_acco_ec4853ae'),
@@ -301,6 +304,7 @@ enum HelpTopic: string
             self::Apis => 'guides/apis',
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
+            self::AppCatalog => 'guides/app-catalog',
             self::FeatureFlags => 'guides/feature-flags',
             self::TokenVault => 'guides/token-vault',
             self::Pipes => 'guides/pipes',

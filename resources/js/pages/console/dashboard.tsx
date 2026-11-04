@@ -1,7 +1,8 @@
 import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
+import { CatalogAppIcon } from '@/chrome/AppSwitcher';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { HelpContent, PageProps } from '@/types';
+import type { CatalogApp, HelpContent, PageProps } from '@/types';
 import {
     Button,
     type IconName,
@@ -12,15 +13,6 @@ import {
     Progress,
     type StatTone,
 } from '@/ui';
-
-interface App {
-    name: string;
-    url: string;
-    host: string;
-    initial: string;
-    /** A stable hue per app name, so each tile keeps a recognisable colour. */
-    hue: number;
-}
 
 interface ModuleCard {
     key: string;
@@ -47,7 +39,7 @@ type Props = PageProps<{
     heading: string;
     greeting: string;
     isAdmin: boolean;
-    apps: App[];
+    apps: CatalogApp[];
     role: string;
     organizationName: string | null;
     memberCount: number;
@@ -244,7 +236,7 @@ export default function Dashboard({
     );
 }
 
-function Apps({ apps }: { apps: App[] }) {
+function Apps({ apps }: { apps: CatalogApp[] }) {
     const { t: tc } = useTranslator();
 
     return (
@@ -259,16 +251,8 @@ function Apps({ apps }: { apps: App[] }) {
                 {apps.map((app) => (
                     // A real `<a>`, not an Inertia visit: these leave this application
                     // entirely, which is the whole point of the launcher.
-                    <a key={app.url} href={app.url} className="cbx-app-tile">
-                        <span
-                            className="cbx-app-logo"
-                            aria-hidden="true"
-                            style={{
-                                background: `linear-gradient(135deg, oklch(0.63 0.15 ${app.hue}), oklch(0.5 0.17 ${(app.hue + 28) % 360}))`,
-                            }}
-                        >
-                            {app.initial}
-                        </span>
+                    <a key={app.key} href={app.launch_url} className="cbx-app-tile">
+                        <CatalogAppIcon app={app} />
                         <span className="min-w-0 flex-1">
                             <span
                                 className="block truncate font-semibold"
@@ -280,7 +264,7 @@ function Apps({ apps }: { apps: App[] }) {
                                 className="block truncate text-xs mono"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                {app.host}
+                                {app.description ?? new URL(app.launch_url).hostname}
                             </span>
                         </span>
                         <Icon name="external" className="cbx-app-go w-4 h-4" aria-hidden="true" />
