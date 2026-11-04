@@ -93,9 +93,7 @@ export function Targets({
                     />
                 ))}
             </div>
-            <p role="status" className="text-xs text-[var(--muted-foreground)]">
-                {status}
-            </p>
+            <output className="block text-xs text-[var(--muted-foreground)]">{status}</output>
         </fieldset>
     );
 }
