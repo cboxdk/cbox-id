@@ -12,6 +12,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 - Update Symfony Filesystem, HttpFoundation, HttpKernel, Routing and the development YAML parser to patched 8.1.11 releases following the November 4 advisories.
 
+### Fixed
+
+- Normalize repeated URI aliases and support Laravel’s `QUERY` method in generated Wayfinder helpers. Frontend typechecking and component tests now run in browser CI.
+
 ### Added
 
 - German, Swedish, Norwegian Bokmål, Finnish, French, Spanish, Italian and Dutch in the signed-in app. Finnish, Spanish, Italian and Dutch also cover hosted login, the Admin Portal, mail and validation. Core terms are reviewed; the new catalogues are machine-translated and checked for key, placeholder and plural parity.
