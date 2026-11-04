@@ -69,6 +69,6 @@ Changes enter the transactional outbox and wake the relay on the webhook queue a
 
 ## Deployment
 
-This change spans Cbox ID and `laravel-id`. The app requires `laravel-id ^1.27.0`. Run its additive migration before rolling out the new application image. No production grants are provisioned automatically.
+This change spans Cbox ID and `laravel-id`. The app requires `laravel-id ^1.27.1`. Run its additive migration before rolling out the new application image. No production grants are provisioned automatically.
 
 Before a package release, local integration tests can use a Composer path repository or temporary autoload overlay for the sibling package. Do not deploy a local path dependency. Consuming apps still need to apply the values to their UI; these APIs do not automatically replace Cbox ID's hosted language cookie or add settings screens to other apps.
