@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\Environment\ActionApprovalController;
 use App\Http\Controllers\Api\PipeTokenController;
+use App\Http\Controllers\Api\ServiceConnectionController;
 use App\Http\Controllers\Api\VaultController;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionRoutes;
@@ -171,3 +172,14 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])
         Route::post('pipes/{provider}/token', [PipeTokenController::class, 'lease'])
             ->middleware('scope:vault.lease');
     });
+
+// Organization-owned first-party grants. User approval and background leases use
+// distinct scopes; neither door accepts environment management keys.
+Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])->prefix('v1/service-connections')->group(function (): void {
+    Route::get('/', [ServiceConnectionController::class, 'index'])->middleware('scope:service_connections.manage');
+    Route::post('/{id}', [ServiceConnectionController::class, 'store'])->middleware('scope:service_connections.manage');
+    Route::delete('/{id}', [ServiceConnectionController::class, 'destroy'])->middleware('scope:service_connections.manage');
+    Route::post('/{id}/status', [ServiceConnectionController::class, 'inspect'])->middleware('scope:service_connections.lease');
+    Route::post('/{id}/inspect', [ServiceConnectionController::class, 'inspect'])->middleware('scope:service_connections.inspect');
+    Route::post('/{id}/token', [ServiceConnectionController::class, 'token'])->middleware('scope:service_connections.lease');
+});
