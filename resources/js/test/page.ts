@@ -1,3 +1,4 @@
+import { consoleI18n } from './catalogue';
 import type { SharedProps } from '@/types';
 
 /**
@@ -25,7 +26,7 @@ export const DEFAULT_PAGE_PROPS: SharedProps = {
     impersonation: null,
     flash: { status: null, error: null },
     shell: null,
-    i18n: null,
+    i18n: consoleI18n(),
     apiEquivalents: {},
     errors: {},
 };

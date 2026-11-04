@@ -36,8 +36,8 @@ final class ProbeLegacyLoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.required' => 'Enter an address that exists in your old system.',
-            'email.email' => 'Enter an address that exists in your old system.',
+            'email.required' => __('console.enter_an_address_that_exists_in_your_old_sys_59edc713'),
+            'email.email' => __('console.enter_an_address_that_exists_in_your_old_sys_59edc713'),
         ];
     }
 

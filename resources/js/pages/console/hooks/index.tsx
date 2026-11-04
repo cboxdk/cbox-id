@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -51,6 +52,8 @@ export default function HooksIndex({
     createHref,
     organizationFilter,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -73,12 +76,12 @@ export default function HooksIndex({
         <>
             <PageHeader
                 help={help}
-                description="Your endpoint is called in the middle of an operation and its answer changes the outcome — add data to a token, or refuse the sign-in."
+                description={tc('console.your_endpoint_is_called_in_the_middle_of_an__ab67a6b0')}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            Register endpoint
+                            {tc('console.register_endpoint_1e7b84db')}
                         </Link>
                     </Button>
                 }
@@ -93,8 +96,8 @@ export default function HooksIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by URL"
-                    aria-label="Search hooks"
+                    placeholder={tc('console.search_by_url_98cb36da')}
+                    aria-label={tc('console.search_hooks_1f85b0cc')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -104,7 +107,11 @@ export default function HooksIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total} {pagination.total === 1 ? 'hook' : 'hooks'} found.
+                    {pagination.total}{' '}
+                    {pagination.total === 1
+                        ? tc('console.hook_0648298b')
+                        : tc('console.hooks_a9fa9fda')}
+                    {tc('console.found_599e25a3')}
                 </output>
             </div>
 
@@ -116,26 +123,30 @@ export default function HooksIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No hooks match “${search}”`}
-                            description="No endpoint URL matches that search. Try a different one."
+                            title={tc('console.no_hooks_match_value0_6f2388b4', { value0: search })}
+                            description={tc(
+                                'console.no_endpoint_url_matches_that_search_try_a_di_45378b36',
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="webhooks"
                             equivalent="hooks.create"
-                            title="No hooks registered"
+                            title={tc('console.no_hooks_registered_2469ba6e')}
                             help={help}
-                            description="Most integrations want Webhooks instead — those run after the fact and cannot hold anything up. Reach for a hook only when your own system must have a say while a sign-in or token is being issued."
+                            description={tc(
+                                'console.most_integrations_want_webhooks_instead_thos_576be07b',
+                            )}
                             steps={[
-                                'Register the endpoint and choose the hook point it answers at.',
-                                'Verify the signature on every call, and answer within the timeout — this runs while someone waits at the sign-in screen.',
-                                'Fail open or closed deliberately: decide now what should happen when your endpoint is down.',
+                                tc('console.register_the_endpoint_and_choose_the_hook_po_bd5f70f2'),
+                                tc('console.verify_the_signature_on_every_call_and_answe_5219ed81'),
+                                tc('console.fail_open_or_closed_deliberately_decide_now__daf1e068'),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        Register endpoint
+                                        {tc('console.register_endpoint_1e7b84db')}
                                     </Link>
                                 </Button>
                             }
@@ -166,7 +177,9 @@ export default function HooksIndex({
                                             <Badge>{hook.point}</Badge>
                                         </span>
                                     </Tooltip>
-                                    <Badge>{hook.owner ?? 'All organizations'}</Badge>
+                                    <Badge>
+                                        {hook.owner ?? tc('console.all_organizations_e3002b23')}
+                                    </Badge>
                                 </div>
                                 <p
                                     className="mt-1 text-xs truncate mono"
@@ -177,7 +190,9 @@ export default function HooksIndex({
                             </div>
 
                             <Pill tone={hook.active ? 'success' : 'warning'}>
-                                {hook.active ? 'Active' : 'Paused'}
+                                {hook.active
+                                    ? tc('console.active_92340695')
+                                    : tc('console.paused_e159b061')}
                             </Pill>
 
                             <Icon
@@ -192,7 +207,8 @@ export default function HooksIndex({
 
             <Pagination
                 pagination={pagination}
-                noun="hook"
+                noun={tc('console.hook_0648298b')}
+                pluralNoun={tc('console.hooks_a9fa9fda')}
                 href={(page) => listHref(search, page)}
             />
         </>

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { Dialog as Primitive } from 'radix-ui';
 import { type ReactNode, useState } from 'react';
@@ -63,6 +64,8 @@ export function MobileNav({
     platformUrl = null,
     children,
 }: MobileNavProps) {
+    const { t: tc } = useTranslator();
+
     const [open, setOpen] = useState(false);
     const [accountOpen, setAccountOpen] = useState(false);
 
@@ -89,26 +92,35 @@ export function MobileNav({
                     )}
                 </span>
 
-                <Primitive.Trigger className="cbx-mobilebar-btn" aria-label="Open menu">
-                    <Icon name="menu" className="w-[18px] h-[18px]" /> Menu
+                <Primitive.Trigger
+                    className="cbx-mobilebar-btn"
+                    aria-label={tc('console.open_menu_b40b3713')}
+                >
+                    <Icon name="menu" className="w-[18px] h-[18px]" />
+                    {tc('console.menu_aa30a129')}
                 </Primitive.Trigger>
             </div>
 
             <Primitive.Portal>
                 <Primitive.Overlay className="cbx-overlay lg:hidden" />
                 <Primitive.Content className="cbx-sheet lg:hidden" aria-describedby={undefined}>
-                    <Primitive.Title className="sr-only">Navigation</Primitive.Title>
+                    <Primitive.Title className="sr-only">
+                        {tc('console.navigation_3db65f8c')}
+                    </Primitive.Title>
 
                     <div className="cbx-sheet-hd">
                         <span className="cbx-sheet-grab" aria-hidden="true" />
-                        <Primitive.Close className="cbx-sheet-close" aria-label="Close menu">
+                        <Primitive.Close
+                            className="cbx-sheet-close"
+                            aria-label={tc('console.close_menu_6ccd5c78')}
+                        >
                             <Icon name="close" className="w-[18px] h-[18px]" />
                         </Primitive.Close>
                     </div>
 
                     {children !== undefined && <div className="cbx-sheet-slot">{children}</div>}
 
-                    <nav className="cbx-sheet-nav" aria-label="Navigation">
+                    <nav className="cbx-sheet-nav" aria-label={tc('console.navigation_3db65f8c')}>
                         {areas.map((area) => (
                             <div key={area.key} className="space-y-0.5">
                                 <p
@@ -176,7 +188,7 @@ export function MobileNav({
                                             name="briefcase"
                                             className="w-[1.15rem] h-[1.15rem]"
                                         />
-                                        Workspace settings
+                                        {tc('console.workspace_settings_5ebc5914')}
                                     </a>
                                 )}
 
@@ -188,21 +200,21 @@ export function MobileNav({
                                 {showAccountLink && accountUrl !== undefined && (
                                     <a href={accountUrl} className="nav-link w-full">
                                         <Icon name="user" className="w-[1.15rem] h-[1.15rem]" />
-                                        My account
+                                        {tc('console.my_account_b53181a4')}
                                     </a>
                                 )}
 
                                 {switchUserUrl !== undefined && (
                                     <a href={switchUserUrl} className="nav-link w-full">
                                         <Icon name="switch" className="w-[1.15rem] h-[1.15rem]" />
-                                        Switch user
+                                        {tc('console.switch_user_4f899129')}
                                     </a>
                                 )}
 
                                 {platformUrl !== null && (
                                     <a href={platformUrl} className="nav-link w-full">
                                         <Icon name="lock" className="w-[1.15rem] h-[1.15rem]" />
-                                        Platform admin
+                                        {tc('console.platform_admin_69652f55')}
                                     </a>
                                 )}
 
@@ -212,7 +224,7 @@ export function MobileNav({
                                     onClick={() => toggleTheme()}
                                 >
                                     <Icon name="moon" className="w-[1.15rem] h-[1.15rem]" />
-                                    Toggle theme
+                                    {tc('console.toggle_theme_6026719f')}
                                 </button>
 
                                 <button
@@ -222,7 +234,7 @@ export function MobileNav({
                                     onClick={() => router.post(logoutUrl)}
                                 >
                                     <Icon name="logout" className="w-[1.15rem] h-[1.15rem]" />
-                                    Sign out
+                                    {tc('console.sign_out_48f0d3d3')}
                                 </button>
                             </div>
                         )}
@@ -239,7 +251,7 @@ export function MobileNav({
                             </span>
                             <span className="min-w-0 flex-1 text-left">
                                 <span className="block text-[13px] font-medium truncate leading-tight">
-                                    {user?.name ?? 'Account'}
+                                    {user?.name ?? tc('console.account_7e1b0d56')}
                                 </span>
                                 {user?.email != null && (
                                     <span
@@ -258,7 +270,9 @@ export function MobileNav({
                                 )}
                             />
                             <span className="sr-only">
-                                {accountOpen ? 'Hide account' : 'Show account'}
+                                {accountOpen
+                                    ? tc('console.hide_account_3759e10c')
+                                    : tc('console.show_account_345f7979')}
                             </span>
                         </button>
                     </div>

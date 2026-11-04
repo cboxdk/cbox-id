@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -175,6 +177,8 @@ export default function SocialProviders({
     help,
     audience,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [removing, setRemoving] = useState<{ name: string; href: string } | null>(null);
     const [turningOff, setTurningOff] = useState<{
         name: string;
@@ -194,8 +198,10 @@ export default function SocialProviders({
                 help={help}
                 description={
                     view === 'environment'
-                        ? 'Let people sign in with an account they already have. Set a provider up once for the environment and every organization offers it; an organization can bring its own credentials instead, or turn one off.'
-                        : `What ${organizationName ?? 'this organization'}’s sign-in page offers. Providers from the environment are inherited; this organization can turn one off, or set up its own in its place.`
+                        ? tc('console.let_people_sign_in_with_an_account_they_alre_de3c77a6')
+                        : tc('console.what_value0_s_sign_in_page_offers_providers__36deb05b', {
+                              value0: organizationName ?? tc('console.this_organization_cab32fc4'),
+                          })
                 }
             />
 
@@ -214,7 +220,11 @@ export default function SocialProviders({
                     <SetupPanel
                         template={template}
                         organization={organization}
-                        ownerChoice={ownerChoice ? (organizationName ?? 'this organization') : null}
+                        ownerChoice={
+                            ownerChoice
+                                ? (organizationName ?? tc('console.this_organization_cab32fc4'))
+                                : null
+                        }
                         storeHref={storeHref}
                         cancelHref={indexHref}
                     />
@@ -223,14 +233,20 @@ export default function SocialProviders({
                 {view === 'environment' ? (
                     <>
                         <Panel
-                            title="On every sign-in page"
-                            description="Your own credentials with each provider, offered to everyone in this environment. Every organization inherits these."
+                            title={tc('console.on_every_sign_in_page_27ea6bb3')}
+                            description={tc(
+                                'console.your_own_credentials_with_each_provider_offe_d1715d1a',
+                            )}
                         >
                             {environmentProviders.length === 0 ? (
                                 <Empty
                                     lines={[
-                                        'No providers for the environment yet — people sign in with a password, a magic link or a passkey.',
-                                        'Choose one under Add a provider to offer it on every sign-in page.',
+                                        tc(
+                                            'console.no_providers_for_the_environment_yet_people__c6bb86e5',
+                                        ),
+                                        tc(
+                                            'console.choose_one_under_add_a_provider_to_offer_it__b0f45965',
+                                        ),
                                     ]}
                                 />
                             ) : (
@@ -250,8 +266,10 @@ export default function SocialProviders({
 
                         {(organizationProviders.length > 0 || optOuts.length > 0) && (
                             <Panel
-                                title="Set by one organization"
-                                description="An organization's own provider replaces the environment's on its sign-in page. One that turned the environment's off is listed too — that only removes the button from its page; requiring SSO is what keeps people out."
+                                title={tc('console.set_by_one_organization_0d4057d6')}
+                                description={tc(
+                                    'console.an_organization_s_own_provider_replaces_the__5a3f34fa',
+                                )}
                             >
                                 <ul>
                                     {organizationProviders.map((row, index) => (
@@ -280,8 +298,9 @@ export default function SocialProviders({
                                             <p className="min-w-0 flex-1 text-sm">
                                                 <span className="font-medium">{row.name}</span>{' '}
                                                 <span style={{ color: 'var(--muted-foreground)' }}>
-                                                    is turned off on {row.organization}’s sign-in
-                                                    page.
+                                                    {tc('console.is_turned_off_on_d8c95509')}
+                                                    {row.organization}
+                                                    {tc('console.s_sign_in_page_41d7ac63')}
                                                 </span>
                                             </p>
                                             <Button
@@ -297,7 +316,7 @@ export default function SocialProviders({
                                                     )
                                                 }
                                             >
-                                                Offer it again
+                                                {tc('console.offer_it_again_c7715a69')}
                                             </Button>
                                         </li>
                                     ))}
@@ -309,14 +328,20 @@ export default function SocialProviders({
                     <>
                         {ownerChoice && (
                             <Panel
-                                title="On every sign-in page"
-                                description="Your own credentials with each provider, offered on every sign-in page in this environment — every organization here inherits them."
+                                title={tc('console.on_every_sign_in_page_27ea6bb3')}
+                                description={tc(
+                                    'console.your_own_credentials_with_each_provider_offe_82ce1e08',
+                                )}
                             >
                                 {environmentProviders.length === 0 ? (
                                     <Empty
                                         lines={[
-                                            'No providers for the whole environment yet.',
-                                            'Choose one under Add a provider; it is offered on every sign-in page unless you say it is only for this organization.',
+                                            tc(
+                                                'console.no_providers_for_the_whole_environment_yet_91fd34a0',
+                                            ),
+                                            tc(
+                                                'console.choose_one_under_add_a_provider_it_is_offere_fe325acd',
+                                            ),
                                         ]}
                                     />
                                 ) : (
@@ -335,17 +360,21 @@ export default function SocialProviders({
                             </Panel>
                         )}
                         <Panel
-                            title={`On ${organizationName ?? 'this organization'}’s sign-in page`}
+                            title={tc('console.on_value0_s_sign_in_page_0e6cb4e7', {
+                                value0:
+                                    organizationName ?? tc('console.this_organization_cab32fc4'),
+                            })}
                             description={
                                 <>
-                                    In the order people see them. Turning one of the environment's
-                                    off here only takes the button off this page — it does not stop
-                                    anyone signing in with it elsewhere. To make your identity
-                                    provider the only way in, require SSO on{' '}
+                                    {tc(
+                                        'console.in_the_order_people_see_them_turning_one_of__75c6cde9',
+                                    )}{' '}
                                     {policyHref === null ? (
-                                        'Authentication policy'
+                                        tc('console.authentication_policy_07e21daf')
                                     ) : (
-                                        <Link href={policyHref}>Authentication policy</Link>
+                                        <Link href={policyHref}>
+                                            {tc('console.authentication_policy_07e21daf')}
+                                        </Link>
                                     )}
                                     .
                                 </>
@@ -353,7 +382,7 @@ export default function SocialProviders({
                             action={
                                 environmentHref !== null ? (
                                     <Link href={environmentHref} className="btn btn-ghost btn-sm">
-                                        The environment’s providers
+                                        {tc('console.the_environment_s_providers_e11ef97b')}
                                     </Link>
                                 ) : undefined
                             }
@@ -361,8 +390,12 @@ export default function SocialProviders({
                             {page.length === 0 ? (
                                 <Empty
                                     lines={[
-                                        'No social providers here yet — people sign in with a password, a magic link or a passkey.',
-                                        'Add one below to offer it on this organization’s page.',
+                                        tc(
+                                            'console.no_social_providers_here_yet_people_sign_in__a33ed020',
+                                        ),
+                                        tc(
+                                            'console.add_one_below_to_offer_it_on_this_organizati_51427e0a',
+                                        ),
                                     ]}
                                 />
                             ) : (
@@ -384,8 +417,10 @@ export default function SocialProviders({
 
                 {available.length > 0 && (
                     <Panel
-                        title="Add a provider"
-                        description="You need credentials from your own account with the provider — usually a client ID and secret, though Apple issues a signing key instead."
+                        title={tc('console.add_a_provider_f03153fc')}
+                        description={tc(
+                            'console.you_need_credentials_from_your_own_account_w_6556573b',
+                        )}
                     >
                         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                             {available.map((option) => {
@@ -397,7 +432,9 @@ export default function SocialProviders({
                                         href={option.href}
                                         preserveScroll
                                         aria-current={chosen ? 'true' : undefined}
-                                        aria-label={`Add ${option.name}`}
+                                        aria-label={tc('console.add_value0_573b019b', {
+                                            value0: option.name,
+                                        })}
                                         className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-start transition"
                                         style={{
                                             border: `1px solid ${chosen ? 'var(--accent)' : 'var(--border)'}`,
@@ -431,7 +468,7 @@ export default function SocialProviders({
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={removing?.name ?? ''}
                 verb="Remove"
-                consequence="It stops appearing as a button, and its credentials are deleted. Anyone who signed in with it keeps their account and can still use their password. To keep the credentials, turn it off instead."
+                consequence={tc('console.it_stops_appearing_as_a_button_and_its_crede_120d1fa5')}
                 onConfirm={() => {
                     const target = removing;
                     setRemoving(null);
@@ -446,11 +483,11 @@ export default function SocialProviders({
                 open={turningOff !== null}
                 onOpenChange={(open) => !open && setTurningOff(null)}
                 name={turningOff?.name ?? ''}
-                verb="Turn off"
+                verb={tc('console.turn_off_06f0e210')}
                 consequence={
                     turningOff?.everywhere === true
-                        ? 'The button disappears from every sign-in page in this environment that inherits it. Its credentials are kept, so you can turn it back on.'
-                        : 'The button disappears from this organization’s sign-in page — the environment’s own does not take its place. Its credentials are kept, so you can turn it back on.'
+                        ? tc('console.the_button_disappears_from_every_sign_in_pag_c817a046')
+                        : tc('console.the_button_disappears_from_this_organization_88a1cc4f')
                 }
                 onConfirm={() => {
                     const target = turningOff;
@@ -491,12 +528,21 @@ function Empty({ lines }: { lines: string[] }) {
  * nowhere else, and a mismatch fails with an error naming the client id rather than the URI.
  */
 function RedirectUri({ name, uri }: { name: string; uri: string }) {
+    const { t: tc } = useTranslator();
+
     return (
         <p className="mt-1.5 flex items-center gap-2 flex-wrap">
             <span className="mono text-xs break-all" style={{ color: 'var(--muted-foreground)' }}>
-                <span style={{ color: 'var(--foreground)' }}>Redirect URI:</span> {uri}
+                <span style={{ color: 'var(--foreground)' }}>
+                    {tc('console.redirect_uri_de6f19ce')}
+                </span>{' '}
+                {uri}
             </span>
-            <CopyButton size="sm" value={uri} label={`Copy the redirect URI for ${name}`} />
+            <CopyButton
+                size="sm"
+                value={uri}
+                label={tc('console.copy_the_redirect_uri_for_value0_85b91ee7', { value0: name })}
+            />
         </p>
     );
 }
@@ -518,37 +564,43 @@ function OwnerControls({
     everywhere: boolean;
     controls: RowControls;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="flex flex-wrap gap-2">
             <Button size="sm" asChild>
-                <Link href={row.editHref} preserveScroll aria-label={`Change ${row.name}`}>
-                    Change
+                <Link
+                    href={row.editHref}
+                    preserveScroll
+                    aria-label={tc('console.change_value0_981b75fc', { value0: row.name })}
+                >
+                    {tc('console.change_c0bf75bd')}
                 </Link>
             </Button>
             {row.enabled ? (
                 <Button
                     size="sm"
                     onClick={() => controls.onTurnOff(row, everywhere)}
-                    aria-label={`Turn off ${row.name}`}
+                    aria-label={tc('console.turn_off_value0_690ee141', { value0: row.name })}
                 >
-                    Turn off
+                    {tc('console.turn_off_06f0e210')}
                 </Button>
             ) : (
                 <Button
                     size="sm"
                     onClick={() => router.post(row.enableHref, {}, { preserveScroll: true })}
-                    aria-label={`Turn on ${row.name}`}
+                    aria-label={tc('console.turn_on_value0_096b289a', { value0: row.name })}
                 >
-                    Turn on
+                    {tc('console.turn_on_5a1f096a')}
                 </Button>
             )}
             <Button
                 size="sm"
                 variant="danger"
                 onClick={() => controls.onRemove(row)}
-                aria-label={`Remove ${row.name}`}
+                aria-label={tc('console.remove_value0_b597e5fb', { value0: row.name })}
             >
-                Remove
+                {tc('console.remove_c3812fc4')}
             </Button>
         </div>
     );
@@ -565,6 +617,8 @@ function ProviderItem({
     everywhere: boolean;
     controls: RowControls;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <li
             className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-start"
@@ -576,16 +630,18 @@ function ProviderItem({
                     <p className="font-medium text-sm flex flex-wrap items-center gap-1.5">
                         {row.name}
                         {row.organization !== null && <Badge>{row.organization}</Badge>}
-                        {row.replacesEnvironment && <Badge>Replaces the environment’s</Badge>}
+                        {row.replacesEnvironment && (
+                            <Badge>{tc('console.replaces_the_environment_s_426dcbe4')}</Badge>
+                        )}
                         <Pill tone={row.enabled ? 'success' : 'neutral'}>
-                            {row.enabled ? 'On' : 'Off'}
+                            {row.enabled ? tc('console.on_13001175') : tc('console.off_ca7981b4')}
                         </Pill>
                     </p>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                         {row.protocol}
                         {row.scopes.length > 0 && (
                             <>
-                                {' · also asks for '}
+                                {tc('console.also_asks_for_7c715762')}
                                 <span className="mono">{row.scopes.join(' ')}</span>
                             </>
                         )}
@@ -598,12 +654,14 @@ function ProviderItem({
     );
 }
 
-const PAGE_STATE: Record<PageRow['state'], { label: string; tone: 'success' | 'neutral' }> = {
-    offered: { label: 'On', tone: 'success' },
-    hidden: { label: 'Turned off here', tone: 'neutral' },
-    replaced: { label: 'Replaced by its own', tone: 'neutral' },
-    off: { label: 'Off', tone: 'neutral' },
-};
+const PAGE_STATE = (
+    tc: Translator['t'],
+): Record<PageRow['state'], { label: string; tone: 'success' | 'neutral' }> => ({
+    offered: { label: tc('console.on_13001175'), tone: 'success' },
+    hidden: { label: tc('console.turned_off_here_701c16b0'), tone: 'neutral' },
+    replaced: { label: tc('console.replaced_by_its_own_59cb9f23'), tone: 'neutral' },
+    off: { label: tc('console.off_ca7981b4'), tone: 'neutral' },
+});
 
 /** One button on one organization's page — inherited, or the organization's own. */
 function PageItem({
@@ -617,8 +675,10 @@ function PageItem({
     organizationName: string | null;
     controls: RowControls;
 }) {
+    const { t: tc } = useTranslator();
+
     const own = row.source === 'organization';
-    const state = PAGE_STATE[row.state];
+    const state = PAGE_STATE(tc)[row.state];
 
     return (
         <li
@@ -632,17 +692,23 @@ function PageItem({
                         {row.name}
                         <Badge>
                             {own
-                                ? `${organizationName ?? 'This organization'}’s own`
-                                : 'From the environment'}
+                                ? tc('console.value0_s_own_349855e6', {
+                                      value0:
+                                          organizationName ??
+                                          tc('console.this_organization_bdaad4df'),
+                                  })
+                                : tc('console.from_the_environment_4511e421')}
                         </Badge>
                         {own && row.replacesEnvironment === true && (
-                            <Badge>Replaces the environment’s</Badge>
+                            <Badge>{tc('console.replaces_the_environment_s_426dcbe4')}</Badge>
                         )}
                         <Pill tone={state.tone}>{state.label}</Pill>
                     </p>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                         {row.protocol}
-                        {row.state === 'off' && !own && ' · turned off for the whole environment'}
+                        {row.state === 'off' &&
+                            !own &&
+                            tc('console.turned_off_for_the_whole_environment_d3ef7aec')}
                     </p>
                     {own && <RedirectUri name={row.name} uri={row.callbackUri} />}
                 </div>
@@ -671,8 +737,12 @@ function PageItem({
                         size="sm"
                         aria-label={
                             row.state === 'offered'
-                                ? `Turn off ${row.name} on this page`
-                                : `Offer ${row.name} on this page again`
+                                ? tc('console.turn_off_value0_on_this_page_985b150c', {
+                                      value0: row.name,
+                                  })
+                                : tc('console.offer_value0_on_this_page_again_2159a6b8', {
+                                      value0: row.name,
+                                  })
                         }
                         onClick={() => {
                             const href = row.inheritHref;
@@ -686,7 +756,9 @@ function PageItem({
                             }
                         }}
                     >
-                        {row.state === 'offered' ? 'Turn off here' : 'Offer it again'}
+                        {row.state === 'offered'
+                            ? tc('console.turn_off_here_73de69be')
+                            : tc('console.offer_it_again_c7715a69')}
                     </Button>
                 )
             )}
@@ -717,6 +789,8 @@ function CredentialFields({
     /** On the change form: a blank secret keeps the one on file. */
     keepingSecrets: boolean;
 }) {
+    const { t: tc } = useTranslator();
+
     const setParameter = (key: string, value: string) =>
         setData('parameters', { ...data.parameters, [key]: value } as never);
 
@@ -728,7 +802,7 @@ function CredentialFields({
                     label={parameter.label}
                     hint={
                         keepingSecrets && parameter.multiline
-                            ? 'Leave empty to keep the one on file.'
+                            ? tc('console.leave_empty_to_keep_the_one_on_file_c2fa1a1e')
                             : parameter.help === ''
                               ? undefined
                               : parameter.help
@@ -754,10 +828,14 @@ function CredentialFields({
             ))}
 
             <Field
-                label={template.mintsItsOwnSecret ? 'Services ID' : 'Client ID'}
+                label={
+                    template.mintsItsOwnSecret
+                        ? tc('console.services_id_f7ca55a9')
+                        : tc('console.client_id_8726db01')
+                }
                 hint={
                     template.mintsItsOwnSecret
-                        ? 'The Services ID you enabled Sign in with Apple on — not the App ID.'
+                        ? tc('console.the_services_id_you_enabled_sign_in_with_app_c93a711d')
                         : undefined
                 }
                 error={errors.clientId}
@@ -782,14 +860,18 @@ function CredentialFields({
                         color: 'var(--muted-foreground)',
                     }}
                 >
-                    There is no client secret to paste. {template.name} expects a signed assertion
-                    instead, which we mint from the key above for each sign-in and renew long before
-                    it expires.
+                    {tc('console.there_is_no_client_secret_to_paste_36f6a127')}
+                    {template.name}
+                    {tc('console.expects_a_signed_assertion_instead_which_we__3912094a')}
                 </p>
             ) : (
                 <Field
-                    label="Client secret"
-                    hint={keepingSecrets ? 'Leave empty to keep the one on file.' : undefined}
+                    label={tc('console.client_secret_4aded5fa')}
+                    hint={
+                        keepingSecrets
+                            ? tc('console.leave_empty_to_keep_the_one_on_file_c2fa1a1e')
+                            : undefined
+                    }
                     error={errors.clientSecret}
                 >
                     <Input
@@ -803,8 +885,10 @@ function CredentialFields({
             )}
 
             <Field
-                label="Extra scopes (optional)"
-                hint={`Only if your app needs more from ${template.name} than sign-in does — separated by spaces. Sign-in's own scopes are always requested.`}
+                label={tc('console.extra_scopes_optional_4f0ad065')}
+                hint={tc('console.only_if_your_app_needs_more_from_value0_than_e2582fda', {
+                    value0: template.name,
+                })}
                 error={errors.scopes}
             >
                 <Input
@@ -820,6 +904,8 @@ function CredentialFields({
 
 /** A copyable redirect URI on a setup or change form. */
 function RedirectUriBlock({ uri }: { uri: string }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="mt-2 flex items-center gap-2">
             <p
@@ -828,12 +914,14 @@ function RedirectUriBlock({ uri }: { uri: string }) {
             >
                 {uri}
             </p>
-            <CopyButton value={uri} label="Copy the redirect URI" />
+            <CopyButton value={uri} label={tc('console.copy_the_redirect_uri_d632d11a')} />
         </div>
     );
 }
 
 function PanelHead({ template, title }: { template: Template; title: string }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div
             className="p-4 flex items-center gap-2.5"
@@ -854,7 +942,8 @@ function PanelHead({ template, title }: { template: Template; title: string }) {
                                 className="underline underline-offset-2"
                                 style={{ color: 'var(--accent-strong)' }}
                             >
-                                {template.name}’s own guide ↗
+                                {template.name}
+                                {tc('console.s_own_guide_ef6057e6')}
                             </a>
                         </>
                     )}
@@ -887,6 +976,8 @@ function SetupPanel({
     storeHref: string;
     cancelHref: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         provider: template.key,
         organization: organization?.selected?.id ?? '',
@@ -907,7 +998,10 @@ function SetupPanel({
 
     return (
         <div className="card">
-            <PanelHead template={template} title={`Set up ${template.name}`} />
+            <PanelHead
+                template={template}
+                title={tc('console.set_up_value0_98cf3761', { value0: template.name })}
+            />
 
             <form
                 className="p-4 space-y-6"
@@ -919,16 +1013,16 @@ function SetupPanel({
                 {organization !== null && (
                     <OrganizationPickerField
                         picker={organization}
-                        label="Who is it for?"
+                        label={tc('console.who_is_it_for_96ddb8a4')}
                         error={form.errors.organization}
                         onChange={(id) => form.setData('organization', id)}
-                        hint="The whole environment offers it on every sign-in page. Choose one organization to set up its own instead — it then replaces the environment's on that organization's page."
+                        hint={tc('console.the_whole_environment_offers_it_on_every_sig_6d75dee5')}
                     />
                 )}
 
                 {ownerChoice !== null && (
                     <RadioGroup
-                        label="Who is it for?"
+                        label={tc('console.who_is_it_for_96ddb8a4')}
                         name="forEnvironment"
                         value={form.data.forEnvironment ? 'environment' : 'organization'}
                         onValueChange={(value) =>
@@ -937,31 +1031,41 @@ function SetupPanel({
                         options={[
                             {
                                 value: 'environment',
-                                label: 'Every sign-in page in this environment',
-                                hint: 'Every organization here inherits it.',
+                                label: tc(
+                                    'console.every_sign_in_page_in_this_environment_1aab0c59',
+                                ),
+                                hint: tc('console.every_organization_here_inherits_it_fc5fe521'),
                             },
                             {
                                 value: 'organization',
                                 label: `Only ${ownerChoice}’s sign-in page`,
-                                hint: 'Its own credentials, in place of the environment’s for this provider.',
+                                hint: tc(
+                                    'console.its_own_credentials_in_place_of_the_environm_bf11c9ef',
+                                ),
                             },
                         ]}
                     />
                 )}
 
                 <div>
-                    <p className="text-sm font-semibold">1. Register this redirect URI</p>
+                    <p className="text-sm font-semibold">
+                        {tc('console.1_register_this_redirect_uri_9c27ff08')}
+                    </p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        {template.name} refuses the sign-in unless this matches exactly. It is kept
-                        for this setup, so you can paste it into {template.name} now and save here
-                        afterwards.
+                        {template.name}
+                        {tc('console.refuses_the_sign_in_unless_this_matches_exac_f4df96de')}
+                        {template.name}
+                        {tc('console.now_and_save_here_afterwards_917737c3')}
                     </p>
                     <RedirectUriBlock uri={template.redirectUri} />
                 </div>
 
                 {template.setupSteps.length > 0 && (
                     <div>
-                        <p className="text-sm font-semibold">2. In {template.name}</p>
+                        <p className="text-sm font-semibold">
+                            {tc('console.2_in_781e6277')}
+                            {template.name}
+                        </p>
                         <ol
                             className="mt-2 space-y-1.5 text-sm list-decimal ps-5"
                             style={{ color: 'var(--muted-foreground)' }}
@@ -974,7 +1078,11 @@ function SetupPanel({
                 )}
 
                 <div className="space-y-4">
-                    <p className="text-sm font-semibold">3. Paste what {template.name} gave you</p>
+                    <p className="text-sm font-semibold">
+                        {tc('console.3_paste_what_18c60b38')}
+                        {template.name}
+                        {tc('console.gave_you_69b83af4')}
+                    </p>
                     <CredentialFields
                         template={template}
                         data={form.data}
@@ -987,15 +1095,17 @@ function SetupPanel({
                 <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
                     <Button asChild>
                         <Link href={cancelHref} preserveScroll>
-                            Cancel
+                            {tc('console.cancel_19766ed6')}
                         </Link>
                     </Button>
                     <Button type="submit" variant="primary" loading={form.processing}>
                         {form.processing
-                            ? `Checking with ${template.name}…`
+                            ? tc('console.checking_with_value0_421a4602', { value0: template.name })
                             : forEnvironment
-                              ? `Turn on ${template.name} for everyone`
-                              : `Turn on ${template.name}`}
+                              ? tc('console.turn_on_value0_for_everyone_3472b732', {
+                                    value0: template.name,
+                                })
+                              : tc('console.turn_on_value0_096b289a', { value0: template.name })}
                     </Button>
                 </div>
             </form>
@@ -1005,6 +1115,8 @@ function SetupPanel({
 
 /** New credentials for a provider that exists — rotating a secret keeps its redirect URI. */
 function EditPanel({ editing, cancelHref }: { editing: Editing; cancelHref: string }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         clientId: editing.clientId,
         clientSecret: '',
@@ -1017,7 +1129,13 @@ function EditPanel({ editing, cancelHref }: { editing: Editing; cancelHref: stri
         <div className="card">
             <PanelHead
                 template={editing}
-                title={`Change ${editing.name}${editing.organization === null ? ' for the environment' : ` for ${editing.organization}`}`}
+                title={tc('console.change_value0_value1_e4cf13e4', {
+                    value0: editing.name,
+                    value1:
+                        editing.organization === null
+                            ? tc('console.for_the_environment_82205945')
+                            : ` for ${editing.organization}`,
+                })}
             />
 
             <form
@@ -1028,9 +1146,10 @@ function EditPanel({ editing, cancelHref }: { editing: Editing; cancelHref: stri
                 }}
             >
                 <div>
-                    <p className="text-sm font-semibold">Redirect URI</p>
+                    <p className="text-sm font-semibold">{tc('console.redirect_uri_98e548b4')}</p>
                     <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Unchanged by anything here, so nothing to update in {editing.name}.
+                        {tc('console.unchanged_by_anything_here_so_nothing_to_upd_beff7214')}
+                        {editing.name}.
                     </p>
                     <RedirectUriBlock uri={editing.redirectUri} />
                 </div>
@@ -1046,11 +1165,12 @@ function EditPanel({ editing, cancelHref }: { editing: Editing; cancelHref: stri
                 <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
                     <Button asChild>
                         <Link href={cancelHref} preserveScroll>
-                            Cancel
+                            {tc('console.cancel_19766ed6')}
                         </Link>
                     </Button>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save {editing.name}
+                        {tc('console.save_f5f25c57')}
+                        {editing.name}
                     </Button>
                 </div>
             </form>
@@ -1066,15 +1186,19 @@ SocialProviders.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</Conso
  * who wanted it ever sees.
  */
 function AudienceNote({ audience }: { audience: NonNullable<Props['audience']> }) {
+    const { t: tc } = useTranslator();
+
     if (audience.kind === 'platform') {
         return (
             <p className="cbx-shell-notice" role="note">
                 <Icon name="info" className="w-4 h-4 shrink-0" />
                 <span className="min-w-0 flex-1">
-                    These are the buttons on <span className="mono">{audience.host}/login</span>:
-                    how every workspace owner and operator signs in to Cbox ID — and so the sign-in
-                    to every environment’s console, whose administrators are Cbox ID accounts.
-                    Register the redirect URI each provider shows with the provider; it is on{' '}
+                    {tc('console.these_are_the_buttons_on_3e99c1fc')}
+                    <span className="mono">
+                        {audience.host}
+                        {tc('console.login_7e93fba0')}
+                    </span>
+                    {tc('console.how_every_workspace_owner_and_operator_signs_8aa195ea')}{' '}
                     <span className="mono">{audience.host}</span>.
                 </span>
             </p>
@@ -1085,14 +1209,15 @@ function AudienceNote({ audience }: { audience: NonNullable<Props['audience']> }
         <p className="cbx-shell-notice" role="note">
             <Icon name="info" className="w-4 h-4 shrink-0" />
             <span className="min-w-0 flex-1">
-                These buttons are for the people who sign in to your apps, on{' '}
-                <span className="mono">{audience.host}</span>’s sign-in pages.
+                {tc('console.these_buttons_are_for_the_people_who_sign_in_7f2537b0')}{' '}
+                <span className="mono">{audience.host}</span>
+                {tc('console.s_sign_in_pages_47bad017')}
                 {audience.consoleHost !== null && (
                     <>
                         {' '}
-                        This console is not signed in to with them: administrators sign in through
-                        Cbox ID at <span className="mono">{audience.consoleHost}</span>, with its
-                        sign-in methods.
+                        {tc('console.this_console_is_not_signed_in_to_with_them_a_98eebc50')}
+                        <span className="mono">{audience.consoleHost}</span>
+                        {tc('console.with_its_sign_in_methods_f0b87fdc')}
                     </>
                 )}
             </span>

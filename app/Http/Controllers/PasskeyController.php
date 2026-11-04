@@ -76,7 +76,7 @@ final class PasskeyController extends Controller
         $challenge = $this->pullChallenge($request, self::REG_CHALLENGE);
 
         if ($challenge === null) {
-            return $this->error('Registration challenge expired. Try again.');
+            return $this->error(__('console.registration_challenge_expired_try_again_166c97fa'));
         }
 
         /*
@@ -90,9 +90,9 @@ final class PasskeyController extends Controller
         try {
             $credential = $passkeys->register($me->id(), $challenge, $request->getContent(), $name);
         } catch (InvalidAssertionResponse|UnsupportedCredential $e) {
-            return $this->error('That passkey could not be verified.');
+            return $this->error(__('console.that_passkey_could_not_be_verified_6bc847fc'));
         } catch (Throwable) {
-            return $this->error('Something went wrong registering that passkey.');
+            return $this->error(__('console.something_went_wrong_registering_that_passke_b3e9aafc'));
         }
 
         return new JsonResponse([

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
@@ -166,7 +167,7 @@ it('gives a phone something to tap and does not ask it to scan itself', function
     $source = (string) file_get_contents(base_path('modules/devices/resources/js/pages/mine.tsx'));
 
     // The tap target is the primary action below the `sm` breakpoint…
-    expect($source)->toContain('Open the Cbox ID app');
+    expect($source)->toContain(ConsoleStrings::key('Open the Cbox ID app'));
 
     // …and the QR is withheld there rather than rendered uselessly.
     expect($source)->toContain('hidden sm:block');

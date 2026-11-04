@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { forwardRef, type ReactNode, useId, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon } from './Icon';
@@ -51,8 +52,8 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             error,
             policy = false,
             minLength = 12,
-            showLabel = 'Show password',
-            hideLabel = 'Hide password',
+            showLabel: suppliedShowlabel,
+            hideLabel: suppliedHidelabel,
             policyLabel,
             className,
             value,
@@ -62,6 +63,11 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
         },
         ref,
     ) {
+        const { t: tc } = useUiTranslator();
+        const showLabel =
+            suppliedShowlabel ?? tc('console.show_password_6aeaa6a5', 'Show password');
+        const hideLabel =
+            suppliedHidelabel ?? tc('console.hide_password_a60a56c5', 'Hide password');
         const generated = useId();
         const id = statedId ?? generated;
         const [visible, setVisible] = useState(false);
@@ -75,7 +81,11 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
         return (
             <div className={cn(className)}>
                 <div
-                    className={labelAction === undefined ? undefined : 'flex items-center justify-between gap-3'}
+                    className={
+                        labelAction === undefined
+                            ? undefined
+                            : 'flex items-center justify-between gap-3'
+                    }
                 >
                     <label
                         className="label"
@@ -98,7 +108,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
                         // it they can produce a password this tenant's policy then refuses,
                         // after the person has already saved it.
                         {...(props.autoComplete === 'new-password'
-                            ? { passwordrules: `minlength: ${minLength}; allowed: ascii-printable;` }
+                            ? {
+                                  passwordrules: `minlength: ${minLength}; allowed: ascii-printable;`,
+                              }
                             : {})}
                         aria-describedby={
                             [policy ? policyId : null, error ? errorId : null]
@@ -132,7 +144,14 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
                         style={{ color: longEnough ? 'var(--success-strong)' : 'var(--faint)' }}
                     >
                         <Icon name="check" className="w-3.5 h-3.5" />
-                        <span>{policyLabel ?? `At least ${minLength} characters`}</span>
+                        <span>
+                            {policyLabel ??
+                                tc(
+                                    'console.at_least_count_characters_56be6f78',
+                                    'At least :count characters',
+                                    { count: minLength },
+                                )}
+                        </span>
                     </div>
                 )}
 

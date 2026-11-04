@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { usePage } from '@inertiajs/react';
 import { EnvBadge } from '@/chrome/EnvBadge';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -30,6 +31,8 @@ export default function ConfiguredInEnvironment({
     projectsHref,
     platformHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const { shell } = usePage<SharedProps>().props;
     const projects = (shell?.context.projects ?? []).filter((project) => project.id !== 'platform');
 
@@ -39,25 +42,29 @@ export default function ConfiguredInEnvironment({
                 eyebrow={null}
                 description={
                     <>
-                        This console is your workspace: its projects, team, keys and billing. How
-                        people sign in to your apps — {label.toLowerCase()} included — is set for
-                        each environment, in that environment’s console.
+                        {tc('console.this_console_is_your_workspace_its_projects__6f25b5a6')}
+                        {label.toLowerCase()}
+                        {tc('console.included_is_set_for_each_environment_in_that_65e9f6b5')}
                     </>
                 }
             />
 
             <div className="mt-6 space-y-4">
-                <Panel title={`Open ${label.toLowerCase()} in an environment`}>
+                <Panel
+                    title={tc('console.open_value0_in_an_environment_c5a3bb6a', {
+                        value0: label.toLowerCase(),
+                    })}
+                >
                     {projects.length === 0 ? (
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            You have no environment to open yet.{' '}
+                            {tc('console.you_have_no_environment_to_open_yet_204552fe')}{' '}
                             <a href={projectsHref} className="underline underline-offset-2">
-                                Go to Projects
+                                {tc('console.go_to_projects_cad12684')}
                             </a>{' '}
-                            to create one, or ask a workspace owner for access.
+                            {tc('console.to_create_one_or_ask_a_workspace_owner_for_a_218b736c')}
                         </p>
                     ) : (
-                        <ul className="space-y-2" aria-label="Environments">
+                        <ul className="space-y-2" aria-label={tc('console.environments_07437cd6')}>
                             {projects.flatMap((project) =>
                                 project.environments.map((environment) => (
                                     <li key={environment.id}>
@@ -82,23 +89,24 @@ export default function ConfiguredInEnvironment({
                     )}
                     {samePage && projects.length > 0 && (
                         <p className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            Each link opens {label} in that environment’s console.
+                            {tc('console.each_link_opens_c21aaa7e')}
+                            {label}
+                            {tc('console.in_that_environment_s_console_9b410cb2')}
                         </p>
                     )}
                 </Panel>
 
                 {platformHref !== null && (
-                    <Panel title="The platform’s own sign-in">
+                    <Panel title={tc('console.the_platform_s_own_sign_in_1b8b2a80')}>
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            How workspace owners and operators sign in to Cbox ID is set in the
-                            platform environment’s console.
+                            {tc('console.how_workspace_owners_and_operators_sign_in_t_293f421d')}
                         </p>
                         <a
                             href={platformHref}
                             className="mt-2 inline-flex items-center gap-2 text-sm hover:underline"
                         >
                             <Icon name="lock" className="w-4 h-4" />
-                            Open the platform environment
+                            {tc('console.open_the_platform_environment_d2be2ac0')}
                         </a>
                     </Panel>
                 )}

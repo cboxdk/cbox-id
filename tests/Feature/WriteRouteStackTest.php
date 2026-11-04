@@ -233,6 +233,8 @@ it('guards every console write at least as tightly as the pages it sits beside',
 
     // Sorted, so the list reads as a set rather than as an order somebody has to maintain.
     expect($orphans)->toBe([
+        // Per-browser display preference; no domain action or authority change.
+        'console.locale.update',
         // The browser-facing sign-in API the SDKs call — no server-rendered page at all.
         'frontend.sign-in',
         'frontend.sign-in.factor',

@@ -1,3 +1,5 @@
+import { useConsoleCount } from '@/i18n/count';
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -59,10 +61,6 @@ function listHref(search: string): string {
         : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
 }
 
-function plural(count: number, noun: string): string {
-    return `${count} ${count === 1 ? noun : `${noun}s`}`;
-}
-
 export default function Organizations({
     organizations,
     all,
@@ -71,6 +69,9 @@ export default function Organizations({
     storeHref,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+    const plural = useConsoleCount();
+
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
     const [confirming, setConfirming] = useState<OrganizationRow | null>(null);
@@ -95,7 +96,7 @@ export default function Organizations({
         <>
             <PageHeader
                 help={help}
-                description="Every organization in the target environment — the management tree of resellers, the organizations they manage, and sub-units."
+                description={tc('console.every_organization_in_the_target_environment_9b4126ae')}
                 actions={
                     <Button
                         variant="primary"
@@ -103,7 +104,7 @@ export default function Organizations({
                         onClick={() => setCreating((open) => !open)}
                     >
                         <Icon name="plus" className="w-4 h-4" />
-                        New organization
+                        {tc('console.new_organization_62e34b70')}
                     </Button>
                 }
             />
@@ -112,8 +113,8 @@ export default function Organizations({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name or slug"
-                    aria-label="Search organizations"
+                    placeholder={tc('console.search_by_name_or_slug_bfd8464a')}
+                    aria-label={tc('console.search_organizations_c1b2693a')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -123,7 +124,8 @@ export default function Organizations({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {plural(organizations.length, 'organization')} found.
+                    {plural(organizations.length, 'organization')}
+                    {tc('console.found_599e25a3')}
                 </output>
             </div>
 
@@ -141,29 +143,41 @@ export default function Organizations({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No organizations match “${search}”`}
-                            description="Try part of the organization's name, or its slug."
+                            title={tc('console.no_organizations_match_value0_41ff5b88', {
+                                value0: search,
+                            })}
+                            description={tc(
+                                'console.try_part_of_the_organization_s_name_or_its_s_0ff762f7',
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="layers"
-                            title="No organizations in this environment"
-                            description="An organization is where users, sign-in methods and roles live. Create one above, or bootstrap the environment with its first organization and admin from the Environments screen."
+                            title={tc('console.no_organizations_in_this_environment_870bbd6b')}
+                            description={tc(
+                                'console.an_organization_is_where_users_sign_in_metho_ae379847',
+                            )}
                         />
                     )}
                 </div>
             ) : (
                 <div className="cbx-panel overflow-hidden mt-8">
                     <div className="overflow-x-auto">
-                        <Table caption="Organizations in the targeted environment, as the management tree.">
+                        <Table
+                            caption={tc(
+                                'console.organizations_in_the_targeted_environment_as_2f2361fb',
+                            )}
+                        >
                             <thead>
                                 <tr>
-                                    <Th>Organization</Th>
-                                    <Th>Type</Th>
-                                    <Th className="text-right">Members</Th>
-                                    <Th>Parent</Th>
+                                    <Th>{tc('console.organization_d764d425')}</Th>
+                                    <Th>{tc('console.type_baaddf70')}</Th>
+                                    <Th className="text-right">{tc('console.members_1044a4c0')}</Th>
+                                    <Th>{tc('console.parent_5f7953f7')}</Th>
                                     <Th>
-                                        <span className="sr-only">Actions</span>
+                                        <span className="sr-only">
+                                            {tc('console.actions_ff8059dc')}
+                                        </span>
                                     </Th>
                                 </tr>
                             </thead>
@@ -196,7 +210,7 @@ export default function Organizations({
                                                                 tone="destructive"
                                                                 className="align-middle ml-1"
                                                             >
-                                                                Suspended
+                                                                {tc('console.suspended_e392a389')}
                                                             </Pill>
                                                         )}
                                                     </p>
@@ -231,9 +245,11 @@ export default function Organizations({
                                             <Button asChild size="sm">
                                                 <Link
                                                     href={organization.href}
-                                                    aria-label={`View ${organization.name}`}
+                                                    aria-label={tc('console.view_value0_0749adea', {
+                                                        value0: organization.name,
+                                                    })}
                                                 >
-                                                    View
+                                                    {tc('console.view_dcc839a4')}
                                                 </Link>
                                             </Button>
                                             {/*
@@ -245,9 +261,7 @@ export default function Organizations({
                                             <Button
                                                 size="sm"
                                                 className="ml-2"
-                                                variant={
-                                                    organization.active ? 'danger' : 'primary'
-                                                }
+                                                variant={organization.active ? 'danger' : 'primary'}
                                                 // NAMED FOR THE ROW. Twenty buttons all
                                                 // announced as "Suspend" tell somebody
                                                 // navigating by control which action they
@@ -258,8 +272,8 @@ export default function Organizations({
                                                 onClick={() => setConfirming(organization)}
                                             >
                                                 {organization.active
-                                                    ? 'Suspend'
-                                                    : 'Reactivate'}
+                                                    ? tc('console.suspend_4948e134')
+                                                    : tc('console.reactivate_2dc7478f')}
                                             </Button>
                                         </Td>
                                     </tr>
@@ -282,12 +296,16 @@ export default function Organizations({
                     confirming === null
                         ? ''
                         : confirming.active
-                          ? `Its ${plural(confirming.members, 'member')} can no longer sign in to this organization, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.`
-                          : 'Its members can sign in again immediately.'
+                          ? tc('console.its_value0_can_no_longer_sign_in_to_this_org_b832d3fa', {
+                                value0: plural(confirming.members, 'member'),
+                            })
+                          : tc('console.its_members_can_sign_in_again_immediately_bd3004a5')
                 }
                 footer={
                     <>
-                        <Button onClick={() => setConfirming(null)}>Cancel</Button>
+                        <Button onClick={() => setConfirming(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant={confirming?.active === true ? 'danger' : 'primary'}
                             onClick={() => {
@@ -303,7 +321,9 @@ export default function Organizations({
                                 }
                             }}
                         >
-                            {confirming?.active === true ? 'Suspend' : 'Reactivate'}
+                            {confirming?.active === true
+                                ? tc('console.suspend_4948e134')
+                                : tc('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -324,9 +344,13 @@ function ParentPicker({
     organization: OrganizationRow;
     parents: OrganizationOption[];
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <Select
-            aria-label={`Parent organization for ${organization.name}`}
+            aria-label={tc('console.parent_organization_for_value0_b84d7872', {
+                value0: organization.name,
+            })}
             value={organization.parentId ?? TOP_LEVEL}
             onValueChange={(parentId) =>
                 router.post(
@@ -336,7 +360,7 @@ function ParentPicker({
                 )
             }
             options={[
-                { value: TOP_LEVEL, label: '— Top level —' },
+                { value: TOP_LEVEL, label: tc('console.top_level_cf731b6e') },
                 ...parents
                     .filter((parent) => parent.id !== organization.id)
                     .map((parent) => ({ value: parent.id, label: parent.name })),
@@ -356,6 +380,8 @@ function CreateOrganization({
     parents: OrganizationOption[];
     onDone: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         type: types[0]?.value ?? 'customer',
@@ -376,18 +402,18 @@ function CreateOrganization({
             }}
         >
             <div className="flex-1" style={{ minWidth: '12rem' }}>
-                <Field label="Name" error={form.errors.name}>
+                <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                     <Input
                         ref={name}
                         name="name"
-                        placeholder="Acme Inc"
+                        placeholder={tc('console.acme_inc_42cf7a26')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
                 </Field>
             </div>
 
-            <Field label="Type" error={form.errors.type}>
+            <Field label={tc('console.type_baaddf70')} error={form.errors.type}>
                 <Select
                     value={form.data.type}
                     onValueChange={(type) => form.setData('type', type)}
@@ -396,14 +422,14 @@ function CreateOrganization({
             </Field>
 
             <div style={{ minWidth: '12rem' }}>
-                <Field label="Parent (optional)" error={form.errors.parentId}>
+                <Field label={tc('console.parent_optional_dec78571')} error={form.errors.parentId}>
                     <Select
                         value={form.data.parentId === '' ? TOP_LEVEL : form.data.parentId}
                         onValueChange={(parentId) =>
                             form.setData('parentId', parentId === TOP_LEVEL ? '' : parentId)
                         }
                         options={[
-                            { value: TOP_LEVEL, label: '— Top level —' },
+                            { value: TOP_LEVEL, label: tc('console.top_level_cf731b6e') },
                             ...parents.map((parent) => ({
                                 value: parent.id,
                                 label: parent.name,
@@ -414,10 +440,10 @@ function CreateOrganization({
             </div>
 
             <Button type="submit" variant="primary" loading={form.processing}>
-                Create
+                {tc('console.create_4759498a')}
             </Button>
             <Button type="button" onClick={onDone}>
-                Cancel
+                {tc('console.cancel_19766ed6')}
             </Button>
         </form>
     );

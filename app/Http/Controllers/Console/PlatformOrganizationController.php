@@ -13,6 +13,7 @@ use App\Http\Requests\Console\CreateTenantOrganizationRequest;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Carbon\CarbonInterface;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
@@ -106,7 +107,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 ->whereIn('organization_id', $listedIds)
                 ->groupBy('organization_id')->pluck('c', 'organization_id');
 
-        return $this->page('console/platform/organizations', Vocabulary::ORGANIZATION_TREE, [
+        return $this->page('console/platform/organizations', ConsoleStrings::text(Vocabulary::ORGANIZATION_TREE), [
             'help' => HelpProps::for(HelpTopic::PlatformOrganizations),
             'organizations' => $this->tree($organizations, $memberCounts),
             // The flat list the two parent selectors are built from.
@@ -142,7 +143,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
             'parent_id' => $request->parentId(),
         ], ['name' => 'name', 'type' => 'type', 'parent_id' => 'parentId'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization created.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_created_abe7549f'));
     }
 
     /** A read-only drill-down into one tenant, WITHOUT switching the console. */
@@ -307,7 +308,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $suspending ? 'Organization suspended.' : 'Organization reactivated.');
+        return back()->with('status', $suspending ? __('console.organization_suspended_b3cca290') : __('console.organization_reactivated_cdae875e'));
     }
 
     /**
@@ -327,7 +328,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
             'parent_id' => $parentId === '' ? null : $parentId,
         ], ['parent_id' => 'parentId'], 'parentId');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Hierarchy updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.hierarchy_updated_96523357'));
     }
 
     /**

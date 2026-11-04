@@ -22,6 +22,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Kernel\Tenancy\GenericTenant;
@@ -130,7 +131,7 @@ final readonly class MemberController extends ConsoleController
         $actorId = $this->scope->actorId();
         $environmentCount = $organizationId === null ? 0 : $this->environmentQuery($organizationId)->count();
 
-        return $this->page('console/members', Vocabulary::TEAM, [
+        return $this->page('console/members', ConsoleStrings::text(Vocabulary::TEAM), [
             'help' => HelpProps::for(HelpTopic::Team),
             'members' => collect($roster->items())->map(function (Membership $membership) use ($people, $accessByUser, $actorId, $canManage): array {
                 $person = $people[$membership->user_id] ?? null;
@@ -141,7 +142,7 @@ final readonly class MemberController extends ConsoleController
                     'name' => $person === null ? '—' : ($person->name ?? $person->email ?? '—'),
                     'email' => $person === null ? '—' : ($person->email ?? '—'),
                     'role' => $membership->role->value,
-                    'roleLabel' => $membership->role->label(),
+                    'roleLabel' => ConsoleStrings::text($membership->role->label()),
                     'isSelf' => $isSelf,
                     'pending' => $membership->status !== MembershipStatus::Active,
                     'status' => $membership->status->value,
@@ -192,7 +193,7 @@ final readonly class MemberController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Invitation sent to '.$request->email().'.');
+            : back()->with('status', __('console.invitation_sent_to_1294f712').$request->email().'.');
     }
 
     /**
@@ -216,7 +217,7 @@ final readonly class MemberController extends ConsoleController
 
         $email = $result->payload['email'] ?? null;
 
-        return back()->with('status', 'Invitation sent again to '.(is_string($email) ? $email : 'them').'.');
+        return back()->with('status', __('console.invitation_sent_again_to_67587f5e').(is_string($email) ? $email : 'them').'.');
     }
 
     /**
@@ -240,7 +241,7 @@ final readonly class MemberController extends ConsoleController
         // Back to page one: withdrawing the last row on a later page leaves the paginator
         // asking for a page that no longer exists, and the empty state then claims there
         // is nothing outstanding.
-        return to_route('members')->with('status', 'Invitation withdrawn. That link no longer works.');
+        return to_route('members')->with('status', __('console.invitation_withdrawn_that_link_no_longer_wor_a991b23a'));
     }
 
     public function changeRole(Request $request, string $member): RedirectResponse
@@ -257,7 +258,7 @@ final readonly class MemberController extends ConsoleController
         // lookup, inside the action as here — neither is the string off the wire.
         $result = $this->act(ChangeMemberRole::class, ['id' => $target->id, 'role' => $next->value], ['role' => 'role'], 'role');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_updated_0c33aa24'));
     }
 
     public function removeMember(string $member): RedirectResponse
@@ -276,7 +277,7 @@ final readonly class MemberController extends ConsoleController
 
         // Same reason as withdrawing an invitation: removing the last row on a later page
         // leaves the paginator pointed at a page that no longer exists.
-        return to_route('members')->with('status', 'Member removed.');
+        return to_route('members')->with('status', __('console.member_removed_d6fe67b5'));
     }
 
     /**
@@ -308,9 +309,9 @@ final readonly class MemberController extends ConsoleController
         }
 
         $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($target->user_id));
-        $who = $subject === null ? 'that member' : ($subject->name ?? $subject->email ?? 'that member');
+        $who = $subject === null ? __('console.that_member_4103a653') : ($subject->name ?? $subject->email ?? __('console.that_member_4103a653'));
 
-        return back()->with('status', 'Ownership transferred to '.$who.'.');
+        return back()->with('status', __('console.ownership_transferred_to_d375650c').$who.'.');
     }
 
     public function saveAccess(SetEnvironmentAccessRequest $request, string $member): RedirectResponse
@@ -327,7 +328,7 @@ final readonly class MemberController extends ConsoleController
             'environment_ids' => $request->environmentIds(),
         ], ['all_environments' => 'all', 'environment_ids' => 'environmentIds'], 'environmentIds');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Environment access updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.environment_access_updated_1294bb95'));
     }
 
     /**

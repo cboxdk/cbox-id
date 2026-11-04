@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import type { NavArea } from '@/types';
@@ -33,6 +34,8 @@ export interface RailProps {
  * attribute — which never appears for a keyboard or a touch user at all.
  */
 export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: RailProps) {
+    const { t: tc } = useTranslator();
+
     const [hover, setHover] = useState(false);
 
     return (
@@ -56,7 +59,7 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                         setHover(false);
                     }
                 }}
-                aria-label="Areas"
+                aria-label={tc('console.areas_2d36715a')}
             >
                 <div className="cbx-rail-hd">
                     <Link href={brandHref} className="cbx-rail-brand" aria-label={brandLabel}>
@@ -88,9 +91,13 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                         type="button"
                         className={cn('cbx-pin-btn', 'cbx-pintoggle', pinned && 'is-pinned')}
                         onClick={onTogglePin}
-                        title={pinned ? 'Unpin navigation' : 'Pin navigation open'}
+                        title={
+                            pinned
+                                ? tc('console.unpin_navigation_5e6e075c')
+                                : tc('console.pin_navigation_open_8807310f')
+                        }
                         aria-pressed={pinned}
-                        aria-label="Pin navigation"
+                        aria-label={tc('console.pin_navigation_e8acb50c')}
                     >
                         <Icon name="pin" className="w-[17px] h-[17px]" />
                     </button>
@@ -118,7 +125,10 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                             </span>
                             <span className="lbl">{area.label}</span>
                             {areaCount(area) > 0 && (
-                                <span className="sr-only">, {areaCount(area)} waiting for you</span>
+                                <span className="sr-only">
+                                    , {areaCount(area)}
+                                    {tc('console.waiting_for_you_71c16395')}
+                                </span>
                             )}
                         </Link>
                     ))}

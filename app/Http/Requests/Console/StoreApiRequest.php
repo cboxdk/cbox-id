@@ -36,7 +36,7 @@ final class StoreApiRequest extends FormRequest
                 'string',
                 static function (string $attribute, mixed $value, Closure $fail): void {
                     if (! is_string($value) || ! ResourceIndicator::isWellFormed($value)) {
-                        $fail('Use an absolute URL with a host and no fragment, at most 255 characters — for example https://api.example.com.');
+                        $fail(__('console.use_an_absolute_url_with_a_host_and_no_fragm_134d4387'));
                     }
                 },
             ],

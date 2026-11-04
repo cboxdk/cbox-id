@@ -20,6 +20,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -82,7 +83,7 @@ final readonly class AccountApiKeyController extends PageController
             ]),
         );
 
-        return $this->page('account/api-keys', Vocabulary::MY_API_KEYS, [
+        return $this->page('account/api-keys', ConsoleStrings::text(Vocabulary::MY_API_KEYS), [
             'help' => HelpProps::for(HelpTopic::ApiKeys),
             'organizations' => array_map(fn (KeyOrganization $candidate): array => [
                 'id' => $candidate->id,
@@ -153,7 +154,7 @@ final readonly class AccountApiKeyController extends PageController
          */
         $this->inertia->flash('freshKey', $issued['token']);
 
-        return back()->with('status', 'API key created — copy it now, it will not be shown again.');
+        return back()->with('status', __('console.api_key_created_copy_it_now_it_will_not_be_s_37fc2c91'));
     }
 
     /**
@@ -175,7 +176,7 @@ final readonly class AccountApiKeyController extends PageController
             return back();
         }
 
-        return back()->with('status', 'API key revoked.');
+        return back()->with('status', __('console.api_key_revoked_128ca3f4'));
     }
 
     /**

@@ -72,32 +72,32 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
             'setup' => [
                 [
                     'key' => 'sso',
-                    'label' => 'Single sign-on connected',
+                    'label' => __('console.single_sign_on_connected_e71377e3'),
                     'done' => $connections->contains(static fn (Connection $connection): bool => $connection->status === ConnectionStatus::Active),
                     'available' => $entitlements->entitled($organization->id, 'sso'),
                     'detail' => $connections->isEmpty()
-                        ? 'No connection yet.'
+                        ? __('console.no_connection_yet_6d10f628')
                         : $connections->count().' '.($connections->count() === 1 ? 'connection' : 'connections').', '
                             .$connections->filter(static fn (Connection $connection): bool => $connection->status === ConnectionStatus::Active)->count().' active.',
                     'href' => route('environment.organizations.sso', $ids),
                 ],
                 [
                     'key' => 'domain',
-                    'label' => 'Domain verified',
+                    'label' => __('console.domain_verified_08e0df67'),
                     'done' => $verified !== [],
                     'available' => true,
                     'detail' => $verified === []
-                        ? 'No domain proved yet.'
+                        ? __('console.no_domain_proved_yet_0deefec3')
                         : implode(', ', array_map(static fn (VerifiedDomain $domain): string => $domain->domain, array_values($verified))),
                     'href' => route('environment.organizations.domains', $ids),
                 ],
                 [
                     'key' => 'directory',
-                    'label' => 'Directory syncing',
+                    'label' => __('console.directory_syncing_56537431'),
                     'done' => $directories->contains(static fn (Directory $directory): bool => $directory->status === DirectoryStatus::Active),
                     'available' => $entitlements->entitled($organization->id, 'scim'),
                     'detail' => $directories->isEmpty()
-                        ? 'No directory connected yet.'
+                        ? __('console.no_directory_connected_yet_2f3a0637')
                         : $directories->count().' '.($directories->count() === 1 ? 'directory' : 'directories').', '
                             .$directories->filter(static fn (Directory $directory): bool => $directory->status === DirectoryStatus::Active)->count().' syncing.',
                     'href' => route('environment.organizations.directory-sync', $ids),

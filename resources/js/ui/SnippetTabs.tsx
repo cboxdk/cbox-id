@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { type ReactNode, useState } from 'react';
 import { CodeBlock } from './CodeBlock';
 import { Icon } from './Icon';
@@ -63,6 +64,8 @@ export function SnippetTabs({ snippets, label, value, onValueChange }: SnippetTa
 }
 
 function SnippetPanel({ snippet }: { snippet: CodeSnippet }) {
+    const { t: tc } = useUiTranslator();
+
     return (
         <div>
             <CodeBlock
@@ -86,7 +89,8 @@ function SnippetPanel({ snippet }: { snippet: CodeSnippet }) {
                         className="underline"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        {snippet.label} SDK reference
+                        {snippet.label}
+                        {tc('console.sdk_reference_a4132d5d', ' SDK reference')}
                         <Icon name="external" className="w-3 h-3 inline ml-0.5" />
                     </a>
                 </p>

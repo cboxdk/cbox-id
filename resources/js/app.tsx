@@ -1,7 +1,6 @@
 import { createInertiaApp, type ResolvedComponent, router } from '@inertiajs/react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { AppErrorBoundary } from '@/chrome/AppErrorBoundary';
-import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { installStepUp } from '@/lib/stepUp';
 import type { SharedProps } from '@/types';
 
@@ -97,8 +96,6 @@ void createInertiaApp<SharedProps>({
         const app = (
             <AppErrorBoundary>
                 <App {...props} />
-                {/* Beside the page rather than in a layout, so every layout gets it. */}
-                <StepUpDialog />
             </AppErrorBoundary>
         );
 

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader } from '@/ui';
@@ -21,18 +22,26 @@ type Props = PageProps<{
 }>;
 
 export default function SignInActivity({ window: days, tiles, mfaRate, unavailable, help }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description={`Authentication activity over the last ${days} days, from the platform's event stream.`}
+                description={tc('console.authentication_activity_over_the_last_value0_2eba9be5', {
+                    value0: days,
+                })}
             />
 
             {unavailable ? (
                 <EmptyState
                     icon="chart"
-                    title="Analytics isn't available yet"
-                    description="No analytics data source is configured or reachable. Once the platform is recording usage — or a ClickHouse DSN is set — activity will appear here."
+                    title={tc('console.analytics_isn_t_available_yet_5a8a4968')}
+                    description={tc(
+                        'console.no_analytics_data_source_is_configured_or_re_1db9abb5',
+                    )}
                 />
             ) : (
                 <>
@@ -46,7 +55,7 @@ export default function SignInActivity({ window: days, tiles, mfaRate, unavailab
                                     {tile.label}
                                 </p>
                                 <p className="mt-1 text-2xl font-semibold tabular-nums mono">
-                                    {tile.total.toLocaleString()}
+                                    {tile.total.toLocaleString(locale)}
                                 </p>
 
                                 <Sparkline tile={tile} days={days} />
@@ -66,7 +75,7 @@ export default function SignInActivity({ window: days, tiles, mfaRate, unavailab
                                 className="text-xs font-medium uppercase tracking-wide"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                MFA rate
+                                {tc('console.mfa_rate_5faf1bb4')}
                             </p>
                             <p className="mt-1 text-2xl font-semibold tabular-nums mono">
                                 {mfaRate}%
@@ -87,11 +96,19 @@ export default function SignInActivity({ window: days, tiles, mfaRate, unavailab
  * in the reading order instead of being handed an `aria-label` it has to ask for.
  */
 function Sparkline({ tile, days }: { tile: Tile; days: number }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <figure style={{ margin: 0 }}>
             <figcaption className="sr-only">
-                {tile.label} over the last {days} days, peaking at {tile.max.toLocaleString()} in a
-                day.
+                {tile.label}
+                {tc('console.over_the_last_2c380ffd')}
+                {days}
+                {tc('console.days_peaking_at_837f3f85')}
+                {tile.max.toLocaleString(locale)}
+                {tc('console.in_a_day_5b32e772')}
             </figcaption>
 
             <div className="mt-3 flex h-10 items-end gap-px" aria-hidden="true">

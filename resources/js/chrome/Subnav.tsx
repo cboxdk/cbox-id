@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import type { NavPage } from '@/types';
 import { NavCount } from './NavCount';
@@ -25,13 +26,15 @@ export interface SubnavProps {
  * disappeared.
  */
 export function Subnav({ label, pages, collapsed, onToggle }: SubnavProps) {
+    const { t: tc } = useTranslator();
+
     return (
         <aside className={cn('cbx-subnav', 'hidden lg:flex', collapsed && 'collapsed')}>
             <button
                 type="button"
                 className="cbx-strip"
                 onClick={onToggle}
-                aria-label={`Expand ${label} navigation`}
+                aria-label={tc('console.expand_value0_navigation_def3a27e', { value0: label })}
             >
                 <span className="vlabel">{label}</span>
                 <Icon
@@ -47,8 +50,8 @@ export function Subnav({ label, pages, collapsed, onToggle }: SubnavProps) {
                     type="button"
                     className="cbx-subnav-toggle"
                     onClick={onToggle}
-                    title="Collapse (⌘.)"
-                    aria-label="Collapse subnav"
+                    title={tc('console.collapse_607f3549')}
+                    aria-label={tc('console.collapse_subnav_478cef66')}
                 >
                     <Icon
                         name="chevron"

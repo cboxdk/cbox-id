@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { OrganizationHub } from '@/types';
@@ -34,6 +35,8 @@ export function OrganizationFrame({
     hub: OrganizationHub;
     children: ReactNode;
 }) {
+    const { t: tc } = useTranslator();
+
     // The link itself, on the flash channel and nowhere else: it admits its holder to the
     // organization's setup with no account, and page props are written into the history
     // entry, where it would be retrievable by pressing Back.
@@ -46,7 +49,7 @@ export function OrganizationFrame({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={hub.indexHref} label="Organizations" />
+                <Breadcrumb href={hub.indexHref} label={tc('console.organizations_2730183d')} />
                 <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
                     <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -64,13 +67,16 @@ export function OrganizationFrame({
                             >
                                 {hub.id}
                             </span>
-                            <CopyButton value={hub.id} label="Copy organization id" />
+                            <CopyButton
+                                value={hub.id}
+                                label={tc('console.copy_organization_id_320d9999')}
+                            />
                         </div>
                     </div>
 
                     <Button variant="primary" size="sm" onClick={() => setLinking(true)}>
                         <Icon name="external" className="w-4 h-4" />
-                        Admin Portal link
+                        {tc('console.admin_portal_link_f7e62127')}
                     </Button>
                 </div>
             </div>
@@ -78,7 +84,10 @@ export function OrganizationFrame({
             {portalUrl !== undefined && <PortalLinkRevealed url={portalUrl} />}
 
             <div>
-                <LinkTabs tabs={hub.tabs} label={`${hub.name} pages`} />
+                <LinkTabs
+                    tabs={hub.tabs}
+                    label={tc('console.value0_pages_e0b5cf6d', { value0: hub.name })}
+                />
                 {/*
                     The shown page's group, as a second row — Members beside its pending
                     Invitations, the two audit logs, Settings' four pages. Fourteen tabs in
@@ -87,7 +96,9 @@ export function OrganizationFrame({
                 */}
                 <LinkTabs
                     tabs={hub.subTabs}
-                    label={`${hub.tabs.find((tab) => tab.current)?.label ?? hub.name} pages`}
+                    label={tc('console.value0_pages_e0b5cf6d', {
+                        value0: hub.tabs.find((tab) => tab.current)?.label ?? hub.name,
+                    })}
                     variant="sub"
                 />
             </div>
@@ -124,6 +135,8 @@ function PortalLinkDialog({
     name: string;
     link: OrganizationHub['portalLink'];
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         intents: link.intents
             .filter((intent) => intent.available)
@@ -157,12 +170,14 @@ function PortalLinkDialog({
         <Dialog
             open={open}
             onOpenChange={onOpenChange}
-            title="Admin Portal link"
-            description={`A single-use link ${name}'s IT administrator opens to set things up — or read its audit logs — themselves, without an account here. It is shown once.`}
+            title={tc('console.admin_portal_link_f7e62127')}
+            description={tc('console.a_single_use_link_value0_s_it_administrator__10ae0882', {
+                value0: name,
+            })}
             footer={
                 <>
                     <DialogClose asChild>
-                        <Button>Cancel</Button>
+                        <Button>{tc('console.cancel_19766ed6')}</Button>
                     </DialogClose>
                     <Button
                         variant="primary"
@@ -170,7 +185,9 @@ function PortalLinkDialog({
                         disabled={form.data.intents.length === 0}
                         onClick={submit}
                     >
-                        {form.data.email.trim() === '' ? 'Create link' : 'Create and send link'}
+                        {form.data.email.trim() === ''
+                            ? tc('console.create_link_e6b850cf')
+                            : tc('console.create_and_send_link_54020cd9')}
                     </Button>
                 </>
             }
@@ -183,7 +200,9 @@ function PortalLinkDialog({
                 }}
             >
                 <fieldset>
-                    <legend className="text-sm font-medium mb-2">What it opens</legend>
+                    <legend className="text-sm font-medium mb-2">
+                        {tc('console.what_it_opens_08a62c98')}
+                    </legend>
                     <div className="space-y-2">
                         {link.intents.map((intent) => (
                             <Checkbox
@@ -197,7 +216,10 @@ function PortalLinkDialog({
                                 hint={
                                     intent.available
                                         ? intent.description
-                                        : `${intent.description} Not included in this organization's plan.`
+                                        : tc(
+                                              'console.value0_not_included_in_this_organization_s_p_a6447bb1',
+                                              { value0: intent.description },
+                                          )
                                 }
                             />
                         ))}
@@ -209,7 +231,10 @@ function PortalLinkDialog({
                     )}
                 </fieldset>
 
-                <Field label="Link expires after" error={form.errors.expires_in_minutes}>
+                <Field
+                    label={tc('console.link_expires_after_5a55f779')}
+                    error={form.errors.expires_in_minutes}
+                >
                     <Select
                         name="expires_in_minutes"
                         value={form.data.expires_in_minutes}
@@ -220,9 +245,9 @@ function PortalLinkDialog({
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field
-                        label="Email it to"
+                        label={tc('console.email_it_to_6854d0fa')}
                         optional
-                        hint="Their IT contact. Left blank, you copy the link yourself."
+                        hint={tc('console.their_it_contact_left_blank_you_copy_the_lin_2fe54822')}
                         error={form.errors.email}
                     >
                         <Input
@@ -234,7 +259,7 @@ function PortalLinkDialog({
                             onChange={(event) => form.setData('email', event.target.value)}
                         />
                     </Field>
-                    <Field label="Email language" error={form.errors.locale}>
+                    <Field label={tc('console.email_language_3e266c95')} error={form.errors.locale}>
                         <Select
                             name="locale"
                             value={form.data.locale}
@@ -251,6 +276,8 @@ function PortalLinkDialog({
 
 /** The link, the one render it is in — brought into view, because the button was above it. */
 function PortalLinkRevealed({ url }: { url: string }) {
+    const { t: tc } = useTranslator();
+
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -268,11 +295,11 @@ function PortalLinkRevealed({ url }: { url: string }) {
                 background: 'var(--accent-soft)',
             }}
         >
-            <p className="text-sm font-semibold">Setup link for their IT admin</p>
+            <p className="text-sm font-semibold">
+                {tc('console.setup_link_for_their_it_admin_8c06f675')}
+            </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Send this single-use link to whoever runs their identity provider, if it was not
-                mailed to them. It works without an account until it expires. Copy it now — it is
-                shown only once.
+                {tc('console.send_this_single_use_link_to_whoever_runs_th_ecdd3fd5')}
             </p>
             <div className="mt-3 flex items-start gap-2">
                 <code

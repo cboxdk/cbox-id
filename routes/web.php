@@ -90,6 +90,7 @@ use App\Http\Controllers\Console\SupportSessionController;
 use App\Http\Controllers\Console\UsageController;
 use App\Http\Controllers\Console\VaultController;
 use App\Http\Controllers\Console\WebhookController;
+use App\Http\Controllers\ConsoleLocaleController;
 use App\Http\Controllers\Dev\DesignSystemController;
 use App\Http\Controllers\DeviceApprovalController;
 use App\Http\Controllers\DocsRedirectController;
@@ -235,6 +236,7 @@ Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware(['lo
  * discloses nothing and changes nothing but the next render.
  */
 Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->name('locale.update');
+Route::post('/console/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('console.locale.update');
 
 /*
  * The apex — one destination, because there is one console.

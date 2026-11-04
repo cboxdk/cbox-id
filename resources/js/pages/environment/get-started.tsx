@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -76,6 +77,8 @@ export default function GetStarted({
     signedIn,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const flash = usePage().flash;
     const form = useForm({ framework: framework ?? frameworks[0]?.value ?? 'nextjs', name: '' });
     const chosen = frameworks.find((option) => option.value === form.data.framework);
@@ -117,15 +120,15 @@ export default function GetStarted({
         <>
             <PageHeader
                 help={help}
-                description="From nothing to somebody signed in: pick a framework, paste three things, run it."
+                description={tc('console.from_nothing_to_somebody_signed_in_pick_a_fr_93a5a3cb')}
                 actions={
                     dismissed ? (
                         <Button size="sm" onClick={() => router.delete(urls.restore)}>
-                            Show on Overview again
+                            {tc('console.show_on_overview_again_7dc29bf7')}
                         </Button>
                     ) : (
                         <Button size="sm" onClick={() => router.post(urls.dismiss)}>
-                            Hide from Overview
+                            {tc('console.hide_from_overview_d715de16')}
                         </Button>
                     )
                 }
@@ -133,8 +136,10 @@ export default function GetStarted({
 
             <div className="mt-6 space-y-4">
                 <Panel
-                    title="1. What are you building?"
-                    description="It decides the kind of app and its localhost redirect — the port your framework's dev server uses."
+                    title={tc('console.1_what_are_you_building_61edf71c')}
+                    description={tc(
+                        'console.it_decides_the_kind_of_app_and_its_localhost_0f18e4ab',
+                    )}
                 >
                     <form
                         className="space-y-4"
@@ -144,7 +149,7 @@ export default function GetStarted({
                         }}
                     >
                         <RadioGroup
-                            label="Framework"
+                            label={tc('console.framework_192eb452')}
                             name="framework"
                             value={form.data.framework}
                             onValueChange={(value) => form.setData('framework', value)}
@@ -162,13 +167,17 @@ export default function GetStarted({
                         )}
 
                         <Field
-                            label="App name"
-                            hint={`Optional. Signs people back in at ${chosen?.redirectUri ?? 'localhost'}.`}
+                            label={tc('console.app_name_e6ad3996')}
+                            hint={tc('console.optional_signs_people_back_in_at_value0_1a281c15', {
+                                value0: chosen?.redirectUri ?? 'localhost',
+                            })}
                             error={form.errors.name}
                         >
                             <Input
                                 name="name"
-                                placeholder={`My ${chosen?.label ?? ''} app`}
+                                placeholder={tc('console.my_value0_app_5be6f7c5', {
+                                    value0: chosen?.label ?? '',
+                                })}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
@@ -176,7 +185,9 @@ export default function GetStarted({
 
                         <div className="flex flex-wrap items-start gap-2">
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                {app === null ? 'Create the app' : 'Create another app'}
+                                {app === null
+                                    ? tc('console.create_the_app_169cba28')
+                                    : tc('console.create_another_app_c82e820b')}
                             </Button>
                             <ApiEquivalent
                                 action="apps.create"
@@ -192,14 +203,17 @@ export default function GetStarted({
 
                 {app !== null && quickstart !== null && (
                     <Panel
-                        title="2. Wire it up"
-                        description={`${app.name} — client ID ${app.clientId}.`}
+                        title={tc('console.2_wire_it_up_015fee56')}
+                        description={tc('console.value0_client_id_value1_8df38a62', {
+                            value0: app.name,
+                            value1: app.clientId,
+                        })}
                     >
                         <div className="space-y-4">
                             <QuickstartBlocks
-                                title="Install"
+                                title={tc('console.install_569ca49f')}
                                 blocks={quickstart.install}
-                                copyLabel="Copy install command"
+                                copyLabel={tc('console.copy_install_command_d8222d32')}
                             />
 
                             <div>
@@ -209,24 +223,29 @@ export default function GetStarted({
                                 <div className="mt-2">
                                     <CodeBlock
                                         code={env}
-                                        copyLabel="Copy environment"
+                                        copyLabel={tc('console.copy_environment_7cf9c703')}
                                         caption={
                                             !holdsSecret ? (
-                                                'A browser app holds no secret — PKCE proves the callback is the one that asked.'
+                                                tc(
+                                                    'console.a_browser_app_holds_no_secret_pkce_proves_th_d7de5db8',
+                                                )
                                             ) : secret !== undefined ? (
-                                                'The client secret is in this block once. Copy it now — leave this page and it is gone.'
+                                                tc(
+                                                    'console.the_client_secret_is_in_this_block_once_copy_b4bc2f5a',
+                                                )
                                             ) : (
                                                 <>
-                                                    The secret was shown once, when the app was
-                                                    created.{' '}
+                                                    {tc(
+                                                        'console.the_secret_was_shown_once_when_the_app_was_c_8ad44d40',
+                                                    )}{' '}
                                                     <Link
                                                         href={`${app.href}/secrets`}
                                                         className="underline"
                                                         style={{ color: 'var(--accent-strong)' }}
                                                     >
-                                                        Rotate it
+                                                        {tc('console.rotate_it_0186f051')}
                                                     </Link>{' '}
-                                                    for a new one.
+                                                    {tc('console.for_a_new_one_83725c4b')}
                                                 </>
                                             )
                                         }
@@ -235,20 +254,22 @@ export default function GetStarted({
                             </div>
 
                             <QuickstartBlocks
-                                title="Code"
+                                title={tc('console.code_340f4630')}
                                 blocks={quickstart.code}
-                                copyLabel="Copy code"
+                                copyLabel={tc('console.copy_code_49a0053f')}
                             />
 
                             <QuickstartBlocks
-                                title="Run it, then sign in"
+                                title={tc('console.run_it_then_sign_in_7fe05c2d')}
                                 blocks={quickstart.run}
-                                copyLabel="Copy run command"
+                                copyLabel={tc('console.copy_run_command_2b33dad0')}
                             />
 
                             {quickstartGuide !== null && (
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                    The same code, step by step, with sign-out:{' '}
+                                    {tc(
+                                        'console.the_same_code_step_by_step_with_sign_out_9ff1e4ca',
+                                    )}{' '}
                                     <a
                                         href={quickstartGuide}
                                         target="_blank"
@@ -256,7 +277,7 @@ export default function GetStarted({
                                         className="underline"
                                         style={{ color: 'var(--accent-strong)' }}
                                     >
-                                        the full quickstart
+                                        {tc('console.the_full_quickstart_dd59dd4d')}
                                     </a>
                                     .
                                 </p>
@@ -266,7 +287,7 @@ export default function GetStarted({
                 )}
 
                 {app !== null && (
-                    <Panel title="3. Sign in">
+                    <Panel title={tc('console.3_sign_in_f3e9ef96')}>
                         {/* Announced: the wait ends on its own, with no focus change. */}
                         <output aria-live="polite" className="flex items-center gap-3">
                             {signedIn ? (
@@ -284,7 +305,7 @@ export default function GetStarted({
                                         <Icon name="check" className="w-4 h-4" />
                                     </span>
                                     <p className="text-sm">
-                                        Somebody signed in to{' '}
+                                        {tc('console.somebody_signed_in_to_b6ff4be1')}{' '}
                                         <Link
                                             href={app.href}
                                             className="underline"
@@ -292,7 +313,7 @@ export default function GetStarted({
                                         >
                                             {app.name}
                                         </Link>
-                                        . It works.
+                                        {tc('console.it_works_42621b4c')}
                                     </p>
                                 </>
                             ) : (
@@ -302,7 +323,7 @@ export default function GetStarted({
                                         className="text-sm"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        Waiting for your first sign-in…
+                                        {tc('console.waiting_for_your_first_sign_in_f35b71a6')}
                                     </p>
                                 </>
                             )}

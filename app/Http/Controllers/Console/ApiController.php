@@ -76,7 +76,7 @@ final readonly class ApiController extends ConsoleController
             ->pluck('name', 'client_id')
             ->all();
 
-        return $this->page('console/apis/index', 'APIs', [
+        return $this->page('console/apis/index', __('console.apis_8d266d3e'), [
             'help' => HelpProps::for(HelpTopic::Apis),
             'apis' => $rows->map(fn (Api $api): ApiRowProps => new ApiRowProps(
                 id: $api->id,
@@ -98,7 +98,7 @@ final readonly class ApiController extends ConsoleController
 
         $organizationId = $this->prefilledOrganizationId();
 
-        $owners = [new OptionProps('environment', 'This environment')];
+        $owners = [new OptionProps('environment', __('console.this_environment_549c0268'))];
         $apps = ['environment' => $this->linkableApps(null)];
 
         /*
@@ -113,7 +113,7 @@ final readonly class ApiController extends ConsoleController
             $apps[$organizationId] = $this->linkableApps($organizationId);
         }
 
-        return $this->page('console/apis/create', 'New API', [
+        return $this->page('console/apis/create', __('console.new_api_bacd0a9a'), [
             'owners' => $owners,
             'apps' => $apps,
             'organization' => $this->organizationPicker(),
@@ -152,7 +152,7 @@ final readonly class ApiController extends ConsoleController
         $created = $result->value;
 
         return to_route('environment.apis.show', $created->id)
-            ->with('status', 'API "'.$created->name.'" registered. Add the scopes it owns below.');
+            ->with('status', 'API "'.$created->name.__('console.registered_add_the_scopes_it_owns_below_3cbd6336'));
     }
 
     public function show(string $api): Response
@@ -194,7 +194,7 @@ final readonly class ApiController extends ConsoleController
             'client_id' => $request->clientId(),
         ], ['name' => 'name', 'client_id' => 'clientId'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'API saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.api_saved_6920f3f1'));
     }
 
     public function storeScope(SaveApiScopeRequest $request, string $api): RedirectResponse
@@ -228,7 +228,7 @@ final readonly class ApiController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Scope "'.$row->key.'" removed. Apps that held it keep it as a typed scope, which no longer reaches this API.');
+            : back()->with('status', 'Scope "'.$row->key.__('console.removed_apps_that_held_it_keep_it_as_a_typed_e221195c'));
     }
 
     public function destroy(string $api): RedirectResponse
@@ -313,6 +313,6 @@ final readonly class ApiController extends ConsoleController
      */
     private function ownerLabel(?string $organizationId, array $owners): string
     {
-        return $organizationId === null ? 'This environment' : ($owners[$organizationId] ?? 'An organization');
+        return $organizationId === null ? __('console.this_environment_549c0268') : ($owners[$organizationId] ?? __('console.an_organization_c46fba8e'));
     }
 }

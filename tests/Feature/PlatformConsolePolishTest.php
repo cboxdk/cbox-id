@@ -239,10 +239,11 @@ it('says who the operator is signed in as when there is no account to name', fun
 it('shows an account owner nothing platform-shaped', function (): void {
     polishOwner();
 
-    $html = (string) $this->get(route('projects'))->assertOk()->getContent();
+    $props = (array) $this->get(route('projects'))->assertOk()->inertiaProps();
 
-    expect($html)->not->toContain(route('platform.environments'))
-        ->and($html)->not->toContain('Platform operator');
+    expect(json_encode($props['shell']))->not->toContain(route('platform.environments'))
+        ->and($props['shell']['isOperator'])->toBeFalse()
+        ->and($props['shell']['platformHref'])->toBeNull();
 
     // And the pages themselves refuse, not merely hide.
     $this->get(route('platform.environments'))->assertNotFound();
@@ -275,7 +276,7 @@ it('renders the platform lists as captioned tables that announce their result co
         expect($source)->toContain('<Table')
             // The caption is REQUIRED by the primitive, but a page can still pass an empty
             // one — "table, 6 columns, 40 rows" and nothing else is what this prevents.
-            ->and($source)->toContain('caption="')
+            ->and($source)->toMatch('/caption=\{tc\([\s]*[\"\']console\.[a-z0-9_]+[\"\']/')
             ->and($source)->toContain('<Th>')
             ->and($source)->toContain('<output');
     }

@@ -13,6 +13,7 @@ use App\Http\Requests\Console\RegisterOutboundSyncRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
@@ -71,7 +72,7 @@ final readonly class OutboundSyncController extends ConsoleController
 
         $owners = $this->organizationNames($page->getCollection()->pluck('organization_id')->all());
 
-        return $this->page('console/outbound-sync/index', Vocabulary::OUTBOUND_PROVISIONING, [
+        return $this->page('console/outbound-sync/index', ConsoleStrings::text(Vocabulary::OUTBOUND_PROVISIONING), [
             'help' => HelpProps::for(HelpTopic::SyncUsersOut),
             'connections' => array_map(fn (ProvisioningConnection $connection): array => [
                 'id' => $connection->id,
@@ -97,13 +98,13 @@ final readonly class OutboundSyncController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        return $this->page('console/outbound-sync/create', 'New outbound sync', [
+        return $this->page('console/outbound-sync/create', __('console.new_outbound_sync_aa241382'), [
             'schemes' => array_map(static fn (AuthScheme $scheme): array => [
                 'value' => $scheme->value,
-                'label' => $scheme === AuthScheme::Bearer ? 'Bearer token' : 'OAuth 2 client credentials',
+                'label' => $scheme === AuthScheme::Bearer ? __('console.bearer_token_b22ac30e') : __('console.oauth_2_client_credentials_2cb2ed72'),
                 'hint' => $scheme === AuthScheme::Bearer
-                    ? 'A long-lived token the downstream app issued you. Sent as an Authorization header on every push.'
-                    : 'We fetch a short-lived token from the app before each batch. Needs a token URL and a client id.',
+                    ? __('console.a_long_lived_token_the_downstream_app_issued_886ac6aa')
+                    : __('console.we_fetch_a_short_lived_token_from_the_app_be_7b50ead6'),
             ], AuthScheme::cases()),
             // Whether registering a connection for the WHOLE environment is on offer here.
             'mayScopeEnvironmentWide' => $this->scope->plane()->choosesOrganization(),
@@ -126,7 +127,7 @@ final readonly class OutboundSyncController extends ConsoleController
          * bookkeeping (an access review, a policy) is deliberately not held this way.
          */
         if ($this->scope->plane() === ConsolePlane::Organization) {
-            app(VerifiedEmailGate::class)->require('register a provisioning connection');
+            app(VerifiedEmailGate::class)->require(__('console.register_a_provisioning_connection_aae86111'));
         }
 
         if ($request->environmentWide()) {
@@ -166,7 +167,7 @@ final readonly class OutboundSyncController extends ConsoleController
         $connection = $result->value;
 
         return to_route($this->scope->routeName('provisioning.show'), $connection->id)
-            ->with('status', 'Provisioning connection registered.');
+            ->with('status', __('console.provisioning_connection_registered_2a0613f6'));
     }
 
     public function show(string $sync): Response
@@ -223,8 +224,8 @@ final readonly class OutboundSyncController extends ConsoleController
         }
 
         return back()->with('status', $resume
-            ? 'Connection resumed — changes are pushed again from now on.'
-            : 'Connection paused — changes stop being pushed downstream.');
+            ? __('console.connection_resumed_changes_are_pushed_again__f8371bd0')
+            : __('console.connection_paused_changes_stop_being_pushed__b5ecd4de'));
     }
 
     public function destroy(string $sync): RedirectResponse
@@ -236,7 +237,7 @@ final readonly class OutboundSyncController extends ConsoleController
         $result = $this->act(DeleteProvisioningTarget::class, ['id' => $connection->id, 'organization_id' => $this->scope->organizationId()]);
 
         return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('provisioning'))
-            ->with('status', 'Connection deleted.');
+            ->with('status', __('console.connection_deleted_6acced5e'));
     }
 
     /**

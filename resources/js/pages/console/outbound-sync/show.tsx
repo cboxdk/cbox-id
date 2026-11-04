@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -31,16 +32,20 @@ type Props = PageProps<{
 }>;
 
 export default function OutboundSyncDetail({ connection, mayAdminister, indexHref, urls }: Props) {
+    const { t: tc } = useTranslator();
+
     const [confirming, setConfirming] = useState(false);
 
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Outbound provisioning" />
+                <Breadcrumb href={indexHref} label={tc('console.outbound_provisioning_e49a114e')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{connection.name}</h1>
                     <Pill tone={connection.active ? 'success' : 'warning'}>
-                        {connection.active ? 'Active' : 'Paused'}
+                        {connection.active
+                            ? tc('console.active_92340695')
+                            : tc('console.paused_e159b061')}
                     </Pill>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -53,17 +58,17 @@ export default function OutboundSyncDetail({ connection, mayAdminister, indexHre
                 the first thing on the page rather than a field in a details list.
             */}
             {connection.lastError !== null && (
-                <Panel title="Last push failed">
+                <Panel title={tc('console.last_push_failed_1c6e3894')}>
                     <p className="text-sm mono" style={{ color: 'var(--destructive)' }}>
                         {connection.lastError}
                     </p>
                 </Panel>
             )}
 
-            <Panel title="Connection">
+            <Panel title={tc('console.connection_639a40e8')}>
                 <div className="space-y-4">
                     <div>
-                        <p className="label">SCIM base URL</p>
+                        <p className="label">{tc('console.scim_base_url_be8fb61f')}</p>
                         <div className="mt-1 flex items-center gap-2">
                             <code className="flex-1 min-w-0 truncate mono text-sm">
                                 {connection.baseUrl}
@@ -73,11 +78,13 @@ export default function OutboundSyncDetail({ connection, mayAdminister, indexHre
                     </div>
 
                     <KvList>
-                        <Kv label="Auth scheme" prose>
+                        <Kv label={tc('console.auth_scheme_4a894695')} prose>
                             <Badge>{connection.scheme}</Badge>
                         </Kv>
-                        <Kv label="Scope" prose>
-                            <Badge>{connection.scope ?? 'Environment-wide'}</Badge>
+                        <Kv label={tc('console.scope_b073f6c6')} prose>
+                            <Badge>
+                                {connection.scope ?? tc('console.environment_wide_cd1204b6')}
+                            </Badge>
                         </Kv>
                     </KvList>
                 </div>
@@ -86,27 +93,39 @@ export default function OutboundSyncDetail({ connection, mayAdminister, indexHre
             {mayAdminister && (
                 <>
                     <Panel
-                        title={connection.active ? 'Pause connection' : 'Resume connection'}
+                        title={
+                            connection.active
+                                ? tc('console.pause_connection_722c1867')
+                                : tc('console.resume_connection_62e052c5')
+                        }
                         description={
                             connection.active
-                                ? 'Changes stop being pushed downstream. Nobody is removed there — it simply stops sending.'
-                                : 'Changes are pushed again from the next one. What happened while it was paused is not replayed.'
+                                ? tc(
+                                      'console.changes_stop_being_pushed_downstream_nobody__1c6c2cc0',
+                                  )
+                                : tc(
+                                      'console.changes_are_pushed_again_from_the_next_one_w_ae74fe1b',
+                                  )
                         }
                     >
                         <Button
                             size="sm"
                             onClick={() => router.post(urls.toggle, {}, { preserveScroll: true })}
                         >
-                            {connection.active ? 'Pause' : 'Resume'}
+                            {connection.active
+                                ? tc('console.pause_858e4ba7')
+                                : tc('console.resume_d640c742')}
                         </Button>
                     </Panel>
 
                     <Panel
-                        title="Delete connection"
-                        description="Provisioning to the downstream app stops immediately. The people it already created there stay."
+                        title={tc('console.delete_connection_e960651b')}
+                        description={tc(
+                            'console.provisioning_to_the_downstream_app_stops_imm_948dd5a5',
+                        )}
                     >
                         <Button size="sm" variant="danger" onClick={() => setConfirming(true)}>
-                            Delete connection
+                            {tc('console.delete_connection_e960651b')}
                         </Button>
                     </Panel>
                 </>
@@ -116,7 +135,7 @@ export default function OutboundSyncDetail({ connection, mayAdminister, indexHre
                 open={confirming}
                 onOpenChange={setConfirming}
                 name={connection.name}
-                consequence="Provisioning to the downstream app stops immediately. This cannot be undone."
+                consequence={tc('console.provisioning_to_the_downstream_app_stops_imm_6d193c25')}
                 onConfirm={() => {
                     setConfirming(false);
                     router.delete(urls.destroy);

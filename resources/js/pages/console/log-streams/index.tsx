@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -29,6 +30,8 @@ function listHref(search: string): string {
 }
 
 export default function LogStreamsIndex({ streams, search, createHref, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -51,12 +54,12 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
         <>
             <PageHeader
                 help={help}
-                description="Mirror this environment's hash-chained audit trail out to your SIEM. Delivery is at-least-once and environment-isolated."
+                description={tc('console.mirror_this_environment_s_hash_chained_audit_ce805b40')}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            New stream
+                            {tc('console.new_stream_f6a68001')}
                         </Link>
                     </Button>
                 }
@@ -66,8 +69,8 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name"
-                    aria-label="Search log streams"
+                    placeholder={tc('console.search_by_name_4ae2b333')}
+                    aria-label={tc('console.search_log_streams_839086f8')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -77,7 +80,11 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {streams.length} {streams.length === 1 ? 'stream' : 'streams'} found.
+                    {streams.length}{' '}
+                    {streams.length === 1
+                        ? tc('console.stream_dca83e71')
+                        : tc('console.streams_d5a08b68')}
+                    {tc('console.found_599e25a3')}
                 </output>
             </div>
 
@@ -89,25 +96,31 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No streams match “${search}”`}
-                            description="No log stream matches that name. Try a different search."
+                            title={tc('console.no_streams_match_value0_3859d3ea', {
+                                value0: search,
+                            })}
+                            description={tc(
+                                'console.no_log_stream_matches_that_name_try_a_differ_ac9bbc7c',
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="audit"
                             equivalent="log_streams.create"
-                            title="No log streams yet"
-                            description="The audit trail lives here and your security team's tools live somewhere else. A stream mirrors every entry into them as it is written, so an investigation does not start with somebody asking you to export a CSV."
+                            title={tc('console.no_log_streams_yet_3eeab61e')}
+                            description={tc(
+                                'console.the_audit_trail_lives_here_and_your_security_621820fa',
+                            )}
                             steps={[
-                                'Pick where the trail goes — Splunk, Elastic, Graylog, CEF or any JSON collector, Datadog, or your own Amazon S3 or Google Cloud Storage bucket.',
-                                'Give it the endpoint or bucket and the credential it expects; for an HTTP collector, leave the secret empty for a generated HMAC key.',
-                                'Save it: entries start flowing, at least once each, from the next one written.',
+                                tc('console.pick_where_the_trail_goes_splunk_elastic_gra_e69f3c8f'),
+                                tc('console.give_it_the_endpoint_or_bucket_and_the_crede_4cf81bb7'),
+                                tc('console.save_it_entries_start_flowing_at_least_once__af7b95b4'),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New stream
+                                        {tc('console.new_stream_f6a68001')}
                                     </Link>
                                 </Button>
                             }
@@ -138,8 +151,12 @@ export default function LogStreamsIndex({ streams, search, createHref, help }: P
                                 </p>
                             </div>
 
-                            <Pill tone={stream.enabled ? HEALTH[stream.health].tone : 'warning'}>
-                                {stream.enabled ? HEALTH[stream.health].label : 'Disabled'}
+                            <Pill
+                                tone={stream.enabled ? HEALTH(tc)[stream.health].tone : 'warning'}
+                            >
+                                {stream.enabled
+                                    ? HEALTH(tc)[stream.health].label
+                                    : tc('console.disabled_75081b59')}
                             </Pill>
 
                             <Icon

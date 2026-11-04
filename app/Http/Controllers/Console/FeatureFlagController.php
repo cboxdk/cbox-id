@@ -10,6 +10,7 @@ use App\Actions\FeatureFlags\UpdateFeatureFlag;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\FeatureFlags\Contracts\FeatureFlags;
 use Cbox\Id\FeatureFlags\Enums\EvaluationReason;
 use Cbox\Id\FeatureFlags\Models\FeatureFlag;
@@ -42,7 +43,7 @@ final readonly class FeatureFlagController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/feature-flags/index', Vocabulary::FEATURE_FLAGS, [
+        return $this->page('console/feature-flags/index', ConsoleStrings::text(Vocabulary::FEATURE_FLAGS), [
             'help' => HelpProps::for(HelpTopic::FeatureFlags),
             'flags' => array_map(static function (FeatureFlag $flag): array {
                 $targeting = $flag->targeting();
@@ -67,7 +68,7 @@ final readonly class FeatureFlagController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/feature-flags/create', 'New feature flag', [
+        return $this->page('console/feature-flags/create', __('console.new_feature_flag_59770e17'), [
             'indexHref' => route('environment.feature-flags'),
             'storeHref' => route('environment.feature-flags.store'),
         ]);
@@ -91,7 +92,7 @@ final readonly class FeatureFlagController extends ConsoleController
         $created = $result->value;
 
         return to_route('environment.feature-flags.show', $created->id)
-            ->with('status', 'Feature flag "'.$created->key.'" created. It is off for everyone until a rule below, or its default, turns it on.');
+            ->with('status', __('console.feature_flag_35b15c36').$created->key.__('console.created_it_is_off_for_everyone_until_a_rule__a4c4e06c'));
     }
 
     public function show(Request $request, string $flag, FeatureFlags $flags, Subjects $subjects): Response
@@ -167,7 +168,7 @@ final readonly class FeatureFlagController extends ConsoleController
             });
 
             if ($unknown !== []) {
-                return back()->withInput()->withErrors(['users' => 'Nobody in this environment signs in as '.implode(', ', $unknown).'.']);
+                return back()->withInput()->withErrors(['users' => __('console.nobody_in_this_environment_signs_in_as_d9aed40f').implode(', ', $unknown).'.']);
             }
         }
 
@@ -185,7 +186,7 @@ final readonly class FeatureFlagController extends ConsoleController
             'rollout_percentage' => 'rolloutPercentage',
         ], 'form');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Feature flag "'.$model->key.'" saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.feature_flag_35b15c36').$model->key.'" saved.');
     }
 
     public function destroy(string $flag, FeatureFlags $flags): RedirectResponse
@@ -196,7 +197,7 @@ final readonly class FeatureFlagController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.feature-flags')->with('status', 'Feature flag "'.$model->key.'" deleted. Apps asking for it now get off.');
+            : to_route('environment.feature-flags')->with('status', __('console.feature_flag_35b15c36').$model->key.__('console.deleted_apps_asking_for_it_now_get_off_feeed1c9'));
     }
 
     /**
@@ -238,12 +239,12 @@ final readonly class FeatureFlagController extends ConsoleController
             'enabled' => $answer->enabled,
             'reason' => $answer->reason->value,
             'explanation' => match ($answer->reason) {
-                EvaluationReason::Disabled => 'The flag is switched off, so it is off for everyone.',
-                EvaluationReason::UserTarget => 'A rule names this user.',
-                EvaluationReason::OrganizationTarget => 'A rule names this organization.',
-                EvaluationReason::Rollout => 'This user falls inside the rollout percentage.',
-                EvaluationReason::Default => 'No rule matched, so the default applies.',
-                EvaluationReason::UnknownFlag => 'The flag no longer exists.',
+                EvaluationReason::Disabled => __('console.the_flag_is_switched_off_so_it_is_off_for_ev_b0f1bbcf'),
+                EvaluationReason::UserTarget => __('console.a_rule_names_this_user_1679f5db'),
+                EvaluationReason::OrganizationTarget => __('console.a_rule_names_this_organization_a7b37ef4'),
+                EvaluationReason::Rollout => __('console.this_user_falls_inside_the_rollout_percentag_607af67e'),
+                EvaluationReason::Default => __('console.no_rule_matched_so_the_default_applies_979cf6c6'),
+                EvaluationReason::UnknownFlag => __('console.the_flag_no_longer_exists_57870666'),
             },
         ];
     }

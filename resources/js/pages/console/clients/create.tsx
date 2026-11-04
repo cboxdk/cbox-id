@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -54,6 +55,8 @@ export default function CreateClient({
     indexHref,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         // The ONE question. Everything the specification calls a decision follows from it.
@@ -122,9 +125,9 @@ export default function CreateClient({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Applications" />
+            <Breadcrumb href={indexHref} label={tc('console.applications_98e33b0f')} />
 
-            <h1 className="cbx-page-title mt-2">New app</h1>
+            <h1 className="cbx-page-title mt-2">{tc('console.new_app_747f1473')}</h1>
             {/*
                 The old subtitle named exactly two modes — "signing people in" and
                 "machine-to-machine" — which is the same two-checkbox model this form has
@@ -132,9 +135,7 @@ export default function CreateClient({
                 promised a client secret, which a public app never receives.
             */}
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Register an app so it can sign your people in, act on their behalf, or call the API
-                as itself. Answer what kind it is and Cbox ID picks the flow, the credentials and
-                the scopes to match.
+                {tc('console.register_an_app_so_it_can_sign_your_people_i_48568d69')}
             </p>
 
             <form
@@ -146,10 +147,10 @@ export default function CreateClient({
                 }}
             >
                 <Panel>
-                    <Field label="App name" error={form.errors.name}>
+                    <Field label={tc('console.app_name_e6ad3996')} error={form.errors.name}>
                         <Input
                             name="name"
-                            placeholder="Acme Dashboard"
+                            placeholder={tc('console.acme_dashboard_0b433bd7')}
                             value={form.data.name}
                             onChange={(event) => form.setData('name', event.target.value)}
                         />
@@ -157,7 +158,7 @@ export default function CreateClient({
 
                     <div className="mt-5">
                         <RadioGroup
-                            label="What kind of app is it?"
+                            label={tc('console.what_kind_of_app_is_it_d7d847f5')}
                             value={form.data.kind}
                             onValueChange={chooseKind}
                             options={appKinds.map((option) => ({
@@ -192,8 +193,12 @@ export default function CreateClient({
                             </ol>
                             <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
                                 {kind.confidential
-                                    ? 'It gets a client secret, shown once on the next screen.'
-                                    : 'It uses PKCE and gets no secret — nothing to leak from a browser or a phone.'}
+                                    ? tc(
+                                          'console.it_gets_a_client_secret_shown_once_on_the_ne_356c8ac4',
+                                      )
+                                    : tc(
+                                          'console.it_uses_pkce_and_gets_no_secret_nothing_to_l_f9fee647',
+                                      )}
                             </p>
                         </div>
                     )}
@@ -201,23 +206,29 @@ export default function CreateClient({
 
                 {advanced && (
                     <Panel
-                        title="Advanced"
-                        description="Answer the specification's questions yourself. Everything above sets these for you."
+                        title={tc('console.advanced_9f088dbe')}
+                        description={tc(
+                            'console.answer_the_specification_s_questions_yoursel_1dc57b65',
+                        )}
                     >
                         <RadioGroup
-                            label="Client type"
+                            label={tc('console.client_type_40a3b0cb')}
                             value={form.data.type}
                             onValueChange={(type) => form.setData('type', type)}
                             options={[
                                 {
                                     value: 'confidential',
-                                    label: 'Confidential',
-                                    hint: 'Runs on a server and can keep a secret.',
+                                    label: tc('console.confidential_a3e83aee'),
+                                    hint: tc(
+                                        'console.runs_on_a_server_and_can_keep_a_secret_85e431b3',
+                                    ),
                                 },
                                 {
                                     value: 'public',
-                                    label: 'Public',
-                                    hint: 'Runs in a browser, a phone or a terminal — PKCE, no secret.',
+                                    label: tc('console.public_591935b1'),
+                                    hint: tc(
+                                        'console.runs_in_a_browser_a_phone_or_a_terminal_pkce_67b3e26b',
+                                    ),
                                 },
                             ]}
                         />
@@ -228,14 +239,18 @@ export default function CreateClient({
                                 onCheckedChange={(checked) =>
                                     form.setData('grantAuthorizationCode', checked)
                                 }
-                                label="Signs people in (authorization code + refresh)"
+                                label={tc(
+                                    'console.signs_people_in_authorization_code_refresh_a9856e92',
+                                )}
                             />
                             <Checkbox
                                 checked={form.data.grantClientCredentials}
                                 onCheckedChange={(checked) =>
                                     form.setData('grantClientCredentials', checked)
                                 }
-                                label="Calls the API as itself (client credentials)"
+                                label={tc(
+                                    'console.calls_the_api_as_itself_client_credentials_e2e7fd78',
+                                )}
                             />
                             {form.errors.grantAuthorizationCode !== undefined && (
                                 <p className="field-error" role="alert">
@@ -248,10 +263,15 @@ export default function CreateClient({
 
                 {needsRedirectUris && (
                     <Panel
-                        title="Where Cbox ID may return people to"
-                        description="One URL per line. Exact matches only — https, or http on localhost."
+                        title={tc('console.where_cbox_id_may_return_people_to_a974f36d')}
+                        description={tc(
+                            'console.one_url_per_line_exact_matches_only_https_or_d1855423',
+                        )}
                     >
-                        <Field label="Redirect URIs" error={form.errors.redirectUris}>
+                        <Field
+                            label={tc('console.redirect_uris_721353f1')}
+                            error={form.errors.redirectUris}
+                        >
                             <Textarea
                                 name="redirectUris"
                                 rows={3}
@@ -266,8 +286,10 @@ export default function CreateClient({
 
                         <div className="mt-4">
                             <Field
-                                label="Sign-out URIs"
-                                hint="Optional. Where sign-out may send people back to — held to the same bar."
+                                label={tc('console.sign_out_uris_8a668dbe')}
+                                hint={tc(
+                                    'console.optional_where_sign_out_may_send_people_back_6ccaeb48',
+                                )}
                                 error={form.errors.postLogoutRedirectUris}
                             >
                                 <Textarea
@@ -286,8 +308,10 @@ export default function CreateClient({
                 )}
 
                 <Panel
-                    title="What it may ask for"
-                    description="The ceiling on this app's tokens. It can ask for less; it can never ask for more."
+                    title={tc('console.what_it_may_ask_for_d84366ae')}
+                    description={tc(
+                        'console.the_ceiling_on_this_app_s_tokens_it_can_ask__87966742',
+                    )}
                 >
                     <div className="space-y-5">
                         {Object.entries(scopeGroups).map(([category, scopes]) => (
@@ -313,14 +337,16 @@ export default function CreateClient({
                     {advanced && (
                         <div className="mt-5">
                             <Field
-                                label="Custom scopes"
-                                hint="Comma-separated. Only for keys this catalogue does not offer."
+                                label={tc('console.custom_scopes_2c8e3e2d')}
+                                hint={tc(
+                                    'console.comma_separated_only_for_keys_this_catalogue_5b436f7f',
+                                )}
                                 error={form.errors.customScopes}
                             >
                                 <Input
                                     name="customScopes"
                                     spellCheck={false}
-                                    placeholder="billing:read, reports:write"
+                                    placeholder={tc('console.billing_read_reports_write_36538bcc')}
                                     value={form.data.customScopes}
                                     onChange={(event) =>
                                         form.setData('customScopes', event.target.value)
@@ -332,12 +358,14 @@ export default function CreateClient({
                 </Panel>
 
                 <Panel
-                    title="Roles"
-                    description="Where this app publishes the roles it understands, so they can be assigned here."
+                    title={tc('console.roles_c2533705')}
+                    description={tc(
+                        'console.where_this_app_publishes_the_roles_it_unders_e6047562',
+                    )}
                 >
                     <Field
-                        label="Manifest URL"
-                        hint="Optional. Cbox ID fetches it now and on a schedule."
+                        label={tc('console.manifest_url_b2e2812a')}
+                        hint={tc('console.optional_cbox_id_fetches_it_now_and_on_a_sch_5becfdd5')}
                         error={form.errors.manifestUrl}
                     >
                         <Input
@@ -358,29 +386,37 @@ export default function CreateClient({
                     is offered only where somebody holds all of them.
                 */}
                 {mayScopeEnvironmentWide && (
-                    <Panel title="Who owns it">
+                    <Panel title={tc('console.who_owns_it_fad05e53')}>
                         <div className="space-y-2">
                             <Checkbox
                                 checked={form.data.environmentWide}
                                 onCheckedChange={(checked) =>
                                     form.setData('environmentWide', checked)
                                 }
-                                label="Register it to this environment rather than to an organization"
-                                hint="An environment app, not one organization's."
+                                label={tc(
+                                    'console.register_it_to_this_environment_rather_than__13e1bc4d',
+                                )}
+                                hint={tc(
+                                    'console.an_environment_app_not_one_organization_s_3b087485',
+                                )}
                             />
                             {organization !== null && !form.data.environmentWide && (
                                 <OrganizationPickerField
                                     picker={organization}
                                     error={form.errors.organization}
                                     onChange={(id) => form.setData('organization', id)}
-                                    hint="The organization the app belongs to — or register it to the environment above."
+                                    hint={tc(
+                                        'console.the_organization_the_app_belongs_to_or_regis_d0bd8e48',
+                                    )}
                                 />
                             )}
                             <Checkbox
                                 checked={form.data.firstParty}
                                 onCheckedChange={(checked) => form.setData('firstParty', checked)}
-                                label="First-party"
-                                hint="Skips the consent screen and appears in every organization's launcher."
+                                label={tc('console.first_party_ee374836')}
+                                hint={tc(
+                                    'console.skips_the_consent_screen_and_appears_in_ever_18ea1562',
+                                )}
                             />
                         </div>
                     </Panel>
@@ -388,10 +424,10 @@ export default function CreateClient({
 
                 <div className="flex flex-wrap items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create app
+                        {tc('console.create_app_814eb4f6')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
 

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import type { NavArea } from '@/types';
 
 /**
@@ -8,6 +9,8 @@ import type { NavArea } from '@/types';
  * sentence, a lone "2" after a link name is a riddle.
  */
 export function NavCount({ count }: { count: number | null | undefined }) {
+    const { t: tc } = useTranslator();
+
     if (count === null || count === undefined || count <= 0) {
         return null;
     }
@@ -15,7 +18,10 @@ export function NavCount({ count }: { count: number | null | undefined }) {
     return (
         <span className="cbx-nav-count">
             <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
-            <span className="sr-only">, {count} waiting for you</span>
+            <span className="sr-only">
+                , {count}
+                {tc('console.waiting_for_you_71c16395')}
+            </span>
         </span>
     );
 }

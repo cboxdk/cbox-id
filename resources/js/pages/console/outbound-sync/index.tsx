@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -50,6 +51,8 @@ export default function OutboundSyncIndex({
     help,
     organizationFilter,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -72,12 +75,12 @@ export default function OutboundSyncIndex({
         <>
             <PageHeader
                 help={help}
-                description="Push your people into the apps that need their own copy — a SCIM endpoint receives every join, change and departure as it happens."
+                description={tc('console.push_your_people_into_the_apps_that_need_the_249f03c2')}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            New connection
+                            {tc('console.new_connection_729bceee')}
                         </Link>
                     </Button>
                 }
@@ -92,8 +95,8 @@ export default function OutboundSyncIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name"
-                    aria-label="Search outbound connections"
+                    placeholder={tc('console.search_by_name_4ae2b333')}
+                    aria-label={tc('console.search_outbound_connections_d6171f84')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -103,8 +106,11 @@ export default function OutboundSyncIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total} {pagination.total === 1 ? 'connection' : 'connections'}{' '}
-                    found.
+                    {pagination.total}{' '}
+                    {pagination.total === 1
+                        ? tc('console.connection_b38d9d16')
+                        : tc('console.connections_1e5fac86')}{' '}
+                    {tc('console.found_ddbb3871')}
                 </output>
             </div>
 
@@ -116,25 +122,31 @@ export default function OutboundSyncIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No connections match “${search}”`}
-                            description="No outbound connection matches that name. Try a different search."
+                            title={tc('console.no_connections_match_value0_4bce1061', {
+                                value0: search,
+                            })}
+                            description={tc(
+                                'console.no_outbound_connection_matches_that_name_try_2fb976c3',
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="directory"
                             equivalent="provisioning.targets.create"
-                            title="No outbound sync yet"
-                            description="Apps that keep their own user list drift out of step the moment somebody joins or leaves. A SCIM connection pushes every change to them as it happens — including the departures, which are the ones that get forgotten."
+                            title={tc('console.no_outbound_sync_yet_6f16faf1')}
+                            description={tc(
+                                'console.apps_that_keep_their_own_user_list_drift_out_fc8e8671',
+                            )}
                             steps={[
-                                'Paste the app’s SCIM base URL and the credential it issued you.',
-                                'Choose how it authenticates — a bearer token, or OAuth client credentials we fetch per batch.',
-                                'Save it: joins, changes and departures start flowing from the next one.',
+                                tc('console.paste_the_app_s_scim_base_url_and_the_creden_4908336e'),
+                                tc('console.choose_how_it_authenticates_a_bearer_token_o_a5be3b55'),
+                                tc('console.save_it_joins_changes_and_departures_start_f_3ec32b01'),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New connection
+                                        {tc('console.new_connection_729bceee')}
                                     </Link>
                                 </Button>
                             }
@@ -155,7 +167,10 @@ export default function OutboundSyncIndex({
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-medium truncate">{connection.name}</span>
-                                    <Badge>{connection.scope ?? 'Environment-wide'}</Badge>
+                                    <Badge>
+                                        {connection.scope ??
+                                            tc('console.environment_wide_cd1204b6')}
+                                    </Badge>
                                 </div>
                                 {connection.lastError !== null ? (
                                     // A push that has started failing means people are
@@ -178,7 +193,9 @@ export default function OutboundSyncIndex({
                             </div>
 
                             <Pill tone={connection.active ? 'success' : 'warning'}>
-                                {connection.active ? 'Active' : 'Paused'}
+                                {connection.active
+                                    ? tc('console.active_92340695')
+                                    : tc('console.paused_e159b061')}
                             </Pill>
 
                             <Icon
@@ -193,7 +210,8 @@ export default function OutboundSyncIndex({
 
             <Pagination
                 pagination={pagination}
-                noun="connection"
+                noun={tc('console.connection_b38d9d16')}
+                pluralNoun={tc('console.connections_1e5fac86')}
                 href={(page) => listHref(search, page)}
             />
         </>

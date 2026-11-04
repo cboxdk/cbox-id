@@ -34,10 +34,10 @@ final class SaveClientRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:190'],
             'redirectUris' => ['nullable', 'string', 'max:2000', new SecureUriLines(
-                'Each redirect URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/callback.',
+                __('console.each_redirect_uri_must_use_https_http_is_all_5445c31e'),
             )],
             'postLogoutRedirectUris' => ['nullable', 'string', 'max:2000', new SecureUriLines(
-                'Each sign-out URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/signed-out.',
+                __('console.each_sign_out_uri_must_use_https_http_is_all_b9c71673'),
             )],
         ];
     }

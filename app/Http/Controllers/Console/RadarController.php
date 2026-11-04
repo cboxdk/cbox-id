@@ -18,6 +18,7 @@ use App\Models\Radar\RadarRule;
 use App\Models\RiskDecision;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Radar\Enums\RadarAction;
 use App\Platform\Radar\Enums\RadarBuiltin;
 use App\Platform\Radar\Enums\RadarField;
@@ -88,7 +89,7 @@ final readonly class RadarController extends ConsoleController
         $page = $decisions->page($filters, self::PER_PAGE, $after);
         $names = $decisions->ruleNames($page['rows']);
 
-        return $this->page('console/radar/index', Vocabulary::RADAR, [
+        return $this->page('console/radar/index', ConsoleStrings::text(Vocabulary::RADAR), [
             'help' => HelpProps::for(HelpTopic::Radar),
             'tabs' => $this->tabs('decisions'),
             'mode' => $this->modeProps($policy),
@@ -116,11 +117,11 @@ final readonly class RadarController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/radar/rules', Vocabulary::RADAR, [
+        return $this->page('console/radar/rules', ConsoleStrings::text(Vocabulary::RADAR), [
             'help' => HelpProps::for(HelpTopic::Radar),
             'tabs' => $this->tabs('rules'),
             'mode' => $this->modeProps($policy),
-            'settings' => RadarPresenter::settings($policy),
+            'settings' => $this->translatedSettings($policy),
             'settingsHref' => route('environment.radar.settings.update'),
             'rules' => array_values($rules->all()->map(static fn (RadarRule $rule): array => [
                 ...RadarPresenter::rule($rule),
@@ -147,7 +148,7 @@ final readonly class RadarController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.radar.rules')->with('status', 'Rule added.');
+            : to_route('environment.radar.rules')->with('status', __('console.rule_added_dadb1f36'));
     }
 
     public function edit(RadarRules $rules, string $rule): Response
@@ -165,7 +166,7 @@ final readonly class RadarController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.radar.rules')->with('status', 'Rule saved.');
+            : to_route('environment.radar.rules')->with('status', __('console.rule_saved_a456e565'));
     }
 
     public function destroy(string $rule): RedirectResponse
@@ -176,7 +177,7 @@ final readonly class RadarController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.radar.rules')->with('status', 'Rule deleted.');
+            : to_route('environment.radar.rules')->with('status', __('console.rule_deleted_d7ab3270'));
     }
 
     public function order(Request $request): RedirectResponse
@@ -189,7 +190,7 @@ final readonly class RadarController extends ConsoleController
             'rule_ids' => is_array($ids) ? array_values(array_filter($ids, 'is_string')) : [],
         ], ['rule_ids' => 'ruleIds'], 'ruleIds');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Order saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.order_saved_779c10e8'));
     }
 
     public function settings(Request $request): RedirectResponse
@@ -213,7 +214,7 @@ final readonly class RadarController extends ConsoleController
 
         $result = $this->act(UpdateRadarSettings::class, ['builtin_rules' => $builtins], ['builtin_rules' => 'builtinRules'], 'builtinRules');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Built-in rules saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.built_in_rules_saved_671a0b68'));
     }
 
     public function mode(Request $request): RedirectResponse
@@ -225,15 +226,15 @@ final readonly class RadarController extends ConsoleController
         return $result instanceof RedirectResponse
             ? $result
             : back()->with('status', $request->string('mode')->toString() === 'enforce'
-                ? 'Radar now enforces: blocks refuse, challenges ask for a second factor.'
-                : 'Radar now monitors: every verdict is recorded, none is acted on.');
+                ? __('console.radar_now_enforces_blocks_refuse_challenges__fe2c0317')
+                : __('console.radar_now_monitors_every_verdict_is_recorded_6ca10a23'));
     }
 
     public function lists(RadarLists $lists): Response
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/radar/lists', Vocabulary::RADAR, [
+        return $this->page('console/radar/lists', ConsoleStrings::text(Vocabulary::RADAR), [
             'help' => HelpProps::for(HelpTopic::Radar),
             'tabs' => $this->tabs('lists'),
             'entries' => array_values($lists->all()->map(static fn (RadarListEntry $entry): array => [
@@ -241,10 +242,10 @@ final readonly class RadarController extends ConsoleController
                 'destroyHref' => route('environment.radar.lists.destroy', $entry->id),
             ])->all()),
             'kinds' => array_map(static fn (RadarListKind $kind): array => ['value' => $kind->value, 'label' => match ($kind) {
-                RadarListKind::Ip => 'IP address or range',
-                RadarListKind::Email => 'Email address',
-                RadarListKind::EmailDomain => 'Email domain',
-                RadarListKind::Device => 'Device',
+                RadarListKind::Ip => __('console.ip_address_or_range_b5bbac17'),
+                RadarListKind::Email => __('console.email_address_f2488fd4'),
+                RadarListKind::EmailDomain => __('console.email_domain_f865f1ee'),
+                RadarListKind::Device => ConsoleStrings::text('Device'),
             }], RadarListKind::cases()),
             'storeHref' => route('environment.radar.lists.store'),
         ]);
@@ -270,7 +271,7 @@ final readonly class RadarController extends ConsoleController
             'expires_at' => 'expiresAt',
         ], 'value');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Added to the list.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.added_to_the_list_760cb12c'));
     }
 
     public function removeEntry(string $entry): RedirectResponse
@@ -279,23 +280,39 @@ final readonly class RadarController extends ConsoleController
 
         $result = $this->act(RemoveRadarListEntry::class, ['id' => $entry]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Removed from the list.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.removed_from_the_list_642fa915'));
+    }
+
+    /** @return array<string, mixed> */
+    private function translatedSettings(RadarPolicy $policy): array
+    {
+        $settings = RadarPresenter::settings($policy);
+        /** @var list<array{key: string, name: string, description: string}> $builtins */
+        $builtins = $settings['builtin_rules'];
+        foreach ($builtins as &$builtin) {
+            $rule = RadarBuiltin::from($builtin['key']);
+            $builtin['name'] = ConsoleStrings::text($rule->label());
+            $builtin['description'] = ConsoleStrings::text($rule->description());
+        }
+        $settings['builtin_rules'] = $builtins;
+
+        return $settings;
     }
 
     private function editor(?RadarRule $rule): Response
     {
         // Titled by the rule, like every other detail page: "Radar" over a rule's editor
         // said which area it was in — the breadcrumb says that — and not which rule.
-        return $this->page('console/radar/rule', $rule === null ? 'New rule' : $rule->name, [
+        return $this->page('console/radar/rule', $rule === null ? __('console.new_rule_99cd24ef') : $rule->name, [
             'help' => HelpProps::for(HelpTopic::Radar),
             'rule' => $rule === null ? null : RadarPresenter::rule($rule),
             'fields' => array_map(static fn (RadarField $field): array => [
                 'value' => $field->value,
-                'label' => $field->label(),
+                'label' => ConsoleStrings::text($field->label()),
                 'type' => $field->type(),
                 'operators' => array_map(static fn (RadarOperator $operator): array => [
                     'value' => $operator->value,
-                    'label' => $operator->phrase(),
+                    'label' => ConsoleStrings::text($operator->phrase()),
                     'list' => $operator->takesList(),
                 ], $field->operators()),
             ], RadarField::cases()),
@@ -409,7 +426,7 @@ final readonly class RadarController extends ConsoleController
         $options = [];
 
         foreach (RadarBuiltin::cases() as $builtin) {
-            $options[] = ['value' => 'builtin:'.$builtin->value, 'label' => $builtin->label()];
+            $options[] = ['value' => 'builtin:'.$builtin->value, 'label' => ConsoleStrings::text($builtin->label())];
         }
 
         foreach (RadarRule::query()->orderBy('position')->get(['id', 'name']) as $rule) {
@@ -431,9 +448,9 @@ final readonly class RadarController extends ConsoleController
     private function tabs(string $current): array
     {
         return [
-            ['key' => 'decisions', 'label' => 'Decisions', 'href' => route('environment.radar'), 'current' => $current === 'decisions'],
-            ['key' => 'rules', 'label' => 'Rules', 'href' => route('environment.radar.rules'), 'current' => $current === 'rules'],
-            ['key' => 'lists', 'label' => 'Allow & deny lists', 'href' => route('environment.radar.lists'), 'current' => $current === 'lists'],
+            ['key' => 'decisions', 'label' => __('console.decisions_cfa6a08a'), 'href' => route('environment.radar'), 'current' => $current === 'decisions'],
+            ['key' => 'rules', 'label' => __('console.rules_4228aeb0'), 'href' => route('environment.radar.rules'), 'current' => $current === 'rules'],
+            ['key' => 'lists', 'label' => __('console.allow_deny_lists_83613d84'), 'href' => route('environment.radar.lists'), 'current' => $current === 'lists'],
         ];
     }
 

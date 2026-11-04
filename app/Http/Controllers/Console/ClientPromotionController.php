@@ -109,7 +109,7 @@ final readonly class ClientPromotionController extends ConsoleController
             'clients.show',
             'environment.clients.show',
             ['client' => $model->id],
-            'Copying an app registers it in another environment with a new client secret, shown once on the next screen.',
+            __('console.copying_an_app_registers_it_in_another_envir_b6eb3523'),
         );
 
         if ($sudo !== null) {
@@ -127,11 +127,11 @@ final readonly class ClientPromotionController extends ConsoleController
         ], ['environment_id' => 'environment', 'name' => 'name', 'redirect_uris' => 'redirectUris'], 'environment');
 
         if ($result instanceof ActionRefused) {
-            return back()->withInput()->with('error', 'Not copied: '.lcfirst(strtr($result->getMessage(), [
-                'Invalid client blueprint: ' => '',
-                'api_key_prefix' => 'the key prefix',
-                'backchannel_logout_uri' => 'the logout URI',
-                '; import with another prefix (or none)' => ' — clear it on the Settings tab of either app, then copy again',
+            return back()->withInput()->with('error', __('console.not_copied_17898433').lcfirst(strtr($result->getMessage(), [
+                __('console.invalid_client_blueprint_549830c5') => '',
+                'api_key_prefix' => __('console.the_key_prefix_ca81dd91'),
+                'backchannel_logout_uri' => __('console.the_logout_uri_1187e902'),
+                __('console.import_with_another_prefix_or_none_4c73b15f') => __('console.clear_it_on_the_settings_tab_of_either_app_t_c60eb0e9'),
             ])));
         }
 

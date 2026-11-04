@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -50,9 +52,9 @@ type Props = PageProps<{
     urls: { show: string; update: string; destroy: string };
 }>;
 
-const ON_OFF = [
-    { value: 'on', label: 'On' },
-    { value: 'off', label: 'Off' },
+const ON_OFF = (tc: Translator['t']) => [
+    { value: 'on', label: tc('console.on_13001175') },
+    { value: 'off', label: tc('console.off_ca7981b4') },
 ];
 
 export default function FeatureFlagDetail({
@@ -65,6 +67,8 @@ export default function FeatureFlagDetail({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [deleting, setDeleting] = useState(false);
 
     const details = useForm({
@@ -110,27 +114,31 @@ export default function FeatureFlagDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Feature flags" />
+                <Breadcrumb href={indexHref} label={tc('console.feature_flags_20a2e59b')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono" style={{ overflowWrap: 'anywhere' }}>
                         {flag.key}
                     </h1>
                     <CopyButton value={flag.key} />
                     {flag.enabled ? (
-                        <Badge tone="success">On</Badge>
+                        <Badge tone="success">{tc('console.on_13001175')}</Badge>
                     ) : (
-                        <Badge tone="warn">Switched off for everyone</Badge>
+                        <Badge tone="warn">
+                            {tc('console.switched_off_for_everyone_bdf42325')}
+                        </Badge>
                     )}
                 </div>
                 <div className="mt-1">
                     <PageHeader
                         help={help}
-                        description="A user rule beats an organization rule, which beats the rollout, which beats the default. Switched off, the flag is off for everyone."
+                        description={tc(
+                            'console.a_user_rule_beats_an_organization_rule_which_74a29528',
+                        )}
                     />
                 </div>
             </div>
 
-            <Panel title="Details">
+            <Panel title={tc('console.details_45989de4')}>
                 <form
                     className="space-y-4"
                     style={{ maxWidth: '36rem' }}
@@ -139,7 +147,11 @@ export default function FeatureFlagDetail({
                         details.patch(urls.update, { preserveScroll: true });
                     }}
                 >
-                    <Field label="Description" optional error={details.errors.description}>
+                    <Field
+                        label={tc('console.description_526e0087')}
+                        optional
+                        error={details.errors.description}
+                    >
                         <Input
                             name="description"
                             value={details.data.description}
@@ -149,24 +161,24 @@ export default function FeatureFlagDetail({
                     <Checkbox
                         checked={details.data.enabled}
                         onCheckedChange={(checked) => details.setData('enabled', checked)}
-                        label="Switched on"
-                        hint="The kill switch. Off, the flag is off for everyone, whatever the rules below say."
+                        label={tc('console.switched_on_59291b6d')}
+                        hint={tc('console.the_kill_switch_off_the_flag_is_off_for_ever_90bda36f')}
                     />
                     <Checkbox
                         checked={details.data.defaultValue}
                         onCheckedChange={(checked) => details.setData('defaultValue', checked)}
-                        label="On by default"
-                        hint="The answer for everyone no rule names."
+                        label={tc('console.on_by_default_e1589716')}
+                        hint={tc('console.the_answer_for_everyone_no_rule_names_6266235c')}
                     />
                     <Button type="submit" size="sm" variant="primary" loading={details.processing}>
-                        Save changes
+                        {tc('console.save_changes_dd0ae7a5')}
                     </Button>
                 </form>
             </Panel>
 
             <Panel
-                title="Who it is on for"
-                description="Rules for named organizations and users, and a rollout over everyone else. Saved together."
+                title={tc('console.who_it_is_on_for_3ac233e0')}
+                description={tc('console.rules_for_named_organizations_and_users_and__fa570c8c')}
             >
                 <form
                     className="space-y-6"
@@ -176,18 +188,18 @@ export default function FeatureFlagDetail({
                     }}
                 >
                     <RuleList
-                        title="Organizations"
-                        empty="No organization rules."
+                        title={tc('console.organizations_2730183d')}
+                        empty={tc('console.no_organization_rules_f1f852f5')}
                         rules={targeting.data.organizations}
                         error={targeting.errors.organizations}
                         onChange={(id, enabled) => setRule('organizations', id, enabled)}
                         onRemove={(id) => removeRule('organizations', id)}
                     >
-                        <Field label="Add an organization">
+                        <Field label={tc('console.add_an_organization_c220e8cd')}>
                             <OrganizationField
                                 lookupHref={lookupHref}
                                 value={null}
-                                placeholder="Find an organization"
+                                placeholder={tc('console.find_an_organization_d9649cbf')}
                                 onChange={(chosen) => {
                                     if (
                                         chosen !== null &&
@@ -206,8 +218,8 @@ export default function FeatureFlagDetail({
                     </RuleList>
 
                     <RuleList
-                        title="Users"
-                        empty="No user rules."
+                        title={tc('console.users_6b0cc904')}
+                        empty={tc('console.no_user_rules_800f3bd9')}
                         rules={targeting.data.users}
                         error={targeting.errors.users}
                         onChange={(id, enabled) => setRule('users', id, enabled)}
@@ -215,8 +227,8 @@ export default function FeatureFlagDetail({
                     >
                         <div className="flex gap-2 items-end">
                             <Field
-                                label="Add a user"
-                                hint="Their email address, or their user id."
+                                label={tc('console.add_a_user_ac856d22')}
+                                hint={tc('console.their_email_address_or_their_user_id_ee04b171')}
                                 className="flex-1"
                             >
                                 <Input
@@ -245,15 +257,15 @@ export default function FeatureFlagDetail({
                                     setNewUser('');
                                 }}
                             >
-                                Add
+                                {tc('console.add_9fd728c6')}
                             </Button>
                         </div>
                     </RuleList>
 
                     <Field
-                        label="Rollout"
+                        label={tc('console.rollout_b14395be')}
                         optional
-                        hint="On for this percentage of everyone the rules above do not name, by a stable hash of their user id — the same people every time, and raising it only adds people. Leave it empty for no rollout."
+                        hint={tc('console.on_for_this_percentage_of_everyone_the_rules_6ca1e886')}
                         error={targeting.errors.rolloutPercentage}
                     >
                         <Input
@@ -282,14 +294,14 @@ export default function FeatureFlagDetail({
                         variant="primary"
                         loading={targeting.processing}
                     >
-                        Save rules
+                        {tc('console.save_rules_e5dbdffb')}
                     </Button>
                 </form>
             </Panel>
 
             <Panel
-                title="Is it on for…?"
-                description="The answer the token and the API give, and the rule that decided."
+                title={tc('console.is_it_on_for_29bc0994')}
+                description={tc('console.the_answer_the_token_and_the_api_give_and_th_24f41cf9')}
             >
                 <form
                     className="space-y-4"
@@ -306,7 +318,11 @@ export default function FeatureFlagDetail({
                         );
                     }}
                 >
-                    <Field label="User" optional hint="An email address or a user id.">
+                    <Field
+                        label={tc('console.user_b512d97e')}
+                        optional
+                        hint={tc('console.an_email_address_or_a_user_id_0f810f2c')}
+                    >
                         <Input
                             name="user"
                             spellCheck={false}
@@ -315,7 +331,7 @@ export default function FeatureFlagDetail({
                             onChange={(event) => setAsUser(event.target.value)}
                         />
                     </Field>
-                    <Field label="Organization" optional>
+                    <Field label={tc('console.organization_d764d425')} optional>
                         <OrganizationField
                             lookupHref={lookupHref}
                             value={asOrganization}
@@ -323,7 +339,7 @@ export default function FeatureFlagDetail({
                         />
                     </Field>
                     <Button type="submit" size="sm">
-                        Check
+                        {tc('console.check_9d60841e')}
                     </Button>
                 </form>
 
@@ -332,7 +348,11 @@ export default function FeatureFlagDetail({
                         className="mt-4 rounded-lg p-3 flex items-center gap-3 flex-wrap"
                         style={{ border: '1px solid var(--border)' }}
                     >
-                        {evaluation.enabled ? <Badge tone="success">On</Badge> : <Badge>Off</Badge>}
+                        {evaluation.enabled ? (
+                            <Badge tone="success">{tc('console.on_13001175')}</Badge>
+                        ) : (
+                            <Badge>{tc('console.off_ca7981b4')}</Badge>
+                        )}
                         <span className="text-sm">{evaluation.explanation}</span>
                         <code className="mono text-xs" style={{ color: 'var(--faint)' }}>
                             {evaluation.reason}
@@ -342,11 +362,11 @@ export default function FeatureFlagDetail({
             </Panel>
 
             <Panel
-                title="Delete flag"
-                description="Its rules go with it. Apps asking for its key get off from now on; tokens already issued keep naming it until they expire."
+                title={tc('console.delete_flag_22cb12e1')}
+                description={tc('console.its_rules_go_with_it_apps_asking_for_its_key_aacd29e9')}
             >
                 <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
-                    Delete flag
+                    {tc('console.delete_flag_22cb12e1')}
                 </Button>
             </Panel>
 
@@ -354,7 +374,7 @@ export default function FeatureFlagDetail({
                 open={deleting}
                 onOpenChange={setDeleting}
                 name={flag.key}
-                consequence="Every app asking for this flag gets off. This cannot be undone."
+                consequence={tc('console.every_app_asking_for_this_flag_gets_off_this_e3ed99c1')}
                 onConfirm={() => {
                     setDeleting(false);
                     router.delete(urls.destroy);
@@ -382,6 +402,8 @@ function RuleList({
     onRemove: (id: string) => void;
     children: React.ReactNode;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="space-y-3">
             <p className="text-sm font-medium">{title}</p>
@@ -402,10 +424,12 @@ function RuleList({
                             </span>
                             <Select
                                 name={`rule-${rule.id}`}
-                                aria-label={`On or off for ${rule.label}`}
+                                aria-label={tc('console.on_or_off_for_value0_31e5cbe1', {
+                                    value0: rule.label,
+                                })}
                                 value={rule.enabled ? 'on' : 'off'}
                                 onValueChange={(value) => onChange(rule.id, value === 'on')}
-                                options={ON_OFF}
+                                options={ON_OFF(tc)}
                             />
                             <Button
                                 type="button"
@@ -413,7 +437,7 @@ function RuleList({
                                 variant="ghost"
                                 onClick={() => onRemove(rule.id)}
                             >
-                                Remove
+                                {tc('console.remove_c3812fc4')}
                             </Button>
                         </li>
                     ))}

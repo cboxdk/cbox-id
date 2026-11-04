@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -20,6 +21,8 @@ type Props = PageProps<{
 }>;
 
 export default function CreateOrganization({ indexHref, storeHref }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         slug: '',
@@ -30,10 +33,12 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Organizations" />
+            <Breadcrumb href={indexHref} label={tc('console.organizations_2730183d')} />
 
             <div className="mt-2">
-                <PageHeader description="Its ID and URL handle are generated for you." />
+                <PageHeader
+                    description={tc('console.its_id_and_url_handle_are_generated_for_you_9f822704')}
+                />
             </div>
 
             <form
@@ -46,10 +51,10 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
             >
                 <Panel>
                     <div className="space-y-4">
-                        <Field label="Name" error={form.errors.name}>
+                        <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                             <Input
                                 name="name"
-                                placeholder="Acme Inc"
+                                placeholder={tc('console.acme_inc_42cf7a26')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
@@ -69,7 +74,7 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
                                 onClick={() => setAdvanced((open) => !open)}
                             >
                                 <Icon name="settings" className="w-3.5 h-3.5" />
-                                Advanced
+                                {tc('console.advanced_9f088dbe')}
                             </Button>
 
                             {advanced && (
@@ -78,15 +83,17 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
                                     style={{ borderColor: 'var(--border)' }}
                                 >
                                     <Field
-                                        label="URL handle"
+                                        label={tc('console.url_handle_0b9f3241')}
                                         optional
-                                        hint="Derived from the name if you leave it blank, and made unique either way."
+                                        hint={tc(
+                                            'console.derived_from_the_name_if_you_leave_it_blank__0e837564',
+                                        )}
                                         error={form.errors.slug}
                                     >
                                         <Input
                                             name="slug"
                                             className="mono"
-                                            placeholder="acme-inc"
+                                            placeholder={tc('console.acme_inc_0efa1595')}
                                             value={form.data.slug}
                                             onChange={(event) =>
                                                 form.setData('slug', event.target.value)
@@ -97,7 +104,9 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
                                     <MetadataRows
                                         rows={form.data.metadata}
                                         onChange={(rows) => form.setData('metadata', rows)}
-                                        hint="Anything your own systems need to keep against this organization. Rows with no key are dropped."
+                                        hint={tc(
+                                            'console.anything_your_own_systems_need_to_keep_again_c911b38e',
+                                        )}
                                     />
                                 </div>
                             )}
@@ -107,10 +116,10 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create organization
+                        {tc('console.create_organization_f14e1b22')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

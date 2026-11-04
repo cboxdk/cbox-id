@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -7,14 +8,20 @@ import { store } from '@actions/App/Http/Controllers/Console/ProjectController';
 type Props = PageProps<{ indexHref: string }>;
 
 export default function CreateProject({ indexHref }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ name: '' });
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Projects" />
+            <Breadcrumb href={indexHref} label={tc('console.projects_04e2a972')} />
 
             <div className="mt-2">
-                <PageHeader description="A separate identity-provider product with its own environments and plan — billed independently of your other projects." />
+                <PageHeader
+                    description={tc(
+                        'console.a_separate_identity_provider_product_with_it_97a4c57b',
+                    )}
+                />
             </div>
 
             <form
@@ -27,13 +34,13 @@ export default function CreateProject({ indexHref }: Props) {
             >
                 <Panel>
                     <Field
-                        label="Project name"
-                        hint="You'll add its environments (production, staging, sandbox) next."
+                        label={tc('console.project_name_25498193')}
+                        hint={tc('console.you_ll_add_its_environments_production_stagi_d74d2d40')}
                         error={form.errors.name}
                     >
                         <Input
                             name="name"
-                            placeholder="Product Two"
+                            placeholder={tc('console.product_two_23ff9b66')}
                             value={form.data.name}
                             onChange={(event) => form.setData('name', event.target.value)}
                         />
@@ -41,10 +48,10 @@ export default function CreateProject({ indexHref }: Props) {
 
                     <div className="flex items-center gap-2 mt-4">
                         <Button type="submit" variant="primary" loading={form.processing}>
-                            Create project
+                            {tc('console.create_project_fa67e4d0')}
                         </Button>
                         <Button asChild>
-                            <Link href={indexHref}>Cancel</Link>
+                            <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                         </Button>
                     </div>
                 </Panel>

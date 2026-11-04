@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -49,6 +50,10 @@ export default function Exports({
     downloadHref,
     help,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const [subject, setSubject] = useState(subjectId);
     const [building, setBuilding] = useState(false);
 
@@ -74,7 +79,7 @@ export default function Exports({
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description="Ship the audit trail to your SIEM or cold archive, and run data-subject exports."
+                description={tc('console.ship_the_audit_trail_to_your_siem_or_cold_ar_b777e4b4')}
             />
 
             {/*
@@ -86,51 +91,61 @@ export default function Exports({
             */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="card p-5">
-                    <h2 className="text-sm font-semibold">Audit export</h2>
+                    <h2 className="text-sm font-semibold">{tc('console.audit_export_6215b564')}</h2>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Runs on the schedule every five minutes. Cursor-based and idempotent — only
-                        entries newer than the last shipped position are sent.
+                        {tc('console.runs_on_the_schedule_every_five_minutes_curs_830d7536')}
                     </p>
                     <p className="mt-3 text-xs mono" style={{ color: 'var(--muted-foreground)' }}>
-                        php artisan id-compliance:export
+                        {tc('console.php_artisan_id_compliance_export_a7898bc2')}
                     </p>
                 </div>
 
                 <div className="card p-5">
-                    <h2 className="text-sm font-semibold">Retention</h2>
+                    <h2 className="text-sm font-semibold">{tc('console.retention_3b1f58d9')}</h2>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Runs on the schedule daily. The trail is append-only and hash-chained, so
-                        retention <strong>never deletes entries</strong>: it signs a fresh
-                        checkpoint per chain and relies on the export sink to archive to cold
-                        storage.
+                        {tc('console.runs_on_the_schedule_daily_the_trail_is_appe_715337d6')}
+                        <strong>{tc('console.never_deletes_entries_8e4d1de2')}</strong>
+                        {tc('console.it_signs_a_fresh_checkpoint_per_chain_and_re_8e26cad9')}
                     </p>
                     <p className="mt-3 text-xs mono" style={{ color: 'var(--muted-foreground)' }}>
-                        php artisan id-compliance:retention
+                        {tc('console.php_artisan_id_compliance_retention_b63e26c9')}
                     </p>
                 </div>
             </div>
 
             {showsRuns && (
                 <section>
-                    <h2 className="mb-3 text-sm font-semibold">Recent export runs</h2>
+                    <h2 className="mb-3 text-sm font-semibold">
+                        {tc('console.recent_export_runs_bb0e8ac0')}
+                    </h2>
 
                     {runs.length === 0 ? (
                         <EmptyState
                             icon="audit"
-                            title="No export runs yet"
-                            description="The scheduled export records a run here every five minutes once schedule:run is running and a sink is configured."
+                            title={tc('console.no_export_runs_yet_8e77ca79')}
+                            description={tc(
+                                'console.the_scheduled_export_records_a_run_here_ever_6e615811',
+                            )}
                         />
                     ) : (
                         <div className="card overflow-hidden">
                             <div className="overflow-x-auto">
-                                <Table caption="Recent scheduled export runs across every chain in this environment">
+                                <Table
+                                    caption={tc(
+                                        'console.recent_scheduled_export_runs_across_every_ch_dcd65409',
+                                    )}
+                                >
                                     <thead>
                                         <tr>
-                                            <Th>When</Th>
-                                            <Th>Status</Th>
-                                            <Th className="text-right">Entries</Th>
-                                            <Th className="text-right">Scopes</Th>
-                                            <Th>Sink</Th>
+                                            <Th>{tc('console.when_cf9c7aa2')}</Th>
+                                            <Th>{tc('console.status_920e413c')}</Th>
+                                            <Th className="text-right">
+                                                {tc('console.entries_7cb76b4a')}
+                                            </Th>
+                                            <Th className="text-right">
+                                                {tc('console.scopes_0d5644ff')}
+                                            </Th>
+                                            <Th>{tc('console.sink_35d86691')}</Th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -147,10 +162,10 @@ export default function Exports({
                                                     </span>
                                                 </Td>
                                                 <TdMono className="text-right">
-                                                    {run.entries.toLocaleString()}
+                                                    {run.entries.toLocaleString(locale)}
                                                 </TdMono>
                                                 <TdMono className="text-right">
-                                                    {run.scopes.toLocaleString()}
+                                                    {run.scopes.toLocaleString(locale)}
                                                 </TdMono>
                                                 <Td style={{ color: 'var(--muted-foreground)' }}>
                                                     {run.sink}
@@ -166,11 +181,11 @@ export default function Exports({
             )}
 
             <section>
-                <h2 className="mb-3 text-sm font-semibold">Data-subject export (GDPR access)</h2>
+                <h2 className="mb-3 text-sm font-semibold">
+                    {tc('console.data_subject_export_gdpr_access_5ece6451')}
+                </h2>
                 <p className="mb-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    Look up a subject's audit trail (actions they performed) for a portable access
-                    request. Erasure is not offered: redacting a hash-chained entry would break the
-                    trail's tamper-evidence — see the docs.
+                    {tc('console.look_up_a_subject_s_audit_trail_actions_they_71f49e12')}
                 </p>
 
                 {needsOrganization ? (
@@ -181,15 +196,14 @@ export default function Exports({
                             </FilterChips>
                         )}
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            A data-subject export is bounded by the organization whose trail it
-                            comes from — pick that organization to run one.
+                            {tc('console.a_data_subject_export_is_bounded_by_the_orga_326e9035')}
                         </p>
                     </div>
                 ) : (
                     <div style={{ maxWidth: '28rem' }}>
-                        <Field label="Subject (actor id)">
+                        <Field label={tc('console.subject_actor_id_5f87b678')}>
                             <Input
-                                placeholder="user id"
+                                placeholder={tc('console.user_id_9b55b418')}
                                 value={subject}
                                 onChange={(event) => setSubject(event.target.value)}
                             />
@@ -205,11 +219,14 @@ export default function Exports({
                     {subjectEntryCount !== null && (
                         <div className="card mt-4 p-4 text-sm">
                             <p>
-                                At most{' '}
+                                {tc('console.at_most_6797626f')}{' '}
                                 <span className="font-semibold mono">
-                                    {subjectEntryCount.toLocaleString()}
+                                    {subjectEntryCount.toLocaleString(locale)}
                                 </span>{' '}
-                                {subjectEntryCount === 1 ? 'audit entry' : 'audit entries'} for{' '}
+                                {subjectEntryCount === 1
+                                    ? tc('console.audit_entry_b45ffb38')
+                                    : tc('console.audit_entries_2e2e75ab')}
+                                {tc('console.for_a3fa3964')}{' '}
                                 <span className="mono">{subjectId}</span>.
                             </p>
                             {/*
@@ -220,7 +237,9 @@ export default function Exports({
                                 every sequence, which is the sweep this screen exists without.
                             */}
                             <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
-                                An upper bound — the file itself is exact and deduplicated.
+                                {tc(
+                                    'console.an_upper_bound_the_file_itself_is_exact_and__1fc09fe1',
+                                )}
                             </p>
 
                             <Button
@@ -240,7 +259,9 @@ export default function Exports({
                                 }}
                             >
                                 <Icon name="audit" className="w-4 h-4" />
-                                {building ? 'Building the bundle…' : 'Download the bundle (JSON)'}
+                                {building
+                                    ? tc('console.building_the_bundle_265bc262')
+                                    : tc('console.download_the_bundle_json_ed321ec0')}
                             </Button>
                         </div>
                     )}

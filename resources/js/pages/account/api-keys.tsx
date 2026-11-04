@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -53,6 +54,8 @@ export default function ApiKeys({
     lifetimes,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     // On the flash channel: a credential in a history entry is readable by pressing Back,
     // long after the page that showed it has gone.
     const freshKey = usePage().flash.freshKey;
@@ -74,20 +77,21 @@ export default function ApiKeys({
                         className="w-4 h-4"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    Back to {returnTo.appName}
+                    {tc('console.back_to_1b52b139')}
+                    {returnTo.appName}
                 </a>
             )}
 
             <PageHeader
                 help={help}
-                description="Keys your own scripts and integrations use to call an app's API as you. A key can only do what you can do in that app."
+                description={tc('console.keys_your_own_scripts_and_integrations_use_t_db6b0585')}
             />
 
             {organizations.length > 1 && organizationId !== null && (
                 <div className="max-w-sm">
                     <Field
-                        label="Organization"
-                        hint="A key acts in one organization. Switch to see and create keys in another."
+                        label={tc('console.organization_d764d425')}
+                        hint={tc('console.a_key_acts_in_one_organization_switch_to_see_85f14ccb')}
                     >
                         <Select
                             value={organizationId}
@@ -116,10 +120,15 @@ export default function ApiKeys({
                         color: 'var(--warning-strong)',
                     }}
                 >
-                    The app that sent you here does not offer API keys
-                    {organizationName !== null ? ` in ${organizationName}` : ''}.
-                    {organizations.length > 1 ? ' Try another organization, or ask' : ' Ask'} the
-                    app's support team.
+                    {tc('console.the_app_that_sent_you_here_does_not_offer_ap_ffa3d94b')}
+                    {organizationName !== null
+                        ? tc('console.in_value0_09a02660', { value0: organizationName })
+                        : ''}
+                    .
+                    {organizations.length > 1
+                        ? tc('console.try_another_organization_or_ask_cf2cbb78')
+                        : tc('console.ask_4e90bdc3')}
+                    {tc('console.the_app_s_support_team_f0dda4a2')}
                 </p>
             )}
 
@@ -129,39 +138,50 @@ export default function ApiKeys({
                 <Panel>
                     <EmptyState
                         icon="key"
-                        title="You are not in an organization yet"
-                        description="A key acts inside an organization. Once you join one, you can create keys for its apps here."
+                        title={tc('console.you_are_not_in_an_organization_yet_e107e606')}
+                        description={tc(
+                            'console.a_key_acts_inside_an_organization_once_you_j_3006f74d',
+                        )}
                     />
                 </Panel>
             ) : (
                 <>
                     <Panel
-                        title="Your keys"
+                        title={tc('console.your_keys_debd32b8')}
                         description={
-                            organizationName !== null ? `In ${organizationName}.` : undefined
+                            organizationName !== null
+                                ? tc('console.in_value0_75208618', { value0: organizationName })
+                                : undefined
                         }
                         flush={keys.length > 0}
                     >
                         <AppApiKeyList
                             keys={keys}
                             empty={{
-                                title: 'No keys yet',
-                                description:
-                                    'Keys you create appear here, with when each was last used.',
+                                title: tc('console.no_keys_yet_3e5039d1'),
+                                description: tc(
+                                    'console.keys_you_create_appear_here_with_when_each_w_8c3ff766',
+                                ),
                             }}
-                            consequence="Anything still using this key stops working immediately. This cannot be undone."
+                            consequence={tc(
+                                'console.anything_still_using_this_key_stops_working__dbb577cb',
+                            )}
                         />
                     </Panel>
 
                     <Panel
-                        title="New key"
-                        description="Pick the app and tick only what the key needs. You can create as many keys as you like, one per integration."
+                        title={tc('console.new_key_eda5496b')}
+                        description={tc(
+                            'console.pick_the_app_and_tick_only_what_the_key_need_69b0060d',
+                        )}
                     >
                         {apps.length === 0 ? (
                             <EmptyState
                                 icon="key"
-                                title="No app here offers API keys"
-                                description="An app appears here once it lets its users create keys for its API."
+                                title={tc('console.no_app_here_offers_api_keys_163cd484')}
+                                description={tc(
+                                    'console.an_app_appears_here_once_it_lets_its_users_c_577b44c0',
+                                )}
                             />
                         ) : (
                             <NewKeyForm
@@ -181,6 +201,8 @@ export default function ApiKeys({
 }
 
 function FreshKey({ value, returnTo }: { value: string; returnTo: Props['returnTo'] }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div
             className="rounded-xl border p-4"
@@ -190,7 +212,7 @@ function FreshKey({ value, returnTo }: { value: string; returnTo: Props['returnT
             }}
         >
             <p className="text-sm font-medium" style={{ color: 'var(--success-strong)' }}>
-                Copy your key now — you won't be able to see it again.
+                {tc('console.copy_your_key_now_you_won_t_be_able_to_see_i_36d9f33f')}
             </p>
             <div className="mt-3 flex items-center gap-2">
                 <code
@@ -206,13 +228,14 @@ function FreshKey({ value, returnTo }: { value: string; returnTo: Props['returnT
             </div>
             {returnTo !== null && (
                 <p className="mt-3 text-sm">
-                    Copied it?{' '}
+                    {tc('console.copied_it_b4914b22')}{' '}
                     <a
                         href={returnTo.url}
                         className="font-medium"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Back to {returnTo.appName}
+                        {tc('console.back_to_1b52b139')}
+                        {returnTo.appName}
                     </a>
                 </p>
             )}
@@ -233,6 +256,8 @@ function NewKeyForm({
     lifetimes: KeyLifetimeOption[];
     storeHref: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm<{
         client_id: string;
         organization_id: string;
@@ -271,10 +296,13 @@ function NewKeyForm({
             }}
         >
             <div className="grid gap-3 sm:grid-cols-2 items-start">
-                <Field label="App" error={form.errors.client_id ?? form.errors.organization_id}>
+                <Field
+                    label={tc('console.app_0d04bfeb')}
+                    error={form.errors.client_id ?? form.errors.organization_id}
+                >
                     <Select
                         value={form.data.client_id === '' ? undefined : form.data.client_id}
-                        placeholder="Choose an app…"
+                        placeholder={tc('console.choose_an_app_26c3b615')}
                         onValueChange={(clientId) => {
                             // A permission ticked for one app means nothing in another.
                             form.setData((data) => ({
@@ -291,13 +319,13 @@ function NewKeyForm({
                 </Field>
 
                 <Field
-                    label="Name"
+                    label={tc('console.name_dcd1d522')}
                     error={form.errors.name}
-                    hint="What will use it — you will see this name in the list."
+                    hint={tc('console.what_will_use_it_you_will_see_this_name_in_t_e342fdef')}
                 >
                     <Input
                         name="name"
-                        placeholder="Nightly export"
+                        placeholder={tc('console.nightly_export_3d59e1bf')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
@@ -306,16 +334,20 @@ function NewKeyForm({
 
             {app !== undefined && (
                 <fieldset className="space-y-2">
-                    <legend className="text-sm font-medium">Permissions</legend>
+                    <legend className="text-sm font-medium">
+                        {tc('console.permissions_abccc78c')}
+                    </legend>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Only what you can do in {app.name} yourself is offered. If you lose a
-                        permission later, the key loses it too.
+                        {tc('console.only_what_you_can_do_in_b15893ae')}
+                        {app.name}
+                        {tc('console.yourself_is_offered_if_you_lose_a_permission_502e6987')}
                     </p>
 
                     {app.permissions.length === 0 ? (
                         <p className="text-sm">
-                            You hold no permissions in {app.name}, so a key would identify you to it
-                            and do nothing else.
+                            {tc('console.you_hold_no_permissions_in_be94ed13')}
+                            {app.name}
+                            {tc('console.so_a_key_would_identify_you_to_it_and_do_not_455f0364')}
                         </p>
                     ) : (
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -357,7 +389,7 @@ function NewKeyForm({
                 loading={form.processing}
                 disabled={form.data.client_id === ''}
             >
-                Create key
+                {tc('console.create_key_b6cde903')}
             </Button>
         </form>
     );

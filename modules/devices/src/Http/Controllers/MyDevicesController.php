@@ -59,7 +59,7 @@ final readonly class MyDevicesController extends ConsoleController
 
         $uri = $this->enrolmentUri();
 
-        return $this->page('devices::mine', 'Trusted devices', [
+        return $this->page('devices::mine', __('console.trusted_devices_7d989273'), [
             'help' => HelpProps::for(HelpTopic::TrustedDevices),
             'enrolment' => $uri === null ? null : [
                 'uri' => $uri,
@@ -98,7 +98,7 @@ final readonly class MyDevicesController extends ConsoleController
     {
         $result = $this->act(RemoveMyDevice::class, ['device_id' => $device]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Device removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.device_removed_7dcdb255'));
     }
 
     /**

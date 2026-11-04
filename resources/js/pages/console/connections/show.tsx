@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -74,6 +75,8 @@ export default function ConnectionDetail({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [deleting, setDeleting] = useState(false);
     // The offer is dismissible without a round trip: declining changes nothing on the
     // server, so asking it to remember a "no" would be storing a non-decision.
@@ -102,12 +105,12 @@ export default function ConnectionDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Enterprise SSO" />
+                <Breadcrumb href={indexHref} label={tc('console.enterprise_sso_0f8d7e8e')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{connection.name}</h1>
                     <Pill tone="info">{connection.typeLabel}</Pill>
                     <Badge tone={connection.active ? 'success' : 'neutral'}>
-                        {connection.active ? 'Active' : connection.status}
+                        {connection.active ? tc('console.active_92340695') : connection.status}
                     </Badge>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -115,11 +118,10 @@ export default function ConnectionDetail({
                 </p>
             </div>
 
-            <Panel title="Organization">
+            <Panel title={tc('console.organization_d764d425')}>
                 {connection.environmentOwned ? (
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        This connection belongs to the environment itself — it signs people in and
-                        enrols them in no organization.
+                        {tc('console.this_connection_belongs_to_the_environment_i_543963d3')}
                     </p>
                 ) : organizationHref !== null && organizationName !== null ? (
                     <a
@@ -136,18 +138,24 @@ export default function ConnectionDetail({
 
             {serviceProvider !== null && (
                 <Panel
-                    title="For the identity provider"
+                    title={tc('console.for_the_identity_provider_a61f1667')}
                     description={
                         saml
-                            ? "An identity provider that imports service provider metadata takes this URL instead of the entity ID and ACS URL one at a time. It works before the identity provider's half is filled in."
-                            : 'Register this as an allowed redirect URI at the provider, exactly as shown.'
+                            ? tc('console.an_identity_provider_that_imports_service_pr_9cbb9457')
+                            : tc('console.register_this_as_an_allowed_redirect_uri_at__b537b90c')
                     }
                 >
                     {saml && serviceProvider.sp_metadata_url !== undefined && (
-                        <CopyRow label="SP metadata URL" value={serviceProvider.sp_metadata_url} />
+                        <CopyRow
+                            label={tc('console.sp_metadata_url_0afde9e5')}
+                            value={serviceProvider.sp_metadata_url}
+                        />
                     )}
                     {!saml && serviceProvider.redirect_uri !== undefined && (
-                        <CopyRow label="Redirect URI" value={serviceProvider.redirect_uri} />
+                        <CopyRow
+                            label={tc('console.redirect_uri_98e548b4')}
+                            value={serviceProvider.redirect_uri}
+                        />
                     )}
                 </Panel>
             )}
@@ -156,8 +164,10 @@ export default function ConnectionDetail({
                 <div className="card">
                     <EmptyState
                         icon="connections"
-                        title="Single sign-on is an Enterprise feature"
-                        description="This connection can't be changed while the organization is off the Enterprise plan. Contact your account team to enable it."
+                        title={tc('console.single_sign_on_is_an_enterprise_feature_26381303')}
+                        description={tc(
+                            'console.this_connection_can_t_be_changed_while_the_o_d78c4f4e',
+                        )}
                     />
                 </div>
             ) : (
@@ -183,38 +193,42 @@ export default function ConnectionDetail({
                             }}
                         >
                             <h2 className="text-base font-semibold">
-                                Make {connection.name} the only way in?
+                                {tc('console.make_98d908cf')}
+                                {connection.name}
+                                {tc('console.the_only_way_in_e6fa9742')}
                             </h2>
                             <p
                                 className="mt-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                {organizationName ?? 'This organization'} can sign in with passwords
-                                or with this connection. Requiring single sign-on refuses every
-                                other way in, so nothing already issued can go around the provider
-                                you just set up. Most companies that connect an IdP want this — but
-                                read what it does first.
+                                {organizationName ?? tc('console.this_organization_bdaad4df')}
+                                {tc(
+                                    'console.can_sign_in_with_passwords_or_with_this_conn_3b3a2b63',
+                                )}
                             </p>
                             <ul
                                 className="mt-3 space-y-1 text-sm list-disc pl-5"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
                                 <li>
-                                    Passwords, emailed sign-in links, passkeys and social buttons
-                                    all stop working for everyone in this organization, immediately.
-                                </li>
-                                <li>
-                                    Every session in this organization ends —{' '}
-                                    <strong>including yours</strong>.
-                                </li>
-                                <li>
-                                    You can turn it off again on{' '}
-                                    {policyHref === null ? (
-                                        'Authentication policy'
-                                    ) : (
-                                        <Link href={policyHref}>Authentication policy</Link>
+                                    {tc(
+                                        'console.passwords_emailed_sign_in_links_passkeys_and_6330b064',
                                     )}
-                                    ; sessions that ended stay ended.
+                                </li>
+                                <li>
+                                    {tc('console.every_session_in_this_organization_ends_8366a580')}{' '}
+                                    <strong>{tc('console.including_yours_1124fe26')}</strong>.
+                                </li>
+                                <li>
+                                    {tc('console.you_can_turn_it_off_again_on_283cb026')}{' '}
+                                    {policyHref === null ? (
+                                        tc('console.authentication_policy_07e21daf')
+                                    ) : (
+                                        <Link href={policyHref}>
+                                            {tc('console.authentication_policy_07e21daf')}
+                                        </Link>
+                                    )}
+                                    {tc('console.sessions_that_ended_stay_ended_01865c60')}
                                 </li>
                             </ul>
                             <div className="mt-4 flex flex-wrap gap-2">
@@ -222,10 +236,10 @@ export default function ConnectionDetail({
                                     variant="primary"
                                     onClick={() => router.post(urls.requireSso)}
                                 >
-                                    Require single sign-on
+                                    {tc('console.require_single_sign_on_fb0a46eb')}
                                 </Button>
                                 <Button onClick={() => setOfferDeclined(true)}>
-                                    Not now — keep passwords working
+                                    {tc('console.not_now_keep_passwords_working_a4fd7ba8')}
                                 </Button>
                             </div>
                         </div>
@@ -247,16 +261,17 @@ export default function ConnectionDetail({
                             >
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                                     <strong style={{ color: 'var(--foreground)' }}>
-                                        Single sign-on is required
+                                        {tc('console.single_sign_on_is_required_05f721c2')}
                                     </strong>{' '}
-                                    for {organizationName ?? 'this organization'} — every other way
-                                    in is refused.
+                                    {tc('console.for_21f4c696')}
+                                    {organizationName ?? tc('console.this_organization_cab32fc4')}
+                                    {tc('console.every_other_way_in_is_refused_73fc032d')}
                                 </p>
                             </div>
                         )
                     )}
 
-                    <Panel title="Configuration">
+                    <Panel title={tc('console.configuration_b332c349')}>
                         <form
                             className="space-y-4"
                             onSubmit={(event) => {
@@ -264,7 +279,10 @@ export default function ConnectionDetail({
                                 form.patch(urls.update, { preserveScroll: true });
                             }}
                         >
-                            <Field label="Connection name" error={form.errors.name}>
+                            <Field
+                                label={tc('console.connection_name_686d4d5d')}
+                                error={form.errors.name}
+                            >
                                 <Input
                                     name="name"
                                     value={form.data.name}
@@ -276,7 +294,7 @@ export default function ConnectionDetail({
                                 <>
                                     <div className="grid gap-4 sm:grid-cols-2">
                                         <Field
-                                            label="IdP entity ID"
+                                            label={tc('console.idp_entity_id_81723d4d')}
                                             error={form.errors.idp_entity_id}
                                         >
                                             <Input
@@ -293,7 +311,10 @@ export default function ConnectionDetail({
                                             />
                                         </Field>
 
-                                        <Field label="IdP SSO URL" error={form.errors.idp_sso_url}>
+                                        <Field
+                                            label={tc('console.idp_sso_url_6103a4d2')}
+                                            error={form.errors.idp_sso_url}
+                                        >
                                             <Input
                                                 name="idp_sso_url"
                                                 type="url"
@@ -307,7 +328,7 @@ export default function ConnectionDetail({
                                         </Field>
 
                                         <Field
-                                            label="SP entity ID"
+                                            label={tc('console.sp_entity_id_4ff9267b')}
                                             error={form.errors.sp_entity_id}
                                         >
                                             <Input
@@ -321,7 +342,10 @@ export default function ConnectionDetail({
                                             />
                                         </Field>
 
-                                        <Field label="SP ACS URL" error={form.errors.sp_acs_url}>
+                                        <Field
+                                            label={tc('console.sp_acs_url_6abb6cb5')}
+                                            error={form.errors.sp_acs_url}
+                                        >
                                             <Input
                                                 name="sp_acs_url"
                                                 type="url"
@@ -336,7 +360,7 @@ export default function ConnectionDetail({
                                     </div>
 
                                     <SecretField
-                                        label="IdP signing certificate"
+                                        label={tc('console.idp_signing_certificate_c84000cd')}
                                         name="idp_x509cert"
                                         rows={4}
                                         value={form.data.idp_x509cert}
@@ -347,7 +371,10 @@ export default function ConnectionDetail({
                             ) : (
                                 <>
                                     <div className="grid gap-4 sm:grid-cols-2">
-                                        <Field label="Issuer" error={form.errors.issuer}>
+                                        <Field
+                                            label={tc('console.issuer_39e02c46')}
+                                            error={form.errors.issuer}
+                                        >
                                             <Input
                                                 name="issuer"
                                                 type="url"
@@ -360,7 +387,10 @@ export default function ConnectionDetail({
                                             />
                                         </Field>
 
-                                        <Field label="Client ID" error={form.errors.client_id}>
+                                        <Field
+                                            label={tc('console.client_id_8726db01')}
+                                            error={form.errors.client_id}
+                                        >
                                             <Input
                                                 name="client_id"
                                                 className="mono"
@@ -374,7 +404,7 @@ export default function ConnectionDetail({
                                     </div>
 
                                     <SecretField
-                                        label="Client secret"
+                                        label={tc('console.client_secret_4aded5fa')}
                                         name="client_secret"
                                         value={form.data.client_secret}
                                         error={form.errors.client_secret}
@@ -382,9 +412,11 @@ export default function ConnectionDetail({
                                     />
 
                                     <SecretField
-                                        label="Signing key"
+                                        label={tc('console.signing_key_49395b95')}
                                         optional
-                                        hint="Only for a provider that does not publish its signing keys (jwks_uri) in its discovery document — they are read from there otherwise, rotations included. A PEM public key. Stored sealed and never shown again; leave it empty to keep the current one."
+                                        hint={tc(
+                                            'console.only_for_a_provider_that_does_not_publish_it_e4c5eb2d',
+                                        )}
                                         name="signing_key"
                                         rows={3}
                                         value={form.data.signing_key}
@@ -395,22 +427,30 @@ export default function ConnectionDetail({
                             )}
 
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                Save changes
+                                {tc('console.save_changes_dd0ae7a5')}
                             </Button>
                         </form>
                     </Panel>
 
                     <Panel
-                        title={connection.active ? 'Disable connection' : 'Activate connection'}
+                        title={
+                            connection.active
+                                ? tc('console.disable_connection_e9637201')
+                                : tc('console.activate_connection_56c85223')
+                        }
                         description={
                             connection.active
-                                ? 'People who sign in through this provider stop being able to. Anyone with a password here can still get in — unless single sign-on is required.'
-                                : 'Nothing changes for anybody until this is on. Test a sign-in first.'
+                                ? tc(
+                                      'console.people_who_sign_in_through_this_provider_sto_a0fd1fd9',
+                                  )
+                                : tc(
+                                      'console.nothing_changes_for_anybody_until_this_is_on_9eb3389b',
+                                  )
                         }
                     >
                         {connection.active ? (
                             <Button size="sm" onClick={() => router.post(urls.disable)}>
-                                Disable
+                                {tc('console.disable_b7e3e4aa')}
                             </Button>
                         ) : (
                             <Button
@@ -418,17 +458,19 @@ export default function ConnectionDetail({
                                 variant="primary"
                                 onClick={() => router.post(urls.activate)}
                             >
-                                Activate
+                                {tc('console.activate_24433c70')}
                             </Button>
                         )}
                     </Panel>
 
                     <Panel
-                        title="Delete connection"
-                        description="People who rely on this provider lose their way in. This cannot be undone."
+                        title={tc('console.delete_connection_e960651b')}
+                        description={tc(
+                            'console.people_who_rely_on_this_provider_lose_their__10f27c15',
+                        )}
                     >
                         <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
-                            Delete connection
+                            {tc('console.delete_connection_e960651b')}
                         </Button>
                     </Panel>
                 </>
@@ -438,7 +480,7 @@ export default function ConnectionDetail({
                 open={deleting}
                 onOpenChange={setDeleting}
                 name={connection.name}
-                consequence="Anybody who signs in through this provider loses their way in immediately. This cannot be undone."
+                consequence={tc('console.anybody_who_signs_in_through_this_provider_l_87286550')}
                 onConfirm={() => {
                     setDeleting(false);
                     router.delete(urls.destroy);
@@ -462,7 +504,7 @@ function SecretField({
     value,
     error,
     optional = false,
-    hint = 'Stored sealed and never shown again. Leave it empty to keep the current one.',
+    hint: suppliedHint,
     onChange,
 }: {
     label: string;
@@ -474,6 +516,10 @@ function SecretField({
     hint?: string;
     onChange: (value: string) => void;
 }) {
+    const { t: tc } = useTranslator();
+    const hint =
+        suppliedHint ?? tc('console.stored_sealed_and_never_shown_again_leave_it_72338e4f');
+
     return (
         <Field label={label} optional={optional} hint={hint} error={error}>
             {rows === undefined ? (
@@ -482,7 +528,7 @@ function SecretField({
                     type="password"
                     className="mono"
                     autoComplete="off"
-                    placeholder="Unchanged"
+                    placeholder={tc('console.unchanged_88b6f742')}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
                 />
@@ -492,7 +538,7 @@ function SecretField({
                     rows={rows}
                     className="mono"
                     spellCheck={false}
-                    placeholder="Unchanged"
+                    placeholder={tc('console.unchanged_88b6f742')}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
                 />
@@ -503,6 +549,7 @@ function SecretField({
 
 /** A value somebody carries into another admin screen: named, in full, with a copy button. */
 function CopyRow({ label, value }: { label: string; value: string }) {
+    const { t: tc } = useTranslator();
     return (
         <div>
             <p className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
@@ -515,7 +562,10 @@ function CopyRow({ label, value }: { label: string; value: string }) {
                 >
                     {value}
                 </code>
-                <CopyButton value={value} aria-label={`Copy ${label}`} />
+                <CopyButton
+                    value={value}
+                    aria-label={tc('console.copy_value0_bf3789b6', { value0: label })}
+                />
             </div>
         </div>
     );

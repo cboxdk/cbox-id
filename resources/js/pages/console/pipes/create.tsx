@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -29,6 +30,8 @@ type Props = PageProps<{
  * never shown again.
  */
 export default function PipeCreate({ providers, selected, indexHref, storeHref }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         provider: selected ?? providers[0]?.key ?? '',
         client_id: '',
@@ -42,11 +45,11 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
     if (providers.length === 0) {
         return (
             <div className="space-y-4">
-                <h1 className="cbx-page-title">New pipe</h1>
+                <h1 className="cbx-page-title">{tc('console.new_pipe_16b266b0')}</h1>
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Every provider is already set up.{' '}
+                    {tc('console.every_provider_is_already_set_up_a9aea457')}{' '}
                     <Link href={indexHref} className="underline">
-                        Back to Pipes
+                        {tc('console.back_to_pipes_9e27609f')}
                     </Link>
                 </p>
             </div>
@@ -56,8 +59,8 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Pipes" />
-                <h1 className="cbx-page-title mt-2">New pipe</h1>
+                <Breadcrumb href={indexHref} label={tc('console.pipes_685afe34')} />
+                <h1 className="cbx-page-title mt-2">{tc('console.new_pipe_16b266b0')}</h1>
             </div>
 
             <form
@@ -67,8 +70,8 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
                     form.post(storeHref, { onFinish: () => form.setData('client_secret', '') });
                 }}
             >
-                <Panel title="Provider">
-                    <Field label="Provider" error={errors.provider}>
+                <Panel title={tc('console.provider_472590ae')}>
+                    <Field label={tc('console.provider_472590ae')} error={errors.provider}>
                         <Select
                             name="provider"
                             value={form.data.provider}
@@ -80,11 +83,15 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
 
                 {entry !== null && (
                     <Panel
-                        title={`Create the OAuth app at ${entry.name}`}
+                        title={tc('console.create_the_oauth_app_at_value0_3cdfe0ef', {
+                            value0: entry.name,
+                        })}
                         description={
                             entry.refreshable
-                                ? 'Tokens are refreshed here before they expire.'
-                                : 'Tokens from this provider do not expire.'
+                                ? tc(
+                                      'console.tokens_are_refreshed_here_before_they_expire_0bb22b40',
+                                  )
+                                : tc('console.tokens_from_this_provider_do_not_expire_45988f31')
                         }
                     >
                         <ol className="list-decimal space-y-1.5 pl-5 text-sm">
@@ -94,8 +101,10 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
                         </ol>
                         <div className="mt-4">
                             <Field
-                                label="Redirect URI"
-                                hint="Register exactly this — scheme, host and path."
+                                label={tc('console.redirect_uri_98e548b4')}
+                                hint={tc(
+                                    'console.register_exactly_this_scheme_host_and_path_935c6de2',
+                                )}
                             >
                                 <div className="flex items-center gap-2">
                                     <Input readOnly className="mono" value={entry.redirectUri} />
@@ -111,7 +120,8 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
                                     rel="noreferrer"
                                     className="underline"
                                 >
-                                    {entry.name} documentation
+                                    {entry.name}
+                                    {tc('console.documentation_c844e7c8')}
                                 </a>
                             </p>
                         )}
@@ -119,11 +129,13 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
                 )}
 
                 <Panel
-                    title="Credentials"
-                    description="The client secret is sealed when you save and never shown again."
+                    title={tc('console.credentials_d48a617c')}
+                    description={tc(
+                        'console.the_client_secret_is_sealed_when_you_save_an_9631bbe0',
+                    )}
                 >
                     <div className="space-y-4">
-                        <Field label="Client ID" error={errors.client_id}>
+                        <Field label={tc('console.client_id_8726db01')} error={errors.client_id}>
                             <Input
                                 name="client_id"
                                 className="mono"
@@ -132,7 +144,10 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
                                 onChange={(event) => form.setData('client_id', event.target.value)}
                             />
                         </Field>
-                        <Field label="Client secret" error={errors.client_secret}>
+                        <Field
+                            label={tc('console.client_secret_4aded5fa')}
+                            error={errors.client_secret}
+                        >
                             <Input
                                 name="client_secret"
                                 type="password"
@@ -145,11 +160,13 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
                             />
                         </Field>
                         <Field
-                            label="Scopes"
+                            label={tc('console.scopes_0d5644ff')}
                             hint={
                                 entry === null || entry.defaultScopes.length === 0
-                                    ? 'Separated by spaces.'
-                                    : `Separated by spaces. Left empty: ${entry.defaultScopes.join(' ')}`
+                                    ? tc('console.separated_by_spaces_19d6b908')
+                                    : tc('console.separated_by_spaces_left_empty_value0_2308c8ed', {
+                                          value0: entry.defaultScopes.join(' '),
+                                      })
                             }
                             error={errors.scopes}
                         >
@@ -188,10 +205,10 @@ export default function PipeCreate({ providers, selected, indexHref, storeHref }
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save pipe
+                        {tc('console.save_pipe_130c76d3')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

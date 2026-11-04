@@ -53,11 +53,11 @@ final class OrgRoles
     public static function description(MembershipRole $role): string
     {
         return match ($role) {
-            MembershipRole::Owner => 'Everything an admin can do, and the only one who can delete the organization or hand it over.',
-            MembershipRole::Admin => 'Manages people, apps, roles and settings for this organization.',
-            MembershipRole::Developer => 'Works with the organization\'s apps; no say over its people.',
-            MembershipRole::Member => 'Signs in to the organization\'s apps. No console administration.',
-            MembershipRole::Viewer => 'Read-only.',
+            MembershipRole::Owner => __('console.everything_an_admin_can_do_and_the_only_one__170b2916'),
+            MembershipRole::Admin => __('console.manages_people_apps_roles_and_settings_for_t_4cb5b035'),
+            MembershipRole::Developer => __('console.works_with_the_organization_s_apps_no_say_ov_9bb95fed'),
+            MembershipRole::Member => __('console.signs_in_to_the_organization_s_apps_no_conso_29e90a33'),
+            MembershipRole::Viewer => __('console.read_only_64b240a6'),
         };
     }
 

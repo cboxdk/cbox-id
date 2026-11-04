@@ -37,7 +37,7 @@ final class StoreEnvironmentRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return ['name' => 'environment name'];
+        return ['name' => __('console.environment_name_98137d43')];
     }
 
     public function name(): string

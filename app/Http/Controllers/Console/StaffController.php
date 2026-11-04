@@ -12,6 +12,7 @@ use App\Http\Requests\Console\GrantStaffRoleRequest;
 use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Staff\Contracts\StaffRoles;
 use App\Platform\Staff\ValueObjects\StaffGrant;
 use Cbox\Id\Identity\Models\User;
@@ -36,7 +37,7 @@ final readonly class StaffController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/staff/index', Vocabulary::ADMINS_AND_SUPPORT, [
+        return $this->page('environment/staff/index', ConsoleStrings::text(Vocabulary::ADMINS_AND_SUPPORT), [
             'help' => HelpProps::for(HelpTopic::Staff),
             'grants' => array_map(static fn (StaffGrant $grant): array => [
                 'userId' => $grant->userId,
@@ -63,13 +64,13 @@ final readonly class StaffController extends ConsoleController
         $user = User::query()->where('email', $request->email())->first();
 
         if ($user === null) {
-            return back()->withInput()->withErrors(['email' => 'Nobody in this environment uses that address.']);
+            return back()->withInput()->withErrors(['email' => __('console.nobody_in_this_environment_uses_that_address_d783f5b0')]);
         }
 
         // Asked of the database, not of the picker that drew the option: a posted id is
         // anything a client chooses to send.
         if (! $staff->isGrantable($request->roleId())) {
-            return back()->withInput()->withErrors(['role' => 'That role cannot be granted across the environment.']);
+            return back()->withInput()->withErrors(['role' => __('console.that_role_cannot_be_granted_across_the_envir_fc38a84c')]);
         }
 
         // The same action the user page and the management API grant one with, so
@@ -78,7 +79,7 @@ final readonly class StaffController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Admin & support role granted to '.$user->email.'.');
+            : back()->with('status', __('console.admin_support_role_granted_to_f35c658c').$user->email.'.');
     }
 
     public function destroy(string $user, string $role): RedirectResponse
@@ -87,7 +88,7 @@ final readonly class StaffController extends ConsoleController
 
         $result = $this->act(RevokeStaffRole::class, ['id' => $user, 'role_id' => $role], ['role_id' => 'role'], 'role');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Admin & support role taken back.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.admin_support_role_taken_back_b60bab30'));
     }
 
     private function assertEnvironmentAdmin(): void

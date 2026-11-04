@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { createContext, type ReactNode, useContext, useId, useMemo } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -101,6 +102,8 @@ export function Field({
     className,
     children,
 }: FieldProps) {
+    const { t: tc } = useUiTranslator();
+
     const generated = useId();
     const id = statedId ?? generated;
     const controlId = statedId ?? `${id}-control`;
@@ -123,7 +126,9 @@ export function Field({
         <FieldContext.Provider value={context}>
             <div className={cn(className)}>
                 <div
-                    className={cn(labelAction !== undefined && 'flex items-center justify-between gap-3')}
+                    className={cn(
+                        labelAction !== undefined && 'flex items-center justify-between gap-3',
+                    )}
                 >
                     <label
                         className="label"
@@ -137,14 +142,16 @@ export function Field({
                                 <span aria-hidden="true" style={{ color: 'var(--destructive)' }}>
                                     *
                                 </span>
-                                <span className="sr-only">(required)</span>
+                                <span className="sr-only">
+                                    {tc('console.required_89db19f6', '(required)')}
+                                </span>
                             </>
                         )}
                         {optional && (
                             <>
                                 {' '}
                                 <span style={{ color: 'var(--faint)', fontWeight: 400 }}>
-                                    (optional)
+                                    {tc('console.optional_0059798b', '(optional)')}
                                 </span>
                             </>
                         )}

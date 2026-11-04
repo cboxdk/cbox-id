@@ -46,15 +46,20 @@ export class AppErrorBoundary extends Component<Props, State> {
             return this.props.children;
         }
 
+        const danish = typeof document !== 'undefined' && document.documentElement.lang === 'da';
+
         return (
             // `data-app-error` is how the docs-screenshot run (tests/Browser/DocsScreenshotsTest.php)
             // tells this fallback from the page it was meant to photograph.
             <main id="main-content" className="auth-shell" data-app-error="">
                 <div className="card" style={{ maxWidth: '32rem', padding: '2rem' }}>
-                    <h1 className="cbx-page-title">Something went wrong</h1>
+                    <h1 className="cbx-page-title">
+                        {danish ? 'Der opstod en fejl' : 'Something went wrong'}
+                    </h1>
                     <p className="cbx-page-desc">
-                        This page could not be displayed. Reloading it starts over from the
-                        server, which resolves most causes.
+                        {danish
+                            ? 'Siden kunne ikke vises. Genindlæs den for at hente den fra serveren igen. Det løser de fleste fejl.'
+                            : 'This page could not be displayed. Reloading it starts over from the server, which resolves most causes.'}
                     </p>
 
                     {import.meta.env.DEV && (
@@ -79,10 +84,10 @@ export class AppErrorBoundary extends Component<Props, State> {
                             className="btn btn-primary"
                             onClick={() => window.location.reload()}
                         >
-                            Reload this page
+                            {danish ? 'Genindlæs siden' : 'Reload this page'}
                         </button>
                         <a className="btn btn-secondary" href="/">
-                            Go to the dashboard
+                            {danish ? 'Gå til dashboardet' : 'Go to the dashboard'}
                         </a>
                     </div>
                 </div>

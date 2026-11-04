@@ -21,6 +21,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\LockoutDefaults;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
@@ -104,7 +105,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $edited = $onEnvironmentPlane ? $baseline : $policies->resolve($this->organizationId());
         $override = $onEnvironmentPlane ? null : $policies->overrideFor($this->organizationId());
 
-        return $this->page('console/auth-policy', Vocabulary::AUTHENTICATION_POLICY, [
+        return $this->page('console/auth-policy', ConsoleStrings::text(Vocabulary::AUTHENTICATION_POLICY), [
             'help' => HelpProps::for(HelpTopic::SignInRules),
             'onEnvironmentPlane' => $onEnvironmentPlane,
             'policy' => self::toProps($edited),
@@ -226,8 +227,8 @@ final readonly class AuthPolicyController extends ConsoleController
         }
 
         return back()->with('status', $enabled
-            ? 'Self-service sign-up is on. People can create an account and their own organization.'
-            : 'Self-service sign-up is off. People join by invitation.');
+            ? __('console.self_service_sign_up_is_on_people_can_create_af9f74f0')
+            : __('console.self_service_sign_up_is_off_people_join_by_i_3a61a734'));
     }
 
     /**
@@ -253,8 +254,8 @@ final readonly class AuthPolicyController extends ConsoleController
         }
 
         return back()->with('status', $input['enabled']
-            ? 'Text-message codes are on for '.count($input['allowed_countries']).' '.(count($input['allowed_countries']) === 1 ? 'country' : 'countries').'.'
-            : 'Text-message codes are off.');
+            ? __('console.text_message_codes_are_on_for_68f4f0cf').count($input['allowed_countries']).' '.(count($input['allowed_countries']) === 1 ? 'country' : 'countries').'.'
+            : __('console.text_message_codes_are_off_1bc7fc7a'));
     }
 
     /**
@@ -279,7 +280,7 @@ final readonly class AuthPolicyController extends ConsoleController
             ...AuthPolicyFields::organizationArray($policy),
         ], self::FIELDS);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Authentication policy saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.authentication_policy_saved_e2467bd0'));
     }
 
     /**
@@ -303,7 +304,7 @@ final readonly class AuthPolicyController extends ConsoleController
             'session_absolute_minutes' => 'sessionAbsoluteMinutes',
         ], 'sessionAbsoluteMinutes', asEnvironment: true);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sign-in methods and sessions saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.sign_in_methods_and_sessions_saved_49b79196'));
     }
 
     /**
@@ -319,11 +320,11 @@ final readonly class AuthPolicyController extends ConsoleController
         // Not reachable from the rendered page; refused anyway, because the property that
         // makes that true is the markup, and markup is not an authorization.
         abort_if($this->editsEnvironment(), 403,
-            'The environment baseline is what organizations inherit; it cannot itself inherit.');
+            __('console.the_environment_baseline_is_what_organizatio_21fbaea3'));
 
         $result = $this->act(InheritSignInPolicy::class, ['organization_id' => $this->organizationId()]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Back to the environment defaults.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.back_to_the_environment_defaults_973ef834'));
     }
 
     /**
@@ -386,12 +387,12 @@ final readonly class AuthPolicyController extends ConsoleController
         if (! $this->editsEnvironment()) {
             $name = $this->scope->organizationName();
 
-            return $name === null || $name === '' ? 'this organization' : $name;
+            return $name === null || $name === '' ? __('console.this_organization_cab32fc4') : $name;
         }
 
         $environment = app(CurrentEnvironment::class)->get();
 
-        return $environment === null ? 'this environment' : $environment->name;
+        return $environment === null ? __('console.this_environment_42756031') : $environment->name;
     }
 
     /**
@@ -479,7 +480,7 @@ final readonly class AuthPolicyController extends ConsoleController
     {
         $environment = app(CurrentEnvironment::class)->get();
 
-        return $environment === null ? 'this environment' : $environment->name;
+        return $environment === null ? __('console.this_environment_42756031') : $environment->name;
     }
 
     /**
@@ -525,9 +526,9 @@ final readonly class AuthPolicyController extends ConsoleController
     private static function mfaOptions(): array
     {
         return [
-            ['value' => MfaRequirement::Off->value, 'label' => 'Not offered'],
-            ['value' => MfaRequirement::Optional->value, 'label' => 'Optional — users may enrol'],
-            ['value' => MfaRequirement::Required->value, 'label' => 'Required — users must enrol to sign in'],
+            ['value' => MfaRequirement::Off->value, 'label' => __('console.not_offered_95a607c4')],
+            ['value' => MfaRequirement::Optional->value, 'label' => __('console.optional_users_may_enrol_b0a65554')],
+            ['value' => MfaRequirement::Required->value, 'label' => __('console.required_users_must_enrol_to_sign_in_c231ab48')],
         ];
     }
 
@@ -535,9 +536,9 @@ final readonly class AuthPolicyController extends ConsoleController
     private static function ssoOptions(): array
     {
         return [
-            ['value' => SsoEnforcement::Off->value, 'label' => 'Passwords and SSO both available'],
-            ['value' => SsoEnforcement::Preferred->value, 'label' => 'Prefer SSO, passwords still work'],
-            ['value' => SsoEnforcement::Required->value, 'label' => 'Require SSO — every other way in is refused'],
+            ['value' => SsoEnforcement::Off->value, 'label' => __('console.passwords_and_sso_both_available_9f2d4e45')],
+            ['value' => SsoEnforcement::Preferred->value, 'label' => __('console.prefer_sso_passwords_still_work_c7e6f315')],
+            ['value' => SsoEnforcement::Required->value, 'label' => __('console.require_sso_every_other_way_in_is_refused_15214c5c')],
         ];
     }
 }

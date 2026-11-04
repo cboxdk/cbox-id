@@ -40,7 +40,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
         // which its operators administer and no workspace owns.
         $progress = $checklist->toProps($admin->workspaceId());
 
-        return $this->page('environment/home', 'Overview', [
+        return $this->page('environment/home', __('console.overview_d4b1ea57'), [
             /*
              * "Get started" on top until it is done or put away — the next step named, the
              * rest a click away. Null once neither applies, so the home page goes back to
@@ -54,7 +54,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
             'help' => HelpProps::for(HelpTopic::EnvironmentOverview),
             'stats' => [
                 [
-                    'label' => 'Organizations',
+                    'label' => __('console.organizations_2730183d'),
                     'icon' => 'building',
                     // Soft-deleted tenants are gone from every list, so counting them here
                     // would make this number disagree with the page it opens.
@@ -64,36 +64,36 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.organizations'),
                 ],
                 [
-                    'label' => 'Users',
+                    'label' => __('console.users_6b0cc904'),
                     'icon' => 'members',
                     'count' => User::query()->where('status', UserStatus::Active->value)->count(),
                     'href' => route('environment.users'),
                 ],
                 [
-                    'label' => 'Enterprise SSO',
+                    'label' => __('console.enterprise_sso_0f8d7e8e'),
                     'icon' => 'fingerprint',
                     // Enterprise connections — not the social providers stored beside them.
                     'count' => Connection::query()->whereNull('provider')->count(),
                     'href' => route('environment.connections'),
                 ],
                 [
-                    'label' => 'Applications',
+                    'label' => __('console.applications_98e33b0f'),
                     'icon' => 'code',
                     'count' => Client::query()->count(),
                     'href' => route('environment.clients'),
                 ],
                 [
-                    'label' => 'Directory Sync',
+                    'label' => __('console.directory_sync_ea18bba8'),
                     'icon' => 'directory',
                     'count' => Directory::query()->count(),
                     'href' => route('environment.directories'),
                 ],
             ],
             'quickActions' => [
-                ['label' => 'New organization', 'href' => route('environment.organizations.create')],
-                ['label' => 'New user', 'href' => route('environment.users.create')],
-                ['label' => 'New SSO connection', 'href' => route('environment.connections.create')],
-                ['label' => 'New app', 'href' => route('environment.clients.create')],
+                ['label' => __('console.new_organization_62e34b70'), 'href' => route('environment.organizations.create')],
+                ['label' => __('console.new_user_6384ffa7'), 'href' => route('environment.users.create')],
+                ['label' => __('console.new_sso_connection_49ecf1f1'), 'href' => route('environment.connections.create')],
+                ['label' => __('console.new_app_747f1473'), 'href' => route('environment.clients.create')],
             ],
         ]);
     }

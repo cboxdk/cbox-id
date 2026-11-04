@@ -8,6 +8,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Kernel\Usage\Contracts\UsageMeter;
 use Inertia\Response;
 
@@ -94,12 +95,12 @@ final readonly class UsageController extends ConsoleController
                 'key' => $key,
                 // The raw key stays beside the label everywhere it is shown: the person
                 // reading this may also be the one who has to go and find it in the meter.
-                'label' => self::LABELS[$key] ?? ucfirst(str_replace(['auth.', '_'], ['', ' '], $key)),
+                'label' => ConsoleStrings::text(self::LABELS[$key] ?? ucfirst(str_replace(['auth.', '_'], ['', ' '], $key))),
                 'total' => (int) $total,
             ];
         }
 
-        return $this->page('console/usage', 'Usage', [
+        return $this->page('console/usage', __('console.usage_8d59829c'), [
             'organization' => $environmentWide ? null : app(CurrentUser::class)->organization()?->name,
             'environmentWide' => $environmentWide,
             'metrics' => $metrics,

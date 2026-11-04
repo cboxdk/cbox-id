@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -77,17 +78,28 @@ export default function FineGrainedAuthorization({
     storeTupleHref,
     destroyTupleHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     return (
         <>
             <PageHeader
                 help={help}
-                description="Your app's own access model: resource types, the relations on each, and how they inherit. Your app writes tuples — who relates to what — and asks checks on every request."
-                badge={schema.defined ? <Badge>v{schema.version}</Badge> : undefined}
+                description={tc('console.your_app_s_own_access_model_resource_types_t_3dddc87d')}
+                badge={
+                    schema.defined ? (
+                        <Badge>
+                            {tc('console.v_4c94485e')}
+                            {schema.version}
+                        </Badge>
+                    ) : undefined
+                }
                 actions={
                     <Button asChild variant="primary">
                         <Link href={schemaHref}>
                             <Icon name="pencil" className="w-4 h-4" />
-                            {schema.defined ? 'Edit schema' : 'Define a schema'}
+                            {schema.defined
+                                ? tc('console.edit_schema_8acbc598')
+                                : tc('console.define_a_schema_f9a49822')}
                         </Link>
                     </Button>
                 }
@@ -102,12 +114,14 @@ export default function FineGrainedAuthorization({
                             <Button asChild variant="primary">
                                 <Link href={schemaHref}>
                                     <Icon name="pencil" className="w-4 h-4" />
-                                    Define a schema
+                                    {tc('console.define_a_schema_f9a49822')}
                                 </Link>
                             </Button>
                         }
-                        title="No schema yet"
-                        description="Start from the documents-in-folders example: owners, editors and viewers, with a folder's access inherited by everything in it. Tuples and checks need a schema first."
+                        title={tc('console.no_schema_yet_400a4cc2')}
+                        description={tc(
+                            'console.start_from_the_documents_in_folders_example__ca2a0af5',
+                        )}
                     />
                 </div>
             ) : (
@@ -133,13 +147,19 @@ export default function FineGrainedAuthorization({
 }
 
 function SchemaSummary({ schema }: { schema: Props['schema'] }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <section className="mt-6">
             <div className="flex items-baseline gap-3">
-                <h2 className="text-sm font-semibold">Schema</h2>
+                <h2 className="text-sm font-semibold">{tc('console.schema_07b091a3')}</h2>
                 {schema.updatedAt !== null && (
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        Saved {relativeTime(schema.updatedAt)} · revision{' '}
+                        {tc('console.saved_3fb96660')}
+                        {relativeTime(schema.updatedAt, locale)}
+                        {tc('console.revision_8ba705b8')}{' '}
                         <span className="mono">{schema.consistencyToken}</span>
                     </span>
                 )}
@@ -150,7 +170,7 @@ function SchemaSummary({ schema }: { schema: Props['schema'] }) {
                         <p className="mono text-sm font-semibold">{type.name}</p>
                         {type.relations.length === 0 ? (
                             <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                                No relations — only ever a subject.
+                                {tc('console.no_relations_only_ever_a_subject_70ab685e')}
                             </p>
                         ) : (
                             <dl className="mt-2 grid gap-1">
@@ -175,6 +195,8 @@ function SchemaSummary({ schema }: { schema: Props['schema'] }) {
 }
 
 function Playground({ check, checkHref }: { check: CheckState; checkHref: string }) {
+    const { t: tc } = useTranslator();
+
     const [resource, setResource] = useState(check.resource);
     const [relation, setRelation] = useState(check.relation);
     const [subject, setSubject] = useState(check.subject);
@@ -182,11 +204,11 @@ function Playground({ check, checkHref }: { check: CheckState; checkHref: string
 
     return (
         <section className="mt-10 card p-5">
-            <h2 className="text-sm font-semibold">Check</h2>
+            <h2 className="text-sm font-semibold">{tc('console.check_9d60841e')}</h2>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                Asked exactly as your app asks it (
-                <span className="mono">GET /api/v1/fga/check</span>), through every inheritance the
-                schema defines.
+                {tc('console.asked_exactly_as_your_app_asks_it_d44c5ec2')}
+                <span className="mono">{tc('console.get_api_v1_fga_check_267d7f52')}</span>
+                {tc('console.through_every_inheritance_the_schema_defines_4ec872d5')}
             </p>
             <form
                 className="mt-4 grid gap-3 md:grid-cols-[1fr_10rem_1fr_auto] md:items-end"
@@ -204,37 +226,43 @@ function Playground({ check, checkHref }: { check: CheckState; checkHref: string
                     );
                 }}
             >
-                <Field label="Resource" hint="type:id">
+                <Field
+                    label={tc('console.resource_eb7a842f')}
+                    hint={tc('console.type_id_09c21e99')}
+                >
                     <Input
                         className="mono"
                         value={resource}
-                        placeholder="document:readme"
+                        placeholder={tc('console.document_readme_29e90756')}
                         onChange={(event) => setResource(event.target.value)}
                     />
                 </Field>
-                <Field label="Relation">
+                <Field label={tc('console.relation_1367485d')}>
                     <Input
                         className="mono"
                         value={relation}
-                        placeholder="viewer"
+                        placeholder={tc('console.viewer_d35ca505')}
                         onChange={(event) => setRelation(event.target.value)}
                     />
                 </Field>
-                <Field label="Subject" hint="type:id, or type:id#relation for a group">
+                <Field
+                    label={tc('console.subject_68971283')}
+                    hint={tc('console.type_id_or_type_id_relation_for_a_group_363e3da0')}
+                >
                     <Input
                         className="mono"
                         value={subject}
-                        placeholder="user:alice"
+                        placeholder={tc('console.user_alice_dabd1db8')}
                         onChange={(event) => setSubject(event.target.value)}
                     />
                 </Field>
                 <Button type="submit" variant="primary">
-                    Check
+                    {tc('console.check_9d60841e')}
                 </Button>
                 <Field
-                    label="At least as fresh as"
+                    label={tc('console.at_least_as_fresh_as_bb83225d')}
                     optional
-                    hint="A consistency token a write returned."
+                    hint={tc('console.a_consistency_token_a_write_returned_c5751c5a')}
                 >
                     <Input
                         className="mono"
@@ -251,15 +279,23 @@ function Playground({ check, checkHref }: { check: CheckState; checkHref: string
                     ) : (
                         <p className="flex flex-wrap items-center gap-2 text-sm">
                             <Badge tone={check.allowed === true ? 'success' : 'danger'}>
-                                {check.allowed === true ? 'Allowed' : 'Denied'}
+                                {check.allowed === true
+                                    ? tc('console.allowed_1bb201d1')
+                                    : tc('console.denied_da404deb')}
                             </Badge>
                             <span className="mono">
-                                {check.subject} {check.allowed === true ? 'has' : 'does not have'}{' '}
-                                {check.relation} on {check.resource}
+                                {check.subject}{' '}
+                                {check.allowed === true
+                                    ? tc('console.has_9150c74c')
+                                    : tc('console.does_not_have_6f862855')}{' '}
+                                {check.relation}
+                                {tc('console.on_0f580db4')}
+                                {check.resource}
                             </span>
                             {check.decidedAt !== null && (
                                 <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                    at revision <span className="mono">{check.decidedAt}</span>
+                                    {tc('console.at_revision_d2c4ee8c')}
+                                    <span className="mono">{check.decidedAt}</span>
                                 </span>
                             )}
                         </p>
@@ -288,15 +324,17 @@ function Tuples({
     | 'storeTupleHref'
     | 'destroyTupleHref'
 >) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ tuple: '' });
     const [resource, setResource] = useState(filters.resource);
     const [subject, setSubject] = useState(filters.subject);
 
     return (
         <section className="mt-10">
-            <h2 className="text-sm font-semibold">Tuples</h2>
+            <h2 className="text-sm font-semibold">{tc('console.tuples_8e21e2d6')}</h2>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                The facts your app wrote. What they add up to is what a check answers.
+                {tc('console.the_facts_your_app_wrote_what_they_add_up_to_3240d92d')}
             </p>
 
             <form
@@ -310,20 +348,20 @@ function Tuples({
                 }}
             >
                 <Field
-                    label="Write a tuple"
+                    label={tc('console.write_a_tuple_0f0a6dca')}
                     error={form.errors.tuple}
-                    hint="resource#relation@subject — e.g. document:readme#viewer@group:eng#member"
+                    hint={tc('console.resource_relation_subject_e_g_document_readm_3c478660')}
                 >
                     <Input
                         className="mono"
                         value={form.data.tuple}
-                        placeholder="document:readme#viewer@user:alice"
+                        placeholder={tc('console.document_readme_viewer_user_alice_f9405db5')}
                         onChange={(event) => form.setData('tuple', event.target.value)}
                     />
                 </Field>
                 <Button type="submit" loading={form.processing} disabled={form.data.tuple === ''}>
                     <Icon name="plus" className="w-4 h-4" />
-                    Write
+                    {tc('console.write_3f00927a')}
                 </Button>
             </form>
 
@@ -338,23 +376,29 @@ function Tuples({
                     );
                 }}
             >
-                <Field label="Resource" hint="type or type:id">
+                <Field
+                    label={tc('console.resource_eb7a842f')}
+                    hint={tc('console.type_or_type_id_a1a0604f')}
+                >
                     <Input
                         className="mono"
                         value={resource}
-                        placeholder="document:readme"
+                        placeholder={tc('console.document_readme_29e90756')}
                         onChange={(event) => setResource(event.target.value)}
                     />
                 </Field>
-                <Field label="Subject" hint="type, type:id or type:id#relation">
+                <Field
+                    label={tc('console.subject_68971283')}
+                    hint={tc('console.type_type_id_or_type_id_relation_d5306ef0')}
+                >
                     <Input
                         className="mono"
                         value={subject}
-                        placeholder="user:alice"
+                        placeholder={tc('console.user_alice_dabd1db8')}
                         onChange={(event) => setSubject(event.target.value)}
                     />
                 </Field>
-                <Button type="submit">Filter</Button>
+                <Button type="submit">{tc('console.filter_638e249f')}</Button>
             </form>
 
             {tuples.length === 0 ? (
@@ -364,10 +408,12 @@ function Tuples({
                         equivalent="fga.tuples.write"
                         title={
                             filters.resource !== '' || filters.subject !== ''
-                                ? 'No tuples match'
-                                : 'No tuples yet'
+                                ? tc('console.no_tuples_match_fbd3e0b2')
+                                : tc('console.no_tuples_yet_4dc745c4')
                         }
-                        description="Write one above, or from your app's backend in batches of up to 100."
+                        description={tc(
+                            'console.write_one_above_or_from_your_app_s_backend_i_9ca507a7',
+                        )}
                     />
                 </div>
             ) : (
@@ -388,7 +434,9 @@ function Tuples({
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    aria-label={`Delete ${tuple}`}
+                                    aria-label={tc('console.delete_value0_8388c5c2', {
+                                        value0: tuple,
+                                    })}
                                     onClick={() =>
                                         router.delete(destroyTupleHref, {
                                             data: { tuple },
@@ -409,14 +457,14 @@ function Tuples({
                     {firstHref !== null && (
                         <Button asChild size="sm">
                             <Link href={firstHref} preserveScroll>
-                                First page
+                                {tc('console.first_page_0bdbb750')}
                             </Link>
                         </Button>
                     )}
                     {nextHref !== null && (
                         <Button asChild size="sm">
                             <Link href={nextHref} preserveScroll>
-                                Next page
+                                {tc('console.next_page_c08ac736')}
                             </Link>
                         </Button>
                     )}

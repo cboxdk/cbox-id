@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -51,6 +52,8 @@ export default function CreateRole({
     indexHref,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         description: '',
@@ -73,7 +76,7 @@ export default function CreateRole({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Roles" />
+            <Breadcrumb href={indexHref} label={tc('console.roles_c2533705')} />
 
             {/*
                 Wrapped rather than given a margin of its own: the heading comes from the
@@ -81,7 +84,11 @@ export default function CreateRole({
                 disagree, and the offset belongs to the back-link above it.
             */}
             <div className="mt-2">
-                <PageHeader description="A bundle of permissions you assign to people; each app honours the roles it understands." />
+                <PageHeader
+                    description={tc(
+                        'console.a_bundle_of_permissions_you_assign_to_people_1d6967ee',
+                    )}
+                />
             </div>
 
             <form
@@ -94,19 +101,25 @@ export default function CreateRole({
             >
                 <Panel>
                     <div className="space-y-4">
-                        <Field label="Name" error={form.errors.name}>
+                        <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                             <Input
                                 name="name"
-                                placeholder="Manager"
+                                placeholder={tc('console.manager_8b2085f7')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
 
-                        <Field label="Description" optional error={form.errors.description}>
+                        <Field
+                            label={tc('console.description_526e0087')}
+                            optional
+                            error={form.errors.description}
+                        >
                             <Input
                                 name="description"
-                                placeholder="Team leads across the organization"
+                                placeholder={tc(
+                                    'console.team_leads_across_the_organization_06640f95',
+                                )}
                                 value={form.data.description}
                                 onChange={(event) =>
                                     form.setData('description', event.target.value)
@@ -115,8 +128,10 @@ export default function CreateRole({
                         </Field>
 
                         <Field
-                            label="Applies to"
-                            hint="An app-scoped role is stamped only into that app's tokens."
+                            label={tc('console.applies_to_6687458b')}
+                            hint={tc(
+                                'console.an_app_scoped_role_is_stamped_only_into_that_d903a755',
+                            )}
                             error={form.errors.app}
                         >
                             <Select
@@ -126,7 +141,7 @@ export default function CreateRole({
                                     form.setData('app', app === ALL_APPS ? '' : app)
                                 }
                                 options={[
-                                    { value: ALL_APPS, label: 'All apps' },
+                                    { value: ALL_APPS, label: tc('console.all_apps_01bed311') },
                                     ...apps.map((app) => ({
                                         value: app.id,
                                         label: `${app.name} only`,
@@ -142,8 +157,12 @@ export default function CreateRole({
                                     onCheckedChange={(checked) =>
                                         form.setData('environmentWide', checked)
                                     }
-                                    label="Define it for every organization in this environment"
-                                    hint="An environment-wide role can be assigned inside any organization here and is not theirs to change."
+                                    label={tc(
+                                        'console.define_it_for_every_organization_in_this_env_d2e90bcf',
+                                    )}
+                                    hint={tc(
+                                        'console.an_environment_wide_role_can_be_assigned_ins_dd5b485e',
+                                    )}
                                 />
                                 {form.errors.environmentWide !== undefined && (
                                     <p className="field-error" role="alert">
@@ -158,15 +177,19 @@ export default function CreateRole({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint="Whose role it is — or tick the box above to define it for every organization."
+                                hint={tc(
+                                    'console.whose_role_it_is_or_tick_the_box_above_to_de_970fb7fe',
+                                )}
                             />
                         )}
                     </div>
                 </Panel>
 
                 <Panel
-                    title="Permissions"
-                    description="Optional — a role is worth creating before its keys exist, and you can compose it later."
+                    title={tc('console.permissions_abccc78c')}
+                    description={tc(
+                        'console.optional_a_role_is_worth_creating_before_its_c9fcc75c',
+                    )}
                 >
                     <div
                         className="space-y-1.5 rounded-lg border p-3"
@@ -179,24 +202,29 @@ export default function CreateRole({
                         {catalog.length === 0 ? (
                             <EmptyState
                                 icon="key"
-                                title="No permissions declared"
+                                title={tc('console.no_permissions_declared_7ed6ab7b')}
                                 description={
                                     <>
-                                        An app registers its catalog over the SDK.{' '}
+                                        {tc(
+                                            'console.an_app_registers_its_catalog_over_the_sdk_91cbb084',
+                                        )}{' '}
                                         {permissionsHref !== null && (
                                             <>
-                                                You can also{' '}
+                                                {tc('console.you_can_also_b91b5d94')}{' '}
                                                 <Link
                                                     href={permissionsHref}
                                                     style={{ color: 'var(--accent-strong)' }}
                                                 >
-                                                    add permissions manually
+                                                    {tc(
+                                                        'console.add_permissions_manually_3596f1b0',
+                                                    )}
                                                 </Link>
                                                 .{' '}
                                             </>
                                         )}
-                                        You can create the role now and compose it once the keys
-                                        arrive.
+                                        {tc(
+                                            'console.you_can_create_the_role_now_and_compose_it_o_37c595c9',
+                                        )}
                                     </>
                                 }
                             />
@@ -212,7 +240,7 @@ export default function CreateRole({
                                             {permission.app !== null ? (
                                                 <Badge tone="info">{permission.app}</Badge>
                                             ) : (
-                                                <Badge>All apps</Badge>
+                                                <Badge>{tc('console.all_apps_01bed311')}</Badge>
                                             )}
                                         </span>
                                     }
@@ -225,10 +253,10 @@ export default function CreateRole({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create role
+                        {tc('console.create_role_221163d6')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

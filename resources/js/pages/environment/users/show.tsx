@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -138,15 +139,19 @@ export default function UserDetail({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const label = user.name ?? user.email;
 
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Users" />
+                <Breadcrumb href={indexHref} label={tc('console.users_6b0cc904')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{label}</h1>
-                    {!user.verified && <Pill tone="warning">Unverified</Pill>}
+                    {!user.verified && (
+                        <Pill tone="warning">{tc('console.unverified_33c8e8de')}</Pill>
+                    )}
                     <Pill tone={statusTone(user.status)}>{user.status}</Pill>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -193,13 +198,15 @@ export default function UserDetail({
 }
 
 function Profile({ user, href }: { user: Props['user']; href: string }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: user.name ?? '',
         email: user.email,
     });
 
     return (
-        <Panel title="Profile">
+        <Panel title={tc('console.profile_d696a35b')}>
             <form
                 className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-start"
                 onSubmit={(event) => {
@@ -207,18 +214,18 @@ function Profile({ user, href }: { user: Props['user']; href: string }) {
                     form.patch(href, { preserveScroll: true });
                 }}
             >
-                <Field label="Name" optional error={form.errors.name}>
+                <Field label={tc('console.name_dcd1d522')} optional error={form.errors.name}>
                     <Input
                         name="name"
-                        placeholder="Full name"
+                        placeholder={tc('console.full_name_f13a64ba')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
                 </Field>
 
                 <Field
-                    label="Email"
-                    hint="Also their recovery channel — changing it clears the verification."
+                    label={tc('console.email_969ccbd3')}
+                    hint={tc('console.also_their_recovery_channel_changing_it_clea_a46b162f')}
                     error={form.errors.email}
                 >
                     <Input
@@ -235,7 +242,7 @@ function Profile({ user, href }: { user: Props['user']; href: string }) {
                     loading={form.processing}
                     className="shrink-0 self-end"
                 >
-                    Save
+                    {tc('console.save_1509f561')}
                 </Button>
             </form>
         </Panel>
@@ -250,6 +257,8 @@ function Profile({ user, href }: { user: Props['user']; href: string }) {
  * asks for the credential rather than the button being hidden.
  */
 function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) {
+    const { t: tc } = useTranslator();
+
     // Shown once: only a hash is stored, and props are written into the browser's history
     // entry, so the plaintext rides the flash channel and nowhere else.
     const issued = usePage().flash.issuedPassword;
@@ -261,12 +270,11 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
     const [deactivating, setDeactivating] = useState(false);
 
     return (
-        <Panel title="Security & lifecycle">
+        <Panel title={tc('console.security_lifecycle_bc793cc5')}>
             <div className="space-y-4">
                 {user.requiresPasswordChange && (
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        This user is held at a password change — they cannot reach anything until
-                        they replace the one you issued.
+                        {tc('console.this_user_is_held_at_a_password_change_they__ce196382')}
                     </p>
                 )}
 
@@ -284,18 +292,23 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                                     className="font-semibold text-sm"
                                     style={{ color: 'var(--warning-strong)' }}
                                 >
-                                    Copy this password now — it won't be shown again.
+                                    {tc(
+                                        'console.copy_this_password_now_it_won_t_be_shown_aga_ee41a1ae',
+                                    )}
                                 </p>
                                 <p className="mt-3 select-all break-all mono text-sm">{issued}</p>
                                 <p className="mt-3 text-xs" style={{ color: 'var(--faint)' }}>
-                                    Hand it to {user.email} over a channel you trust. We never store
-                                    it in readable form.
+                                    {tc('console.hand_it_to_0b3e1f6c')}
+                                    {user.email}
+                                    {tc(
+                                        'console.over_a_channel_you_trust_we_never_store_it_i_b5852ec8',
+                                    )}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 <CopyButton value={issued} variant="primary" />
                                 <Button size="sm" onClick={() => setDismissed(true)}>
-                                    Dismiss
+                                    {tc('console.dismiss_48845bff')}
                                 </Button>
                             </div>
                         </div>
@@ -311,43 +324,49 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                    <SendMail href={urls.passwordReset} label="Send password reset" />
+                    <SendMail
+                        href={urls.passwordReset}
+                        label={tc('console.send_password_reset_d22c5045')}
+                    />
 
                     {!setting && (
                         <Button size="sm" onClick={() => setSetting(true)}>
-                            Set password…
+                            {tc('console.set_password_2f1395cf')}
                         </Button>
                     )}
 
                     {!user.verified && (
                         <>
-                            <SendMail href={urls.resendVerification} label="Resend verification" />
+                            <SendMail
+                                href={urls.resendVerification}
+                                label={tc('console.resend_verification_1eedf1ae')}
+                            />
                             <Button
                                 size="sm"
                                 onClick={() =>
                                     router.post(urls.markVerified, {}, { preserveScroll: true })
                                 }
                             >
-                                Mark verified
+                                {tc('console.mark_verified_1a32eb8a')}
                             </Button>
                         </>
                     )}
 
                     {user.hasMfa && (
                         <Button size="sm" onClick={() => setResettingMfa(true)}>
-                            Reset 2FA
+                            {tc('console.reset_2fa_01c88bb1')}
                         </Button>
                     )}
 
                     {user.smsFactor !== null && (
                         <Button size="sm" onClick={() => setRemovingSms(true)}>
-                            Remove phone number
+                            {tc('console.remove_phone_number_935b9204')}
                         </Button>
                     )}
 
                     {user.status === 'active' ? (
                         <Button size="sm" variant="danger" onClick={() => setDeactivating(true)}>
-                            Deactivate
+                            {tc('console.deactivate_fb1e6fa5')}
                         </Button>
                     ) : (
                         <Button
@@ -356,22 +375,28 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                                 router.post(urls.reactivate, {}, { preserveScroll: true })
                             }
                         >
-                            Reactivate
+                            {tc('console.reactivate_2dc7478f')}
                         </Button>
                     )}
                 </div>
 
                 <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                    Two-factor: {user.hasMfa ? 'enabled' : 'not enrolled'}.
+                    {tc('console.two_factor_4570bae2')}
+                    {user.hasMfa
+                        ? tc('console.enabled_fb9cf756')
+                        : tc('console.not_enrolled_4f827cce')}
+                    .
                     {user.smsFactor !== null && (
                         <>
                             {' '}
-                            Text-message codes to{' '}
+                            {tc('console.text_message_codes_to_7d6090df')}{' '}
                             <span className="mono">{user.smsFactor.maskedNumber}</span>
                             {!user.smsFactor.confirmed
-                                ? ' (not yet confirmed)'
+                                ? tc('console.not_yet_confirmed_4bae5cf3')
                                 : !user.smsFactor.usable
-                                  ? " (not accepted by this environment's SMS policy)"
+                                  ? tc(
+                                        'console.not_accepted_by_this_environment_s_sms_polic_1790f4c2',
+                                    )
                                   : ''}
                             .
                         </>
@@ -390,14 +415,13 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                     style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
                 >
                     <p>
-                        <b>Deactivating stops all sign-in but keeps the person's records</b> —
-                        sessions, passkeys and second factors, identity-provider profiles, directory
-                        data, issued tokens, role assignments and audit history all remain, and you
-                        can reactivate them.
+                        <b>{tc('console.deactivating_stops_all_sign_in_but_keeps_the_a03d5fe9')}</b>
+                        {tc('console.sessions_passkeys_and_second_factors_identit_179d3c24')}
                     </p>
                     <p className="mt-1.5">
-                        To answer a right-to-erasure request, use <b>Erase user</b> at the foot of
-                        this page instead.
+                        {tc('console.to_answer_a_right_to_erasure_request_use_406dfde1')}
+                        <b>{tc('console.erase_user_5a55d8c8')}</b>
+                        {tc('console.at_the_foot_of_this_page_instead_d1b99b09')}
                     </p>
                 </div>
             </div>
@@ -406,8 +430,8 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                 open={resettingMfa}
                 onOpenChange={setResettingMfa}
                 name={user.email}
-                verb="Reset 2FA for"
-                consequence="This destroys the user's enrolled second factor and their recovery codes. Until they enrol again the account is protected by its password alone."
+                verb={tc('console.reset_2fa_for_b15eaa6f')}
+                consequence={tc('console.this_destroys_the_user_s_enrolled_second_fac_288206be')}
                 onConfirm={() => {
                     setResettingMfa(false);
                     router.post(urls.resetMfa, {}, { preserveScroll: true });
@@ -419,7 +443,7 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                     open={removingSms}
                     onOpenChange={setRemovingSms}
                     name={user.email}
-                    verb="Remove the phone number of"
+                    verb={tc('console.remove_the_phone_number_of_ec45fdab')}
                     consequence={`Text-message codes to ${user.smsFactor.maskedNumber} stop working. Their authenticator app, passkeys and recovery codes are not affected — if the phone number was their only second factor, the account is protected by its password alone until they enrol again.`}
                     onConfirm={() => {
                         setRemovingSms(false);
@@ -433,7 +457,7 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
                 onOpenChange={setDeactivating}
                 name={user.email}
                 verb="Deactivate"
-                consequence="This user can no longer sign in to any application in this environment, and their existing sessions stop working on their next request. Their records are kept and you can reactivate them at any time."
+                consequence={tc('console.this_user_can_no_longer_sign_in_to_any_appli_571ac0d8')}
                 onConfirm={() => {
                     setDeactivating(false);
                     router.post(urls.deactivate, {}, { preserveScroll: true });
@@ -451,6 +475,8 @@ function Security({ user, urls }: { user: Props['user']; urls: Props['urls'] }) 
  * expired for no reason they could see.
  */
 function SendMail({ href, label }: { href: string; label: string }) {
+    const { t: tc } = useTranslator();
+
     const [sending, setSending] = useState(false);
 
     return (
@@ -469,7 +495,7 @@ function SendMail({ href, label }: { href: string; label: string }) {
                 )
             }
         >
-            {sending ? 'Sending…' : label}
+            {sending ? tc('console.sending_b8ed5279') : label}
         </Button>
     );
 }
@@ -499,6 +525,8 @@ function SetPassword({
     href: string;
     onCancel: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         password: '',
         reason: '',
@@ -517,7 +545,7 @@ function SetPassword({
                 form.post(href, { preserveScroll: true, onSuccess: () => onCancel() });
             }}
         >
-            <Field label="New password" error={form.errors.password}>
+            <Field label={tc('console.new_password_3dd9df44')} error={form.errors.password}>
                 <div className="flex gap-2">
                     {/*
                         type="text", deliberately: the administrator has to be able to READ
@@ -538,39 +566,41 @@ function SetPassword({
                         className="shrink-0"
                         onClick={() => form.setData('password', generatePassword())}
                     >
-                        Generate
+                        {tc('console.generate_49e49bb4')}
                     </Button>
                 </div>
             </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Type" error={form.errors.mode}>
+                <Field label={tc('console.type_baaddf70')} error={form.errors.mode}>
                     <Select
                         value={form.data.mode}
                         onValueChange={(mode) => form.setData('mode', mode)}
                         options={[
                             {
                                 value: 'temporary',
-                                label: 'Temporary — they must change it at next sign-in',
+                                label: tc(
+                                    'console.temporary_they_must_change_it_at_next_sign_i_eb04cedb',
+                                ),
                             },
                             {
                                 value: 'permanent',
-                                label: 'Permanent — stands until they change it',
+                                label: tc('console.permanent_stands_until_they_change_it_a9923a2b'),
                             },
                         ]}
                     />
                 </Field>
 
                 {form.data.mode === 'temporary' && (
-                    <Field label="Valid for" error={form.errors.expiryHours}>
+                    <Field label={tc('console.valid_for_867ff87e')} error={form.errors.expiryHours}>
                         <Select
                             value={String(form.data.expiryHours)}
                             onValueChange={(hours) => form.setData('expiryHours', Number(hours))}
                             options={[
-                                { value: '1', label: '1 hour' },
-                                { value: '24', label: '24 hours' },
-                                { value: '72', label: '3 days' },
-                                { value: '0', label: 'Until they change it' },
+                                { value: '1', label: tc('console.1_hour_f8b8883f') },
+                                { value: '24', label: tc('console.24_hours_f0514e8d') },
+                                { value: '72', label: tc('console.3_days_36071944') },
+                                { value: '0', label: tc('console.until_they_change_it_98433667') },
                             ]}
                         />
                     </Field>
@@ -578,45 +608,53 @@ function SetPassword({
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="How they get it" error={form.errors.delivery}>
+                <Field label={tc('console.how_they_get_it_bd631bbf')} error={form.errors.delivery}>
                     <Select
                         value={form.data.delivery}
                         onValueChange={(delivery) => form.setData('delivery', delivery)}
                         options={[
-                            { value: 'reveal', label: "Show me once — I'll pass it on" },
+                            {
+                                value: 'reveal',
+                                label: tc('console.show_me_once_i_ll_pass_it_on_4a3cf299'),
+                            },
                             { value: 'email', label: `Email it to ${email}` },
                         ]}
                     />
                 </Field>
 
-                <Field label="Existing access" error={form.errors.revoke}>
+                <Field label={tc('console.existing_access_3064b6b6')} error={form.errors.revoke}>
                     <Select
                         value={form.data.revoke}
                         onValueChange={(revoke) => form.setData('revoke', revoke)}
                         options={[
                             {
                                 value: 'sessions_and_tokens',
-                                label: 'Sign out everywhere and revoke API tokens',
+                                label: tc(
+                                    'console.sign_out_everywhere_and_revoke_api_tokens_e5577aaf',
+                                ),
                             },
                             {
                                 value: 'sessions_only',
-                                label: 'Sign out everywhere, keep API tokens',
+                                label: tc('console.sign_out_everywhere_keep_api_tokens_f7cb68c8'),
                             },
-                            { value: 'nothing', label: 'Leave existing sessions alone' },
+                            {
+                                value: 'nothing',
+                                label: tc('console.leave_existing_sessions_alone_3abdfa9c'),
+                            },
                         ]}
                     />
                 </Field>
             </div>
 
             <Field
-                label="Reason"
-                hint="Recorded on the audit trail alongside your name."
+                label={tc('console.reason_f81ab834')}
+                hint={tc('console.recorded_on_the_audit_trail_alongside_your_n_2751f14b')}
                 error={form.errors.reason}
             >
                 <Input
                     name="reason"
                     maxLength={200}
-                    placeholder="e.g. Locked out after losing their phone"
+                    placeholder={tc('console.e_g_locked_out_after_losing_their_phone_509f27bc')}
                     value={form.data.reason}
                     onChange={(event) => form.setData('reason', event.target.value)}
                 />
@@ -624,10 +662,10 @@ function SetPassword({
 
             <div className="flex items-center gap-2">
                 <Button type="submit" size="sm" variant="primary" loading={form.processing}>
-                    Set password
+                    {tc('console.set_password_4e411687')}
                 </Button>
                 <Button type="button" size="sm" onClick={onCancel}>
-                    Cancel
+                    {tc('console.cancel_19766ed6')}
                 </Button>
             </div>
         </form>
@@ -645,12 +683,14 @@ function Sessions({
     revokeAllHref: string;
     decisionsHref: string | null;
 }) {
+    const { t: tc } = useTranslator();
+
     const [revokingAll, setRevokingAll] = useState(false);
 
     return (
         <Panel
-            title="Active sessions"
-            description="Who is signed in as them right now. Why a sign-in was allowed, challenged or blocked is on Radar."
+            title={tc('console.active_sessions_61ad9909')}
+            description={tc('console.who_is_signed_in_as_them_right_now_why_a_sig_181f0520')}
             action={
                 <div className="flex flex-wrap gap-2">
                     {/*
@@ -660,12 +700,14 @@ function Sessions({
                     */}
                     {decisionsHref !== null && (
                         <Button asChild size="sm" icon="shield">
-                            <Link href={decisionsHref}>Sign-in decisions</Link>
+                            <Link href={decisionsHref}>
+                                {tc('console.sign_in_decisions_51fe82dc')}
+                            </Link>
                         </Button>
                     )}
                     {sessions.length > 0 && (
                         <Button size="sm" variant="danger" onClick={() => setRevokingAll(true)}>
-                            Revoke all
+                            {tc('console.revoke_all_c6847a4b')}
                         </Button>
                     )}
                 </div>
@@ -675,8 +717,10 @@ function Sessions({
                 {sessions.length === 0 ? (
                     <EmptyState
                         icon="shield"
-                        title="No active sessions"
-                        description="This user has no signed-in sessions right now. They appear here once the user signs in."
+                        title={tc('console.no_active_sessions_1f59d3a2')}
+                        description={tc(
+                            'console.this_user_has_no_signed_in_sessions_right_no_0ac73d09',
+                        )}
                     />
                 ) : (
                     sessions.map((session) => (
@@ -687,15 +731,16 @@ function Sessions({
                         >
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm truncate">
-                                    {session.device ?? 'Unknown device'}
+                                    {session.device ?? tc('console.unknown_device_06c4a77e')}
                                 </p>
                                 <p className="text-xs truncate" style={{ color: 'var(--faint)' }}>
-                                    {session.ip ?? '—'} · {session.lastActive ?? 'never'}
+                                    {session.ip ?? '—'} ·{' '}
+                                    {session.lastActive ?? tc('console.never_6497e4b3')}
                                     {session.impersonation && (
                                         <>
                                             {' · '}
                                             <span style={{ color: 'var(--accent-strong)' }}>
-                                                impersonation
+                                                {tc('console.impersonation_09d36284')}
                                             </span>
                                         </>
                                     )}
@@ -709,7 +754,7 @@ function Sessions({
                                     router.delete(session.revokeHref, { preserveScroll: true })
                                 }
                             >
-                                Revoke
+                                {tc('console.revoke_87e6d00b')}
                             </Button>
                         </div>
                     ))
@@ -720,8 +765,8 @@ function Sessions({
                 open={revokingAll}
                 onOpenChange={setRevokingAll}
                 name={email}
-                verb="Revoke all sessions for"
-                consequence="Every one of this user's sessions is terminated immediately and they are signed out on all devices."
+                verb={tc('console.revoke_all_sessions_for_b7dff633')}
+                consequence={tc('console.every_one_of_this_user_s_sessions_is_termina_ebf3fb04')}
                 onConfirm={() => {
                     setRevokingAll(false);
                     router.delete(revokeAllHref, { preserveScroll: true });
@@ -756,17 +801,21 @@ function Organizations({
     membershipRoles: RoleOption[];
     urls: Props['urls'];
 }) {
+    const { t: tc } = useTranslator();
+
     const [managing, setManaging] = useState<string | null>(null);
     const [removing, setRemoving] = useState<MembershipRow | null>(null);
 
     return (
         <Panel
-            title="Organizations"
+            title={tc('console.organizations_2730183d')}
             description={
                 <>
-                    Each organization gives them one <b>built-in role</b> — what they may administer
-                    there — and any number of <b>app and custom roles</b>, which is what they can do
-                    inside its apps.
+                    {tc('console.each_organization_gives_them_one_9017a269')}
+                    <b>{tc('console.built_in_role_59a06e31')}</b>
+                    {tc('console.what_they_may_administer_there_and_any_numbe_549a3026')}
+                    <b>{tc('console.app_and_custom_roles_5ccc5c71')}</b>
+                    {tc('console.which_is_what_they_can_do_inside_its_apps_5433e7cb')}
                 </>
             }
         >
@@ -775,8 +824,10 @@ function Organizations({
                     {memberships.length === 0 ? (
                         <EmptyState
                             icon="layers"
-                            title="Not a member of any organization"
-                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them an admin & support role, which applies everywhere in this environment."
+                            title={tc('console.not_a_member_of_any_organization_49453904')}
+                            description={tc(
+                                'console.add_them_to_one_below_to_grant_access_inside_386e5f3c',
+                            )}
                         />
                     ) : (
                         memberships.map((membership) => (
@@ -795,7 +846,9 @@ function Organizations({
                                     </Link>
 
                                     <Select
-                                        aria-label={`Built-in role in ${membership.organizationName}`}
+                                        aria-label={tc('console.built_in_role_in_value0_7a5b262d', {
+                                            value0: membership.organizationName,
+                                        })}
                                         value={membership.role}
                                         onValueChange={(role) =>
                                             router.patch(
@@ -813,18 +866,18 @@ function Organizations({
                                         className="shrink-0"
                                         onClick={() => setRemoving(membership)}
                                     >
-                                        Remove
+                                        {tc('console.remove_c3812fc4')}
                                     </Button>
                                 </div>
 
                                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                        Roles:
+                                        {tc('console.roles_47d6de66')}
                                     </span>
 
                                     {membership.accessRoleIds.length === 0 ? (
                                         <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                            None
+                                            {tc('console.none_dc937b59')}
                                         </span>
                                     ) : (
                                         membership.accessRoles
@@ -847,8 +900,8 @@ function Organizations({
                                             }
                                         >
                                             {managing === membership.organizationId
-                                                ? 'Done'
-                                                : 'Manage'}
+                                                ? tc('console.done_11a6767d')
+                                                : tc('console.manage_5a234448')}
                                         </Button>
                                     )}
                                 </div>
@@ -896,8 +949,8 @@ function Organizations({
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={user.email}
-                verb="Remove membership for"
-                consequence="They lose every role this organization grants them, immediately."
+                verb={tc('console.remove_membership_for_d145dd63')}
+                consequence={tc('console.they_lose_every_role_this_organization_grant_81e63573')}
                 onConfirm={() => {
                     const membership = removing;
                     setRemoving(null);
@@ -930,6 +983,8 @@ function StaffRolesPanel({
     staffHref: string;
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const [role, setRole] = useState('');
     const [takingBack, setTakingBack] = useState<StaffRoleOption | null>(null);
     const { errors } = usePage().props;
@@ -938,17 +993,16 @@ function StaffRolesPanel({
 
     return (
         <Panel
-            title="Admin & support roles"
+            title={tc('console.admin_support_roles_19f22d25')}
             description={
                 <>
-                    Roles held across the whole environment — in every organization, and even when
-                    they belong to none. Organizations never see these.{' '}
+                    {tc('console.roles_held_across_the_whole_environment_in_e_fe8f09e4')}{' '}
                     <Link
                         href={staffHref}
                         className="underline underline-offset-2"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Everyone with an admin & support role
+                        {tc('console.everyone_with_an_admin_support_role_e0389623')}
                     </Link>
                 </>
             }
@@ -956,7 +1010,7 @@ function StaffRolesPanel({
             <div className="space-y-3">
                 {holding.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        No admin & support roles.
+                        {tc('console.no_admin_support_roles_7e88c28f')}
                     </p>
                 ) : (
                     <ul className="space-y-2">
@@ -974,7 +1028,7 @@ function StaffRolesPanel({
                                         className="block truncate text-xs"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        {staffRoleScope(staffRole)}
+                                        {staffRoleScope(staffRole, tc('console.all_apps_01bed311'))}
                                     </span>
                                 </span>
                                 <Button
@@ -983,7 +1037,7 @@ function StaffRolesPanel({
                                     className="shrink-0"
                                     onClick={() => setTakingBack(staffRole)}
                                 >
-                                    Take back
+                                    {tc('console.take_back_7d2a64f5')}
                                 </Button>
                             </li>
                         ))}
@@ -1007,7 +1061,10 @@ function StaffRolesPanel({
                             );
                         }}
                     >
-                        <Field label="Grant an admin & support role" error={errors.staffRole}>
+                        <Field
+                            label={tc('console.grant_an_admin_support_role_ebbcd7de')}
+                            error={errors.staffRole}
+                        >
                             <StaffRolePicker roles={offered} value={role} onValueChange={setRole} />
                         </Field>
                         <Button
@@ -1015,7 +1072,7 @@ function StaffRolesPanel({
                             className="shrink-0 sm:self-end"
                             disabled={role === ''}
                         >
-                            Grant
+                            {tc('console.grant_78b7d037')}
                         </Button>
                     </form>
                 )}
@@ -1025,9 +1082,11 @@ function StaffRolesPanel({
                 open={takingBack !== null}
                 onOpenChange={(open) => !open && setTakingBack(null)}
                 name={takingBack?.name ?? ''}
-                title={`Take back the admin & support role “${takingBack?.name ?? ''}”?`}
-                actionLabel="Take back"
-                consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh this person's tokens; nobody is signed out."
+                title={tc('console.take_back_the_admin_support_role_value0_103a44f1', {
+                    value0: takingBack?.name ?? '',
+                })}
+                actionLabel={tc('console.take_back_7d2a64f5')}
+                consequence={tc('console.they_lose_this_role_in_every_organization_at_39477fda')}
                 onConfirm={() => {
                     const staffRole = takingBack;
                     setTakingBack(null);
@@ -1066,6 +1125,8 @@ function AddToOrganization({
     assignableRoles: RoleOption[];
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         organization: joining,
         role: 'member',
@@ -1097,16 +1158,19 @@ function AddToOrganization({
             }}
         >
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] items-start">
-                <Field label="Add to organization" error={form.errors.organization}>
+                <Field
+                    label={tc('console.add_to_organization_0e0cb636')}
+                    error={form.errors.organization}
+                >
                     <Select
                         value={form.data.organization === '' ? undefined : form.data.organization}
                         onValueChange={choose}
-                        placeholder="Find an organization…"
+                        placeholder={tc('console.find_an_organization_eb2523db')}
                         options={joinable}
                     />
                 </Field>
 
-                <Field label="Built-in role" error={form.errors.role}>
+                <Field label={tc('console.built_in_role_9f680a16')} error={form.errors.role}>
                     <Select
                         value={form.data.role}
                         onValueChange={(role) => form.setData('role', role)}
@@ -1120,14 +1184,14 @@ function AddToOrganization({
                     loading={form.processing}
                     className="shrink-0 self-end"
                 >
-                    Add
+                    {tc('console.add_9fd728c6')}
                 </Button>
             </div>
 
             {form.data.organization !== '' && accessRoles.length > 0 && (
                 <div>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        App and custom roles — granted immediately (optional)
+                        {tc('console.app_and_custom_roles_granted_immediately_opt_313d930a')}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         {accessRoles.map((role) => (
@@ -1170,6 +1234,8 @@ function SupportAccess({
     label: string;
     active: boolean;
 }) {
+    const { t: tc } = useTranslator();
+
     const durations = [15, 30, 60, support.maxMinutes]
         .filter(
             (minutes, index, all) =>
@@ -1184,25 +1250,30 @@ function SupportAccess({
         minutes: String(Math.min(30, support.maxMinutes)),
     });
 
-    const appName = support.apps.find((app) => app.value === form.data.app)?.label ?? 'an app';
+    const appName =
+        support.apps.find((app) => app.value === form.data.app)?.label ??
+        tc('console.an_app_66e93a7c');
 
     const unavailable =
         support.apps.length === 0
-            ? 'No app can be entered this way yet. Support access reaches only first-party apps this environment owns that sign people in with a redirect.'
+            ? tc('console.no_app_can_be_entered_this_way_yet_support_a_3a488b1a')
             : !active
-              ? 'This person cannot sign in, so nobody can sign in as them either.'
+              ? tc('console.this_person_cannot_sign_in_so_nobody_can_sig_6a0710af')
               : support.organizations.length === 0
-                ? 'They are not an active member of any organization, and a support session always acts inside one.'
+                ? tc('console.they_are_not_an_active_member_of_any_organiz_4eaa6a02')
                 : null;
 
     return (
         <Panel
             title={
                 <span className="inline-flex items-center gap-1.5">
-                    Support access <Help help={support.help} />
+                    {tc('console.support_access_37251da4')}
+                    <Help help={support.help} />
                 </span>
             }
-            description={`Sign in to one of your apps as ${label} to see what they see. The app is told it is you, and the organization's audit log records who, when and why.`}
+            description={tc('console.sign_in_to_one_of_your_apps_as_value0_to_see_2f358bd2', {
+                value0: label,
+            })}
         >
             <div className="space-y-4">
                 <SupportSessions sessions={support.sessions} lead="organization" />
@@ -1219,7 +1290,7 @@ function SupportAccess({
                             form.post(support.startHref, { preserveScroll: true });
                         }}
                     >
-                        <Field label="App" error={form.errors.app}>
+                        <Field label={tc('console.app_0d04bfeb')} error={form.errors.app}>
                             <Select
                                 value={form.data.app}
                                 onValueChange={(app) => form.setData('app', app)}
@@ -1227,7 +1298,10 @@ function SupportAccess({
                             />
                         </Field>
 
-                        <Field label="Organization" error={form.errors.organization}>
+                        <Field
+                            label={tc('console.organization_d764d425')}
+                            error={form.errors.organization}
+                        >
                             <Select
                                 value={form.data.organization}
                                 onValueChange={(organization) =>
@@ -1238,21 +1312,25 @@ function SupportAccess({
                         </Field>
 
                         <Field
-                            label="Reason"
-                            hint="The organization sees this on its audit log."
+                            label={tc('console.reason_f81ab834')}
+                            hint={tc(
+                                'console.the_organization_sees_this_on_its_audit_log_d8a04add',
+                            )}
                             error={form.errors.reason}
                         >
                             <Input
                                 name="reason"
                                 maxLength={500}
                                 required
-                                placeholder="Ticket 4411: invoice totals look wrong"
+                                placeholder={tc(
+                                    'console.ticket_4411_invoice_totals_look_wrong_4098e1f8',
+                                )}
                                 value={form.data.reason}
                                 onChange={(event) => form.setData('reason', event.target.value)}
                             />
                         </Field>
 
-                        <Field label="For" error={form.errors.minutes}>
+                        <Field label={tc('console.for_ca15ebc0')} error={form.errors.minutes}>
                             <Select
                                 value={form.data.minutes}
                                 onValueChange={(minutes) => form.setData('minutes', minutes)}
@@ -1265,7 +1343,10 @@ function SupportAccess({
 
                         <div className="sm:col-span-2">
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                Sign in to {appName} as {label}
+                                {tc('console.sign_in_to_f5e5226a')}
+                                {appName}
+                                {tc('console.as_fa21f62f')}
+                                {label}
                             </Button>
                         </div>
                     </form>
@@ -1285,6 +1366,8 @@ function SupportAccess({
  * would.
  */
 function Impersonation({ memberships, href }: { memberships: MembershipRow[]; href: string }) {
+    const { t: tc } = useTranslator();
+
     const [confirming, setConfirming] = useState(false);
 
     const impersonatable = memberships.filter((membership) => !membership.managesOrganization);
@@ -1297,11 +1380,9 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
 
     if (!allowed) {
         return (
-            <Panel title="Support impersonation">
+            <Panel title={tc('console.support_impersonation_f82aa229')}>
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    This user owns or administers an organization, and those cannot be impersonated
-                    — stepping into one would hand durable control of an organization to whoever did
-                    it.
+                    {tc('console.this_user_owns_or_administers_an_organizatio_941764ef')}
                 </p>
             </Panel>
         );
@@ -1309,8 +1390,8 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
 
     return (
         <Panel
-            title="Support impersonation"
-            description="Time-boxed to 30 minutes and recorded on the audit trail."
+            title={tc('console.support_impersonation_f82aa229')}
+            description={tc('console.time_boxed_to_30_minutes_and_recorded_on_the_74ec6657')}
         >
             <form
                 className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-start"
@@ -1320,7 +1401,10 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
                 }}
             >
                 {impersonatable.length > 0 ? (
-                    <Field label="Organization" error={form.errors.organization}>
+                    <Field
+                        label={tc('console.organization_d764d425')}
+                        error={form.errors.organization}
+                    >
                         <Select
                             value={form.data.organization}
                             onValueChange={(organization) =>
@@ -1334,23 +1418,23 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
                     </Field>
                 ) : (
                     <p className="text-sm self-center" style={{ color: 'var(--muted-foreground)' }}>
-                        Signed in as themselves, in no organization.
+                        {tc('console.signed_in_as_themselves_in_no_organization_39da9100')}
                     </p>
                 )}
 
-                <Field label="Reason" error={form.errors.reason}>
+                <Field label={tc('console.reason_f81ab834')} error={form.errors.reason}>
                     <Input
                         name="reason"
                         maxLength={200}
                         required
-                        placeholder="Why you need to step in"
+                        placeholder={tc('console.why_you_need_to_step_in_c1edb921')}
                         value={form.data.reason}
                         onChange={(event) => form.setData('reason', event.target.value)}
                     />
                 </Field>
 
                 <Button type="submit" className="shrink-0 self-end" loading={form.processing}>
-                    Impersonate
+                    {tc('console.impersonate_f78577dc')}
                 </Button>
             </form>
 
@@ -1362,8 +1446,8 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
                         (membership) => membership.organizationId === form.data.organization,
                     )?.organizationName ?? 'impersonate'
                 }
-                verb="Impersonate in"
-                consequence="You act as this person, in their session, with their access. It is time-boxed to 30 minutes, read-only where the console can enforce it, and every request is recorded against your name."
+                verb={tc('console.impersonate_in_055e4269')}
+                consequence={tc('console.you_act_as_this_person_in_their_session_with_36ea7fac')}
                 onConfirm={() => {
                     setConfirming(false);
                     form.post(href);
@@ -1385,22 +1469,20 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
  * controller answering a regulator has to be able to say so precisely.
  */
 function EraseUser({ email, href }: { email: string; href: string }) {
+    const { t: tc } = useTranslator();
+
     const [erasing, setErasing] = useState(false);
     const [busy, setBusy] = useState(false);
     const { errors } = usePage().props;
 
     return (
         <Panel
-            title="Danger zone"
-            description="Erase this person for good — the right to erasure (GDPR Art. 17)."
+            title={tc('console.danger_zone_fd8b8dae')}
+            description={tc('console.erase_this_person_for_good_the_right_to_eras_06ade5c9')}
         >
             <div className="space-y-3">
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Their sessions and tokens are revoked, their passkeys, second factors,
-                    memberships, role grants, API tokens, vault secrets, devices and every stored
-                    copy of their details are deleted, and the account is kept only as a
-                    pseudonymised, disabled row. Apps that sync people from here are told to delete
-                    them. The audit log keeps their opaque id, not their name or address.
+                    {tc('console.their_sessions_and_tokens_are_revoked_their__78603573')}
                 </p>
 
                 {errors.erase !== undefined && (
@@ -1410,7 +1492,7 @@ function EraseUser({ email, href }: { email: string; href: string }) {
                 )}
 
                 <Button size="sm" variant="danger" loading={busy} onClick={() => setErasing(true)}>
-                    Erase user…
+                    {tc('console.erase_user_0d51e048')}
                 </Button>
             </div>
 
@@ -1419,8 +1501,8 @@ function EraseUser({ email, href }: { email: string; href: string }) {
                 onOpenChange={setErasing}
                 name={email}
                 verb="Erase"
-                actionLabel="Erase user"
-                consequence="This cannot be undone. Their credentials, memberships and personal data are deleted and their account is pseudonymised. If they are the only owner of an organization, transfer it first."
+                actionLabel={tc('console.erase_user_5a55d8c8')}
+                consequence={tc('console.this_cannot_be_undone_their_credentials_memb_0d29eed0')}
                 confirming={busy}
                 onConfirm={() => {
                     setErasing(false);

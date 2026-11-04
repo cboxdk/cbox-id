@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -51,6 +52,8 @@ export default function ClientScopes({
     updateHref,
     apisHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         scopes: [...stored.catalogue, ...stored.api],
         customScopes: stored.custom,
@@ -67,7 +70,7 @@ export default function ClientScopes({
             <AudiencePanel audience={audience} />
 
             {!mayManage ? (
-                <Panel title="Scopes">
+                <Panel title={tc('console.scopes_0d5644ff')}>
                     {stored.all.length === 0 ? (
                         <span className="text-sm" style={{ color: 'var(--faint)' }}>
                             —
@@ -91,8 +94,10 @@ export default function ClientScopes({
                     }}
                 >
                     <Panel
-                        title="What this app may ask for"
-                        description="The ceiling on this app's access. Narrowing it takes effect on the next token, and a device or an agent asking for a scope you remove is refused rather than quietly given less."
+                        title={tc('console.what_this_app_may_ask_for_1955fcf4')}
+                        description={tc(
+                            'console.the_ceiling_on_this_app_s_access_narrowing_i_5f2865bc',
+                        )}
                     >
                         <div className="space-y-4">
                             {Object.entries(scopeGroups).map(([group, scopes]) => (
@@ -123,22 +128,28 @@ export default function ClientScopes({
                     </Panel>
 
                     <Panel
-                        title="Your APIs"
-                        description="Scopes of the APIs registered in this environment that this app may hold. A token for one of them names that API as its audience."
+                        title={tc('console.your_apis_62ad094f')}
+                        description={tc(
+                            'console.scopes_of_the_apis_registered_in_this_enviro_4ea61056',
+                        )}
                     >
                         {apiGroups.length === 0 ? (
                             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                No registered API offers scopes to this app yet.{' '}
+                                {tc(
+                                    'console.no_registered_api_offers_scopes_to_this_app__bef8405b',
+                                )}{' '}
                                 {apisHref !== null ? (
                                     <Link
                                         href={apisHref}
                                         className="underline"
                                         style={{ color: 'var(--accent-strong)' }}
                                     >
-                                        Register an API
+                                        {tc('console.register_an_api_f94653f0')}
                                     </Link>
                                 ) : (
-                                    'The environment’s administrators register APIs and decide which of their scopes your apps may request.'
+                                    tc(
+                                        'console.the_environment_s_administrators_register_ap_eb40bdf1',
+                                    )
                                 )}
                             </p>
                         ) : (
@@ -185,17 +196,19 @@ export default function ClientScopes({
                         )}
                     </Panel>
 
-                    <Panel title="Advanced">
+                    <Panel title={tc('console.advanced_9f088dbe')}>
                         <Field
-                            label="Typed scopes"
-                            hint="Comma- or space-separated. A scope you type is unowned: it reaches this app's tokens as it is, but it can never carry a registered API's audience — use the lists above for those."
+                            label={tc('console.typed_scopes_05291f81')}
+                            hint={tc(
+                                'console.comma_or_space_separated_a_scope_you_type_is_c5513416',
+                            )}
                             error={form.errors.customScopes}
                         >
                             <Input
                                 name="customScopes"
                                 className="mono"
                                 spellCheck={false}
-                                placeholder="api.read, reports.export"
+                                placeholder={tc('console.api_read_reports_export_db00448d')}
                                 value={form.data.customScopes}
                                 onChange={(event) =>
                                     form.setData('customScopes', event.target.value)
@@ -218,14 +231,14 @@ export default function ClientScopes({
                                 className="font-medium"
                                 style={{ color: 'var(--destructive-strong)' }}
                             >
-                                Scopes not saved
+                                {tc('console.scopes_not_saved_261b06f6')}
                             </p>
                             <p className="mt-1">{form.errors.scopes}</p>
                         </div>
                     )}
 
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save scopes
+                        {tc('console.save_scopes_1d8c2d04')}
                     </Button>
                 </form>
             )}
@@ -241,53 +254,58 @@ export default function ClientScopes({
  * boxes are saved, and both used to be found out at the resource server.
  */
 function AudiencePanel({ audience }: { audience: Audience }) {
+    const { t: tc } = useTranslator();
+
     return (
-        <Panel title="Token audience">
+        <Panel title={tc('console.token_audience_0783a89f')}>
             <div className="space-y-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {audience.shape === 'issuer' && (
                     <p>
-                        Access tokens for this app name this environment's issuer,{' '}
-                        <Mono>{audience.issuer}</Mono>, as their audience. That changes when it
-                        holds a scope of one of your registered APIs.
+                        {tc('console.access_tokens_for_this_app_name_this_environ_d29fc236')}{' '}
+                        <Mono>{audience.issuer}</Mono>
+                        {tc('console.as_their_audience_that_changes_when_it_holds_24f21d69')}
                     </p>
                 )}
                 {audience.shape === 'api' && (
                     <p>
-                        Access tokens for this app name <Mono>{audience.identifiers[0]}</Mono> as
-                        their audience
+                        {tc('console.access_tokens_for_this_app_name_e4603199')}
+                        <Mono>{audience.identifiers[0]}</Mono>
+                        {tc('console.as_their_audience_e7c5f9ab')}
                         {audience.withIssuer ? (
                             <>
-                                , together with the issuer <Mono>{audience.issuer}</Mono> because
-                                the app also signs people in
+                                {tc('console.together_with_the_issuer_3e98cbc9')}
+                                <Mono>{audience.issuer}</Mono>
+                                {tc('console.because_the_app_also_signs_people_in_01f9fbf5')}
                             </>
                         ) : null}
-                        . That API should accept a token only when it names it.
+                        {tc('console.that_api_should_accept_a_token_only_when_it__3d65466b')}
                     </p>
                 )}
                 {audience.shape === 'several' && (
                     <p>
-                        This app holds scopes of more than one API:{' '}
+                        {tc('console.this_app_holds_scopes_of_more_than_one_api_422e41ea')}{' '}
                         {audience.identifiers.map((identifier, index) => (
                             <span key={identifier}>
                                 {index > 0 && ', '}
                                 <Mono>{identifier}</Mono>
                             </span>
                         ))}
-                        . A token is for one API at a time, so the app names the one it wants with
-                        the <Mono>resource</Mono> parameter — a request for scopes of two APIs at
-                        once is refused.
+                        {tc('console.a_token_is_for_one_api_at_a_time_so_the_app__6dd50c9a')}
+                        <Mono>{tc('console.resource_5de95319')}</Mono>
+                        {tc('console.parameter_a_request_for_scopes_of_two_apis_a_7b59f6ec')}
                     </p>
                 )}
                 {audience.unowned.length > 0 && (
                     <p>
-                        Typed scopes (<Mono>{audience.unowned.join(' ')}</Mono>) are unowned: they
-                        travel as they are, and never on a registered API's audience.
+                        {tc('console.typed_scopes_99c0ce9b')}
+                        <Mono>{audience.unowned.join(' ')}</Mono>
+                        {tc('console.are_unowned_they_travel_as_they_are_and_neve_ebc67146')}
                     </p>
                 )}
                 {audience.refused.length > 0 && (
                     <p role="note" style={{ color: 'var(--warning-strong)' }}>
-                        <Mono>{audience.refused.join(' ')}</Mono> belong to an API this app may not
-                        use. They are left out of every token; remove them from Typed scopes.
+                        <Mono>{audience.refused.join(' ')}</Mono>
+                        {tc('console.belong_to_an_api_this_app_may_not_use_they_a_d169343d')}
                     </p>
                 )}
             </div>

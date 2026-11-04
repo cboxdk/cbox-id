@@ -14,6 +14,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
@@ -95,7 +96,7 @@ final readonly class HookController extends ConsoleController
         // enumerate the environment's other tenants.
         $owners = $this->scope->organizationNames($page->getCollection()->pluck('organization_id'));
 
-        return $this->page('console/hooks/index', Vocabulary::HOOKS, [
+        return $this->page('console/hooks/index', ConsoleStrings::text(Vocabulary::HOOKS), [
             'help' => HelpProps::for(HelpTopic::InlineHooks),
             'hooks' => array_map(fn (ExternalActionEndpoint $endpoint): array => [
                 'id' => $endpoint->id,
@@ -128,7 +129,7 @@ final readonly class HookController extends ConsoleController
             return to_route($sudo);
         }
 
-        return $this->page('console/hooks/create', 'New hook', [
+        return $this->page('console/hooks/create', __('console.new_hook_8279aa8b'), [
             'points' => array_map(static fn (HookPoint $point): array => [
                 'value' => $point->value,
                 'label' => $point->label(),
@@ -205,7 +206,7 @@ final readonly class HookController extends ConsoleController
         $this->inertia->flash('newSecret', $registered->secret);
 
         return to_route($this->scope->routeName('hooks.show'), $registered->endpoint->id)
-            ->with('status', 'Hook endpoint registered.');
+            ->with('status', __('console.hook_endpoint_registered_592bfb8c'));
     }
 
     public function show(string $hook): Response
@@ -219,7 +220,7 @@ final readonly class HookController extends ConsoleController
             ? (Organization::query()->whereKey($endpoint->organization_id)->value('name') ?? $endpoint->organization_id)
             : null;
 
-        return $this->page('console/hooks/show', 'Hook', [
+        return $this->page('console/hooks/show', __('console.hook_536ff505'), [
             'hook' => [
                 'id' => $endpoint->id,
                 'url' => $endpoint->url,
@@ -261,8 +262,8 @@ final readonly class HookController extends ConsoleController
         }
 
         return back()->with('status', $activate
-            ? 'Endpoint activated.'
-            : 'Endpoint paused — it will stop being called at the hook point.');
+            ? __('console.endpoint_activated_664ccd32')
+            : __('console.endpoint_paused_it_will_stop_being_called_at_f3df6248'));
     }
 
     public function destroy(string $hook): RedirectResponse
@@ -273,7 +274,7 @@ final readonly class HookController extends ConsoleController
 
         $result = $this->act(DeleteHook::class, ['id' => $endpoint->id]);
 
-        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('hooks'))->with('status', 'Endpoint removed.');
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('hooks'))->with('status', __('console.endpoint_removed_4f97db84'));
     }
 
     /**
@@ -316,7 +317,7 @@ final readonly class HookController extends ConsoleController
     {
         $endpoint = $this->visible($hook);
 
-        abort_unless($this->mayManage($endpoint), 403, 'This endpoint belongs to the environment. Your operator manages it.');
+        abort_unless($this->mayManage($endpoint), 403, __('console.this_endpoint_belongs_to_the_environment_you_1c2b35cf'));
 
         return $endpoint;
     }
@@ -344,7 +345,7 @@ final readonly class HookController extends ConsoleController
             'hooks.create',
             'environment.hooks.create',
             [],
-            'Registering a hook issues a signing secret and puts your endpoint inside the sign-in path.',
+            __('console.registering_a_hook_issues_a_signing_secret_a_28ea49a1'),
         );
     }
 }

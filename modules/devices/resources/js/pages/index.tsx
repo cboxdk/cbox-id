@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
@@ -43,13 +44,19 @@ export default function Devices({
     wholeEnvironment,
     help,
 }: Props) {
-    const scope = wholeEnvironment ? ' across this environment' : " by this organization's members";
+    const { t: tc } = useTranslator();
+
+    const scope = wholeEnvironment
+        ? tc('console.across_this_environment_ec120044')
+        : tc('console.by_this_organization_s_members_a9bf918e');
 
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description={`Handsets enrolled in the authenticator app${scope}. These receive approval prompts and sign-in alerts. Push tokens are never shown.`}
+                description={tc('console.handsets_enrolled_in_the_authenticator_app_v_79c194a8', {
+                    value0: scope,
+                })}
             />
 
             {/*
@@ -60,9 +67,9 @@ export default function Devices({
             */}
             {personalPage !== null && (
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Anyone can enrol their own phone from{' '}
+                    {tc('console.anyone_can_enrol_their_own_phone_from_fd09b121')}{' '}
                     <Link href={personalPage} className="underline">
-                        My account → Trusted devices
+                        {tc('console.my_account_trusted_devices_fcbd2d0b')}
                     </Link>
                     .
                 </p>
@@ -71,21 +78,27 @@ export default function Devices({
             {devices.length === 0 ? (
                 <EmptyState
                     icon="shield"
-                    title="No devices enrolled yet"
-                    description="A handset appears here once somebody enrols it in the authenticator app."
+                    title={tc('console.no_devices_enrolled_yet_a47612e5')}
+                    description={tc(
+                        'console.a_handset_appears_here_once_somebody_enrols__83d66caa',
+                    )}
                 />
             ) : (
                 <>
                     <div className="card overflow-hidden">
                         <div className="overflow-x-auto">
-                            <Table caption="Every enrolled handset, when it was last seen, and whether its pushes are getting through">
+                            <Table
+                                caption={tc(
+                                    'console.every_enrolled_handset_when_it_was_last_seen_e9cfa2c4',
+                                )}
+                            >
                                 <thead>
                                     <tr>
-                                        <Th>Device</Th>
-                                        <Th>Platform</Th>
-                                        <Th>Status</Th>
-                                        <Th>Last seen</Th>
-                                        <Th>Health</Th>
+                                        <Th>{tc('console.device_6ba0bdec')}</Th>
+                                        <Th>{tc('console.platform_c78ffe19')}</Th>
+                                        <Th>{tc('console.status_920e413c')}</Th>
+                                        <Th>{tc('console.last_seen_21fd79c7')}</Th>
+                                        <Th>{tc('console.health_55898449')}</Th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -126,7 +139,8 @@ export default function Devices({
                     */}
                     <Pagination
                         pagination={pagination}
-                        noun="device"
+                        noun={tc('console.device_263a4dbe')}
+                        pluralNoun={tc('console.devices_ade15a12')}
                         href={(page) =>
                             page > 1
                                 ? `${window.location.pathname}?page=${page}`
@@ -137,25 +151,33 @@ export default function Devices({
             )}
 
             <div>
-                <h2 className="mb-3 text-sm font-medium">Recent notifications</h2>
+                <h2 className="mb-3 text-sm font-medium">
+                    {tc('console.recent_notifications_11bc0414')}
+                </h2>
 
                 {recent.length === 0 ? (
                     <EmptyState
                         icon="mail"
-                        title="Nothing sent yet"
-                        description="Approval prompts and sign-in alerts appear here as they are delivered."
+                        title={tc('console.nothing_sent_yet_be270600')}
+                        description={tc(
+                            'console.approval_prompts_and_sign_in_alerts_appear_h_673f43a3',
+                        )}
                     />
                 ) : (
                     <div className="card overflow-hidden">
                         <div className="overflow-x-auto">
-                            <Table caption="The most recent push notifications sent to these devices, and why any of them failed">
+                            <Table
+                                caption={tc(
+                                    'console.the_most_recent_push_notifications_sent_to_t_cf468f18',
+                                )}
+                            >
                                 <thead>
                                     <tr>
-                                        <Th>When</Th>
-                                        <Th>Kind</Th>
-                                        <Th>Status</Th>
-                                        <Th>Attempts</Th>
-                                        <Th>Detail</Th>
+                                        <Th>{tc('console.when_cf9c7aa2')}</Th>
+                                        <Th>{tc('console.kind_f5387f9b')}</Th>
+                                        <Th>{tc('console.status_920e413c')}</Th>
+                                        <Th>{tc('console.attempts_06e70139')}</Th>
+                                        <Th>{tc('console.detail_fb5f27d5')}</Th>
                                     </tr>
                                 </thead>
                                 <tbody>

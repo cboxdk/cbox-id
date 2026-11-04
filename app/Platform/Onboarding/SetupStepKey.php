@@ -30,12 +30,12 @@ enum SetupStepKey: string
     public function title(): string
     {
         return match ($this) {
-            self::InviteTeam => 'Invite your team',
-            self::ConnectApp => 'Connect your first app',
-            self::DefineRoles => 'Decide who can do what',
-            self::BrandSignIn => 'Make sign-in look like you',
-            self::SingleSignOn => 'Sign in with your own provider',
-            self::SyncUsersIn => 'Keep your people in sync automatically',
+            self::InviteTeam => __('console.invite_your_team_8caa939a'),
+            self::ConnectApp => __('console.connect_your_first_app_c9a9c5a8'),
+            self::DefineRoles => __('console.decide_who_can_do_what_c03831fa'),
+            self::BrandSignIn => __('console.make_sign_in_look_like_you_ffb6283c'),
+            self::SingleSignOn => __('console.sign_in_with_your_own_provider_34fe54a3'),
+            self::SyncUsersIn => __('console.keep_your_people_in_sync_automatically_dc19fdd0'),
         };
     }
 
@@ -43,12 +43,12 @@ enum SetupStepKey: string
     public function description(): string
     {
         return match ($this) {
-            self::InviteTeam => 'Add the people who will administer this organization with you. They set their own sign-in, so you never handle a password.',
-            self::ConnectApp => 'Register an app so your people can sign in to it with the account they have here. This is the step that turns Cbox ID into something they use.',
-            self::DefineRoles => 'Give people roles instead of blanket access, so every connected app knows who is an editor and who is read-only.',
-            self::BrandSignIn => 'Your sign-in page carries your logo and colours. People are typing a password into it — it should look like you, not like us.',
-            self::SingleSignOn => 'Connect Entra ID, Okta or Google Workspace and your people sign in with the company account they already have.',
-            self::SyncUsersIn => 'Let your provider create and deactivate people here on its own, so a leaver loses access everywhere without a ticket.',
+            self::InviteTeam => __('console.add_the_people_who_will_administer_this_orga_75edc5a6'),
+            self::ConnectApp => __('console.register_an_app_so_your_people_can_sign_in_t_9fcc62a6'),
+            self::DefineRoles => __('console.give_people_roles_instead_of_blanket_access__8788f6f3'),
+            self::BrandSignIn => __('console.your_sign_in_page_carries_your_logo_and_colo_76d3ce22'),
+            self::SingleSignOn => __('console.connect_entra_id_okta_or_google_workspace_an_688a5abf'),
+            self::SyncUsersIn => __('console.let_your_provider_create_and_deactivate_peop_7db65233'),
         };
     }
 
@@ -76,12 +76,12 @@ enum SetupStepKey: string
     public function actionLabel(): string
     {
         return match ($this) {
-            self::InviteTeam => 'Invite someone',
-            self::ConnectApp => 'Register an app',
-            self::DefineRoles => 'Set up roles',
-            self::BrandSignIn => 'Open the theme editor',
-            self::SingleSignOn => 'Connect a provider',
-            self::SyncUsersIn => 'Connect a directory',
+            self::InviteTeam => __('console.invite_someone_9b7639e8'),
+            self::ConnectApp => __('console.register_an_app_26c880f0'),
+            self::DefineRoles => __('console.set_up_roles_2a23b2ed'),
+            self::BrandSignIn => __('console.open_the_theme_editor_46105544'),
+            self::SingleSignOn => __('console.connect_a_provider_a002b3f3'),
+            self::SyncUsersIn => __('console.connect_a_directory_a1e72908'),
         };
     }
 

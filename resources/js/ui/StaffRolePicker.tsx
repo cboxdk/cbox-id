@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Badge } from './Badge';
 import { Combobox } from './Combobox';
 
@@ -12,8 +13,8 @@ export interface StaffRoleOption {
 }
 
 /** "All apps" for an app-agnostic role; the app's name otherwise. */
-export function staffRoleScope(role: Pick<StaffRoleOption, 'app'>): string {
-    return role.app ?? 'All apps';
+export function staffRoleScope(role: Pick<StaffRoleOption, 'app'>, allApps = 'All apps'): string {
+    return role.app ?? allApps;
 }
 
 /**
@@ -30,22 +31,31 @@ export function StaffRolePicker({
     value: string;
     onValueChange: (value: string) => void;
 }) {
+    const { t: tc } = useUiTranslator();
+
     return (
         <Combobox
-            aria-label="Admin & support role"
+            aria-label={tc('console.admin_support_role_cd7f9f2d', 'Admin & support role')}
             value={value === '' ? undefined : value}
             onValueChange={onValueChange}
-            placeholder="Choose a role…"
-            searchPlaceholder="Search roles or apps…"
-            emptyMessage="No role matches that."
+            placeholder={tc('console.choose_a_role_04f24839', 'Choose a role…')}
+            searchPlaceholder={tc('console.search_roles_or_apps_4350bf35', 'Search roles or apps…')}
+            emptyMessage={tc('console.no_role_matches_that_c2c896ae', 'No role matches that.')}
             options={roles.map((role) => ({
                 value: role.id,
                 label: role.name,
-                keywords: [staffRoleScope(role)],
+                keywords: [staffRoleScope(role, tc('console.all_apps_01bed311', 'All apps'))],
                 hint: (
                     <span className="inline-flex items-center gap-1.5">
-                        {staffRoleScope(role)}
-                        {role.staffOnly && <Badge>Admins & support only</Badge>}
+                        {staffRoleScope(role, tc('console.all_apps_01bed311', 'All apps'))}
+                        {role.staffOnly && (
+                            <Badge>
+                                {tc(
+                                    'console.admins_support_only_bc5dfbd2',
+                                    'Admins & support only',
+                                )}
+                            </Badge>
+                        )}
                     </span>
                 ),
             }))}

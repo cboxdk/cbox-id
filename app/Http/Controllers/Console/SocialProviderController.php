@@ -19,6 +19,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\PlaneResolver;
 use App\Platform\Social\ProviderSetupSteps;
 use App\Platform\VerifiedEmailGate;
@@ -110,7 +111,7 @@ final readonly class SocialProviderController extends ConsoleController
             ? $environmentKeys
             : array_map(static fn (Connection $connection): string => (string) $connection->provider, $own);
 
-        return $this->page('console/social-providers', Vocabulary::SOCIAL_LOGIN, [
+        return $this->page('console/social-providers', ConsoleStrings::text(Vocabulary::SOCIAL_LOGIN), [
             'view' => $environmentView ? 'environment' : 'organization',
             'organizationName' => $environmentView ? null : $filter->name,
             'environmentProviders' => $environmentView || $managesEnvironment
@@ -127,7 +128,7 @@ final readonly class SocialProviderController extends ConsoleController
             'available' => array_map(fn (ProviderTemplate $option): array => [
                 'key' => $option->key,
                 'name' => $option->name,
-                'protocol' => $option->isOidc() ? 'OpenID Connect' : 'OAuth 2.0',
+                'protocol' => $option->isOidc() ? __('console.openid_connect_50a8a027') : 'OAuth 2.0',
                 // The filter rides along, so the setup form opens for the organization the
                 // list is narrowed to.
                 'href' => $this->url('social-providers', array_filter([
@@ -204,7 +205,7 @@ final readonly class SocialProviderController extends ConsoleController
     public function store(EnableSocialProviderRequest $request): RedirectResponse
     {
         $this->scope->assertMayAdminister();
-        app(VerifiedEmailGate::class)->require('add a sign-in provider');
+        app(VerifiedEmailGate::class)->require(__('console.add_a_sign_in_provider_ebe814aa'));
 
         $template = SocialProviderFields::loginTemplate($request->provider());
         $parameters = $template === null ? [] : array_map(static fn ($parameter): string => $parameter->key, $template->parameters);
@@ -241,13 +242,13 @@ final readonly class SocialProviderController extends ConsoleController
         $request->session()->forget(self::RESERVED.$request->provider());
 
         $where = $enabled->organization_id === null
-            ? 'every sign-in page in this environment'
-            : (($this->scope->organizationNames([$enabled->organization_id])[$enabled->organization_id] ?? 'this organization').'’s sign-in page');
+            ? __('console.every_sign_in_page_in_this_environment_589e274d')
+            : (($this->scope->organizationNames([$enabled->organization_id])[$enabled->organization_id] ?? __('console.this_organization_cab32fc4')).__('console.s_sign_in_page_223b642e'));
 
         return to_route($this->scope->routeName('social-providers'), $this->scope->plane() === ConsolePlane::Environment && $enabled->organization_id !== null
             ? ['organization' => $enabled->organization_id]
             : [])
-            ->with('status', $enabled->name.' is now offered on '.$where.'.');
+            ->with('status', $enabled->name.__('console.is_now_offered_on_6d448b55').$where.'.');
     }
 
     /** New credentials, values or scopes, through {@see UpdateSocialProvider}. */
@@ -277,7 +278,7 @@ final readonly class SocialProviderController extends ConsoleController
             && $request->boolean('fromOrganization');
 
         return redirect($this->url('social-providers', $backToOrganization ? ['organization' => $updated->organization_id] : null))
-            ->with('status', $updated->name.' is saved.');
+            ->with('status', $updated->name.__('console.is_saved_a8f6fd28'));
     }
 
     public function enable(string $connection): RedirectResponse
@@ -294,7 +295,7 @@ final readonly class SocialProviderController extends ConsoleController
         /** @var Connection $enabled */
         $enabled = $result->value;
 
-        return back()->with('status', $enabled->name.' is on again.');
+        return back()->with('status', $enabled->name.__('console.is_on_again_e0875ef1'));
     }
 
     public function disable(string $connection): RedirectResponse
@@ -312,8 +313,8 @@ final readonly class SocialProviderController extends ConsoleController
         $disabled = $result->value;
 
         return back()->with('status', $disabled->organization_id === null
-            ? $disabled->name.' is off on every sign-in page. Its credentials are kept, so you can turn it back on.'
-            : $disabled->name.' is off on this organization’s sign-in page. Its credentials are kept, so you can turn it back on.');
+            ? $disabled->name.__('console.is_off_on_every_sign_in_page_its_credentials_73afb0b0')
+            : $disabled->name.__('console.is_off_on_this_organization_s_sign_in_page_i_f5572371'));
     }
 
     public function destroy(string $connection): RedirectResponse
@@ -344,7 +345,7 @@ final readonly class SocialProviderController extends ConsoleController
 
         return back()->with(
             'status',
-            $removed->name.' is no longer offered. Anyone who signed in with it keeps their account and can still use their password.',
+            $removed->name.__('console.is_no_longer_offered_anyone_who_signed_in_wi_6111f3bf'),
         );
     }
 
@@ -371,8 +372,8 @@ final readonly class SocialProviderController extends ConsoleController
         $name = ProviderCatalog::find($provider)->name ?? $provider;
 
         return back()->with('status', $offered
-            ? $name.' from the environment is offered on this organization’s sign-in page again.'
-            : $name.' from the environment is no longer offered on this organization’s sign-in page.');
+            ? $name.__('console.from_the_environment_is_offered_on_this_orga_81dad653')
+            : $name.__('console.from_the_environment_is_no_longer_offered_on_78d9af04'));
     }
 
     /**
@@ -428,7 +429,7 @@ final readonly class SocialProviderController extends ConsoleController
             'id' => $connection->id,
             'name' => $connection->name,
             'provider' => $connection->provider,
-            'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : 'OpenID Connect',
+            'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : __('console.openid_connect_50a8a027'),
             'enabled' => $connection->isActive(),
             /*
              * THE REAL REDIRECT URI. The one value the provider must be given, and the
@@ -480,7 +481,7 @@ final readonly class SocialProviderController extends ConsoleController
                 'id' => $connection->id,
                 'name' => $connection->name,
                 'provider' => $connection->provider,
-                'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : 'OpenID Connect',
+                'protocol' => $connection->type === ConnectionType::OAuth2 ? 'OAuth 2.0' : __('console.openid_connect_50a8a027'),
                 'enabled' => $connection->isActive(),
                 'callbackUri' => SocialProviderFields::callbackUri($connection),
                 'source' => 'environment',
@@ -585,7 +586,7 @@ final readonly class SocialProviderController extends ConsoleController
         return [
             'key' => $template->key,
             'name' => $template->name,
-            'protocol' => $template->isOidc() ? 'OpenID Connect' : 'OAuth 2.0',
+            'protocol' => $template->isOidc() ? __('console.openid_connect_50a8a027') : 'OAuth 2.0',
             'documentationUrl' => $template->documentationUrl,
             'setupSteps' => ProviderSetupSteps::for($template),
             'parameters' => array_map(static fn ($parameter): array => [

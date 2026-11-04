@@ -65,7 +65,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
             : Environment::query()->whereIn('id', $reachable)->whereKey($selected)->first(['id', 'name', 'domain']);
         $challenge = $environment === null ? null : $domains->challenge($environment->id);
 
-        return $this->page('console/environment-domains', 'Environment domains', [
+        return $this->page('console/environment-domains', __('console.environment_domains_cdec5a9f'), [
             'help' => HelpProps::for(HelpTopic::EnvironmentDomains),
             'environments' => $environments->map(fn (Environment $item): array => [
                 'id' => $item->id,
@@ -101,7 +101,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
             'domain' => $request->domain(),
         ], ['domain' => 'domain'], 'domain');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Add the TXT record below, then verify.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.add_the_txt_record_below_then_verify_1c7edecb'));
     }
 
     /**
@@ -125,7 +125,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
         /** @var array{domain: string|null} $domain */
         $domain = $result->payload;
 
-        return back()->with('status', ($domain['domain'] ?? 'The domain').' is verified and now serves this environment.');
+        return back()->with('status', ($domain['domain'] ?? __('console.the_domain_fe68c612')).__('console.is_verified_and_now_serves_this_environment_16af6e99'));
     }
 
     /** Remove the domain through {@see RemoveEnvironmentDomain}, recorded on the workspace's trail. */
@@ -137,7 +137,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
             'environment_id' => trim($request->string('environment')->toString()),
         ], ['domain' => 'domain'], 'domain');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Custom domain removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.custom_domain_removed_51af6d53'));
     }
 
     /**

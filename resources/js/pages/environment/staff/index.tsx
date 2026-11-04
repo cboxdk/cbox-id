@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -41,20 +43,20 @@ type Props = PageProps<{
  * Grants grouped by what they reach: every app first, then each app by name — the
  * question this page answers is "who has what in Parcels?", and the app is its first half.
  */
-function byScope(grants: GrantRow[]): [string, GrantRow[]][] {
+function byScope(grants: GrantRow[], tc: Translator['t']): [string, GrantRow[]][] {
     const groups = new Map<string, GrantRow[]>();
 
     for (const grant of grants) {
-        const scope = staffRoleScope(grant.role);
+        const scope = staffRoleScope(grant.role, tc('console.all_apps_01bed311'));
         groups.set(scope, [...(groups.get(scope) ?? []), grant]);
     }
 
     return [...groups.entries()].sort(([a], [b]) => {
-        if (a === 'All apps') {
+        if (a === tc('console.all_apps_01bed311')) {
             return -1;
         }
 
-        if (b === 'All apps') {
+        if (b === tc('console.all_apps_01bed311')) {
             return 1;
         }
 
@@ -63,18 +65,20 @@ function byScope(grants: GrantRow[]): [string, GrantRow[]][] {
 }
 
 export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [revoking, setRevoking] = useState<GrantRow | null>(null);
 
     return (
         <>
             <PageHeader
                 help={help}
-                description="An admin & support role is a role you grant to your own people across the whole environment: it applies in every organization, and no organization's admins can see or change it."
+                description={tc('console.an_admin_support_role_is_a_role_you_grant_to_caea5beb')}
                 actions={
                     <Button asChild className="shrink-0">
                         <Link href={reviewHref}>
                             <Icon name="shield" className="w-4 h-4" />
-                            Review admin & support access
+                            {tc('console.review_admin_support_access_81f237a2')}
                         </Link>
                     </Button>
                 }
@@ -88,19 +92,26 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                         <EmptyState
                             icon="members"
                             equivalent="users.environment_roles.grant"
-                            title="Nobody holds an admin & support role"
-                            description="Grant one to the people who support or run your apps. An app's own role reaches only that app's tokens; a role for all apps reaches every one of them."
+                            title={tc('console.nobody_holds_an_admin_support_role_41962c81')}
+                            description={tc(
+                                'console.grant_one_to_the_people_who_support_or_run_y_3991d001',
+                            )}
                         />
                     </div>
                 ) : (
-                    byScope(grants).map(([scope, rows]) => (
+                    byScope(grants, tc).map(([scope, rows]) => (
                         <Panel
                             key={scope}
                             title={scope}
                             description={
-                                scope === 'All apps'
-                                    ? 'In the tokens of every app, in every organization.'
-                                    : `Only in tokens for ${scope}, in every organization.`
+                                scope === tc('console.all_apps_01bed311')
+                                    ? tc(
+                                          'console.in_the_tokens_of_every_app_in_every_organiza_6a811d97',
+                                      )
+                                    : tc(
+                                          'console.only_in_tokens_for_value0_in_every_organizat_7e530a50',
+                                          { value0: scope },
+                                      )
                             }
                         >
                             <ul className="-my-1">
@@ -138,7 +149,9 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                                         <span className="inline-flex items-center gap-1.5">
                                             <Badge>{grant.role.name}</Badge>
                                             {grant.role.staffOnly && (
-                                                <Badge tone="info">Admins & support only</Badge>
+                                                <Badge tone="info">
+                                                    {tc('console.admins_support_only_bc5dfbd2')}
+                                                </Badge>
                                             )}
                                         </span>
 
@@ -148,7 +161,7 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                                             className="shrink-0"
                                             onClick={() => setRevoking(grant)}
                                         >
-                                            Take back
+                                            {tc('console.take_back_7d2a64f5')}
                                         </Button>
                                     </li>
                                 ))}
@@ -162,9 +175,12 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                 open={revoking !== null}
                 onOpenChange={(open) => !open && setRevoking(null)}
                 name={revoking?.userName ?? revoking?.userEmail ?? ''}
-                title={`Take back “${revoking?.role.name ?? ''}” from ${revoking?.userName ?? revoking?.userEmail ?? ''}?`}
-                actionLabel="Take back"
-                consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh the person's tokens; nobody is signed out."
+                title={tc('console.take_back_value0_from_value1_a2cec092', {
+                    value0: revoking?.role.name ?? '',
+                    value1: revoking?.userName ?? revoking?.userEmail ?? '',
+                })}
+                actionLabel={tc('console.take_back_7d2a64f5')}
+                consequence={tc('console.they_lose_this_role_in_every_organization_at_2750f7e3')}
                 onConfirm={() => {
                     const grant = revoking;
                     setRevoking(null);
@@ -187,21 +203,23 @@ function GrantForm({
     storeHref: string;
     rolesHref: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ email: '', role: '' });
 
     if (roles.length === 0) {
         return (
-            <Panel title="Grant an admin & support role">
+            <Panel title={tc('console.grant_an_admin_support_role_ebbcd7de')}>
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    There is no role to grant yet. Define one on the{' '}
+                    {tc('console.there_is_no_role_to_grant_yet_define_one_on__e3341872')}{' '}
                     <Link
                         href={rolesHref}
                         className="underline underline-offset-2"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Roles
+                        {tc('console.roles_c2533705')}
                     </Link>{' '}
-                    page, or let an app declare its own in its manifest.
+                    {tc('console.page_or_let_an_app_declare_its_own_in_its_ma_8f3988ab')}
                 </p>
             </Panel>
         );
@@ -209,8 +227,8 @@ function GrantForm({
 
     return (
         <Panel
-            title="Grant an admin & support role"
-            description="Segregation-of-duties rules are checked in every organization the person belongs to, and a refusal says where."
+            title={tc('console.grant_an_admin_support_role_ebbcd7de')}
+            description={tc('console.segregation_of_duties_rules_are_checked_in_e_8204cb95')}
         >
             <form
                 className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-start"
@@ -222,7 +240,7 @@ function GrantForm({
                     });
                 }}
             >
-                <Field label="Person" error={form.errors.email}>
+                <Field label={tc('console.person_6007db63')} error={form.errors.email}>
                     <Input
                         name="email"
                         type="email"
@@ -232,7 +250,7 @@ function GrantForm({
                     />
                 </Field>
 
-                <Field label="Role" error={form.errors.role}>
+                <Field label={tc('console.role_14736a2e')} error={form.errors.role}>
                     <StaffRolePicker
                         roles={roles}
                         value={form.data.role}
@@ -246,7 +264,7 @@ function GrantForm({
                     loading={form.processing}
                     className="shrink-0 sm:self-end"
                 >
-                    Grant
+                    {tc('console.grant_78b7d037')}
                 </Button>
             </form>
         </Panel>

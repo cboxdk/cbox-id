@@ -73,11 +73,11 @@ final readonly class ConsoleSearch
         $like = LikeTerm::containing($term);
 
         $groups = array_values(array_filter([
-            ['key' => 'users', 'label' => 'Users', 'items' => $this->users($term, $like, $organizationId)],
-            ['key' => 'organizations', 'label' => 'Organizations', 'items' => $organizationId === null ? $this->organizations($term, $like) : []],
-            ['key' => 'apps', 'label' => 'Apps', 'items' => $this->apps($term, $like, $organizationId)],
-            ['key' => 'keys', 'label' => 'Management keys', 'items' => $organizationId === null ? $this->keys($term, $like) : []],
-            ['key' => 'audit', 'label' => 'Audit log', 'items' => $this->audit($term, $organizationId)],
+            ['key' => 'users', 'label' => __('console.users_6b0cc904'), 'items' => $this->users($term, $like, $organizationId)],
+            ['key' => 'organizations', 'label' => __('console.organizations_2730183d'), 'items' => $organizationId === null ? $this->organizations($term, $like) : []],
+            ['key' => 'apps', 'label' => __('console.apps_89dd7484'), 'items' => $this->apps($term, $like, $organizationId)],
+            ['key' => 'keys', 'label' => __('console.management_keys_a6f11855'), 'items' => $organizationId === null ? $this->keys($term, $like) : []],
+            ['key' => 'audit', 'label' => __('console.audit_log_e4d36f9a'), 'items' => $this->audit($term, $organizationId)],
         ], static fn (array $group): bool => $group['items'] !== []));
 
         return ['query' => $term, 'jump' => $this->jump($term, $groups), 'groups' => $groups];

@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { relativeTime } from '@/lib/time';
@@ -39,6 +40,10 @@ export interface PendingInvitationsProps {
  * and inviting them again undoes it.
  */
 export function PendingInvitations({ invitations, total }: PendingInvitationsProps) {
+    const { locale } = useUiTranslator();
+
+    const { t: tc } = useUiTranslator();
+
     const [withdrawing, setWithdrawing] = useState<PendingInvitation | null>(null);
     const [sending, setSending] = useState<string | null>(null);
 
@@ -48,14 +53,20 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
 
     return (
         <Panel
-            title="Invited, not joined yet"
+            title={tc('console.invited_not_joined_yet_c4cd0dec', 'Invited, not joined yet')}
             description={
                 <>
-                    Each link works until it expires or you withdraw it.
+                    {tc(
+                        'console.each_link_works_until_it_expires_or_you_with_c5668c67',
+                        'Each link works until it expires or you withdraw it.',
+                    )}
                     {total !== undefined && total > invitations.length && (
                         <>
                             {' '}
-                            Showing the {invitations.length} most recent of {total}.
+                            {tc('console.showing_the_d20ab9b1', 'Showing the ')}
+                            {invitations.length}
+                            {tc('console.most_recent_of_250cb204', ' most recent of ')}
+                            {total}.
                         </>
                     )}
                 </>
@@ -76,11 +87,13 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                             <p className="text-xs truncate" style={{ color: 'var(--faint)' }}>
                                 {invitation.inviterName !== null
                                     ? `invited by ${invitation.inviterName} `
-                                    : 'invited '}
+                                    : tc('console.invited_98b2a312', 'invited ')}
                                 {invitation.invitedAt === null
-                                    ? 'recently'
-                                    : relativeTime(invitation.invitedAt)}
-                                {' · '}expires {relativeTime(invitation.expiresAt)}
+                                    ? tc('console.recently_59f7a3dd', 'recently')
+                                    : relativeTime(invitation.invitedAt, locale)}
+                                {' · '}
+                                {tc('console.expires_22206a25', 'expires ')}
+                                {relativeTime(invitation.expiresAt, locale)}
                                 {invitation.appName !== null && ` · for ${invitation.appName}`}
                             </p>
                         </div>
@@ -106,7 +119,7 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                     );
                                 }}
                             >
-                                Send again
+                                {tc('console.send_again_feead925', 'Send again')}
                             </Button>
                         )}
 
@@ -118,7 +131,7 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                 aria-label={`Withdraw the invitation to ${invitation.email}`}
                                 onClick={() => setWithdrawing(invitation)}
                             >
-                                Withdraw
+                                {tc('console.withdraw_164546a9', 'Withdraw')}
                             </Button>
                         )}
                     </li>
@@ -129,10 +142,15 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                 open={withdrawing !== null}
                 onOpenChange={(open) => !open && setWithdrawing(null)}
                 title={`Withdraw the invitation to ${withdrawing?.email ?? ''}?`}
-                description="The link they were sent stops working immediately, and any roles it carried go with it. You can invite them again afterwards."
+                description={tc(
+                    'console.the_link_they_were_sent_stops_working_immedi_77389b6a',
+                    'The link they were sent stops working immediately, and any roles it carried go with it. You can invite them again afterwards.',
+                )}
                 footer={
                     <>
-                        <Button onClick={() => setWithdrawing(null)}>Cancel</Button>
+                        <Button onClick={() => setWithdrawing(null)}>
+                            {tc('console.cancel_19766ed6', 'Cancel')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -144,7 +162,7 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                 }
                             }}
                         >
-                            Withdraw
+                            {tc('console.withdraw_164546a9', 'Withdraw')}
                         </Button>
                     </>
                 }

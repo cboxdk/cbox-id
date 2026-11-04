@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -34,6 +35,8 @@ export default function ServiceProviderDetail({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [deleting, setDeleting] = useState(false);
 
     const form = useForm({
@@ -52,12 +55,14 @@ export default function ServiceProviderDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="SAML apps" />
+                <Breadcrumb href={indexHref} label={tc('console.saml_apps_072d5a25')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono">{provider.entityId}</h1>
-                    {provider.wantAuthnRequestsSigned && <Pill tone="info">Signed requests</Pill>}
+                    {provider.wantAuthnRequestsSigned && (
+                        <Pill tone="info">{tc('console.signed_requests_b6cc80d3')}</Pill>
+                    )}
                     <Pill tone={provider.active ? 'success' : 'neutral'}>
-                        {provider.active ? 'Active' : provider.status}
+                        {provider.active ? tc('console.active_92340695') : provider.status}
                     </Pill>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -84,16 +89,16 @@ export default function ServiceProviderDetail({
                 />
 
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    Save changes
+                    {tc('console.save_changes_dd0ae7a5')}
                 </Button>
             </form>
 
             <Panel
-                title="Remove"
-                description="Deleting this application stops it from signing users in through this environment."
+                title={tc('console.remove_c3812fc4')}
+                description={tc('console.deleting_this_application_stops_it_from_sign_5d28bf4b')}
             >
                 <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
-                    Delete application
+                    {tc('console.delete_application_0e0e391e')}
                 </Button>
             </Panel>
 
@@ -101,7 +106,7 @@ export default function ServiceProviderDetail({
                 open={deleting}
                 onOpenChange={setDeleting}
                 name={provider.entityId}
-                consequence="The application can no longer sign users in through this environment. This cannot be undone."
+                consequence={tc('console.the_application_can_no_longer_sign_users_in__72052d67')}
                 onConfirm={() => {
                     setDeleting(false);
                     router.delete(urls.destroy);

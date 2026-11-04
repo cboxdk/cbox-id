@@ -1,3 +1,5 @@
+import { useTranslator } from '@/i18n';
+import { ConsoleLanguagePicker } from './ConsoleLanguagePicker';
 import { Link, useForm } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { currentTheme, toggleTheme } from '@/lib/theme';
@@ -45,6 +47,8 @@ export function AccountMenu({
     platformHref,
     platformEnvironmentHref = null,
 }: AccountMenuProps) {
+    const { t: tc } = useTranslator();
+
     const signOut = useForm({});
     // Read when the menu opens, not at render: the theme is the document's, and a value
     // captured on the first render would name the theme from before the last toggle.
@@ -54,7 +58,7 @@ export function AccountMenu({
         <DropdownMenu onOpenChange={(open) => open && setTheme(currentTheme())}>
             <DropdownMenuTrigger
                 className="cbx-avatar-btn"
-                aria-label={`Account menu — ${user.name}`}
+                aria-label={tc('console.account_menu_value0_6ab6a9a2', { value0: user.name })}
             >
                 <Avatar name={user.name} />
             </DropdownMenuTrigger>
@@ -67,7 +71,7 @@ export function AccountMenu({
 
                 {workspaceSettingsHref !== null && (
                     <AccountMenuLink href={workspaceSettingsHref} icon="briefcase">
-                        Workspace settings
+                        {tc('console.workspace_settings_5ebc5914')}
                     </AccountMenuLink>
                 )}
                 {/*
@@ -76,14 +80,14 @@ export function AccountMenu({
                     administrator to a sign-in form for the tenant's end users.
                 */}
                 <AccountMenuLink href={accountHref} icon="user">
-                    My account
+                    {tc('console.my_account_b53181a4')}
                 </AccountMenuLink>
                 {/*
                     "Switch user": it moves between the people signed in on this device.
                     "Switch account" read as switching workspace.
                 */}
                 <AccountMenuLink href={switchUserHref} icon="switch">
-                    Switch user
+                    {tc('console.switch_user_4f899129')}
                 </AccountMenuLink>
 
                 {(platformHref !== null || platformEnvironmentHref !== null) && (
@@ -91,7 +95,7 @@ export function AccountMenu({
                 )}
                 {platformHref !== null && (
                     <AccountMenuLink href={platformHref} icon="lock">
-                        Platform admin
+                        {tc('console.platform_admin_69652f55')}
                     </AccountMenuLink>
                 )}
                 {/*
@@ -100,7 +104,7 @@ export function AccountMenu({
                 */}
                 {platformEnvironmentHref !== null && (
                     <AccountMenuLink href={platformEnvironmentHref} icon="layers">
-                        Platform environment
+                        {tc('console.platform_environment_2676dfe4')}
                     </AccountMenuLink>
                 )}
 
@@ -113,9 +117,15 @@ export function AccountMenu({
                     onSelect={() => setTheme(toggleTheme())}
                 >
                     <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 h-4" />
-                    <span className="min-w-0 flex-1">Theme</span>
-                    <span className="cbx-account-hint">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+                    <span className="min-w-0 flex-1">{tc('console.theme_efb52e71')}</span>
+                    <span className="cbx-account-hint">
+                        {theme === 'dark'
+                            ? tc('console.dark_60acc53f')
+                            : tc('console.light_dbcd5e7b')}
+                    </span>
                 </DropdownMenuItem>
+
+                <ConsoleLanguagePicker />
 
                 <DropdownMenuItem
                     destructive
@@ -124,7 +134,7 @@ export function AccountMenu({
                     onSelect={() => signOut.post(logoutUrl)}
                 >
                     <Icon name="logout" className="w-4 h-4" />
-                    Sign out
+                    {tc('console.sign_out_48f0d3d3')}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -25,6 +26,8 @@ type Props = PageProps<{
  * The header and tabs are the layout's (`../frame.tsx`).
  */
 export default function OrganizationSettings({ organization, urls }: Props) {
+    const { t: tc } = useTranslator();
+
     const [deleting, setDeleting] = useState(false);
 
     const suspended = organization.status === 'suspended';
@@ -34,11 +37,15 @@ export default function OrganizationSettings({ organization, urls }: Props) {
             <Details organization={organization} href={urls.update} />
 
             <Panel
-                title={suspended ? 'Reactivate organization' : 'Suspend organization'}
+                title={
+                    suspended
+                        ? tc('console.reactivate_organization_7a2cb32e')
+                        : tc('console.suspend_organization_33c2d142')
+                }
                 description={
                     suspended
-                        ? 'Its people can sign in again, with the access they had.'
-                        : 'Its people are refused at every door — sign-in, the device flow, the consent screen — until it is reactivated. Nothing is deleted.'
+                        ? tc('console.its_people_can_sign_in_again_with_the_access_dceea1d5')
+                        : tc('console.its_people_are_refused_at_every_door_sign_in_5c2c7648')
                 }
             >
                 <Button
@@ -51,16 +58,16 @@ export default function OrganizationSettings({ organization, urls }: Props) {
                         )
                     }
                 >
-                    {suspended ? 'Reactivate' : 'Suspend'}
+                    {suspended ? tc('console.reactivate_2dc7478f') : tc('console.suspend_4948e134')}
                 </Button>
             </Panel>
 
             <Panel
-                title="Delete organization"
-                description="It disappears from every list and its people are refused everywhere, exactly as a suspension does. The records stay."
+                title={tc('console.delete_organization_a70d189a')}
+                description={tc('console.it_disappears_from_every_list_and_its_people_49a9035c')}
             >
                 <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
-                    Delete organization
+                    {tc('console.delete_organization_a70d189a')}
                 </Button>
             </Panel>
 
@@ -79,6 +86,8 @@ export default function OrganizationSettings({ organization, urls }: Props) {
 }
 
 function Details({ organization, href }: { organization: Props['organization']; href: string }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: organization.name,
         slug: organization.slug,
@@ -86,7 +95,7 @@ function Details({ organization, href }: { organization: Props['organization']; 
     });
 
     return (
-        <Panel title="Details">
+        <Panel title={tc('console.details_45989de4')}>
             <form
                 className="space-y-4"
                 onSubmit={(event) => {
@@ -95,7 +104,7 @@ function Details({ organization, href }: { organization: Props['organization']; 
                 }}
             >
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Name" error={form.errors.name}>
+                    <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                         <Input
                             name="name"
                             value={form.data.name}
@@ -104,8 +113,8 @@ function Details({ organization, href }: { organization: Props['organization']; 
                     </Field>
 
                     <Field
-                        label="URL handle"
-                        hint="Other systems may be using this — changing it changes the URLs they hold."
+                        label={tc('console.url_handle_0b9f3241')}
+                        hint={tc('console.other_systems_may_be_using_this_changing_it__41e0f485')}
                         error={form.errors.slug}
                     >
                         <Input
@@ -120,11 +129,11 @@ function Details({ organization, href }: { organization: Props['organization']; 
                 <MetadataRows
                     rows={form.data.metadata}
                     onChange={(rows) => form.setData('metadata', rows)}
-                    hint="Anything your own systems need to keep against this organization. Rows with no key are dropped."
+                    hint={tc('console.anything_your_own_systems_need_to_keep_again_c911b38e')}
                 />
 
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    Save changes
+                    {tc('console.save_changes_dd0ae7a5')}
                 </Button>
             </form>
         </Panel>

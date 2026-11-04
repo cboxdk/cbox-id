@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -55,6 +56,8 @@ function statusTone(status: string): PillTone {
 }
 
 export default function UsersIndex({ users, pagination, search, createHref, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -77,12 +80,12 @@ export default function UsersIndex({ users, pagination, search, createHref, help
         <>
             <PageHeader
                 help={help}
-                description="Every end-user identity in this environment."
+                description={tc('console.every_end_user_identity_in_this_environment_ca1655ff')}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            New user
+                            {tc('console.new_user_6384ffa7')}
                         </Link>
                     </Button>
                 }
@@ -92,8 +95,8 @@ export default function UsersIndex({ users, pagination, search, createHref, help
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by email or name"
-                    aria-label="Search users"
+                    placeholder={tc('console.search_by_email_or_name_683669d2')}
+                    aria-label={tc('console.search_users_e4bb77af')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -106,7 +109,11 @@ export default function UsersIndex({ users, pagination, search, createHref, help
                     as clearly.
                 */}
                 <output className="sr-only">
-                    {pagination.count} {pagination.count === 1 ? 'user' : 'users'} on this page.
+                    {pagination.count}{' '}
+                    {pagination.count === 1
+                        ? tc('console.user_04f8996d')
+                        : tc('console.users_7dfb4cf6')}
+                    {tc('console.on_this_page_d8ae7c64')}
                 </output>
             </div>
 
@@ -118,20 +125,25 @@ export default function UsersIndex({ users, pagination, search, createHref, help
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title="No matches"
-                            description={`No users match “${search}”. Try a different email or name.`}
+                            title={tc('console.no_matches_2df01a03')}
+                            description={tc(
+                                'console.no_users_match_value0_try_a_different_email__0494af10',
+                                { value0: search },
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="members"
                             equivalent="users.create"
-                            title="No users yet"
-                            description="Every end-user identity in this environment appears here. Create the first user to get started."
+                            title={tc('console.no_users_yet_eadb8912')}
+                            description={tc(
+                                'console.every_end_user_identity_in_this_environment__480d2872',
+                            )}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New user
+                                        {tc('console.new_user_6384ffa7')}
                                     </Link>
                                 </Button>
                             }
@@ -161,7 +173,9 @@ export default function UsersIndex({ users, pagination, search, createHref, help
                                 </p>
                             </div>
 
-                            {!user.verified && <Pill tone="warning">Unverified</Pill>}
+                            {!user.verified && (
+                                <Pill tone="warning">{tc('console.unverified_33c8e8de')}</Pill>
+                            )}
 
                             <Pill tone={statusTone(user.status)}>{user.status}</Pill>
 
@@ -178,7 +192,8 @@ export default function UsersIndex({ users, pagination, search, createHref, help
             <div className="mt-4">
                 <SimplePagination
                     pagination={pagination}
-                    noun="user"
+                    noun={tc('console.user_04f8996d')}
+                    pluralNoun={tc('console.users_7dfb4cf6')}
                     href={(page) => listHref(search, page)}
                 />
             </div>

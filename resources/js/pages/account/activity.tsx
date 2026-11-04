@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -52,6 +53,8 @@ export default function Activity({
     revokeOthersHref,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [signingOut, setSigningOut] = useState<SessionRow | null>(null);
     const [signingOutOthers, setSigningOutOthers] = useState(false);
     const [withdrawing, setWithdrawing] = useState<ApplicationRow | null>(null);
@@ -60,17 +63,17 @@ export default function Activity({
         <>
             <PageHeader
                 help={help}
-                description="Where you are signed in, what can act as you, and what has happened to your account. If you see something you do not recognise, sign it out and change your password."
+                description={tc('console.where_you_are_signed_in_what_can_act_as_you__874bdb24')}
             />
 
             <Panel
-                title="Where you are signed in"
-                description="Every browser and device holding a live session as you."
+                title={tc('console.where_you_are_signed_in_a07510ca')}
+                description={tc('console.every_browser_and_device_holding_a_live_sess_0cb8034e')}
                 className="mt-6"
                 action={
                     sessions.length > 1 && (
                         <Button size="sm" onClick={() => setSigningOutOthers(true)}>
-                            Sign out everywhere else
+                            {tc('console.sign_out_everywhere_else_76406ac4')}
                         </Button>
                     )
                 }
@@ -92,7 +95,7 @@ export default function Activity({
                                     {session.label}
                                     {session.isCurrent && (
                                         <Pill tone="success" className="align-middle ml-1">
-                                            This device
+                                            {tc('console.this_device_d052579c')}
                                         </Pill>
                                     )}
                                     {/*
@@ -102,7 +105,7 @@ export default function Activity({
                                     */}
                                     {session.isSupport && (
                                         <Pill tone="warning" className="align-middle ml-1">
-                                            Support session
+                                            {tc('console.support_session_5f5a9473')}
                                         </Pill>
                                     )}
                                 </p>
@@ -119,9 +122,11 @@ export default function Activity({
                                     className="text-xs truncate"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    {session.ip ?? 'no address recorded'} · signed in{' '}
-                                    {session.signedIn ?? 'unknown'} · last active{' '}
-                                    {session.lastActive ?? 'never'}
+                                    {session.ip ?? tc('console.no_address_recorded_8f7c7606')}
+                                    {tc('console.signed_in_ea4cee4d')}{' '}
+                                    {session.signedIn ?? tc('console.unknown_b23a6a84')}
+                                    {tc('console.last_active_f7809263')}{' '}
+                                    {session.lastActive ?? tc('console.never_6497e4b3')}
                                 </p>
                             </div>
 
@@ -138,7 +143,7 @@ export default function Activity({
                                 aria-label={session.revokeLabel}
                                 onClick={() => setSigningOut(session)}
                             >
-                                Sign out
+                                {tc('console.sign_out_48f0d3d3')}
                             </Button>
                         </div>
                     ))}
@@ -146,15 +151,17 @@ export default function Activity({
             </Panel>
 
             <Panel
-                title="Applications that can act as you"
-                description="Anything you approved — including a device or a command line you signed in from."
+                title={tc('console.applications_that_can_act_as_you_f9bce68e')}
+                description={tc('console.anything_you_approved_including_a_device_or__eea3fafc')}
                 className="mt-6"
             >
                 {applications.length === 0 ? (
                     <EmptyState
                         icon="clients"
-                        title="Nothing can act as you"
-                        description="Applications you approve — a command line, a device, another product signing you in with Cbox ID — appear here, and you can withdraw any of them."
+                        title={tc('console.nothing_can_act_as_you_aa9fe49d')}
+                        description={tc(
+                            'console.applications_you_approve_a_command_line_a_de_9ae677c4',
+                        )}
                     />
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -173,7 +180,7 @@ export default function Activity({
                                         */}
                                         {application.actsOffline && (
                                             <Pill tone="info" className="align-middle ml-1">
-                                                Works when you are away
+                                                {tc('console.works_when_you_are_away_e5adcefe')}
                                             </Pill>
                                         )}
                                     </p>
@@ -181,8 +188,10 @@ export default function Activity({
                                         className="text-xs truncate"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        approved {application.approved ?? 'unknown'} · last used{' '}
-                                        {application.lastUsed ?? 'never'}
+                                        {tc('console.approved_68a00b43')}
+                                        {application.approved ?? tc('console.unknown_b23a6a84')}
+                                        {tc('console.last_used_85606035')}{' '}
+                                        {application.lastUsed ?? tc('console.never_6497e4b3')}
                                     </p>
                                     {application.scopes.length > 0 && (
                                         <p
@@ -202,10 +211,12 @@ export default function Activity({
                                 <Button
                                     size="sm"
                                     className="shrink-0"
-                                    aria-label={`Withdraw access for ${application.name}`}
+                                    aria-label={tc('console.withdraw_access_for_value0_56675c80', {
+                                        value0: application.name,
+                                    })}
                                     onClick={() => setWithdrawing(application)}
                                 >
-                                    Withdraw access
+                                    {tc('console.withdraw_access_b15ef5cf')}
                                 </Button>
                             </div>
                         ))}
@@ -214,21 +225,26 @@ export default function Activity({
             </Panel>
 
             <Panel
-                title="Recent activity"
+                title={tc('console.recent_activity_6cb44b56')}
                 description={
                     // Guarded: "The most recent 0 events." rendered directly above the empty
                     // state saying nothing is recorded yet.
                     activity.length === 0
-                        ? 'Sign-ins and changes to how you sign in.'
-                        : `Sign-ins and changes to how you sign in. The most recent ${activity.length} ${activity.length === 1 ? 'event' : 'events'}.`
+                        ? tc('console.sign_ins_and_changes_to_how_you_sign_in_7dad1547')
+                        : tc('console.sign_ins_and_changes_to_how_you_sign_in_the__2db9cf3f', {
+                              value0: activity.length,
+                              value1: activity.length === 1 ? 'event' : 'events',
+                          })
                 }
                 className="mt-6"
             >
                 {activity.length === 0 ? (
                     <EmptyState
                         icon="audit"
-                        title="Nothing recorded yet"
-                        description="Sign-ins and changes to your password, passkeys and two-factor settings appear here."
+                        title={tc('console.nothing_recorded_yet_cb77e288')}
+                        description={tc(
+                            'console.sign_ins_and_changes_to_your_password_passke_9e7da5c8',
+                        )}
                     />
                 ) : (
                     activity.map((entry, index) => (
@@ -259,7 +275,8 @@ export default function Activity({
                                 */}
                                 {entry.ip !== null && (
                                     <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                        from {entry.ip}
+                                        {tc('console.from_49a6ddf9')}
+                                        {entry.ip}
                                     </p>
                                 )}
                             </div>
@@ -288,17 +305,19 @@ export default function Activity({
                     signingOut === null
                         ? ''
                         : signingOut.isCurrent
-                          ? 'Sign out of this device?'
-                          : `Sign out ${signingOut.label}?`
+                          ? tc('console.sign_out_of_this_device_5c5bf797')
+                          : tc('console.sign_out_value0_8c6eb13b', { value0: signingOut.label })
                 }
                 description={
                     signingOut?.isCurrent === true
-                        ? 'You will have to sign in again.'
-                        : 'That session stops working on its next request.'
+                        ? tc('console.you_will_have_to_sign_in_again_69f7f1e7')
+                        : tc('console.that_session_stops_working_on_its_next_reque_be13d5de')
                 }
                 footer={
                     <>
-                        <Button onClick={() => setSigningOut(null)}>Cancel</Button>
+                        <Button onClick={() => setSigningOut(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -310,7 +329,7 @@ export default function Activity({
                                 }
                             }}
                         >
-                            Sign out
+                            {tc('console.sign_out_48f0d3d3')}
                         </Button>
                     </>
                 }
@@ -319,11 +338,13 @@ export default function Activity({
             <Dialog
                 open={signingOutOthers}
                 onOpenChange={setSigningOutOthers}
-                title="Sign out of every session except this one?"
-                description="Every other browser and device holding a session as you stops working on its next request. This one stays signed in."
+                title={tc('console.sign_out_of_every_session_except_this_one_5d438b18')}
+                description={tc('console.every_other_browser_and_device_holding_a_ses_3d2d96e0')}
                 footer={
                     <>
-                        <Button onClick={() => setSigningOutOthers(false)}>Cancel</Button>
+                        <Button onClick={() => setSigningOutOthers(false)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -331,7 +352,7 @@ export default function Activity({
                                 router.post(revokeOthersHref, {}, { preserveScroll: true });
                             }}
                         >
-                            Sign out everywhere else
+                            {tc('console.sign_out_everywhere_else_76406ac4')}
                         </Button>
                     </>
                 }
@@ -342,7 +363,7 @@ export default function Activity({
                 onOpenChange={(open) => !open && setWithdrawing(null)}
                 name={withdrawing?.name ?? ''}
                 verb="Withdraw"
-                consequence="It stops being able to act as you immediately, and has to ask for your approval again."
+                consequence={tc('console.it_stops_being_able_to_act_as_you_immediatel_5c3d584b')}
                 // An application's access is not scoped to one environment, so naming one
                 // in the dialog would be naming something that is not true of the act.
                 environment={null}

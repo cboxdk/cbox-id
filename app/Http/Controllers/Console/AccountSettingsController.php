@@ -32,7 +32,7 @@ final readonly class AccountSettingsController extends ConsoleController
             return to_route('projects');
         }
 
-        return $this->page('console/account-settings', 'Workspace settings', [
+        return $this->page('console/account-settings', __('console.workspace_settings_5ebc5914'), [
             'help' => HelpProps::for(HelpTopic::WorkspaceSettings),
             'name' => $organization->name,
         ]);
@@ -59,7 +59,7 @@ final readonly class AccountSettingsController extends ConsoleController
          */
         $result = $this->act(UpdateWorkspaceSettings::class, ['name' => $request->name()], ['name' => 'name'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Workspace settings saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.workspace_settings_saved_141d0c91'));
     }
 
     /**

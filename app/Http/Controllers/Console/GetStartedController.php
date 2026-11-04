@@ -43,8 +43,8 @@ final readonly class GetStartedController extends ConsoleController
 
         $organization = $me->organization();
 
-        return $this->page('console/get-started', 'Set up '.($organization === null ? 'your organization' : $organization->name), [
-            'eyebrow' => 'Getting started',
+        return $this->page('console/get-started', __('console.set_up_f0ed49ff').($organization === null ? __('console.your_organization_bb0bdf0a') : $organization->name), [
+            'eyebrow' => __('console.getting_started_831d0f72'),
             'steps' => array_map(fn (SetupStep $step): array => [
                 'key' => $step->key->value,
                 'title' => $step->title(),
@@ -78,7 +78,7 @@ final readonly class GetStartedController extends ConsoleController
 
         $checklist->dismiss($organizationId, $me->id());
 
-        return to_route('dashboard')->with('status', 'Setup guidance hidden.');
+        return to_route('dashboard')->with('status', __('console.setup_guidance_hidden_b23142b6'));
     }
 
     /** Every step is an administrative action; a plain member has nothing to do here. */

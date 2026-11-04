@@ -87,7 +87,7 @@ it('ships no catalogue English does not have', function (string $locale): void {
 
     // validation.php is the framework's catalogue translated, not one of ours — the
     // framework ships the English and the next test holds it to that.
-    expect(array_values(array_diff($files, [...PARITY_NAMESPACES, 'validation'])))->toBe([]);
+    expect(array_values(array_diff($files, [...PARITY_NAMESPACES, 'validation', ...($locale === 'da' ? ['console'] : [])])))->toBe([]);
 })->with(otherLocales());
 
 /*
@@ -112,3 +112,14 @@ it('translates every framework validation message', function (string $locale): v
         expect(placeholdersIn($translated[$key]))->toBe(placeholdersIn($line), "{$locale}: {$key} changes its placeholders");
     }
 })->with(otherLocales());
+
+it('keeps the complete console catalogue in Danish with identical placeholders', function (): void {
+    $english = catalogue('en', 'console');
+    $danish = catalogue('da', 'console');
+    expect(array_keys($danish))->toBe(array_keys($english));
+    foreach ($english as $key => $line) {
+        expect(trim($danish[$key]))->not->toBe('', $key)
+            ->and(placeholdersIn($danish[$key]))->toBe(placeholdersIn($line), $key)
+            ->and(substr_count($danish[$key], '|'))->toBe(substr_count($line, '|'), $key);
+    }
+});

@@ -38,6 +38,7 @@ use App\Platform\Console\LikeTerm;
 use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use App\Platform\Staff\Contracts\StaffRoles;
@@ -127,7 +128,7 @@ final readonly class EnvironmentUserController extends ConsoleController
          */
         $page = $query->simplePaginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/users/index', Vocabulary::USERS, [
+        return $this->page('environment/users/index', ConsoleStrings::text(Vocabulary::USERS), [
             'help' => HelpProps::for(HelpTopic::Users),
             'users' => array_map(static fn (User $user): array => [
                 'id' => $user->id,
@@ -147,7 +148,7 @@ final readonly class EnvironmentUserController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/users/create', 'New user', [
+        return $this->page('environment/users/create', __('console.new_user_6384ffa7'), [
             'indexHref' => route('environment.users'),
             'storeHref' => route('environment.users.store'),
         ]);
@@ -188,8 +189,8 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return to_route('environment.users.show', $id)
             ->with('status', $request->sendLink()
-                ? 'User created — a sign-in link is on its way to '.$request->email().'.'
-                : 'User created. They have no way to sign in until you send them a link.');
+                ? __('console.user_created_a_sign_in_link_is_on_its_way_to_b08dc995').$request->email().'.'
+                : __('console.user_created_they_have_no_way_to_sign_in_unt_a612f0b1'));
     }
 
     public function show(
@@ -359,7 +360,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             'email' => $request->email(),
         ], ['name' => 'name', 'email' => 'email'], 'email');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Profile updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.profile_updated_3a06720a'));
     }
 
     public function setPassword(SetUserPasswordRequest $request, string $user): RedirectResponse
@@ -379,7 +380,7 @@ final readonly class EnvironmentUserController extends ConsoleController
          */
         $challenge = $this->stepUp(
             $model->id,
-            'Setting a password replaces this person’s credential; with “reveal” you are shown it.',
+            __('console.setting_a_password_replaces_this_person_s_cr_d729ce98'),
         );
 
         if ($challenge !== null) {
@@ -402,7 +403,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         }
 
         if (! $request->reveal()) {
-            return back()->with('status', 'Password set and emailed to '.$model->email.'.');
+            return back()->with('status', __('console.password_set_and_emailed_to_8e5c2651').$model->email.'.');
         }
 
         /*
@@ -412,7 +413,7 @@ final readonly class EnvironmentUserController extends ConsoleController
          */
         $this->inertia->flash('issuedPassword', $request->password());
 
-        return back()->with('status', 'Password set. Copy it now — it is shown once.');
+        return back()->with('status', __('console.password_set_copy_it_now_it_is_shown_once_124944cc'));
     }
 
     public function sendPasswordReset(string $user): RedirectResponse
@@ -425,7 +426,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Password reset email sent to '.$model->email.'.');
+            : back()->with('status', __('console.password_reset_email_sent_to_40d4cb8a').$model->email.'.');
     }
 
     public function resendVerification(string $user): RedirectResponse
@@ -442,7 +443,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Verification email sent to '.$model->email.'.');
+            : back()->with('status', __('console.verification_email_sent_to_376c6d2d').$model->email.'.');
     }
 
     public function markVerified(string $user): RedirectResponse
@@ -455,7 +456,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         // is a takeover with one more step rather than a lesser action.
         $challenge = $this->stepUp(
             $model->id,
-            'Marking this address verified lets it be used to recover this user’s sign-in.',
+            __('console.marking_this_address_verified_lets_it_be_use_1e335bd1'),
         );
 
         if ($challenge !== null) {
@@ -464,7 +465,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $result = $this->act(MarkEmailVerified::class, ['id' => $model->id]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Email marked as verified.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.email_marked_as_verified_2a516d78'));
     }
 
     public function resetMfa(string $user): RedirectResponse
@@ -477,7 +478,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         // an attacker and the account — the step that makes the two above worth doing.
         $challenge = $this->stepUp(
             $model->id,
-            'Resetting two-factor leaves this user protected by their password alone.',
+            __('console.resetting_two_factor_leaves_this_user_protec_1f98fc48'),
         );
 
         if ($challenge !== null) {
@@ -490,7 +491,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Two-factor authentication reset — the user must re-enroll.');
+            : back()->with('status', __('console.two_factor_authentication_reset_the_user_mus_fa2ba178'));
     }
 
     /**
@@ -506,7 +507,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $challenge = $this->stepUp(
             $model->id,
-            'Removing this phone number may leave the user protected by their password alone.',
+            __('console.removing_this_phone_number_may_leave_the_use_76d23e13'),
         );
 
         if ($challenge !== null) {
@@ -517,7 +518,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Phone number removed. Their other factors and recovery codes are unchanged.');
+            : back()->with('status', __('console.phone_number_removed_their_other_factors_and_a792580f'));
     }
 
     public function deactivate(string $user): RedirectResponse
@@ -526,7 +527,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $result = $this->act(DeactivateUser::class, ['id' => $user]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'User deactivated — they can no longer sign in.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.user_deactivated_they_can_no_longer_sign_in_9a427276'));
     }
 
     /**
@@ -550,7 +551,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $challenge = $this->stepUp(
             $model->id,
-            'Erasing a person deletes their credentials, memberships and personal data for good. Nothing brings it back.',
+            __('console.erasing_a_person_deletes_their_credentials_m_0c49a669'),
         );
 
         if ($challenge !== null) {
@@ -558,7 +559,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         }
 
         if (! hash_equals($model->email, trim($request->string('confirmation')->toString()))) {
-            return back()->withErrors(['erase' => 'Type this user’s email address exactly to erase them.']);
+            return back()->withErrors(['erase' => __('console.type_this_user_s_email_address_exactly_to_er_a2ee5f42')]);
         }
 
         $result = $this->act(EraseUser::class, ['id' => $model->id], fallback: 'erase');
@@ -569,7 +570,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return to_route('environment.users')->with(
             'status',
-            'User erased. Their account is pseudonymised and the erasure is recorded as user.erased in the audit log.',
+            __('console.user_erased_their_account_is_pseudonymised_a_51e1f69a'),
         );
     }
 
@@ -579,7 +580,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $result = $this->act(ReactivateUser::class, ['id' => $user]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'User reactivated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.user_reactivated_512d08c1'));
     }
 
     public function revokeSession(string $user, string $session): RedirectResponse
@@ -589,7 +590,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         // Only a session belonging to THIS env-scoped user resolves (deny-by-default).
         $result = $this->act(RevokeUserSession::class, ['id' => $user, 'session_id' => $session]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Session revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.session_revoked_5e4762e5'));
     }
 
     /**
@@ -602,7 +603,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $result = $this->act(RevokeAllUserSessions::class, ['id' => $user]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'All sessions revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.all_sessions_revoked_bd4a72ee'));
     }
 
     /**
@@ -622,7 +623,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             'role' => $request->role()->value,
             'roles' => $request->accessRoleIds(),
         ], ['organization_id' => 'organization', 'user_id' => 'organization', 'role' => 'role', 'roles' => 'organization'], 'organization', [
-            'already_member' => 'The user is already a member of that organization.',
+            'already_member' => __('console.the_user_is_already_a_member_of_that_organiz_781d2dbc'),
         ]);
 
         if ($result instanceof RedirectResponse) {
@@ -632,10 +633,10 @@ final readonly class EnvironmentUserController extends ConsoleController
         // The same tier again is not an error to a machine (it is idempotent); to a person
         // who meant to add somebody, "already a member" is the answer.
         if ($result->status === 200) {
-            return back()->withErrors(['organization' => 'The user is already a member of that organization.']);
+            return back()->withErrors(['organization' => __('console.the_user_is_already_a_member_of_that_organiz_781d2dbc')]);
         }
 
-        return back()->with('status', 'User added to the organization.');
+        return back()->with('status', __('console.user_added_to_the_organization_48218ecc'));
     }
 
     public function changeMembershipRole(Request $request, string $user, string $organization): RedirectResponse
@@ -654,9 +655,9 @@ final readonly class EnvironmentUserController extends ConsoleController
             'organization_id' => $organization,
             'user_id' => $user,
             'role' => $next->value,
-        ], ['role' => 'role'], 'role', ['last_owner' => 'An organization must keep at least one owner.']);
+        ], ['role' => 'role'], 'role', ['last_owner' => __('console.an_organization_must_keep_at_least_one_owner_ae832206')]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Built-in role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.built_in_role_updated_a1cff526'));
     }
 
     /**
@@ -674,12 +675,12 @@ final readonly class EnvironmentUserController extends ConsoleController
         if (! $request->boolean('granted')) {
             $result = $this->act(RevokeMemberRole::class, $input, ['role_id' => 'role'], 'role');
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role revoked.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_revoked_8cb5dd54'));
         }
 
         $result = $this->act(GrantMemberRole::class, $input, ['role_id' => 'role'], 'role');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_granted_58d5cb32'));
     }
 
     /**
@@ -698,7 +699,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         // Only a role no organization owns. The action refuses anything else too; asking
         // here first means a posted id that matches nothing is refused by name.
         if (! $staff->isGrantable($roleId)) {
-            return back()->withErrors(['staffRole' => 'That role cannot be granted across the environment.']);
+            return back()->withErrors(['staffRole' => __('console.that_role_cannot_be_granted_across_the_envir_fc38a84c')]);
         }
 
         $input = ['id' => $user, 'role_id' => $roleId];
@@ -706,12 +707,12 @@ final readonly class EnvironmentUserController extends ConsoleController
         if (! $request->boolean('granted')) {
             $result = $this->act(RevokeStaffRole::class, $input, ['role_id' => 'staffRole'], 'staffRole');
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Admin & support role taken back.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.admin_support_role_taken_back_b60bab30'));
         }
 
         $result = $this->act(GrantStaffRole::class, $input, ['role_id' => 'staffRole'], 'staffRole');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Admin & support role granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.admin_support_role_granted_8397480c'));
     }
 
     public function removeMembership(string $user, string $organization): RedirectResponse
@@ -721,9 +722,9 @@ final readonly class EnvironmentUserController extends ConsoleController
         $result = $this->act(RemoveMember::class, [
             'organization_id' => $organization,
             'user_id' => $user,
-        ], ['user_id' => 'organization'], 'organization', ['last_owner' => 'An organization must keep at least one owner.']);
+        ], ['user_id' => 'organization'], 'organization', ['last_owner' => __('console.an_organization_must_keep_at_least_one_owner_ae832206')]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Removed from the organization.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.removed_from_the_organization_299ca888'));
     }
 
     private function assertEnvironmentAdmin(): void

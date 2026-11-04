@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -36,12 +38,12 @@ type Props = PageProps<{
     storeHref: string;
 }>;
 
-const PLACEHOLDER: Record<Entry['kind'], string> = {
+const PLACEHOLDER = (tc: Translator['t']): Record<Entry['kind'], string> => ({
     ip: '203.0.113.0/24',
     email: 'someone@example.com',
     email_domain: 'example.com',
-    device: 'the 64-character id from a decision',
-};
+    device: tc('console.the_64_character_id_from_a_decision_023b6826'),
+});
 
 /**
  * What is always refused and always let through. The deny list is asked first and wins; the
@@ -49,6 +51,10 @@ const PLACEHOLDER: Record<Entry['kind'], string> = {
  * test accounts, not for a whole country.
  */
 export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const [removing, setRemoving] = useState<Entry | null>(null);
     const form = useForm({
         list: 'deny' as Entry['list'],
@@ -62,7 +68,7 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
         <RadarFrame
             help={help}
             tabs={tabs}
-            description="Asked before every rule. A deny entry blocks; an allow entry skips every rule, built-in ones included. Both on one attempt: deny wins."
+            description={tc('console.asked_before_every_rule_a_deny_entry_blocks__e80b3f61')}
         >
             <form
                 className="mt-6 card p-5 grid gap-3 sm:grid-cols-6 items-end"
@@ -74,39 +80,47 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                     });
                 }}
             >
-                <Field label="List" error={form.errors.list}>
+                <Field label={tc('console.list_6f202f54')} error={form.errors.list}>
                     <Select
                         value={form.data.list}
                         onValueChange={(value) => form.setData('list', value)}
                         options={[
-                            { value: 'deny', label: 'Deny' },
-                            { value: 'allow', label: 'Allow' },
+                            { value: 'deny', label: tc('console.deny_05a2d733') },
+                            { value: 'allow', label: tc('console.allow_e213c161') },
                         ]}
                     />
                 </Field>
-                <Field label="Kind" error={form.errors.kind}>
+                <Field label={tc('console.kind_f5387f9b')} error={form.errors.kind}>
                     <Select
                         value={form.data.kind}
                         onValueChange={(value) => form.setData('kind', value)}
                         options={kinds}
                     />
                 </Field>
-                <Field label="Value" className="sm:col-span-2" error={form.errors.value}>
+                <Field
+                    label={tc('console.value_8e37953d')}
+                    className="sm:col-span-2"
+                    error={form.errors.value}
+                >
                     <Input
                         className="mono"
                         value={form.data.value}
-                        placeholder={PLACEHOLDER[form.data.kind]}
+                        placeholder={PLACEHOLDER(tc)[form.data.kind]}
                         onChange={(event) => form.setData('value', event.target.value)}
                     />
                 </Field>
-                <Field label="Expires" error={form.errors.expiresAt} hint="Optional.">
+                <Field
+                    label={tc('console.expires_f6725f3a')}
+                    error={form.errors.expiresAt}
+                    hint={tc('console.optional_a9aaf97c')}
+                >
                     <Input
                         type="date"
                         value={form.data.expiresAt}
                         onChange={(event) => form.setData('expiresAt', event.target.value)}
                     />
                 </Field>
-                <Field label="Note" error={form.errors.note}>
+                <Field label={tc('console.note_d8da2c49')} error={form.errors.note}>
                     <Input
                         value={form.data.note}
                         onChange={(event) => form.setData('note', event.target.value)}
@@ -114,7 +128,7 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                 </Field>
                 <div className="sm:col-span-6">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Add to list
+                        {tc('console.add_to_list_c84c5a54')}
                     </Button>
                 </div>
             </form>
@@ -125,8 +139,10 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                         <EmptyState
                             icon="shield"
                             equivalent="radar.lists.add"
-                            title="Both lists are empty"
-                            description="Nothing is always refused and nothing skips the rules. Deny an address range you have seen attack you, or allow your office network past the velocity rules."
+                            title={tc('console.both_lists_are_empty_746c845b')}
+                            description={tc(
+                                'console.nothing_is_always_refused_and_nothing_skips__6699d9d9',
+                            )}
                         />
                     </div>
                 ) : (
@@ -146,7 +162,7 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                                 </Pill>
                                 <Badge tone="info">{entry.kind.replace('_', ' ')}</Badge>
                                 <span className="mono text-sm break-all">{entry.value}</span>
-                                {!entry.active && <Badge>expired</Badge>}
+                                {!entry.active && <Badge>{tc('console.expired_fa64ea1e')}</Badge>}
                                 {entry.note !== null && (
                                     <span className="text-xs" style={{ color: 'var(--muted)' }}>
                                         {entry.note}
@@ -154,15 +170,17 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                                 )}
                                 <span className="ml-auto text-xs" style={{ color: 'var(--faint)' }}>
                                     {entry.expires_at !== null
-                                        ? `until ${absoluteTime(entry.expires_at)}`
-                                        : 'no expiry'}
+                                        ? tc('console.until_value0_607ce3f2', {
+                                              value0: absoluteTime(entry.expires_at, locale),
+                                          })
+                                        : tc('console.no_expiry_dd848d43')}
                                 </span>
                                 <Button
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => setRemoving(entry)}
                                 >
-                                    Remove
+                                    {tc('console.remove_c3812fc4')}
                                 </Button>
                             </li>
                         ))}
@@ -178,8 +196,8 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                     verb="Remove"
                     consequence={
                         removing.list === 'deny'
-                            ? 'From the next attempt this is judged by the rules again.'
-                            : 'From the next attempt this is judged by the rules again — including the ones that block.'
+                            ? tc('console.from_the_next_attempt_this_is_judged_by_the__c6aad838')
+                            : tc('console.from_the_next_attempt_this_is_judged_by_the__8374d2aa')
                     }
                     onConfirm={() =>
                         router.delete(removing.destroyHref, {

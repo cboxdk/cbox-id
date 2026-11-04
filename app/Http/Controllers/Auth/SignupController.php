@@ -277,7 +277,7 @@ final readonly class SignupController extends PageController
 
         return to_route('projects')->with(
             'status',
-            'Workspace created. Confirm your email to finish setting up your first environment.',
+            __('console.workspace_created_confirm_your_email_to_fini_1b649995'),
         );
     }
 

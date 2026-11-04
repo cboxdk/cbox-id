@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -15,26 +16,26 @@ type Props = PageProps<{
  * are the layout's (`../frame.tsx`).
  */
 export default function OrganizationApiKeys({ apiKeys, appsHref }: Props) {
+    const { t: tc } = useTranslator();
+
     return (
         <Panel
-            title="Member API keys"
-            description="Keys this organization's people have created for its apps, with what each may do. People create their own; revoke one that leaked or is no longer used."
+            title={tc('console.member_api_keys_66d7cf0e')}
+            description={tc('console.keys_this_organization_s_people_have_created_9d7e0611')}
             flush={apiKeys.length > 0}
         >
             <AppApiKeyList
                 keys={apiKeys}
                 empty={{
-                    title: 'No API keys',
+                    title: tc('console.no_api_keys_860f0852'),
                     description: (
                         <>
-                            Nobody in this organization has created a key for one of its apps.
-                            People create their own under My account, for an app that turns member
-                            API keys on in its Settings — <Link href={appsHref}>see your apps</Link>
-                            .
+                            {tc('console.nobody_in_this_organization_has_created_a_ke_327ef1b5')}
+                            <Link href={appsHref}>{tc('console.see_your_apps_83cc472a')}</Link>.
                         </>
                     ),
                 }}
-                consequence="Whatever the holder has wired this key into stops working immediately. This cannot be undone."
+                consequence={tc('console.whatever_the_holder_has_wired_this_key_into__789a1199')}
             />
         </Panel>
     );

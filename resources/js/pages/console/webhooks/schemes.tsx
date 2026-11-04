@@ -1,3 +1,4 @@
+import type { Translator } from '@/i18n';
 import type { RadioOption } from '@/ui';
 
 /**
@@ -14,15 +15,15 @@ export const signatureSchemeLabels: Record<SignatureScheme, string> = {
     standard_webhooks: 'Standard Webhooks',
 };
 
-export const signatureSchemeOptions: RadioOption<SignatureScheme>[] = [
+export const signatureSchemeOptions = (tc: Translator['t']): RadioOption<SignatureScheme>[] => [
     {
         value: 'cbox',
         label: signatureSchemeLabels.cbox,
-        hint: 'X-Cbox-Signature with a hex HMAC — the default, verified with the Cbox SDKs.',
+        hint: tc('console.x_cbox_signature_with_a_hex_hmac_the_default_3bc267fa'),
     },
     {
         value: 'standard_webhooks',
         label: signatureSchemeLabels.standard_webhooks,
-        hint: 'webhook-id, webhook-timestamp and webhook-signature, with a whsec_ secret — verified by any Standard Webhooks library.',
+        hint: tc('console.webhook_id_webhook_timestamp_and_webhook_sig_73e511b0'),
     },
 ];

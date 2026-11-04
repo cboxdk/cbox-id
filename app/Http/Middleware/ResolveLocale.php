@@ -12,14 +12,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * THE HOSTED SURFACES SPEAK THE VISITOR'S LANGUAGE; THE CONSOLE DOES NOT.
- *
- * On the route groups an END USER or a customer's IT admin reaches — sign-in, sign-up,
- * MFA, password reset, invitations, OAuth consent and the organization picker, the Admin
- * Portal — and deliberately nowhere else. The admin console is English: its copy is
- * dense, technical and changes weekly, and a half-translated console is worse than an
- * English one. Applied per route group rather than to `web` so that line is drawn where
- * the routes are, and a new console page cannot drift into Danish by accident.
+ * Resolve the hosted sign-in and Admin Portal language from their own policy.
+ * Runs after the console's default resolver on hosted route groups, so an OAuth
+ * ui_locales request and the environment's enabled languages remain authoritative.
  *
  * Runs BEFORE the controller, not as a view concern: validation messages, flash
  * statuses, page titles and the mail a request sends are all produced by PHP on the way

@@ -73,6 +73,6 @@ final readonly class ChangePasswordController extends PageController
         // release the hold on a password the policy might still refuse.
         $admin->clear($me->id());
 
-        return to_route('dashboard')->with('status', 'Your password has been updated.');
+        return to_route('dashboard')->with('status', __('console.your_password_has_been_updated_cc244a90'));
     }
 }

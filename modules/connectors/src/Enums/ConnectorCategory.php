@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Connectors\Enums;
 
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Connectors\Contracts\ConnectorAnalytics;
 
 /**
@@ -55,16 +56,16 @@ enum ConnectorCategory: string
     public function label(): string
     {
         return match ($this) {
-            self::Federation => 'Enterprise SSO',
-            self::Social => 'Social login',
-            self::Directory => 'Directory Sync',
-            self::Hris => 'HR system',
-            self::Provisioning => 'Outbound provisioning',
-            self::SamlApp => 'SAML app',
-            self::Webhook => 'Webhook',
-            self::Hook => 'Hook',
-            self::LogStream => 'Log stream',
-            self::Pipe => 'Pipe',
+            self::Federation => ConsoleStrings::message('console.enterprise_sso_0f8d7e8e'),
+            self::Social => ConsoleStrings::message('console.social_login_267d75d3'),
+            self::Directory => ConsoleStrings::message('console.directory_sync_ea18bba8'),
+            self::Hris => ConsoleStrings::message('console.hr_system_dcb92e9d'),
+            self::Provisioning => ConsoleStrings::message('console.outbound_provisioning_e49a114e'),
+            self::SamlApp => ConsoleStrings::message('console.saml_app_acac28d7'),
+            self::Webhook => ConsoleStrings::message('console.webhook_4814f62c'),
+            self::Hook => ConsoleStrings::message('console.hook_536ff505'),
+            self::LogStream => ConsoleStrings::message('console.log_stream_b6e825c8'),
+            self::Pipe => ConsoleStrings::message('console.pipe_3725dbfe'),
         };
     }
 

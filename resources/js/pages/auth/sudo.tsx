@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -26,6 +27,8 @@ type Props = PageProps<{
  * to type through. Whatever raised the step-up says what is waiting on the other side.
  */
 export default function Sudo({ reason, plane }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ password: '' });
 
     return (
@@ -44,10 +47,11 @@ export default function Sudo({ reason, plane }: Props) {
                 </span>
 
                 <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                    Confirm it's you
+                    {tc('console.confirm_it_s_you_6176eec2')}
                 </h1>
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {reason ?? 'This is a protected action.'} Re-enter your password to continue.
+                    {reason ?? tc('console.this_is_a_protected_action_b796636f')}
+                    {tc('console.re_enter_your_password_to_continue_1aaad37f')}
                 </p>
             </div>
 
@@ -56,11 +60,13 @@ export default function Sudo({ reason, plane }: Props) {
                     className="space-y-4"
                     onSubmit={(event) => {
                         event.preventDefault();
-                        form.post(plane === 'environment' ? confirmEnvironment.url() : confirm.url());
+                        form.post(
+                            plane === 'environment' ? confirmEnvironment.url() : confirm.url(),
+                        );
                     }}
                 >
                     <PasswordField
-                        label="Password"
+                        label={tc('console.password_e7cf3ef4')}
                         name="password"
                         autoComplete="current-password"
                         error={form.errors.password}
@@ -75,7 +81,7 @@ export default function Sudo({ reason, plane }: Props) {
                         className="w-full"
                         loading={form.processing}
                     >
-                        Confirm
+                        {tc('console.confirm_eebdd24a')}
                     </Button>
                 </form>
             </Panel>

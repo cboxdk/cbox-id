@@ -128,7 +128,7 @@ final readonly class ProjectController extends ConsoleController
             }
         }
 
-        return $this->page('console/projects/index', 'Projects', [
+        return $this->page('console/projects/index', __('console.projects_04e2a972'), [
             'help' => HelpProps::for(HelpTopic::Projects),
             'projects' => $rows,
             'canManage' => $this->mayManage($members),
@@ -151,7 +151,7 @@ final readonly class ProjectController extends ConsoleController
         // the role.
         abort_if($this->scope->membershipRole() === null, 403);
 
-        return $this->page('console/projects/create', 'New project', [
+        return $this->page('console/projects/create', __('console.new_project_a41eb2bf'), [
             'indexHref' => route('projects'),
         ]);
     }
@@ -176,7 +176,7 @@ final readonly class ProjectController extends ConsoleController
         $project = $result->value;
 
         return to_route('projects.show', $project->id)
-            ->with('status', 'Project created — add its first environment.');
+            ->with('status', __('console.project_created_add_its_first_environment_935fc40e'));
     }
 
     /** One product's detail: its environments, its plan, and its settings. */
@@ -244,7 +244,7 @@ final readonly class ProjectController extends ConsoleController
 
         $result = $this->act(RenameProject::class, ['id' => $this->owned($project)->id, 'name' => $request->name()], ['name' => 'name'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Project renamed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.project_renamed_54179fc7'));
     }
 
     /**
@@ -266,10 +266,10 @@ final readonly class ProjectController extends ConsoleController
             ['name' => $request->name(), 'type' => $request->type()->value, 'project_id' => $this->owned($project)->id],
             ['name' => 'name', 'type' => 'type'],
             'name',
-            ['environment_limit_reached' => 'This project is at its environment limit. Upgrade its plan to add more.'],
+            ['environment_limit_reached' => __('console.this_project_is_at_its_environment_limit_upg_c7856d59')],
         );
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Environment created.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.environment_created_fcc0ee4c'));
     }
 
     public function suspend(string $project, Memberships $members): RedirectResponse
@@ -280,7 +280,7 @@ final readonly class ProjectController extends ConsoleController
 
         return $result instanceof RedirectResponse ? $result : back()->with(
             'status',
-            'Project suspended — its environments stay live but no new ones can be added until reactivated.',
+            __('console.project_suspended_its_environments_stay_live_be6ca1ef'),
         );
     }
 
@@ -290,7 +290,7 @@ final readonly class ProjectController extends ConsoleController
 
         $result = $this->act(ReactivateProject::class, ['id' => $this->owned($project)->id]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Project reactivated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.project_reactivated_971073d7'));
     }
 
     /**

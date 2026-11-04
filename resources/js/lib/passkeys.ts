@@ -153,9 +153,10 @@ export interface RegisteredPasskey {
 export async function registerPasskey(
     suggestedName: string,
     base = '/passkeys',
+    continueLabel = 'Continue: create passkey',
 ): Promise<RegisteredPasskey | null> {
     const options = (await post(`${base}/register/options`, undefined, {
-        continueLabel: 'Continue: create passkey',
+        continueLabel,
     })) as unknown as CreationOptions;
 
     const publicKey: PublicKeyCredentialCreationOptions = {

@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { usePage } from '@inertiajs/react';
 import { type ReactNode, useId, useState } from 'react';
 import type { SharedProps } from '@/types';
@@ -80,17 +81,24 @@ export function ConfirmDelete({ open, ...props }: ConfirmDeleteProps) {
 function Confirmation({
     onOpenChange,
     name,
-    verb = 'Delete',
+    verb: suppliedVerb,
     title,
     actionLabel,
-    consequence = 'This cannot be undone.',
+    consequence: suppliedConsequence,
     environment,
     confirming = false,
     onConfirm,
-    cancelLabel = 'Cancel',
+    cancelLabel: suppliedCancellabel,
     typeToConfirmLabel,
     hint,
 }: Omit<ConfirmDeleteProps, 'open'>) {
+    const { t: tc } = useUiTranslator();
+    const verb = suppliedVerb ?? tc('console.delete_e2d0a549', 'Delete');
+    const consequence =
+        suppliedConsequence ??
+        tc('console.this_cannot_be_undone_b545dd16', 'This cannot be undone.');
+    const cancelLabel = suppliedCancellabel ?? tc('console.cancel_19766ed6', 'Cancel');
+
     const shared = usePage<SharedProps>().props.environment;
     const realm = environment === undefined ? shared.name : environment;
 
@@ -142,7 +150,8 @@ function Confirmation({
                         color: 'var(--muted-foreground)',
                     }}
                 >
-                    In environment <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
+                    {tc('console.in_environment_d2d5eab3', 'In environment ')}
+                    <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
                 </p>
             )}
 
@@ -151,13 +160,19 @@ function Confirmation({
                 label={
                     typeToConfirmLabel ?? (
                         <>
-                            Type <span className="mono">{name}</span> to confirm
+                            {tc('console.type_068e513f', 'Type ')}
+                            <span className="mono">{name}</span>
+                            {tc('console.to_confirm_faa2486f', ' to confirm')}
                         </>
                     )
                 }
                 hint={
                     hint ??
-                    `Exactly as shown — ${actionLabel ?? verb} stays disabled until it matches.`
+                    tc(
+                        'console.exactly_as_shown_action_stays_disabled_until_4b51c65a',
+                        'Exactly as shown — :action stays disabled until it matches.',
+                        { action: actionLabel ?? verb },
+                    )
                 }
             >
                 <Input

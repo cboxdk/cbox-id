@@ -92,7 +92,7 @@ final readonly class PlatformUsageController extends ConsoleController
                     'name' => $organization->name,
                     // Named rather than left blank: a tenant whose plane cannot be resolved
                     // is a thing an operator should be able to see, not a gap in a table.
-                    'plane' => $plane->name ?? 'Unknown environment',
+                    'plane' => $plane->name ?? __('console.unknown_environment_ea7edbd5'),
                     'members' => is_numeric($count) ? (int) $count : 0,
                     'href' => route('platform.search.jump', $organization->id),
                 ];
@@ -120,7 +120,7 @@ final readonly class PlatformUsageController extends ConsoleController
             ];
         });
 
-        return $this->page('console/platform/usage', 'Usage', [
+        return $this->page('console/platform/usage', __('console.usage_8d59829c'), [
             'help' => HelpProps::for(HelpTopic::PlatformUsage),
             ...$data,
         ]);

@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\ResolveConsoleLocale;
 use App\Platform\Locale\HostedLocale;
 use App\Platform\Locale\LocaleResolver;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Testing\TestResponse;
 
@@ -143,15 +145,17 @@ it('names each language in itself for the picker', function (): void {
     ]);
 });
 
-it('leaves the admin console in English whatever the browser prefers', function (): void {
+it('renders the console in Danish when the browser prefers it', function (): void {
     ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
     signInAsMember($subjectId);
 
     $response = test()->withHeader('Accept-Language', 'da')->withCookie(LocaleResolver::COOKIE, 'da')->get(route('dashboard'));
 
-    $response->assertOk()->assertSee('<html lang="en"', false);
-    // No catalogue at all: the prop is null, which the page object leaves out.
-    expect(((array) $response->inertiaProps())['i18n'] ?? null)->toBeNull();
+    $response->assertOk()->assertSee('<html lang="da"', false)->assertHeader('Content-Language', 'da');
+    $props = (array) $response->inertiaProps();
+    expect($props['i18n']['locale'])->toBe('da')
+        ->and(collect($props['i18n']['locales'])->pluck('code')->all())->toBe(['en', 'da'])
+        ->and($props['i18n']['messages']['console.my_account_b53181a4'])->toBe('Min konto');
 });
 
 it('remembers a language picked on the page, and drops the authorization’s choice for it', function (): void {
@@ -187,3 +191,93 @@ it('narrows tags to the closed set', function (?string $tag, ?HostedLocale $expe
     [null, null],
     ['english', null],
 ]);
+
+it('remembers the console language independently of the hosted authorization language', function (): void {
+    ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
+    signInAsMember($subjectId);
+    session()->put(LocaleResolver::SESSION_KEY, 'fr');
+
+    test()->from(route('dashboard'))->post(route('console.locale.update'), ['locale' => 'da'])
+        ->assertRedirect(route('dashboard'))
+        ->assertCookie(ResolveConsoleLocale::COOKIE, 'da');
+    expect(session(LocaleResolver::SESSION_KEY))->toBe('fr');
+
+    $response = test()->withHeader('Accept-Language', 'en')
+        ->withCookie(ResolveConsoleLocale::COOKIE, 'da')
+        ->get(route('dashboard'));
+    $response->assertOk()->assertHeader('Content-Language', 'da');
+    expect(((array) $response->inertiaProps())['i18n']['locale'])->toBe('da');
+});
+
+it('does not let hosted language restrictions remove Danish from the console', function (): void {
+    ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
+    signInAsMember($subjectId);
+    config()->set('cbox-id.locales.enabled', ['fr']);
+    config()->set('cbox-id.locales.default', 'fr');
+
+    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')->get(route('dashboard'));
+    $response->assertOk()->assertHeader('Content-Language', 'da');
+    expect(collect(((array) $response->inertiaProps())['i18n']['locales'])->pluck('code')->all())->toBe(['en', 'da']);
+});
+
+it('rejects unsupported console language choices without changing the preference', function (mixed $locale): void {
+    test()->postJson(route('console.locale.update'), ['locale' => $locale])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('locale')
+        ->assertCookieMissing(ResolveConsoleLocale::COOKIE);
+})->with(['fr', 'de', '<script>alert(1)</script>', '', 'array' => [['da']]]);
+
+it('falls back to English for unsupported browser and cookie languages in the console', function (): void {
+    ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
+    signInAsMember($subjectId);
+
+    $response = test()->withHeader('Accept-Language', 'fr')
+        ->withCookie(ResolveConsoleLocale::COOKIE, 'fr')
+        ->get(route('dashboard'));
+    $response->assertOk()->assertHeader('Content-Language', 'en')->assertSee('<html lang="en"', false);
+    expect(((array) $response->inertiaProps())['i18n']['locale'])->toBe('en');
+});
+
+it('translates administration titles and help while preserving user data and identifiers', function (): void {
+    actAsEnvironmentAdminOfATenant();
+    $name = 'Delete <Save> & Environment';
+    $person = app(Subjects::class)->create('language-data@example.test', $name, 'supersecret123');
+
+    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')
+        ->get(route('environment.users'));
+    $response->assertOk()->assertHeader('Content-Language', 'da');
+    $props = (array) $response->inertiaProps();
+    expect($props['title'])->toBe('Brugere')
+        ->and($props['help']['title'])->toBe('Alle, der kan logge ind her');
+    $row = collect($props['users'])->firstWhere('id', $person->id);
+    expect($row['name'])->toBe($name)->and($row['email'])->toBe('language-data@example.test');
+
+    $english = test()->withCookie(ResolveConsoleLocale::COOKIE, 'en')
+        ->get(route('environment.users'));
+    expect(((array) $english->inertiaProps())['title'])->toBe('Users');
+});
+
+it('validates an administrator form in the selected console language', function (): void {
+    actAsEnvironmentAdminOfATenant();
+    confirmConsoleStepUp();
+    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')
+        ->withCredentials()->postJson(route('environment.users.store'), ['name' => '', 'email' => 'not-an-email']);
+    $response->assertUnprocessable()->assertJsonValidationErrors(['email']);
+    expect($response->json('errors.email.0'))->toContain('gyldig');
+});
+
+it('translates built-in security rules and fields without changing their keys or conditions', function (): void {
+    actAsEnvironmentAdminOfATenant();
+    confirmConsoleStepUp();
+    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')->get(route('environment.radar.rules'));
+    $response->assertOk();
+    $props = (array) $response->inertiaProps();
+    $builtin = collect($props['settings']['builtin_rules'])->firstWhere('key', 'new_device');
+    expect($builtin['name'])->toBe('Ny enhed')->and($builtin['applies_to'])->toBe('sign_in');
+
+    $editor = test()->get(route('environment.radar.rules.create'));
+    $editor->assertOk();
+    $field = collect(((array) $editor->inertiaProps())['fields'])->firstWhere('value', 'country');
+    expect($field['label'])->toBe('Land')->and($field['type'])->toBe('country')
+        ->and($field['operators'][0]['value'])->toBe('eq')->and($field['operators'][0]['label'])->toBe('er');
+});

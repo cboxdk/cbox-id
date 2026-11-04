@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -36,28 +37,32 @@ type Props = PageProps<{
 }>;
 
 export default function PlatformUsage({ totals, breakdown, topOrganizations, help }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const tiles: [string, number][] = [
         ['Environments', totals.environments],
         ['Organizations', totals.organizations],
         ['Users', totals.users],
-        ['Active sessions', totals.sessions],
-        ['SSO connections', totals.connections],
-        ['Verified domains', totals.domains],
-        ['API clients', totals.clients],
+        [tc('console.active_sessions_61ad9909'), totals.sessions],
+        [tc('console.sso_connections_2e2e48f8'), totals.connections],
+        [tc('console.verified_domains_b01c494f'), totals.domains],
+        [tc('console.api_clients_35c69da7'), totals.clients],
     ];
 
     return (
         <>
             <PageHeader
                 help={help}
-                description="Platform-wide usage across every environment — not only the one the console is pointed at."
+                description={tc('console.platform_wide_usage_across_every_environment_0e12a08a')}
             />
 
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5 mt-8">
                 {tiles.map(([label, value]) => (
                     <div key={label} className="cbx-stat">
                         <div className="min-w-0">
-                            <p className="cbx-stat-value">{value.toLocaleString()}</p>
+                            <p className="cbx-stat-value">{value.toLocaleString(locale)}</p>
                             <p className="cbx-stat-label">{label}</p>
                         </div>
                     </div>
@@ -66,29 +71,43 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
 
             <div className="mb-5">
                 <Panel
-                    title="Per-environment breakdown"
+                    title={tc('console.per_environment_breakdown_8d6b222d')}
                     action={
                         <span className="text-xs" style={{ color: 'var(--faint)' }}>
                             {breakdown.length}{' '}
-                            {breakdown.length === 1 ? 'environment' : 'environments'}
+                            {breakdown.length === 1
+                                ? tc('console.environment_ba528516')
+                                : tc('console.environments_d5f6d542')}
                         </span>
                     }
                 >
                     {breakdown.length === 0 ? (
                         <EmptyState
                             icon="layers"
-                            title="No environments provisioned yet"
-                            description="Create one on Platform › Environments and its counts appear here."
+                            title={tc('console.no_environments_provisioned_yet_3a208207')}
+                            description={tc(
+                                'console.create_one_on_platform_environments_and_its__2e1a2d8f',
+                            )}
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table caption="Every environment on this install, and how much of the estate is in each">
+                            <Table
+                                caption={tc(
+                                    'console.every_environment_on_this_install_and_how_mu_1d09cf29',
+                                )}
+                            >
                                 <thead>
                                     <tr>
-                                        <Th>Environment</Th>
-                                        <Th className="text-right">Organizations</Th>
-                                        <Th className="text-right">Users</Th>
-                                        <Th className="text-right">Active sessions</Th>
+                                        <Th>{tc('console.environment_9e471951')}</Th>
+                                        <Th className="text-right">
+                                            {tc('console.organizations_2730183d')}
+                                        </Th>
+                                        <Th className="text-right">
+                                            {tc('console.users_6b0cc904')}
+                                        </Th>
+                                        <Th className="text-right">
+                                            {tc('console.active_sessions_61ad9909')}
+                                        </Th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -104,13 +123,13 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
                                                 </p>
                                             </Td>
                                             <Td className="text-right tabular-nums">
-                                                {plane.organizations.toLocaleString()}
+                                                {plane.organizations.toLocaleString(locale)}
                                             </Td>
                                             <Td className="text-right tabular-nums">
-                                                {plane.users.toLocaleString()}
+                                                {plane.users.toLocaleString(locale)}
                                             </Td>
                                             <Td className="text-right tabular-nums">
-                                                {plane.sessions.toLocaleString()}
+                                                {plane.sessions.toLocaleString(locale)}
                                             </Td>
                                         </tr>
                                     ))}
@@ -122,29 +141,37 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
             </div>
 
             <Panel
-                title="Top organizations by members"
+                title={tc('console.top_organizations_by_members_cf67e5ff')}
                 action={
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        Across every environment
+                        {tc('console.across_every_environment_de59592c')}
                     </span>
                 }
             >
                 {topOrganizations.length === 0 ? (
                     <EmptyState
                         icon="members"
-                        title="No organization has a member yet"
-                        description="This ranks organizations by member count once they do."
+                        title={tc('console.no_organization_has_a_member_yet_78cd6728')}
+                        description={tc(
+                            'console.this_ranks_organizations_by_member_count_onc_d333557e',
+                        )}
                     />
                 ) : (
                     <div className="overflow-x-auto">
-                        <Table caption="The ten organizations with the most members, and the environment each belongs to">
+                        <Table
+                            caption={tc(
+                                'console.the_ten_organizations_with_the_most_members__1c7ea5a5',
+                            )}
+                        >
                             <thead>
                                 <tr>
-                                    <Th>Organization</Th>
-                                    <Th>Environment</Th>
-                                    <Th className="text-right">Members</Th>
+                                    <Th>{tc('console.organization_d764d425')}</Th>
+                                    <Th>{tc('console.environment_9e471951')}</Th>
+                                    <Th className="text-right">{tc('console.members_1044a4c0')}</Th>
                                     <Th>
-                                        <span className="sr-only">Actions</span>
+                                        <span className="sr-only">
+                                            {tc('console.actions_ff8059dc')}
+                                        </span>
                                     </Th>
                                 </tr>
                             </thead>
@@ -169,7 +196,7 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
                                             </Pill>
                                         </Td>
                                         <TdMono className="text-right tabular-nums">
-                                            {organization.members.toLocaleString()}
+                                            {organization.members.toLocaleString(locale)}
                                         </TdMono>
                                         <Td className="text-right whitespace-nowrap">
                                             {/*
@@ -179,7 +206,9 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
                                                 navigation rather than a client-side visit.
                                             */}
                                             <Button asChild size="sm">
-                                                <Link href={organization.href}>View</Link>
+                                                <Link href={organization.href}>
+                                                    {tc('console.view_dcc839a4')}
+                                                </Link>
                                             </Button>
                                         </Td>
                                     </tr>

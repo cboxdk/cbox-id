@@ -110,7 +110,7 @@ final readonly class ClientSecretsController extends ConsoleController
         $model = $this->clients->manageable($client);
 
         if ($model->type !== ClientType::Confidential) {
-            return back()->with('error', 'Public apps use PKCE and have no secret to rotate.');
+            return back()->with('error', __('console.public_apps_use_pkce_and_have_no_secret_to_r_b299056f'));
         }
 
         /*
@@ -122,7 +122,7 @@ final readonly class ClientSecretsController extends ConsoleController
          * authentication model, offered as routine hygiene.
          */
         if (! AppTabs::holdsSharedSecret($model)) {
-            return back()->with('error', 'This app signs assertions with its own keys and has no secret. Rotate the key in its JWKS instead.');
+            return back()->with('error', __('console.this_app_signs_assertions_with_its_own_keys__7e457dd4'));
         }
 
         $grace = $request->grace();
@@ -137,8 +137,8 @@ final readonly class ClientSecretsController extends ConsoleController
             // say the window is open. See the `stepUpCleared` prop.
             ['client' => $model->id, 'confirmed' => 'rotate'],
             $grace === SecretGrace::Immediately
-                ? 'Rotating this app\'s secret creates a new one and stops the current one working immediately.'
-                : 'Rotating this app\'s secret creates a new one; the current one keeps working '.$grace->overlap().'.',
+                ? __('console.rotating_this_app_s_secret_creates_a_new_one_c5772a3d')
+                : __('console.rotating_this_app_s_secret_creates_a_new_one_18dace33').$grace->overlap().'.',
         );
 
         if ($sudo !== null) {
@@ -158,8 +158,8 @@ final readonly class ClientSecretsController extends ConsoleController
         $this->inertia->flash('revealedSecret', $rotated->secret);
 
         return back()->with('status', $grace === SecretGrace::Immediately
-            ? 'Secret rotated, and the previous one has stopped working. Copy the new one now — it will not be shown again.'
-            : 'Secret rotated. The previous one keeps working '.$grace->overlap().'. Copy the new one now — it will not be shown again.');
+            ? __('console.secret_rotated_and_the_previous_one_has_stop_14aacb17')
+            : __('console.secret_rotated_the_previous_one_keeps_workin_a0dad459').$grace->overlap().__('console.copy_the_new_one_now_it_will_not_be_shown_ag_e926c451'));
     }
 
     /**
@@ -186,7 +186,7 @@ final readonly class ClientSecretsController extends ConsoleController
             'clients.secrets',
             'environment.clients.secrets',
             ['client' => $model->id, 'confirmed' => 'revoke'],
-            'Revoking a secret stops it working immediately — anything still using it fails to sign in.',
+            __('console.revoking_a_secret_stops_it_working_immediate_0f24d7b4'),
         );
 
         if ($sudo !== null) {
@@ -206,7 +206,7 @@ final readonly class ClientSecretsController extends ConsoleController
 
         return back()->with('status', $hint !== null
             ? "Secret ending in {$hint} revoked. It no longer works."
-            : 'Secret revoked. It no longer works.');
+            : __('console.secret_revoked_it_no_longer_works_9b2336b2'));
     }
 
     /**

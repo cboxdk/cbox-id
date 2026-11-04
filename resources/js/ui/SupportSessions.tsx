@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Badge } from './Badge';
@@ -37,6 +38,8 @@ export function SupportSessions({
     sessions: SupportSessionRow[];
     lead: 'user' | 'organization';
 }) {
+    const { t: tc } = useUiTranslator();
+
     const [ending, setEnding] = useState<SupportSessionRow | null>(null);
 
     if (sessions.length === 0) {
@@ -67,7 +70,9 @@ export function SupportSessions({
                                 ) : (
                                     session.organization
                                 )}{' '}
-                                <span style={{ color: 'var(--muted-foreground)' }}>in</span>{' '}
+                                <span style={{ color: 'var(--muted-foreground)' }}>
+                                    {tc('console.in_58296753', 'in')}
+                                </span>{' '}
                                 {session.app}
                             </p>
                             <p
@@ -77,23 +82,34 @@ export function SupportSessions({
                                 “{session.reason}”
                             </p>
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {session.startedBy !== null && <>By {session.startedBy} · </>}
-                                <time dateTime={session.expiresAt}>ends {session.expiresIn}</time>
+                                {session.startedBy !== null && (
+                                    <>
+                                        {tc('console.by_7dd37029', 'By ')}
+                                        {session.startedBy} ·{' '}
+                                    </>
+                                )}
+                                <time dateTime={session.expiresAt}>
+                                    {tc('console.ends_1cb3a4ae', 'ends ')}
+                                    {session.expiresIn}
+                                </time>
                             </p>
                         </div>
 
-                        <Badge tone="warn">Support session</Badge>
+                        <Badge tone="warn">
+                            {tc('console.support_session_5f5a9473', 'Support session')}
+                        </Badge>
 
                         <div className="flex items-center gap-2 shrink-0">
                             {session.appUrl !== null && (
                                 <Button asChild size="sm">
                                     <a href={session.appUrl} rel="noreferrer">
-                                        Open {session.app}
+                                        {tc('console.open_b8039d1d', 'Open ')}
+                                        {session.app}
                                     </a>
                                 </Button>
                             )}
                             <Button size="sm" variant="danger" onClick={() => setEnding(session)}>
-                                End now
+                                {tc('console.end_now_adf7eccb', 'End now')}
                             </Button>
                         </div>
                     </li>
@@ -115,10 +131,15 @@ export function SupportSessions({
                         ? ''
                         : `End the support session for ${ending.user} in ${ending.app}?`
                 }
-                description="Every token it issued is revoked now, and no new sign-in can use it. An app that checks tokens itself stops accepting them when they expire, which is never later than the session's own end."
+                description={tc(
+                    'console.every_token_it_issued_is_revoked_now_and_no__e0dca49c',
+                    "Every token it issued is revoked now, and no new sign-in can use it. An app that checks tokens itself stops accepting them when they expire, which is never later than the session's own end.",
+                )}
                 footer={
                     <>
-                        <Button onClick={() => setEnding(null)}>Cancel</Button>
+                        <Button onClick={() => setEnding(null)}>
+                            {tc('console.cancel_19766ed6', 'Cancel')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -130,7 +151,7 @@ export function SupportSessions({
                                 }
                             }}
                         >
-                            End now
+                            {tc('console.end_now_adf7eccb', 'End now')}
                         </Button>
                     </>
                 }

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import { Icon, PageHeader, Panel } from '@/ui';
@@ -20,7 +21,9 @@ export default function EnvironmentRefused({
     projectsHref,
     accountsHref,
 }: Props) {
-    const name = environment?.name ?? 'this environment';
+    const { t: tc } = useTranslator();
+
+    const name = environment?.name ?? tc('console.this_environment_42756031');
 
     return (
         <div style={{ maxWidth: '36rem' }}>
@@ -28,32 +31,39 @@ export default function EnvironmentRefused({
                 eyebrow={null}
                 description={
                     <>
-                        You are signed in
+                        {tc('console.you_are_signed_in_2d55cbc1')}
                         {email !== null ? (
                             <>
                                 {' '}
-                                as <strong>{email}</strong>
+                                {tc('console.as_12876f7c')}
+                                <strong>{email}</strong>
                             </>
                         ) : null}
-                        , but your account does not administer {name}. An environment’s console is
-                        opened by the owners, admins and developers of the workspace it belongs to.
+                        {tc('console.but_your_account_does_not_administer_30b5975a')}
+                        {name}
+                        {tc('console.an_environment_s_console_is_opened_by_the_ow_caccb539')}
                     </>
                 }
             />
 
             <div className="mt-6">
-                <Panel title="What you can do">
+                <Panel title={tc('console.what_you_can_do_f42148c5')}>
                     <ul className="space-y-3 text-sm">
                         <li className="flex gap-2">
                             <Icon name="members" className="w-4 h-4 mt-0.5 shrink-0" />
-                            <span>Ask an owner of the workspace to give you access to {name}.</span>
+                            <span>
+                                {tc(
+                                    'console.ask_an_owner_of_the_workspace_to_give_you_ac_5e72a079',
+                                )}
+                                {name}.
+                            </span>
                         </li>
                         <li className="flex gap-2">
                             <Icon name="switch" className="w-4 h-4 mt-0.5 shrink-0" />
                             <span>
-                                Signed in with the wrong account?{' '}
+                                {tc('console.signed_in_with_the_wrong_account_030df2ae')}{' '}
                                 <a href={accountsHref} className="underline underline-offset-2">
-                                    Switch user
+                                    {tc('console.switch_user_4f899129')}
                                 </a>
                                 .
                             </span>
@@ -62,9 +72,9 @@ export default function EnvironmentRefused({
                             <Icon name="layers" className="w-4 h-4 mt-0.5 shrink-0" />
                             <span>
                                 <a href={projectsHref} className="underline underline-offset-2">
-                                    Go to your projects
+                                    {tc('console.go_to_your_projects_8ceddc4b')}
                                 </a>{' '}
-                                to open an environment you do administer.
+                                {tc('console.to_open_an_environment_you_do_administer_7d12b7e9')}
                             </span>
                         </li>
                     </ul>

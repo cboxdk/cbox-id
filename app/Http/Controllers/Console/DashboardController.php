@@ -101,8 +101,8 @@ final readonly class DashboardController extends ConsoleController
          * greeting, which is the wrong thing to read off a tab strip. Every other page in
          * this console states one string and uses it for both.
          */
-        return $this->page('console/dashboard', 'Overview', [
-            'heading' => 'Welcome back, '.Str::before($me->name(), ' '),
+        return $this->page('console/dashboard', __('console.overview_d4b1ea57'), [
+            'heading' => __('console.welcome_back_0c7229ae').Str::before($me->name(), ' '),
             /*
              * THE SUBTITLE NAMES THE ORGANIZATION, or says plainly that there is not one.
              * "Here's what's happening across your organization" was the fallback, and it is
@@ -111,8 +111,8 @@ final readonly class DashboardController extends ConsoleController
              * the platform root, where holding no membership is the ordinary state.
              */
             'greeting' => $organization !== null
-                ? 'Here\'s what\'s happening across '.$organization->name.'.'
-                : 'You\'re signed in. You don\'t belong to an organization here yet — your account and security settings are all yours.',
+                ? __('console.here_s_what_s_happening_across_21e2ead4').$organization->name.'.'
+                : __('console.you_re_signed_in_you_don_t_belong_to_an_orga_67d0efb9'),
             'isAdmin' => $isAdmin,
             'apps' => $launcher->apps(),
             'role' => $me->role()?->label() ?? 'Member',
@@ -156,7 +156,7 @@ final readonly class DashboardController extends ConsoleController
 
         $checklist->dismiss($organizationId, $me->id());
 
-        return back()->with('status', 'Setup guide hidden — reach it any time from Settings.');
+        return back()->with('status', __('console.setup_guide_hidden_reach_it_any_time_from_se_4a070c25'));
     }
 
     /**

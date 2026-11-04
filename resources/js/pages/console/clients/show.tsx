@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -63,6 +64,8 @@ export default function ClientDetail({
     mayManage,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [confirming, setConfirming] = useState<'delete' | null>(null);
     const [sdk, setSdk] = useState(snippets[0]?.id ?? '');
     const [manifestOpen, setManifestOpen] = useState(false);
@@ -85,7 +88,7 @@ export default function ClientDetail({
                 public client never saw it at all, and that is precisely the CLI and the
                 SPA: the two kinds whose author has no existing snippet to adapt.
             */}
-            <Panel title="Connect it" description={client.kindLabel}>
+            <Panel title={tc('console.connect_it_00ff2248')} description={client.kindLabel}>
                 {/*
                     TABS, because the page used to show ONE example in JavaScript whatever
                     the reader was building — and this screen is also where a one-time
@@ -97,32 +100,42 @@ export default function ClientDetail({
                     snippets={snippets}
                     value={sdk}
                     onValueChange={setSdk}
-                    label="SDK examples"
+                    label={tc('console.sdk_examples_fa304ed5')}
                 />
             </Panel>
 
-            <Panel title="Credentials">
+            <Panel title={tc('console.credentials_d48a617c')}>
                 <div className="space-y-3">
                     <CopyableValue
-                        label="Issuer"
+                        label={tc('console.issuer_39e02c46')}
                         value={issuer}
                         hint={
                             <>
-                                This environment's own issuer — what an SDK discovers from and what
-                                the <code className="mono">iss</code> claim carries.
+                                {tc(
+                                    'console.this_environment_s_own_issuer_what_an_sdk_di_2adf2886',
+                                )}
+                                <code className="mono">{tc('console.iss_f029e50f')}</code>
+                                {tc('console.claim_carries_910485ac')}
                             </>
                         }
                     />
-                    <CopyableValue label="Client ID" value={client.clientId} />
+                    <CopyableValue
+                        label={tc('console.client_id_8726db01')}
+                        value={client.clientId}
+                    />
 
                     <div>
-                        <p className="label">Client secret</p>
+                        <p className="label">{tc('console.client_secret_4aded5fa')}</p>
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                             {!client.confidential
-                                ? 'None — this is a public app and uses PKCE instead of a secret.'
+                                ? tc(
+                                      'console.none_this_is_a_public_app_and_uses_pkce_inst_b028b084',
+                                  )
                                 : client.signsAssertions
-                                  ? 'None — this app signs in with its own keys instead of a secret.'
-                                  : 'Stored as a hash and shown only once.'}
+                                  ? tc(
+                                        'console.none_this_app_signs_in_with_its_own_keys_ins_3e407298',
+                                    )
+                                  : tc('console.stored_as_a_hash_and_shown_only_once_4a2d11fd')}
                         </p>
                         {urls.secrets !== null && (
                             <Link
@@ -130,7 +143,7 @@ export default function ClientDetail({
                                 className="mt-1 inline-block text-sm underline"
                                 style={{ color: 'var(--accent-strong)' }}
                             >
-                                Rotate or revoke secrets
+                                {tc('console.rotate_or_revoke_secrets_56c04853')}
                             </Link>
                         )}
                     </div>
@@ -140,14 +153,13 @@ export default function ClientDetail({
             {!mayManage && (
                 <Panel>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        This app belongs to the platform and is available to every organization in
-                        this environment. Your operator manages it.
+                        {tc('console.this_app_belongs_to_the_platform_and_is_avai_0c69cd5f')}
                     </p>
                 </Panel>
             )}
 
             {mayManage && (
-                <Panel title="Details">
+                <Panel title={tc('console.details_45989de4')}>
                     <form
                         className="space-y-4"
                         onSubmit={(event) => {
@@ -155,7 +167,7 @@ export default function ClientDetail({
                             save();
                         }}
                     >
-                        <Field label="Name" error={details.errors.name}>
+                        <Field label={tc('console.name_dcd1d522')} error={details.errors.name}>
                             <Input
                                 name="name"
                                 value={details.data.name}
@@ -166,9 +178,9 @@ export default function ClientDetail({
                         <Field
                             label={
                                 <>
-                                    Redirect URIs{' '}
+                                    {tc('console.redirect_uris_721353f1')}{' '}
                                     <span style={{ color: 'var(--faint)', fontWeight: 400 }}>
-                                        — one per line
+                                        {tc('console.one_per_line_256f7ece')}
                                     </span>
                                 </>
                             }
@@ -190,13 +202,15 @@ export default function ClientDetail({
                         <Field
                             label={
                                 <>
-                                    Sign-out URIs{' '}
+                                    {tc('console.sign_out_uris_8a668dbe')}{' '}
                                     <span style={{ color: 'var(--faint)', fontWeight: 400 }}>
-                                        — one per line
+                                        {tc('console.one_per_line_256f7ece')}
                                     </span>
                                 </>
                             }
-                            hint="Where Cbox ID sends people after they sign out of this app. The URI the app asks for has to appear here character for character — trailing slash and all — or Cbox ID leaves the person on its own signed-out page. Leave empty if the app never sends people back."
+                            hint={tc(
+                                'console.where_cbox_id_sends_people_after_they_sign_o_3a65532f',
+                            )}
                             error={details.errors.postLogoutRedirectUris}
                         >
                             <Textarea
@@ -214,7 +228,7 @@ export default function ClientDetail({
 
                         <div className="flex flex-wrap items-start gap-2">
                             <Button type="submit" variant="primary" loading={details.processing}>
-                                Save changes
+                                {tc('console.save_changes_dd0ae7a5')}
                             </Button>
                             <ApiEquivalent
                                 action="apps.update"
@@ -231,20 +245,21 @@ export default function ClientDetail({
                 </Panel>
             )}
 
-            <Panel title="Connects via">
+            <Panel title={tc('console.connects_via_45b211b3')}>
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {client.kindLabel}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
-                    How an app connects is fixed at registration: changing it changes what the
-                    credentials mean, so register a new app rather than repurposing this one.
+                    {tc('console.how_an_app_connects_is_fixed_at_registration_0372baec')}
                 </p>
             </Panel>
 
             {mayManage && (
                 <Panel
-                    title="Roles &amp; permissions"
-                    description="The app declares these — Cbox ID pulls them from its manifest URL, or the app pushes them. They become assignable once they arrive."
+                    title={tc('console.roles_amp_permissions_22a82b7c')}
+                    description={tc(
+                        'console.the_app_declares_these_cbox_id_pulls_them_fr_f63d9426',
+                    )}
                     action={
                         <Button
                             size="sm"
@@ -252,7 +267,8 @@ export default function ClientDetail({
                             aria-expanded={manifestOpen}
                             onClick={() => setManifestOpen((open) => !open)}
                         >
-                            Manifest{declaredRoles > 0 ? ` · ${declaredRoles}` : ''}
+                            {tc('console.manifest_3c99f1f3')}
+                            {declaredRoles > 0 ? ` · ${declaredRoles}` : ''}
                         </Button>
                     }
                 >
@@ -265,7 +281,10 @@ export default function ClientDetail({
                             }}
                         >
                             <div className="flex-1 min-w-[18rem]">
-                                <Field label="Manifest URL" error={manifest.errors.manifestUrl}>
+                                <Field
+                                    label={tc('console.manifest_url_b2e2812a')}
+                                    error={manifest.errors.manifestUrl}
+                                >
                                     <Input
                                         name="manifestUrl"
                                         type="url"
@@ -286,7 +305,7 @@ export default function ClientDetail({
                                 size="sm"
                                 loading={manifest.processing}
                             >
-                                Save &amp; sync
+                                {tc('console.save_amp_sync_9ebfe6df')}
                             </Button>
 
                             {client.manifestUrl !== '' && (
@@ -297,7 +316,7 @@ export default function ClientDetail({
                                         router.post(urls.sync, {}, { preserveScroll: true })
                                     }
                                 >
-                                    Sync now
+                                    {tc('console.sync_now_885e8f48')}
                                 </Button>
                             )}
                         </form>
@@ -305,19 +324,23 @@ export default function ClientDetail({
 
                     <p className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
                         {declaredRoles > 0
-                            ? `${declaredRoles} role(s) declared.`
-                            : 'No roles declared yet — set a manifest URL and sync, or have the app push its manifest.'}
+                            ? tc('console.value0_role_s_declared_055c2372', {
+                                  value0: declaredRoles,
+                              })
+                            : tc('console.no_roles_declared_yet_set_a_manifest_url_and_799c34aa')}
                     </p>
                 </Panel>
             )}
 
             {mayManage && (
                 <Panel
-                    title="Delete app"
-                    description="Anything using its credentials will stop working. This cannot be undone."
+                    title={tc('console.delete_app_70ddc821')}
+                    description={tc(
+                        'console.anything_using_its_credentials_will_stop_wor_da65f419',
+                    )}
                 >
                     <Button size="sm" variant="danger" onClick={() => setConfirming('delete')}>
-                        Delete app
+                        {tc('console.delete_app_70ddc821')}
                     </Button>
                 </Panel>
             )}
@@ -326,7 +349,7 @@ export default function ClientDetail({
                 open={confirming === 'delete'}
                 onOpenChange={(open) => !open && setConfirming(null)}
                 name={client.name}
-                consequence="Anything using this app's credentials will stop working immediately. This cannot be undone."
+                consequence={tc('console.anything_using_this_app_s_credentials_will_s_1ea63206')}
                 onConfirm={() => {
                     setConfirming(null);
                     router.delete(urls.destroy);

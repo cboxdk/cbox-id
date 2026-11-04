@@ -47,7 +47,7 @@ final readonly class PlatformSearchController extends ConsoleController
         $term = trim($request->string('term')->toString());
 
         if (mb_strlen($term) < self::MIN_TERM) {
-            return $this->page('console/platform/search', 'Search', [
+            return $this->page('console/platform/search', __('console.search_49c266ba'), [
                 'help' => HelpProps::for(HelpTopic::PlatformSearch),
                 'term' => $term,
                 'ready' => false,
@@ -105,7 +105,7 @@ final readonly class PlatformSearchController extends ConsoleController
                         'suspended' => $organization->status->value === 'suspended',
                         // Named rather than blank: a row whose plane cannot be resolved is a
                         // thing an operator should see, not a gap.
-                        'plane' => $plane->name ?? 'Unknown environment',
+                        'plane' => $plane->name ?? __('console.unknown_environment_ea7edbd5'),
                         'href' => route('platform.search.jump', $organization->id),
                     ];
                 })->values()->all(),
@@ -126,7 +126,7 @@ final readonly class PlatformSearchController extends ConsoleController
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'plane' => $plane->name ?? 'Unknown environment',
+                        'plane' => $plane->name ?? __('console.unknown_environment_ea7edbd5'),
                         'organizations' => $organizations,
                         /*
                          * A user is not a page: the console has no cross-plane person view, so
@@ -142,7 +142,7 @@ final readonly class PlatformSearchController extends ConsoleController
             ];
         });
 
-        return $this->page('console/platform/search', 'Search', [
+        return $this->page('console/platform/search', __('console.search_49c266ba'), [
             'help' => HelpProps::for(HelpTopic::PlatformSearch),
             'term' => $term,
             'ready' => true,

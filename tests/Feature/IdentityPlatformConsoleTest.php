@@ -392,7 +392,7 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
         // the roster and is offered no way to change it.
         ->assertSee('Team')
         ->assertSee($viewer->email ?? 'viewer@acme.example')
-        ->assertDontSee('Invite a teammate');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('canManage', false));
 });
 
 it('adds an environment to a project up to its plan limit, then refuses', function (): void {

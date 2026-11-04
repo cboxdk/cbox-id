@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -74,6 +75,8 @@ export default function RolesIndex({
     consoleAccessHref,
     organizationFilter,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -96,13 +99,13 @@ export default function RolesIndex({
         <>
             <PageHeader
                 help={help}
-                description="What people can do inside your apps. You assign roles here; each app decides what its roles are allowed to do."
+                description={tc('console.what_people_can_do_inside_your_apps_you_assi_c31f1a20')}
                 actions={
                     mayAdminister ? (
                         <Button asChild variant="primary" className="shrink-0">
                             <Link href={createHref}>
                                 <Icon name="plus" className="w-4 h-4" />
-                                New role
+                                {tc('console.new_role_500f2f9d')}
                             </Link>
                         </Button>
                     ) : undefined
@@ -127,22 +130,20 @@ export default function RolesIndex({
                         <Icon name="key" className="w-4 h-4" />
                     </span>
                     <p className="text-sm">
-                        <b>Cbox ID assigns roles; your app decides what they can do.</b> A role is a
-                        label stamped into the token — the ones an app declares are read-only here,
-                        and the rest are ones you define. Every member also holds exactly one{' '}
+                        <b>{tc('console.cbox_id_assigns_roles_your_app_decides_what__840ee10f')}</b>
+                        {tc('console.a_role_is_a_label_stamped_into_the_token_the_a527f0c7')}{' '}
                         {consoleAccessHref !== null ? (
                             <Link
                                 href={consoleAccessHref}
                                 className="underline"
                                 style={{ color: 'var(--accent-strong)' }}
                             >
-                                built-in role
+                                {tc('console.built_in_role_59a06e31')}
                             </Link>
                         ) : (
-                            'built-in role'
+                            tc('console.built_in_role_59a06e31')
                         )}{' '}
-                        (Owner, Admin, Developer, Member or Viewer), which decides what they may
-                        administer in this console.
+                        {tc('console.owner_admin_developer_member_or_viewer_which_8110d258')}
                     </p>
                 </div>
             </div>
@@ -158,8 +159,8 @@ export default function RolesIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name"
-                    aria-label="Search roles"
+                    placeholder={tc('console.search_by_name_4ae2b333')}
+                    aria-label={tc('console.search_roles_848b9c5d')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -169,7 +170,11 @@ export default function RolesIndex({
                     filter narrowed to nothing.
                 */}
                 <output aria-live="polite" className="sr-only">
-                    {pagination.total} {pagination.total === 1 ? 'role' : 'roles'} found.
+                    {pagination.total}{' '}
+                    {pagination.total === 1
+                        ? tc('console.role_4b168d88')
+                        : tc('console.roles_66cf5513')}
+                    {tc('console.found_599e25a3')}
                 </output>
             </div>
 
@@ -181,27 +186,32 @@ export default function RolesIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title="No matches"
-                            description={`No roles match “${search}”. Try a different name.`}
+                            title={tc('console.no_matches_2df01a03')}
+                            description={tc(
+                                'console.no_roles_match_value0_try_a_different_name_274ce6f7',
+                                { value0: search },
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="shield"
                             equivalent="roles.create"
-                            title="No roles yet"
+                            title={tc('console.no_roles_yet_4fbdeea7')}
                             help={help}
-                            description="Without roles, everyone who can sign in gets whatever an app gives a plain user. A role is how you say “these people are editors, those are support” once, and have every connected app honour it."
+                            description={tc(
+                                'console.without_roles_everyone_who_can_sign_in_gets__dc1418f9',
+                            )}
                             steps={[
-                                'Let your apps declare the roles they understand — those arrive here on their own.',
-                                'Or create a role here and compose it from the permissions your apps have declared.',
-                                'Assign it to people; the role travels with them into every connected app.',
+                                tc('console.let_your_apps_declare_the_roles_they_underst_719f1d4a'),
+                                tc('console.or_create_a_role_here_and_compose_it_from_th_ed2a324a'),
+                                tc('console.assign_it_to_people_the_role_travels_with_th_a3f3f862'),
                             ]}
                             actions={
                                 mayAdminister ? (
                                     <Button asChild variant="primary">
                                         <Link href={createHref}>
                                             <Icon name="plus" className="w-4 h-4" />
-                                            New role
+                                            {tc('console.new_role_500f2f9d')}
                                         </Link>
                                     </Button>
                                 ) : undefined
@@ -224,7 +234,8 @@ export default function RolesIndex({
 
             <Pagination
                 pagination={pagination}
-                noun="role"
+                noun={tc('console.role_4b168d88')}
+                pluralNoun={tc('console.roles_66cf5513')}
                 href={(page) => listHref(search, page)}
             />
             <div className="mt-8">
@@ -249,6 +260,8 @@ export default function RolesIndex({
  * may compose one, so the rows already carry the answer.
  */
 function Legend({ roles }: { roles: RoleRow[] }) {
+    const { t: tc } = useTranslator();
+
     const declared = roles.some((role) => role.declaredByApp);
     const wide = roles.filter((role) => role.environmentWide);
 
@@ -261,20 +274,20 @@ function Legend({ roles }: { roles: RoleRow[] }) {
             {declared && (
                 <div className="flex items-start gap-2">
                     <dt className="shrink-0">
-                        <Badge>App</Badge>
+                        <Badge>{tc('console.app_0d04bfeb')}</Badge>
                     </dt>
-                    <dd>Declared by the application, which is its source of truth.</dd>
+                    <dd>{tc('console.declared_by_the_application_which_is_its_sou_b3e04ae9')}</dd>
                 </div>
             )}
             {wide.length > 0 && (
                 <div className="flex items-start gap-2">
                     <dt className="shrink-0">
-                        <Badge>Environment-wide</Badge>
+                        <Badge>{tc('console.environment_wide_cd1204b6')}</Badge>
                     </dt>
                     <dd>
                         {wide.some((role) => role.mayCompose)
-                            ? 'Defined for the whole environment: every organization can use it, and it is the only kind that can be granted to a person in all of them at once.'
-                            : 'Owned by the environment — it applies here, but is not yours to change.'}
+                            ? tc('console.defined_for_the_whole_environment_every_orga_8039a976')
+                            : tc('console.owned_by_the_environment_it_applies_here_but_b6293291')}
                     </dd>
                 </div>
             )}
@@ -297,6 +310,8 @@ function Row({
     mayAdminister: boolean;
     last: boolean;
 }) {
+    const { t: tc } = useTranslator();
+
     /*
      * AN EMPTY PICKER MEANS TWO DIFFERENT THINGS. With grants on the role it means they
      * are all held; with none it means the catalogue has nothing for this role at all —
@@ -327,23 +342,24 @@ function Row({
                     )}
                 </div>
 
-                {role.declaredByApp && <Badge>App</Badge>}
+                {role.declaredByApp && <Badge>{tc('console.app_0d04bfeb')}</Badge>}
 
                 {role.app !== null ? (
                     <Badge>
                         <Icon name="clients" className="w-3 h-3" />
-                        {role.app} only
+                        {role.app}
+                        {tc('console.only_e850fc29')}
                     </Badge>
                 ) : (
-                    <Badge>All apps</Badge>
+                    <Badge>{tc('console.all_apps_01bed311')}</Badge>
                 )}
 
-                {role.environmentWide && <Badge>Environment-wide</Badge>}
+                {role.environmentWide && <Badge>{tc('console.environment_wide_cd1204b6')}</Badge>}
 
                 {role.organization !== null && (
                     <Badge>
                         <Icon name="members" className="w-3 h-3" />
-                        <span className="sr-only">Organization:</span>
+                        <span className="sr-only">{tc('console.organization_5300e286')}</span>
                         {role.organization}
                     </Badge>
                 )}
@@ -353,7 +369,7 @@ function Row({
                 <Link
                     href={role.href}
                     className="cbx-iconbtn shrink-0"
-                    aria-label={`Open ${role.name}`}
+                    aria-label={tc('console.open_value0_f5734efb', { value0: role.name })}
                 >
                     <Icon
                         name="chevron"
@@ -367,8 +383,8 @@ function Row({
                 {role.permissions.length === 0 ? (
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                         {nothingToOffer
-                            ? 'No permissions yet — none of your apps has declared one this role can use.'
-                            : 'No permissions yet.'}
+                            ? tc('console.no_permissions_yet_none_of_your_apps_has_dec_f84b634e')
+                            : tc('console.no_permissions_yet_340e092f')}
                     </span>
                 ) : (
                     role.permissions.map((permission) => (
@@ -380,7 +396,9 @@ function Row({
                 )}
                 {role.moreCount > 0 && (
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        and {role.moreCount} more
+                        {tc('console.and_427a379a')}
+                        {role.moreCount}
+                        {tc('console.more_226ba18b')}
                     </span>
                 )}
             </div>
@@ -390,16 +408,18 @@ function Row({
                 !nothingToOffer &&
                 (role.offerable.length === 0 ? (
                     <p className="text-xs mt-3" style={{ color: 'var(--faint)' }}>
-                        Every available permission is already granted.
+                        {tc('console.every_available_permission_is_already_grante_50e66339')}
                     </p>
                 ) : (
                     <div className="mt-3" style={{ maxWidth: '22rem' }}>
                         <Combobox
                             value={undefined}
-                            aria-label={`Add a permission to the ${role.name} role`}
-                            placeholder="+ Add a permission…"
-                            searchPlaceholder="Search permissions…"
-                            emptyMessage="No permission matches that."
+                            aria-label={tc('console.add_a_permission_to_the_value0_role_eadbbfd0', {
+                                value0: role.name,
+                            })}
+                            placeholder={tc('console.add_a_permission_d9202366')}
+                            searchPlaceholder={tc('console.search_permissions_267b21e2')}
+                            emptyMessage={tc('console.no_permission_matches_that_acbdba7a')}
                             options={role.offerable.map((permission) => ({
                                 value: permission.id,
                                 label: permission.name,
@@ -428,22 +448,25 @@ function Row({
  * two commonest guesses, `scope` and a nested `authorization` object, are both wrong.
  */
 function TokenShape({ sample }: { sample: { role: string; permissions: string[] } }) {
+    const { t: tc } = useTranslator();
+
     const quoted = sample.permissions.map((permission) => `"${permission}"`).join(', ');
 
     return (
         <details className="card mt-4 p-4">
-            <summary className="text-sm font-medium cursor-pointer">What your app receives</summary>
+            <summary className="text-sm font-medium cursor-pointer">
+                {tc('console.what_your_app_receives_20810522')}
+            </summary>
 
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Roles and permissions arrive in the access token as two arrays. Your app reads them
-                straight from the token — there is no call back to Cbox ID:
+                {tc('console.roles_and_permissions_arrive_in_the_access_t_0107aa88')}
             </p>
-            <Snippet>{`{
-  "sub": "the person's id",
-  "org": "the organization they are acting for",
-  "roles": ["${sample.role}"],
-  "permissions": [${quoted}]
-}`}</Snippet>
+            <Snippet>
+                {tc('console.sub_the_person_s_id_org_the_organization_the_6eaa9420', {
+                    value0: sample.role,
+                    value1: quoted,
+                })}
+            </Snippet>
 
             {/*
                 SAID HERE, because it is the question people arrive with and the answer
@@ -456,31 +479,39 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
                 token themselves.)
             */}
             <p className="mt-3 text-sm">
-                <b>If your app expects “groups”, these are them.</b> Tick the{' '}
-                <code className="mono">groups</code> scope when you register the app and the ID
-                token carries the same role names as a <code className="mono">groups</code> claim —
-                the name Kubernetes, Grafana and Vault look for. Nothing else to create.
+                <b>{tc('console.if_your_app_expects_groups_these_are_them_09efb592')}</b>
+                {tc('console.tick_the_b3fa28ef')}{' '}
+                <code className="mono">{tc('console.groups_4ed379d4')}</code>
+                {tc('console.scope_when_you_register_the_app_and_the_id_t_748047d0')}
+                <code className="mono">{tc('console.groups_4ed379d4')}</code>
+                {tc('console.claim_the_name_kubernetes_grafana_and_vault__917a8b31')}
             </p>
-            <Snippet>{`{
-  "groups": ["${sample.role}"]
-}`}</Snippet>
+            <Snippet>{tc('console.groups_value0_688a0d2e', { value0: sample.role })}</Snippet>
 
             <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
                 {sample.permissions.length === 0 && (
                     <>
-                        <b>{sample.role}</b> has no permissions yet, so{' '}
-                        <code className="mono">permissions</code> arrives empty — the role name is
-                        still there to act on.{' '}
+                        <b>{sample.role}</b>
+                        {tc('console.has_no_permissions_yet_so_f1ca0235')}{' '}
+                        <code className="mono">{tc('console.permissions_4fe3cdd4')}</code>
+                        {tc('console.arrives_empty_the_role_name_is_still_there_t_02b0783c')}{' '}
                     </>
                 )}
-                The <code className="mono">scope</code> claim is a different thing: it is what the{' '}
-                <em>app</em> was allowed to ask for, not what this <em>person</em> may do.
+                {tc('console.the_103c5169')}
+                <code className="mono">{tc('console.scope_5f161c91')}</code>
+                {tc('console.claim_is_a_different_thing_it_is_what_the_31a8e2ce')}{' '}
+                <em>{tc('console.app_a172cedc')}</em>
+                {tc('console.was_allowed_to_ask_for_not_what_this_00dcd21a')}
+                <em>{tc('console.person_38a81e87')}</em>
+                {tc('console.may_do_99e1cd2d')}
             </p>
         </details>
     );
 }
 
 function Snippet({ children }: { children: string }) {
+    const { t: tc } = useTranslator();
+
     return (
         <section
             // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
@@ -489,7 +520,7 @@ function Snippet({ children }: { children: string }) {
 
             // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
             tabIndex={0}
-            aria-label="Permissions as code"
+            aria-label={tc('console.permissions_as_code_d6c35b7e')}
             className="mt-3 rounded-lg p-3 overflow-x-auto text-xs mono"
             style={{
                 background: 'var(--surface-2)',

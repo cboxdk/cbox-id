@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -40,6 +41,8 @@ type Props = PageProps<{
 }>;
 
 export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [creating, setCreating] = useState(false);
     const [revoking, setRevoking] = useState<KeyRow | null>(null);
 
@@ -47,7 +50,7 @@ export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Pro
         <>
             <PageHeader
                 help={help}
-                description="Keys your browser-side app presents to the Frontend API. They ship in a JavaScript bundle — the allow-list of origins is the control, not the key."
+                description={tc('console.keys_your_browser_side_app_presents_to_the_f_ff8c1e2c')}
                 actions={
                     !creating ? (
                         <Button
@@ -56,14 +59,14 @@ export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Pro
                             onClick={() => setCreating(true)}
                         >
                             <Icon name="plus" className="w-4 h-4" />
-                            New key
+                            {tc('console.new_key_eda5496b')}
                         </Button>
                     ) : undefined
                 }
             />
 
             <div className="mt-4">
-                <LinkTabs tabs={tabs} label="Key types" />
+                <LinkTabs tabs={tabs} label={tc('console.key_types_0562e0e6')} />
             </div>
 
             <div className="mt-6 space-y-6">
@@ -76,17 +79,19 @@ export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Pro
                         <EmptyState
                             icon="key"
                             equivalent="frontend_keys.create"
-                            title="No publishable keys yet"
-                            description="A publishable key lets a page sign people in without a backend of your own. It is public on purpose — what stops anybody else using it is the list of origins you allow it from."
+                            title={tc('console.no_publishable_keys_yet_7c4cd2c4')}
+                            description={tc(
+                                'console.a_publishable_key_lets_a_page_sign_people_in_f1562297',
+                            )}
                             steps={[
-                                'Name the key and choose test or live.',
-                                'List the origins it may be presented from — one per line, including the scheme.',
-                                'Paste it into your frontend. You can change the origins later without reissuing.',
+                                tc('console.name_the_key_and_choose_test_or_live_d84234ea'),
+                                tc('console.list_the_origins_it_may_be_presented_from_on_76b78615'),
+                                tc('console.paste_it_into_your_frontend_you_can_change_t_3d61f29f'),
                             ]}
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
                                     <Icon name="plus" className="w-4 h-4" />
-                                    New key
+                                    {tc('console.new_key_eda5496b')}
                                 </Button>
                             }
                         />
@@ -103,7 +108,7 @@ export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Pro
                 onOpenChange={(open) => !open && setRevoking(null)}
                 name={revoking?.name ?? ''}
                 verb="Revoke"
-                consequence="Pages still holding this key stop working immediately. This cannot be undone — issue a new key and ship it."
+                consequence={tc('console.pages_still_holding_this_key_stop_working_im_f2eb0d93')}
                 onConfirm={() => {
                     const entry = revoking;
                     setRevoking(null);
@@ -126,10 +131,12 @@ function NewKey({
     href: string;
     onDone: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ name: '', mode: modes[0]?.value ?? 'test', origins: '' });
 
     return (
-        <Panel title="New key">
+        <Panel title={tc('console.new_key_eda5496b')}>
             <form
                 className="space-y-4"
                 onSubmit={(event) => {
@@ -143,17 +150,17 @@ function NewKey({
                     });
                 }}
             >
-                <Field label="Name" error={form.errors.name}>
+                <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                     <Input
                         name="name"
-                        placeholder="Marketing site"
+                        placeholder={tc('console.marketing_site_945dad06')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
                 </Field>
 
                 <RadioGroup
-                    label="Mode"
+                    label={tc('console.mode_5e23ec6a')}
                     value={form.data.mode}
                     onValueChange={(mode) => form.setData('mode', mode)}
                     options={modes.map((mode) => ({
@@ -161,8 +168,10 @@ function NewKey({
                         label: mode.label,
                         hint:
                             mode.value === 'test'
-                                ? 'For development. Refused on anything but the origins you list, same as live.'
-                                : 'For production traffic.',
+                                ? tc(
+                                      'console.for_development_refused_on_anything_but_the__113f24ad',
+                                  )
+                                : tc('console.for_production_traffic_625c032b'),
                     }))}
                 />
 
@@ -174,7 +183,7 @@ function NewKey({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create key
+                        {tc('console.create_key_b6cde903')}
                     </Button>
                     <Button
                         type="button"
@@ -183,7 +192,7 @@ function NewKey({
                             onDone();
                         }}
                     >
-                        Cancel
+                        {tc('console.cancel_19766ed6')}
                     </Button>
                 </div>
             </form>
@@ -193,6 +202,8 @@ function NewKey({
 
 /** One key: its value, and the allow-list that is the actual control. */
 function KeyCard({ entry, onRevoke }: { entry: KeyRow; onRevoke: () => void }) {
+    const { t: tc } = useTranslator();
+
     const [editing, setEditing] = useState(false);
     const form = useForm({ origins: entry.origins.join('\n') });
 
@@ -203,21 +214,23 @@ function KeyCard({ entry, onRevoke }: { entry: KeyRow; onRevoke: () => void }) {
                 <span className="flex items-center gap-2 flex-wrap">
                     <Badge>{entry.mode}</Badge>
                     <Pill tone={entry.active ? 'success' : 'destructive'}>
-                        {entry.active ? 'Active' : 'Revoked'}
+                        {entry.active
+                            ? tc('console.active_92340695')
+                            : tc('console.revoked_f6f738d0')}
                     </Pill>
                 </span>
             }
             action={
                 entry.active ? (
                     <Button size="sm" variant="danger" className="shrink-0" onClick={onRevoke}>
-                        Revoke
+                        {tc('console.revoke_87e6d00b')}
                     </Button>
                 ) : undefined
             }
         >
             <div className="space-y-4">
                 <div>
-                    <p className="label">Key</p>
+                    <p className="label">{tc('console.key_99a52df3')}</p>
                     {/*
                         IN FULL, ALWAYS. Every other credential here is revealed once and
                         then masked, because it is a secret. Masking this one would teach
@@ -236,10 +249,10 @@ function KeyCard({ entry, onRevoke }: { entry: KeyRow; onRevoke: () => void }) {
 
                 <div>
                     <div className="flex items-center justify-between gap-3">
-                        <p className="label">Allowed origins</p>
+                        <p className="label">{tc('console.allowed_origins_83915d03')}</p>
                         {entry.active && !editing && (
                             <Button size="sm" onClick={() => setEditing(true)}>
-                                Edit
+                                {tc('console.edit_464c4ffd')}
                             </Button>
                         )}
                     </div>
@@ -267,7 +280,7 @@ function KeyCard({ entry, onRevoke }: { entry: KeyRow; onRevoke: () => void }) {
                                     size="sm"
                                     loading={form.processing}
                                 >
-                                    Save origins
+                                    {tc('console.save_origins_0a70d44c')}
                                 </Button>
                                 <Button
                                     type="button"
@@ -277,7 +290,7 @@ function KeyCard({ entry, onRevoke }: { entry: KeyRow; onRevoke: () => void }) {
                                         setEditing(false);
                                     }}
                                 >
-                                    Cancel
+                                    {tc('console.cancel_19766ed6')}
                                 </Button>
                             </div>
                         </form>
@@ -285,7 +298,9 @@ function KeyCard({ entry, onRevoke }: { entry: KeyRow; onRevoke: () => void }) {
                         <div className="mt-2 flex flex-wrap gap-1.5">
                             {entry.origins.length === 0 ? (
                                 <span className="text-sm" style={{ color: 'var(--faint)' }}>
-                                    None — this key is presentable from nowhere.
+                                    {tc(
+                                        'console.none_this_key_is_presentable_from_nowhere_25a0f961',
+                                    )}
                                 </span>
                             ) : (
                                 entry.origins.map((origin) => (
@@ -312,10 +327,12 @@ function Origins({
     error: string | undefined;
     onChange: (value: string) => void;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <Field
-            label="Allowed origins"
-            hint="One per line, including the scheme — https://app.example.com. The whole list is refused if any line is unusable, rather than the bad line being dropped silently."
+            label={tc('console.allowed_origins_83915d03')}
+            hint={tc('console.one_per_line_including_the_scheme_https_app__71de2531')}
             error={error}
         >
             <Textarea
@@ -323,7 +340,7 @@ function Origins({
                 rows={3}
                 className="mono"
                 spellCheck={false}
-                placeholder={'https://app.example.com\nhttps://staging.example.com'}
+                placeholder={tc('console.https_app_example_com_https_staging_example__ad77bfc7')}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
             />

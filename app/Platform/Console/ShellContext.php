@@ -163,7 +163,7 @@ final readonly class ShellContext
             // operator runs — with their own workspaces one click away beside it.
             array_unshift($workspaces, new SwitchOptionProps(
                 id: 'platform',
-                label: 'Platform admin',
+                label: __('console.platform_admin_69652f55'),
                 caption: 'Operator',
                 current: true,
                 openHref: Route::has('platform.workspaces') ? $this->onWorkspaceHost('platform.workspaces') : null,

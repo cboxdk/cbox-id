@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import type { OrganizationFilter } from '@/types';
@@ -89,6 +90,8 @@ function withParameter(parameter: string, value: string | null): string {
  * vault), choosing one GOES there instead of narrowing this list.
  */
 export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter }) {
+    const { t: tc } = useUiTranslator();
+
     const [open, setOpen] = useState(false);
 
     const choose = (id: string): void => {
@@ -109,9 +112,12 @@ export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter 
     if (filter.selected !== null) {
         return (
             <FilterChip
-                label="Organization"
+                label={tc('console.organization_d764d425', 'Organization')}
                 value={filter.selected.name}
-                clearLabel="Show every organization"
+                clearLabel={tc(
+                    'console.show_every_organization_64ecc6bb',
+                    'Show every organization',
+                )}
                 onClear={clear}
             />
         );
@@ -120,9 +126,12 @@ export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter 
     if (filter.unknown) {
         return (
             <FilterChip
-                label="Organization"
-                value="not in this environment"
-                clearLabel="Show every organization"
+                label={tc('console.organization_d764d425', 'Organization')}
+                value={tc('console.not_in_this_environment_98f2f096', 'not in this environment')}
+                clearLabel={tc(
+                    'console.show_every_organization_64ecc6bb',
+                    'Show every organization',
+                )}
                 onClear={clear}
                 warning
             />
@@ -133,7 +142,7 @@ export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter 
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger className="cbx-filter-chip is-unset">
                 <Icon name="plus" className="w-3 h-3" aria-hidden="true" />
-                Organization
+                {tc('console.organization_d764d425', 'Organization')}
             </PopoverTrigger>
             <PopoverContent className="cbx-combobox" align="start" style={{ width: '18rem' }}>
                 <OrganizationLookupList

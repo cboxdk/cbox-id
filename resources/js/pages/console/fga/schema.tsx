@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -37,6 +38,8 @@ export default function FgaSchemaEditor({
     validateHref,
     indexHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     // Validating posts and comes back to this page with state preserved, so the text being
     // edited survives the round trip.
     const form = useForm({ schema: source });
@@ -45,13 +48,20 @@ export default function FgaSchemaEditor({
         <>
             <PageHeader
                 help={help}
-                badge={defined ? <Badge>v{version}</Badge> : undefined}
-                description="One `type` per resource type, its `relation`s below it. A relation is decided by the subjects a tuple names directly ([user, group#member]), another relation (owner), a relation on a parent (viewer from parent), or a combination with or, and, but not."
+                badge={
+                    defined ? (
+                        <Badge>
+                            {tc('console.v_4c94485e')}
+                            {version}
+                        </Badge>
+                    ) : undefined
+                }
+                description={tc('console.one_type_per_resource_type_its_relation_s_be_18943de8')}
                 actions={
                     <Button asChild>
                         <Link href={indexHref}>
                             <Icon name="arrow-left" className="w-4 h-4" />
-                            Overview
+                            {tc('console.overview_d4b1ea57')}
                         </Link>
                     </Button>
                 }
@@ -64,7 +74,7 @@ export default function FgaSchemaEditor({
                     form.put(updateHref, { preserveScroll: true });
                 }}
             >
-                <Field label="Schema" error={form.errors.schema}>
+                <Field label={tc('console.schema_07b091a3')} error={form.errors.schema}>
                     <Textarea
                         className="mono text-xs"
                         rows={24}
@@ -78,22 +88,30 @@ export default function FgaSchemaEditor({
                     <output className="card p-4 block">
                         {validation.valid ? (
                             <p className="flex items-center gap-2 text-sm">
-                                <Badge tone="success">Valid</Badge>
-                                Every name it uses is defined, and nothing subtracts itself.
+                                <Badge tone="success">{tc('console.valid_f5162206')}</Badge>
+                                {tc(
+                                    'console.every_name_it_uses_is_defined_and_nothing_su_a169d152',
+                                )}
                             </p>
                         ) : (
                             <>
                                 <p className="flex items-center gap-2 text-sm">
                                     <Badge tone="danger">
                                         {validation.errors.length === 1
-                                            ? '1 problem'
-                                            : `${validation.errors.length} problems`}
+                                            ? tc('console.1_problem_41ac3c60')
+                                            : tc('console.value0_problems_c91917d2', {
+                                                  value0: validation.errors.length,
+                                              })}
                                     </Badge>
                                 </p>
                                 <ul className="mt-2 grid gap-1 text-xs">
                                     {validation.errors.map((error) => (
                                         <li key={`${error.line}:${error.message}`} className="mono">
-                                            {error.line > 0 ? `Line ${error.line}: ` : ''}
+                                            {error.line > 0
+                                                ? tc('console.line_value0_20717ce8', {
+                                                      value0: error.line,
+                                                  })
+                                                : ''}
                                             {error.message}
                                         </li>
                                     ))}
@@ -120,10 +138,12 @@ export default function FgaSchemaEditor({
                         }
                     >
                         <Icon name="check" className="w-4 h-4" />
-                        Validate
+                        {tc('console.validate_40611abb')}
                     </Button>
                     <Button type="submit" variant="danger" loading={form.processing}>
-                        {defined ? 'Save — every check uses it at once' : 'Save schema'}
+                        {defined
+                            ? tc('console.save_every_check_uses_it_at_once_29bf6473')
+                            : tc('console.save_schema_325690c5')}
                     </Button>
                 </div>
             </form>

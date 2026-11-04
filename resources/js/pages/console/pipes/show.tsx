@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -74,11 +75,13 @@ export default function PipeDetail({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [removing, setRemoving] = useState(false);
 
     return (
         <div className="space-y-6">
-            <Breadcrumb href={indexHref} label="Pipes" />
+            <Breadcrumb href={indexHref} label={tc('console.pipes_685afe34')} />
 
             <PageHeader
                 help={help}
@@ -90,35 +93,39 @@ export default function PipeDetail({
                 }
                 badge={
                     <Pill tone={pipe.enabled ? 'success' : 'neutral'}>
-                        {pipe.enabled ? 'Enabled' : 'Disabled'}
+                        {pipe.enabled
+                            ? tc('console.enabled_92c1cdfd')
+                            : tc('console.disabled_75081b59')}
                     </Pill>
                 }
             />
 
             <Panel
-                title="How your app uses it"
-                description="Send people to the connect page; lease a token from your backend whenever you call the provider."
+                title={tc('console.how_your_app_uses_it_bde1452e')}
+                description={tc('console.send_people_to_the_connect_page_lease_a_toke_db119651')}
             >
                 <KvList>
-                    <Kv label="Connect page">
+                    <Kv label={tc('console.connect_page_b46eaa6a')}>
                         <span className="inline-flex items-center gap-2">
                             <span className="mono break-all">{pipe.connectUrl}</span>
                             <CopyButton value={pipe.connectUrl} />
                         </span>
                     </Kv>
-                    <Kv label="Lease endpoint">
+                    <Kv label={tc('console.lease_endpoint_320ca77d')}>
                         <span className="inline-flex items-center gap-2">
                             <span className="mono break-all">POST {pipe.leaseUrl}</span>
                             <CopyButton value={pipe.leaseUrl} />
                         </span>
                     </Kv>
-                    <Kv label="Redirect URI">
+                    <Kv label={tc('console.redirect_uri_98e548b4')}>
                         <span className="inline-flex items-center gap-2">
                             <span className="mono break-all">{pipe.redirectUri}</span>
                             <CopyButton value={pipe.redirectUri} />
                         </span>
                     </Kv>
-                    {catalogue !== null && <Kv label="API base URL">{catalogue.apiBaseUrl}</Kv>}
+                    {catalogue !== null && (
+                        <Kv label={tc('console.api_base_url_a45474ea')}>{catalogue.apiBaseUrl}</Kv>
+                    )}
                 </KvList>
             </Panel>
 
@@ -127,12 +134,12 @@ export default function PipeDetail({
             <Grants grants={grants} apps={grantableApps} href={urls.grant} />
 
             <Panel
-                title="Connected accounts"
-                description="Who connected an account through this pipe. Tokens are never shown."
+                title={tc('console.connected_accounts_2fc385cd')}
+                description={tc('console.who_connected_an_account_through_this_pipe_t_ea456475')}
             >
                 {connections.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        Nobody has connected an account yet.
+                        {tc('console.nobody_has_connected_an_account_yet_dd232d26')}
                     </p>
                 ) : (
                     <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -149,7 +156,8 @@ export default function PipeDetail({
                                                 className="text-sm"
                                                 style={{ color: 'var(--muted-foreground)' }}
                                             >
-                                                as {connection.account}
+                                                {tc('console.as_12876f7c')}
+                                                {connection.account}
                                             </span>
                                         )}
                                         <Pill
@@ -160,12 +168,13 @@ export default function PipeDetail({
                                             }
                                         >
                                             {connection.status === 'active'
-                                                ? 'Active'
-                                                : 'Needs reconnect'}
+                                                ? tc('console.active_92340695')
+                                                : tc('console.needs_reconnect_62fe6ecf')}
                                         </Pill>
                                     </div>
                                     <p className="mt-0.5 text-xs" style={{ color: 'var(--faint)' }}>
-                                        Connected {connection.connectedAt ?? '—'}
+                                        {tc('console.connected_a09c65fb')}
+                                        {connection.connectedAt ?? '—'}
                                         {connection.expiresAt !== null &&
                                             ` · token expires ${connection.expiresAt}`}
                                         {connection.reauthReason !== null &&
@@ -183,7 +192,7 @@ export default function PipeDetail({
                                         })
                                     }
                                 >
-                                    Disconnect
+                                    {tc('console.disconnect_acfc5be7')}
                                 </Button>
                             </li>
                         ))}
@@ -192,18 +201,19 @@ export default function PipeDetail({
                 <div className="mt-3">
                     <Pagination
                         pagination={pagination}
-                        noun="account"
+                        noun={tc('console.account_9af21132')}
+                        pluralNoun={tc('console.accounts_bc62a3c1')}
                         href={(page) => `?page=${page}`}
                     />
                 </div>
             </Panel>
 
             <Panel
-                title="Remove pipe"
-                description="Removes every connection through it. Tokens are revoked here, not at the provider — disconnect people first if that matters."
+                title={tc('console.remove_pipe_a4c284c2')}
+                description={tc('console.removes_every_connection_through_it_tokens_a_eec0a79e')}
             >
                 <Button size="sm" variant="danger" onClick={() => setRemoving(true)}>
-                    Remove pipe
+                    {tc('console.remove_pipe_a4c284c2')}
                 </Button>
             </Panel>
 
@@ -212,7 +222,7 @@ export default function PipeDetail({
                 onOpenChange={setRemoving}
                 name={pipe.name}
                 verb="Remove"
-                consequence="Every connected account through this pipe is forgotten and its tokens revoked here."
+                consequence={tc('console.every_connected_account_through_this_pipe_is_9181a044')}
                 onConfirm={() => {
                     setRemoving(false);
                     router.delete(urls.destroy);
@@ -231,6 +241,8 @@ function Settings({
     catalogue: CatalogueEntry | null;
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         client_id: pipe.clientId,
         client_secret: '',
@@ -242,8 +254,8 @@ function Settings({
 
     return (
         <Panel
-            title="Settings"
-            description="People already connected keep the scopes they agreed to until they connect again."
+            title={tc('console.settings_74a883a0')}
+            description={tc('console.people_already_connected_keep_the_scopes_the_f979f289')}
         >
             <form
                 className="space-y-4"
@@ -256,15 +268,15 @@ function Settings({
                 }}
             >
                 <Field
-                    label="Enabled"
-                    hint="A disabled pipe refuses new connections and every lease."
+                    label={tc('console.enabled_92c1cdfd')}
+                    hint={tc('console.a_disabled_pipe_refuses_new_connections_and__4b6ed7e3')}
                 >
                     <Switch
                         checked={form.data.enabled}
                         onCheckedChange={(checked) => form.setData('enabled', checked)}
                     />
                 </Field>
-                <Field label="Client ID" error={errors.client_id}>
+                <Field label={tc('console.client_id_8726db01')} error={errors.client_id}>
                     <Input
                         className="mono"
                         value={form.data.client_id}
@@ -272,8 +284,8 @@ function Settings({
                     />
                 </Field>
                 <Field
-                    label="New client secret"
-                    hint="Left empty, unchanged. The stored one is never shown."
+                    label={tc('console.new_client_secret_02aac1d8')}
+                    hint={tc('console.left_empty_unchanged_the_stored_one_is_never_46d6d236')}
                     error={errors.client_secret}
                 >
                     <Input
@@ -284,7 +296,11 @@ function Settings({
                         onChange={(event) => form.setData('client_secret', event.target.value)}
                     />
                 </Field>
-                <Field label="Scopes" hint="Separated by spaces." error={errors.scopes}>
+                <Field
+                    label={tc('console.scopes_0d5644ff')}
+                    hint={tc('console.separated_by_spaces_19d6b908')}
+                    error={errors.scopes}
+                >
                     <Textarea
                         rows={2}
                         className="mono"
@@ -314,7 +330,7 @@ function Settings({
                     </Field>
                 ))}
                 <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                    Save
+                    {tc('console.save_1509f561')}
                 </Button>
             </form>
         </Panel>
@@ -334,17 +350,19 @@ function Grants({
     apps: { clientId: string; name: string }[];
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ client_id: apps[0]?.clientId ?? '' });
 
     return (
         <Panel
-            title="Apps that may lease tokens"
-            description="Only the apps listed here get a token. Everything else is refused."
+            title={tc('console.apps_that_may_lease_tokens_683bd8d1')}
+            description={tc('console.only_the_apps_listed_here_get_a_token_everyt_3d600e70')}
         >
             <div className="space-y-2">
                 {grants.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        No app may lease tokens through this pipe yet.
+                        {tc('console.no_app_may_lease_tokens_through_this_pipe_ye_67e304c0')}
                     </p>
                 ) : (
                     <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -371,7 +389,7 @@ function Grants({
                                         router.delete(grant.revokeHref, { preserveScroll: true })
                                     }
                                 >
-                                    Revoke
+                                    {tc('console.revoke_87e6d00b')}
                                 </Button>
                             </li>
                         ))}
@@ -388,7 +406,10 @@ function Grants({
                     }}
                 >
                     <div className="flex-1">
-                        <Field label="Grant an app" error={form.errors.client_id}>
+                        <Field
+                            label={tc('console.grant_an_app_a437ce1b')}
+                            error={form.errors.client_id}
+                        >
                             <Select
                                 value={form.data.client_id}
                                 onValueChange={(value) => form.setData('client_id', value)}
@@ -401,7 +422,7 @@ function Grants({
                         </Field>
                     </div>
                     <Button type="submit" size="sm" loading={form.processing}>
-                        Grant
+                        {tc('console.grant_78b7d037')}
                     </Button>
                 </form>
             )}

@@ -47,7 +47,7 @@ final readonly class LegacyLoginController extends ConsoleController
 
         $declaration = $approvals->current();
 
-        return $this->page('console/legacy-login', 'Legacy login', [
+        return $this->page('console/legacy-login', __('console.legacy_login_5f26e1c8'), [
             'help' => HelpProps::for(HelpTopic::LegacyLogin),
             'declaration' => $declaration === null ? null : [
                 'url' => $declaration->url,
@@ -109,7 +109,7 @@ final readonly class LegacyLoginController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Approved. Sign-ins for people who are not in Cbox ID yet now go to that endpoint.');
+            : back()->with('status', __('console.approved_sign_ins_for_people_who_are_not_in__01771bd7'));
     }
 
     public function revoke(): RedirectResponse
@@ -121,7 +121,7 @@ final readonly class LegacyLoginController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Withdrawn. People already migrated are unaffected; anyone still on the old system cannot sign in.');
+            : back()->with('status', __('console.withdrawn_people_already_migrated_are_unaffe_228f7b22'));
     }
 
     /**
@@ -139,7 +139,7 @@ final readonly class LegacyLoginController extends ConsoleController
             return;
         }
 
-        $reason = 'Approving or withdrawing a legacy login changes where sign-ins are sent.';
+        $reason = __('console.approving_or_withdrawing_a_legacy_login_chan_af2b50b3');
 
         // A click on the page gets the in-place dialog, and the click is replayed once the
         // password is in; anything else is refused outright, as it always was.
@@ -147,6 +147,6 @@ final readonly class LegacyLoginController extends ConsoleController
             StepUpPrompt::demand(request(), StepUpPlane::Environment, route('environment.legacy-login'), $reason);
         }
 
-        throw new AuthorizationException('Confirm it is you before changing where sign-ins are sent.');
+        throw new AuthorizationException(__('console.confirm_it_is_you_before_changing_where_sign_588d2b12'));
     }
 }

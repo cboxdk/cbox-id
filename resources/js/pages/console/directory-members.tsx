@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -85,9 +87,9 @@ function grouped(roles: AccessRole[]): [string, AccessRole[]][] {
 }
 
 /** WHAT THE ROLE ACTUALLY GRANTS, under its own name. */
-function permissionHint(role: AccessRole): string {
+function permissionHint(role: AccessRole, tc: Translator['t']): string {
     return role.permissions.length === 0
-        ? 'No permissions'
+        ? tc('console.no_permissions_ef5bb514')
         : role.permissions.slice(0, 4).join(' · ') +
               (role.permissions.length > 4 ? ` +${role.permissions.length - 4}` : '');
 }
@@ -109,6 +111,8 @@ export default function DirectoryMembers({
     organizationName,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [inviting, setInviting] = useState(false);
 
     // A refused roster write — the last owner, a role that is not offered — used to be
@@ -127,13 +131,13 @@ export default function DirectoryMembers({
         <>
             <PageHeader
                 help={help}
-                description="Everyone who can sign in to this organization, and the invitations nobody has accepted yet."
+                description={tc('console.everyone_who_can_sign_in_to_this_organizatio_731c2bfe')}
                 actions={
                     isAdmin &&
                     !managedElsewhere && (
                         <Button variant="primary" onClick={() => setInviting((open) => !open)}>
                             <Icon name="plus" className="w-4 h-4" />
-                            Invite member
+                            {tc('console.invite_member_08aa7a0b')}
                         </Button>
                     )
                 }
@@ -156,9 +160,8 @@ export default function DirectoryMembers({
                         }}
                     >
                         <p className="text-sm">
-                            <b>This organization is a Cbox workspace.</b> Its team is administered
-                            under Workspace › Team, by somebody holding a workspace role, rather
-                            than from here.
+                            <b>{tc('console.this_organization_is_a_cbox_workspace_a78218a1')}</b>
+                            {tc('console.its_team_is_administered_under_workspace_tea_108220bc')}
                         </p>
                     </div>
                 )}
@@ -178,8 +181,10 @@ export default function DirectoryMembers({
 
                 {inviting && isAdmin && !managedElsewhere && (
                     <Panel
-                        title="Invite someone"
-                        description="They get an email with a link. Nothing changes until they accept."
+                        title={tc('console.invite_someone_9b7639e8')}
+                        description={tc(
+                            'console.they_get_an_email_with_a_link_nothing_change_e94c64b9',
+                        )}
                     >
                         <InviteForm
                             href={inviteHref}
@@ -237,6 +242,8 @@ function Roster({
     leaveHref: string;
     organizationName: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const [managing, setManaging] = useState<string | null>(null);
     const [pending, setPending] = useState<Pending>(null);
 
@@ -249,25 +256,28 @@ function Roster({
         return (
             <EmptyState
                 icon="members"
-                title="No members yet"
-                description="Everyone who can sign in to this organization appears here. Invite the first one to get started."
+                title={tc('console.no_members_yet_669a52e9')}
+                description={tc('console.everyone_who_can_sign_in_to_this_organizatio_e47007d3')}
             />
         );
     }
 
-    const label = (member: Member): string => member.email ?? member.name ?? 'this member';
+    const label = (member: Member): string =>
+        member.email ?? member.name ?? tc('console.this_member_a802a70b');
 
     return (
         <div className="card overflow-hidden">
             <div className="overflow-x-auto">
-                <Table caption="Everyone in this organization and their roles: one built-in role each, and any app or custom roles">
+                <Table
+                    caption={tc('console.everyone_in_this_organization_and_their_role_35d8fefb')}
+                >
                     <thead>
                         <tr>
-                            <Th>Member</Th>
-                            <Th>Roles</Th>
-                            <Th>Joined</Th>
+                            <Th>{tc('console.member_7c968fb7')}</Th>
+                            <Th>{tc('console.roles_c2533705')}</Th>
+                            <Th>{tc('console.joined_69318b0c')}</Th>
                             <Th>
-                                <span className="sr-only">Actions</span>
+                                <span className="sr-only">{tc('console.actions_ff8059dc')}</span>
                             </Th>
                         </tr>
                     </thead>
@@ -299,7 +309,8 @@ function Roster({
             <div className="p-4">
                 <Pagination
                     pagination={pagination}
-                    noun="member"
+                    noun={tc('console.member_e31ab643')}
+                    pluralNoun={tc('console.members_17373ca1')}
                     href={(page) =>
                         page > 1
                             ? `${window.location.pathname}?page=${page}`
@@ -313,7 +324,7 @@ function Roster({
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending === null ? '' : label(pending.member)}
                 verb="Remove"
-                consequence="They lose every role and application this organization grants them, immediately."
+                consequence={tc('console.they_lose_every_role_and_application_this_or_8c05da9e')}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -332,8 +343,8 @@ function Roster({
                 open={pending?.kind === 'transfer'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending === null ? '' : label(pending.member)}
-                verb="Transfer ownership to"
-                actionLabel="Transfer ownership"
+                verb={tc('console.transfer_ownership_to_db1c7dbf')}
+                actionLabel={tc('console.transfer_ownership_3667f939')}
                 consequence={`They become the owner of ${organizationName} and you become an admin. Only the new owner can hand it back.`}
                 onConfirm={() => {
                     const target = pending;
@@ -349,15 +360,17 @@ function Roster({
             <Dialog
                 open={pending?.kind === 'leave'}
                 onOpenChange={(open) => !open && setPending(null)}
-                title={`Leave ${organizationName}?`}
+                title={tc('console.leave_value0_81419493', { value0: organizationName })}
                 description={
                     isOwner
-                        ? 'You lose access immediately. As its owner, you can only leave once someone else owns it — transfer ownership first, or delete the organization under Settings.'
-                        : 'You lose access to this organization and its apps immediately. An admin can invite you back.'
+                        ? tc('console.you_lose_access_immediately_as_its_owner_you_d51a2272')
+                        : tc('console.you_lose_access_to_this_organization_and_its_47fdba25')
                 }
                 footer={
                     <>
-                        <Button onClick={() => setPending(null)}>Cancel</Button>
+                        <Button onClick={() => setPending(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -365,7 +378,7 @@ function Roster({
                                 router.post(leaveHref);
                             }}
                         >
-                            Leave organization
+                            {tc('console.leave_organization_ac8fd777')}
                         </Button>
                     </>
                 }
@@ -399,7 +412,9 @@ function RosterRow({
     onToggleManage: () => void;
     onAsk: (kind: 'remove' | 'transfer' | 'leave') => void;
 }) {
-    const label = member.name ?? member.email ?? 'this member';
+    const { t: tc } = useTranslator();
+
+    const label = member.name ?? member.email ?? tc('console.this_member_a802a70b');
     const held = member.accessRoleIds;
     const rowIsOwner = member.role === 'owner';
 
@@ -424,7 +439,7 @@ function RosterRow({
                                 {member.name ?? '—'}
                                 {member.isMe && (
                                     <Badge className="ml-2" tone="info">
-                                        You
+                                        {tc('console.you_08b04193')}
                                     </Badge>
                                 )}
                             </p>
@@ -447,7 +462,7 @@ function RosterRow({
                 <Td>
                     <div className="flex flex-wrap items-center gap-1">
                         <Pill>
-                            <span className="sr-only">Built-in role: </span>
+                            <span className="sr-only">{tc('console.built_in_role_ad05edaa')}</span>
                             {builtIn}
                         </Pill>
 
@@ -459,7 +474,9 @@ function RosterRow({
 
                         {editable && (
                             <Button size="sm" aria-expanded={managing} onClick={onToggleManage}>
-                                {managing ? 'Done' : 'Edit roles'}
+                                {managing
+                                    ? tc('console.done_11a6767d')
+                                    : tc('console.edit_roles_3b3489d0')}
                             </Button>
                         )}
                     </div>
@@ -472,20 +489,25 @@ function RosterRow({
                 <Td className="text-right">
                     {member.isMe && !managedElsewhere ? (
                         <Button size="sm" onClick={() => onAsk('leave')}>
-                            Leave
+                            {tc('console.leave_fc6e4a40')}
                         </Button>
                     ) : (
                         (mayRemove || mayTransfer) && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button size="sm" aria-label={`More actions for ${label}`}>
+                                    <Button
+                                        size="sm"
+                                        aria-label={tc('console.more_actions_for_value0_fab1edb9', {
+                                            value0: label,
+                                        })}
+                                    >
                                         ⋯
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                     {mayTransfer && (
                                         <DropdownMenuItem onSelect={() => onAsk('transfer')}>
-                                            Transfer ownership
+                                            {tc('console.transfer_ownership_3667f939')}
                                         </DropdownMenuItem>
                                     )}
                                     {mayRemove && (
@@ -493,7 +515,7 @@ function RosterRow({
                                             destructive
                                             onSelect={() => onAsk('remove')}
                                         >
-                                            Remove from organization
+                                            {tc('console.remove_from_organization_2416fd1f')}
                                         </DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
@@ -512,20 +534,28 @@ function RosterRow({
                             padding: '14px 20px',
                         }}
                     >
-                        <p className="text-sm font-medium mb-3">Roles for {label}</p>
+                        <p className="text-sm font-medium mb-3">
+                            {tc('console.roles_for_df0ef794')}
+                            {label}
+                        </p>
 
                         <div className="grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
                             <div>
-                                <p className="label mb-1">Built-in role</p>
+                                <p className="label mb-1">{tc('console.built_in_role_9f680a16')}</p>
                                 <p
                                     className="text-xs mb-2"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    Exactly one. It decides what they may administer here.
+                                    {tc(
+                                        'console.exactly_one_it_decides_what_they_may_adminis_ebe76d54',
+                                    )}
                                 </p>
                                 {roleEditable ? (
                                     <Select
-                                        aria-label={`Built-in role for ${label}`}
+                                        aria-label={tc(
+                                            'console.built_in_role_for_value0_1ecbad27',
+                                            { value0: label },
+                                        )}
                                         value={member.role}
                                         onValueChange={(role) =>
                                             router.patch(
@@ -540,20 +570,25 @@ function RosterRow({
                                     <p className="text-sm">
                                         <Pill>{builtIn}</Pill>{' '}
                                         <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                            {rowIsOwner ? 'Ownership moves by transfer.' : ''}
+                                            {rowIsOwner
+                                                ? tc('console.ownership_moves_by_transfer_ad7a21ea')
+                                                : ''}
                                         </span>
                                     </p>
                                 )}
                             </div>
 
                             <div>
-                                <p className="label mb-1">App and custom roles</p>
+                                <p className="label mb-1">
+                                    {tc('console.app_and_custom_roles_ecb0207e')}
+                                </p>
                                 <p
                                     className="text-xs mb-2"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    Any number. They ride in the app tokens, and each app decides
-                                    what its roles allow.
+                                    {tc(
+                                        'console.any_number_they_ride_in_the_app_tokens_and_e_19a76c8d',
+                                    )}
                                 </p>
 
                                 {accessRoles.length === 0 ? (
@@ -563,11 +598,11 @@ function RosterRow({
                                             className="text-xs"
                                             style={{ color: 'var(--accent-strong)' }}
                                         >
-                                            No roles defined yet →
+                                            {tc('console.no_roles_defined_yet_8e7688cb')}
                                         </Link>
                                     ) : (
                                         <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                            No roles defined yet.
+                                            {tc('console.no_roles_defined_yet_99df1348')}
                                         </p>
                                     )
                                 ) : (
@@ -595,7 +630,7 @@ function RosterRow({
                                                             )
                                                         }
                                                         label={role.name}
-                                                        hint={permissionHint(role)}
+                                                        hint={permissionHint(role, tc)}
                                                     />
                                                 ))}
                                             </div>

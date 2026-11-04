@@ -12,6 +12,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\CurrentUser;
 use App\Platform\DeviceLabel;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -106,7 +107,7 @@ final readonly class AccountActivityController extends PageController
             ->orderByDesc('last_active_at')
             ->get();
 
-        return $this->page('account/activity', 'Sessions & activity', [
+        return $this->page('account/activity', __('console.sessions_activity_96d8d278'), [
             'help' => HelpProps::for(HelpTopic::SessionsAndActivity),
             'sessions' => $sessions->map(function (Session $session) use ($currentId): array {
                 $label = DeviceLabel::for($session->user_agent);
@@ -129,7 +130,7 @@ final readonly class AccountActivityController extends PageController
                      * called "Sign out" and no way to tell which is which — on the one
                      * control that can sign them out of the browser they are holding.
                      */
-                    'revokeLabel' => 'Sign out '.($isCurrent ? 'this device' : $label),
+                    'revokeLabel' => __('console.sign_out_fb7db69d').($isCurrent ? __('console.this_device_cf3cc23e') : $label),
                 ];
             })->values()->all(),
             'applications' => array_map(static fn (ConnectedApplication $app): array => [
@@ -169,7 +170,7 @@ final readonly class AccountActivityController extends PageController
             return redirect()->route('login');
         }
 
-        return back()->with('status', 'Signed out of that session.');
+        return back()->with('status', __('console.signed_out_of_that_session_3e04ade4'));
     }
 
     /** Sign out everywhere else through {@see RevokeOtherSessions}; the route asks for `sudo`. */
@@ -177,7 +178,7 @@ final readonly class AccountActivityController extends PageController
     {
         $result = $this->act(RevokeOtherSessions::class, []);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Signed out everywhere else.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.signed_out_everywhere_else_16709b00'));
     }
 
     /**
@@ -191,7 +192,7 @@ final readonly class AccountActivityController extends PageController
     {
         $result = $this->act(RevokeApplication::class, ['client_id' => $client]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access withdrawn. That application can no longer act as you.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_withdrawn_that_application_can_no_lon_bd434165'));
     }
 
     /**
@@ -239,7 +240,7 @@ final readonly class AccountActivityController extends PageController
         foreach ($entries as $entry) {
             $rows[] = [
                 'id' => $entry->id,
-                'label' => self::ACTIVITY[$entry->action] ?? $entry->action,
+                'label' => ConsoleStrings::text(self::ACTIVITY[$entry->action] ?? $entry->action),
                 'detail' => $this->detail($entry, $apps),
                 // Only when there IS one. An entry written outside a request — a scheduled
                 // job, a console command — has no address, and printing "no address
@@ -273,7 +274,7 @@ final readonly class AccountActivityController extends PageController
         $clientId = $entry->context['client_id'] ?? null;
         $reason = $entry->context['reason'] ?? null;
 
-        $app = is_string($clientId) ? ($apps[$clientId] ?? $clientId) : 'an app';
+        $app = is_string($clientId) ? ($apps[$clientId] ?? $clientId) : __('console.an_app_66e93a7c');
 
         return is_string($reason) && $reason !== '' ? $app.' — “'.$reason.'”' : $app;
     }

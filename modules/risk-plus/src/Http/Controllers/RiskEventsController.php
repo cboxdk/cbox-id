@@ -57,7 +57,7 @@ final readonly class RiskEventsController extends ConsoleController
 
         $events = $query->latest('created_at')->limit(self::LIMIT)->get();
 
-        return $this->page('risk-plus::events', 'Risk events', [
+        return $this->page('risk-plus::events', __('console.risk_events_c00a2573'), [
             'help' => HelpProps::for(HelpTopic::RiskEvents),
             'events' => $events->map(static fn (RiskEvent $event): array => [
                 'id' => $event->id,

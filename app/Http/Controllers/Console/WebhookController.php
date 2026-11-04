@@ -22,6 +22,7 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
@@ -102,7 +103,7 @@ final readonly class WebhookController extends ConsoleController
         // enumerate the environment's other tenants.
         $names = $this->scope->organizationNames($endpoints->pluck('organization_id'));
 
-        return $this->page('console/webhooks/index', Vocabulary::WEBHOOKS, [
+        return $this->page('console/webhooks/index', ConsoleStrings::text(Vocabulary::WEBHOOKS), [
             'endpoints' => array_map(
                 fn (WebhookEndpoint $endpoint): WebhookRowProps => WebhookRowProps::from(
                     $endpoint,
@@ -140,7 +141,7 @@ final readonly class WebhookController extends ConsoleController
             return $challenge;
         }
 
-        return $this->page('console/webhooks/create', 'New webhook', [
+        return $this->page('console/webhooks/create', __('console.new_webhook_d58b5d64'), [
             'events' => WebhookEventCatalogue::offered(),
             'indexHref' => $this->url('webhooks'),
             'storeHref' => $this->url('webhooks.store'),
@@ -202,7 +203,7 @@ final readonly class WebhookController extends ConsoleController
         $this->inertia->flash('newSecret', $registered->secret);
 
         return to_route($this->scope->routeName('webhooks.show'), $registered->endpoint->id)
-            ->with('status', 'Webhook endpoint created.');
+            ->with('status', __('console.webhook_endpoint_created_e80ea51d'));
     }
 
     public function show(Request $request, string $webhook): Response
@@ -279,7 +280,7 @@ final readonly class WebhookController extends ConsoleController
             'event_types' => $request->eventTypes(),
         ], ['url' => 'url', 'event_types' => 'eventTypes'], 'url');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Subscription updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.subscription_updated_631343dc'));
     }
 
     public function pause(string $webhook): RedirectResponse
@@ -288,7 +289,7 @@ final readonly class WebhookController extends ConsoleController
 
         $result = $this->act(PauseWebhook::class, ['id' => $endpoint->id]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Endpoint paused — it will stop receiving events.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.endpoint_paused_it_will_stop_receiving_event_ed25465c'));
     }
 
     /**
@@ -304,7 +305,7 @@ final readonly class WebhookController extends ConsoleController
 
         $result = $this->act(ResumeWebhook::class, ['id' => $endpoint->id]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Endpoint resumed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.endpoint_resumed_7f675594'));
     }
 
     /**
@@ -330,7 +331,7 @@ final readonly class WebhookController extends ConsoleController
             'webhooks.show',
             'environment.webhooks.show',
             ['webhook' => $webhook],
-            'Re-keying this endpoint issues a new signing secret; deliveries signed with the old one stop verifying.',
+            __('console.re_keying_this_endpoint_issues_a_new_signing_a32492f8'),
         );
 
         if ($sudo !== null) {
@@ -349,7 +350,7 @@ final readonly class WebhookController extends ConsoleController
         // Shown once on the next render; the sealed form is all that persists.
         $this->inertia->flash('newSecret', $rotated->secret);
 
-        return back()->with('status', 'Signing secret rotated — update your endpoint now.');
+        return back()->with('status', __('console.signing_secret_rotated_update_your_endpoint__1c8ec83c'));
     }
 
     /**
@@ -369,7 +370,7 @@ final readonly class WebhookController extends ConsoleController
             'signature_scheme' => (string) $request->string('signatureScheme'),
         ], ['signature_scheme' => 'signatureScheme']);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Signature scheme changed — deliveries are signed the new way from the next attempt.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.signature_scheme_changed_deliveries_are_sign_9a0fb26a'));
     }
 
     public function destroy(string $webhook): RedirectResponse
@@ -379,7 +380,7 @@ final readonly class WebhookController extends ConsoleController
         $result = $this->act(DeleteWebhook::class, ['id' => $endpoint->id]);
 
         return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('webhooks'))
-            ->with('status', 'Webhook endpoint deleted.');
+            ->with('status', __('console.webhook_endpoint_deleted_a57a2908'));
     }
 
     /**
@@ -487,7 +488,7 @@ final readonly class WebhookController extends ConsoleController
             'webhooks.create',
             'environment.webhooks.create',
             [],
-            'Registering an endpoint issues a signing secret and starts sending it live events.',
+            __('console.registering_an_endpoint_issues_a_signing_sec_d3094c17'),
         );
 
         return $sudo === null ? null : to_route($sudo);

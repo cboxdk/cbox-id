@@ -113,7 +113,7 @@ final readonly class InvitationController extends PageController
             return Inertia::location($returnTo);
         }
 
-        return redirect()->route('dashboard')->with('status', 'Invitation accepted — welcome aboard.');
+        return redirect()->route('dashboard')->with('status', __('console.invitation_accepted_welcome_aboard_fe536747'));
     }
 
     /**

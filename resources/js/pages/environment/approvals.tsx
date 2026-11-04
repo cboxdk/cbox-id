@@ -1,7 +1,8 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import { RISK_LABEL, RISK_TONE, type Risk } from '@/lib/agents';
+import { riskLabel, RISK_TONE, type Risk } from '@/lib/agents';
 import { absoluteTime, relativeTime } from '@/lib/time';
 import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
@@ -77,6 +78,10 @@ export default function AgentApprovals({
     pagination,
     help,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const [denying, setDenying] = useState<ApprovalRow | null>(null);
     const [denyingAction, setDenyingAction] = useState<ActionApproval | null>(null);
 
@@ -84,23 +89,28 @@ export default function AgentApprovals({
         <>
             <PageHeader
                 help={help}
-                description="What software in this environment is waiting for a person to allow. An agent whose key needs approval stops and asks the person who created the key — answer here or on your phone."
+                description={tc('console.what_software_in_this_environment_is_waiting_7aa0659a')}
             />
 
             <section className="mt-6 space-y-4" aria-labelledby="held-actions">
                 <h2 id="held-actions" className="text-base font-semibold">
-                    Agent actions waiting
+                    {tc('console.agent_actions_waiting_45074d63')}
                 </h2>
 
                 {waiting.length === 0 ? (
                     <div className="card">
                         <EmptyState
                             icon="magic"
-                            title="Nothing is waiting"
-                            description={`When an agent's key needs approval for an action, the request appears here and on the phone of the person who created the key. It waits up to ${approvalWindow}.`}
+                            title={tc('console.nothing_is_waiting_dea49736')}
+                            description={tc(
+                                'console.when_an_agent_s_key_needs_approval_for_an_ac_5bb82a16',
+                                { value0: approvalWindow },
+                            )}
                             actions={
                                 <Button asChild variant="secondary">
-                                    <Link href={agentsHref}>Review agents</Link>
+                                    <Link href={agentsHref}>
+                                        {tc('console.review_agents_13c1e3e0')}
+                                    </Link>
                                 </Button>
                             }
                         />
@@ -116,7 +126,7 @@ export default function AgentApprovals({
                 )}
 
                 {decided.length > 0 && (
-                    <Panel title="Recently answered" flush>
+                    <Panel title={tc('console.recently_answered_e4df8829')} flush>
                         <ul>
                             {decided.map((approval, index) => (
                                 <li
@@ -144,8 +154,8 @@ export default function AgentApprovals({
                                             className="ml-auto text-xs"
                                             style={{ color: 'var(--muted-foreground)' }}
                                         >
-                                            {relativeTime(approval.requestedAt)} ·{' '}
-                                            {absoluteTime(approval.requestedAt)}
+                                            {relativeTime(approval.requestedAt, locale)} ·{' '}
+                                            {absoluteTime(approval.requestedAt, locale)}
                                         </time>
                                     )}
                                 </li>
@@ -158,12 +168,10 @@ export default function AgentApprovals({
             <section className="mt-10 space-y-4" aria-labelledby="user-requests">
                 <div>
                     <h2 id="user-requests" className="text-base font-semibold">
-                        Requests to act as a user
+                        {tc('console.requests_to_act_as_a_user_b2dec1d3')}
                     </h2>
                     <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                        Apps asking to act on one of your users' behalf. Each user approves their
-                        own; deny one here only if it looks like abuse — the denial is recorded in
-                        the audit log.
+                        {tc('console.apps_asking_to_act_on_one_of_your_users_beha_4583b737')}
                     </p>
                 </div>
 
@@ -171,8 +179,10 @@ export default function AgentApprovals({
                     <div className="card">
                         <EmptyState
                             icon="shield"
-                            title="No pending requests"
-                            description="Requests from agents asking to act on a user's behalf appear here as they arrive. Each user approves their own; this page is for denying one that looks like abuse."
+                            title={tc('console.no_pending_requests_883a9f47')}
+                            description={tc(
+                                'console.requests_from_agents_asking_to_act_on_a_user_c8d607b8',
+                            )}
                         />
                     </div>
                 ) : (
@@ -197,13 +207,15 @@ export default function AgentApprovals({
                                 </span>
                                 <div className="min-w-0">
                                     <p className="font-semibold truncate">
-                                        {request.app} is requesting access
+                                        {request.app}
+                                        {tc('console.is_requesting_access_5416657d')}
                                     </p>
                                     <p
                                         className="text-xs truncate"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        wants to act on behalf of {request.subject}
+                                        {tc('console.wants_to_act_on_behalf_of_db9c7d2a')}
+                                        {request.subject}
                                     </p>
                                 </div>
                             </div>
@@ -213,14 +225,20 @@ export default function AgentApprovals({
                                     className="mt-4 rounded-lg px-3.5 py-3"
                                     style={{ background: 'var(--accent-soft)' }}
                                 >
-                                    <p className="label">Confirm this matches the device</p>
+                                    <p className="label">
+                                        {tc('console.confirm_this_matches_the_device_36b8bd55')}
+                                    </p>
                                     <p className="mt-1 font-medium">{request.bindingMessage}</p>
                                 </div>
                             )}
 
                             {request.scopes.length > 0 && (
                                 <div className="mt-4">
-                                    <p className="label">This will allow {request.app} to</p>
+                                    <p className="label">
+                                        {tc('console.this_will_allow_80def0a5')}
+                                        {request.app}
+                                        {tc('console.to_84d0f765')}
+                                    </p>
                                     <ul className="mt-2 space-y-2">
                                         {request.scopes.map((scope) => (
                                             <li
@@ -248,7 +266,7 @@ export default function AgentApprovals({
 
                             <div className="mt-5 flex gap-2.5">
                                 <Button variant="danger" onClick={() => setDenying(request)}>
-                                    Deny
+                                    {tc('console.deny_05a2d733')}
                                 </Button>
                             </div>
                         </div>
@@ -257,7 +275,8 @@ export default function AgentApprovals({
 
                 <Pagination
                     pagination={pagination}
-                    noun="request"
+                    noun={tc('console.request_1f58b914')}
+                    pluralNoun={tc('console.requests_ec72420d')}
                     href={(page) =>
                         page > 1
                             ? `${window.location.pathname}?page=${page}`
@@ -270,8 +289,8 @@ export default function AgentApprovals({
                 open={denyingAction !== null}
                 onOpenChange={(open) => !open && setDenyingAction(null)}
                 name={denyingAction?.agent ?? ''}
-                verb="Deny the action from"
-                consequence="The agent is told no when it asks again, and has to start over. The denial is recorded in the audit log."
+                verb={tc('console.deny_the_action_from_2b8cd68b')}
+                consequence={tc('console.the_agent_is_told_no_when_it_asks_again_and__c28d8870')}
                 onConfirm={() => {
                     const approval = denyingAction;
                     setDenyingAction(null);
@@ -286,8 +305,8 @@ export default function AgentApprovals({
                 open={denying !== null}
                 onOpenChange={(open) => !open && setDenying(null)}
                 name={denying?.app ?? ''}
-                verb="Deny the request from"
-                consequence="The agent is refused and cannot act on this person's behalf. The denial is recorded in the audit log. It cannot be undone — the agent would have to ask again."
+                verb={tc('console.deny_the_request_from_f6bd6e83')}
+                consequence={tc('console.the_agent_is_refused_and_cannot_act_on_this__e1cd49d2')}
                 onConfirm={() => {
                     const request = denying;
                     setDenying(null);
@@ -306,13 +325,20 @@ export default function AgentApprovals({
  * code to match against the one the agent is showing its user.
  */
 function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: () => void }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const danger = approval.action.danger;
 
     return (
         <article
             className="rounded-xl border p-5"
             style={{ borderColor: 'var(--border)' }}
-            aria-label={`${approval.agent} wants to run ${approval.action.name}`}
+            aria-label={tc('console.value0_wants_to_run_value1_242631f7', {
+                value0: approval.agent,
+                value1: approval.action.name,
+            })}
         >
             <div className="flex items-start gap-3">
                 <span
@@ -331,11 +357,11 @@ function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: ()
                     <p className="font-semibold flex items-center gap-2 flex-wrap">
                         <span>{approval.agent}</span>
                         <span className="font-normal" style={{ color: 'var(--muted-foreground)' }}>
-                            wants to run
+                            {tc('console.wants_to_run_7517007a')}
                         </span>
                         <span className="mono text-sm">{approval.action.name}</span>
                         {danger !== null && (
-                            <Badge tone={RISK_TONE[danger]}>{RISK_LABEL[danger]}</Badge>
+                            <Badge tone={RISK_TONE[danger]}>{riskLabel(danger, tc)}</Badge>
                         )}
                     </p>
                     {approval.action.summary !== null && (
@@ -349,7 +375,9 @@ function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: ()
             <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[9rem_1fr]">
                 {approval.target !== null && (
                     <>
-                        <dt style={{ color: 'var(--muted-foreground)' }}>On</dt>
+                        <dt style={{ color: 'var(--muted-foreground)' }}>
+                            {tc('console.on_13001175')}
+                        </dt>
                         <dd>{approval.target}</dd>
                     </>
                 )}
@@ -364,7 +392,7 @@ function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: ()
                         <dd className="break-all">
                             {argument.redacted ? (
                                 <span style={{ color: 'var(--muted-foreground)' }}>
-                                    hidden — a secret
+                                    {tc('console.hidden_a_secret_0637e459')}
                                 </span>
                             ) : (
                                 argument.value
@@ -372,12 +400,17 @@ function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: ()
                         </dd>
                     </div>
                 ))}
-                <dt style={{ color: 'var(--muted-foreground)' }}>Waiting for</dt>
+                <dt style={{ color: 'var(--muted-foreground)' }}>
+                    {tc('console.waiting_for_68a86b7b')}
+                </dt>
                 <dd>{approval.approver}</dd>
-                <dt style={{ color: 'var(--muted-foreground)' }}>Expires</dt>
+                <dt style={{ color: 'var(--muted-foreground)' }}>
+                    {tc('console.expires_f6725f3a')}
+                </dt>
                 <dd>
                     <time dateTime={approval.expiresAt}>
-                        {relativeTime(approval.expiresAt)} · {absoluteTime(approval.expiresAt)}
+                        {relativeTime(approval.expiresAt, locale)} ·{' '}
+                        {absoluteTime(approval.expiresAt, locale)}
                     </time>
                 </dd>
             </dl>
@@ -387,7 +420,9 @@ function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: ()
                     className="mt-4 rounded-lg px-3.5 py-3"
                     style={{ background: 'var(--accent-soft)' }}
                 >
-                    <p className="label">Check the agent shows the same code</p>
+                    <p className="label">
+                        {tc('console.check_the_agent_shows_the_same_code_f60009a1')}
+                    </p>
                     <p className="mt-1 mono text-lg font-semibold tracking-widest">
                         {approval.bindingCode}
                     </p>
@@ -403,22 +438,24 @@ function HeldAction({ approval, onDeny }: { approval: ActionApproval; onDeny: ()
                             router.post(approval.approveHref, {}, { preserveScroll: true })
                         }
                     >
-                        Approve
+                        {tc('console.approve_6007acbe')}
                     </Button>
                 )}
                 {approval.denyHref !== null && (
                     <Button variant="danger" onClick={onDeny}>
-                        Deny
+                        {tc('console.deny_05a2d733')}
                     </Button>
                 )}
                 {approval.needsSudo && (
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        A critical action — you will confirm your password first.
+                        {tc('console.a_critical_action_you_will_confirm_your_pass_879761cf')}
                     </span>
                 )}
                 {!approval.mine && (
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Only {approval.approver} can approve it. You can deny it.
+                        {tc('console.only_c42d075a')}
+                        {approval.approver}
+                        {tc('console.can_approve_it_you_can_deny_it_169f7ab8')}
                     </span>
                 )}
             </div>

@@ -26,6 +26,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgAccessRoles;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
@@ -95,7 +96,7 @@ final readonly class DirectoryController extends ConsoleController
             ->whereIn('id', $directories->pluck('organization_id')->filter()->unique())
             ->pluck('name', 'id');
 
-        return $this->page('console/directories/index', Vocabulary::DIRECTORY_SYNC, [
+        return $this->page('console/directories/index', ConsoleStrings::text(Vocabulary::DIRECTORY_SYNC), [
             'help' => HelpProps::for(HelpTopic::SyncUsersIn),
             'directories' => $directories->getCollection()->map(fn (Directory $directory): array => [
                 'id' => $directory->id,
@@ -194,7 +195,7 @@ final readonly class DirectoryController extends ConsoleController
 
         $asked = request()->string('provider')->toString();
 
-        return $this->page('console/directories/create', 'New directory', [
+        return $this->page('console/directories/create', __('console.new_directory_000ddb55'), [
             'providers' => array_map(fn (DirectoryProvider $provider): array => [
                 'value' => $provider->value,
                 'label' => $provider->label(),
@@ -283,7 +284,7 @@ final readonly class DirectoryController extends ConsoleController
         $this->inertia->flash('newToken', $registered->token);
 
         return to_route($this->scope->routeName('directories.show'), $registered->directory->id)
-            ->with('status', 'Directory registered — copy the bearer token, it is shown only once.');
+            ->with('status', __('console.directory_registered_copy_the_bearer_token_i_6524a601'));
     }
 
     /**
@@ -308,7 +309,7 @@ final readonly class DirectoryController extends ConsoleController
         // Refused here rather than left to raise inside the registry: `scim` is a real
         // case of the enum with no pull connector at all.
         if (! $provider->isPull() || ! $connectors->has($provider)) {
-            return back()->withInput()->withErrors(['provider' => 'Choose a directory provider.']);
+            return back()->withInput()->withErrors(['provider' => __('console.choose_a_directory_provider_d3411404')]);
         }
 
         // Asked here too, in the form's own words for its own fields, before a password
@@ -353,7 +354,7 @@ final readonly class DirectoryController extends ConsoleController
         $directory = $result->value;
 
         return to_route($this->scope->routeName('directories.show'), $directory->id)
-            ->with('status', $provider->label().' connected — users are syncing.');
+            ->with('status', $provider->label().__('console.connected_users_are_syncing_e99da93d'));
     }
 
     public function show(string $directory, GroupRoleMappings $mappings, OrgAccessRoles $catalog): Response
@@ -485,7 +486,7 @@ final readonly class DirectoryController extends ConsoleController
         $directory = $result->value;
 
         return to_route($this->scope->routeName('directories.show'), $directory->id)
-            ->with('status', $directory->provider->label().' connected — the first sync is running.');
+            ->with('status', $directory->provider->label().__('console.connected_the_first_sync_is_running_24dbaefe'));
     }
 
     /** Pull now, on a worker. `full` asks an incremental HR system for everybody. */
@@ -499,7 +500,7 @@ final readonly class DirectoryController extends ConsoleController
             'full' => $request->boolean('full'),
         ]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sync started — it runs in the background.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.sync_started_it_runs_in_the_background_90d08fcf'));
     }
 
     /** The directory's pace, and an HR system's passed-through fields. */
@@ -522,7 +523,7 @@ final readonly class DirectoryController extends ConsoleController
             'custom_attributes' => 'customAttributes',
         ], fallback: 'interval');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Sync settings saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.sync_settings_saved_154bcdd2'));
     }
 
     /**
@@ -537,7 +538,7 @@ final readonly class DirectoryController extends ConsoleController
             'directories.show',
             'environment.directories.show',
             ['directory' => $model->id],
-            'Replacing the credentials changes whose access provisions and deprovisions these people.',
+            __('console.replacing_the_credentials_changes_whose_acce_323a6d4c'),
         );
 
         if ($sudo !== null) {
@@ -554,7 +555,7 @@ final readonly class DirectoryController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result->withInput($request->except('credentials'))
-            : back()->with('status', 'Credentials replaced — the next sync is a full one.');
+            : back()->with('status', __('console.credentials_replaced_the_next_sync_is_a_full_0b822e7d'));
     }
 
     /**
@@ -605,7 +606,7 @@ final readonly class DirectoryController extends ConsoleController
             'name' => trim((string) $request->string('name')),
         ], fallback: 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Directory updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.directory_updated_8fa0ff3f'));
     }
 
     /**
@@ -625,7 +626,7 @@ final readonly class DirectoryController extends ConsoleController
         // Only meaningful for a SCIM (push) directory — a pull directory authenticates
         // OUTWARD to the provider's API and has no inbound token.
         if ($model->provider !== DirectoryProvider::Scim) {
-            return back()->with('error', 'A pull directory authenticates to the provider and has no inbound token to rotate.');
+            return back()->with('error', __('console.a_pull_directory_authenticates_to_the_provid_7816b2af'));
         }
 
         // LAST, after authorization and after the provider refusal.
@@ -633,7 +634,7 @@ final readonly class DirectoryController extends ConsoleController
             'directories.show',
             'environment.directories.show',
             ['directory' => $model->id],
-            'Rotating this directory\'s bearer token stops the one your identity provider holds, until you paste the new one in.',
+            __('console.rotating_this_directory_s_bearer_token_stops_5f1d734c'),
         );
 
         if ($sudo !== null) {
@@ -649,7 +650,7 @@ final readonly class DirectoryController extends ConsoleController
         // Shown once on the next render; only its hash persists.
         $this->inertia->flash('newToken', $result->value);
 
-        return back()->with('status', 'Bearer token rotated — the previous token no longer works.');
+        return back()->with('status', __('console.bearer_token_rotated_the_previous_token_no_l_371476c2'));
     }
 
     public function toggle(string $directory): RedirectResponse
@@ -670,8 +671,8 @@ final readonly class DirectoryController extends ConsoleController
         }
 
         return back()->with('status', $resume
-            ? 'Directory enabled — provisioning resumes.'
-            : 'Directory paused — provisioning is suspended.');
+            ? __('console.directory_enabled_provisioning_resumes_c7f84d11')
+            : __('console.directory_paused_provisioning_is_suspended_fb2173ec'));
     }
 
     public function destroy(string $directory): RedirectResponse
@@ -680,7 +681,7 @@ final readonly class DirectoryController extends ConsoleController
 
         $result = $this->act(DeleteDirectory::class, ['id' => $model->id, 'organization_id' => $this->scope->organizationId()]);
 
-        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('directories'))->with('status', 'Directory deleted.');
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('directories'))->with('status', __('console.directory_deleted_673974b2'));
     }
 
     /**
@@ -816,7 +817,7 @@ final readonly class DirectoryController extends ConsoleController
             'directories.create',
             'environment.directories.create',
             [],
-            'Connecting a directory issues a bearer token that provisions your people, shown once on the next screen.',
+            __('console.connecting_a_directory_issues_a_bearer_token_c946f8c1'),
         );
     }
 

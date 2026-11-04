@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import type { ReactNode } from 'react';
 import { CopyButton } from './CopyButton';
 
@@ -20,6 +21,8 @@ export interface CodeBlockProps {
  * however long the line.
  */
 export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBlockProps) {
+    const { t: tc } = useUiTranslator();
+
     return (
         <div>
             {install != null && install !== '' && (
@@ -34,7 +37,14 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
                     >
                         {install}
                     </p>
-                    <CopyButton value={install} label="Copy" aria-label="Copy install command" />
+                    <CopyButton
+                        value={install}
+                        label={tc('console.copy_e21f935f', 'Copy')}
+                        aria-label={tc(
+                            'console.copy_install_command_d8222d32',
+                            'Copy install command',
+                        )}
+                    />
                 </div>
             )}
 
@@ -46,7 +56,7 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
 
                     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                     tabIndex={0}
-                    aria-label="Code"
+                    aria-label={tc('console.code_340f4630', 'Code')}
                     className="rounded-lg p-3 overflow-x-auto text-xs mono flex-1 min-w-0"
                     style={{
                         background: 'var(--surface-2)',
@@ -54,7 +64,9 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
                         lineHeight: 1.6,
                     }}
                 >
-                    <pre className="m-0"><code>{code}</code></pre>
+                    <pre className="m-0">
+                        <code>{code}</code>
+                    </pre>
                 </section>
                 <CopyButton value={code} aria-label={copyLabel} />
             </div>

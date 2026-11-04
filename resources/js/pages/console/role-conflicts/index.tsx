@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -56,6 +57,8 @@ export default function RoleConflictsIndex({
     createHref,
     organizationFilter,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -78,12 +81,12 @@ export default function RoleConflictsIndex({
         <>
             <PageHeader
                 help={help}
-                description="Declare the roles that must never sit with the same person — segregation of duties — and see who already holds a conflicting pair."
+                description={tc('console.declare_the_roles_that_must_never_sit_with_t_00379b41')}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            New rule
+                            {tc('console.new_rule_99cd24ef')}
                         </Link>
                     </Button>
                 }
@@ -98,8 +101,8 @@ export default function RoleConflictsIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name"
-                    aria-label="Search role conflicts"
+                    placeholder={tc('console.search_by_name_4ae2b333')}
+                    aria-label={tc('console.search_role_conflicts_639c006f')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -109,7 +112,11 @@ export default function RoleConflictsIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {rules.length} {rules.length === 1 ? 'rule' : 'rules'} found.
+                    {rules.length}{' '}
+                    {rules.length === 1
+                        ? tc('console.rule_7369949b')
+                        : tc('console.rules_6c621d1a')}
+                    {tc('console.found_599e25a3')}
                 </output>
             </div>
 
@@ -121,26 +128,30 @@ export default function RoleConflictsIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No rules match “${search}”`}
-                            description="No role conflict matches that name. Try a different search."
+                            title={tc('console.no_rules_match_value0_ec9ee4d7', { value0: search })}
+                            description={tc(
+                                'console.no_role_conflict_matches_that_name_try_a_dif_08d99745',
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="shield"
                             equivalent="sod_policies.create"
-                            title="No rules yet"
+                            title={tc('console.no_rules_yet_d29cf782')}
                             help={help}
-                            description="A rule names two or more roles that must never sit with the same person — whoever raises a payment should not also approve it."
+                            description={tc(
+                                'console.a_rule_names_two_or_more_roles_that_must_nev_376dbd9e',
+                            )}
                             steps={[
-                                'Name the conflict the way your auditor would — “Raise payment vs. approve payment”.',
-                                'Pick the roles that must not be combined.',
-                                'Save it: new grants that would break the rule are blocked, and anyone who already holds the pair is listed for you.',
+                                tc('console.name_the_conflict_the_way_your_auditor_would_b9337c40'),
+                                tc('console.pick_the_roles_that_must_not_be_combined_fc41a76e'),
+                                tc('console.save_it_new_grants_that_would_break_the_rule_1ec3f0d3'),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New rule
+                                        {tc('console.new_rule_99cd24ef')}
                                     </Link>
                                 </Button>
                             }
@@ -165,6 +176,8 @@ export default function RoleConflictsIndex({
  * anchor is neither valid markup nor operable by keyboard.
  */
 function Rule({ rule, last }: { rule: RuleRow; last: boolean }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div
             className="flex items-center gap-3 p-4"
@@ -175,7 +188,7 @@ function Rule({ rule, last }: { rule: RuleRow; last: boolean }) {
                     {rule.name}
                 </Link>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge>{rule.owner ?? 'Environment-wide'}</Badge>
+                    <Badge>{rule.owner ?? tc('console.environment_wide_cd1204b6')}</Badge>
                     {rule.roles.map((role) => (
                         <Badge key={role}>{role}</Badge>
                     ))}
@@ -183,7 +196,7 @@ function Rule({ rule, last }: { rule: RuleRow; last: boolean }) {
             </div>
 
             <Pill tone={rule.active ? 'success' : 'neutral'}>
-                {rule.active ? 'Active' : 'Inactive'}
+                {rule.active ? tc('console.active_92340695') : tc('console.inactive_ac7c949f')}
             </Pill>
 
             {rule.mayChange ? (
@@ -192,14 +205,16 @@ function Rule({ rule, last }: { rule: RuleRow; last: boolean }) {
                     className="shrink-0"
                     onClick={() => router.post(rule.toggleHref, {}, { preserveScroll: true })}
                 >
-                    {rule.active ? 'Deactivate' : 'Activate'}
+                    {rule.active
+                        ? tc('console.deactivate_fb1e6fa5')
+                        : tc('console.activate_24433c70')}
                 </Button>
             ) : (
                 // Not offered and refused: this rule binds every organization here, and an
                 // administrator who could switch it off could then grant themselves the
                 // very pair it forbids.
                 <span className="text-xs shrink-0" style={{ color: 'var(--faint)' }}>
-                    Managed for the environment
+                    {tc('console.managed_for_the_environment_502c8ccb')}
                 </span>
             )}
         </div>
@@ -214,21 +229,22 @@ function Rule({ rule, last }: { rule: RuleRow; last: boolean }) {
  * that never ran is the more dangerous of the two answers.
  */
 function Violations({ scanned, violations }: { scanned: boolean; violations: Violation[] }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="mt-8">
-            <h2 className="cbx-section-title mb-3">Violations</h2>
+            <h2 className="cbx-section-title mb-3">{tc('console.violations_3f752920')}</h2>
 
             {!scanned ? (
                 <Panel>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Filter the list to one organization to scan it for people who already hold a
-                        conflicting pair. Nothing has been checked yet.
+                        {tc('console.filter_the_list_to_one_organization_to_scan__6dbcc13b')}
                     </p>
                 </Panel>
             ) : violations.length === 0 ? (
                 <Panel>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        No conflicts detected — nobody in this organization holds a forbidden pair.
+                        {tc('console.no_conflicts_detected_nobody_in_this_organiz_b5178538')}
                     </p>
                 </Panel>
             ) : (
@@ -246,6 +262,8 @@ function Violations({ scanned, violations }: { scanned: boolean; violations: Vio
 }
 
 function ViolationCard({ violation }: { violation: Violation }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div
             className="card p-4"
@@ -261,7 +279,7 @@ function ViolationCard({ violation }: { violation: Violation }) {
                 <span className="font-medium">{violation.subject}</span>
             </div>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Holds conflicting roles:{' '}
+                {tc('console.holds_conflicting_roles_ea64430b')}{' '}
                 {violation.roles.map((role) => (
                     <Badge key={role}>{role}</Badge>
                 ))}

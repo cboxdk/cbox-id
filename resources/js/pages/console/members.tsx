@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -90,13 +91,15 @@ export default function Members({
     editor,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [pending, setPending] = useState<Pending>(null);
 
     return (
         <>
             <PageHeader
                 help={help}
-                description="The people who run this workspace, their built-in role, and which environments they reach."
+                description={tc('console.the_people_who_run_this_workspace_their_buil_14a4b1eb')}
             />
 
             <div
@@ -127,7 +130,7 @@ export default function Members({
                                                 color: 'var(--accent-strong)',
                                             }}
                                         >
-                                            You
+                                            {tc('console.you_08b04193')}
                                         </span>
                                     )}
                                     {member.pending && <Badge tone="warn">{member.status}</Badge>}
@@ -153,7 +156,10 @@ export default function Members({
                                             );
                                         }}
                                         options={roleSelectOptions(assignableRoles)}
-                                        aria-label={`Built-in role for ${member.email}`}
+                                        aria-label={tc(
+                                            'console.built_in_role_for_value0_1ecbad27',
+                                            { value0: member.email },
+                                        )}
                                     />
 
                                     <DropdownMenu>
@@ -161,7 +167,10 @@ export default function Members({
                                             <Button
                                                 size="sm"
                                                 className="shrink-0"
-                                                aria-label={`More actions for ${member.email}`}
+                                                aria-label={tc(
+                                                    'console.more_actions_for_value0_fab1edb9',
+                                                    { value0: member.email },
+                                                )}
                                             >
                                                 ⋯
                                             </Button>
@@ -171,7 +180,9 @@ export default function Members({
                                                 <DropdownMenuItem
                                                     onSelect={() => openEditor(member.id)}
                                                 >
-                                                    Manage environment access
+                                                    {tc(
+                                                        'console.manage_environment_access_9408e7c7',
+                                                    )}
                                                 </DropdownMenuItem>
                                             )}
                                             {isOwner && (
@@ -184,7 +195,7 @@ export default function Members({
                                                         })
                                                     }
                                                 >
-                                                    Transfer ownership
+                                                    {tc('console.transfer_ownership_3667f939')}
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuItem
@@ -197,7 +208,7 @@ export default function Members({
                                                     })
                                                 }
                                             >
-                                                Remove
+                                                {tc('console.remove_c3812fc4')}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -214,8 +225,14 @@ export default function Members({
                                     style={{ color: 'var(--faint)' }}
                                 >
                                     {member.allEnvironments
-                                        ? 'Access to all environments'
-                                        : `Access to ${member.accessCount} of ${environmentCount} environments`}
+                                        ? tc('console.access_to_all_environments_dbea6c6e')
+                                        : tc(
+                                              'console.access_to_value0_of_value1_environments_461b766a',
+                                              {
+                                                  value0: member.accessCount,
+                                                  value1: environmentCount,
+                                              },
+                                          )}
                                 </div>
 
                                 {editor?.memberId === member.id && (
@@ -234,7 +251,8 @@ export default function Members({
             <div className="mt-4">
                 <Pagination
                     pagination={pagination}
-                    noun="administrator"
+                    noun={tc('console.administrator_4194d170')}
+                    pluralNoun={tc('console.administrators_3c530c2f')}
                     href={(page) => `${window.location.pathname}?page=${page}`}
                 />
             </div>
@@ -251,8 +269,10 @@ export default function Members({
             {canManage && (
                 <div className="mt-6">
                     <Panel
-                        title="Invite a teammate"
-                        description="They'll get an email to set a password and join this workspace."
+                        title={tc('console.invite_a_teammate_3e14c447')}
+                        description={tc(
+                            'console.they_ll_get_an_email_to_set_a_password_and_j_ddd97c98',
+                        )}
                     >
                         <InviteForm href={invite.url()} roles={assignableRoles} withName />
                     </Panel>
@@ -264,7 +284,7 @@ export default function Members({
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
                 verb="Remove"
-                consequence="They lose access to this workspace and every environment under it immediately."
+                consequence={tc('console.they_lose_access_to_this_workspace_and_every_b6acaaa9')}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -279,9 +299,9 @@ export default function Members({
                 open={pending?.kind === 'transfer'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
-                verb="Hand this workspace to"
-                actionLabel="Transfer ownership"
-                consequence="They become the workspace owner and you are demoted to admin. Only the new owner can hand it back."
+                verb={tc('console.hand_this_workspace_to_2c3b6bfe')}
+                actionLabel={tc('console.transfer_ownership_3667f939')}
+                consequence={tc('console.they_become_the_workspace_owner_and_you_are__892fe276')}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -330,6 +350,8 @@ function EnvironmentAccess({
     editor: Editor;
     environmentCount: number;
 }) {
+    const { t: tc } = useTranslator();
+
     const [all, setAll] = useState(editor.all);
     const [selected, setSelected] = useState(editor.selected);
     const [term, setTerm] = useState(editor.search);
@@ -361,7 +383,7 @@ function EnvironmentAccess({
             <Checkbox
                 checked={all}
                 onCheckedChange={setAll}
-                label="All environments (including ones added later)"
+                label={tc('console.all_environments_including_ones_added_later_cfead322')}
             />
 
             <div
@@ -372,8 +394,10 @@ function EnvironmentAccess({
                     <Input
                         type="search"
                         disabled={all}
-                        aria-label="Search environments by name"
-                        placeholder={`Search ${environmentCount} environments`}
+                        aria-label={tc('console.search_environments_by_name_5033777d')}
+                        placeholder={tc('console.search_value0_environments_4661970e', {
+                            value0: environmentCount,
+                        })}
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
                     />
@@ -381,7 +405,8 @@ function EnvironmentAccess({
 
                 {editor.environments.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        No environment matches “{editor.search}”.
+                        {tc('console.no_environment_matches_e95a8816')}
+                        {editor.search}”.
                     </p>
                 ) : (
                     editor.environments.map((environment) => (
@@ -402,7 +427,7 @@ function EnvironmentAccess({
                                     {environment.sandbox && (
                                         <span style={{ color: 'var(--warning-strong)' }}>
                                             {' '}
-                                            · sandbox
+                                            {tc('console.sandbox_21718253')}
                                         </span>
                                     )}
                                 </>
@@ -413,7 +438,9 @@ function EnvironmentAccess({
 
                 {editor.truncated && (
                     <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                        Showing the first {shown}. Search to reach the rest.
+                        {tc('console.showing_the_first_92eb9ae1')}
+                        {shown}
+                        {tc('console.search_to_reach_the_rest_598edbc6')}
                     </p>
                 )}
 
@@ -423,7 +450,10 @@ function EnvironmentAccess({
                     narrowed to nothing — or how much of the list is on screen.
                 */}
                 <output className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    {shown} shown · {selected.length} selected
+                    {shown}
+                    {tc('console.shown_f70dce7d')}
+                    {selected.length}
+                    {tc('console.selected_97a2e881')}
                 </output>
             </div>
 
@@ -445,10 +475,10 @@ function EnvironmentAccess({
                         );
                     }}
                 >
-                    Save access
+                    {tc('console.save_access_0f586dd3')}
                 </Button>
                 <Button size="sm" onClick={closeEditor}>
-                    Cancel
+                    {tc('console.cancel_19766ed6')}
                 </Button>
             </div>
         </div>

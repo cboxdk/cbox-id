@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import type { SharedProps } from '@/types';
@@ -27,12 +28,14 @@ export interface BreadcrumbProps {
  * heading, right below it, is the current location, so no item here is `aria-current`.
  */
 export function Breadcrumb({ href, label }: BreadcrumbProps) {
+    const { t: tc } = useUiTranslator();
+
     const { shell } = usePage<SharedProps>().props;
     const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea);
     const showArea = area !== undefined && area.label !== label && area.href !== href;
 
     return (
-        <nav className="cbx-crumbs" aria-label="Breadcrumb">
+        <nav className="cbx-crumbs" aria-label={tc('console.breadcrumb_2bd873d6', 'Breadcrumb')}>
             <ol>
                 {showArea && (
                     <li>

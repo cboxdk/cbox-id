@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -37,18 +38,27 @@ function hostOf(url: string): string {
 }
 
 export default function LegacyLogin({ declaration, urls, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [deciding, setDeciding] = useState(false);
 
     if (declaration === null) {
         return (
             <>
-                <PageHeader help={help} description="Where sign-ins go for people who have not moved to Cbox ID yet." />
+                <PageHeader
+                    help={help}
+                    description={tc(
+                        'console.where_sign_ins_go_for_people_who_have_not_mo_be5f68b3',
+                    )}
+                />
 
                 <div className="card mt-8">
                     <EmptyState
                         icon="shield"
-                        title="No app has declared one"
-                        description="While you are migrating off another system, your app can declare where its old login lives — in its manifest, beside its roles. It appears here for you to approve before it does anything."
+                        title={tc('console.no_app_has_declared_one_10f44f61')}
+                        description={tc(
+                            'console.while_you_are_migrating_off_another_system_y_a0c796b9',
+                        )}
                     />
                 </div>
             </>
@@ -57,30 +67,36 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
 
     return (
         <>
-            <PageHeader help={help} description="Where sign-ins go for people who have not moved to Cbox ID yet." />
+            <PageHeader
+                help={help}
+                description={tc('console.where_sign_ins_go_for_people_who_have_not_mo_be5f68b3')}
+            />
 
             <div className="mt-6 space-y-6" style={{ maxWidth: '40rem' }}>
                 <Panel
-                    title="Declared endpoint"
+                    title={tc('console.declared_endpoint_ed0eefd0')}
                     action={
                         <Pill tone={declaration.approved ? 'success' : 'warning'}>
-                            {declaration.approved ? 'Active' : 'Awaiting approval'}
+                            {declaration.approved
+                                ? tc('console.active_92340695')
+                                : tc('console.awaiting_approval_ae25c9b1')}
                         </Pill>
                     }
                 >
                     <div className="space-y-4">
                         <KvList>
-                            <Kv label="Declared by" prose>
-                                {declaration.declaredBy ?? 'an application that no longer exists'}
+                            <Kv label={tc('console.declared_by_4830acab')} prose>
+                                {declaration.declaredBy ??
+                                    tc('console.an_application_that_no_longer_exists_435d0bd5')}
                             </Kv>
                             {/*
                                 In full, and readable. An operator cannot judge a URL they
                                 cannot see, and this is the one value on the page they are
                                 actually being asked about.
                             */}
-                            <Kv label="Endpoint">{declaration.url}</Kv>
+                            <Kv label={tc('console.endpoint_3df9726c')}>{declaration.url}</Kv>
                             {declaration.approved && declaration.approvedAt !== null && (
-                                <Kv label="Approved" prose>
+                                <Kv label={tc('console.approved_87b42e40')} prose>
                                     {declaration.approvedAt}
                                 </Kv>
                             )}
@@ -97,7 +113,9 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
                                 background: 'var(--accent-soft)',
                             }}
                         >
-                            <p className="text-sm font-medium">What approving does</p>
+                            <p className="text-sm font-medium">
+                                {tc('console.what_approving_does_0f674825')}
+                            </p>
                             <ul
                                 className="text-xs mt-2 space-y-1"
                                 style={{
@@ -107,18 +125,25 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
                                 }}
                             >
                                 <li>
-                                    Someone who signs in and is <b>not yet in Cbox ID</b> has their
-                                    email and password sent to that endpoint. If it says yes, they
-                                    are created here and never sent again.
+                                    {tc('console.someone_who_signs_in_and_is_25793bb2')}
+                                    <b>{tc('console.not_yet_in_cbox_id_e5419fd1')}</b>
+                                    {tc(
+                                        'console.has_their_email_and_password_sent_to_that_en_554a7e63',
+                                    )}
                                 </li>
                                 <li>
-                                    Someone who <b>already exists here</b> is never sent — their
-                                    password is the one in Cbox ID, and the old system gets no say
-                                    in it.
+                                    {tc('console.someone_who_7ffc7d42')}
+                                    <b>{tc('console.already_exists_here_4acf85c5')}</b>
+                                    {tc(
+                                        'console.is_never_sent_their_password_is_the_one_in_c_208849db',
+                                    )}
                                 </li>
                                 <li>
-                                    If that endpoint is <b>down</b>, people who have not migrated
-                                    cannot sign in. Everyone already moved is unaffected.
+                                    {tc('console.if_that_endpoint_is_5e5d043f')}
+                                    <b>{tc('console.down_908aec45')}</b>
+                                    {tc(
+                                        'console.people_who_have_not_migrated_cannot_sign_in__8969876e',
+                                    )}
                                 </li>
                             </ul>
                         </div>
@@ -132,26 +157,26 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
                 <Probe href={urls.probe} />
 
                 <Panel
-                    title={declaration.approved ? 'Withdraw approval' : 'Approve this endpoint'}
+                    title={
+                        declaration.approved
+                            ? tc('console.withdraw_approval_76838799')
+                            : tc('console.approve_this_endpoint_a21af281')
+                    }
                     description={
                         declaration.approved
-                            ? 'Anyone who has not migrated yet stops being able to sign in until this is approved again.'
-                            : 'From now on, the email and password of anyone who is not in Cbox ID yet are sent to that endpoint.'
+                            ? tc('console.anyone_who_has_not_migrated_yet_stops_being__c4a8bc03')
+                            : tc('console.from_now_on_the_email_and_password_of_anyone_9f2adece')
                     }
                 >
-                    <Button
-                        variant="danger"
-                        onClick={() => setDeciding(true)}
-                    >
-                        {declaration.approved ? 'Withdraw' : 'Approve this endpoint'}
+                    <Button variant="danger" onClick={() => setDeciding(true)}>
+                        {declaration.approved
+                            ? tc('console.withdraw_164546a9')
+                            : tc('console.approve_this_endpoint_a21af281')}
                     </Button>
                 </Panel>
 
                 <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                    If the app declares a different URL later, this approval is dropped and you will
-                    be asked again — a change to where passwords go is not something to inherit
-                    silently. Delegated sign-in is a ramp: when few enough people are left on the
-                    old system, withdraw it and send that group a password reset.
+                    {tc('console.if_the_app_declares_a_different_url_later_th_d8bd0ea4')}
                 </p>
             </div>
 
@@ -168,8 +193,8 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
                 verb={declaration.approved ? 'Withdraw' : 'Approve'}
                 consequence={
                     declaration.approved
-                        ? 'Anyone who has not migrated yet stops being able to sign in until this is approved again. People already moved are unaffected.'
-                        : 'From now on, the email and password of anyone who is not in Cbox ID yet are sent to that endpoint.'
+                        ? tc('console.anyone_who_has_not_migrated_yet_stops_being__ed9f870a')
+                        : tc('console.from_now_on_the_email_and_password_of_anyone_9f2adece')
                 }
                 onConfirm={() => {
                     setDeciding(false);
@@ -191,13 +216,15 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
  * this screen cannot become a credential-testing oracle with an approve button beside it.
  */
 function Probe({ href }: { href: string }) {
+    const { t: tc } = useTranslator();
+
     const result = usePage().flash.probeResult;
     const form = useForm({ email: '' });
 
     return (
         <Panel
-            title="Try it first"
-            description="Checks whether the endpoint answers for an address you know exists over there. No password is sent."
+            title={tc('console.try_it_first_07cff7ec')}
+            description={tc('console.checks_whether_the_endpoint_answers_for_an_a_3fb87b94')}
         >
             <form
                 className="space-y-3"
@@ -208,8 +235,8 @@ function Probe({ href }: { href: string }) {
             >
                 <div className="flex flex-wrap items-end gap-2">
                     <Field
-                        label="An address in your old system"
-                        hint="Use your own — the answer says whether an account exists over there."
+                        label={tc('console.an_address_in_your_old_system_cee86536')}
+                        hint={tc('console.use_your_own_the_answer_says_whether_an_acco_7e30353b')}
                         className="flex-1"
                         error={form.errors.email}
                     >
@@ -222,7 +249,7 @@ function Probe({ href }: { href: string }) {
                         />
                     </Field>
                     <Button type="submit" className="shrink-0" loading={form.processing}>
-                        Test endpoint
+                        {tc('console.test_endpoint_5983d109')}
                     </Button>
                 </div>
 

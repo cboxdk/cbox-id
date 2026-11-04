@@ -113,7 +113,7 @@ final class UiCopy
                 continue;
             }
 
-            if ($char === '>') {
+            if ($char === '>' && ($i === 0 || $source[$i - 1] !== '=')) {
                 $j = $i + 1;
 
                 while ($j < $length && ! in_array($source[$j], ['<', '{', '}', '>'], true)) {

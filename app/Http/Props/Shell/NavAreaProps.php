@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Shell;
 
 use App\Http\Props\Prop;
+use App\Platform\Locale\ConsoleStrings;
 
 /**
  * One tier-1 area: an icon in the rail, and the pages behind it.
@@ -37,7 +38,7 @@ final readonly class NavAreaProps implements Prop
     {
         return [
             'key' => $this->key,
-            'label' => $this->label,
+            'label' => ConsoleStrings::text($this->label),
             'icon' => $this->icon,
             'href' => $this->href,
             'active' => $this->active,

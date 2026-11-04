@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -136,6 +137,8 @@ export default function AuthPolicyPage({
     environmentName,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm<Policy>(policy);
     const [confirming, setConfirming] = useState<'lockout' | 'inherit' | 'signup' | null>(null);
 
@@ -155,7 +158,9 @@ export default function AuthPolicyPage({
     };
 
     const badge = (field: string) =>
-        overridden.includes(field) ? <Badge className="ml-1">Overridden</Badge> : null;
+        overridden.includes(field) ? (
+            <Badge className="ml-1">{tc('console.overridden_62a03f09')}</Badge>
+        ) : null;
 
     return (
         <div className="space-y-6">
@@ -163,8 +168,10 @@ export default function AuthPolicyPage({
                 help={help}
                 description={
                     onEnvironmentPlane
-                        ? 'The baseline every organization in this environment inherits. An organization can ask for stricter rules — never looser.'
-                        : `How people sign in to ${scopeName}. These start as your environment's defaults; anything you change here can only make them stricter.`
+                        ? tc('console.the_baseline_every_organization_in_this_envi_75711a2d')
+                        : tc('console.how_people_sign_in_to_value0_these_start_as__c9e4acbf', {
+                              value0: scopeName,
+                          })
                 }
             />
 
@@ -182,26 +189,32 @@ export default function AuthPolicyPage({
                         {inheriting ? (
                             <>
                                 <strong style={{ color: 'var(--foreground)' }}>
-                                    Using your environment's defaults.
+                                    {tc('console.using_your_environment_s_defaults_caa183bc')}
                                 </strong>{' '}
-                                Nothing here is set by {scopeName} yet — change anything below and
-                                it becomes this organization's own rule.
+                                {tc('console.nothing_here_is_set_by_3c4318b0')}
+                                {scopeName}
+                                {tc(
+                                    'console.yet_change_anything_below_and_it_becomes_thi_472d5907',
+                                )}
                             </>
                         ) : (
                             <>
                                 <strong style={{ color: 'var(--foreground)' }}>
-                                    {scopeName} has its own rules.
+                                    {scopeName}
+                                    {tc('console.has_its_own_rules_eabdbf0a')}
                                 </strong>{' '}
                                 {overridden.length}{' '}
-                                {overridden.length === 1 ? 'setting differs' : 'settings differ'}{' '}
-                                from your environment's defaults.
+                                {overridden.length === 1
+                                    ? tc('console.setting_differs_9901f740')
+                                    : tc('console.settings_differ_bd913a9c')}{' '}
+                                {tc('console.from_your_environment_s_defaults_d638e385')}
                             </>
                         )}
                     </p>
 
                     {!inheriting && (
                         <Button size="sm" onClick={() => setConfirming('inherit')}>
-                            Use environment defaults
+                            {tc('console.use_environment_defaults_458238c0')}
                         </Button>
                     )}
                 </div>
@@ -225,12 +238,20 @@ export default function AuthPolicyPage({
                 <div className="grid sm:grid-cols-2 gap-5">
                     <Field
                         id="min-length"
-                        label={<>Minimum password length {badge('minLength')}</>}
+                        label={
+                            <>
+                                {tc('console.minimum_password_length_212329b7')}
+                                {badge('minLength')}
+                            </>
+                        }
                         error={form.errors.minLength}
                         hint={
                             onEnvironmentPlane
                                 ? undefined
-                                : `Environment default: ${baseline.minLength}. You can require more, not fewer.`
+                                : tc(
+                                      'console.environment_default_value0_you_can_require_m_8d5f9e39',
+                                      { value0: baseline.minLength },
+                                  )
                         }
                     >
                         <Input
@@ -248,11 +269,18 @@ export default function AuthPolicyPage({
 
                     <Field
                         id="reuse-history"
-                        label={<>Block reuse of the last {badge('reuseHistory')}</>}
+                        label={
+                            <>
+                                {tc('console.block_reuse_of_the_last_e8e45b8a')}
+                                {badge('reuseHistory')}
+                            </>
+                        }
                         error={form.errors.reuseHistory}
                         hint={
                             <>
-                                Passwords. 0 turns reuse checking off. Only hashes are kept.
+                                {tc(
+                                    'console.passwords_0_turns_reuse_checking_off_only_ha_f9522130',
+                                )}
                                 {!onEnvironmentPlane &&
                                     ` Environment default: ${baseline.reuseHistory}.`}
                             </>
@@ -273,11 +301,16 @@ export default function AuthPolicyPage({
 
                     <Field
                         id="max-age"
-                        label={<>Force a change after {badge('maxAgeDays')}</>}
+                        label={
+                            <>
+                                {tc('console.force_a_change_after_58b2d52e')}
+                                {badge('maxAgeDays')}
+                            </>
+                        }
                         error={form.errors.maxAgeDays}
                         hint={
                             <>
-                                Days. Leave empty to never force a rotation.
+                                {tc('console.days_leave_empty_to_never_force_a_rotation_bbc4f068')}
                                 {!onEnvironmentPlane &&
                                     ` Environment default: ${baseline.maxAgeDays === '' ? 'never' : `${baseline.maxAgeDays} days`}.`}
                             </>
@@ -289,7 +322,7 @@ export default function AuthPolicyPage({
                             type="number"
                             min={1}
                             max={3650}
-                            placeholder="Never"
+                            placeholder={tc('console.never_6300ef80')}
                             value={form.data.maxAgeDays}
                             onChange={(event) => form.setData('maxAgeDays', event.target.value)}
                         />
@@ -297,7 +330,12 @@ export default function AuthPolicyPage({
 
                     <Field
                         id="lockout"
-                        label={<>Lock out after {badge('lockoutThreshold')}</>}
+                        label={
+                            <>
+                                {tc('console.lock_out_after_bc9e496f')}
+                                {badge('lockoutThreshold')}
+                            </>
+                        }
                         error={form.errors.lockoutThreshold}
                         hint={
                             <>
@@ -306,11 +344,19 @@ export default function AuthPolicyPage({
                                     is on unless the operator switched it off — the page used
                                     to say the opposite.
                                 */}
-                                Failed attempts within {lockoutDefault.windowMinutes} minutes; the
-                                account then locks for {lockoutDefault.durationMinutes} minutes.{' '}
+                                {tc('console.failed_attempts_within_b198b8a6')}
+                                {lockoutDefault.windowMinutes}
+                                {tc('console.minutes_the_account_then_locks_for_2901d638')}
+                                {lockoutDefault.durationMinutes}
+                                {tc('console.minutes_014f602d')}{' '}
                                 {lockoutDefault.threshold === null
-                                    ? 'Leave empty for no lockout — this deployment has switched its default off.'
-                                    : `Leave empty for this deployment's default of ${lockoutDefault.threshold}.`}
+                                    ? tc(
+                                          'console.leave_empty_for_no_lockout_this_deployment_h_d1f1a3e9',
+                                      )
+                                    : tc(
+                                          'console.leave_empty_for_this_deployment_s_default_of_d2ead774',
+                                          { value0: lockoutDefault.threshold },
+                                      )}
                                 {!onEnvironmentPlane &&
                                     ` Environment default: ${baseline.lockoutThreshold === '' ? (lockoutDefault.threshold ?? 'off') : baseline.lockoutThreshold}.`}
                             </>
@@ -324,8 +370,10 @@ export default function AuthPolicyPage({
                             max={100}
                             placeholder={
                                 lockoutDefault.threshold === null
-                                    ? 'Off'
-                                    : `${lockoutDefault.threshold} (default)`
+                                    ? tc('console.off_ca7981b4')
+                                    : tc('console.value0_default_63685080', {
+                                          value0: lockoutDefault.threshold,
+                                      })
                             }
                             value={form.data.lockoutThreshold}
                             onChange={(event) =>
@@ -335,23 +383,36 @@ export default function AuthPolicyPage({
                     </Field>
 
                     <Field
-                        label={<>Two-factor authentication {badge('mfa')}</>}
+                        label={
+                            <>
+                                {tc('console.two_factor_authentication_64eac237')}
+                                {badge('mfa')}
+                            </>
+                        }
                         error={form.errors.mfa}
                     >
                         <Select
                             value={form.data.mfa}
                             onValueChange={(mfa) => form.setData('mfa', mfa)}
                             options={mfaOptions}
-                            aria-label="Two-factor authentication"
+                            aria-label={tc('console.two_factor_authentication_b6824cc8')}
                         />
                     </Field>
 
-                    <Field label={<>Enterprise SSO {badge('sso')}</>} error={form.errors.sso}>
+                    <Field
+                        label={
+                            <>
+                                {tc('console.enterprise_sso_bd67f181')}
+                                {badge('sso')}
+                            </>
+                        }
+                        error={form.errors.sso}
+                    >
                         <Select
                             value={form.data.sso}
                             onValueChange={(sso) => form.setData('sso', sso)}
                             options={ssoOptions}
-                            aria-label="Enterprise SSO"
+                            aria-label={tc('console.enterprise_sso_0f8d7e8e')}
                         />
                     </Field>
                 </div>
@@ -359,7 +420,7 @@ export default function AuthPolicyPage({
                 <Checkbox
                     checked={form.data.requireBreachCheck}
                     onCheckedChange={(checked) => form.setData('requireBreachCheck', checked)}
-                    label="Refuse passwords found in known data breaches. Checked against Have I Been Pwned without ever sending the password — if the service is unreachable the sign-up is allowed rather than blocked."
+                    label={tc('console.refuse_passwords_found_in_known_data_breache_db4c6959')}
                 />
                 {form.errors.requireBreachCheck !== undefined && (
                     <p className="field-error" role="alert">
@@ -369,7 +430,7 @@ export default function AuthPolicyPage({
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save rules
+                        {tc('console.save_rules_e5dbdffb')}
                     </Button>
                 </div>
             </form>
@@ -381,10 +442,14 @@ export default function AuthPolicyPage({
             */}
             {!onEnvironmentPlane && signInMethods !== null && (
                 <div className="pt-2">
-                    <h2 className="text-base font-semibold">For the whole environment</h2>
+                    <h2 className="text-base font-semibold">
+                        {tc('console.for_the_whole_environment_5b97e28f')}
+                    </h2>
                     <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                        These apply to every organization in {environmentName}, not only {scopeName}
-                        .
+                        {tc('console.these_apply_to_every_organization_in_3f27386c')}
+                        {environmentName}
+                        {tc('console.not_only_6a5ac048')}
+                        {scopeName}.
                     </p>
                 </div>
             )}
@@ -409,15 +474,21 @@ export default function AuthPolicyPage({
             {onEnvironmentPlane && organizations !== null && (
                 <Panel
                     id="organizations"
-                    title="Per organization"
-                    description="The rules in force after this environment's baseline is applied. An organization's own override can only make these stricter."
+                    title={tc('console.per_organization_8cb1cd51')}
+                    description={tc(
+                        'console.the_rules_in_force_after_this_environment_s__278c536a',
+                    )}
                 >
                     <div className="overflow-x-auto">
-                        <Table caption="Authentication policy in force, per organization">
+                        <Table
+                            caption={tc(
+                                'console.authentication_policy_in_force_per_organizat_1463aba6',
+                            )}
+                        >
                             <thead>
                                 <tr>
-                                    <Th>Organization</Th>
-                                    <Th>Min length</Th>
+                                    <Th>{tc('console.organization_d764d425')}</Th>
+                                    <Th>{tc('console.min_length_483ad8e5')}</Th>
                                     <Th>2FA</Th>
                                     <Th>SSO</Th>
                                 </tr>
@@ -426,7 +497,9 @@ export default function AuthPolicyPage({
                                 {organizations.length === 0 ? (
                                     <tr>
                                         <Td colSpan={4} style={{ color: 'var(--faint)' }}>
-                                            No organizations in this environment yet.
+                                            {tc(
+                                                'console.no_organizations_in_this_environment_yet_483d8509',
+                                            )}
                                         </Td>
                                     </tr>
                                 ) : (
@@ -435,13 +508,13 @@ export default function AuthPolicyPage({
                                             <Td>
                                                 <Link href={row.href}>{row.name}</Link>{' '}
                                                 {row.overridden ? (
-                                                    <Badge>Override</Badge>
+                                                    <Badge>{tc('console.override_43bc0f5f')}</Badge>
                                                 ) : (
                                                     <span
                                                         className="text-xs"
                                                         style={{ color: 'var(--faint)' }}
                                                     >
-                                                        inherited
+                                                        {tc('console.inherited_46b2e93c')}
                                                     </span>
                                                 )}
                                             </Td>
@@ -461,7 +534,8 @@ export default function AuthPolicyPage({
                         <div className="mt-4">
                             <Pagination
                                 pagination={organizationsPagination}
-                                noun="organization"
+                                noun={tc('console.organization_af3a1bb3')}
+                                pluralNoun={tc('console.organizations_f8a665a9')}
                                 href={(page) => `${window.location.pathname}?page=${page}`}
                             />
                         </div>
@@ -478,33 +552,30 @@ export default function AuthPolicyPage({
             <Dialog
                 open={confirming === 'lockout'}
                 onOpenChange={(open) => !open && setConfirming(null)}
-                title={`This will sign people out of ${scopeName}`}
-                description="Requiring SSO refuses every other way in, and ends the sessions that used one."
+                title={tc('console.this_will_sign_people_out_of_value0_167bd637', {
+                    value0: scopeName,
+                })}
+                description={tc('console.requiring_sso_refuses_every_other_way_in_and_7d9d14ef')}
                 footer={
                     <>
-                        <Button onClick={() => setConfirming(null)}>Keep passwords working</Button>
+                        <Button onClick={() => setConfirming(null)}>
+                            {tc('console.keep_passwords_working_b57484cf')}
+                        </Button>
                         <Button variant="danger" onClick={save}>
-                            Require SSO and sign everyone out
+                            {tc('console.require_sso_and_sign_everyone_out_474ac7df')}
                         </Button>
                     </>
                 }
             >
                 <ul className="space-y-1 text-sm list-disc pl-5">
                     <li>
-                        Password sign-in stops working for everyone in {scopeName}, immediately.
+                        {tc('console.password_sign_in_stops_working_for_everyone__dd89ee54')}
+                        {scopeName}
+                        {tc('console.immediately_175925af')}
                     </li>
-                    <li>
-                        Every session that was opened with a password ends — including yours, if you
-                        signed in that way.
-                    </li>
-                    <li>
-                        People get back in through your identity provider. Anyone without one
-                        connected cannot sign in at all.
-                    </li>
-                    <li>
-                        You can set this back to "Prefer SSO" or "Both available" at any time;
-                        sessions that ended stay ended.
-                    </li>
+                    <li>{tc('console.every_session_that_was_opened_with_a_passwor_cf05d595')}</li>
+                    <li>{tc('console.people_get_back_in_through_your_identity_pro_6fd7e521')}</li>
+                    <li>{tc('console.you_can_set_this_back_to_prefer_sso_or_both__b84203a4')}</li>
                 </ul>
             </Dialog>
 
@@ -518,12 +589,16 @@ export default function AuthPolicyPage({
                 <Dialog
                     open={confirming === 'signup'}
                     onOpenChange={(open) => !open && setConfirming(null)}
-                    title={`Let people sign up to ${environmentName}?`}
-                    description="Anyone who reaches one of your apps can create an account here, without an invitation."
+                    title={tc('console.let_people_sign_up_to_value0_dfabb5ad', {
+                        value0: environmentName,
+                    })}
+                    description={tc(
+                        'console.anyone_who_reaches_one_of_your_apps_can_crea_eeb28c84',
+                    )}
                     footer={
                         <>
                             <Button onClick={() => setConfirming(null)}>
-                                Keep invitation-only
+                                {tc('console.keep_invitation_only_2cf257d6')}
                             </Button>
                             <Button
                                 variant="primary"
@@ -536,24 +611,22 @@ export default function AuthPolicyPage({
                                     );
                                 }}
                             >
-                                Turn on sign-up
+                                {tc('console.turn_on_sign_up_487bb553')}
                             </Button>
                         </>
                     }
                 >
                     <ul className="space-y-1 text-sm list-disc pl-5">
                         <li>
-                            Your sign-in page gets a &ldquo;Create an account&rdquo; link, and apps
-                            can send people straight to sign-up with <code>prompt=create</code>.
+                            {tc('console.your_sign_in_page_gets_a_ldquo_create_an_acc_020878e6')}
+                            <code>{tc('console.prompt_create_46ad4d3f')}</code>.
                         </li>
                         <li>
-                            Each new account creates its own organization and owns it. Apps can also
-                            ask a signed-in person to create one with{' '}
-                            <code>prompt=create_organization</code>.
+                            {tc('console.each_new_account_creates_its_own_organizatio_45ebf9cf')}{' '}
+                            <code>{tc('console.prompt_create_organization_2a7488dc')}</code>.
                         </li>
                         <li>
-                            Your authentication policy still applies: password strength, the breach
-                            check, email confirmation, rate limits and bot checks.
+                            {tc('console.your_authentication_policy_still_applies_pas_84825ce9')}
                         </li>
                     </ul>
                 </Dialog>
@@ -562,11 +635,15 @@ export default function AuthPolicyPage({
             <Dialog
                 open={confirming === 'inherit'}
                 onOpenChange={(open) => !open && setConfirming(null)}
-                title={`Use your environment's defaults for ${scopeName}?`}
-                description="This organization's own authentication policy is dropped, and it is governed by the environment baseline from here on."
+                title={tc('console.use_your_environment_s_defaults_for_value0_616d87ac', {
+                    value0: scopeName,
+                })}
+                description={tc('console.this_organization_s_own_authentication_polic_a12f3b55')}
                 footer={
                     <>
-                        <Button onClick={() => setConfirming(null)}>Cancel</Button>
+                        <Button onClick={() => setConfirming(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -577,7 +654,7 @@ export default function AuthPolicyPage({
                                 }
                             }}
                         >
-                            Use environment defaults
+                            {tc('console.use_environment_defaults_458238c0')}
                         </Button>
                     </>
                 }
@@ -604,14 +681,19 @@ function SelfServiceSignupPanel({
     scopeName: string;
     onEnable: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const [saving, setSaving] = useState(false);
 
     if (!setting.decidedHere) {
         return (
             <Panel
                 id="sign-up"
-                title="Self-service sign-up"
-                description={`Decided by this deployment's CBOX_ID_SIGNUP_MODE, which is "${setting.mode}". Sign-up is ${setting.open ? 'open' : 'closed'}.`}
+                title={tc('console.self_service_sign_up_613527ff')}
+                description={tc('console.decided_by_this_deployment_s_cbox_id_signup__3d142130', {
+                    value0: setting.mode,
+                    value1: setting.open ? 'open' : 'closed',
+                })}
             />
         );
     }
@@ -619,15 +701,19 @@ function SelfServiceSignupPanel({
     return (
         <Panel
             id="sign-up"
-            title="Self-service sign-up"
+            title={tc('console.self_service_sign_up_613527ff')}
             description={
                 setting.enabled
-                    ? `Anyone can create an account in ${scopeName}, and becomes the owner of their own organization.`
-                    : `People join ${scopeName} by invitation only.`
+                    ? tc('console.anyone_can_create_an_account_in_value0_and_b_f8d282a6', {
+                          value0: scopeName,
+                      })
+                    : tc('console.people_join_value0_by_invitation_only_a4644606', {
+                          value0: scopeName,
+                      })
             }
             action={
                 <Switch
-                    aria-label="Self-service sign-up"
+                    aria-label={tc('console.self_service_sign_up_613527ff')}
                     checked={setting.enabled}
                     disabled={saving}
                     onCheckedChange={(checked) => {
@@ -649,14 +735,15 @@ function SelfServiceSignupPanel({
         >
             {setting.enabled && !setting.open && (
                 <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
-                    On here, but this deployment has closed sign-up everywhere
-                    (CBOX_ID_SIGNUP_MODE=closed), so nobody can sign up until that changes.
+                    {tc('console.on_here_but_this_deployment_has_closed_sign__270a24b1')}
                 </p>
             )}
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Apps send people to sign-up with <code>prompt=create</code>, and ask a signed-in
-                person to create an organization with <code>prompt=create_organization</code>. Both
-                are offered only while this is on.
+                {tc('console.apps_send_people_to_sign_up_with_8606caef')}
+                <code>{tc('console.prompt_create_46ad4d3f')}</code>
+                {tc('console.and_ask_a_signed_in_person_to_create_an_orga_b13d58d0')}
+                <code>{tc('console.prompt_create_organization_2a7488dc')}</code>
+                {tc('console.both_are_offered_only_while_this_is_on_134a8203')}
             </p>
         </Panel>
     );
@@ -694,6 +781,8 @@ function SignInMethodsPanel({
     setting: SignInMethodsSetting;
     scopeName: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         passkeys: setting.passkeys,
         magicLink: setting.magicLink,
@@ -709,16 +798,19 @@ function SignInMethodsPanel({
 
     const deploymentOff = (variable: string) => (
         <>
-            Off for this whole deployment (<code className="mono">{variable}</code>), which wins
-            over this setting.
+            {tc('console.off_for_this_whole_deployment_6fda971a')}
+            <code className="mono">{variable}</code>
+            {tc('console.which_wins_over_this_setting_8282e10b')}
         </>
     );
 
     return (
         <Panel
             id="sign-in-methods"
-            title="Sign-in methods and sessions"
-            description={`Which ways in ${scopeName} offers besides a password, and how long a sign-in lasts. These are the same for every organization in it.`}
+            title={tc('console.sign_in_methods_and_sessions_66ef22a6')}
+            description={tc('console.which_ways_in_value0_offers_besides_a_passwo_4ead969c', {
+                value0: scopeName,
+            })}
         >
             <form
                 className="space-y-5"
@@ -729,10 +821,12 @@ function SignInMethodsPanel({
             >
                 <div className="space-y-4">
                     <Checkbox
-                        label="Passkeys"
+                        label={tc('console.passkeys_c87ccdb4')}
                         hint={
                             deployment.passkeys
-                                ? 'Face ID, Touch ID, Windows Hello or a security key. Turning this off keeps the passkeys people already added, for when you turn it back on.'
+                                ? tc(
+                                      'console.face_id_touch_id_windows_hello_or_a_security_6e23006c',
+                                  )
                                 : deploymentOff('CBOX_ID_PASSKEYS_ENABLED')
                         }
                         checked={deployment.passkeys && form.data.passkeys}
@@ -740,10 +834,12 @@ function SignInMethodsPanel({
                         onCheckedChange={(checked) => form.setData('passkeys', checked)}
                     />
                     <Checkbox
-                        label="Magic link"
+                        label={tc('console.magic_link_a8a8b124')}
                         hint={
                             deployment.magicLink
-                                ? 'A one-time sign-in link by email. Turning this off also stops links already sent from working.'
+                                ? tc(
+                                      'console.a_one_time_sign_in_link_by_email_turning_thi_eeae7dbf',
+                                  )
                                 : deploymentOff('CBOX_ID_MAGIC_LINK_ENABLED')
                         }
                         checked={deployment.magicLink && form.data.magicLink}
@@ -751,11 +847,15 @@ function SignInMethodsPanel({
                         onCheckedChange={(checked) => form.setData('magicLink', checked)}
                     />
                     <Checkbox
-                        label="Bot challenge"
+                        label={tc('console.bot_challenge_ed4b037c')}
                         hint={
                             deployment.botChallenge
-                                ? 'Ask a sign-up Radar flags to prove it is a person (Cloudflare Turnstile). Off, a flagged sign-up confirms its email address instead.'
-                                : 'This deployment has no Turnstile keys (CBOX_ID_TURNSTILE_SITE_KEY), so there is no challenge to turn on. A flagged sign-up confirms its email address instead.'
+                                ? tc(
+                                      'console.ask_a_sign_up_radar_flags_to_prove_it_is_a_p_5b5f2963',
+                                  )
+                                : tc(
+                                      'console.this_deployment_has_no_turnstile_keys_cbox_i_9ceda61f',
+                                  )
                         }
                         checked={deployment.botChallenge && form.data.botChallenge}
                         disabled={!deployment.botChallenge}
@@ -766,9 +866,19 @@ function SignInMethodsPanel({
                 <div className="grid sm:grid-cols-2 gap-5">
                     <Field
                         id="session-idle"
-                        label="End a session after this long without activity"
+                        label={tc('console.end_a_session_after_this_long_without_activi_40e79de1')}
                         error={form.errors.sessionIdleMinutes}
-                        hint={`Minutes, at most ${idleCeiling}. Empty uses the deployment's ${deployment.sessionIdleMinutes > 0 ? duration(deployment.sessionIdleMinutes) : 'setting: no idle timeout'}. In force now: ${setting.inForce.sessionIdleMinutes > 0 ? duration(setting.inForce.sessionIdleMinutes) : 'none'}.`}
+                        hint={tc('console.minutes_at_most_value0_empty_uses_the_deploy_3f932b31', {
+                            value0: idleCeiling,
+                            value1:
+                                deployment.sessionIdleMinutes > 0
+                                    ? duration(deployment.sessionIdleMinutes)
+                                    : tc('console.setting_no_idle_timeout_9ce693ee'),
+                            value2:
+                                setting.inForce.sessionIdleMinutes > 0
+                                    ? duration(setting.inForce.sessionIdleMinutes)
+                                    : 'none',
+                        })}
                     >
                         <Input
                             id="session-idle"
@@ -778,8 +888,10 @@ function SignInMethodsPanel({
                             max={idleCeiling}
                             placeholder={
                                 deployment.sessionIdleMinutes > 0
-                                    ? `${deployment.sessionIdleMinutes} (deployment)`
-                                    : 'None (deployment)'
+                                    ? tc('console.value0_deployment_c0ab2754', {
+                                          value0: deployment.sessionIdleMinutes,
+                                      })
+                                    : tc('console.none_deployment_64577084')
                             }
                             value={form.data.sessionIdleMinutes}
                             onChange={(event) =>
@@ -790,9 +902,12 @@ function SignInMethodsPanel({
 
                     <Field
                         id="session-absolute"
-                        label="End a session after this long, however active"
+                        label={tc('console.end_a_session_after_this_long_however_active_40352264')}
                         error={form.errors.sessionAbsoluteMinutes}
-                        hint={`Minutes, at most ${deployment.sessionAbsoluteMinutes}. Empty uses the deployment's ${duration(deployment.sessionAbsoluteMinutes)}. Shortening it also ends longer sessions already running.`}
+                        hint={tc('console.minutes_at_most_value0_empty_uses_the_deploy_6b686e82', {
+                            value0: deployment.sessionAbsoluteMinutes,
+                            value1: duration(deployment.sessionAbsoluteMinutes),
+                        })}
                     >
                         <Input
                             id="session-absolute"
@@ -800,7 +915,9 @@ function SignInMethodsPanel({
                             type="number"
                             min={5}
                             max={deployment.sessionAbsoluteMinutes}
-                            placeholder={`${deployment.sessionAbsoluteMinutes} (deployment)`}
+                            placeholder={tc('console.value0_deployment_c0ab2754', {
+                                value0: deployment.sessionAbsoluteMinutes,
+                            })}
                             value={form.data.sessionAbsoluteMinutes}
                             onChange={(event) =>
                                 form.setData('sessionAbsoluteMinutes', event.target.value)
@@ -818,7 +935,7 @@ function SignInMethodsPanel({
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save sign-in methods
+                        {tc('console.save_sign_in_methods_a02553c8')}
                     </Button>
                 </div>
             </form>
@@ -836,6 +953,8 @@ function SignInMethodsPanel({
  * page cannot show "on" for a setting nobody can enrol under.
  */
 function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; scopeName: string }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         enabled: setting.enabled,
         allowedCountries: setting.allowedCountries,
@@ -858,11 +977,15 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
     return (
         <Panel
             id="sms"
-            title="Text-message codes"
+            title={tc('console.text_message_codes_9f1561f0')}
             description={
                 setting.enabled
-                    ? `People in ${scopeName} can add a phone number and receive sign-in codes by SMS.`
-                    : `Off. People in ${scopeName} use an authenticator app, a passkey or recovery codes.`
+                    ? tc('console.people_in_value0_can_add_a_phone_number_and__2faf8f5f', {
+                          value0: scopeName,
+                      })
+                    : tc('console.off_people_in_value0_use_an_authenticator_ap_b459eb63', {
+                          value0: scopeName,
+                      })
             }
         >
             <form
@@ -877,34 +1000,28 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                     style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
                 >
                     <p>
-                        <b>SMS is the weakest second factor offered here.</b> A code can be taken by
-                        a SIM swap or number port-out, intercepted in the phone network, or typed
-                        into a convincing fake sign-in page. It is still far better than a password
-                        alone — turn it on for people who cannot use an authenticator app or a
-                        passkey.
+                        <b>{tc('console.sms_is_the_weakest_second_factor_offered_her_5a90b3ee')}</b>
+                        {tc('console.a_code_can_be_taken_by_a_sim_swap_or_number__3d096b96')}
                     </p>
-                    <p>
-                        Every text costs money. Codes go only to the countries listed below, and
-                        each number, network address and this environment have daily limits.
-                    </p>
+                    <p>{tc('console.every_text_costs_money_codes_go_only_to_the__171894a6')}</p>
                 </div>
 
                 <Checkbox
-                    label="Accept text-message codes as a second factor"
+                    label={tc('console.accept_text_message_codes_as_a_second_factor_af308439')}
                     checked={form.data.enabled}
                     onCheckedChange={(checked) => form.setData('enabled', checked)}
                 />
 
                 <Field
-                    label="Countries"
-                    hint="Only numbers in these countries can be added and texted. Removing a country stops texts to it at once."
+                    label={tc('console.countries_8faf7ec7')}
+                    hint={tc('console.only_numbers_in_these_countries_can_be_added_4859ca3c')}
                     error={form.errors.allowedCountries}
                 >
                     <Combobox
-                        aria-label="Add a country"
+                        aria-label={tc('console.add_a_country_3891b432')}
                         value={adding}
-                        placeholder="Add a country…"
-                        searchPlaceholder="Search countries…"
+                        placeholder={tc('console.add_a_country_fde01a47')}
+                        searchPlaceholder={tc('console.search_countries_1a765360')}
                         options={options}
                         onValueChange={(code) => {
                             setAdding(undefined);
@@ -914,7 +1031,10 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                 </Field>
 
                 {form.data.allowedCountries.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2" aria-label="Allowed countries">
+                    <ul
+                        className="flex flex-wrap gap-2"
+                        aria-label={tc('console.allowed_countries_d7d6903b')}
+                    >
                         {form.data.allowedCountries.map((code) => (
                             <li key={code}>
                                 <Badge>
@@ -922,7 +1042,9 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                                     <button
                                         type="button"
                                         className="ml-1.5"
-                                        aria-label={`Remove ${label(code)}`}
+                                        aria-label={tc('console.remove_value0_b597e5fb', {
+                                            value0: label(code),
+                                        })}
                                         onClick={() =>
                                             form.setData(
                                                 'allowedCountries',
@@ -940,21 +1062,23 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                     </ul>
                 ) : (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        No countries yet. Add at least one before turning text-message codes on.
+                        {tc('console.no_countries_yet_add_at_least_one_before_tur_c9f87d37')}
                     </p>
                 )}
 
                 {outsideDeployment.length > 0 && (
                     <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
-                        This deployment only texts {setting.deploymentCountries.join(', ')}, so
-                        numbers in {outsideDeployment.map(label).join(', ')} cannot receive codes
-                        until CBOX_ID_SMS_ALLOWED_COUNTRIES includes them.
+                        {tc('console.this_deployment_only_texts_5852449e')}
+                        {setting.deploymentCountries.join(', ')}
+                        {tc('console.so_numbers_in_6914049a')}
+                        {outsideDeployment.map(label).join(', ')}
+                        {tc('console.cannot_receive_codes_until_cbox_id_sms_allow_5bba04f1')}
                     </p>
                 )}
 
                 <Checkbox
-                    label="Owners and admins need an authenticator app or a passkey too"
-                    hint="An owner or admin can add SMS only next to a stronger factor, and is asked to add one if SMS is all they have."
+                    label={tc('console.owners_and_admins_need_an_authenticator_app__a1f2b392')}
+                    hint={tc('console.an_owner_or_admin_can_add_sms_only_next_to_a_07347449')}
                     checked={form.data.privilegedNeedStrongerFactor}
                     onCheckedChange={(checked) =>
                         form.setData('privilegedNeedStrongerFactor', checked)
@@ -963,7 +1087,7 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save text-message settings
+                        {tc('console.save_text_message_settings_79884210')}
                     </Button>
                 </div>
             </form>

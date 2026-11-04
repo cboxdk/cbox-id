@@ -51,7 +51,7 @@ final class AuditLogExportDownloadController
                 'export' => $model->id,
                 'disk' => config('cbox-id.audit_logs.export_disk'),
                 'path' => $path,
-                'hint' => 'The export disk must be storage every web and worker process shares; run `php artisan cbox-id:doctor`.',
+                'hint' => __('console.the_export_disk_must_be_storage_every_web_an_2d6bfbff'),
             ]);
 
             abort(404);

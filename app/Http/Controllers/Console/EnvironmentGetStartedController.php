@@ -48,7 +48,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
         $issuerUrl = rtrim($issuer->issuer(), '/');
         $subject = app(EnvironmentAdminAuth::class)->subjectId();
 
-        return $this->page('environment/get-started', 'Get started', [
+        return $this->page('environment/get-started', __('console.get_started_61e8d44a'), [
             'help' => HelpProps::for(HelpTopic::EnvironmentGetStarted),
             'checklist' => $checklist->toProps($this->workspaceId()),
             'dismissed' => $subject !== null && $checklist->isDismissed($subject),
@@ -90,7 +90,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
         $framework = QuickstartFramework::tryFrom($request->string('framework')->toString());
 
         if ($framework === null) {
-            return back()->withErrors(['framework' => 'Choose what you are building.']);
+            return back()->withErrors(['framework' => __('console.choose_what_you_are_building_2a92be9a')]);
         }
 
         // The same step-up "New app" asks for: this mints a secret shown once.
@@ -98,7 +98,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
             'clients.create',
             'environment.get-started',
             ['framework' => $framework->value],
-            'Creating an app issues a client secret, shown once on the next screen — it signs in as this app until it is rotated.',
+            __('console.creating_an_app_issues_a_client_secret_shown_2840959a'),
         );
 
         if ($sudo !== null) {

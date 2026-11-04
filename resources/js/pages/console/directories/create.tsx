@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -57,6 +58,8 @@ export default function CreateDirectory({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm<{
         provider: string;
         organization: string;
@@ -107,24 +110,26 @@ export default function CreateDirectory({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Directory Sync" />
+            <Breadcrumb href={indexHref} label={tc('console.directory_sync_ea18bba8')} />
 
-            <h1 className="cbx-page-title mt-2">New directory</h1>
+            <h1 className="cbx-page-title mt-2">{tc('console.new_directory_000ddb55')}</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Point an identity provider at our SCIM endpoint, connect Google Workspace or
-                Microsoft Entra, or connect your HR system — Workday, BambooHR, Rippling, HiBob or
-                Personio — and we will pull your people on a schedule.
+                {tc('console.point_an_identity_provider_at_our_scim_endpo_9f06ef10')}
             </p>
 
             {!entitled ? (
                 <div className="card mt-6" style={{ maxWidth: '36rem' }}>
                     <EmptyState
                         icon="directory"
-                        title="Syncing users in is an Enterprise feature"
-                        description="Contact your account team to enable it for this organization."
+                        title={tc('console.syncing_users_in_is_an_enterprise_feature_c3b68cec')}
+                        description={tc(
+                            'console.contact_your_account_team_to_enable_it_for_t_c4ba4d29',
+                        )}
                         actions={
                             <Button asChild>
-                                <Link href={indexHref}>Back to Directory Sync</Link>
+                                <Link href={indexHref}>
+                                    {tc('console.back_to_directory_sync_bb4632fa')}
+                                </Link>
                             </Button>
                         }
                     />
@@ -144,24 +149,32 @@ export default function CreateDirectory({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint="A directory provisions one organization's people."
+                                hint={tc(
+                                    'console.a_directory_provisions_one_organization_s_pe_7b70fa4a',
+                                )}
                             />
                         </Panel>
                     )}
 
                     <Panel>
                         <RadioGroup
-                            label="Provider"
+                            label={tc('console.provider_472590ae')}
                             value={form.data.provider}
                             onValueChange={(next) => form.setData('provider', next)}
                             options={providers.map((option) => ({
                                 value: option.value,
                                 label: option.label,
                                 hint: option.hris
-                                    ? 'Your HR system: people get an account on their start date and lose it after their last day.'
+                                    ? tc(
+                                          'console.your_hr_system_people_get_an_account_on_thei_6be42da6',
+                                      )
                                     : option.pull
-                                      ? 'We fetch your people from them on a schedule.'
-                                      : 'Your provider posts changes to us as they happen.',
+                                      ? tc(
+                                            'console.we_fetch_your_people_from_them_on_a_schedule_01113643',
+                                        )
+                                      : tc(
+                                            'console.your_provider_posts_changes_to_us_as_they_ha_727ce8fe',
+                                        ),
                             }))}
                         />
                         {form.errors.provider !== undefined && (
@@ -182,11 +195,13 @@ export default function CreateDirectory({
                     */}
                     {provider?.setup != null && (
                         <Panel
-                            title={`Setting up ${provider.label}`}
+                            title={tc('console.setting_up_value0_15873a1b', {
+                                value0: provider.label,
+                            })}
                             action={
                                 <Button asChild size="sm" className="shrink-0">
                                     <a href={provider.setup.docs} target="_blank" rel="noreferrer">
-                                        Provider guide
+                                        {tc('console.provider_guide_56aa8a4b')}
                                         <Icon name="external" className="w-3.5 h-3.5" />
                                     </a>
                                 </Button>
@@ -205,8 +220,10 @@ export default function CreateDirectory({
 
                     {hris && provider?.setup != null ? (
                         <Panel
-                            title="Credentials"
-                            description="Checked against your HR system before anything is stored. Never shown again."
+                            title={tc('console.credentials_d48a617c')}
+                            description={tc(
+                                'console.checked_against_your_hr_system_before_anythi_f01ca7fa',
+                            )}
                         >
                             <div className="space-y-4">
                                 {provider.setup.credentials.map((credential, index) => (
@@ -237,8 +254,10 @@ export default function CreateDirectory({
                                 ))}
 
                                 <Field
-                                    label="Fields to pass through (optional)"
-                                    hint="The HR system's own field names to copy onto each person, one per line — a cost centre, a location."
+                                    label={tc('console.fields_to_pass_through_optional_f7728139')}
+                                    hint={tc(
+                                        'console.the_hr_system_s_own_field_names_to_copy_onto_2c74edb8',
+                                    )}
                                     error={form.errors.customAttributes}
                                 >
                                     <Textarea
@@ -256,17 +275,21 @@ export default function CreateDirectory({
                         </Panel>
                     ) : pull ? (
                         <Panel
-                            title="Credentials"
-                            description="Verified against the provider before anything is stored."
+                            title={tc('console.credentials_d48a617c')}
+                            description={tc(
+                                'console.verified_against_the_provider_before_anythin_0b07010b',
+                            )}
                         >
                             <div className="space-y-4">
                                 {form.data.provider === 'google_workspace' ? (
                                     <>
                                         <Field
-                                            label="Service-account JSON key"
+                                            label={tc('console.service_account_json_key_5d7ca514')}
                                             hint={
                                                 credentialHelp(provider, 'private_key') ??
-                                                'The whole file, as downloaded — it must contain client_email and private_key.'
+                                                tc(
+                                                    'console.the_whole_file_as_downloaded_it_must_contain_2e7fe164',
+                                                )
                                             }
                                             error={credentialError}
                                         >
@@ -286,7 +309,9 @@ export default function CreateDirectory({
                                         </Field>
 
                                         <Field
-                                            label="Admin email to impersonate"
+                                            label={tc(
+                                                'console.admin_email_to_impersonate_cdae519b',
+                                            )}
                                             hint={credentialHelp(provider, 'admin_email')}
                                         >
                                             <Input
@@ -307,7 +332,7 @@ export default function CreateDirectory({
                                 ) : (
                                     <>
                                         <Field
-                                            label="Tenant ID"
+                                            label={tc('console.tenant_id_de1f5fff')}
                                             hint={credentialHelp(provider, 'tenant_id')}
                                             error={credentialError}
                                         >
@@ -326,7 +351,7 @@ export default function CreateDirectory({
                                         </Field>
 
                                         <Field
-                                            label="Client ID"
+                                            label={tc('console.client_id_8726db01')}
                                             hint={credentialHelp(provider, 'client_id')}
                                         >
                                             <Input
@@ -344,7 +369,7 @@ export default function CreateDirectory({
                                         </Field>
 
                                         <Field
-                                            label="Client secret"
+                                            label={tc('console.client_secret_4aded5fa')}
                                             hint={credentialHelp(provider, 'client_secret')}
                                         >
                                             <Input
@@ -367,13 +392,18 @@ export default function CreateDirectory({
                         </Panel>
                     ) : (
                         <Panel
-                            title="Name it"
-                            description="Whatever your team calls this provider — it appears on the list and in the audit trail."
+                            title={tc('console.name_it_615f0f0b')}
+                            description={tc(
+                                'console.whatever_your_team_calls_this_provider_it_ap_aa44d5b2',
+                            )}
                         >
-                            <Field label="Directory name" error={form.errors.name}>
+                            <Field
+                                label={tc('console.directory_name_96fff2c7')}
+                                error={form.errors.name}
+                            >
                                 <Input
                                     name="name"
-                                    placeholder="Okta"
+                                    placeholder={tc('console.okta_7006a191')}
                                     value={form.data.name}
                                     onChange={(event) => form.setData('name', event.target.value)}
                                 />
@@ -383,10 +413,12 @@ export default function CreateDirectory({
 
                     <div className="flex items-center gap-2">
                         <Button type="submit" variant="primary" loading={form.processing}>
-                            {pull ? 'Verify and connect' : 'Register directory'}
+                            {pull
+                                ? tc('console.verify_and_connect_1b825034')
+                                : tc('console.register_directory_2558e9b5')}
                         </Button>
                         <Button asChild>
-                            <Link href={indexHref}>Cancel</Link>
+                            <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                         </Button>
                     </div>
                 </form>

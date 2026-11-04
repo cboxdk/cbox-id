@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import type { HelpContent } from '@/types';
@@ -13,11 +15,11 @@ export interface RadarMode {
     href: string;
 }
 
-const INTELLIGENCE: Record<RadarMode['intelligence'], string> = {
-    none: 'No IP intelligence configured — country, network and travel rules cannot fire.',
-    maxmind: 'IP intelligence: MaxMind database files on this deployment.',
-    ipinfo: 'IP intelligence: IPinfo.',
-};
+const INTELLIGENCE = (tc: Translator['t']): Record<RadarMode['intelligence'], string> => ({
+    none: tc('console.no_ip_intelligence_configured_country_networ_8ebfbb9f'),
+    maxmind: tc('console.ip_intelligence_maxmind_database_files_on_th_d7e6172c'),
+    ipinfo: tc('console.ip_intelligence_ipinfo_a64fcb37'),
+});
 
 /**
  * The top of every Radar page: the title, the three tabs, and the one switch that decides
@@ -42,6 +44,8 @@ export function RadarFrame({
     actions?: ReactNode;
     children: ReactNode;
 }) {
+    const { t: tc } = useTranslator();
+
     const [confirming, setConfirming] = useState(false);
     const [processing, setProcessing] = useState(false);
     const target = mode?.mode === 'enforce' ? 'monitor' : 'enforce';
@@ -53,18 +57,23 @@ export function RadarFrame({
             {mode !== undefined && (
                 <section
                     className="mt-5 card p-4 flex flex-wrap items-center gap-3"
-                    aria-label="Radar mode"
+                    aria-label={tc('console.radar_mode_9c13cfa3')}
                 >
                     <Pill tone={mode.mode === 'enforce' ? 'success' : 'warning'}>
-                        {mode.mode === 'enforce' ? 'Enforcing' : 'Monitoring'}
+                        {mode.mode === 'enforce'
+                            ? tc('console.enforcing_1ca5672a')
+                            : tc('console.monitoring_1dc83f60')}
                     </Pill>
                     <p className="text-sm flex-1 min-w-[16rem]" style={{ color: 'var(--muted)' }}>
                         {mode.mode === 'enforce'
-                            ? 'Blocks refuse sign-ins and sign-ups; challenges ask for a second factor.'
-                            : 'Every verdict is recorded and none is acted on. Read the decisions before you enforce.'}
-                        {mode.inherited && ' Following this deployment’s default until you choose.'}{' '}
+                            ? tc('console.blocks_refuse_sign_ins_and_sign_ups_challeng_6a4ee9dc')
+                            : tc('console.every_verdict_is_recorded_and_none_is_acted__1b797986')}
+                        {mode.inherited &&
+                            tc(
+                                'console.following_this_deployment_s_default_until_yo_588a3298',
+                            )}{' '}
                         <span style={{ color: 'var(--faint)' }}>
-                            {INTELLIGENCE[mode.intelligence]}
+                            {INTELLIGENCE(tc)[mode.intelligence]}
                         </span>
                     </p>
                     <Button
@@ -72,7 +81,9 @@ export function RadarFrame({
                         onClick={() => setConfirming(true)}
                     >
                         <Icon name="shield" className="w-4 h-4" />
-                        {target === 'enforce' ? 'Switch to enforce' : 'Switch to monitor'}
+                        {target === 'enforce'
+                            ? tc('console.switch_to_enforce_199a1586')
+                            : tc('console.switch_to_monitor_d9ddd684')}
                     </Button>
                     <ConfirmDelete
                         open={confirming}
@@ -81,16 +92,22 @@ export function RadarFrame({
                         verb={target === 'enforce' ? 'Enforce' : 'Monitor'}
                         title={
                             target === 'enforce'
-                                ? 'Start blocking and challenging sign-ins?'
-                                : 'Stop blocking and challenging sign-ins?'
+                                ? tc('console.start_blocking_and_challenging_sign_ins_d9132199')
+                                : tc('console.stop_blocking_and_challenging_sign_ins_40067216')
                         }
                         actionLabel={
-                            target === 'enforce' ? 'Switch to enforce' : 'Switch to monitor'
+                            target === 'enforce'
+                                ? tc('console.switch_to_enforce_199a1586')
+                                : tc('console.switch_to_monitor_d9ddd684')
                         }
                         consequence={
                             target === 'enforce'
-                                ? 'From the next attempt, blocks refuse sign-ins and sign-ups in this environment, and challenges ask for a second factor. If a rule is wrong, real people are locked out.'
-                                : 'From the next attempt, nothing is refused or challenged — credential stuffing included. Verdicts are still recorded.'
+                                ? tc(
+                                      'console.from_the_next_attempt_blocks_refuse_sign_ins_e89996c3',
+                                  )
+                                : tc(
+                                      'console.from_the_next_attempt_nothing_is_refused_or__0dcf7713',
+                                  )
                         }
                         confirming={processing}
                         onConfirm={() => {
@@ -112,7 +129,7 @@ export function RadarFrame({
             )}
 
             <div className="mt-6">
-                <LinkTabs tabs={tabs} label="Radar" />
+                <LinkTabs tabs={tabs} label={tc('console.radar_524f8327')} />
             </div>
 
             {children}

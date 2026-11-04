@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -50,6 +51,8 @@ function listHref(action: string, actor: string, verifyAll = false): string {
 }
 
 export default function AuditTrail({ entries, filters, verification, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [action, setAction] = useState(filters.action);
     const [actor, setActor] = useState(filters.actor);
     const [verifying, setVerifying] = useState(false);
@@ -80,7 +83,7 @@ export default function AuditTrail({ entries, filters, verification, help }: Pro
             */}
             <PageHeader
                 help={help}
-                description="The same append-only, hash-chained trail as the audit log, with the chain verified end to end."
+                description={tc('console.the_same_append_only_hash_chained_trail_as_t_36aa80ca')}
             />
 
             <Chain
@@ -106,16 +109,16 @@ export default function AuditTrail({ entries, filters, verification, help }: Pro
                 standing between an org admin and every other tenant's records.
             */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Action">
+                <Field label={tc('console.action_64cff131')}>
                     <Input
-                        placeholder="e.g. auth.login"
+                        placeholder={tc('console.e_g_auth_login_3aa2dd9a')}
                         value={action}
                         onChange={(event) => setAction(event.target.value)}
                     />
                 </Field>
-                <Field label="Actor">
+                <Field label={tc('console.actor_449995c4')}>
                     <Input
-                        placeholder="actor id"
+                        placeholder={tc('console.actor_id_2007dae3')}
                         value={actor}
                         onChange={(event) => setActor(event.target.value)}
                     />
@@ -125,20 +128,26 @@ export default function AuditTrail({ entries, filters, verification, help }: Pro
             {entries.length === 0 ? (
                 <EmptyState
                     icon="audit"
-                    title="No audit entries match"
-                    description="Adjust the filters above, or clear them to see the full trail."
+                    title={tc('console.no_audit_entries_match_4d50185d')}
+                    description={tc(
+                        'console.adjust_the_filters_above_or_clear_them_to_se_3a188dad',
+                    )}
                 />
             ) : (
                 <div className="card overflow-hidden">
                     <div className="overflow-x-auto">
-                        <Table caption="The audit trail for this chain, newest first">
+                        <Table
+                            caption={tc(
+                                'console.the_audit_trail_for_this_chain_newest_first_52c34d8a',
+                            )}
+                        >
                             <thead>
                                 <tr>
-                                    <Th className="text-right">Seq</Th>
-                                    <Th>When</Th>
-                                    <Th>Action</Th>
-                                    <Th>Actor</Th>
-                                    <Th>Target</Th>
+                                    <Th className="text-right">{tc('console.seq_43ac2602')}</Th>
+                                    <Th>{tc('console.when_cf9c7aa2')}</Th>
+                                    <Th>{tc('console.action_64cff131')}</Th>
+                                    <Th>{tc('console.actor_449995c4')}</Th>
+                                    <Th>{tc('console.target_978354db')}</Th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -191,6 +200,10 @@ function Chain({
     verifying: boolean;
     onVerifyAll: () => void;
 }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const tone = verification.valid
         ? {
               borderColor: 'color-mix(in oklch, var(--success) 20%, transparent)',
@@ -212,18 +225,22 @@ function Chain({
             style={{ ...tone, display: 'flex' }}
         >
             <span className="font-medium">
-                {verification.valid ? 'Chain verified' : 'Chain broken'}
+                {verification.valid
+                    ? tc('console.chain_verified_705c1a7c')
+                    : tc('console.chain_broken_cfca4423')}
             </span>
 
             <span className="text-xs" style={{ opacity: 0.8 }}>
                 {!verification.valid ? (
                     <>
-                        Broke at sequence {verification.brokenAt} — {verification.reason}.
+                        {tc('console.broke_at_sequence_e0d268aa')}
+                        {verification.brokenAt} — {verification.reason}.
                     </>
                 ) : verification.whole ? (
                     <>
-                        All {verification.count.toLocaleString()} entries checked; hashes and
-                        linkage intact.
+                        {tc('console.all_6b2fd69c')}
+                        {verification.count.toLocaleString(locale)}
+                        {tc('console.entries_checked_hashes_and_linkage_intact_01c0f5a3')}
                     </>
                 ) : (
                     /*
@@ -232,9 +249,9 @@ function Chain({
                         re-check on every render; the whole chain is a deliberate ask.
                     */
                     <>
-                        The most recent {verification.count.toLocaleString()} entries checked;
-                        hashes and linkage intact, and the last signed checkpoint still anchors the
-                        entry it was taken over.
+                        {tc('console.the_most_recent_f414a29a')}
+                        {verification.count.toLocaleString(locale)}
+                        {tc('console.entries_checked_hashes_and_linkage_intact_an_9216f061')}
                     </>
                 )}
             </span>
@@ -246,10 +263,10 @@ function Chain({
                 onClick={onVerifyAll}
             >
                 {verifying
-                    ? 'Verifying…'
+                    ? tc('console.verifying_63bbd08c')
                     : verification.whole
-                      ? 'Check the whole chain again'
-                      : 'Verify the whole chain'}
+                      ? tc('console.check_the_whole_chain_again_41ea9972')
+                      : tc('console.verify_the_whole_chain_89e70b76')}
             </Button>
         </output>
     );

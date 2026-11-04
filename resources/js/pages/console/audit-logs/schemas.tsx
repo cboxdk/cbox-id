@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { relativeTime } from '@/lib/time';
@@ -40,23 +41,27 @@ export default function AuditLogSchemas({
     eventsHref,
     help,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <>
             <PageHeader
                 help={help}
-                description="A schema says what an action's events must look like — which target types they name and what their metadata holds. Events of an action with a schema are checked when they arrive; without one they are accepted as sent, unless strict mode is on."
+                description={tc('console.a_schema_says_what_an_action_s_events_must_l_d27be344')}
                 actions={
                     <div className="flex items-center gap-2">
                         <Button asChild>
                             <Link href={eventsHref}>
                                 <Icon name="arrow-left" className="w-4 h-4" />
-                                Events
+                                {tc('console.events_8d14f6e7')}
                             </Link>
                         </Button>
                         <Button asChild variant="primary">
                             <Link href={createHref}>
                                 <Icon name="plus" className="w-4 h-4" />
-                                New schema
+                                {tc('console.new_schema_d5c1fa19')}
                             </Link>
                         </Button>
                     </div>
@@ -73,12 +78,14 @@ export default function AuditLogSchemas({
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New schema
+                                        {tc('console.new_schema_d5c1fa19')}
                                     </Link>
                                 </Button>
                             }
-                            title="No schemas yet"
-                            description="Every action is accepted as your app sends it. Add a schema for an action to have its events checked on arrival — a consistent log is decided when an event is written, not when somebody reads it."
+                            title={tc('console.no_schemas_yet_5d0ea9f3')}
+                            description={tc(
+                                'console.every_action_is_accepted_as_your_app_sends_i_fce48faa',
+                            )}
                         />
                     </div>
                 ) : (
@@ -99,7 +106,10 @@ export default function AuditLogSchemas({
                                     <span className="mono text-sm font-medium">
                                         {schema.action}
                                     </span>
-                                    <Badge>v{schema.version}</Badge>
+                                    <Badge>
+                                        {tc('console.v_4c94485e')}
+                                        {schema.version}
+                                    </Badge>
                                     {schema.targets.map((target) => (
                                         <Badge key={target} tone="info">
                                             {target}
@@ -109,7 +119,8 @@ export default function AuditLogSchemas({
                                         className="ml-auto text-xs"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        Updated {relativeTime(schema.updatedAt)}
+                                        {tc('console.updated_a919c7c2')}
+                                        {relativeTime(schema.updatedAt, locale)}
                                     </span>
                                 </Link>
                             </li>
@@ -120,9 +131,11 @@ export default function AuditLogSchemas({
 
             {unschematized.length > 0 && (
                 <section className="mt-8">
-                    <h2 className="text-sm font-semibold">Recent actions without a schema</h2>
+                    <h2 className="text-sm font-semibold">
+                        {tc('console.recent_actions_without_a_schema_fee7781b')}
+                    </h2>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                        Seen among the newest events. Each is accepted as sent until it has one.
+                        {tc('console.seen_among_the_newest_events_each_is_accepte_1b4df3ab')}
                     </p>
                     <ul className="mt-3 flex flex-wrap gap-2">
                         {unschematized.map((seen) => (
@@ -147,6 +160,8 @@ export default function AuditLogSchemas({
 }
 
 function SettingsForm({ settings }: { settings: Props['settings'] }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         retentionDays: settings.retentionDays,
         strictSchemas: settings.strictSchemas,
@@ -155,7 +170,9 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
 
     return (
         <section className="mt-10 card p-5">
-            <h2 className="text-sm font-semibold">Retention and strict mode</h2>
+            <h2 className="text-sm font-semibold">
+                {tc('console.retention_and_strict_mode_bd4d0e96')}
+            </h2>
             <form
                 className="mt-4 grid gap-4"
                 onSubmit={(event) => {
@@ -164,12 +181,12 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
                 }}
             >
                 <Field
-                    label="Keep events for (days)"
+                    label={tc('console.keep_events_for_days_84ce0a6f')}
                     error={form.errors.retentionDays}
                     hint={
                         shortening
-                            ? 'Shorter than today: events older than this are deleted for good at the next daily prune, for every organization.'
-                            : 'Counted from when each event arrived. 1 to 3650.'
+                            ? tc('console.shorter_than_today_events_older_than_this_ar_8cf235f8')
+                            : tc('console.counted_from_when_each_event_arrived_1_to_36_d2725cda')
                     }
                 >
                     <Input
@@ -189,8 +206,8 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
                 <Checkbox
                     checked={form.data.strictSchemas}
                     onCheckedChange={(checked) => form.setData('strictSchemas', checked)}
-                    label="Strict mode"
-                    hint="Refuse events whose action has no schema. Turn on once every action your app sends has one."
+                    label={tc('console.strict_mode_9f19fe13')}
+                    hint={tc('console.refuse_events_whose_action_has_no_schema_tur_c5af42c9')}
                 />
                 {form.errors.strictSchemas !== undefined && (
                     <p role="alert" className="field-error">
@@ -204,7 +221,7 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
                         loading={form.processing}
                         disabled={!form.isDirty}
                     >
-                        Save settings
+                        {tc('console.save_settings_7f3a3b14')}
                     </Button>
                 </div>
             </form>

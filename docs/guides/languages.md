@@ -23,8 +23,13 @@ invitations and email confirmation, the OAuth consent screen and organization pi
 the device sign-in page a TV's QR code opens ([Sign in on TVs and devices](sign-in-on-tvs-and-devices.md)),
 the Admin Portal, the error pages, and the emails those flows send.
 
-The **admin console stays in English**, whatever language your browser prefers. So does
-the console's own "confirm it's you" prompt, both the dialog and the full-page screen.
+The **signed-in app, including organization and platform administration, supports Danish
+and English**. Choose **Dansk** or **English** in your account menu. The choice is remembered
+in this browser for a year, independently of the hosted sign-in language and its environment
+policy. Without a console preference, the existing hosted preference or the browser's first
+supported language is used, falling back to English. The console's confirmation prompts,
+validation, dates and numbers follow the selected language. Customer names, credentials,
+permission identifiers and code examples retain their original values.
 
 ## How a visitor's language is chosen
 

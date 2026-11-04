@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -39,6 +40,8 @@ export default function CreateRoleConflict({
     indexHref,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         description: '',
@@ -83,10 +86,14 @@ export default function CreateRoleConflict({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Role conflicts" />
+            <Breadcrumb href={indexHref} label={tc('console.role_conflicts_1f4cf2a5')} />
 
             <div className="mt-2">
-                <PageHeader description="Name two or more roles that must never sit with the same person. New grants that would break the rule are blocked from the moment you save it." />
+                <PageHeader
+                    description={tc(
+                        'console.name_two_or_more_roles_that_must_never_sit_w_34e75840',
+                    )}
+                />
             </div>
 
             <form
@@ -100,22 +107,32 @@ export default function CreateRoleConflict({
                 <Panel>
                     <div className="space-y-4">
                         <Field
-                            label="Rule name"
-                            hint="Name the conflict the way an auditor would — “Raise payment vs. approve payment”."
+                            label={tc('console.rule_name_7c9de4e8')}
+                            hint={tc(
+                                'console.name_the_conflict_the_way_an_auditor_would_r_f77c6fe4',
+                            )}
                             error={form.errors.name}
                         >
                             <Input
                                 name="name"
-                                placeholder="Raise payment vs. approve payment"
+                                placeholder={tc(
+                                    'console.raise_payment_vs_approve_payment_7a4d69f3',
+                                )}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
 
-                        <Field label="Description" optional error={form.errors.description}>
+                        <Field
+                            label={tc('console.description_526e0087')}
+                            optional
+                            error={form.errors.description}
+                        >
                             <Input
                                 name="description"
-                                placeholder="Nobody may both raise and approve the same payment."
+                                placeholder={tc(
+                                    'console.nobody_may_both_raise_and_approve_the_same_p_37b3c7fc',
+                                )}
                                 value={form.data.description}
                                 onChange={(event) =>
                                     form.setData('description', event.target.value)
@@ -130,8 +147,12 @@ export default function CreateRoleConflict({
                                     onCheckedChange={(checked) =>
                                         form.setData('environmentWide', checked)
                                     }
-                                    label="Apply it to every organization in this environment"
-                                    hint="An environment-wide rule binds every organization here, and is not theirs to switch off."
+                                    label={tc(
+                                        'console.apply_it_to_every_organization_in_this_envir_d0de9d65',
+                                    )}
+                                    hint={tc(
+                                        'console.an_environment_wide_rule_binds_every_organiz_1ad966cf',
+                                    )}
                                 />
                                 {form.errors.environmentWide !== undefined && (
                                     <p className="field-error" role="alert">
@@ -146,26 +167,34 @@ export default function CreateRoleConflict({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint="Whose rule it is — or tick the box above to apply it to every organization."
+                                hint={tc(
+                                    'console.whose_rule_it_is_or_tick_the_box_above_to_ap_82370728',
+                                )}
                             />
                         )}
                     </div>
                 </Panel>
 
                 <Panel
-                    title="Conflicting roles"
-                    description="At least two — a set of one conflicts with nothing and would block no grant at all."
+                    title={tc('console.conflicting_roles_60210f0e')}
+                    description={tc(
+                        'console.at_least_two_a_set_of_one_conflicts_with_not_e7fb65cd',
+                    )}
                 >
                     <div className="space-y-3">
                         <Input
                             type="search"
-                            aria-label="Search roles"
-                            placeholder="Search roles by name"
+                            aria-label={tc('console.search_roles_848b9c5d')}
+                            placeholder={tc('console.search_roles_by_name_77a26efe')}
                             value={term}
                             onChange={(event) => setTerm(event.target.value)}
                         />
                         <output className="sr-only">
-                            {roles.length} {roles.length === 1 ? 'role' : 'roles'} shown.
+                            {roles.length}{' '}
+                            {roles.length === 1
+                                ? tc('console.role_4b168d88')
+                                : tc('console.roles_66cf5513')}
+                            {tc('console.shown_d2edca72')}
                         </output>
 
                         <div
@@ -181,13 +210,19 @@ export default function CreateRoleConflict({
                                     icon="shield"
                                     title={
                                         term === ''
-                                            ? 'No roles to combine yet'
-                                            : `No role matches “${term}”`
+                                            ? tc('console.no_roles_to_combine_yet_e1a3c1bd')
+                                            : tc('console.no_role_matches_value0_e7c4a578', {
+                                                  value0: term,
+                                              })
                                     }
                                     description={
                                         term === ''
-                                            ? 'A conflict is written over roles, so there is nothing to write one about yet. Define the roles first.'
-                                            : 'Try a different search — roles already ticked stay in this list whatever you type.'
+                                            ? tc(
+                                                  'console.a_conflict_is_written_over_roles_so_there_is_1ee9ecc5',
+                                              )
+                                            : tc(
+                                                  'console.try_a_different_search_roles_already_ticked__82c5a227',
+                                              )
                                     }
                                 />
                             ) : (
@@ -204,8 +239,11 @@ export default function CreateRoleConflict({
 
                         {roles.length === pickerLimit && (
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                Showing the first {pickerLimit}. Search to reach the rest — anything
-                                you have already ticked stays on the list.
+                                {tc('console.showing_the_first_92eb9ae1')}
+                                {pickerLimit}
+                                {tc(
+                                    'console.search_to_reach_the_rest_anything_you_have_a_6601bcac',
+                                )}
                             </p>
                         )}
 
@@ -219,10 +257,10 @@ export default function CreateRoleConflict({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Define rule
+                        {tc('console.define_rule_37b96dbf')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -66,6 +67,10 @@ export default function WebhookDetail({
     indexHref,
     urls,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     /*
      * THE PLAINTEXT SECRET, on the flash channel and nowhere else.
      *
@@ -98,7 +103,7 @@ export default function WebhookDetail({
         <>
             <div className="space-y-6">
                 <div>
-                    <Breadcrumb href={indexHref} label="Webhooks" />
+                    <Breadcrumb href={indexHref} label={tc('console.webhooks_45808d75')} />
 
                     <div className="mt-2 flex items-center gap-3 flex-wrap">
                         <h1
@@ -108,9 +113,11 @@ export default function WebhookDetail({
                             {endpoint.url}
                         </h1>
                         <Pill tone={endpoint.active ? 'success' : 'warning'}>
-                            {endpoint.active ? 'Active' : 'Paused'}
+                            {endpoint.active
+                                ? tc('console.active_92340695')
+                                : tc('console.paused_e159b061')}
                         </Pill>
-                        <Badge>{endpoint.owner ?? 'All organizations'}</Badge>
+                        <Badge>{endpoint.owner ?? tc('console.all_organizations_e3002b23')}</Badge>
                         <Badge>{signatureSchemeLabels[endpoint.signatureScheme]}</Badge>
                     </div>
 
@@ -144,7 +151,9 @@ export default function WebhookDetail({
                                     className="text-sm font-semibold"
                                     style={{ color: 'var(--warning-strong)' }}
                                 >
-                                    Copy this signing secret now — it won't be shown again.
+                                    {tc(
+                                        'console.copy_this_signing_secret_now_it_won_t_be_sho_2331f9ee',
+                                    )}
                                 </p>
                                 <p className="mt-3 mono text-sm break-all select-all">
                                     {newSecret}
@@ -153,8 +162,9 @@ export default function WebhookDetail({
                                     className="mt-3 text-xs"
                                     style={{ color: 'var(--warning-strong)' }}
                                 >
-                                    Every delivery carries an HMAC computed with this secret —
-                                    verify it before you trust the payload.
+                                    {tc(
+                                        'console.every_delivery_carries_an_hmac_computed_with_9e1a90b1',
+                                    )}
                                 </p>
                                 <div className="mt-3">
                                     <CopyButton value={newSecret} />
@@ -166,13 +176,13 @@ export default function WebhookDetail({
                                 className="shrink-0"
                                 onClick={() => setSecretVisible(false)}
                             >
-                                Dismiss
+                                {tc('console.dismiss_48845bff')}
                             </Button>
                         </div>
                     </div>
                 )}
 
-                <Panel title="Subscription">
+                <Panel title={tc('console.subscription_4999c6c6')}>
                     {mayManage ? (
                         <form
                             className="space-y-4"
@@ -181,7 +191,11 @@ export default function WebhookDetail({
                                 form.patch(urls.update, { preserveScroll: true });
                             }}
                         >
-                            <Field label="Endpoint URL" error={form.errors.url} required>
+                            <Field
+                                label={tc('console.endpoint_url_2578179d')}
+                                error={form.errors.url}
+                                required
+                            >
                                 <Input
                                     type="url"
                                     className="mono"
@@ -191,7 +205,9 @@ export default function WebhookDetail({
                             </Field>
 
                             <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-                                <legend className="label">Event types</legend>
+                                <legend className="label">
+                                    {tc('console.event_types_8f338cc0')}
+                                </legend>
 
                                 <div
                                     style={{
@@ -221,7 +237,7 @@ export default function WebhookDetail({
                             </fieldset>
 
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                Save changes
+                                {tc('console.save_changes_dd0ae7a5')}
                             </Button>
                         </form>
                     ) : (
@@ -237,8 +253,9 @@ export default function WebhookDetail({
                                 className="mt-4 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                This endpoint belongs to the environment and receives every
-                                organization's events, including yours. Your operator manages it.
+                                {tc(
+                                    'console.this_endpoint_belongs_to_the_environment_and_f1dc8df9',
+                                )}
                             </p>
                         </>
                     )}
@@ -247,29 +264,33 @@ export default function WebhookDetail({
                 {mayManage && (
                     <>
                         <Panel
-                            title="Signing secret"
-                            description="The secret signs every delivery's HMAC. It is stored sealed and can't be retrieved — rotating issues a new one, shown once."
+                            title={tc('console.signing_secret_e7ee22e1')}
+                            description={tc(
+                                'console.the_secret_signs_every_delivery_s_hmac_it_is_830c30dd',
+                            )}
                         >
                             <Button
                                 size="sm"
                                 icon="refresh"
                                 onClick={() => setConfirming('rotate')}
                             >
-                                Rotate secret
+                                {tc('console.rotate_secret_4405518d')}
                             </Button>
                         </Panel>
 
                         <Panel
-                            title="Signature scheme"
-                            description="Which headers every delivery carries. Changing it issues no new secret: the one you hold signs either way."
+                            title={tc('console.signature_scheme_c432c67a')}
+                            description={tc(
+                                'console.which_headers_every_delivery_carries_changin_5a2ff32e',
+                            )}
                         >
                             <div className="space-y-4">
                                 <RadioGroup
-                                    label="Sign deliveries with"
+                                    label={tc('console.sign_deliveries_with_bf5fa8db')}
                                     name="signatureScheme"
                                     value={scheme}
                                     onValueChange={setScheme}
-                                    options={signatureSchemeOptions}
+                                    options={signatureSchemeOptions(tc)}
                                 />
                                 {scheme !== endpoint.signatureScheme && (
                                     <p
@@ -277,10 +298,15 @@ export default function WebhookDetail({
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
                                         {scheme === 'standard_webhooks'
-                                            ? 'Your receiver keeps the same secret. A 64-character hex secret becomes whsec_ followed by the base64 of that hex string — "whsec_" + base64(secret) — and a secret that already starts with whsec_ is used as is.'
-                                            : 'Your receiver keeps the same secret, used exactly as written — including the whsec_ prefix — as the HMAC key for X-Cbox-Signature.'}{' '}
-                                        Update your receiver first: from the next attempt it rejects
-                                        every delivery it cannot verify.
+                                            ? tc(
+                                                  'console.your_receiver_keeps_the_same_secret_a_64_cha_c0d890ee',
+                                              )
+                                            : tc(
+                                                  'console.your_receiver_keeps_the_same_secret_used_exa_431d83f5',
+                                              )}{' '}
+                                        {tc(
+                                            'console.update_your_receiver_first_from_the_next_att_11a2b061',
+                                        )}
                                     </p>
                                 )}
                                 <Button
@@ -288,15 +314,15 @@ export default function WebhookDetail({
                                     disabled={scheme === endpoint.signatureScheme}
                                     onClick={() => setConfirming('scheme')}
                                 >
-                                    Change scheme
+                                    {tc('console.change_scheme_6816bb41')}
                                 </Button>
                             </div>
                         </Panel>
 
-                        <Panel title="Recent deliveries">
+                        <Panel title={tc('console.recent_deliveries_9d067ec8')}>
                             {deliveries.length === 0 ? (
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                    No deliveries yet.
+                                    {tc('console.no_deliveries_yet_835fd2f4')}
                                 </p>
                             ) : (
                                 <div className="space-y-2">
@@ -314,13 +340,24 @@ export default function WebhookDetail({
                                                     className="text-xs"
                                                     style={{ color: 'var(--faint)' }}
                                                 >
-                                                    Attempt {delivery.attempt}
+                                                    {tc('console.attempt_51c78c77')}
+                                                    {delivery.attempt}
                                                     {delivery.responseCode !== null &&
                                                         ` · HTTP ${delivery.responseCode}`}
                                                     {delivery.deliveredAt !== null
-                                                        ? ` · delivered ${relativeTime(delivery.deliveredAt)}`
+                                                        ? tc('console.delivered_value0_78c6d946', {
+                                                              value0: relativeTime(
+                                                                  delivery.deliveredAt,
+                                                                  locale,
+                                                              ),
+                                                          })
                                                         : delivery.nextRetryAt !== null
-                                                          ? ` · retry ${relativeTime(delivery.nextRetryAt)}`
+                                                          ? tc('console.retry_value0_31685fff', {
+                                                                value0: relativeTime(
+                                                                    delivery.nextRetryAt,
+                                                                    locale,
+                                                                ),
+                                                            })
                                                           : ''}
                                                 </p>
                                             </div>
@@ -330,7 +367,7 @@ export default function WebhookDetail({
                                                 className="shrink-0"
                                             >
                                                 {delivery.delivered
-                                                    ? 'Delivered'
+                                                    ? tc('console.delivered_90611565')
                                                     : capitalise(delivery.status)}
                                             </Pill>
                                         </div>
@@ -339,7 +376,7 @@ export default function WebhookDetail({
                             )}
                         </Panel>
 
-                        <Panel title="Lifecycle">
+                        <Panel title={tc('console.lifecycle_46459b1f')}>
                             <div className="flex flex-wrap gap-2">
                                 {/*
                                     Pause and resume get a plain button, not a typed
@@ -354,7 +391,7 @@ export default function WebhookDetail({
                                             router.post(urls.pause, {}, { preserveScroll: true })
                                         }
                                     >
-                                        Pause
+                                        {tc('console.pause_858e4ba7')}
                                     </Button>
                                 ) : (
                                     <Button
@@ -363,7 +400,7 @@ export default function WebhookDetail({
                                             router.post(urls.resume, {}, { preserveScroll: true })
                                         }
                                     >
-                                        Resume
+                                        {tc('console.resume_d640c742')}
                                     </Button>
                                 )}
 
@@ -372,7 +409,7 @@ export default function WebhookDetail({
                                     variant="danger"
                                     onClick={() => setConfirming('delete')}
                                 >
-                                    Delete endpoint
+                                    {tc('console.delete_endpoint_6772d678')}
                                 </Button>
                             </div>
                         </Panel>
@@ -384,9 +421,9 @@ export default function WebhookDetail({
                 open={confirming === 'rotate'}
                 onOpenChange={(open) => setConfirming(open ? 'rotate' : null)}
                 name={endpoint.url}
-                verb="Rotate secret"
-                title="Rotate this endpoint's signing secret?"
-                consequence="The current signing secret stops verifying immediately and cannot be recovered — your receiver rejects every delivery until it is updated."
+                verb={tc('console.rotate_secret_4405518d')}
+                title={tc('console.rotate_this_endpoint_s_signing_secret_18226fc7')}
+                consequence={tc('console.the_current_signing_secret_stops_verifying_i_54edeb63')}
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.rotate);
@@ -397,9 +434,11 @@ export default function WebhookDetail({
                 open={confirming === 'scheme'}
                 onOpenChange={(open) => setConfirming(open ? 'scheme' : null)}
                 name={endpoint.url}
-                verb="Change scheme"
-                title={`Sign this endpoint's deliveries with ${signatureSchemeLabels[scheme]}?`}
-                consequence="No new secret is issued. From the next attempt — retries included — deliveries carry the other scheme's headers, and a receiver that has not been updated rejects every one of them."
+                verb={tc('console.change_scheme_6816bb41')}
+                title={tc('console.sign_this_endpoint_s_deliveries_with_value0_34d681d1', {
+                    value0: signatureSchemeLabels[scheme],
+                })}
+                consequence={tc('console.no_new_secret_is_issued_from_the_next_attemp_eba13c7b')}
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.scheme, { signatureScheme: scheme }, { preserveScroll: true });
@@ -410,7 +449,7 @@ export default function WebhookDetail({
                 open={confirming === 'delete'}
                 onOpenChange={(open) => setConfirming(open ? 'delete' : null)}
                 name={endpoint.url}
-                consequence="This endpoint stops receiving events and its delivery history is dropped. This cannot be undone."
+                consequence={tc('console.this_endpoint_stops_receiving_events_and_its_b6a65cf3')}
                 onConfirm={() => {
                     setConfirming(null);
                     router.delete(urls.destroy);

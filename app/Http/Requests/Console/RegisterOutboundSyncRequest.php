@@ -50,9 +50,9 @@ final class RegisterOutboundSyncRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'tokenUrl' => 'token URL',
-            'clientId' => 'client ID',
-            'baseUrl' => 'SCIM base URL',
+            'tokenUrl' => __('console.token_url_15398375'),
+            'clientId' => __('console.client_id_2130ce24'),
+            'baseUrl' => __('console.scim_base_url_be8fb61f'),
         ];
     }
 
