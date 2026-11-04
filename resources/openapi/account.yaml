@@ -39,20 +39,29 @@ security:
   -
     PersonToken: []
 tags:
-  - name: Profile
-  - name: Sessions
-  - name: Applications
+  -
+    name: Profile
+  -
+    name: Sessions
+  -
+    name: Applications
     description: 'The applications you let act as you.'
-  - name: 'API keys'
+  -
+    name: 'API keys'
     description: 'Your own keys for the apps built on this environment.'
-  - name: 'Sign-in methods'
-  - name: Devices
+  -
+    name: 'Sign-in methods'
+  -
+    name: Devices
     description: 'Your trusted devices, which approve sign-ins and agent requests.'
-  - name: Approvals
+  -
+    name: Approvals
     description: "Where a held operation's approval stands."
-  - name: Organizations
+  -
+    name: Organizations
     description: 'The organizations you are a member of — and leaving one.'
-  - name: 'Connected services'
+  -
+    name: 'Connected services'
 paths:
   '/me/action-approvals/{id}':
     get:
@@ -117,8 +126,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -153,8 +164,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -183,8 +196,10 @@ paths:
       x-scope: 'account:profile:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -220,8 +235,10 @@ paths:
       x-scope: 'account:sign_in:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -254,8 +271,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -336,8 +355,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -374,8 +395,10 @@ paths:
             type: string
             description: 'The organization you are leaving — one you are a member of.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -410,8 +433,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -445,8 +470,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -506,8 +533,10 @@ paths:
             type: string
             description: "The provider's key, for example `github`."
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -536,8 +565,10 @@ paths:
       x-scope: 'account:profile:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -587,8 +618,10 @@ paths:
       x-scope: 'account:sessions:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -630,8 +663,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -667,8 +702,10 @@ paths:
           schema:
             type: string
             description: "The linked identity's id, as My account lists it."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -704,8 +741,10 @@ paths:
           schema:
             type: string
             description: "The provider's key, for example `google`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.

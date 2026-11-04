@@ -77,41 +77,76 @@ security:
   -
     EnvironmentApiKey: []
 tags:
-  - name: Organizations
-  - name: Members
-  - name: Invitations
-  - name: Roles
-  - name: Users
-  - name: Applications
-  - name: APIs
-  - name: 'API keys'
-  - name: 'Support sessions'
-  - name: Devices
-  - name: Approvals
-  - name: Governance
-  - name: 'Audit log'
-  - name: 'App audit logs'
-  - name: Branding
-  - name: 'Directory Sync'
-  - name: Domains
-  - name: Events
-  - name: 'Feature flags'
-  - name: 'Fine-grained authorization'
-  - name: 'Publishable keys'
-  - name: Hooks
-  - name: 'Secret keys'
-  - name: 'Legacy login'
-  - name: 'Log streams'
-  - name: 'Admin Portal'
-  - name: Pipes
-  - name: 'Outbound provisioning'
-  - name: Radar
-  - name: 'SAML apps'
-  - name: Sign-in
-  - name: 'Enterprise SSO'
-  - name: 'Token vault'
-  - name: 'User properties'
-  - name: Webhooks
+  -
+    name: Organizations
+  -
+    name: Members
+  -
+    name: Invitations
+  -
+    name: Roles
+  -
+    name: Users
+  -
+    name: Applications
+  -
+    name: APIs
+  -
+    name: 'API keys'
+  -
+    name: 'Support sessions'
+  -
+    name: Devices
+  -
+    name: Approvals
+  -
+    name: Governance
+  -
+    name: 'Audit log'
+  -
+    name: 'App audit logs'
+  -
+    name: Branding
+  -
+    name: 'Directory Sync'
+  -
+    name: Domains
+  -
+    name: Events
+  -
+    name: 'Feature flags'
+  -
+    name: 'Fine-grained authorization'
+  -
+    name: 'Publishable keys'
+  -
+    name: Hooks
+  -
+    name: 'Secret keys'
+  -
+    name: 'Legacy login'
+  -
+    name: 'Log streams'
+  -
+    name: 'Admin Portal'
+  -
+    name: Pipes
+  -
+    name: 'Outbound provisioning'
+  -
+    name: Radar
+  -
+    name: 'SAML apps'
+  -
+    name: Sign-in
+  -
+    name: 'Enterprise SSO'
+  -
+    name: 'Token vault'
+  -
+    name: 'User properties'
+  -
+    name: Webhooks
 paths:
   /access-reviews:
     post:
@@ -124,9 +159,12 @@ paths:
       x-scope: 'governance:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -226,8 +264,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -292,8 +332,10 @@ paths:
               - 'null'
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -343,9 +385,12 @@ paths:
           schema:
             type: string
             description: "The review's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -436,8 +481,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -499,9 +546,12 @@ paths:
           schema:
             type: string
             description: "The item's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -573,7 +623,8 @@ paths:
         Any key may poll the approvals it raised, and only those: another key's id is a 404.
         `status` is `pending`, `approved`, `denied`, `expired` or `consumed`.
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       responses:
         200:
           description: OK
@@ -631,8 +682,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -686,9 +739,12 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -725,10 +781,14 @@ paths:
         already-revoked key is a 204 too. Recorded as `api_key.revoked`, with this
         management key as the actor.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -760,10 +820,14 @@ paths:
       summary: 'List registered APIs'
       description: 'Requires scope `apis:read`.'
       parameters:
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -806,9 +870,12 @@ paths:
         - APIs
       summary: 'Register an API and its scopes'
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -888,9 +955,12 @@ paths:
       summary: 'Get an API'
       description: 'Requires scope `apis:read`.'
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -933,9 +1003,12 @@ paths:
         updated, scopes left out are removed. All or nothing. The identifier never changes:
         register a new API instead.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -996,9 +1069,12 @@ paths:
         Requires scope `apis:write`. Tokens already minted for it keep their `aud` until they
         expire; apps holding its scope keys keep them as plain scopes.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1048,9 +1124,12 @@ paths:
             type: string
             description: 'The scope key: `tax:assess`.'
             maxLength: 128
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1124,9 +1203,12 @@ paths:
             type: string
             description: 'The scope key.'
             maxLength: 128
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1197,7 +1279,8 @@ paths:
         -
           AuthenticatorToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       responses:
         200:
           description: OK
@@ -1229,7 +1312,8 @@ paths:
         -
           AuthenticatorToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       responses:
         200:
           description: Approved.
@@ -1258,7 +1342,8 @@ paths:
         -
           AuthenticatorToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       responses:
         200:
           description: Denied.
@@ -1286,10 +1371,14 @@ paths:
       operationId: apps_list
       x-action: apps.list
       parameters:
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1351,9 +1440,12 @@ paths:
       operationId: apps_create
       x-action: apps.create
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1470,9 +1562,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1516,8 +1611,10 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1566,9 +1663,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1642,9 +1742,12 @@ paths:
       operationId: apps_blueprint
       x-action: apps.blueprint
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1694,9 +1797,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1774,9 +1880,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1844,9 +1953,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1900,9 +2012,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -1965,9 +2080,12 @@ paths:
       operationId: apps_secrets_list
       x-action: apps.secrets.list
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2021,9 +2139,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2099,9 +2220,12 @@ paths:
             type: string
             description: "The secret's id, from `GET /apps/{id}/secrets`."
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2146,9 +2270,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2215,9 +2342,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2288,9 +2418,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2355,9 +2488,12 @@ paths:
           schema:
             type: string
             description: "The app's id, or its `client_id`."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2459,8 +2595,10 @@ paths:
             type: string
             description: "Only this organization's entries."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2510,9 +2648,12 @@ paths:
       x-scope: 'audit_logs:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2735,8 +2876,10 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
             maxLength: 200
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2786,9 +2929,12 @@ paths:
       x-scope: 'audit_logs:export'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2877,8 +3023,10 @@ paths:
             type: string
             description: 'The export id.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -2923,9 +3071,12 @@ paths:
       x-scope: 'audit_logs:manage'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3023,8 +3174,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3080,9 +3233,12 @@ paths:
             type: string
             description: 'The action whose schema to delete.'
             maxLength: 190
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3125,8 +3281,10 @@ paths:
             type: string
             description: 'The action, e.g. `invoice.voided`.'
             maxLength: 190
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3176,9 +3334,12 @@ paths:
             type: string
             description: 'The action whose schema to replace.'
             maxLength: 190
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3257,8 +3418,10 @@ paths:
       x-scope: 'audit_logs:read'
       x-danger: read
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3300,9 +3463,12 @@ paths:
       x-scope: 'audit_logs:manage'
       x-danger: destructive
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3387,8 +3553,10 @@ paths:
             description: 'Verify at most this many events. Default 10,000.'
             minimum: 1
             maximum: 10000
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3441,8 +3609,10 @@ paths:
             type: string
             description: "Read this organization's theme. Left out, the environment default."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3484,9 +3654,12 @@ paths:
       x-scope: 'branding:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3616,8 +3789,10 @@ paths:
             type: string
             description: "Read this organization's branding. Left out, the environment default."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3661,9 +3836,12 @@ paths:
       x-scope: 'branding:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -3905,7 +4083,8 @@ paths:
         -
           AuthenticatorToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       responses:
         204:
           description: Removed.
@@ -3928,9 +4107,12 @@ paths:
       x-scope: 'directory_sync:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4018,8 +4200,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4067,9 +4251,12 @@ paths:
       x-scope: 'directory_sync:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4161,9 +4348,12 @@ paths:
       x-scope: 'directory_sync:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4307,9 +4497,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4376,8 +4569,10 @@ paths:
               - 'null'
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4426,9 +4621,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4501,9 +4699,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4618,9 +4819,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4726,8 +4930,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4782,9 +4988,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4851,9 +5060,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -4925,9 +5137,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5031,9 +5246,12 @@ paths:
           schema:
             type: string
             description: "The directory's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5163,9 +5381,12 @@ paths:
       x-scope: 'domains:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5222,8 +5443,10 @@ paths:
       x-scope: 'domains:read'
       x-danger: read
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5265,9 +5488,12 @@ paths:
       x-scope: 'domains:write'
       x-danger: destructive
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5303,9 +5529,12 @@ paths:
       x-scope: 'domains:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5383,8 +5612,10 @@ paths:
             type: string
             description: "Only this organization's events."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5434,9 +5665,12 @@ paths:
       x-scope: 'feature_flags:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5557,8 +5791,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5622,8 +5858,10 @@ paths:
             type: string
             description: 'The organization the question is asked in.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5673,9 +5911,12 @@ paths:
           schema:
             type: string
             description: "The flag's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5717,8 +5958,10 @@ paths:
           schema:
             type: string
             description: "The flag's id."
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5767,9 +6010,12 @@ paths:
           schema:
             type: string
             description: "The flag's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5930,8 +6176,10 @@ paths:
               - 'null'
             description: 'A `consistency_token` a write returned: the answer is then at least as fresh as that write.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -5996,8 +6244,10 @@ paths:
               - 'null'
             description: 'A `consistency_token` a write returned: the answer is then at least as fresh as that write.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6105,8 +6355,10 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
             maxLength: 128
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6154,8 +6406,10 @@ paths:
       x-scope: 'fga:read'
       x-danger: read
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6197,9 +6451,12 @@ paths:
       x-scope: 'fga:schema'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6265,8 +6522,10 @@ paths:
             type: string
             description: 'The schema to check, in the schema language.'
             maxLength: 65536
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6366,8 +6625,10 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
             maxLength: 128
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6478,8 +6739,10 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6526,9 +6789,12 @@ paths:
       x-scope: 'fga:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6628,9 +6894,12 @@ paths:
       x-scope: 'fga:write'
       x-danger: destructive
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6730,9 +6999,12 @@ paths:
       x-scope: 'frontend_keys:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6819,8 +7091,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6875,9 +7149,12 @@ paths:
           schema:
             type: string
             description: "The key's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6920,9 +7197,12 @@ paths:
           schema:
             type: string
             description: "The key's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -6984,9 +7264,12 @@ paths:
       x-scope: 'hooks:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7080,8 +7363,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7138,9 +7423,12 @@ paths:
           schema:
             type: string
             description: 'The hook id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7184,8 +7472,10 @@ paths:
           schema:
             type: string
             description: 'The hook id.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7236,9 +7526,12 @@ paths:
           schema:
             type: string
             description: 'The hook id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7297,9 +7590,12 @@ paths:
       x-scope: 'keys:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7410,8 +7706,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7466,9 +7764,12 @@ paths:
           schema:
             type: string
             description: 'The key to revoke.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7511,9 +7812,12 @@ paths:
           schema:
             type: string
             description: 'The key to rotate.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7570,8 +7874,10 @@ paths:
       x-scope: 'signin:read'
       x-danger: read
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7614,9 +7920,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7661,9 +7970,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7722,9 +8034,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7769,9 +8084,12 @@ paths:
       x-scope: 'log_streams:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -7983,8 +8301,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8041,9 +8361,12 @@ paths:
           schema:
             type: string
             description: 'The log stream id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8087,8 +8410,10 @@ paths:
           schema:
             type: string
             description: 'The log stream id.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8139,9 +8464,12 @@ paths:
           schema:
             type: string
             description: 'The log stream id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8339,9 +8667,12 @@ paths:
           schema:
             type: string
             description: "The log stream's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8565,8 +8896,10 @@ paths:
         Requires scope `organizations:read`. A page at a time, archived ones included. Narrow
         with `q` (a fragment of the name or slug) or `status`.
       parameters:
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
         -
           name: q
           in: query
@@ -8584,8 +8917,10 @@ paths:
               - active
               - suspended
               - deleted
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8629,9 +8964,12 @@ paths:
       summary: 'Create an organization, optionally with its owner'
       description: 'Requires scope `organizations:write`.'
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8723,9 +9061,12 @@ paths:
       summary: 'Get an organization'
       description: 'Requires scope `organizations:read`.'
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8767,10 +9108,14 @@ paths:
         A change is announced as the `organization.updated` webhook and recorded on the
         organization's trail as `organization.renamed`, with the values before and after.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8845,10 +9190,14 @@ paths:
         Refused with `409 owns_products` for an organization that owns identity-provider
         projects on this platform (a platform customer, not a tenant of your app).
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8901,9 +9250,12 @@ paths:
             type: string
             description: 'The organization id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -8956,9 +9308,12 @@ paths:
             type: string
             description: 'The organization id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9008,10 +9363,14 @@ paths:
 
         Refusals: `422 not_a_member`, `409 not_active`, `409 already_owner`.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9071,17 +9430,22 @@ paths:
         Requires scope `api_keys:read`. Revoked and expired keys are included, marked by
         `status`. Never the key itself. Narrow to one app with `?client_id=`.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
         -
           name: client_id
           in: query
           required: false
           schema:
             type: string
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9129,9 +9493,12 @@ paths:
         Requires scope `organizations:read`. Verified or not, each with the DNS TXT record
         that proves it (`record_name`, `record_value`). A handful at most; not paged.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9183,9 +9550,12 @@ paths:
             type: string
             description: 'The organization id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9259,9 +9629,12 @@ paths:
             type: string
             description: "The claimed domain's id."
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9313,9 +9686,12 @@ paths:
             type: string
             description: "The claimed domain's id."
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9388,9 +9764,12 @@ paths:
             type: string
             description: "The claimed domain's id."
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9433,11 +9812,16 @@ paths:
       summary: "List an organization's pending invitations"
       description: 'Requires scope `invitations:read`. Pending and unexpired only.'
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9501,10 +9885,14 @@ paths:
         `422 return_without_app`, `422 return_to_malformed`, `422 return_to_not_registered`,
         `503 mail_failed` (nothing was created — retry).
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9590,11 +9978,16 @@ paths:
         Requires scope `invitations:write`. The link stops working, and the roles parked
         for it go with it. `409 not_pending` for one already accepted, withdrawn or expired.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/InvitationId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/InvitationId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9637,11 +10030,16 @@ paths:
         One re-send per address per minute (`429 too_soon`); `409 not_pending` for one that
         was accepted, withdrawn or has expired; `503 mail_failed` keeps the invitation.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/InvitationId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/InvitationId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9688,11 +10086,16 @@ paths:
       summary: "List an organization's members"
       description: 'Requires scope `members:read`. Every membership, whatever its status, oldest first.'
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9752,10 +10155,14 @@ paths:
         existing membership. A member on a *different* role is `409 already_member` — change
         the role with `PATCH`.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9838,11 +10245,16 @@ paths:
         Requires scope `members:write`. `role` is `admin` or `member`. Demoting the only
         owner is refused with `409 last_owner` — transfer ownership first.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/UserId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9901,11 +10313,16 @@ paths:
         Requires scope `members:write`. The member's roles in the organization go with the
         membership. Removing the only owner is refused with `409 last_owner`.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/UserId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -9944,10 +10361,14 @@ paths:
         everywhere in the environment (staff) are listed under
         `/users/{id}/environment-roles`.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/UserId'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10001,13 +10422,20 @@ paths:
         Refusals: `422 role_not_assignable` (another organization's role, or one from an app
         this organization cannot use), `409 role_conflict` (segregation of duties).
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/RoleId'
-        - $ref: '#/components/parameters/RoleClientId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/UserId'
+        -
+          $ref: '#/components/parameters/RoleId'
+        -
+          $ref: '#/components/parameters/RoleClientId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10053,13 +10481,20 @@ paths:
       summary: 'Take a role back from a member'
       description: 'Requires scope `roles:write`. Idempotent — a role the member does not hold is a 204 too.'
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/RoleId'
-        - $ref: '#/components/parameters/RoleClientId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/UserId'
+        -
+          $ref: '#/components/parameters/RoleId'
+        -
+          $ref: '#/components/parameters/RoleClientId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10100,9 +10535,12 @@ paths:
         and where it stands (`status`). Never the link itself: it was shown once, when it was
         minted, and only its hash is kept. Not paged.
       parameters:
-        - $ref: '#/components/parameters/OrganizationId'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10152,9 +10590,12 @@ paths:
             type: string
             description: 'The organization the link sets up.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10208,6 +10649,10 @@ paths:
                     - sv
                     - nb
                     - fr
+                    - fi
+                    - es
+                    - it
+                    - nl
               required:
                 - intents
       responses:
@@ -10265,9 +10710,12 @@ paths:
             type: string
             description: "The portal link's id."
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10305,9 +10753,12 @@ paths:
       x-scope: 'role_definitions:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10418,8 +10869,10 @@ paths:
             type: string
             description: 'Only permissions whose key or description contains this.'
             maxLength: 120
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10475,9 +10928,12 @@ paths:
             type: string
             description: 'The permission id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10522,9 +10978,12 @@ paths:
             type: string
             description: 'The permission id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10586,9 +11045,12 @@ paths:
       x-scope: 'pipes:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10695,8 +11157,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10751,9 +11215,12 @@ paths:
           schema:
             type: string
             description: "The pipe's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10795,8 +11262,10 @@ paths:
           schema:
             type: string
             description: "The pipe's id."
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10845,9 +11314,12 @@ paths:
           schema:
             type: string
             description: "The pipe's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -10957,8 +11429,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11020,9 +11494,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11065,9 +11542,12 @@ paths:
           schema:
             type: string
             description: "The pipe's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11140,9 +11620,12 @@ paths:
             type: string
             description: 'The OAuth client id whose grant is withdrawn.'
             maxLength: 190
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11178,9 +11661,12 @@ paths:
       x-scope: 'provisioning:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11309,8 +11795,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11365,9 +11853,12 @@ paths:
           schema:
             type: string
             description: "The target's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11434,8 +11925,10 @@ paths:
               - 'null'
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11485,9 +11978,12 @@ paths:
           schema:
             type: string
             description: "The target's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11653,8 +12149,10 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page: the decisions older than it.'
             maxLength: 26
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11710,8 +12208,10 @@ paths:
             type: string
             description: "The decision's id."
             maxLength: 26
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11754,9 +12254,12 @@ paths:
       x-scope: 'radar:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11877,8 +12380,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11934,9 +12439,12 @@ paths:
             type: string
             description: "The entry's id."
             maxLength: 26
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -11972,9 +12480,12 @@ paths:
       x-scope: 'radar:manage'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12034,9 +12545,12 @@ paths:
       x-scope: 'radar:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12205,8 +12719,10 @@ paths:
             type: string
             description: 'The `next_cursor` of the previous page.'
             maxLength: 26
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12254,9 +12770,12 @@ paths:
       x-scope: 'radar:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12316,9 +12835,12 @@ paths:
             type: string
             description: "The rule's id."
             maxLength: 26
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12361,8 +12883,10 @@ paths:
             type: string
             description: "The rule's id."
             maxLength: 26
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12412,9 +12936,12 @@ paths:
             type: string
             description: "The rule's id."
             maxLength: 26
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12565,8 +13092,10 @@ paths:
       x-scope: 'radar:read'
       x-danger: read
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12608,9 +13137,12 @@ paths:
       x-scope: 'radar:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12681,8 +13213,10 @@ paths:
           required: false
           schema:
             type: string
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12726,9 +13260,12 @@ paths:
       x-scope: 'role_definitions:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12819,9 +13356,12 @@ paths:
             type: string
             description: 'The role id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12874,8 +13414,10 @@ paths:
             type: string
             description: 'The app whose manifest `key` `id` is.'
             maxLength: 255
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -12925,9 +13467,12 @@ paths:
             type: string
             description: 'The role id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13006,9 +13551,12 @@ paths:
             type: string
             description: 'The permission id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13070,9 +13618,12 @@ paths:
             type: string
             description: 'The permission id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13119,9 +13670,12 @@ paths:
       x-scope: 'saml_apps:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13243,8 +13797,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13299,9 +13855,12 @@ paths:
           schema:
             type: string
             description: "The SAML app's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13343,8 +13902,10 @@ paths:
           schema:
             type: string
             description: "The SAML app's id."
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13393,9 +13954,12 @@ paths:
           schema:
             type: string
             description: "The SAML app's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13509,8 +14073,10 @@ paths:
             type: string
             description: "Read one organization's rules. Left out, the environment baseline."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13552,9 +14118,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13686,9 +14255,12 @@ paths:
             type: string
             description: 'The organization whose override to drop.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13726,9 +14298,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13785,8 +14360,10 @@ paths:
       x-scope: 'signin:read'
       x-danger: read
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -13828,9 +14405,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14159,8 +14739,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14207,9 +14789,12 @@ paths:
       x-scope: 'signin:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14356,9 +14941,12 @@ paths:
             type: string
             description: 'The catalogue key: google, github…'
             maxLength: 100
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14430,8 +15018,10 @@ paths:
             type: string
             description: 'The organization whose sign-in page to resolve. Left out, the plain sign-in page, before anybody has said who they are.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14481,9 +15071,12 @@ paths:
           schema:
             type: string
             description: "The provider's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14540,9 +15133,12 @@ paths:
           schema:
             type: string
             description: "The provider's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14672,9 +15268,12 @@ paths:
           schema:
             type: string
             description: "The provider's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14741,9 +15340,12 @@ paths:
           schema:
             type: string
             description: "The provider's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14803,9 +15405,12 @@ paths:
       x-scope: 'governance:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14912,8 +15517,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -14968,9 +15575,12 @@ paths:
           schema:
             type: string
             description: "The rule's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15037,8 +15647,10 @@ paths:
               - 'null'
             description: 'Only if it binds this organization (its own, or environment-wide); anything else is a 404.'
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15088,9 +15700,12 @@ paths:
           schema:
             type: string
             description: "The rule's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15155,9 +15770,12 @@ paths:
       x-scope: 'sso:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15316,8 +15934,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15372,9 +15992,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15441,8 +16064,10 @@ paths:
               - 'null'
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15491,9 +16116,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15621,9 +16249,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15700,8 +16331,10 @@ paths:
               - 'null'
             description: "Only if it is this organization's; anything else is a 404."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15752,9 +16385,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15833,9 +16469,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15908,9 +16547,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -15977,9 +16619,12 @@ paths:
           schema:
             type: string
             description: "The connection's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16039,9 +16684,12 @@ paths:
       x-scope: 'sso:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16129,8 +16777,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16185,9 +16835,12 @@ paths:
           schema:
             type: string
             description: "The domain's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16245,9 +16898,12 @@ paths:
           schema:
             type: string
             description: "The domain's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16319,9 +16975,12 @@ paths:
           schema:
             type: string
             description: "The domain's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16381,9 +17040,12 @@ paths:
       x-scope: 'sso:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16464,9 +17126,12 @@ paths:
         `apps.manifest`) is left out. Scopes of two registered APIs cannot be audienced to
         one token and are refused before the session starts (`422 invalid_target`).
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16567,9 +17232,12 @@ paths:
             type: string
             description: 'The support session id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16605,9 +17273,12 @@ paths:
       x-scope: 'token_vault:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16706,8 +17377,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16772,8 +17445,10 @@ paths:
               - 'null'
             description: "The organization whose vault this is. Left out: the environment's own secrets, a separate collection."
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16823,9 +17498,12 @@ paths:
           schema:
             type: string
             description: "The secret's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16906,9 +17584,12 @@ paths:
             type: string
             description: 'The OAuth client id whose grant is withdrawn.'
             maxLength: 190
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -16966,9 +17647,12 @@ paths:
           schema:
             type: string
             description: "The secret's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17035,9 +17719,12 @@ paths:
           schema:
             type: string
             description: "The secret's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17110,9 +17797,12 @@ paths:
           schema:
             type: string
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17188,8 +17878,10 @@ paths:
           schema:
             type: string
             maxLength: 64
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17233,8 +17925,10 @@ paths:
         look for somebody: `email` (exactly that address, case-insensitive), `q` (a fragment
         of the address or the name) and `status`. Filters combine.
       parameters:
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/After'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/After'
         -
           name: email
           in: query
@@ -17261,8 +17955,10 @@ paths:
               - active
               - disabled
               - locked
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17306,9 +18002,12 @@ paths:
       summary: 'Create a user'
       description: 'Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link.'
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17378,9 +18077,12 @@ paths:
       summary: 'Get a user'
       description: 'Requires scope `users:read`.'
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17422,10 +18124,14 @@ paths:
         revoked, which reactivating them does not bring back. Returns the user in its new
         `disabled` state. Idempotent. The console's "Deactivate" is this action.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17473,9 +18179,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17535,9 +18244,12 @@ paths:
       summary: 'List the roles a user holds everywhere (staff)'
       description: 'Requires scope `roles:read`.'
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17580,11 +18292,16 @@ paths:
       summary: 'Whether a user holds a role everywhere'
       description: 'Requires scope `roles:read`. `200` with the grant, or `404` when it is not held.'
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/RoleId'
-        - $ref: '#/components/parameters/RoleClientId'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/RoleId'
+        -
+          $ref: '#/components/parameters/RoleClientId'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17630,12 +18347,18 @@ paths:
         grant that would form a segregation-of-duties conflict in any organization the
         person belongs to with `409 role_conflict`.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/RoleId'
-        - $ref: '#/components/parameters/RoleClientId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/RoleId'
+        -
+          $ref: '#/components/parameters/RoleClientId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17679,12 +18402,18 @@ paths:
       summary: 'Take back an environment-wide grant'
       description: 'Requires scope `roles:write`. Idempotent.'
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/RoleId'
-        - $ref: '#/components/parameters/RoleClientId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/RoleId'
+        -
+          $ref: '#/components/parameters/RoleClientId'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17725,9 +18454,12 @@ paths:
           schema:
             type: string
             description: "The user's id."
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17780,9 +18512,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17826,9 +18561,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17872,9 +18610,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -17963,9 +18704,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18009,9 +18753,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18057,9 +18804,12 @@ paths:
         recognise a device and end one (`DELETE /users/{id}/sessions/{session_id}`), not a log.
         `impersonation` marks a session somebody else opened as this person.
       parameters:
-        - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18111,9 +18861,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18165,9 +18918,12 @@ paths:
             type: string
             description: 'The session id, from `GET /users/{id}/sessions`.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18211,9 +18967,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18257,9 +19016,12 @@ paths:
             type: string
             description: 'The user id.'
             maxLength: 64
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18412,8 +19174,10 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/Error'
-                  - $ref: '#/components/schemas/BearerChallenge'
+                  -
+                    $ref: '#/components/schemas/Error'
+                  -
+                    $ref: '#/components/schemas/BearerChallenge'
               example:
                 error: lease_denied
                 message: 'The lease was denied.'
@@ -18514,7 +19278,8 @@ paths:
         -
           VaultManagerToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       responses:
         204:
           description: Revoked.
@@ -18539,7 +19304,8 @@ paths:
         -
           VaultManagerToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
@@ -18597,7 +19363,8 @@ paths:
         -
           VaultManagerToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
         -
           name: clientId
           in: path
@@ -18626,7 +19393,8 @@ paths:
         -
           AgentToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
@@ -18675,8 +19443,10 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/Error'
-                  - $ref: '#/components/schemas/BearerChallenge'
+                  -
+                    $ref: '#/components/schemas/Error'
+                  -
+                    $ref: '#/components/schemas/BearerChallenge'
               example:
                 error: lease_denied
                 message: 'The lease was denied.'
@@ -18693,7 +19463,8 @@ paths:
         -
           VaultManagerToken: []
       parameters:
-        - $ref: '#/components/parameters/Id'
+        -
+          $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
@@ -18744,9 +19515,12 @@ paths:
       x-scope: 'webhooks:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18892,8 +19666,10 @@ paths:
           schema:
             type: string
             description: 'The `next_cursor` of the previous page.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18950,9 +19726,12 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -18996,8 +19775,10 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -19048,9 +19829,12 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -19122,9 +19906,12 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -19178,9 +19965,12 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -19234,9 +20024,12 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -19290,9 +20083,12 @@ paths:
           schema:
             type: string
             description: 'The webhook endpoint id.'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
-        - $ref: '#/components/parameters/CboxEnvironment'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
       security:
         -
           EnvironmentApiKey: []
@@ -19595,7 +20391,8 @@ components:
                   type: array
                   items:
                     type: string
-            - type: 'null'
+            -
+              type: 'null'
         created_by:
           oneOf:
             -
@@ -19610,7 +20407,8 @@ components:
                   type:
                     - string
                     - 'null'
-            - type: 'null'
+            -
+              type: 'null'
         expires_at:
           type:
             - string
@@ -21058,8 +21856,10 @@ components:
         override:
           description: 'What the organization stored itself; null when it inherits (and always for the baseline).'
           oneOf:
-            - $ref: '#/components/schemas/SignInRules'
-            - type: 'null'
+            -
+              $ref: '#/components/schemas/SignInRules'
+            -
+              type: 'null'
         inheriting:
           type: boolean
           description: 'True for an organization with no override of its own.'
@@ -21491,7 +22291,8 @@ components:
                   type: string
                 record_value:
                   type: string
-            - type: 'null'
+            -
+              type: 'null'
     SsoConnection:
       type: object
       required:
@@ -21754,7 +22555,8 @@ components:
                   type: string
                 value:
                   type: string
-            - type: 'null'
+            -
+              type: 'null'
     SamlMetadata:
       type: object
       required:
@@ -22517,15 +23319,20 @@ components:
               value:
                 description: 'Normalised: a string, a number, true/false, or a list for the list operators.'
                 oneOf:
-                  - type: string
-                  - type: number
-                  - type: boolean
+                  -
+                    type: string
+                  -
+                    type: number
+                  -
+                    type: boolean
                   -
                     type: array
                     items:
                       oneOf:
-                        - type: string
-                        - type: number
+                        -
+                          type: string
+                        -
+                          type: number
         summary:
           type: string
           description: 'The conditions as a person reads them.'

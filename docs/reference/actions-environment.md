@@ -82,7 +82,7 @@ Create a one-time Admin Portal link an organization's IT administrator uses to s
 | `intents` | list of string | yes | What the link may set up: sso (connection and email domains), dsync (directory sync over SCIM), domain_verification, log_streams, certificate_renewal (a SAML connection's signing certificate), audit_logs (the organization's audit events, read-only, with CSV export). At least 1 items. |
 | `expires_in_minutes` | integer, nullable | no | How long the link may wait to be opened, in minutes — 5 to 10080 (a week). Left out, the deployment's default (30). At least 5. At most 10080. |
 | `email` | string (email), nullable | no | Mail the link to this address — the customer's IT contact. Left out, nothing is sent. At most 254 characters. |
-| `locale` | string, nullable | no | The language of that mail. Left out, the environment's default language. One of `en`, `da`, `de`, `sv`, `nb`, `fr`. |
+| `locale` | string, nullable | no | The language of that mail. Left out, the environment's default language. One of `en`, `da`, `de`, `sv`, `nb`, `fr`, `fi`, `es`, `it`, `nl`. |
 
 ### <a id="organizations.portal_links.list"></a>organizations.portal_links.list
 
