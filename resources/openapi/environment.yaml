@@ -110,6 +110,7 @@ tags:
   - name: Sign-in
   - name: 'Enterprise SSO'
   - name: 'Token vault'
+  - name: 'User properties'
   - name: Webhooks
 paths:
   /access-reviews:
@@ -16974,6 +16975,135 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  '/user-property-namespaces/{name}':
+    put:
+      tags:
+        - 'User properties'
+      summary: 'Create or replace the app and webhook grants for a user-property namespace. Empty grants revoke access without deleting user data.'
+      description: 'Requires scope `user_property_namespaces:write`. Danger: critical.'
+      operationId: user_property_namespaces_configure
+      x-action: user_property_namespaces.configure
+      x-scope: 'user_property_namespaces:write'
+      x-danger: critical
+      parameters:
+        -
+          name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                readers:
+                  type: array
+                  description: 'OAuth client ids allowed to read. Omit or use an empty list to revoke all access.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 190
+                writers:
+                  type: array
+                  description: 'Reader client ids also allowed to write.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 190
+                webhooks:
+                  type: object
+                  description: 'Map webhook endpoint ids to reader client ids. Omit to remove all webhook grants.'
+                  properties: {}
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'User properties'
+      summary: 'Read the app and webhook grants for a user-property namespace.'
+      description: 'Requires scope `user_property_namespaces:read`. Danger: read.'
+      operationId: user_property_namespaces_show
+      x-action: user_property_namespaces.show
+      x-scope: 'user_property_namespaces:read'
+      x-danger: read
+      parameters:
+        -
+          name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        - $ref: '#/components/parameters/CboxApproval'
+        - $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /users:
     get:
       operationId: users_list
@@ -18528,6 +18658,8 @@ paths:
                     enum:
                       - user.created
                       - user.updated
+                      - user.preferences.updated
+                      - user.metadata.updated
                       - user.deactivated
                       - user.login
                       - user.reactivated

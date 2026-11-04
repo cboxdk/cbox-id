@@ -79,3 +79,5 @@ A sensible order, the first time:
 3. [Enterprise SSO](single-sign-on.md) and [Directory Sync](sync-users-in.md), or an
    [Admin Portal](admin-portal.md) link so the customer's IT admin does both.
 4. [Log streams](log-streams.md), if a security team wants the trail in its own tools.
+
+- [User preferences and app metadata](user-properties.md)

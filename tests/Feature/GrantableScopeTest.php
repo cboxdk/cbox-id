@@ -40,6 +40,8 @@ it('offers every scope the code demands through some door a client can walk', fu
         'apps.manifest',    // POST /api/v1/apps/manifest
         'vault.manage',
         'vault.lease',
+        'user_properties:read',
+        'user_properties:write',
     ];
 
     expect(array_values(array_diff($required, $grantable)))->toBe(

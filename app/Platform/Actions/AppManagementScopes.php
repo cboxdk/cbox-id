@@ -36,6 +36,15 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage management keys',
             'description' => 'Mint, rotate and revoke management keys, never wider than the key doing it.',
         ],
+        'user_property_namespaces:read' => [
+            'label' => 'Read user-property namespaces',
+            'description' => 'Read the app and webhook grants for user-property namespaces.',
+        ],
+        'user_property_namespaces:write' => [
+            'label' => 'Manage user-property namespaces',
+            'description' => 'Grant or revoke app and webhook access to shared user preferences and private metadata namespaces.',
+            'critical' => true,
+        ],
         'webhooks:read' => [
             'label' => 'Read webhooks',
             'description' => 'List this environment\'s webhook endpoints: where they point, what they subscribe to and whether they are paused — never their signing secrets.',
