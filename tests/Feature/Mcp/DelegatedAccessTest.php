@@ -6,6 +6,8 @@ use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\AppCatalog\AppCatalog;
+use App\Platform\AppCatalog\CatalogEntryData;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\PlaneResolver;
@@ -411,7 +413,7 @@ it('reads the personal catalog with a real account token and preserves its organ
         grantTypes: ['authorization_code', 'refresh_token'],
         scopes: ['openid', 'account:apps:read'],
     ))->client;
-    app(\App\Platform\AppCatalog\AppCatalog::class)->save('billing', \App\Platform\AppCatalog\CatalogEntryData::fromArray([
+    app(AppCatalog::class)->save('billing', CatalogEntryData::fromArray([
         'version' => 0, 'name' => 'Billing', 'launch_url' => 'https://billing.example.com',
         'enabled' => true, 'position' => 0, 'audience' => 'organizations', 'organization_ids' => [$organization],
     ]));

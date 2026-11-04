@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\AppCatalog\AppCatalog;
+use Illuminate\Auth\Access\AuthorizationException;
 
 /** Both dashboard and navigation read the explicitly published catalog. */
 final readonly class AppLauncher
@@ -14,6 +15,16 @@ final readonly class AppLauncher
     /** @return list<array<string, mixed>> */
     public function apps(): array
     {
-        return $this->me->check() ? $this->catalog->forUser($this->me->id(), $this->me->organizationId()) : [];
+        if (! $this->me->check()) {
+            return [];
+        }
+
+        try {
+            return $this->catalog->forUser($this->me->id(), $this->me->organizationId());
+        } catch (AuthorizationException) {
+            // A withdrawn membership must not prevent rendering account recovery or
+            // organization switching. The explicit account API still refuses this context.
+            return [];
+        }
     }
 }
