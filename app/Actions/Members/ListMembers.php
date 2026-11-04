@@ -17,7 +17,9 @@ use App\Platform\Actions\Paginates;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Kernel\Tenancy\GenericTenant;
+use Cbox\Id\Organization\MembershipDirectoryRevision;
 use Cbox\Id\Organization\Models\Membership;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -59,11 +61,16 @@ final readonly class ListMembers implements Action
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
 
-        $result = $this->tenants->runAs(GenericTenant::of($organization->id), fn (): ActionResult => $this->page(
-            Membership::query()->where('organization_id', $organization->id),
-            $context,
-            static fn (Membership $membership): array => ['membership' => $membership],
-        ));
+        [$result, $revision] = DB::transaction(function () use ($organization, $context): array {
+            $revision = MembershipDirectoryRevision::snapshot($organization->id);
+            $page = $this->tenants->runAs(GenericTenant::of($organization->id), fn (): ActionResult => $this->page(
+                Membership::query()->where('organization_id', $organization->id),
+                $context,
+                static fn (Membership $membership): array => ['membership' => $membership],
+            ));
+
+            return [$page, $revision];
+        });
 
         /** @var Collection<int, Membership> $rows */
         $rows = $result->value;
@@ -78,6 +85,6 @@ final readonly class ListMembers implements Action
             $rows->all(),
         ));
 
-        return ActionResult::page($rows, $payload, $result->meta ?? []);
+        return ActionResult::page($rows, $payload, [...($result->meta ?? []), 'directory_revision' => $revision]);
     }
 }

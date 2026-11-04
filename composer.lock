@@ -722,7 +722,7 @@
             "dist": {
                 "type": "path",
                 "url": "../laravel-id",
-                "reference": "9bd1516241aa4f8bc6dffe5f54c96ece80cdb95d"
+                "reference": "60254bb20e449f8d65057a96686c77be0e9c3aba"
             },
             "require": {
                 "cboxdk/laravel-audit-chain": "^0.1",

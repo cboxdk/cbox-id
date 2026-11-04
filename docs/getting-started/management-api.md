@@ -419,3 +419,5 @@ outgoing owner of a transferred organization — the key is on the entry beside 
 - [Webhooks](../guides/webhooks.md) — verifying what a registered endpoint receives.
 - [Members and invitations](../guides/members.md) — the same operations in the console.
 - [Integrate your app](integrate-your-app.md) — the app side: sign-in and tokens.
+
+When reconciling memberships, read every page of `GET /api/v1/organizations/{organization_id}/members` using the public `members:read` scope. `meta.directory_revision` identifies the organization's membership state for that page, including an empty page. If it changes between pages, discard the partial read and restart. Once the final page is applied, membership webhooks at or below that revision have already been covered. Use the higher organization revision to order later membership changes; retain the delivery ID for retry deduplication.
