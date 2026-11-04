@@ -10,7 +10,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
     actAsEnvironmentAdminOfATenant();
 
     $page = visit('/admin');
-    $page->click('.cbx-avatar-btn')
+    $page->click('[data-testid="console-language-picker"]')
         ->click('[role="menuitemradio"]:has-text("Dansk")')
         ->assertSee('Brugere og organisationer')
         ->assertNoJavaScriptErrors();
@@ -21,7 +21,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
     $page->screenshot(false, 'console-languages-danish-users');
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
 
-    $page->click('.cbx-avatar-btn')
+    $page->click('[data-testid="console-language-picker"]')
         ->click('[role="menuitemradio"]:has-text("English")')
         ->assertSee('New user')
         ->assertNoJavaScriptErrors();
@@ -31,7 +31,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
 it('renders platform administration in Danish at a phone width', function (): void {
     actAsOperator();
     $page = visit('/admin/platform/workspaces')->on()->mobile()->assertSee('Workspaces');
-    $page->click('.cbx-avatar-btn')
+    $page->click('[data-testid="console-language-picker"]')
         ->click('[role="menuitemradio"]:has-text("Dansk")');
     $page->assertSee('Arbejdsområder')->assertNoJavaScriptErrors();
     expect($page->script('document.documentElement.lang'))->toBe('da')
@@ -39,7 +39,7 @@ it('renders platform administration in Danish at a phone width', function (): vo
     $page->screenshot(false, 'console-languages-danish-platform-mobile');
 });
 
-it('switches through every additional language from the mobile account menu', function (): void {
+it('switches through every additional language from the mobile topbar', function (): void {
     actAsEnvironmentAdminOfATenant();
     $page = visit('/admin/users')->on()->mobile()->assertSee('Users');
     foreach ([
@@ -52,7 +52,7 @@ it('switches through every additional language from the mobile account menu', fu
         ['it', 'Italiano', 'Utenti'],
         ['nl', 'Nederlands', 'Gebruikers'],
     ] as [$locale, $name, $title]) {
-        $page->click('.cbx-avatar-btn')
+        $page->click('[data-testid="console-language-picker"]')
             ->click('[role="menuitemradio"]:has-text("'.$name.'")')
             ->assertSee($title)
             ->assertNoJavaScriptErrors();

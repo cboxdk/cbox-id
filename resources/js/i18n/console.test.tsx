@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
-import { DropdownMenu } from 'radix-ui';
 import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { consoleI18n } from '@/test/catalogue';
 import { setPageProps } from '@/test/page';
@@ -22,17 +21,12 @@ function inDanish(children: React.ReactNode) {
 }
 
 describe('console languages', () => {
-    it('switches language from a keyboard accessible account menu', async () => {
+    it('switches language from a keyboard accessible topbar menu', async () => {
         setPageProps({ i18n: consoleI18n('en') });
         const post = vi.spyOn(router, 'post').mockImplementation(() => {});
-        render(
-            <DropdownMenu.Root defaultOpen>
-                <DropdownMenu.Trigger>My account</DropdownMenu.Trigger>
-                <DropdownMenu.Content>
-                    <ConsoleLanguagePicker />
-                </DropdownMenu.Content>
-            </DropdownMenu.Root>,
-        );
+        render(<ConsoleLanguagePicker />);
+        screen.getByRole('button', { name: 'Language: English' }).focus();
+        await userEvent.keyboard('{Enter}');
         expect(screen.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
             'aria-checked',
             'true',

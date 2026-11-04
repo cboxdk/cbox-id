@@ -1,5 +1,4 @@
 import { useTranslator } from '@/i18n';
-import { ConsoleLanguagePicker } from './ConsoleLanguagePicker';
 import { Link, useForm } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { currentTheme, toggleTheme } from '@/lib/theme';
@@ -124,8 +123,6 @@ export function AccountMenu({
                             : tc('console.light_dbcd5e7b')}
                     </span>
                 </DropdownMenuItem>
-
-                <ConsoleLanguagePicker />
 
                 <DropdownMenuItem
                     destructive

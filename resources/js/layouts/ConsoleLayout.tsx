@@ -3,6 +3,7 @@ import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu } from '@/chrome/AccountMenu';
+import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { ContextSwitcher } from '@/chrome/ContextSwitcher';
@@ -217,6 +218,7 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
                             <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
+                            <ConsoleLanguagePicker />
 
                             <AccountMenu
                                 user={auth.user}
