@@ -70,6 +70,9 @@ it('performs the sensitive action once sudo is confirmed', function (): void {
     confirmMfaEnrolment(app(TotpAuthenticator::class)->codeAt(flashed('mfaSecret'), time()))
         ->assertSessionHasNoErrors();
 
+    // Enrolment rotates the session; sensitive actions need a fresh sudo check.
+    assertAskedToStepUp(regenerateRecoveryCodes());
+    app(Sudo::class)->confirm();
     regenerateRecoveryCodes()->assertSessionHasNoErrors();
 
     expect(flashed('recoveryCodes'))->toHaveCount(10);

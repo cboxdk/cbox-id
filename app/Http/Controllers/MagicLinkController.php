@@ -12,6 +12,8 @@ use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Exceptions\InvalidMagicLink;
 use Cbox\Id\Identity\Models\Session;
@@ -50,9 +52,8 @@ final readonly class MagicLinkController extends PageController
 
     public function redeem(Request $request, string $token, MagicLink $magicLink, PlatformAuth $auth, RiskGuard $risk, SessionManager $sessions): RedirectResponse
     {
-        // Hard-block a Reject before consuming the single-use token, so a risky
-        // context can be retried from a safer one. (Magic-link is already an
-        // email-possession factor, so a step-up on top would be redundant.)
+        // Risk rejection precedes consumption. A magic link proves mailbox access;
+        // it does not satisfy an enrolled second factor.
         if ($risk->shouldBlock($risk->assess($request, 'login', method: RadarMethod::MagicLink))) {
             return redirect()->route('login')->with('error', __('auth.common.could_not_process'));
         }
@@ -72,6 +73,11 @@ final readonly class MagicLinkController extends PageController
             SsoRefusal::hold($session->user_id, RefusedFactor::MagicLink);
 
             return redirect()->route('login');
+        }
+
+        if (app(MfaVerification::class)->requiresVerification($session->user_id, array_values($session->amr))
+            && ! app(MfaMandate::class)->requiresEnrolment($session->user_id)) {
+            return redirect()->to($auth->challengeSession($request, $session));
         }
 
         $auth->adopt($request, $session);

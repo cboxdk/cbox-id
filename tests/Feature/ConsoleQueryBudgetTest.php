@@ -223,7 +223,9 @@ it('keeps the most-loaded console pages within budget', function (string $route,
     expect($count)->toBeLessThan($ceiling, "{$route} now costs {$count} queries (ceiling {$ceiling})");
 })->with([
     'dashboard' => ['dashboard', 75],
-    'settings' => ['settings', 30],
+    // The live MFA check adds three bounded reads (memberships, TOTP and SMS).
+    // Repeated statements and per-organization growth remain checked below.
+    'settings' => ['settings', 33],
 ]);
 
 /**

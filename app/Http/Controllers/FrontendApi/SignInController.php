@@ -121,6 +121,7 @@ class SignInController
             // caller can read — see the ticket table.
             AttemptOutcome::Mfa => $this->pending($key, $request, 'pending_mfa', 'mfa_required'),
             AttemptOutcome::Otp => $this->pending($key, $request, 'pending_otp', 'otp_required'),
+            AttemptOutcome::Passkey => new JsonResponse(['status' => 'passkey_required']),
 
             // A tenant mandates single sign-on, so there is no second step here at all —
             // the page must send them to their identity provider. Named, because a page

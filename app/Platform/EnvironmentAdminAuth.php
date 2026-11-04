@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
@@ -373,6 +374,10 @@ final class EnvironmentAdminAuth
             $subject = $this->subjects->find($session->user_id);
 
             if ($subject === null) {
+                return null;
+            }
+
+            if (app(MfaVerification::class)->requiresVerification($session->user_id, array_values($session->amr))) {
                 return null;
             }
 

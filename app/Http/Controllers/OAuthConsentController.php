@@ -24,6 +24,7 @@ use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
@@ -421,6 +422,14 @@ final readonly class OAuthConsentController extends PageController
         if ($hold !== null) {
             if ($silent) {
                 return $this->redirectError($redirectUri, 'interaction_required', $state, $hold['reason']);
+            }
+
+            if ($hold['route'] === 'mfa') {
+                if ($authorization->authenticationRequirement()->assessSession($me->session())->requiresReauthentication()) {
+                    return $this->interrupt($request, $authorization, route('accounts.add'));
+                }
+
+                return $this->stepUp($request, $authorization, $me);
             }
 
             return $this->interrupt($request, $authorization, route($hold['route']));
@@ -1256,6 +1265,11 @@ final readonly class OAuthConsentController extends PageController
             ];
         }
 
+        $amr = app(CurrentUser::class)->session()->amr ?? [];
+        if (app(MfaVerification::class)->requiresVerification($subjectId, array_values($amr))) {
+            return ['route' => 'mfa', 'reason' => 'The user must verify a second factor before authorizing.'];
+        }
+
         return null;
     }
 
@@ -1276,7 +1290,7 @@ final readonly class OAuthConsentController extends PageController
         $subjectId = $me->subject()?->id;
 
         if ($subjectId !== null && app(PlatformAuth::class)->hasSecondFactor($subjectId)) {
-            app(PlatformAuth::class)->holdForMfa($request, $subjectId);
+            app(PlatformAuth::class)->holdForMfa($request, $subjectId, array_values($me->session()->amr ?? []));
 
             return $this->interrupt($request, $authorization, route('mfa'));
         }

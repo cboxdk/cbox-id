@@ -34,6 +34,7 @@ function signedInOwner(): string
 
 it('issues recovery codes when the user enables 2FA', function (): void {
     $userId = signedInOwner();
+    $oldSessionId = session()->get(PlatformAuth::SESSION_KEY);
 
     // Enabling 2FA is a sensitive action (it overwrites any existing factor) — the route
     // carries `sudo`, so the step-up is confirmed first. That gate has its own coverage in
@@ -53,7 +54,9 @@ it('issues recovery codes when the user enables 2FA', function (): void {
         ->assertSessionHasNoErrors();
 
     // Ten recovery codes, shown once and counted as remaining.
-    expect(app(Mfa::class)->remainingRecoveryCodes($userId))->toBe(10);
+    expect(app(Mfa::class)->remainingRecoveryCodes($userId))->toBe(10)
+        ->and(app(SessionManager::class)->active($oldSessionId))->toBeNull()
+        ->and(app(SessionManager::class)->active(session()->get(PlatformAuth::SESSION_KEY))?->amr)->toBe(['pwd', 'otp', 'mfa']);
 });
 
 it('regenerates recovery codes and invalidates the old set', function (): void {
@@ -71,6 +74,9 @@ it('regenerates recovery codes and invalidates the old set', function (): void {
 
     $old = flashed('recoveryCodes');
 
+    // Enrolment rotates the session; sensitive actions need a fresh sudo check.
+    assertAskedToStepUp(regenerateRecoveryCodes());
+    app(Sudo::class)->confirm();
     regenerateRecoveryCodes()->assertSessionHasNoErrors();
 
     $new = flashed('recoveryCodes');

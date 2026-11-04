@@ -15,6 +15,8 @@ enum AttemptOutcome: string
     case Ok = 'ok';
     /** Password correct, a confirmed TOTP is required — an MFA challenge is pending. */
     case Mfa = 'mfa';
+    /** Password accepted, but the enrolled passkey must be used to meet MFA policy. */
+    case Passkey = 'passkey_required';
     /** Password correct but the sign-in is risky — an emailed one-time code is pending. */
     case Otp = 'otp';
     /**

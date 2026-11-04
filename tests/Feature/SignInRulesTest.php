@@ -161,6 +161,9 @@ it('refuses an override that would loosen the environment baseline', function ()
     // The baseline it just wrote requires a second factor, and the console holds its own
     // author to it.
     enrolSecondFactor((string) $subjectId);
+    // Enrolment alone is not authentication: model a completed passkey login.
+    $session = app(SessionManager::class)->start((string) $subjectId, $org->id, ['passkey', 'pop', 'mfa']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
     saveRules([
         'minLength' => 8,

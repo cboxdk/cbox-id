@@ -14,6 +14,8 @@ use App\Support\CliClient;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
+use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -149,7 +151,8 @@ it('refuses a token from an environment\'s issuer at the root, and the root\'s t
     // The workspace's environment issues for ITS `/mcp`: another audience, another issuer.
     $environment = $this->account['environment'];
     $subject = $this->account['subjectId'];
-    $foreign = app(EnvironmentContext::class)->runAs($environment, static function () use ($subject): string {
+    $foreign = app(EnvironmentContext::class)->runAs($environment, static function (): string {
+        $subject = app(Subjects::class)->create('foreign@acme.test', 'Foreign user')->id;
         $client = CliClient::provision(app(ClientRegistry::class))[0];
         $resource = app(ProtectedResources::class)->forMetadataPath('/.well-known/oauth-protected-resource/mcp');
 
@@ -158,6 +161,12 @@ it('refuses a token from an environment\'s issuer at the root, and the root\'s t
 
     mcpRpc($foreign, 'tools/list')->assertUnauthorized();
     $this->withToken($foreign)->getJson('/api/v1/workspace')->assertUnauthorized();
+
+    // Isolate issuer validation: valid local subject, audience, jti and signing key.
+    $signer = app(TokenSigner::class);
+    $claims = $signer->verify(rootToken($subject), [SigningAlg::RS256])->all();
+    $claims['iss'] = 'https://foreign-issuer.example.test';
+    mcpRpc($signer->sign($claims, SigningAlg::RS256, 'at+jwt'), 'tools/list')->assertUnauthorized();
 
     // …and the root's token on the environment's own host is that host's stranger.
     $token = rootToken($subject);

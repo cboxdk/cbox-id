@@ -12,6 +12,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\SignedInPage;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -147,6 +148,18 @@ final class Authenticate
         // A signed-in page is drawn for this session only: kept out of the browser's caches,
         // and its Inertia page state encrypted in history, so that after signing out the
         // Back button asks the server again instead of redrawing it ({@see SignedInPage}).
+        // Existing weak sessions must not use the account/enrolment exemptions to
+        // replace an already enrolled factor. OAuth resolves prompt/PAR itself below.
+        $requiresEnrolment = $this->mfaMandate->requiresEnrolment($subject->id);
+
+        if (! $request->routeIs('oauth.authorize', 'oauth.authorize.*', 'logout', 'logout.*')
+            && ! $requiresEnrolment
+            && app(MfaVerification::class)->requiresVerification($subject->id, array_values($session->amr))) {
+            $this->current->clear();
+
+            return redirect()->to(app(PlatformAuth::class)->challengeSession($request, $session));
+        }
+
         if ($this->exemptFromHolds($request)) {
             return SignedInPage::serve($request, $next);
         }
@@ -166,7 +179,7 @@ final class Authenticate
         // administrator asked for a stronger factor because SMS was all they had (see
         // `SmsFactors::needsStrongerFactor()`) is held here and must be able to add one.
         if (! $request->routeIs('account', 'account.mfa.*', 'sudo', 'sudo.*', 'passkeys.register', 'passkeys.register.*')
-            && $this->mfaMandate->requiresEnrolment($subject->id)
+            && $requiresEnrolment
         ) {
             return redirect()->route('account')
                 ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');

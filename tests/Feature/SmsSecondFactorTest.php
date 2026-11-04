@@ -89,10 +89,10 @@ function smsfSignIn(string $email = 'sam@acme.test'): TestResponse
 }
 
 /** The signed-in person's own session, the way a real sign-in leaves it, behind sudo. */
-function smsfSignedIn(string $subjectId): void
+function smsfSignedIn(string $subjectId, array $amr = ['pwd']): void
 {
     $membership = app(Memberships::class)->forUser($subjectId)->first();
-    $session = app(SessionManager::class)->start($subjectId, $membership?->organization_id, ['pwd']);
+    $session = app(SessionManager::class)->start($subjectId, $membership?->organization_id, $amr);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(Sudo::class)->confirm();
 }
@@ -212,6 +212,7 @@ it('adds a phone number from My account, proving it with a code, and hands out r
     $id = smsfPerson();
     smsfSignedIn($id);
 
+    $oldSessionId = session()->get(PlatformAuth::SESSION_KEY);
     expect(accountSecurity()['smsFactor'])->toMatchArray(['enrolled' => false, 'pending' => false, 'blocked' => false, 'countries' => ['DK']]);
 
     inertiaRequest(fn () => $this->from(route('account'))->post(route('account.mfa.sms.enrol'), ['phone' => '12 34 56 78', 'country' => 'dk']))
@@ -228,7 +229,9 @@ it('adds a phone number from My account, proving it with a code, and hands out r
 
     expect(flashed('recoveryCodes'))->toHaveCount(10)
         ->and(accountSecurity()['smsFactor'])->toMatchArray(['enrolled' => true, 'maskedNumber' => '+45 ******78'])
-        ->and(app(SmsFactors::class)->isEnrolled($id))->toBeTrue();
+        ->and(app(SmsFactors::class)->isEnrolled($id))->toBeTrue()
+        ->and(app(SessionManager::class)->active($oldSessionId))->toBeNull()
+        ->and(app(SessionManager::class)->active(session()->get(PlatformAuth::SESSION_KEY))?->amr)->toBe(['pwd', 'sms', 'mfa']);
 });
 
 it('says why a number is refused, without storing or sending anything', function (): void {
@@ -263,7 +266,7 @@ it('removes your own number through the account action, as you', function (): vo
     smsfPolicy();
     $id = smsfPerson();
     smsfEnrol($id, $this->sms);
-    smsfSignedIn($id);
+    smsfSignedIn($id, ['pwd', 'sms', 'mfa']);
 
     inertiaRequest(fn () => $this->from(route('account'))->delete(route('account.mfa.sms.destroy')))
         ->assertSessionHasNoErrors();
@@ -312,7 +315,7 @@ it('holds an administrator whose only factor is SMS until they add a stronger on
     $enrolment = app(Mfa::class)->enrollTotp($id, 'admin@acme.test');
     app(Mfa::class)->confirmTotp($id, app(TotpAuthenticator::class)->codeAt($enrolment->secret, time()));
 
-    $this->get('/dashboard')->assertOk();
+    $this->get('/dashboard')->assertRedirect(route('mfa'));
 })->group('security');
 
 // ------------------------------------------------------------- the embedded channel

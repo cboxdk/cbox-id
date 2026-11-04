@@ -23,6 +23,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PlatformAuth;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -282,11 +283,31 @@ final readonly class AccountController extends PageController
         }
 
         RateLimiter::clear($key);
+        $this->recordEnrolledFactor($request, 'otp');
 
         // Shown exactly once, so they travel the same channel as the secret above.
         $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
 
         return back()->with('status', 'Two-factor authentication is now enabled. Save your recovery codes below.');
+    }
+
+    /** A successful enrolment proves possession; retain it in the replacement session. */
+    private function recordEnrolledFactor(Request $request, string $method): void
+    {
+        $session = app(CurrentUser::class)->session();
+        if ($session === null) {
+            return;
+        }
+
+        $replacement = app(SessionManager::class)->start(
+            $session->user_id,
+            $session->organization_id,
+            array_values(array_unique([...($session->amr ?? []), $method, 'mfa'])),
+            $request->ip(),
+            $request->userAgent(),
+        );
+        app(SessionManager::class)->revoke($session->id);
+        app(PlatformAuth::class)->adopt($request, $replacement);
     }
 
     public function regenerateRecoveryCodes(Mfa $mfa): RedirectResponse
@@ -378,6 +399,7 @@ final readonly class AccountController extends PageController
         }
 
         RateLimiter::clear($key);
+        $this->recordEnrolledFactor($request, 'sms');
 
         if ($mfa->remainingRecoveryCodes($me->id()) === 0) {
             $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));

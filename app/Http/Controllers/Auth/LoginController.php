@@ -204,6 +204,10 @@ final readonly class LoginController extends PageController
 
         RateLimiter::clear($key);
 
+        if ($result === AttemptOutcome::Passkey) {
+            return $this->refuse($request, __('auth.login.passkey'));
+        }
+
         if ($result === AttemptOutcome::Mfa) {
             return to_route('mfa');
         }

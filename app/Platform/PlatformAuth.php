@@ -11,6 +11,8 @@ use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
 use Cbox\Id\Identity\Contracts\Mfa;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -55,6 +57,8 @@ final class PlatformAuth
     private const MAX_ACCOUNTS = 8;
 
     private const MFA_PENDING_KEY = 'cbox.mfa_pending';
+
+    private const MFA_AMR_KEY = 'cbox.mfa_amr';
 
     private const OTP_PENDING_KEY = 'cbox.otp_pending';
 
@@ -220,9 +224,14 @@ final class PlatformAuth
         }
 
         if ($this->hasSecondFactor($subject->id)) {
-            session()->put(self::MFA_PENDING_KEY, $subject->id);
+            $this->holdForMfa($request, $subject->id);
 
             return AttemptOutcome::Mfa;
+        }
+
+        if (app(MfaVerification::class)->requiresVerification($subject->id, [AuthMethod::Password->value])
+            && ! app(MfaMandate::class)->requiresEnrolment($subject->id)) {
+            return AttemptOutcome::Passkey;
         }
 
         if ($requireStepUp) {
@@ -440,10 +449,7 @@ final class PlatformAuth
             return false;
         }
 
-        session()->forget(self::MFA_PENDING_KEY);
-        $this->establish($request, $subjectId, AuthMethod::forSmsCode());
-
-        return true;
+        return $this->finishMfa($request, $subjectId, [AuthMethod::Sms->value, AuthMethod::MultiFactor->value]);
     }
 
     public function pendingMfaSubject(Request $request): ?string
@@ -464,12 +470,50 @@ final class PlatformAuth
      * grows next.
      *
      * It grants nothing on its own: everything downstream still demands a correct code,
-     * and the caller can only reach this with a ticket minted by a completed password
-     * check in the same environment.
+     * and callers must have verified the primary method in this environment. Preserve
+     * that method for magic links and existing-session step-up as well as passwords.
+     *
+     * @param  list<string>  $amr
      */
-    public function holdForMfa(Request $request, string $subjectId): void
+    public function holdForMfa(Request $request, string $subjectId, array $amr = ['pwd']): void
     {
         $request->session()->put(self::MFA_PENDING_KEY, $subjectId);
+        $request->session()->put(self::MFA_AMR_KEY, $amr);
+    }
+
+    /** End the weak session before sending its owner to a stronger sign-in method. */
+    public function challengeSession(Request $request, Session $session): string
+    {
+        $this->sessions->revoke($session->id);
+        if ($request->session()->get(self::SESSION_KEY) === $session->id) {
+            $request->session()->forget(self::SESSION_KEY);
+        }
+
+        if ($this->hasSecondFactor($session->user_id)) {
+            $this->holdForMfa($request, $session->user_id, array_values($session->amr));
+
+            return route('mfa');
+        }
+
+        $request->session()->flash('status', __('auth.login.passkey'));
+
+        return route('login');
+    }
+
+    /** @param list<string> $methods */
+    private function finishMfa(Request $request, string $subjectId, array $methods): bool
+    {
+        if (! $this->subjects->isActive($subjectId) || ! $this->localSignInAllowedFor($subjectId)) {
+            $request->session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY]);
+
+            return false;
+        }
+
+        $primary = $request->session()->get(self::MFA_AMR_KEY, ['pwd']);
+        $primary = is_array($primary) ? array_values(array_filter($primary, is_string(...))) : [];
+        $this->establish($request, $subjectId, array_values(array_unique([...$primary, ...$methods])));
+
+        return true;
     }
 
     /** The same, for an emailed step-up code. See {@see holdForMfa()}. */
@@ -507,10 +551,7 @@ final class PlatformAuth
             return false;
         }
 
-        session()->forget(self::MFA_PENDING_KEY);
-        $this->establish($request, $subjectId, AuthMethod::forSecondFactorCode());
-
-        return true;
+        return $this->finishMfa($request, $subjectId, [AuthMethod::OneTimePassword->value, AuthMethod::MultiFactor->value]);
     }
 
     /**
@@ -539,10 +580,7 @@ final class PlatformAuth
             return false;
         }
 
-        session()->forget(self::MFA_PENDING_KEY);
-        $this->establish($request, $subjectId, AuthMethod::forRecoveryCode());
-
-        return true;
+        return $this->finishMfa($request, $subjectId, [AuthMethod::MultiFactor->value]);
     }
 
     /**
@@ -566,7 +604,7 @@ final class PlatformAuth
         // without this a step-up made before a transition carried straight through it —
         // and the sudo gate is meant to be the independent second layer, not something
         // load-bearing on whatever else happens to refuse first.
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         // NOT THE ENVIRONMENT-ADMIN CONTEXT. On a tenant's host the admin console and the
         // tenant's own end-user pages share one cookie, but they are two contexts with two
@@ -647,7 +685,7 @@ final class PlatformAuth
      */
     public function adopt(Request $request, Session $session): void
     {
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         $organizationId = $session->organization_id
             ?? $this->memberships->forUser($session->user_id)->value('organization_id');
@@ -805,7 +843,7 @@ final class PlatformAuth
             }
         }
 
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY]);
         $this->dropStepUp();
 
         if ($accounts !== []) {
@@ -951,7 +989,7 @@ final class PlatformAuth
     {
         session()->forget([
             self::SESSION_KEY, self::ORG_KEY, self::ACCOUNTS_KEY, self::ACTIVE_KEY,
-            self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY,
+            self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY,
         ]);
 
         // THE OTHER CONTEXT SURVIVES. On a tenant's host this browser session may also

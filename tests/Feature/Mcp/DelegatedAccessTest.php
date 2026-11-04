@@ -12,6 +12,8 @@ use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
+use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
@@ -158,10 +160,20 @@ it('refuses a token for another audience, an unaudienced one and a forged one as
 it('refuses a token from another environment\'s issuer', function (): void {
     [$subject, $organization] = delegatedPerson();
 
-    // The same person and the same resource path, minted by env_other for ITS `/mcp`.
-    $foreign = app(EnvironmentContext::class)->runAs(GenericEnvironment::of('env_other'), fn (): string => delegatedToken($subject, $organization));
+    // A real subject in env_other, minted for ITS `/mcp`; user IDs cannot cross environments.
+    $foreign = app(EnvironmentContext::class)->runAs(GenericEnvironment::of('env_other'), function (): string {
+        [$foreignSubject, $foreignOrganization] = delegatedPerson(email: 'foreign@acme.test');
+
+        return delegatedToken($foreignSubject, $foreignOrganization);
+    });
 
     mcpRpc($foreign, 'tools/list')->assertUnauthorized();
+
+    // Isolate issuer validation: valid local subject, audience, jti and signing key.
+    $signer = app(TokenSigner::class);
+    $claims = $signer->verify(delegatedToken($subject, $organization), [SigningAlg::RS256])->all();
+    $claims['iss'] = 'https://foreign-issuer.example.test';
+    mcpRpc($signer->sign($claims, SigningAlg::RS256, 'at+jwt'), 'tools/list')->assertUnauthorized();
 })->group('security');
 
 it('refuses a token whose subject has been deactivated', function (): void {
