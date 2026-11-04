@@ -19,7 +19,8 @@ declare(strict_types=1);
  */
 it('emits every colour token a branded page reaches', function (): void {
     $css = (string) file_get_contents(base_path('resources/css/app.css'));
-    $emitted = [];
+    // Selector names mentioned in comments do not style the following rule.
+    $css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
     preg_match_all('/["\']--([a-z-]+):/', (string) file_get_contents(base_path('app/Platform/Appearance/AppearanceCss.php')), $m);
     $emitted = $m[1];
 
