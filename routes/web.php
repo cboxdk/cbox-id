@@ -703,7 +703,7 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
  * group is the only console there is. See {@see \App\Platform\Console\CustomerConsole}.
  */
 Route::get('/switch-app', AppsController::class)
-    ->middleware(['plane:console', 'platform.auth'])->name('apps');
+    ->middleware(['plane:console', 'platform.auth', 'console.customer'])->name('apps');
 
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer', 'console.root'])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
