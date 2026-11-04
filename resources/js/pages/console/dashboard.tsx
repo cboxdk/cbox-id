@@ -1,8 +1,7 @@
 import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
-import { CatalogAppIcon } from '@/chrome/AppSwitcher';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { CatalogApp, HelpContent, PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
     type IconName,
@@ -39,7 +38,6 @@ type Props = PageProps<{
     heading: string;
     greeting: string;
     isAdmin: boolean;
-    apps: CatalogApp[];
     role: string;
     organizationName: string | null;
     memberCount: number;
@@ -68,7 +66,6 @@ export default function Dashboard({
     heading,
     greeting,
     isAdmin,
-    apps,
     role,
     organizationName,
     memberCount,
@@ -86,8 +83,6 @@ export default function Dashboard({
     return (
         <>
             <PageHeader title={heading} help={help} description={greeting} />
-
-            {apps.length > 0 && <Apps apps={apps} />}
 
             {isAdmin ? (
                 <>
@@ -184,7 +179,7 @@ export default function Dashboard({
                 </>
             ) : (
                 /*
-                    MEMBER OVERVIEW: their apps, above, plus a nudge to their own security.
+                    MEMBER OVERVIEW: a nudge to their own security.
                     Org stats, the org-wide audit feed, the module cards and the setup
                     checklist are admin surfaces — a plain member neither manages nor needs
                     to see them.
@@ -233,45 +228,6 @@ export default function Dashboard({
                 </div>
             )}
         </>
-    );
-}
-
-function Apps({ apps }: { apps: CatalogApp[] }) {
-    const { t: tc } = useTranslator();
-
-    return (
-        <section className="mb-6">
-            <h2
-                className="text-xs font-medium uppercase mb-3"
-                style={{ color: 'var(--muted-foreground)', letterSpacing: '0.06em' }}
-            >
-                {tc('console.your_apps_13b17cc7')}
-            </h2>
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {apps.map((app) => (
-                    // A real `<a>`, not an Inertia visit: these leave this application
-                    // entirely, which is the whole point of the launcher.
-                    <a key={app.key} href={app.launch_url} className="cbx-app-tile">
-                        <CatalogAppIcon app={app} />
-                        <span className="min-w-0 flex-1">
-                            <span
-                                className="block truncate font-semibold"
-                                style={{ color: 'var(--foreground)' }}
-                            >
-                                {app.name}
-                            </span>
-                            <span
-                                className="block truncate text-xs mono"
-                                style={{ color: 'var(--muted-foreground)' }}
-                            >
-                                {app.description ?? new URL(app.launch_url).hostname}
-                            </span>
-                        </span>
-                        <Icon name="external" className="cbx-app-go w-4 h-4" aria-hidden="true" />
-                    </a>
-                ))}
-            </div>
-        </section>
     );
 }
 

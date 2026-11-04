@@ -2,7 +2,7 @@ import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CatalogApp, SharedProps } from '@/types';
-import { Input, Popover, PopoverContent, PopoverTrigger } from '@/ui';
+import { Icon, Input, Popover, PopoverContent, PopoverTrigger } from '@/ui';
 
 export function CatalogAppIcon({ app }: { app: Pick<CatalogApp, 'name' | 'icon_url'> }) {
     const [failed, setFailed] = useState<string | null>(null);
@@ -59,19 +59,14 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
             }}
         >
             <PopoverTrigger
-                className={compact ? 'cbx-rail-brand' : 'btn btn-secondary w-full'}
+                className={compact ? 'btn btn-ghost' : 'btn btn-secondary w-full'}
                 aria-label={t('console.catalog_switch_app')}
             >
-                {compact ? (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold">
-                        ID
-                    </span>
-                ) : (
-                    t('console.catalog_switch_app')
-                )}
+                <Icon name="layers" className="w-4 h-4" />
+                <span>{t('console.catalog_switch_app')}</span>
             </PopoverTrigger>
             <PopoverContent
-                side={compact ? 'right' : 'bottom'}
+                side="bottom"
                 className="w-80 max-w-[calc(100vw-2rem)] p-3"
                 aria-label={t('console.your_apps_13b17cc7')}
             >

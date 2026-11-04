@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\AppCatalog\CatalogEntry;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\Subjects;
 
 beforeEach(fn () => installedDeployment());
 
@@ -27,4 +30,12 @@ it('keeps validation errors beside the field that needs correcting', function ()
         'enabled' => false, 'position' => 0, 'audience' => 'everyone',
     ])->assertRedirect()->assertSessionHasErrors('launch_url');
     expect(CatalogEntry::query()->count())->toBe(0);
+});
+
+it('serves the personal app picker independently of the dashboard', function (): void {
+    $subject = app(Subjects::class)->create('apps@example.test', 'App user', 'supersecret123');
+    $session = app(SessionManager::class)->start($subject->id, null, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+    $this->get(route('apps'))->assertOk()->assertInertia(fn ($page) => $page
+        ->component('account/apps')->where('apps', []));
 });
