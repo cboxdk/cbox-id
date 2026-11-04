@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CatalogApp, SharedProps } from '@/types';
@@ -28,6 +29,7 @@ let lastCatalogRefresh = Date.now();
 
 /** The payload is already filtered by ID. This component never invents grants or apps. */
 export function AppSwitcher({ compact = false }: { compact?: boolean }) {
+    const { t } = useTranslator();
     const { appCatalog = [] } = usePage<SharedProps>().props;
     const [query, setQuery] = useState('');
     const refresh = useCallback(() => {
@@ -58,29 +60,32 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
         >
             <PopoverTrigger
                 className={compact ? 'cbx-rail-brand' : 'btn btn-secondary w-full'}
-                aria-label="Switch app"
+                aria-label={t('console.catalog_switch_app')}
             >
                 {compact ? (
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold">
                         ID
                     </span>
                 ) : (
-                    'Switch app'
+                    t('console.catalog_switch_app')
                 )}
             </PopoverTrigger>
             <PopoverContent
                 side={compact ? 'right' : 'bottom'}
                 className="w-80 max-w-[calc(100vw-2rem)] p-3"
-                aria-label="Your apps"
+                aria-label={t('console.your_apps_13b17cc7')}
             >
-                <h2 className="mb-3 font-semibold">Your apps</h2>
+                <h2 className="mb-3 font-semibold">{t('console.your_apps_13b17cc7')}</h2>
                 <Input
-                    aria-label="Search apps"
-                    placeholder="Search apps…"
+                    aria-label={t('console.search_apps_a10a36fa')}
+                    placeholder={t('console.search_apps_a10a36fa') + '…'}
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                 />
-                <nav aria-label="Apps" className="mt-2 max-h-80 overflow-y-auto space-y-1">
+                <nav
+                    aria-label={t('console.apps_89dd7484')}
+                    className="mt-2 max-h-80 overflow-y-auto space-y-1"
+                >
                     {apps.map((app) => (
                         <a
                             key={app.key}
@@ -98,9 +103,7 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
                     ))}
                     {apps.length === 0 && (
                         <p className="p-2 text-sm text-[var(--muted-foreground)]">
-                            {query
-                                ? 'No apps match your search.'
-                                : 'No apps have been published for you yet.'}
+                            {query ? t('console.catalog_no_matches') : t('console.catalog_empty')}
                         </p>
                     )}
                 </nav>

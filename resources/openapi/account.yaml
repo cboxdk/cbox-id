@@ -61,8 +61,6 @@ tags:
     name: Organizations
     description: 'The organizations you are a member of — and leaving one.'
   -
-    name: 'App catalog'
-  -
     name: 'Connected services'
 paths:
   '/me/action-approvals/{id}':
@@ -180,9 +178,50 @@ paths:
                 type: object
                 required:
                   - data
+                  - meta
                 properties:
                   data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - name
+                        - description
+                        - launch_url
+                        - icon_url
+                        - position
+                        - version
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - 'null'
+                        launch_url:
+                          type: string
+                          format: uri
+                        icon_url:
+                          type:
+                            - string
+                            - 'null'
+                        position:
+                          type: integer
+                        version:
+                          type: integer
+                  meta:
                     type: object
+                    required:
+                      - revision
+                      - refresh_after
+                    properties:
+                      revision:
+                        type: string
+                      refresh_after:
+                        type: integer
         202:
           $ref: '#/components/responses/ApprovalRequired'
         401:

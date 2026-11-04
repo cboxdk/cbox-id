@@ -1266,7 +1266,37 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - name
+                        - description
+                        - launch_url
+                        - icon_url
+                        - position
+                        - version
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - 'null'
+                        launch_url:
+                          type: string
+                          format: uri
+                        icon_url:
+                          type:
+                            - string
+                            - 'null'
+                        position:
+                          type: integer
+                        version:
+                          type: integer
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
