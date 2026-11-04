@@ -107,10 +107,16 @@ function oidcWithoutKey(string $key, string $org): string
  */
 function oidcSignInInProgress(string $connection, Closure $idToken, array $jwks): string
 {
-    $location = (string) test()->get("/sso/oidc/{$connection}/redirect")->assertRedirect()->headers->get('Location');
+    $started = test()->get("/sso/oidc/{$connection}/redirect")->assertRedirect();
+    $location = (string) $started->headers->get('Location');
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
     expect($location)->toStartWith('https://idp.setup.example/authorize?');
+
+    $cookie = collect($started->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
+
+    expect($cookie)->not->toBeNull('the authorization redirect sets the browser flow cookie');
+    test()->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
 
     Http::fake([
         'idp.setup.example/token' => Http::response(['id_token' => $idToken((string) $query['nonce'])]),

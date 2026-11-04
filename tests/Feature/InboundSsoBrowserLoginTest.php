@@ -349,3 +349,28 @@ it('sends every browser SSO and social sign-in route no-store', function (string
     'social.redirect',
     'social.callback',
 ])->group('security');
+
+it('rejects a solicited SAML response sent to a different browser before adopting its session', function (): void {
+    $fixture = ssoConnection();
+    fakeAssertionFor('attacker@acme.example');
+    $response = base64_encode('<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" InResponseTo="_attacker_request"/>');
+
+    $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => $response])
+        ->assertRedirect(route('login'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull()
+        ->and(app(Subjects::class)->findByEmail('attacker@acme.example'))->toBeNull();
+})->group('security');
+
+it('adopts a solicited SAML login with its browser cookie and no prior session', function (): void {
+    $fixture = ssoConnection();
+    fakeAssertionFor('owner@acme.example');
+    $response = base64_encode('<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" InResponseTo="_own_request"/>');
+
+    $this->flushSession()
+        ->withCookie('__Host-cbox_saml_'.hash('sha256', $fixture->connection->id), '_own_request')
+        ->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => $response])
+        ->assertRedirect(route('dashboard'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
+})->group('security');

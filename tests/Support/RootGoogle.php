@@ -156,6 +156,10 @@ final class RootGoogle
             ->and((string) $query['redirect_uri'])->toEndWith('/callback');
 
         $state = $tamperState ?? (string) $query['state'];
+        $cookie = collect($start->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
+
+        expect($cookie)->not->toBeNull('the authorization redirect sets the browser flow cookie');
+        test()->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
 
         if ($answer !== null) {
             return test()->get((string) $query['redirect_uri'].'?'.http_build_query([...$answer, 'state' => $state]));

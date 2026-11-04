@@ -89,6 +89,11 @@ final class RootEntra
 
         expect($authorize)->toStartWith('https://login.microsoftonline.com/'.self::TENANT.'/oauth2/v2.0/authorize?');
 
+        $cookie = collect($start->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
+
+        expect($cookie)->not->toBeNull('the authorization redirect sets the browser flow cookie');
+        test()->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
+
         self::fakeTokenEndpoint($email, (string) $query['nonce'], $claims);
 
         return test()->get((string) $query['redirect_uri'].'?'.http_build_query(['code' => 'the-code', 'state' => (string) $query['state']]));

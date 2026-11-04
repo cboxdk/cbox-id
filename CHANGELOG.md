@@ -181,6 +181,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- Upgrade to laravel-id 1.27.2 and require the initiating browser’s host-only cookie before accepting an SP-initiated SAML login. The federation security update also uses protected, expiring, single-use OIDC flow cookies; pending federated sign-ins must restart after deployment.
+
 - Require an enrolled second factor after magic-link login and reject password-only login when required MFA is satisfied only by an enrolled passkey. Recheck existing sessions and OAuth consent, preserving the actual authentication methods after step-up. Factor enrolment rotates the session after proving possession.
 - Upgrade to laravel-id 1.26.6: reject code redemption, refresh and token issuance for inactive subjects and invalidate outstanding codes on deactivation. Regression coverage exercises all three bypasses and successful sign-ins.
 
