@@ -1654,8 +1654,12 @@
         border-color: var(--border-strong);
         color: var(--foreground);
     }
-    .cbx-search .label {
+    .cbx-search-label {
         flex: 1;
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 16px;
         text-align: left;
     }
     /* On a phone the search is the icon alone — the same palette, a thumb's width. */

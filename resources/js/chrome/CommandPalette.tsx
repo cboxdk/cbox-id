@@ -235,7 +235,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                 aria-keyshortcuts="Meta+K Control+K"
             >
                 <Icon name="search" className="w-3.5 h-3.5 shrink-0" />
-                <span className="label hidden md:inline">
+                <span className="cbx-search-label hidden md:inline">
                     {endpoint === null
                         ? tc('console.go_to_d3a27e80')
                         : tc('console.search_7336265a')}
