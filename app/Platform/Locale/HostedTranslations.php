@@ -44,6 +44,7 @@ final class HostedTranslations
     public static function namespacesFor(string $component): array
     {
         return match (true) {
+            $component === 'account/apps' => ['console', 'hosted'],
             $component === 'auth/sudo' => ['console', 'auth'],
             str_starts_with($component, 'auth/') => ['hosted', 'auth'],
             str_starts_with($component, 'oauth/') => ['hosted', 'oauth'],

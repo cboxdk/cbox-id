@@ -217,13 +217,13 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                         <div className="cbx-topbar-context">{context}</div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                            <a
+                            <Link
                                 href="/switch-app"
                                 className="btn btn-secondary"
                                 aria-label={tc('console.catalog_switch_app')}
                             >
                                 {tc('console.catalog_switch_app')}
-                            </a>
+                            </Link>
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
                             <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
