@@ -1896,7 +1896,7 @@
     :root.cbx-nav-pinned .cbx-rail {
         width: 210px;
         border-color: var(--border);
-        box-shadow: var(--shadow-card);
+        box-shadow: none;
     }
     .cbx-rail.open a .lbl,
     :root.cbx-nav-pinned .cbx-rail a .lbl {
@@ -1907,6 +1907,7 @@
      * rail width + its two 6px insets (222px) so content docks cleanly beside it. */
     .cbx-rail-spacer {
         display: none;
+        background: var(--sidebar);
     }
     @media (min-width: 1024px) {
         .cbx-rail-spacer {
