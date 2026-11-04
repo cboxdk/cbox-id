@@ -19,3 +19,12 @@ it('administers catalog drafts and publishing through the console', function ():
     $this->delete(route('environment.app-catalog.destroy', 'billing'), ['version' => 2])->assertRedirect()->assertSessionHasNoErrors();
     expect(CatalogEntry::query()->count())->toBe(0);
 });
+
+it('keeps validation errors beside the field that needs correcting', function (): void {
+    crudSetup();
+    $this->from(route('environment.app-catalog.create'))->put(route('environment.app-catalog.save', 'billing'), [
+        'version' => 0, 'name' => 'Billing', 'launch_url' => 'http://billing.example.com',
+        'enabled' => false, 'position' => 0, 'audience' => 'everyone',
+    ])->assertRedirect()->assertSessionHasErrors('launch_url');
+    expect(CatalogEntry::query()->count())->toBe(0);
+});
