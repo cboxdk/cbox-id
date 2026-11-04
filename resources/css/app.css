@@ -317,6 +317,8 @@
         --input: oklch(0.32 0.013 80);
         --ring: oklch(0.65 0.18 258);
         --sidebar: oklch(0.21 0.009 80);
+        --rail-gutter: var(--sidebar);
+        --rail-docked-shadow: none;
         --sidebar-foreground: oklch(0.955 0.006 90);
         --sidebar-muted: oklch(0.65 0.016 85);
         --sidebar-accent: oklch(0.275 0.012 80);
@@ -375,6 +377,8 @@
     --input: oklch(0.32 0.013 80);
     --ring: oklch(0.65 0.18 258);
     --sidebar: oklch(0.21 0.009 80);
+    --rail-gutter: var(--sidebar);
+    --rail-docked-shadow: none;
     --sidebar-foreground: oklch(0.955 0.006 90);
     --sidebar-muted: oklch(0.65 0.016 85);
     --sidebar-accent: oklch(0.275 0.012 80);
@@ -1896,7 +1900,7 @@
     :root.cbx-nav-pinned .cbx-rail {
         width: 210px;
         border-color: var(--border);
-        box-shadow: none;
+        box-shadow: var(--rail-docked-shadow, var(--shadow-card));
     }
     .cbx-rail.open a .lbl,
     :root.cbx-nav-pinned .cbx-rail a .lbl {
@@ -1907,7 +1911,7 @@
      * rail width + its two 6px insets (222px) so content docks cleanly beside it. */
     .cbx-rail-spacer {
         display: none;
-        background: var(--sidebar);
+        background: var(--rail-gutter, transparent);
     }
     @media (min-width: 1024px) {
         .cbx-rail-spacer {
