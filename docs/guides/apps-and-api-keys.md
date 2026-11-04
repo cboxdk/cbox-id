@@ -153,12 +153,7 @@ Two buttons at the top of every tab, for whoever manages the app:
 - **Redirect URIs are a security control, not configuration.** They are the reason
   an attacker cannot have your app's sign-in send the resulting code to their
   server. Keep the list exact and short.
-- **First-party apps appear in your team's launcher** on the console overview, so
-  people can get to them without a bookmark.
-- **Scopes are not permissions.** What you tick on the Scopes tab is the
-  *ceiling on what that app may ask for*. What a *person* is allowed to do is a
-  [permission](permissions.md), composed into a [role](roles.md). The two words are
-  easy to swap; the pages link to each other for that reason.
+- **Publish navigation separately in the [App catalog](app-catalog.md).** First-party status controls consent; it does not publish a launcher entry.
 
 ## Troubleshooting
 

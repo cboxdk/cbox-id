@@ -358,7 +358,18 @@ export interface ShellNotice {
     label: string;
 }
 
+export interface CatalogApp {
+    key: string;
+    name: string;
+    description: string | null;
+    launch_url: string;
+    icon_url: string | null;
+    position: number;
+    version: number;
+}
+
 export interface SharedProps {
+    appCatalog: CatalogApp[];
     /**
      * Inertia's own `PageProps` is an open record, and `createInertiaApp` will not accept
      * a closed interface in its place. The index signature is that requirement and

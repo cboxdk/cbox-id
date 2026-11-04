@@ -1,4 +1,5 @@
 import { useTranslator } from '@/i18n';
+import { AppSwitcher } from './AppSwitcher';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import type { NavArea } from '@/types';
@@ -62,29 +63,13 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                 aria-label={tc('console.areas_2d36715a')}
             >
                 <div className="cbx-rail-hd">
-                    <Link href={brandHref} className="cbx-rail-brand" aria-label={brandLabel}>
-                        <svg viewBox="0 0 64 64" aria-hidden="true">
-                            <rect
-                                x="2"
-                                y="2"
-                                width="60"
-                                height="60"
-                                rx="14"
-                                fill="var(--primary)"
-                            />
-                            <text
-                                x="32"
-                                y="44"
-                                textAnchor="middle"
-                                fill="var(--primary-foreground)"
-                                fontFamily="var(--font-display)"
-                                fontWeight="700"
-                                fontSize="30"
-                                letterSpacing="-0.04em"
-                            >
-                                ID
-                            </text>
-                        </svg>
+                    <AppSwitcher compact />
+                    <Link
+                        href={brandHref}
+                        className="sr-only focus:not-sr-only"
+                        aria-label={brandLabel}
+                    >
+                        Home
                     </Link>
 
                     <button

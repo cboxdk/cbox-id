@@ -2,6 +2,7 @@ import { UiTranslationProvider } from '@/i18n/ui';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { AppSwitcher } from '@/chrome/AppSwitcher';
 import { AccountMenu } from '@/chrome/AccountMenu';
 import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
@@ -208,6 +209,7 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                     platformUrl={shell.platformHref}
                 >
                     <div className="cbx-ctx-sheet">{context}</div>
+                    <AppSwitcher />
                 </MobileNav>
 
                 <div className="flex flex-col min-w-0 flex-1">
