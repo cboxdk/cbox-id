@@ -209,7 +209,6 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                     platformUrl={shell.platformHref}
                 >
                     <div className="cbx-ctx-sheet">{context}</div>
-                    <AppSwitcher />
                 </MobileNav>
 
                 <div className="flex flex-col min-w-0 flex-1">
@@ -217,18 +216,12 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                         <div className="cbx-topbar-context">{context}</div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                            <Link
-                                href="/switch-app"
-                                className="btn btn-secondary"
-                                aria-label={tc('console.catalog_switch_app')}
-                            >
-                                {tc('console.catalog_switch_app')}
-                            </Link>
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
                             <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
                             <ConsoleLanguagePicker />
 
+                            <AppSwitcher />
                             <AccountMenu
                                 user={auth.user}
                                 logoutUrl={shell.logoutHref ?? logout.url()}

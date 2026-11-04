@@ -444,48 +444,104 @@
 /* Subtle blue-tinted radial wash on the main scroll column — every Cbox app. */
 .canvas-gradient {
     background:
-        radial-gradient(
-            ellipse 1200px 600px at 100% 0%,
-            oklch(0.5 0.17 258 / 0.04) 0%,
-            transparent 60%
-        ),
-        radial-gradient(
-            ellipse 800px 400px at 0% 100%,
-            oklch(0.75 0.08 75 / 0.05) 0%,
-            transparent 60%
-        ),
-        var(--canvas);
+        radial-gradient(ellipse at 30% 0, var(--accent-soft), transparent 48%), var(--canvas);
 }
-:root[data-theme='dark'] .canvas-gradient,
-.canvas-gradient:where([data-theme='dark'] *) {
-    background:
-        radial-gradient(
-            ellipse 1200px 600px at 100% 0%,
-            oklch(0.65 0.18 258 / 0.06) 0%,
-            transparent 60%
-        ),
-        radial-gradient(
-            ellipse 800px 400px at 0% 100%,
-            oklch(0.75 0.08 75 / 0.06) 0%,
-            transparent 60%
-        ),
-        var(--canvas);
+.cbx-service-mark {
+    width: 24px;
+    height: 24px;
+    color: var(--mark-light);
+}
+:root[data-theme='dark'] .cbx-service-mark {
+    color: var(--mark-dark);
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .canvas-gradient {
-        background:
-            radial-gradient(
-                ellipse 1200px 600px at 100% 0%,
-                oklch(0.65 0.18 258 / 0.06) 0%,
-                transparent 60%
-            ),
-            radial-gradient(
-                ellipse 800px 400px at 0% 100%,
-                oklch(0.75 0.08 75 / 0.06) 0%,
-                transparent 60%
-            ),
-            var(--canvas);
+    :root:not([data-theme='light']) .cbx-service-mark {
+        color: var(--mark-dark);
     }
+}
+.cbx-rail .cbx-rail-brand {
+    width: auto;
+    height: 32px;
+    gap: 7px;
+    padding: 0 4px;
+    margin: 0;
+    color: var(--foreground);
+}
+.cbx-rail .cbx-rail-brand .cbx-service-mark {
+    width: 22px;
+    height: 22px;
+}
+.cbx-rail-wordmark,
+.cbx-service-name {
+    display: none;
+}
+:is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-rail-wordmark {
+    display: block;
+    width: 56px;
+    height: 19px;
+    background: var(--foreground);
+    mask: url('/brand/cbox-logo-neg-100.png') center / contain no-repeat;
+}
+:is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-service-name {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+}
+.cbx-launch-trigger {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: 8px;
+    color: var(--foreground);
+    cursor: pointer;
+}
+.cbx-launch-trigger:hover,
+.cbx-launch-trigger[data-state='open'],
+.cbx-launch-grid a:hover {
+    background: var(--secondary);
+}
+.cbx-popover.cbx-launch-panel {
+    width: min(292px, calc(100vw - 16px));
+    max-height: var(--radix-popover-content-available-height);
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 12px;
+}
+.cbx-launch-panel h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 4px 8px;
+}
+.cbx-launch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+}
+.cbx-launch-grid a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    min-height: 60px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--foreground);
+    text-align: center;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+.cbx-launch-check {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    color: var(--accent-strong);
 }
 
 @layer components {
@@ -1622,8 +1678,8 @@
         padding: 0 16px;
         box-sizing: border-box;
         border-bottom: 1px solid var(--border);
-        background: color-mix(in oklch, var(--background) 80%, transparent);
-        backdrop-filter: blur(12px);
+        background: var(--background);
+        flex-shrink: 0;
         position: sticky;
         top: 0;
         z-index: 20;

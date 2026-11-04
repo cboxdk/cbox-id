@@ -1,5 +1,5 @@
 import { useTranslator } from '@/i18n';
-import { Brand } from './Brand';
+import { ServiceMark } from './ServiceMark';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import type { NavArea } from '@/types';
@@ -63,8 +63,14 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                 aria-label={tc('console.areas_2d36715a')}
             >
                 <div className="cbx-rail-hd">
-                    <Link href={brandHref} className="cbx-rail-brand" aria-label={brandLabel}>
-                        <Brand compact />
+                    <Link
+                        href={brandHref}
+                        className="cbx-rail-brand"
+                        aria-label={`Cbox ID · ${brandLabel}`}
+                    >
+                        <span className="cbx-rail-wordmark" aria-hidden="true" />
+                        <ServiceMark service="id" />
+                        <span className="cbx-service-name">ID</span>
                     </Link>
 
                     <button

@@ -20,14 +20,12 @@ it('shows the catalog editor and keyboard-accessible app selector in both themes
 
 });
 
-it('opens the same app selector from the mobile navigation sheet', function (): void {
+it('opens the same app selector directly in the mobile header', function (): void {
     crudSetup();
     visit(route('environment.app-catalog'))
         ->resize(375, 812)
-        ->click('.cbx-mobilebar-btn')
-        ->assertVisible('.cbx-sheet')
-        ->click('.cbx-sheet button[aria-label="Switch app"]')
-        ->assertSee('Your apps')
+        ->click('header button[aria-label="Switch app"]')
+        ->assertVisible('.cbx-launch-panel')
         ->assertSee('No apps have been published for you yet.')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-switcher-mobile');
@@ -36,7 +34,8 @@ it('opens the same app selector from the mobile navigation sheet', function (): 
 it('opens the personal picker from the signed-in header', function (): void {
     actingAsRole(MembershipRole::Owner);
     visit('/dashboard')
-        ->click('a[aria-label="Switch app"]')
+        ->click('header button[aria-label="Switch app"]')
+        ->assertPathIs('/dashboard')
         ->assertSee('Switch app')
         ->assertSee('No apps have been published for you yet.')
         ->assertNoJavaScriptErrors()
