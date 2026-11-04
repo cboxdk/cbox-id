@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:bece1856-c865-46d4-b9b0-246d533d9a48",
+    "serialNumber": "urn:uuid:ac4d4a22-087b-4a2d-96a3-adc401f0457a",
     "version": 1,
     "metadata": {
         "tools": [
@@ -1361,11 +1361,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/filesystem@v8.1.6",
+            "bom-ref": "pkg:composer/symfony/filesystem@v8.1.11",
             "group": "symfony",
             "name": "filesystem",
-            "version": "v8.1.6",
-            "purl": "pkg:composer/symfony/filesystem@v8.1.6",
+            "version": "v8.1.11",
+            "purl": "pkg:composer/symfony/filesystem@v8.1.11",
             "description": "Provides basic utilities for the filesystem",
             "licenses": [
                 {
@@ -1393,11 +1393,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/http-foundation@v8.1.8",
+            "bom-ref": "pkg:composer/symfony/http-foundation@v8.1.11",
             "group": "symfony",
             "name": "http-foundation",
-            "version": "v8.1.8",
-            "purl": "pkg:composer/symfony/http-foundation@v8.1.8",
+            "version": "v8.1.11",
+            "purl": "pkg:composer/symfony/http-foundation@v8.1.11",
             "description": "Defines an object-oriented layer for the HTTP specification",
             "licenses": [
                 {
@@ -1409,11 +1409,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/http-kernel@v8.1.8",
+            "bom-ref": "pkg:composer/symfony/http-kernel@v8.1.11",
             "group": "symfony",
             "name": "http-kernel",
-            "version": "v8.1.8",
-            "purl": "pkg:composer/symfony/http-kernel@v8.1.8",
+            "version": "v8.1.11",
+            "purl": "pkg:composer/symfony/http-kernel@v8.1.11",
             "description": "Provides a structured process for converting a Request into a Response",
             "licenses": [
                 {
@@ -1665,11 +1665,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/routing@v8.1.8",
+            "bom-ref": "pkg:composer/symfony/routing@v8.1.11",
             "group": "symfony",
             "name": "routing",
-            "version": "v8.1.8",
-            "purl": "pkg:composer/symfony/routing@v8.1.8",
+            "version": "v8.1.11",
+            "purl": "pkg:composer/symfony/routing@v8.1.11",
             "description": "Maps an HTTP request to a set of configuration variables",
             "licenses": [
                 {
