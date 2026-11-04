@@ -53,8 +53,8 @@ export class AppErrorBoundary extends Component<Props, State> {
                 <div className="card" style={{ maxWidth: '32rem', padding: '2rem' }}>
                     <h1 className="cbx-page-title">Something went wrong</h1>
                     <p className="cbx-page-desc">
-                        This page could not be displayed. Reloading it starts over from the
-                        server, which resolves most causes.
+                        This page could not be displayed. Reloading it starts over from the server,
+                        which resolves most causes.
                     </p>
 
                     {import.meta.env.DEV && (

@@ -49,7 +49,10 @@ export default function AcceptInvite({
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {inviterName !== null
-                    ? rich('auth.accept_invite.lead_from', { ...facts, inviter: emphasis(inviterName) })
+                    ? rich('auth.accept_invite.lead_from', {
+                          ...facts,
+                          inviter: emphasis(inviterName),
+                      })
                     : rich('auth.accept_invite.lead', facts)}
             </p>
 

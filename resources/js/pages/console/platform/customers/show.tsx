@@ -267,8 +267,7 @@ export default function Customer({
                                 className="px-5 py-8 text-center text-sm"
                                 style={{ color: 'var(--faint)' }}
                             >
-                                This project has no environments yet — nothing under it serves
-                                auth.
+                                This project has no environments yet — nothing under it serves auth.
                             </div>
                         ) : (
                             <EnvironmentTable
@@ -288,12 +287,11 @@ export default function Customer({
                         action={<Pill tone="warning">Unfiled</Pill>}
                     >
                         <div className="px-5 pt-4 text-sm" style={{ color: 'var(--muted)' }}>
-                            This workspace owns{' '}
-                            {plural(unfiledEnvironments.length, 'environment')} that no project
-                            holds, so nothing bills for{' '}
+                            This workspace owns {plural(unfiledEnvironments.length, 'environment')}{' '}
+                            that no project holds, so nothing bills for{' '}
                             {unfiledEnvironments.length === 1 ? 'it' : 'them'} and{' '}
-                            {unfiledEnvironments.length === 1 ? 'it does' : 'they do'} not appear
-                            on the customer&rsquo;s own project pages. Shown here rather than left
+                            {unfiledEnvironments.length === 1 ? 'it does' : 'they do'} not appear on
+                            the customer&rsquo;s own project pages. Shown here rather than left
                             invisible; nothing on this screen reassigns{' '}
                             {unfiledEnvironments.length === 1 ? 'it' : 'them'}.
                         </div>
@@ -425,10 +423,7 @@ function EnvironmentTable({
                                         <p className="font-semibold">
                                             {environment.name}
                                             {environment.isTarget && (
-                                                <Pill
-                                                    tone="success"
-                                                    className="align-middle ml-1"
-                                                >
+                                                <Pill tone="success" className="align-middle ml-1">
                                                     Target
                                                 </Pill>
                                             )}

@@ -12,6 +12,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\FederationBrowser;
 use Tests\Support\RootGoogle;
 
 /*
@@ -84,7 +85,9 @@ it('shows a token that does not verify as a rejected sign-in', function (): void
 it('shows an unreachable provider as unreachable', function (): void {
     $login = $this->get('https://'.RootGoogle::HOST.'/login')->assertOk();
     $start = (string) collect($login->inertiaProps('providers'))->firstWhere('provider', 'google')['url'];
-    parse_str((string) parse_url((string) $this->get($start)->headers->get('Location'), PHP_URL_QUERY), $query);
+    $redirect = $this->get($start);
+    FederationBrowser::carryFlowCookie($redirect);
+    parse_str((string) parse_url((string) $redirect->headers->get('Location'), PHP_URL_QUERY), $query);
 
     Http::fake(['oauth2.googleapis.com/token' => static fn () => throw new ConnectionException('timed out')]);
 
@@ -96,7 +99,9 @@ it('shows an unreachable provider as unreachable', function (): void {
 it('shows a switched-off connection on the callback as unavailable here', function (): void {
     $login = $this->get('https://'.RootGoogle::HOST.'/login')->assertOk();
     $start = (string) collect($login->inertiaProps('providers'))->firstWhere('provider', 'google')['url'];
-    parse_str((string) parse_url((string) $this->get($start)->headers->get('Location'), PHP_URL_QUERY), $query);
+    $redirect = $this->get($start);
+    FederationBrowser::carryFlowCookie($redirect);
+    parse_str((string) parse_url((string) $redirect->headers->get('Location'), PHP_URL_QUERY), $query);
 
     switchOff($this->google);
 

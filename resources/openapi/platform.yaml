@@ -33,7 +33,8 @@ info:
     `{ "error": "<code>", "message": "<human message>" }` — validation failures add a
     field-keyed `errors` map.
 servers:
-  - url: 'https://api.cboxid.com/api/v1'
+  -
+    url: 'https://api.cboxid.com/api/v1'
     description: 'Hosted (platform-root host)'
   -
     url: 'https://{host}/api/v1'
@@ -45,15 +46,20 @@ security:
   -
     OperatorToken: []
 tags:
-  - name: Workspaces
+  -
+    name: Workspaces
     description: 'The customers on the deployment.'
-  - name: Environments
+  -
+    name: Environments
     description: 'Every environment on the deployment, whoever owns it.'
-  - name: Organizations
+  -
+    name: Organizations
     description: 'Organizations inside any one environment.'
-  - name: Operators
+  -
+    name: Operators
     description: 'The people who run the deployment.'
-  - name: Approvals
+  -
+    name: Approvals
     description: "Where a held operation's approval stands."
 paths:
   '/platform/action-approvals/{id}':
@@ -113,8 +119,10 @@ paths:
       x-scope: 'operator:environments:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -174,8 +182,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -248,8 +258,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: false
         content:
@@ -311,8 +323,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -370,8 +384,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -435,8 +451,10 @@ paths:
       x-scope: 'operator:operators:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -501,8 +519,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -554,8 +574,10 @@ paths:
       x-scope: 'operator:workspaces:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -628,8 +650,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:

@@ -25,7 +25,9 @@ jobs:
       image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
     steps:
       - uses: actions/checkout@v4
-      - run: composer install --no-interaction --no-progress
+      - run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --no-progress
       - name: composer audit
         run: composer audit --no-dev
 

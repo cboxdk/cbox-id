@@ -56,7 +56,9 @@ export default function Sudo({ reason, plane }: Props) {
                     className="space-y-4"
                     onSubmit={(event) => {
                         event.preventDefault();
-                        form.post(plane === 'environment' ? confirmEnvironment.url() : confirm.url());
+                        form.post(
+                            plane === 'environment' ? confirmEnvironment.url() : confirm.url(),
+                        );
                     }}
                 >
                     <PasswordField

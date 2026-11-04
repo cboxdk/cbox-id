@@ -29,6 +29,8 @@ use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\TrustHostsExceptHealth;
 use App\Platform\EmailNotVerified;
 use App\Platform\Locale\LocaleResolver;
+use App\Platform\PlatformAuth;
+use App\Platform\Signals\SignalsStepUpRequired;
 use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
@@ -333,6 +335,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (SignalsStepUpRequired $e, Request $request): Response {
+            // Non-interactive callers receive no authenticated ticket. OAuth token
+            // issuance translates this refusal to invalid_grant inside the issuer.
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['error' => 'stronger_authentication_required', 'message' => 'Sign in with a stronger authentication method.'], 403);
+            }
+            $auth = app(PlatformAuth::class);
+            if ($request->hasSession() && $auth->hasSecondFactor($e->authentication->subjectId)) {
+                $auth->holdForMfa($request, $e->authentication->subjectId, $e->authentication->amr);
+
+                return redirect()->route('mfa');
+            }
+
+            return redirect()->route('login')->with('status', __('auth.login.passkey'));
+        });
         // Never flashed back into the session on a validation failure: the Appearance
         // editor sends an uploaded logo and favicon as base64 data URIs under `images`, up
         // to a megabyte, and a refused save would otherwise write all of it into the

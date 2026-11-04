@@ -2,7 +2,20 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { Fragment, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Dialog, Input, Kv, KvList, PageHeader, Panel, Pill, Stat, Table, Td, Th } from '@/ui';
+import {
+    Button,
+    Dialog,
+    Input,
+    Kv,
+    KvList,
+    PageHeader,
+    Panel,
+    Pill,
+    Stat,
+    Table,
+    Td,
+    Th,
+} from '@/ui';
 
 interface MemberRow {
     userId: string;
@@ -173,10 +186,7 @@ export default function Organization({
                     <Stat label="SSO connections" value={usage.connections.toLocaleString()} />
                     <Stat label="Verified domains" value={usage.domains.toLocaleString()} />
                     <Stat label="API clients" value={usage.clients.toLocaleString()} />
-                    <Stat
-                        label="Service accounts"
-                        value={usage.serviceAccounts.toLocaleString()}
-                    />
+                    <Stat label="Service accounts" value={usage.serviceAccounts.toLocaleString()} />
                 </div>
             </section>
 
@@ -232,9 +242,7 @@ export default function Organization({
                                         </Td>
                                         <Td className="whitespace-nowrap">
                                             <Pill tone={memberTone(member.status)}>
-                                                <span className="capitalize">
-                                                    {member.status}
-                                                </span>
+                                                <span className="capitalize">{member.status}</span>
                                             </Pill>
                                         </Td>
                                         <Td className="text-right">
@@ -359,8 +367,8 @@ export default function Organization({
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        No recent activity recorded for this organization. Sign-ins, role changes and
-                        connection edits appear here as they happen.
+                        No recent activity recorded for this organization. Sign-ins, role changes
+                        and connection edits appear here as they happen.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">

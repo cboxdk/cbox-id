@@ -28,7 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
       - run: npm run build
 

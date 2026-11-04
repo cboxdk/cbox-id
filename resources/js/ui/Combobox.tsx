@@ -77,7 +77,9 @@ export function Combobox<T extends string>({
                 {...field}
                 {...props}
             >
-                <span className={cn('cbx-select-value', selected === undefined && 'is-placeholder')}>
+                <span
+                    className={cn('cbx-select-value', selected === undefined && 'is-placeholder')}
+                >
                     {selected?.label ?? placeholder}
                 </span>
             </PopoverTrigger>

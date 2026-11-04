@@ -133,9 +133,7 @@ export default function Environments({
                 </output>
             </div>
 
-            {creating && (
-                <CreateEnvironment href={storeHref} onDone={() => setCreating(false)} />
-            )}
+            {creating && <CreateEnvironment href={storeHref} onDone={() => setCreating(false)} />}
 
             {environments.length === 0 ? (
                 <div className="mt-8">
@@ -209,8 +207,8 @@ export default function Environments({
                     workspace
                 </Link>{' '}
                 — start there to see one workspace&rsquo;s whole estate. Two rows here never have a
-                workspace: the <strong>platform root</strong> is the environment this deployment itself
-                runs in, where operators and a workspace&rsquo;s own people live, and an{' '}
+                workspace: the <strong>platform root</strong> is the environment this deployment
+                itself runs in, where operators and a workspace&rsquo;s own people live, and an{' '}
                 <strong>unattached</strong> environment has no project, so nothing bills for it and
                 no workspace reaches it. Neither is an error to fix from this screen, and nothing
                 here reassigns either.

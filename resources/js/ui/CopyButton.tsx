@@ -62,12 +62,7 @@ export function CopyButton({
 
     return (
         <span className={cn('inline-flex items-center gap-2', className)}>
-            <Button
-                size={size}
-                icon={state === 'ok' ? 'check' : 'copy'}
-                onClick={copy}
-                {...props}
-            >
+            <Button size={size} icon={state === 'ok' ? 'check' : 'copy'} onClick={copy} {...props}>
                 {message}
             </Button>
 

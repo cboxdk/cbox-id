@@ -52,7 +52,10 @@ export default function EnvironmentDomains({
 
     return (
         <div style={{ maxWidth: '42rem' }}>
-            <PageHeader help={help} description="Serve an environment's identity endpoints on your own domain, verified by DNS." />
+            <PageHeader
+                help={help}
+                description="Serve an environment's identity endpoints on your own domain, verified by DNS."
+            />
 
             {environments.length === 0 ? (
                 <div className="card mt-6">
@@ -143,7 +146,11 @@ function Live({
                 }}
             >
                 <div className="flex items-center gap-2 flex-wrap">
-                    <Icon name="shield" className="w-4 h-4" style={{ color: 'var(--success-strong)' }} />
+                    <Icon
+                        name="shield"
+                        className="w-4 h-4"
+                        style={{ color: 'var(--success-strong)' }}
+                    />
                     <span className="font-medium">{domain}</span>
                     <Badge>Verified</Badge>
                 </div>
@@ -242,7 +249,10 @@ function Record({
             className="flex items-center justify-between gap-4 p-3"
             style={last ? undefined : { borderBottom: '1px solid var(--border)' }}
         >
-            <dt className="text-xs uppercase tracking-wide shrink-0" style={{ color: 'var(--faint)' }}>
+            <dt
+                className="text-xs uppercase tracking-wide shrink-0"
+                style={{ color: 'var(--faint)' }}
+            >
                 {label}
             </dt>
             <dd className="flex items-center gap-2 min-w-0">

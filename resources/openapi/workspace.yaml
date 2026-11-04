@@ -47,7 +47,8 @@ info:
     **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
 servers:
-  - url: 'https://api.cboxid.com/api/v1'
+  -
+    url: 'https://api.cboxid.com/api/v1'
     description: 'Hosted (the platform root)'
   -
     url: 'https://{host}/api/v1'
@@ -61,13 +62,19 @@ security:
   -
     WorkspaceAccessToken: []
 tags:
-  - name: Workspace
-  - name: Projects
-  - name: Environments
-  - name: Team
-  - name: Keys
+  -
+    name: Workspace
+  -
+    name: Projects
+  -
+    name: Environments
+  -
+    name: Team
+  -
+    name: Keys
     description: "Workspace keys, and the management keys of the workspace's environments."
-  - name: Approvals
+  -
+    name: Approvals
     description: "Actions a key's policy holds for a person's approval."
 paths:
   /workspace:
@@ -79,7 +86,8 @@ paths:
       x-action: workspace.get
       description: "Requires scope `workspace:read` (any role). Returns the workspace's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer)."
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -112,8 +120,10 @@ paths:
       x-scope: 'settings:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -221,7 +231,8 @@ paths:
             type: integer
             minimum: 1
             default: 1
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -263,8 +274,10 @@ paths:
       operationId: environments_create
       x-action: environments.create
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -366,8 +379,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -401,8 +416,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -459,8 +476,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -504,8 +523,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -582,8 +603,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -610,7 +633,8 @@ paths:
       x-action: team.invitations.list
       description: "Requires scope `team:read` and the `read-members` capability. The team's invitations nobody has accepted yet, newest first (at most 100)."
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -648,8 +672,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         202:
           $ref: '#/components/responses/ApprovalRequired'
@@ -683,8 +709,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: 'Sent again'
@@ -724,8 +752,10 @@ paths:
       x-scope: 'keys:write'
       x-danger: critical
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -816,7 +846,8 @@ paths:
           schema:
             type: integer
             description: 'The page to read, from 1. A list says `next_page` when there is one.'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -861,8 +892,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -904,7 +937,8 @@ paths:
             type: integer
             minimum: 1
             default: 1
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -945,8 +979,10 @@ paths:
       operationId: team_invite
       x-action: team.invite
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1021,8 +1057,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -1057,8 +1095,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1120,8 +1160,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1181,8 +1223,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         204:
           description: Done.
@@ -1209,7 +1253,8 @@ paths:
       x-action: projects.list
       description: "Requires scope `workspace:read` (any role). The workspace's projects (IdP products). Each carries its own plan and environment allowance."
       parameters:
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -1242,8 +1287,10 @@ paths:
       operationId: projects_create
       x-action: projects.create
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1296,8 +1343,10 @@ paths:
       x-scope: 'projects:write'
       x-danger: write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -1339,8 +1388,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       requestBody:
         required: true
         content:
@@ -1396,8 +1447,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -1441,8 +1494,10 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
       responses:
         200:
           description: OK
@@ -1702,7 +1757,8 @@ components:
     CreatedEnvironment:
       description: 'An environment, and — when the request asked for one — its first management key.'
       allOf:
-        - $ref: '#/components/schemas/Environment'
+        -
+          $ref: '#/components/schemas/Environment'
         -
           type: object
           properties:
@@ -1872,7 +1928,8 @@ components:
                   type: string
                 record_value:
                   type: string
-            - type: 'null'
+            -
+              type: 'null'
     PageMeta:
       type: object
       description: 'Paging for a list response. `has_more` used to be returned with nothing to act on it — no page parameter and no cursor — so a caller told there was more had no way to ask for it. `next_page` is present exactly when `has_more` is true, so a client can loop without computing anything.'

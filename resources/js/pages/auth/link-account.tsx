@@ -167,7 +167,6 @@ export default function LinkAccount({
                         showLabel={t('auth.password_field.show')}
                         hideLabel={t('auth.password_field.hide')}
                         autoComplete="current-password"
-                        autoFocus
                         error={form.errors.answer}
                         value={form.data.answer}
                         onChange={(event) => form.setData('answer', event.target.value)}
@@ -185,7 +184,6 @@ export default function LinkAccount({
                             autoComplete={isCode ? 'one-time-code' : 'off'}
                             autoCapitalize="none"
                             spellCheck={false}
-                            autoFocus
                             maxLength={isCode ? 6 : 64}
                             placeholder={isCode ? '000000' : undefined}
                             value={form.data.answer}

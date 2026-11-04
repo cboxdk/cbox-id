@@ -54,7 +54,9 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
                         lineHeight: 1.6,
                     }}
                 >
-                    <pre className="m-0"><code>{code}</code></pre>
+                    <pre className="m-0">
+                        <code>{code}</code>
+                    </pre>
                 </section>
                 <CopyButton value={code} aria-label={copyLabel} />
             </div>

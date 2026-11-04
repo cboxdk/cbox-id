@@ -123,7 +123,9 @@ export function Field({
         <FieldContext.Provider value={context}>
             <div className={cn(className)}>
                 <div
-                    className={cn(labelAction !== undefined && 'flex items-center justify-between gap-3')}
+                    className={cn(
+                        labelAction !== undefined && 'flex items-center justify-between gap-3',
+                    )}
                 >
                     <label
                         className="label"

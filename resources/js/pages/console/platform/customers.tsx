@@ -260,17 +260,13 @@ export default function Customers({
                                                 <Button
                                                     size="sm"
                                                     className="ml-2"
-                                                    variant={
-                                                        customer.active ? 'danger' : 'primary'
-                                                    }
+                                                    variant={customer.active ? 'danger' : 'primary'}
                                                     // Named for the row: see the same
                                                     // control on the Organizations list.
                                                     aria-label={`${customer.active ? 'Suspend' : 'Reactivate'} ${customer.name}`}
                                                     onClick={() => setConfirming(customer)}
                                                 >
-                                                    {customer.active
-                                                        ? 'Suspend'
-                                                        : 'Reactivate'}
+                                                    {customer.active ? 'Suspend' : 'Reactivate'}
                                                 </Button>
                                             </Td>
                                         </tr>

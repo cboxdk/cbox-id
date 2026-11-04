@@ -133,10 +133,8 @@ expect.extend({
 });
 
 declare module 'vitest' {
-    // `T = any` rather than `unknown`, because a declaration-merged interface must repeat
-    // the host's type parameters exactly — @vitest/expect declares `Matchers<T = any>`.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    interface Matchers<T = any> {
-        toHaveNoAxeViolations: () => Promise<T>;
+    // Match Vitest 5's declaration so custom accessibility assertions stay typed.
+    interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
+        toHaveNoAxeViolations: () => Promise<Awaited<R>>;
     }
 }

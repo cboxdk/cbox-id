@@ -45,7 +45,8 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `cboxdk/laravel-id` | `^1.27.1` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `dev-sd/signals-auth-assessment as 1.27.2` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-signals-client` | `dev-sd/signals-implementation as 0.1.0` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
@@ -115,3 +116,5 @@ The CI `engines` job runs the whole suite on both server engines, PostgreSQL on
 production's major. `tests/Feature/DeploymentManifestTest.php` fails if that major, the one
 the local manifest (`cbox.yaml`) runs and the one named on this page drift apart. See
 [Deployment](operations/deployment.md).
+
+The optional Signals enforcement integration currently uses reviewed, unpublished source snapshots: `cboxdk/laravel-id` at `dev-sd/signals-auth-assessment as 1.27.2` and `cboxdk/laravel-signals-client` at `dev-sd/signals-implementation as 0.1.0`. These are development branch aliases, not released package versions. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.

@@ -245,9 +245,7 @@ export default function Organizations({
                                             <Button
                                                 size="sm"
                                                 className="ml-2"
-                                                variant={
-                                                    organization.active ? 'danger' : 'primary'
-                                                }
+                                                variant={organization.active ? 'danger' : 'primary'}
                                                 // NAMED FOR THE ROW. Twenty buttons all
                                                 // announced as "Suspend" tell somebody
                                                 // navigating by control which action they
@@ -257,9 +255,7 @@ export default function Organizations({
                                                 aria-label={`${organization.active ? 'Suspend' : 'Reactivate'} ${organization.name}`}
                                                 onClick={() => setConfirming(organization)}
                                             >
-                                                {organization.active
-                                                    ? 'Suspend'
-                                                    : 'Reactivate'}
+                                                {organization.active ? 'Suspend' : 'Reactivate'}
                                             </Button>
                                         </Td>
                                     </tr>

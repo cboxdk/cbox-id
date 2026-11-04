@@ -85,9 +85,7 @@ describe('Dialog', () => {
         render(<Harness />);
         await userEvent.click(screen.getByRole('button', { name: 'Delete endpoint' }));
 
-        expect(
-            screen.queryByRole('button', { name: 'Behind the dialog' }),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Behind the dialog' })).not.toBeInTheDocument();
     });
 
     it('has no accessibility violations', async () => {

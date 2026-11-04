@@ -42,7 +42,10 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
     if (declaration === null) {
         return (
             <>
-                <PageHeader help={help} description="Where sign-ins go for people who have not moved to Cbox ID yet." />
+                <PageHeader
+                    help={help}
+                    description="Where sign-ins go for people who have not moved to Cbox ID yet."
+                />
 
                 <div className="card mt-8">
                     <EmptyState
@@ -57,7 +60,10 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
 
     return (
         <>
-            <PageHeader help={help} description="Where sign-ins go for people who have not moved to Cbox ID yet." />
+            <PageHeader
+                help={help}
+                description="Where sign-ins go for people who have not moved to Cbox ID yet."
+            />
 
             <div className="mt-6 space-y-6" style={{ maxWidth: '40rem' }}>
                 <Panel
@@ -139,10 +145,7 @@ export default function LegacyLogin({ declaration, urls, help }: Props) {
                             : 'From now on, the email and password of anyone who is not in Cbox ID yet are sent to that endpoint.'
                     }
                 >
-                    <Button
-                        variant="danger"
-                        onClick={() => setDeciding(true)}
-                    >
+                    <Button variant="danger" onClick={() => setDeciding(true)}>
                         {declaration.approved ? 'Withdraw' : 'Approve this endpoint'}
                     </Button>
                 </Panel>

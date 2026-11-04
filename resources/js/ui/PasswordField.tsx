@@ -75,7 +75,11 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
         return (
             <div className={cn(className)}>
                 <div
-                    className={labelAction === undefined ? undefined : 'flex items-center justify-between gap-3'}
+                    className={
+                        labelAction === undefined
+                            ? undefined
+                            : 'flex items-center justify-between gap-3'
+                    }
                 >
                     <label
                         className="label"
@@ -98,7 +102,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
                         // it they can produce a password this tenant's policy then refuses,
                         // after the person has already saved it.
                         {...(props.autoComplete === 'new-password'
-                            ? { passwordrules: `minlength: ${minLength}; allowed: ascii-printable;` }
+                            ? {
+                                  passwordrules: `minlength: ${minLength}; allowed: ascii-printable;`,
+                              }
                             : {})}
                         aria-describedby={
                             [policy ? policyId : null, error ? errorId : null]

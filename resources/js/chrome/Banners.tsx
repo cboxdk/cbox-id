@@ -31,8 +31,8 @@ export function SandboxBanner() {
         >
             <Icon name="shield" className="w-3.5 h-3.5 shrink-0" />
             <span>
-                Sandbox environment — for testing only. This is <strong>not</strong> your
-                production sign-in, and no real emails are sent.
+                Sandbox environment — for testing only. This is <strong>not</strong> your production
+                sign-in, and no real emails are sent.
             </span>
         </div>
     );
@@ -69,8 +69,8 @@ export function EmailConfirmationBanner() {
         >
             <Icon name="mail" className="w-3.5 h-3.5 shrink-0" />
             <span>
-                Confirm your email address{user.email ? ` (${user.email})` : ''} to make changes in the
-                console.
+                Confirm your email address{user.email ? ` (${user.email})` : ''} to make changes in
+                the console.
             </span>
             {confirmUrl !== null ? (
                 <button
@@ -78,11 +78,15 @@ export function EmailConfirmationBanner() {
                     className="underline underline-offset-2"
                     disabled={sending}
                     onClick={() =>
-                        router.post(confirmUrl, {}, {
-                            preserveScroll: true,
-                            onStart: () => setSending(true),
-                            onFinish: () => setSending(false),
-                        })
+                        router.post(
+                            confirmUrl,
+                            {},
+                            {
+                                preserveScroll: true,
+                                onStart: () => setSending(true),
+                                onFinish: () => setSending(false),
+                            },
+                        )
                     }
                 >
                     {sending ? 'Sending…' : 'Send confirmation link'}
@@ -165,8 +169,8 @@ export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
         >
             <span>
                 <span aria-hidden="true">⚠</span> You are impersonating{' '}
-                {impersonation.email ?? impersonation.subject} for support. Everything you do
-                is logged.
+                {impersonation.email ?? impersonation.subject} for support. Everything you do is
+                logged.
                 {impersonation.reason !== null && (
                     <span style={{ fontWeight: 400, opacity: 0.9 }}>
                         {' '}

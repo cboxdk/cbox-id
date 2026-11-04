@@ -17,6 +17,7 @@ use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
+use Tests\Support\FederationBrowser;
 use Tests\Support\FormOrganization;
 
 /*
@@ -107,7 +108,9 @@ function oidcWithoutKey(string $key, string $org): string
  */
 function oidcSignInInProgress(string $connection, Closure $idToken, array $jwks): string
 {
-    $location = (string) test()->get("/sso/oidc/{$connection}/redirect")->assertRedirect()->headers->get('Location');
+    $start = test()->get("/sso/oidc/{$connection}/redirect")->assertRedirect();
+    FederationBrowser::carryFlowCookie($start);
+    $location = (string) $start->headers->get('Location');
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
     expect($location)->toStartWith('https://idp.setup.example/authorize?');

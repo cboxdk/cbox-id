@@ -95,10 +95,7 @@ export default function ForgotPassword(_props: Props) {
                 </form>
             )}
 
-            <p
-                className="mt-6 text-sm text-center"
-                style={{ color: 'var(--muted-foreground)' }}
-            >
+            <p className="mt-6 text-sm text-center" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.forgot_password.remembered')}{' '}
                 <Link
                     href={login.url()}

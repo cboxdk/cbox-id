@@ -130,7 +130,10 @@ export default function DesignSystem() {
                     </Row>
                 </Panel>
 
-                <Panel title="Status" description="A pill says the state in words; the tone only reinforces it.">
+                <Panel
+                    title="Status"
+                    description="A pill says the state in words; the tone only reinforces it."
+                >
                     <Row>
                         <Pill tone="success">Active</Pill>
                         <Pill tone="warning">Degraded</Pill>
@@ -179,7 +182,10 @@ export default function DesignSystem() {
                     </div>
                 </Panel>
 
-                <Panel title="Forms" description="Label, hint and error are wired by the Field, never by the call site.">
+                <Panel
+                    title="Forms"
+                    description="Label, hint and error are wired by the Field, never by the call site."
+                >
                     <div style={{ display: 'grid', gap: '16px', maxWidth: '28rem' }}>
                         <Field label="Organization name" required hint="Shown to your members.">
                             <Input placeholder="Acme Inc" />
@@ -229,7 +235,11 @@ export default function DesignSystem() {
                             value={access}
                             onValueChange={setAccess}
                             options={[
-                                { value: 'read', label: 'Read only', hint: 'Can see, cannot change.' },
+                                {
+                                    value: 'read',
+                                    label: 'Read only',
+                                    hint: 'Can see, cannot change.',
+                                },
                                 { value: 'write', label: 'Read and write' },
                             ]}
                         />
@@ -346,7 +356,10 @@ export default function DesignSystem() {
                     />
                 </Panel>
 
-                <Panel title="Icons" description="One family, one stroke weight. Add to resources/js/ui/icons.ts.">
+                <Panel
+                    title="Icons"
+                    description="One family, one stroke weight. Add to resources/js/ui/icons.ts."
+                >
                     <div
                         style={{
                             display: 'grid',

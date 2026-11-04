@@ -6,10 +6,10 @@
 # linux/arm64, each native), for pushes to main and `v*` tags. Production (cboxid.com, on
 # arm64) runs this image: each main commit whose checks pass is released there.
 #
-# No build secrets: every composer dependency — the cboxdk/* packages included — is
-# public on Packagist, every npm dependency is public on the npm registry, and the base
-# image is a public GHCR package. composer.json declares no path or VCS repositories, so a
-# clean checkout builds from the committed composer.lock with a plain `composer install`.
+# This integration branch consumes reviewed, unpublished package source through
+# explicit BuildKit contexts. Supply --build-context id-package=<checkout> and
+# --build-context signals-client=<checkout>; never resolve an unpinned sibling.
+# Public package publication and updating these locks are separate release steps.
 
 # ---- build stage: composer + frontend (vite) ----
 # Runs on the build host's native arch; vendor/ + public/build are arch-neutral,
@@ -20,6 +20,8 @@ WORKDIR /var/www/html
 # PHP deps first for layer caching. --no-scripts: no app env at build time; the
 # base-image entrypoint runs package:discover + config/route/event caching at
 # container start.
+COPY --from=id-package . /var/www/laravel-id
+COPY --from=signals-client . /var/laravel-signals-client
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
@@ -33,6 +35,8 @@ RUN npm run build && rm -rf node_modules
 # ---- runtime image ----
 FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
 WORKDIR /var/www/html
+COPY --from=build --chown=www-data:www-data /var/www/laravel-id /var/www/laravel-id
+COPY --from=build --chown=www-data:www-data /var/laravel-signals-client /var/laravel-signals-client
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 
 # The app owns its security response headers (App\Http\Middleware\SecurityHeaders).

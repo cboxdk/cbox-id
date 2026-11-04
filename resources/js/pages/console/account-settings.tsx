@@ -11,7 +11,10 @@ export default function AccountSettings({ name, help }: Props) {
 
     return (
         <>
-            <PageHeader help={help} description="The name of the workspace these identity providers are billed and administered under." />
+            <PageHeader
+                help={help}
+                description="The name of the workspace these identity providers are billed and administered under."
+            />
 
             <form
                 className="mt-6"
@@ -57,9 +60,9 @@ export default function AccountSettings({ name, help }: Props) {
             <div className="mt-4">
                 <Panel title="Delete workspace">
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Deleting this workspace tears down every project and environment it owns.
-                        To protect live identity providers this isn't self-serve — contact
-                        support to proceed.
+                        Deleting this workspace tears down every project and environment it owns. To
+                        protect live identity providers this isn't self-serve — contact support to
+                        proceed.
                     </p>
                 </Panel>
             </div>
