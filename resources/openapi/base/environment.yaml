@@ -2228,8 +2228,138 @@ paths:
         '409': { description: "Version conflict. Read the current document and reconcile the intended keys." }
         '422': { description: "Invalid patch, preference value or document limit." }
 
+  /service-connections:
+    get:
+      operationId: listOrganizationServiceConnections
+      summary: List the authorized organization's service grants
+      security: [{ ServiceConnectionAdmin: [] }]
+      responses:
+        '401': { description: "The token is missing, invalid or addressed to another audience" }
+        '403': { description: "The caller lacks permission for this organization or grant" }
+        '404': { description: "The requested organization, service or grant is unavailable" }
+        '429': { description: "Request rate exceeded" }
+        '200':
+          description: Active and revoked grants
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/OrganizationServiceGrant' } }
+  /service-connections/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: Service name for creation or grant ID for revocation }
+    post:
+      operationId: connectOrganizationService
+      summary: Grant a trusted application access to the selected service
+      description: An organization administrator authorizes cbox_billing or cbox_telemetry. Repeating the request returns the organization's existing active grant.
+      security: [{ ServiceConnectionAdmin: [] }]
+      responses:
+        '401': { description: "The token is missing, invalid or addressed to another audience" }
+        '403': { description: "The caller lacks permission for this organization or grant" }
+        '404': { description: "The requested organization, service or grant is unavailable" }
+        '429': { description: "Request rate exceeded" }
+        '200':
+          description: Organization grant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationServiceGrant' }
+    delete:
+      operationId: revokeOrganizationService
+      summary: Revoke the grant and retire its service account
+      security: [{ ServiceConnectionAdmin: [] }]
+      responses:
+        '401': { description: "The token is missing, invalid or addressed to another audience" }
+        '403': { description: "The caller lacks permission for this organization or grant" }
+        '404': { description: "The requested organization, service or grant is unavailable" }
+        '429': { description: "Request rate exceeded" }
+        '200':
+          description: Revocation confirmed
+          content:
+            application/json:
+              schema: { type: object, required: [revoked], properties: { revoked: { type: boolean } } }
+  /service-connections/{id}/inspect:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: inspectProviderConnection
+      summary: Inspect the connection before delivering data
+      security: [{ ServiceConnectionProvider: [] }]
+      responses:
+        '401': { description: "The token is missing, invalid or addressed to another audience" }
+        '403': { description: "The caller lacks permission for this organization or grant" }
+        '404': { description: "The requested organization, service or grant is unavailable" }
+        '429': { description: "Request rate exceeded" }
+        '200':
+          description: Inspect the connection before delivering data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active]
+                properties:
+                  active: { type: boolean }
+                  service_client_id: { type: string }
+                  organization_id: { type: string }
+                  audience: { type: string }
+                  service: { type: string }
+  /service-connections/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: inspectConsumerConnection
+      summary: Check whether the connection remains active
+      security: [{ ServiceConnectionConsumer: [] }]
+      responses:
+        '401': { description: "The token is missing, invalid or addressed to another audience" }
+        '403': { description: "The caller lacks permission for this organization or grant" }
+        '404': { description: "The requested organization, service or grant is unavailable" }
+        '429': { description: "Request rate exceeded" }
+        '200':
+          description: Check whether the connection remains active
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active]
+                properties:
+                  active: { type: boolean }
+                  service_client_id: { type: string }
+                  organization_id: { type: string }
+                  audience: { type: string }
+                  service: { type: string }
+  /service-connections/{id}/token:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: leaseServiceConnectionToken
+      summary: Lease a short-lived token for the connection resource
+      security: [{ ServiceConnectionConsumer: [] }]
+      responses:
+        '401': { description: "The token is missing, invalid or addressed to another audience" }
+        '403': { description: "The caller lacks permission for this organization or grant" }
+        '404': { description: "The requested organization, service or grant is unavailable" }
+        '429': { description: "Request rate exceeded" }
+        '200':
+          description: Lease a short-lived token for the connection resource
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_in, scope, audience]
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string }
+                  expires_in: { type: integer }
+                  scope: { type: string }
+                  audience: { type: string }
+
 components:
   securitySchemes:
+    ServiceConnectionAdmin: { type: http, scheme: bearer, description: Organization administrator token with service_connections.manage }
+    ServiceConnectionProvider: { type: http, scheme: bearer, description: Provider machine token with service_connections.inspect }
+    ServiceConnectionConsumer: { type: http, scheme: bearer, description: Consumer machine token with service_connections.lease }
     UserPropertiesAccessToken:
       type: http
       scheme: bearer
@@ -2386,6 +2516,17 @@ components:
       description: Opaque cursor — the `meta.next_cursor` from the previous page.
       schema: { type: string }
   schemas:
+    OrganizationServiceGrant:
+      type: object
+      required: [id, organization_id, service, consumer_client_id, audience, scopes, revoked_at]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        service: { type: string }
+        consumer_client_id: { type: string }
+        audience: { type: string }
+        scopes: { type: array, items: { type: string } }
+        revoked_at: { type: [string, 'null'], format: date-time }
     UserPropertySnapshot:
       type: object
       required: [user_id, namespace, data, version]

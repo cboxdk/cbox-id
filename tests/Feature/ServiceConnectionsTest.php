@@ -68,7 +68,7 @@ it('leases to the consumer after logout and refuses a centrally revoked grant', 
     $response = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_billing')->assertOk();
     $id = $response->json('id');
     $issuer = Mockery::mock(TokenIssuer::class);
-    $issuer->shouldReceive('issueClientCredentials')->once()->withArgs(fn (Client $client, array $scopes, string $audience): bool => $client->organization_id === $this->organization->id && $scopes === ['billing:engage:sync'] && $audience === 'https://app.cboxbilling.com/api/v1/service-connections')->andReturn(new IssuedToken('test-access-token', 'jti-test', 300, scopes: ['billing:engage:sync']));
+    $issuer->shouldReceive('issueClientCredentials')->once()->withArgs(fn (Client $client, array $scopes, string $audience): bool => $client->organization_id === $this->organization->id && $scopes === ['billing:engage:sync'] && $audience === 'https://app.cboxbilling.com/api/v1/service-connections')->andReturn(new IssuedToken('test-access-token', 'jti-test', 300, scopes: ['billing:engage:sync'], audience: 'https://app.cboxbilling.com/api/v1/service-connections'));
     app()->instance(TokenIssuer::class, $issuer);
     $this->withToken('machine')->postJson('/api/v1/service-connections/'.$id.'/token')->assertOk()->assertJsonPath('access_token', 'test-access-token')->assertHeader('Cache-Control', 'no-store, private');
     $this->withToken('admin')->deleteJson('/api/v1/service-connections/'.$id)->assertOk();

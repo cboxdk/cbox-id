@@ -14,9 +14,9 @@ class ServiceConnectionController
 {
     public function __construct(private readonly Connections $connections) {}
 
-    public function store(Request $request, string $service): JsonResponse
+    public function store(Request $request, string $id): JsonResponse
     {
-        return $this->response($this->present($this->connections->connect($this->caller($request), $service)));
+        return $this->response($this->present($this->connections->connect($this->caller($request), $id)));
     }
 
     public function index(Request $request): JsonResponse

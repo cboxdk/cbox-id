@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('service_connections', function (Blueprint $table): void {
-            $table->ulid('id')->primary();
+            $table->string('id', 26)->primary();
             $table->string('environment_id', 128);
             $table->string('organization_id', 128);
             $table->string('consumer_client_id', 128);
