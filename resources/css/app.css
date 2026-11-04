@@ -479,13 +479,21 @@
     display: block;
     width: 56px;
     height: 19px;
-    background: var(--foreground);
+    background: var(--primary);
     mask: url('/brand/cbox-logo-neg-100.png') center / contain no-repeat;
 }
 :is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-service-name {
     display: block;
     font-size: 14px;
     font-weight: 600;
+}
+:root[data-theme='dark'] .cbx-rail .cbx-rail-wordmark {
+    background: var(--foreground);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .cbx-rail .cbx-rail-wordmark {
+        background: var(--foreground);
+    }
 }
 .cbx-launch-trigger {
     display: inline-grid;

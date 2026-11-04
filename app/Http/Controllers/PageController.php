@@ -57,7 +57,6 @@ abstract readonly class PageController
     {
         return $component !== 'auth/sudo'
             && (str_starts_with($component, 'auth/')
-                || $component === 'account/apps'
                 || str_starts_with($component, 'oauth/')
                 // The Admin Portal is the vendor's page too: their customer's IT
                 // administrator opens it from a link the vendor sent, and should meet the

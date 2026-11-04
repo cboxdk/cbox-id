@@ -31,7 +31,9 @@ let lastCatalogRefresh = Date.now();
 /** The payload is already filtered by ID. This component never invents grants or apps. */
 export function AppSwitcher() {
     const { t } = useTranslator();
-    const { appCatalog = [] } = usePage<SharedProps>().props;
+    const page = usePage<SharedProps>();
+    const { appCatalog = [] } = page.props;
+    const fromBookmark = new URLSearchParams(page.url?.split('?')[1]).get('switch-app') === '1';
     const firstApp = useRef<HTMLAnchorElement>(null);
     const refresh = useCallback(() => {
         if (document.visibilityState !== 'visible' || Date.now() - lastCatalogRefresh < 60000)
@@ -50,6 +52,7 @@ export function AppSwitcher() {
     const label = t('console.catalog_switch_app');
     return (
         <Popover
+            defaultOpen={fromBookmark}
             onOpenChange={(open) => {
                 if (open) refresh();
             }}

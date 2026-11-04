@@ -41,3 +41,12 @@ it('opens the personal picker from the signed-in header', function (): void {
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-switcher-empty');
 });
+
+it('opens an existing picker bookmark in the account header', function (): void {
+    actingAsRole(MembershipRole::Owner);
+    visit('/switch-app')
+        ->assertPathIs('/account')
+        ->assertVisible('.cbx-launch-panel')
+        ->assertSee('No apps have been published for you yet.')
+        ->assertNoJavaScriptErrors();
+});
