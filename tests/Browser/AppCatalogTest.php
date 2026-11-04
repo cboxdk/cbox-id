@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Cbox\Id\Organization\Enums\MembershipRole;
 
 beforeEach(fn () => installedDeployment());
 
@@ -16,12 +17,7 @@ it('shows the catalog editor and keyboard-accessible app selector in both themes
         ->assertSee('Who can see this app?')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-catalog-dark');
-    visit(route('environment.app-catalog'))
-        ->click('button[aria-label="Switch app"]')
-        ->assertSee('Your apps')
-        ->assertSee('No apps have been published for you yet.')
-        ->assertNoJavaScriptErrors()
-        ->screenshot(filename: 'app-switcher-empty');
+
 });
 
 it('opens the same app selector from the mobile navigation sheet', function (): void {
@@ -35,4 +31,14 @@ it('opens the same app selector from the mobile navigation sheet', function (): 
         ->assertSee('No apps have been published for you yet.')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-switcher-mobile');
+});
+
+it('opens the personal picker from the signed-in header', function (): void {
+    actingAsRole(MembershipRole::Owner);
+    visit('/dashboard')
+        ->click('a[aria-label="Switch app"]')
+        ->assertSee('Switch app')
+        ->assertSee('No apps have been published for you yet.')
+        ->assertNoJavaScriptErrors()
+        ->screenshot(filename: 'app-switcher-empty');
 });

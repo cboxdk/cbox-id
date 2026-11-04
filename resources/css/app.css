@@ -1565,47 +1565,6 @@
         font-weight: 600;
     }
 
-    /* App launcher tile — the first-party "portal". A colour-branded logo per app,
-     * a tactile hover lift, and an arrow that slides in to say "this opens". */
-    .cbx-app-tile {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 14px 16px;
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        background: var(--card);
-        box-shadow: var(--shadow-card);
-        text-decoration: none;
-        transition:
-            transform var(--dur-hover) var(--ease),
-            border-color var(--dur-hover) var(--ease),
-            box-shadow var(--dur-hover) var(--ease);
-    }
-    .cbx-app-tile:hover {
-        transform: translateY(-2px);
-        border-color: var(--accent-edge);
-        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
-    }
-    .cbx-app-tile:active {
-        transform: translateY(0);
-    }
-    .cbx-app-go {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-        color: var(--muted-foreground);
-        opacity: 0;
-        transform: translateX(-5px);
-        transition:
-            opacity var(--dur-hover) var(--ease),
-            transform var(--dur-hover) var(--ease);
-    }
-    .cbx-app-tile:hover .cbx-app-go {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
     /* Handshake / flow explainer — a row of numbered steps with arrows between,
      * used to show OAuth redirects visually. Wraps + arrows turn downward on narrow. */
 

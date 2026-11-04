@@ -1,5 +1,5 @@
 import { useTranslator } from '@/i18n';
-import { AppSwitcher } from './AppSwitcher';
+import { Brand } from './Brand';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import type { NavArea } from '@/types';
@@ -63,13 +63,8 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                 aria-label={tc('console.areas_2d36715a')}
             >
                 <div className="cbx-rail-hd">
-                    <AppSwitcher compact />
-                    <Link
-                        href={brandHref}
-                        className="sr-only focus:not-sr-only"
-                        aria-label={brandLabel}
-                    >
-                        Home
+                    <Link href={brandHref} className="cbx-rail-brand" aria-label={brandLabel}>
+                        <Brand compact />
                     </Link>
 
                     <button

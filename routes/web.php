@@ -8,6 +8,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
 use App\Http\Controllers\AppCatalogIconController;
+use App\Http\Controllers\AppsController;
 use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
@@ -701,6 +702,9 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
  * below stays REGISTERED, because on a single-tenant install and at the platform root this
  * group is the only console there is. See {@see \App\Platform\Console\CustomerConsole}.
  */
+Route::get('/switch-app', AppsController::class)
+    ->middleware(['plane:console', 'platform.auth', 'console.customer'])->name('apps');
+
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer', 'console.root'])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
