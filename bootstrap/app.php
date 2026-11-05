@@ -26,6 +26,7 @@ use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\ResolveConsoleLocale;
 use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\ServeMarketingWebsite;
 use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\TrustHostsExceptHealth;
 use App\Platform\EmailNotVerified;
@@ -257,6 +258,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global so security headers cover API/JSON + error responses too, not
         // just the web group.
         $middleware->append(SecurityHeaders::class);
+        $middleware->append(ServeMarketingWebsite::class);
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);

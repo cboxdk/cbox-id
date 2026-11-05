@@ -18,6 +18,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- Optional public marketing website on a separate host, with application links, sitemap and method-preserving redirects for old console URLs. Hosted console moves to `app.cboxid.com` while existing tenant issuers remain unchanged.
+
 - German, Swedish, Norwegian Bokmål, Finnish, French, Spanish, Italian and Dutch in the signed-in app. Finnish, Spanish, Italian and Dutch also cover hosted login, the Admin Portal, mail and validation. Core terms are reviewed; the new catalogues are machine-translated and checked for key, placeholder and plural parity.
 
 - Danish and English throughout the signed-in app, including organization and platform administration. Choose a language in the top-right language menu; the browser remembers it independently of hosted sign-in language settings.

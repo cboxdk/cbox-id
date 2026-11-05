@@ -10,6 +10,7 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/marketing.css',
                 'resources/js/app.tsx',
                 /*
                  * The error pages' own entry. They are Blade rather than React, and

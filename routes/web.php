@@ -262,6 +262,10 @@ Route::get('/', fn () => redirect()->route(
     session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
 ))->name('home');
 
+// The configured marketing host supplies its own crawl policy before web middleware.
+Route::get('/robots.txt', fn () => response("User-agent: *\nDisallow:\n", 200,
+    ['Content-Type' => 'text/plain; charset=UTF-8']));
+
 /*
  * SAML 2.0 Identity Provider — the SingleSignOnService endpoint downstream SPs
  * federate to. The host owns the interactive "authenticate the subject" step

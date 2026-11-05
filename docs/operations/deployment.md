@@ -662,6 +662,36 @@ Laravel's built-in HTML health page is deliberately **not** enabled (no `health:
 in `bootstrap/app.php`): it shadowed this route, and the page loads Tailwind from a CDN
 and fonts from bunny.net, both refused by the app's own CSP.
 
+## Separate marketing and application hosts
+
+The hosted console runs at `https://app.cboxid.com`; `https://cboxid.com` serves the
+public product website from the same application image. Enable the split with:
+
+```dotenv
+APP_URL=https://app.cboxid.com
+CBOX_ID_ISSUER=https://app.cboxid.com
+CBOX_ID_CONSOLE_HOST=app.cboxid.com
+CBOX_ID_MARKETING_HOST=cboxid.com
+CBOX_ID_MARKETING_APP_URL=https://app.cboxid.com
+CBOX_ID_WEBAUTHN_RP_ID=cboxid.com
+CBOX_ID_WEBAUTHN_ORIGIN=https://app.cboxid.com
+```
+
+Route both hosts to the application and set the platform root environment's domain
+to `app.cboxid.com`. Existing tenant hosts, including `cbox.cboxid.com`, retain
+their own issuers. Register the new callback address with external login providers.
+There is no special callback forwarding or provider-specific migration behavior.
+
+The public website runs before session and environment middleware. Old application
+paths redirect to the new host with HTTP 307, keeping path, query and method.
+The existing root passkey RP ID remains valid on the subdomain, while the browser
+origin changes. Browser sessions remain host-only; sign in again on the new host.
+Single-host installations keep their existing homepage when marketing is unset.
+
+Deploy the image first, then apply the host settings and roll web and worker.
+Verify the homepage, application login/signup, protocol metadata and unchanged
+tenant discovery. Restore the previous settings and root domain to roll back.
+
 ## Where to go next
 
 - [Configuration](../configuration/environment-variables.md) — the env reference and

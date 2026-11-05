@@ -79,6 +79,13 @@ final class TrustedHosts
             $patterns[] = $this->exactly($host);
         }
 
+        $marketing = config('marketing.host');
+
+        if (is_string($marketing) && $marketing !== '') {
+            $patterns[] = $this->exactly($marketing);
+            $patterns[] = $this->exactly('www.'.$marketing);
+        }
+
         foreach ($this->baseDomains() as $base) {
             // The apex and any label under it. `preg_quote` is not optional: Symfony
             // matches these UNANCHORED as `{pattern}i`, so a bare `cboxid.com` would also

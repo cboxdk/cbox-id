@@ -41,6 +41,15 @@ it('trusts the names this deployment actually serves', function (): void {
         ->and(trusts('acme.cboxid.com'))->toBeTrue();
 })->group('security');
 
+it('trusts only the exact configured marketing names outside the tenant base domains', function (): void {
+    config(['marketing.host' => 'identity.example']);
+
+    expect(trusts('identity.example'))->toBeTrue()
+        ->and(trusts('www.identity.example'))->toBeTrue()
+        ->and(trusts('identity.example.attacker.example'))->toBeFalse()
+        ->and(trusts('unmapped.identity.example'))->toBeFalse();
+})->group('security');
+
 /**
  * The one that mattered, and the mechanism that answers it.
  *
