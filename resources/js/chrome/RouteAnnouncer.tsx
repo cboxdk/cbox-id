@@ -25,23 +25,24 @@ export function RouteAnnouncer() {
     useEffect(() => {
         // `success` rather than `finish`: a cancelled or failed visit changed no page, and
         // announcing one that never arrived is worse than silence.
-        const stop = router.on('success', (event) => {
-            const title = document.title;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const stop = router.on('success', () => {
+            clearTimeout(timer);
 
             // Reset first. A live region whose text is replaced with the SAME string is
             // not re-announced, and two consecutive visits to pages with one title —
             // paging through a list, say — would then say nothing at all.
             setAnnouncement('');
 
-            // Deliberately not in a `requestAnimationFrame`: the reset above and this must
-            // land in two separate commits, which a microtask gives and a frame callback
-            // would collapse under React's batching.
-            setTimeout(() => setAnnouncement(title), 60);
-
-            return event;
+            // Inertia updates the document head after success. Read the title
+            // when publishing, and cancel work belonging to a superseded visit.
+            timer = setTimeout(() => setAnnouncement(document.title), 60);
         });
 
-        return () => stop();
+        return () => {
+            clearTimeout(timer);
+            stop();
+        };
     }, []);
 
     return (
