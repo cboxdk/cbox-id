@@ -320,6 +320,8 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
 
     $ceremonies = [
         'accounts', 'accounts.add', 'accounts.switch',
+        // The person's shared interface language, available in every console.
+        'console.locale.update',
         'apps',
         'activity',
         'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
