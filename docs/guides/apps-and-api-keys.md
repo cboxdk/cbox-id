@@ -183,3 +183,8 @@ organizations' apps request it.
 - [APIs](apis.md) — the services your apps call, and who owns their scopes.
 - [API keys](keys.md) — secret, workspace and publishable keys.
 - [Roles](roles.md), [Webhooks](webhooks.md), [Token vault](token-vault.md).
+
+
+### Background work from an existing web app
+
+A confidential web app can keep its existing client ID, secret, redirects and scopes while enabling unattended authentication through `PUT /api/v1/apps/{id}/settings/client-credentials` with `{"enabled":true}`. This requires `apps:write` in the app's environment. Public clients are refused. Setting `enabled` to `false` removes only this grant; it does not revoke already-issued tokens. Scopes remain a separate ceiling managed through `PUT /apps/{id}/scopes`. Request only the scopes each background operation needs.
