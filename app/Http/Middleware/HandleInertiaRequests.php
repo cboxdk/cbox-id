@@ -22,6 +22,7 @@ use App\Platform\Locale\HostedTranslations;
 use App\Platform\Theme;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 /**
@@ -91,6 +92,14 @@ final class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Native flash is excluded from browser history, unlike shared props.
+        // Keep the shared shape for pages that consume it, but use this one-shot
+        // channel for notifications so Back cannot replay a successful action.
+        $flash = FlashProps::from($request->session());
+        if ($flash->status !== null || $flash->error !== null) {
+            Inertia::flash($flash->toArray());
+        }
+
         return [
             ...parent::share($request),
 

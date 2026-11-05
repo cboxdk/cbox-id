@@ -173,7 +173,7 @@ export default function UsersIndex({
                             href={href(search, statusFilter, pagination.currentPage, user.id)}
                             preserveState
                             preserveScroll
-                            className="cbx-entity-row"
+                            className="cbx-entity-row cbx-user-row"
                             aria-current={selectedUser?.id === user.id ? 'true' : undefined}
                         >
                             <Avatar name={user.name ?? user.email} />
@@ -187,7 +187,7 @@ export default function UsersIndex({
                                     </span>
                                 )}
                             </div>
-                            <div className="flex flex-wrap justify-end gap-2">
+                            <div className="cbx-user-row-status flex flex-wrap gap-2">
                                 {!user.verified && user.status === 'active' && (
                                     <Pill tone="warning">{t('console.unverified_33c8e8de')}</Pill>
                                 )}
@@ -195,7 +195,7 @@ export default function UsersIndex({
                             </div>
                             <Icon
                                 name="chevron"
-                                className="w-4 h-4 shrink-0 -rotate-90 text-[var(--faint)]"
+                                className="cbx-user-row-chevron w-4 h-4 shrink-0 -rotate-90 text-[var(--faint)]"
                             />
                         </Link>
                     ))

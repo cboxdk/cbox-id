@@ -20,9 +20,18 @@ export function UserProfile({ user, href }: { user: UserProfileData; href: strin
     const { reset, isDirty } = form;
     const input = useRef<HTMLInputElement>(null);
     const editButtons = useRef<Partial<Record<'name' | 'email', HTMLButtonElement | null>>>({});
+    const lastEditing = useRef<'name' | 'email' | null>(null);
 
     useEffect(() => {
-        if (editing) input.current?.focus();
+        if (editing) {
+            lastEditing.current = editing;
+            input.current?.focus();
+        } else if (lastEditing.current) {
+            // Wait for the read view to commit before returning focus. A save's
+            // Inertia response can commit after a requestAnimationFrame callback.
+            editButtons.current[lastEditing.current]?.focus();
+            lastEditing.current = null;
+        }
     }, [editing]);
 
     // Drafts are remembered on Back. Ordinary navigation asks before discarding them.
@@ -52,9 +61,6 @@ export function UserProfile({ user, href }: { user: UserProfileData; href: strin
         form.reset();
         form.clearErrors();
         setEditing(null);
-        requestAnimationFrame(() => {
-            if (editing) editButtons.current[editing]?.focus();
-        });
     };
 
     return (
@@ -76,10 +82,6 @@ export function UserProfile({ user, href }: { user: UserProfileData; href: strin
                                             onSuccess: () => {
                                                 form.setDefaults();
                                                 setEditing(null);
-                                                requestAnimationFrame(() => {
-                                                    if (editing)
-                                                        editButtons.current[editing]?.focus();
-                                                });
                                             },
                                         });
                                     }}

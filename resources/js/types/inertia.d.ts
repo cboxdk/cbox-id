@@ -23,6 +23,8 @@ declare module '@inertiajs/core' {
         sharedPageProps: SharedProps;
 
         flashDataType: {
+            status?: string | null;
+            error?: string | null;
             /** Sign-in: the identifier step passed, so the password form is drawn. */
             identified?: boolean;
             /** Sign-in: the connection this address may use, and whether it leads the page. */

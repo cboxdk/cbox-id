@@ -1,7 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { Toaster as Sonner, toast } from 'sonner';
-import type { SharedProps } from '@/types';
 
 export { toast };
 
@@ -20,33 +19,25 @@ export { toast };
  * without a round trip calls `toast()` directly — the same surface either way.
  */
 export function Toaster() {
-    const { flash } = usePage<SharedProps>().props;
+    const { flash } = usePage();
 
-    // The page object's identity changes on every visit, so the message has to be
-    // compared by VALUE — otherwise a partial reload that carries the same flash forward
-    // re-announces it, and a person who navigated back sees a success they already saw.
-    const last = useRef<string | null>(null);
+    // Inertia drops native flash from history. Each new response may legitimately
+    // repeat the same message (for example, saving two different profile fields).
+    const last = useRef<typeof flash | null>(null);
 
     useEffect(() => {
-        const message = flash.error ?? flash.status ?? null;
+        if (flash === last.current) return;
+        last.current = flash;
 
-        if (message === null || message === last.current) {
-            last.current = message;
-
-            return;
-        }
-
-        last.current = message;
-
-        if (flash.error !== null) {
+        if (typeof flash.error === 'string' && flash.error) {
             // Longer than a confirmation: something went wrong is worth finishing.
             toast.error(flash.error, { duration: 8000 });
 
             return;
         }
 
-        toast.success(message);
-    }, [flash.error, flash.status]);
+        if (typeof flash.status === 'string' && flash.status) toast.success(flash.status);
+    }, [flash]);
 
     return (
         <Sonner

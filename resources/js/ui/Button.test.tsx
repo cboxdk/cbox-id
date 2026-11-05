@@ -32,23 +32,26 @@ describe('Button', () => {
         expect(submit).toHaveBeenCalledOnce();
     });
 
-    it('cannot be clicked twice while the first press is in flight', async () => {
-        const onClick = vi.fn<() => void>();
+    it.each([undefined, false, true])(
+        'cannot be clicked while loading, even with disabled=%s',
+        async (disabled) => {
+            const onClick = vi.fn<() => void>();
 
-        render(
-            <Button loading onClick={onClick}>
-                Save
-            </Button>,
-        );
+            render(
+                <Button loading disabled={disabled} onClick={onClick}>
+                    Save
+                </Button>,
+            );
 
-        const button = screen.getByRole('button', { name: 'Save' });
+            const button = screen.getByRole('button', { name: 'Save' });
 
-        await userEvent.click(button);
+            await userEvent.click(button);
 
-        expect(onClick).not.toHaveBeenCalled();
-        expect(button).toBeDisabled();
-        expect(button).toHaveAttribute('aria-busy', 'true');
-    });
+            expect(onClick).not.toHaveBeenCalled();
+            expect(button).toBeDisabled();
+            expect(button).toHaveAttribute('aria-busy', 'true');
+        },
+    );
 
     it('keeps its label while loading, so the target does not move under the cursor', () => {
         const { rerender } = render(<Button>Save changes</Button>);

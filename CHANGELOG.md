@@ -18,6 +18,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- Return keyboard focus to the edited profile field after saving, disable busy
+  buttons consistently, and prevent old confirmations from replaying on Back.
+  Mobile user rows place status badges below the email so addresses stay readable.
 - Save the signed-in console language to the canonical `preferences.language`
   document and notify connected apps through the existing property outbox. Read
   that preference ahead of browser cookies; preserve unrelated preferences and
