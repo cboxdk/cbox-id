@@ -104,6 +104,19 @@ from this repository to hold or trigger a release, and nothing here can reach th
 cluster. A manual release workflow in the infrastructure repository covers the case where
 the CronJob cannot.
 
+### Upgrading to named authenticator apps
+
+Deploy this feature in two stages when web replicas roll independently. First upgrade
+`cboxdk/laravel-id` to 1.28.0 and run its migrations with the existing single-app UI.
+Wait until every web replica runs that package before deploying the UI that adds
+multiple apps. The former engine's legacy enrolment replaces a user's TOTP key; a new
+screen must not send its add-app request to a pod still running that implementation.
+Version 1.28.0 refuses to overwrite a confirmed key through the legacy method.
+
+The schema upgrade preserves existing TOTP and SMS credentials. Once multiple apps
+have been enrolled, do not roll back to the old engine or force the migration down:
+its former unique constraint cannot represent those credentials.
+
 ### What the application expects from its environment
 
 Every pod — web, worker and the migrate Job — takes the same environment from the
