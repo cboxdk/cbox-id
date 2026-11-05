@@ -7,6 +7,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -273,7 +274,8 @@ it('withdraws an application, and removes a device the way My devices does', fun
 
     $entry = AuditEntry::query()->where('action', 'device.removed')->sole();
 
-    expect(Device::query()->whereKey($device->id)->exists())->toBeFalse()
+    expect($device->fresh()->status)->toBe(DeviceStatus::Revoked)
+        ->and($device->fresh()->token_encrypted)->toBeNull()
         ->and($entry->actor_type)->toBe(ActorType::User)
         ->and($entry->actor_id)->toBe($me)
         ->and($entry->target_id)->toBe($device->id);

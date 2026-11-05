@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ApprovalReport extends Model implements EnvironmentOwned
 {
-    use BelongsToEnvironment, HasUlids;
+    use BelongsToEnvironment;
+    use HasUlids;
 
     protected $table = 'id_approval_reports';
 
