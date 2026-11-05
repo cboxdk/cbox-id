@@ -43,6 +43,12 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
         ->assertDontSee('Complete setup within')
         ->assertSee('Cbox ID on my iPhone')
         ->assertNoJavaScriptErrors()
+        // Measure the visible toast after its fade/slide finishes, not mid-transition.
+        ->assertScript('(() => {
+            const toast = document.querySelector(\'[data-sonner-toast][data-front="true"]\');
+            return toast !== null && getComputedStyle(toast).opacity === "1"
+                && toast.getAnimations({ subtree: true }).every(animation => animation.playState === "finished");
+        })()', true)
         ->assertNoAccessibilityIssues();
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
     $page->screenshotElement($panel, 'named-authenticator-apps-phone');
