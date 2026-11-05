@@ -38,7 +38,9 @@ export function ConsoleLanguagePicker() {
                     aria-label={t('console.language')}
                     onValueChange={(value) =>
                         router.post(
-                            shell?.altitude === 'environment' ? updateEnvironment.url() : update.url(),
+                            shell?.altitude === 'environment'
+                                ? updateEnvironment.url()
+                                : update.url(),
                             { locale: value, user_id: auth.user?.id },
                             { preserveScroll: true, preserveState: false },
                         )

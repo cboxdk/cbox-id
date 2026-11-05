@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'services_604dce44' => 'Services',
     'ux_no_users_status' => 'No users with this status. Choose another status or create a user.',
     'ux_open_profile' => 'Open full profile',
     'ux_discard_changes' => 'Discard your unsaved changes?',

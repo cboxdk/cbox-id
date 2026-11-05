@@ -85,6 +85,7 @@ const SWEEP_FOREIGN_ENVIRONMENT = 'env_sweep_foreign';
  * @var array<string, string>
  */
 const SWEEP_UNSWEPT = [
+    'account.waitlists.join' => 'A programme is a shared published Billing resource, not another person’s ID record. ServiceWaitlistsTest proves person identity, delegated scope and environment isolation; Billing PublicWaitlistTest proves programme/product/tenant boundaries.',
     'app_catalog.save' => 'PUT creates an environment-local app key; GET and DELETE are swept, and grant references are validated by AppCatalogTest.',
     'user_property_namespaces.configure' => 'PUT upserts a namespace name in the caller environment; GET is swept and namespace grants validate app and endpoint environment ownership.',
     // Its id is a NAME the caller chooses, and the request defines it: there is no foreign
