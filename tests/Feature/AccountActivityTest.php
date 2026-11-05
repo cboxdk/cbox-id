@@ -6,6 +6,7 @@ use App\Platform\CurrentUser;
 use App\Platform\DeviceLabel;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
+use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
@@ -219,10 +220,130 @@ it('names a device in words rather than in a user-agent string', function (strin
     'firefox on linux' => ['Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0', 'Firefox on Linux'],
 ]);
 
-it('says a client sent no browser name rather than calling it unknown', function (): void {
-    // Almost always a CLI, a script or an SDK — which is more useful to say than admitting
-    // we did not look.
-    expect(DeviceLabel::for(null))->toContain('no browser name');
+it('does not claim the client omitted details that the server may have lost', function (): void {
+    expect(DeviceLabel::for(null))->toBe('Device not recorded');
+});
+
+it('records browser IP and Cloudflare location at sign-in', function (string $method): void {
+    [$subjectId] = signedInPerson();
+    $agent = 'Mozilla/5.0 (iPhone) CriOS/141.0 Mobile/15E148 Safari/604.1';
+    $this->flushSession();
+    app(CurrentUser::class)->clear();
+    config(['trustedproxy.proxies' => ['10.244.0.0/16']]);
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.244.0.10'])
+        ->withHeaders(['X-Forwarded-For' => '8.8.4.4', 'CF-IPCountry' => 'DK', 'CF-IPCity' => 'K%C3%B8benhavn'])
+        ->withHeader('User-Agent', $agent);
+
+    if ($method === 'magic_link') {
+        $token = app(MagicLink::class)->request('ada@acme.test');
+        $this->post(route('magic.redeem.store', $token))->assertRedirect();
+    } else {
+        attemptLogin(['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])->assertRedirect();
+    }
+
+    $session = Session::query()->findOrFail(session(PlatformAuth::SESSION_KEY));
+
+    expect($session->user_id)->toBe($subjectId)
+        ->and($session->amr)->toContain($method)
+        ->and($session->ip)->toBe('8.8.4.4')
+        ->and($session->user_agent)->toBe($agent)
+        ->and($session->getAttribute('country_code'))->toBe('DK')
+        ->and($session->getAttribute('city'))->toBe('København')
+        ->and(DeviceLabel::for($session->user_agent))->toBe('Chrome on iPhone');
+})->with(['password' => 'pwd', 'email link' => 'magic_link']);
+
+it('fills missing details only for the authenticated device when it returns', function (): void {
+    [$subjectId, $orgId, $currentId] = signedInPerson();
+    Session::query()->whereKey($currentId)->update(['ip' => null, 'user_agent' => null]);
+    $other = app(SessionManager::class)->start($subjectId, $orgId, ['sso']);
+    config(['trustedproxy.proxies' => ['10.244.0.0/16']]);
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.244.0.10'])
+        ->withHeaders(['X-Forwarded-For' => '8.8.4.4', 'CF-IPCountry' => 'DK', 'CF-IPCity' => 'Copenhagen'])
+        ->withHeader('User-Agent', 'Mozilla/5.0 (iPad) Version/18.0 Safari/604.1');
+
+    $rows = collect(accountActivity()['sessions']);
+
+    expect($rows->firstWhere('id', $currentId)['ip'])->toBe('8.8.4.4')
+        ->and($rows->firstWhere('id', $currentId)['label'])->toBe('Safari on iPad')
+        ->and($rows->firstWhere('id', $currentId)['country'])->toBe('Denmark')
+        ->and($rows->firstWhere('id', $other->id)['country'])->toBeNull()
+        ->and($rows->firstWhere('id', $other->id)['ip'])->toBeNull()
+        ->and($rows->firstWhere('id', $other->id)['signInMethod'])->toBe('Enterprise SSO')
+        ->and($other->fresh()->user_agent)->toBeNull();
+
+    // Subsequent requests must not replace the details already recorded.
+    $this->withHeaders(['X-Forwarded-For' => '1.1.1.1', 'CF-IPCountry' => 'SE', 'CF-IPCity' => 'Stockholm', 'User-Agent' => 'Firefox/142']);
+    accountActivity();
+
+    expect(Session::query()->findOrFail($currentId)->ip)->toBe('8.8.4.4')
+        ->and(Session::query()->findOrFail($currentId)->getAttribute('country_code'))->toBe('DK')
+        ->and(Session::query()->findOrFail($currentId)->user_agent)->toContain('iPad');
+});
+
+it('shows each sessions recorded country and city with exact timestamps', function (): void {
+    [$subjectId, $orgId] = signedInPerson();
+    $phone = app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], '8.8.4.4', 'Safari/604');
+    $phone->forceFill(['country_code' => 'DK', 'city' => 'Copenhagen'])->save();
+
+    $row = collect(accountActivity()['sessions'])->firstWhere('id', $phone->id);
+
+    expect($row['countryCode'])->toBe('DK')
+        ->and($row['country'])->toBe('Denmark')
+        ->and($row['city'])->toBe('Copenhagen')
+        ->and($row['signedInIso'])->toBe($phone->created_at->toIso8601String())
+        ->and($row['lastActiveIso'])->toBe($phone->last_active_at->toIso8601String());
+});
+
+it('keeps missing and private locations explicit', function (?string $ip, string $reason): void {
+    [$subjectId, $orgId, $currentId] = signedInPerson();
+    Session::query()->whereKey($currentId)->update(['ip' => '127.0.0.1']);
+    $other = app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], $ip);
+
+    $row = collect(accountActivity()['sessions'])->firstWhere('id', $other->id);
+
+    expect($row['country'])->toBeNull()
+        ->and($row['locationUnavailable'])->toBe($reason);
+})->with([
+    'missing address' => [null, 'No IP address recorded'],
+    'private IPv4' => ['192.168.1.4', 'Local or reserved address'],
+    'private IPv6' => ['fd00::4', 'Local or reserved address'],
+]);
+
+it('ignores untrusted or unusable Cloudflare locations', function (bool $trusted, string $country): void {
+    [, , $currentId] = signedInPerson();
+    Session::query()->whereKey($currentId)->update(['ip' => '8.8.4.4']);
+    config(['trustedproxy.proxies' => $trusted ? ['10.244.0.0/16'] : []]);
+
+    $this->withServerVariables(['REMOTE_ADDR' => $trusted ? '10.244.0.10' : '8.8.4.4'])
+        ->withHeaders(['X-Forwarded-For' => '8.8.4.4', 'CF-IPCountry' => $country, 'CF-IPCity' => 'Copenhagen']);
+
+    $row = collect(accountActivity()['sessions'])->firstWhere('id', $currentId);
+
+    expect($row['country'])->toBeNull()
+        ->and($row['city'])->toBeNull();
+})->with([
+    'direct request with forged headers' => [false, 'DK'],
+    'unknown country' => [true, 'XX'],
+    'Tor network' => [true, 'T1'],
+    'malformed country' => [true, 'Denmark'],
+    'missing country' => [true, ''],
+]);
+
+it('does not copy this browsers location onto other sessions or a different recorded address', function (): void {
+    [$subjectId, $orgId, $currentId] = signedInPerson();
+    $other = app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], '8.8.4.4');
+    config(['trustedproxy.proxies' => ['10.244.0.0/16']]);
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.244.0.10'])
+        ->withHeaders(['X-Forwarded-For' => '8.8.4.4', 'CF-IPCountry' => 'DK', 'CF-IPCity' => 'Copenhagen']);
+
+    $rows = collect(accountActivity()['sessions']);
+
+    expect($rows->firstWhere('id', $currentId)['country'])->toBeNull()
+        ->and($rows->firstWhere('id', $other->id)['country'])->toBeNull()
+        ->and($other->fresh()->getAttribute('country_code'))->toBeNull();
 });
 
 /**

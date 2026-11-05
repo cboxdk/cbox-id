@@ -67,7 +67,9 @@ function queryBudgetAdmin(int $extraMembers = 0): array
             app(Memberships::class)->add($org->id, $extra->id, MembershipRole::Member);
         }
 
-        $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+        // Measure a normal signed-in request, not the one-time metadata repair for
+        // legacy sessions. Real browser sign-ins already record these details.
+        $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd'], '127.0.0.1', 'Symfony');
         session([PlatformAuth::SESSION_KEY => $session->id]);
         app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 

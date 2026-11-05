@@ -302,7 +302,7 @@ function accountActivityForAudit(): string
             ['pwd'],
             '198.51.100.7',
             'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',
-        );
+        )->forceFill(['country_code' => 'DK', 'city' => 'Copenhagen'])->save();
 
         // And something holding a refresh token as them — the device-flow case this page
         // exists for, and the row that carries the type-to-confirm withdrawal.
@@ -401,6 +401,9 @@ it('has no accessibility issues on sessions and activity', function (): void {
         ->assertSee('Where you are signed in')
         // The rows, asserted rather than assumed — see the fixture's docblock.
         ->assertSee('Safari on iPhone')
+        ->assertSee('Denmark')
+        ->assertSee('Copenhagen')
+        ->assertSee('198.51.100.7')
         ->assertSee('Acme CLI')
         ->assertSee('Signed in')
         ->assertNoAccessibilityIssues()
@@ -423,6 +426,8 @@ it('keeps sessions and activity usable at a phone width', function (): void {
     visit('/account/activity')
         ->on()->mobile()
         ->assertSee('Acme CLI')
+        ->assertSee('Denmark')
+        ->assertSee('198.51.100.7')
         ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true)
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();

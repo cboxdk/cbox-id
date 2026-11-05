@@ -22,6 +22,7 @@ use Cbox\Id\OAuthServer\ValueObjects\ConnectedApplication;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
+use Locale;
 
 /**
  * WHERE YOU ARE SIGNED IN, WHAT CAN ACT AS YOU, AND WHAT HAS HAPPENED TO YOUR ACCOUNT.
@@ -112,17 +113,32 @@ final readonly class AccountActivityController extends PageController
             'sessions' => $sessions->map(function (Session $session) use ($currentId): array {
                 $label = DeviceLabel::for($session->user_agent);
                 $isCurrent = $session->id === $currentId;
+                $ip = filled($session->ip) ? $session->ip : null;
+                $publicIp = $ip !== null && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+
+                $countryCode = $session->getAttribute('country_code');
+                $countryCode = is_string($countryCode) ? $countryCode : null;
+                $country = $countryCode !== null ? Locale::getDisplayRegion('-'.$countryCode, app()->getLocale()) : null;
 
                 return [
                     'id' => $session->id,
-                    'label' => $label,
+                    'label' => ConsoleStrings::text($label),
                     'isCurrent' => $isCurrent,
                     // Said out loud: somebody is acting as you with permission, and you are
                     // entitled to know it is happening.
                     'isSupport' => in_array('impersonation', $session->amr ?? [], true),
-                    'ip' => $session->ip,
+                    'ip' => $ip,
+                    'country' => filled($country) ? $country : $countryCode,
+                    'countryCode' => $countryCode,
+                    'city' => $session->getAttribute('city'),
+                    'locationUnavailable' => ConsoleStrings::text($ip === null
+                        ? 'No IP address recorded'
+                        : ($publicIp ? 'Country unavailable' : 'Local or reserved address')),
+                    'signInMethod' => $this->signInMethod($session),
                     'signedIn' => $session->created_at?->diffForHumans(),
+                    'signedInIso' => $session->created_at?->toIso8601String(),
                     'lastActive' => $session->last_active_at?->diffForHumans(),
+                    'lastActiveIso' => $session->last_active_at?->toIso8601String(),
                     'revokeHref' => route('account.sessions.revoke', $session->id),
                     /*
                      * The accessible name names the DEVICE. A screen-reader user pulling up
@@ -147,6 +163,25 @@ final readonly class AccountActivityController extends PageController
             'activity' => $this->activity($subjectId),
             'revokeOthersHref' => route('account.sessions.revoke-others'),
         ]);
+    }
+
+    private function signInMethod(Session $session): ?string
+    {
+        $labels = [
+            'pwd' => 'Password',
+            'passkey' => 'Passkey',
+            'magic_link' => 'Email link',
+            'otp' => 'One-time code',
+            'sms' => 'Text message',
+            'sso' => 'Enterprise SSO',
+            'social' => 'Social login',
+            'mfa' => 'Two-factor authentication',
+            'impersonation' => 'Support access',
+            'invitation' => 'Invitation',
+        ];
+        $methods = array_values(array_intersect_key($labels, array_flip($session->amr ?? [])));
+
+        return $methods === [] ? null : implode(' · ', array_map(ConsoleStrings::text(...), $methods));
     }
 
     /**

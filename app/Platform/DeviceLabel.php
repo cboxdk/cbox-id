@@ -22,9 +22,13 @@ final class DeviceLabel
 {
     /** Browsers, most specific first — Edge and Chrome both claim to be Safari. */
     private const BROWSERS = [
+        'EdgiOS/' => 'Edge',
+        'EdgA/' => 'Edge',
         'Edg/' => 'Edge',
         'OPR/' => 'Opera',
+        'FxiOS/' => 'Firefox',
         'Firefox/' => 'Firefox',
+        'CriOS/' => 'Chrome',
         'Chrome/' => 'Chrome',
         'Safari/' => 'Safari',
     ];
@@ -46,10 +50,7 @@ final class DeviceLabel
         $agent = trim((string) $userAgent);
 
         if ($agent === '') {
-            // Not "Unknown device": a session with no agent is almost always something
-            // that is not a browser at all — a CLI, a script, an SDK — and saying so is
-            // more useful than admitting we did not look.
-            return 'A client that sent no browser name';
+            return 'Device not recorded';
         }
 
         $browser = null;

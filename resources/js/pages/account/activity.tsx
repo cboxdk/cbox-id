@@ -11,8 +11,15 @@ interface SessionRow {
     isCurrent: boolean;
     isSupport: boolean;
     ip: string | null;
+    country: string | null;
+    countryCode: string | null;
+    city: string | null;
+    locationUnavailable: string;
+    signInMethod: string | null;
     signedIn: string | null;
+    signedInIso: string | null;
     lastActive: string | null;
+    lastActiveIso: string | null;
     revokeHref: string;
     revokeLabel: string;
 }
@@ -68,7 +75,7 @@ export default function Activity({
 
             <Panel
                 title={tc('console.where_you_are_signed_in_a07510ca')}
-                description={tc('console.every_browser_and_device_holding_a_live_sess_0cb8034e')}
+                description={tc('console.recognise_your_devices_by_their_browser_ip_a_eb8587ae')}
                 className="mt-6"
                 action={
                     sessions.length > 1 && (
@@ -82,7 +89,7 @@ export default function Activity({
                     {sessions.map((session) => (
                         <div
                             key={session.id}
-                            className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                            className="rounded-lg border p-4"
                             style={{
                                 borderColor: session.isCurrent
                                     ? 'var(--accent-edge)'
@@ -90,61 +97,106 @@ export default function Activity({
                                 background: session.isCurrent ? 'var(--accent-soft)' : undefined,
                             }}
                         >
-                            <div className="min-w-0 flex-1">
-                                <p className="text-sm truncate">
-                                    {session.label}
-                                    {session.isCurrent && (
-                                        <Pill tone="success" className="align-middle ml-1">
-                                            {tc('console.this_device_d052579c')}
-                                        </Pill>
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium break-words">
+                                        {session.label}
+                                        {session.isCurrent && (
+                                            <Pill tone="success">
+                                                {tc('console.this_device_d052579c')}
+                                            </Pill>
+                                        )}
+                                        {session.isSupport && (
+                                            <Pill tone="warning">
+                                                {tc('console.support_session_5f5a9473')}
+                                            </Pill>
+                                        )}
+                                    </p>
+                                    {session.signInMethod && (
+                                        <p
+                                            className="mt-1 text-xs"
+                                            style={{ color: 'var(--muted-foreground)' }}
+                                        >
+                                            {session.signInMethod}
+                                        </p>
                                     )}
-                                    {/*
-                                        Said out loud: somebody is acting as you with
-                                        permission, and you are entitled to know it is
-                                        happening.
-                                    */}
-                                    {session.isSupport && (
-                                        <Pill tone="warning" className="align-middle ml-1">
-                                            {tc('console.support_session_5f5a9473')}
-                                        </Pill>
-                                    )}
-                                </p>
-                                {/*
-                                    --muted-foreground, not --faint. `--faint` is placed to
-                                    clear 4.5:1 on the CARD, and the current session's row
-                                    is not the card — it carries the accent wash, where the
-                                    same 12px line measures 4.34:1 in dark. This is the one
-                                    line on the page somebody actually reads character by
-                                    character (an address, and when it was last used), so it
-                                    takes the token that survives being sat on something.
-                                */}
-                                <p
-                                    className="text-xs truncate"
-                                    style={{ color: 'var(--muted-foreground)' }}
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    className="shrink-0"
+                                    aria-label={session.revokeLabel}
+                                    onClick={() => setSigningOut(session)}
                                 >
-                                    {session.ip ?? tc('console.no_address_recorded_8f7c7606')}
-                                    {tc('console.signed_in_ea4cee4d')}{' '}
-                                    {session.signedIn ?? tc('console.unknown_b23a6a84')}
-                                    {tc('console.last_active_f7809263')}{' '}
-                                    {session.lastActive ?? tc('console.never_6497e4b3')}
-                                </p>
+                                    {tc('console.sign_out_48f0d3d3')}
+                                </Button>
                             </div>
-
-                            {/*
-                                The accessible name names the DEVICE — six sessions would
-                                otherwise be six buttons called "Sign out", on the control
-                                that can end the browser you are holding. The visible label
-                                stays short.
-                            */}
-                            <Button
-                                size="sm"
-                                variant="danger"
-                                className="shrink-0"
-                                aria-label={session.revokeLabel}
-                                onClick={() => setSigningOut(session)}
-                            >
-                                {tc('console.sign_out_48f0d3d3')}
-                            </Button>
+                            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4 text-sm">
+                                <div className="min-w-0">
+                                    <dt
+                                        className="text-xs"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {tc('console.country_701d021d')}
+                                    </dt>
+                                    <dd className="mt-1 break-words">
+                                        {session.country ?? session.locationUnavailable}
+                                    </dd>
+                                    {session.city && (
+                                        <dd
+                                            className="mt-1 text-xs break-words"
+                                            style={{ color: 'var(--muted-foreground)' }}
+                                        >
+                                            {session.city}
+                                        </dd>
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <dt
+                                        className="text-xs"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {tc('console.ip_address_0302a467')}
+                                    </dt>
+                                    <dd className="mt-1 mono break-all">
+                                        {session.ip ?? tc('console.not_recorded_b37c7879')}
+                                    </dd>
+                                </div>
+                                <div className="min-w-0">
+                                    <dt
+                                        className="text-xs"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {tc('console.signed_in_ca566c89')}
+                                    </dt>
+                                    <dd className="mt-1">
+                                        <time
+                                            dateTime={session.signedInIso ?? undefined}
+                                            title={session.signedInIso ?? undefined}
+                                        >
+                                            {session.signedIn ??
+                                                tc('console.not_recorded_b37c7879')}
+                                        </time>
+                                    </dd>
+                                </div>
+                                <div className="min-w-0">
+                                    <dt
+                                        className="text-xs"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {tc('console.last_active_bcdf701c')}
+                                    </dt>
+                                    <dd className="mt-1">
+                                        <time
+                                            dateTime={session.lastActiveIso ?? undefined}
+                                            title={session.lastActiveIso ?? undefined}
+                                        >
+                                            {session.lastActive ??
+                                                tc('console.not_recorded_b37c7879')}
+                                        </time>
+                                    </dd>
+                                </div>
+                            </dl>
                         </div>
                     ))}
                 </div>
