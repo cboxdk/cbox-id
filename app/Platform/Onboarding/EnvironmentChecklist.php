@@ -71,7 +71,7 @@ final readonly class EnvironmentChecklist
     /**
      * What the page and the home page draw.
      *
-     * @return array{steps: list<array{key: string, title: string, description: string, actionLabel: string, href: string|null, done: bool}>, completed: int, total: int, percent: int, isComplete: bool, next: string|null}
+     * @return array{steps: list<array{key: string, title: string, description: string, actionLabel: string, href: string|null, done: bool, optional: bool}>, completed: int, total: int, percent: int, isComplete: bool, next: string|null}
      */
     public function toProps(?string $workspaceId): array
     {
@@ -92,12 +92,14 @@ final readonly class EnvironmentChecklist
                     default => null,
                 },
                 'done' => $done,
+                'optional' => $step->isOptional(),
             ];
         }
 
-        $completed = count(array_filter($steps, static fn (array $step): bool => $step['done']));
-        $total = count($steps);
-        $next = array_values(array_filter($steps, static fn (array $step): bool => ! $step['done']))[0]['title'] ?? null;
+        $required = array_filter($steps, static fn (array $step): bool => ! $step['optional']);
+        $completed = count(array_filter($required, static fn (array $step): bool => $step['done']));
+        $total = count($required);
+        $next = array_values(array_filter($required, static fn (array $step): bool => ! $step['done']))[0]['title'] ?? null;
 
         return [
             'steps' => $steps,

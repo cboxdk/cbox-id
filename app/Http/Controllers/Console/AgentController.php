@@ -142,7 +142,7 @@ final readonly class AgentController extends ConsoleController
         $mcp = $this->mcp();
         $origin = $mcp === null ? rtrim(url('/'), '/') : self::origin($mcp->identifier);
 
-        return $this->page('environment/agents/connect', __('console.connect_1a2303ed'), [
+        return $this->page('environment/agents/connect', __('console.connect_an_agent_ce504be3'), [
             'help' => HelpProps::for(HelpTopic::ConnectAgent),
             'mcpUrl' => $mcp->identifier ?? $origin.McpProtectedResources::PATH,
             'metadataUrl' => $mcp?->metadataUrl() ?? $origin.ProtectedResource::WELL_KNOWN.McpProtectedResources::PATH,

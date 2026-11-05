@@ -1,6 +1,7 @@
 import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { UserProfile } from './profile';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
@@ -17,6 +18,7 @@ import {
     Help,
     Input,
     Panel,
+    LinkTabs,
     Pill,
     type PillTone,
     type RoleOption,
@@ -141,6 +143,20 @@ export default function UserDetail({
 }: Props) {
     const { t: tc } = useTranslator();
 
+    const page = usePage<Props>();
+    const requestedSection =
+        new URL(page.url, window.location.origin).searchParams.get('section') ?? 'profile';
+    const sections = [
+        { key: 'profile', label: tc('console.profile_d696a35b') },
+        { key: 'security', label: tc('console.security_8f6fb4eb') },
+        { key: 'access', label: tc('console.access_ec5ba0ab') },
+        { key: 'support', label: tc('console.support_access_851e9a34') },
+        { key: 'settings', label: tc('console.settings_74a883a0') },
+    ];
+    const section = sections.some((item) => item.key === requestedSection)
+        ? requestedSection
+        : 'profile';
+    const detailPath = page.url.split('?')[0];
     const label = user.name ?? user.email;
 
     return (
@@ -152,100 +168,82 @@ export default function UserDetail({
                     {!user.verified && (
                         <Pill tone="warning">{tc('console.unverified_33c8e8de')}</Pill>
                     )}
-                    <Pill tone={statusTone(user.status)}>{user.status}</Pill>
+                    <Pill tone={statusTone(user.status)}>
+                        {tc(
+                            user.status === 'active'
+                                ? 'console.active_92340695'
+                                : user.status === 'locked'
+                                  ? 'console.ux_locked'
+                                  : 'console.disabled_75081b59',
+                        )}
+                    </Pill>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
                     {user.id}
                 </p>
             </div>
 
-            <Profile user={user} href={urls.update} />
-
-            <Security user={user} urls={urls} />
-
-            <Sessions
-                sessions={sessions}
-                email={user.email}
-                revokeAllHref={urls.revokeAllSessions}
-                decisionsHref={urls.signInDecisions}
+            <LinkTabs
+                label={tc('console.ux_user_details')}
+                tabs={sections.map((item) => ({
+                    key: item.key,
+                    label: item.label,
+                    href: `${detailPath}?section=${item.key}`,
+                    current: section === item.key,
+                }))}
             />
 
-            <Organizations
-                user={user}
-                memberships={memberships}
-                joinableOrganizations={joinableOrganizations}
-                joiningOrganization={joiningOrganization}
-                joiningAccessRoles={joiningAccessRoles}
-                assignableRoles={assignableRoles}
-                membershipRoles={membershipRoles}
-                urls={urls}
-            />
+            {section === 'profile' && <UserProfile user={user} href={urls.update} />}
 
-            <StaffRolesPanel
-                roles={staffRoles}
-                held={heldStaffRoles}
-                staffHref={staffHref}
-                href={urls.environmentRole}
-            />
+            {section === 'security' && (
+                <>
+                    <Security user={user} urls={urls} />
 
-            <SupportAccess support={support} label={label} active={user.status === 'active'} />
+                    <Sessions
+                        sessions={sessions}
+                        email={user.email}
+                        revokeAllHref={urls.revokeAllSessions}
+                        decisionsHref={urls.signInDecisions}
+                    />
+                </>
+            )}
 
-            <Impersonation memberships={memberships} href={urls.impersonate} />
+            {section === 'access' && (
+                <>
+                    <Organizations
+                        user={user}
+                        memberships={memberships}
+                        joinableOrganizations={joinableOrganizations}
+                        joiningOrganization={joiningOrganization}
+                        joiningAccessRoles={joiningAccessRoles}
+                        assignableRoles={assignableRoles}
+                        membershipRoles={membershipRoles}
+                        urls={urls}
+                    />
 
-            <EraseUser email={user.email} href={urls.erase} />
+                    <StaffRolesPanel
+                        roles={staffRoles}
+                        held={heldStaffRoles}
+                        staffHref={staffHref}
+                        href={urls.environmentRole}
+                    />
+                </>
+            )}
+
+            {section === 'support' && (
+                <>
+                    <SupportAccess
+                        support={support}
+                        label={label}
+                        active={user.status === 'active'}
+                    />
+
+                    <Impersonation memberships={memberships} href={urls.impersonate} />
+                </>
+            )}
+
+            {section === 'settings' && <EraseUser email={user.email} href={urls.erase} />}
         </div>
-    );
-}
-
-function Profile({ user, href }: { user: Props['user']; href: string }) {
-    const { t: tc } = useTranslator();
-
-    const form = useForm({
-        name: user.name ?? '',
-        email: user.email,
-    });
-
-    return (
-        <Panel title={tc('console.profile_d696a35b')}>
-            <form
-                className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-start"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    form.patch(href, { preserveScroll: true });
-                }}
-            >
-                <Field label={tc('console.name_dcd1d522')} optional error={form.errors.name}>
-                    <Input
-                        name="name"
-                        placeholder={tc('console.full_name_f13a64ba')}
-                        value={form.data.name}
-                        onChange={(event) => form.setData('name', event.target.value)}
-                    />
-                </Field>
-
-                <Field
-                    label={tc('console.email_969ccbd3')}
-                    hint={tc('console.also_their_recovery_channel_changing_it_clea_a46b162f')}
-                    error={form.errors.email}
-                >
-                    <Input
-                        name="email"
-                        type="email"
-                        value={form.data.email}
-                        onChange={(event) => form.setData('email', event.target.value)}
-                    />
-                </Field>
-
-                <Button
-                    type="submit"
-                    variant="primary"
-                    loading={form.processing}
-                    className="shrink-0 self-end"
-                >
-                    {tc('console.save_1509f561')}
-                </Button>
-            </form>
-        </Panel>
     );
 }
 

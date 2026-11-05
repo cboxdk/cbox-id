@@ -288,7 +288,7 @@ it('gives the MCP address of this environment and the snippets\' inputs, and off
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('environment/agents/connect')
-            ->where('title', 'Connect')
+            ->where('title', 'Connect an agent')
             // The /mcp resource accepts self-registered clients, so signing in is offered.
             ->where('oauthAvailable', true))
         ->inertiaProps();

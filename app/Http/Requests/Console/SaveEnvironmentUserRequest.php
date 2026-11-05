@@ -23,14 +23,14 @@ final class SaveEnvironmentUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['nullable', 'string', 'max:190'],
-            'email' => ['required', 'email', 'max:190'],
+            'name' => [$this->has('email') ? 'sometimes' : 'present', 'nullable', 'string', 'max:190'],
+            'email' => ['sometimes', 'required', 'email', 'max:190'],
         ];
     }
 
     /**
      * The contract reads an empty string as "no name given" and null as "leave it alone",
-     * and this form always states the name — a cleared field means cleared.
+     * so an explicitly cleared field means cleared. Omitted fields are not sent to the action.
      */
     public function name(): string
     {

@@ -9,6 +9,7 @@ import {
     Breadcrumb,
     Button,
     Checkbox,
+    Disclosure,
     Field,
     Input,
     OrganizationPickerField,
@@ -285,34 +286,55 @@ export default function CreateClient({
                         </Field>
 
                         <div className="mt-4">
-                            <Field
-                                label={tc('console.sign_out_uris_8a668dbe')}
-                                hint={tc(
-                                    'console.optional_where_sign_out_may_send_people_back_6ccaeb48',
-                                )}
-                                error={form.errors.postLogoutRedirectUris}
+                            <Disclosure
+                                title={tc('console.sign_out_uris_8a668dbe')}
+                                summary={
+                                    form.data.postLogoutRedirectUris ||
+                                    tc('console.ux_advanced_help')
+                                }
+                                hasError={Boolean(form.errors.postLogoutRedirectUris)}
                             >
-                                <Textarea
-                                    name="postLogoutRedirectUris"
-                                    rows={2}
-                                    spellCheck={false}
-                                    placeholder="https://app.example.com/signed-out"
-                                    value={form.data.postLogoutRedirectUris}
-                                    onChange={(event) =>
-                                        form.setData('postLogoutRedirectUris', event.target.value)
-                                    }
-                                />
-                            </Field>
+                                <Field
+                                    label={tc('console.sign_out_uris_8a668dbe')}
+                                    hint={tc(
+                                        'console.optional_where_sign_out_may_send_people_back_6ccaeb48',
+                                    )}
+                                    error={form.errors.postLogoutRedirectUris}
+                                >
+                                    <Textarea
+                                        name="postLogoutRedirectUris"
+                                        rows={2}
+                                        spellCheck={false}
+                                        placeholder="https://app.example.com/signed-out"
+                                        value={form.data.postLogoutRedirectUris}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'postLogoutRedirectUris',
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                </Field>
+                            </Disclosure>
                         </div>
                     </Panel>
                 )}
 
-                <Panel
+                <Disclosure
                     title={tc('console.what_it_may_ask_for_d84366ae')}
-                    description={tc(
-                        'console.the_ceiling_on_this_app_s_tokens_it_can_ask__87966742',
+                    summary={tc('console.ux_scopes_summary', { count: form.data.scopes.length })}
+                    hasError={Object.keys(form.errors).some(
+                        (key) => key.startsWith('scopes') || key === 'customScopes',
                     )}
                 >
+                    <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                        {tc('console.the_ceiling_on_this_app_s_tokens_it_can_ask__87966742')}
+                    </p>
+                    {form.errors.scopes && (
+                        <p className="field-error mb-3" role="alert">
+                            {form.errors.scopes}
+                        </p>
+                    )}
                     <div className="space-y-5">
                         {Object.entries(scopeGroups).map(([category, scopes]) => (
                             <div key={category}>
@@ -355,13 +377,15 @@ export default function CreateClient({
                             </Field>
                         </div>
                     )}
-                </Panel>
+                </Disclosure>
 
-                <Panel
+                <Disclosure
                     title={tc('console.roles_c2533705')}
-                    description={tc(
-                        'console.where_this_app_publishes_the_roles_it_unders_e6047562',
-                    )}
+                    summary={
+                        form.data.manifestUrl ||
+                        tc('console.where_this_app_publishes_the_roles_it_unders_e6047562')
+                    }
+                    hasError={Boolean(form.errors.manifestUrl)}
                 >
                     <Field
                         label={tc('console.manifest_url_b2e2812a')}
@@ -377,7 +401,7 @@ export default function CreateClient({
                             onChange={(event) => form.setData('manifestUrl', event.target.value)}
                         />
                     </Field>
-                </Panel>
+                </Disclosure>
 
                 {/*
                     The environment plane's own capability. An app with no organization is

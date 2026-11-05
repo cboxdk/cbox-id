@@ -258,7 +258,7 @@ it('names an owner on the environment console\'s user page without offering Owne
     $erin = app(Subjects::class)->create('erin@tenant.test', 'Erin');
     app(Memberships::class)->add($org->id, $erin->id, MembershipRole::Owner);
 
-    $page = visit('/admin/users/'.$erin->id);
+    $page = visit('/admin/users/'.$erin->id.'?section=access');
 
     $page->assertSee('Tenant Co')
         // The row's picker SHOWS the role it holds…
