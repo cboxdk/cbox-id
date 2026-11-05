@@ -64,7 +64,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.organizations'),
                 ],
                 [
-                    'label' => __('console.users_6b0cc904'),
+                    'label' => __('console.ux_active_users'),
                     'icon' => 'members',
                     'count' => User::query()->where('status', UserStatus::Active->value)->count(),
                     'href' => route('environment.users'),
@@ -94,6 +94,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
                 ['label' => __('console.new_user_6384ffa7'), 'href' => route('environment.users.create')],
                 ['label' => __('console.new_sso_connection_49ecf1f1'), 'href' => route('environment.connections.create')],
                 ['label' => __('console.new_app_747f1473'), 'href' => route('environment.clients.create')],
+                ['label' => __('console.connectors_c3d2e79e'), 'href' => route('environment.connectors.catalog'), 'icon' => 'layers'],
             ],
         ]);
     }

@@ -36,71 +36,29 @@ class ConsoleNavigation
      */
     public function environment(): ConsoleNav
     {
-        // THE MARKET'S WORDS, in the order a team sets an IdP up. The rail used to be
-        // grouped by how this codebase is organized — "Sign-in" holding both directions
-        // of SAML and both directions of SCIM, "Developers" holding the token vault and
-        // the legacy password import — so a person who had used another identity
-        // platform looked for "Enterprise SSO" and "Directory Sync" and found neither
-        // word. The pages and their URLs are unchanged; this is only where they are filed
-        // and what they are called. What is rarely touched after setup is under Advanced,
-        // so the areas above it are the ones a team opens every week.
         return new ConsoleNav(...$this->withModulePages([
             new NavArea('Home', 'home',
                 new NavPage('environment.home', 'Overview'),
-                // The guided first run: framework → app → first sign-in, and the checklist.
                 new NavPage('environment.get-started', 'Get started'),
             ),
             new NavArea('Users & orgs', 'members',
                 new NavPage('environment.users', Vocabulary::USERS),
-                // Not "Tenants": that is the word other platforms use for what we call an
-                // environment, so it pointed the wrong way for exactly the readers most
-                // likely to need it. ⌘K still finds this page by "tenant" — see
-                // {@see ConsoleSynonyms} — because the reader who types it means this.
                 new NavPage('environment.organizations', Vocabulary::ORGANIZATIONS),
             ),
-            // How people arrive — every page here is a way IN. The outbound halves (SAML
-            // apps that trust this environment, provisioning out to other systems) are
-            // under Advanced, so "SSO" and "sync" each mean one direction on this rail.
             new NavArea('Authentication', 'fingerprint',
-                // THE ONE PLACE TO SEE HOW PEOPLE GET IN. Every way in — password, passkeys,
-                // magic link, social, enterprise SSO, SMS codes, two-factor, sign-up,
-                // sessions — with whether it is on and where it is changed. Before it, the
-                // answer to "where do I turn passkeys on" was spread over four pages and,
-                // for the half that is the deployment's to decide, over none. It is the
-                // area's first page, so clicking "Authentication" lands on the answer.
                 new NavPage('environment.sign-in-methods', Vocabulary::SIGN_IN_METHODS),
-                // The password, MFA and session policy.
                 new NavPage('environment.auth-policy', Vocabulary::AUTHENTICATION_POLICY),
                 new NavPage('environment.social-providers', Vocabulary::SOCIAL_LOGIN),
                 new NavPage('environment.connections', Vocabulary::ENTERPRISE_SSO),
-                // Every organization's claimed email domains in one list — the third of the
-                // enterprise trio, environment-wide like the two beside it. Each row is
-                // managed on its organization's Domains tab, where the verify and capture
-                // controls live.
                 new NavPage('environment.domains', Vocabulary::DOMAINS),
                 new NavPage('environment.directories', Vocabulary::DIRECTORY_SYNC),
-                // Adaptive protection at the doors above: what is allowed, challenged or
-                // blocked, and why. Filed here rather than under Monitoring because its rules
-                // and lists are written, not only read.
+                new NavPage('environment.branding', 'Branding'),
                 new NavPage('environment.radar', Vocabulary::RADAR),
-                // "Admin Portal" joins this area when the environment console can mint a
-                // portal link of its own; today a link is minted from an organization.
+                new NavPage('environment.legacy-login', 'Legacy login'),
             ),
-            // WHAT PEOPLE MAY DO, once they are in — beside Authentication, which is how they
-            // got in, because that is the pair every identity platform's reader already
-            // knows. Roles and Permissions used to sit under Users & orgs with the
-            // relationship model beside them, and access reviews and role conflicts — the
-            // governance OF those roles — four areas further down under Advanced, so the
-            // reader composing a role and the reader checking who holds it were sent to
-            // different ends of the rail. Each page here explains how it differs from the
-            // others, and from feature flags and entitlements, which are not access control.
             new NavArea(Vocabulary::AUTHORIZATION, 'shield',
                 new NavPage('environment.roles', Vocabulary::ROLES),
-                // Roles are made OF permissions, so a console that offers one and hides
-                // the other asks an administrator to assign a thing they cannot inspect.
                 new NavPage('environment.permissions', Vocabulary::PERMISSIONS),
-                // Who may do what to which of the app's OWN resources — the model the app
-                // defines and checks per request, beside the roles a person holds.
                 new NavPage('environment.fga', Vocabulary::FINE_GRAINED_AUTHORIZATION),
                 new NavPage('environment.governance', 'Access reviews'),
                 new NavPage('environment.sod-policies', 'Role conflicts'),
@@ -108,63 +66,28 @@ class ConsoleNavigation
             new NavArea('Developers', 'code',
                 new NavPage('environment.clients', Vocabulary::APPLICATIONS),
                 new NavPage('environment.app-catalog', 'App catalog'),
-                // The resource servers apps get tokens FOR, and the scopes each owns.
                 new NavPage('environment.apis', 'APIs'),
-                // This environment's publishable keys, with its secret keys as the other
-                // tab. The secret keys themselves are listed under AI agents › Agents — one
-                // page per credential, so the two cannot disagree — and the tab leads there,
-                // which is where a developer looking under "API keys" is sent.
                 new NavPage('environment.keys.frontend', Vocabulary::API_KEYS),
                 new NavPage('environment.webhooks', Vocabulary::WEBHOOKS),
-                // Synchronous: they run INSIDE a sign-in or a token issuance and can change
-                // its outcome. Webhooks, one line up, are told after the fact.
                 new NavPage('environment.hooks', Vocabulary::HOOKS),
-                // What the apps built on this environment switch on per user and
-                // organization; delivered in the token's `feature_flags` claim.
                 new NavPage('environment.feature-flags', Vocabulary::FEATURE_FLAGS),
-                // People's own third-party accounts (GitHub, Google…) that apps here may
-                // act through — reach OUT, where Social login under Authentication is IN.
                 new NavPage('environment.pipes', Vocabulary::PIPES),
-            ),
-            // Where software acting on this environment is handed access and governed: the
-            // agents holding its management keys, what they are waiting for a person to
-            // allow, and how to point one at the environment's MCP server. People's
-            // connected third-party accounts are Developers › Pipes.
-            new NavArea('AI agents', 'magic',
                 new NavPage('environment.agents', Vocabulary::AGENTS),
                 new NavPage('environment.approvals', Vocabulary::APPROVALS),
-                new NavPage('environment.agent-connect', 'Connect'),
-            ),
-            new NavArea('Branding', 'palette',
-                new NavPage('environment.branding', 'Branding'),
+                new NavPage('environment.agent-connect', 'Connect an agent'),
+                new NavPage('environment.vault', 'Token vault'),
+                new NavPage('environment.provisioning', Vocabulary::OUTBOUND_PROVISIONING),
+                new NavPage('environment.sso-providers', Vocabulary::SAML_APPS),
             ),
             new NavArea('Monitoring', 'chart',
                 new NavPage('environment.audit', Vocabulary::AUDIT_LOG),
-                // The audit events the APP sends about its customers — not this platform's own
-                // trail, one line up — with their schemas and retention.
                 new NavPage('environment.audit-logs', Vocabulary::APP_AUDIT_LOGS),
                 new NavPage('environment.audit-streams', Vocabulary::LOG_STREAMS),
                 new NavPage('environment.usage', 'Usage'),
             ),
-            // Set up once and rarely revisited, or needed by few: the environment's own
-            // staff, the outbound directions, and migration. Kept SMALL on purpose — the
-            // governance pages moved to Authorization, beside the roles they govern, so
-            // what is left here is genuinely the rare thing rather than a second junk
-            // drawer.
-            new NavArea('Advanced', 'sliders',
-                // Roles held across the whole environment by its own people — support,
-                // operations. Organizations never grant one.
-                new NavPage('environment.staff', Vocabulary::ADMINS_AND_SUPPORT),
-                new NavPage('environment.vault', 'Token vault'),
-                new NavPage('environment.provisioning', Vocabulary::OUTBOUND_PROVISIONING),
-                // Outbound SAML: the applications that trust THIS environment as their
-                // identity provider. Enterprise SSO, under Authentication, is the inbound
-                // direction — people arriving with a company account they already have.
-                new NavPage('environment.sso-providers', Vocabulary::SAML_APPS),
-                new NavPage('environment.legacy-login', 'Legacy login'),
-            ),
             new NavArea('Settings', 'settings',
                 new NavPage('environment.settings', 'Settings'),
+                new NavPage('environment.staff', Vocabulary::ADMINS_AND_SUPPORT),
             ),
         ]));
     }
@@ -174,7 +97,7 @@ class ConsoleNavigation
      *
      * A page lands in the area its {@see ConsoleArea} names on this plane; an area no
      * module page reaches is returned untouched, and an area the environment console does
-     * not have yet (Connectors) is inserted where {@see ConsoleArea::environmentAfter()}
+     * not have yet is inserted where {@see ConsoleArea::environmentAfter()}
      * says, so the two rails read in the same order.
      *
      * Pages whose route is missing are dropped rather than rendered. That is the one
@@ -221,7 +144,7 @@ class ConsoleNavigation
                 : new NavArea($area->label, $area->icon, ...$area->pages, ...$pages);
 
             // A module-introduced area sits immediately after the one it names, so
-            // Connectors lands right after Developers on both rails.
+            // Keep module-introduced areas beside the task area they extend.
             foreach ($additions as $label => $pages) {
                 if ($introduced[$label]->environmentAfter() === $area->label) {
                     $merged[] = new NavArea($label, $introduced[$label]->environmentIcon(), ...$pages);

@@ -60,7 +60,8 @@ export function Toaster() {
             // somebody at 400% magnification must not lose the message mid-read.
             toastOptions={{ duration: 4500, classNames: { error: 'is-error' } }}
             gap={8}
-            offset={16}
+            offset={{ bottom: 'var(--toast-bottom, 16px)' }}
+            mobileOffset={{ bottom: 'var(--toast-bottom, 16px)' }}
         />
     );
 }

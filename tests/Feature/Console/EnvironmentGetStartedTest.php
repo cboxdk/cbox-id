@@ -66,6 +66,21 @@ function personToken(string $clientId): void
     ]);
 }
 
+it('finishes first-login setup without requiring optional enterprise features', function (): void {
+    $tenant = gettingStarted();
+    $app = app(ClientRegistry::class)->register(new NewClient('Shop', redirectUris: ['http://localhost:3000/callback']))->client;
+    personToken($app->client_id);
+
+    $props = app(EnvironmentChecklist::class)->toProps($tenant['organization']->id);
+    expect($props['total'])->toBe(3)
+        ->and($props['completed'])->toBe(3)
+        ->and($props['percent'])->toBe(100)
+        ->and($props['isComplete'])->toBeTrue()
+        ->and($props['next'])->toBeNull();
+    $sso = collect($props['steps'])->firstWhere('key', 'connect_sso');
+    expect($sso['optional'])->toBeTrue()->and($sso['done'])->toBeFalse();
+});
+
 it('ticks each step from what the environment holds, never from a checkbox', function (): void {
     $tenant = gettingStarted();
 

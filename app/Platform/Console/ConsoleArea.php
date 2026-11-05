@@ -136,16 +136,16 @@ enum ConsoleArea: string
             self::Authentication => 'Authentication',
             self::Governance => Vocabulary::AUTHORIZATION,
             self::Developers => 'Developers',
-            self::Connectors => 'Connectors',
+            self::Connectors => 'Developers',
             self::Logs => 'Monitoring',
-            self::Settings => 'Branding',
+            self::Settings => 'Authentication',
             self::Account => null,
         };
     }
 
     /**
      * The environment rail's icon, used only when a module's area is not already one of
-     * the environment console's own — which today is Connectors alone.
+     * the environment console's own.
      */
     public function environmentIcon(): string
     {

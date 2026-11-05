@@ -708,8 +708,10 @@ it('audits the environment console detail pages, with rows on them', function ()
     $user = User::query()->where('email', 'a11y-env-user@acme.test')->firstOrFail();
     $organization = Organization::query()->where('slug', 'tenant-a11y')->firstOrFail();
 
-    visit('/admin/users/'.$user->id)
+    visit('/admin/users/'.$user->id.'?section=security')
         ->assertSee('Security & lifecycle')
+        ->assertNoAccessibilityIssues()
+        ->click('a[href$="section=access"]')
         // The roster row is markup nothing else audits — the membership select, the access
         // roles, the remove control.
         ->assertSee('Tenant A11y')

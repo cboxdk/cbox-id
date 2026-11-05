@@ -115,9 +115,9 @@ export default function OrganizationOverview({
                                         {step.label}
                                     </Link>
                                     {step.done ? (
-                                        <Pill tone="success">{tc('console.done_11a6767d')}</Pill>
+                                        <Pill tone="success">{tc('console.ux_configured')}</Pill>
                                     ) : step.available ? (
-                                        <Pill>{tc('console.not_yet_a9549d7d')}</Pill>
+                                        <Pill>{tc('console.ux_not_configured')}</Pill>
                                     ) : (
                                         <Pill tone="warning">
                                             {tc('console.not_in_plan_0f69a710')}
@@ -137,7 +137,7 @@ export default function OrganizationOverview({
                 </ul>
             </Panel>
 
-            <PortalLinks links={portalLinks} />
+            {portalLinks.length > 0 && <PortalLinks links={portalLinks} />}
 
             <Panel
                 title={tc('console.recent_activity_6cb44b56')}

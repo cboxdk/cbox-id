@@ -108,13 +108,13 @@ it('lists staff grants per app and grants one from the Staff page', function ():
 it('draws a user\'s staff roles and the support access form', function (): void {
     $world = staffAndSupportWorld();
 
-    visit('/admin/users/'.$world['sam'])
+    visit('/admin/users/'.$world['sam'].'?section=access')
         ->assertSee('Admin & support roles')
         ->assertSee('Support')
         ->assertSee('Take back')
         ->screenshotElement('section:has(h2:has-text("Admin & support roles"))', 'user-staff-roles');
 
-    $page = visit('/admin/users/'.$world['grace']);
+    $page = visit('/admin/users/'.$world['grace'].'?section=support');
 
     $page->assertSee('Support access')
         ->assertSee('Sign in to Parcels as Grace Hopper')
@@ -126,9 +126,9 @@ it('draws a user\'s staff roles and the support access form', function (): void 
         ->assertSee('Signing in to an app as this person lets you act as them there.')
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/users/'.$world['grace'])->inDarkMode()->assertSee('Support access')
+    visit('/admin/users/'.$world['grace'].'?section=support')->inDarkMode()->assertSee('Support access')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-support-access-dark');
-    visit('/admin/users/'.$world['grace'])->resize(375, 812)->assertSee('Support access')
+    visit('/admin/users/'.$world['grace'].'?section=support')->resize(375, 812)->assertSee('Support access')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-support-access-phone');
 });
 
@@ -137,7 +137,7 @@ it('lists an open support session on the person\'s and the organization\'s page,
     openSupportSession($world);
     app(EnvironmentSudo::class)->confirm();
 
-    visit('/admin/users/'.$world['grace'])
+    visit('/admin/users/'.$world['grace'].'?section=support')
         ->assertSee('Support session')
         ->assertSee('Ticket 4411: invoice totals look wrong')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-open-session');

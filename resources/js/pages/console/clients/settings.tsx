@@ -2,7 +2,7 @@ import { useTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Checkbox, Field, Input, Panel, Switch } from '@/ui';
+import { Button, Checkbox, Disclosure, Field, Input, Panel, Switch } from '@/ui';
 import { AppFrame, type AppHeaderData } from './frame';
 
 type Props = PageProps<{
@@ -40,10 +40,14 @@ function LifetimeForm({ lifetime }: { lifetime: Props['lifetime'] }) {
     const form = useForm({ minutes: lifetime.minutes === null ? '' : String(lifetime.minutes) });
 
     return (
-        <Panel
+        <Disclosure
             title={tc('console.access_token_lifetime_3d0f7e0e')}
-            description={tc('console.how_long_an_access_token_for_this_app_is_acc_22748384')}
+            summary={`${lifetime.minutes ?? lifetime.defaultMinutes} ${tc('console.minutes_4f846a84').toLowerCase()}`}
+            hasError={Boolean(form.errors.minutes)}
         >
+            <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                {tc('console.how_long_an_access_token_for_this_app_is_acc_22748384')}
+            </p>
             <form
                 className="space-y-3"
                 onSubmit={(event) => {
@@ -76,7 +80,7 @@ function LifetimeForm({ lifetime }: { lifetime: Props['lifetime'] }) {
                     {tc('console.save_lifetime_efe22d70')}
                 </Button>
             </form>
-        </Panel>
+        </Disclosure>
     );
 }
 
@@ -86,10 +90,14 @@ function ExchangeForm({ exchange }: { exchange: Props['exchange'] }) {
     const form = useForm({ enabled: exchange.enabled });
 
     return (
-        <Panel
+        <Disclosure
             title={tc('console.token_exchange_791311dd')}
-            description={tc('console.lets_this_app_trade_a_token_it_was_given_for_e3add8e6')}
+            summary={tc(exchange.enabled ? 'console.on_13001175' : 'console.off_ca7981b4')}
+            hasError={Boolean(form.errors.enabled)}
         >
+            <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                {tc('console.lets_this_app_trade_a_token_it_was_given_for_e3add8e6')}
+            </p>
             {exchange.available ? (
                 <form
                     className="flex flex-wrap items-center gap-3"
@@ -129,7 +137,7 @@ function ExchangeForm({ exchange }: { exchange: Props['exchange'] }) {
                     {tc('console.not_available_for_this_app_only_an_app_that__9bac58d4')}
                 </p>
             )}
-        </Panel>
+        </Disclosure>
     );
 }
 
@@ -139,10 +147,14 @@ function LogoutForm({ logout }: { logout: Props['logout'] }) {
     const form = useForm({ uri: logout.uri, sessionRequired: logout.sessionRequired });
 
     return (
-        <Panel
+        <Disclosure
             title={tc('console.back_channel_logout_ac979af8')}
-            description={tc('console.when_somebody_signs_out_or_an_administrator__3520d247')}
+            summary={logout.uri || tc('console.ux_not_configured')}
+            hasError={Object.keys(form.errors).length > 0}
         >
+            <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                {tc('console.when_somebody_signs_out_or_an_administrator__3520d247')}
+            </p>
             <form
                 className="space-y-3"
                 onSubmit={(event) => {
@@ -177,7 +189,7 @@ function LogoutForm({ logout }: { logout: Props['logout'] }) {
                     {tc('console.save_logout_b29b9b19')}
                 </Button>
             </form>
-        </Panel>
+        </Disclosure>
     );
 }
 
