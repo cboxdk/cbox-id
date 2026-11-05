@@ -9,6 +9,7 @@ use Cbox\Id\Devices\Http\Controllers\BootstrapController;
 use Cbox\Id\Devices\Http\Controllers\DeviceController;
 use Cbox\Id\Devices\Http\Controllers\DeviceInventoryController;
 use Cbox\Id\Devices\Http\Controllers\MyDevicesController;
+use Cbox\Id\Devices\Http\Controllers\PrivacyController;
 use Cbox\Id\Devices\Http\Middleware\RequireAuthenticator;
 use Illuminate\Support\Facades\Route;
 
@@ -132,4 +133,4 @@ Route::middleware(['api', ResolveEnvironment::class, 'throttle:api-devices'])
     });
 
 // Public policy/support page for the App Store listing; no account or session required.
-Route::view('/authenticator/privacy', 'authenticator-privacy')->middleware('throttle:60,1')->name('authenticator.privacy');
+Route::get('/authenticator/privacy', PrivacyController::class)->middleware('throttle:60,1')->name('authenticator.privacy');
