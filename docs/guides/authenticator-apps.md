@@ -30,6 +30,6 @@ separate enrolment under [Trusted devices](trusted-devices.md). Removing one of 
 connections does not remove a TOTP key saved on the phone.
 
 Existing TOTP keys keep working after the server upgrade and appear as
-“Authenticator app” until renamed. The server upgrade requires the named-credential
-version of `cboxdk/laravel-id` and its database migration; rolling back the migration
+“Authenticator app” until renamed. The server upgrade requires `cboxdk/laravel-id`
+1.28.0 or later and its database migration; rolling back the migration
 is refused while any person has multiple credentials.

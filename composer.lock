@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6c20549e026f345efa575f93cd79c6c8",
+    "content-hash": "9c560189d065d64bbc8a6c00a32e77ce",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -718,16 +718,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "dev-sd/totp-authenticator-devices",
+            "version": "v1.28.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "aa4507dc6a1eb65a09d5cb5d99c41d798aaad885"
+                "reference": "20116136bd212254f2892ca20530fa6705ed6e0b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/aa4507dc6a1eb65a09d5cb5d99c41d798aaad885",
-                "reference": "aa4507dc6a1eb65a09d5cb5d99c41d798aaad885",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/20116136bd212254f2892ca20530fa6705ed6e0b",
+                "reference": "20116136bd212254f2892ca20530fa6705ed6e0b",
                 "shasum": ""
             },
             "require": {
@@ -790,9 +790,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/sd/totp-authenticator-devices"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.28.0"
             },
-            "time": "2026-11-05T20:19:01+00:00"
+            "time": "2026-11-05T21:00:24+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",
@@ -14233,7 +14233,6 @@
     ],
     "minimum-stability": "dev",
     "stability-flags": {
-        "cboxdk/laravel-id": 20,
         "cboxdk/laravel-signals-client": 20
     },
     "prefer-stable": true,
