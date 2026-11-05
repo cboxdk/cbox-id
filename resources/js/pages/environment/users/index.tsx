@@ -187,7 +187,7 @@ export default function UsersIndex({
                                     </span>
                                 )}
                             </div>
-                            <div className="cbx-user-row-status flex flex-wrap justify-end gap-2">
+                            <div className="cbx-user-row-status flex flex-wrap gap-2">
                                 {!user.verified && user.status === 'active' && (
                                     <Pill tone="warning">{t('console.unverified_33c8e8de')}</Pill>
                                 )}

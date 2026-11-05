@@ -3558,6 +3558,9 @@
         outline: 2px solid var(--ring);
         outline-offset: -3px;
     }
+    .cbx-user-row-status {
+        justify-content: flex-end;
+    }
     .cbx-tabs {
         scrollbar-width: thin;
         scrollbar-color: var(--border-strong) transparent;

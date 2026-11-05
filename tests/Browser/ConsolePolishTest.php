@@ -74,7 +74,8 @@ it('fits the user panel on a phone and restores the URL selection on reload', fu
             const email = row.querySelector("span.text-sm");
             const statuses = row.querySelector(".cbx-user-row-status");
             return email.scrollWidth <= email.clientWidth
-                && statuses.getBoundingClientRect().top >= email.getBoundingClientRect().bottom;
+                && statuses.getBoundingClientRect().top >= email.getBoundingClientRect().bottom
+                && statuses.firstElementChild.getBoundingClientRect().left === email.getBoundingClientRect().left;
         })()', true)
         ->screenshot(filename: $dark ? 'polish-user-list-mobile-dark' : 'polish-user-list-mobile');
 })->with([false, true]);
