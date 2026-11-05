@@ -111,7 +111,9 @@ final readonly class ConsoleLanguage
      */
     private function asPerson(Request $request, Closure $callback): mixed
     {
-        if ($request->is('admin', 'admin/*')) {
+        // Platform administration also lives below /admin, but authenticates the
+        // ordinary root subject before selecting the tenant whose data it reads.
+        if (in_array('env.admin', $request->route()?->gatherMiddleware() ?? [], true)) {
             $subject = $this->administrator->subjectId();
             $environment = $this->root->environment();
         } else {

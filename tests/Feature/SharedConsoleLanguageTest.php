@@ -10,6 +10,7 @@ use Cbox\Id\Kernel\Events\Models\Event;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\UserProperties\Contracts\PropertyNamespaces;
 use Cbox\Id\UserProperties\Contracts\UserProperties;
@@ -108,4 +109,24 @@ it('stores an environment administrators language on their own root identity', f
             ->and(PropertyDocument::query()->sole()->data->language)->toBe('fi');
     });
     $this->get(route('environment.users'))->assertOk()->assertHeader('Content-Language', 'fi');
+});
+
+it('reads the operators own language while administering another environment', function (): void {
+    $operator = actAsOperator();
+    app(PlatformRoot::class)->run(function () use ($operator): void {
+        PropertyDocument::query()->create([
+            'user_id' => $operator->subject_id, 'namespace' => 'preferences',
+            'data' => (object) ['language' => 'de'], 'version' => 1,
+        ]);
+    });
+
+    $tenant = Environment::query()->create([
+        'name' => 'Tenant', 'slug' => 'language-tenant', 'type' => 'production',
+        'status' => 'active', 'is_default' => false, 'settings' => [],
+    ]);
+    targetEnvironment($tenant->slug);
+    $this->get(route('platform.organizations'))->assertOk()->assertHeader('Content-Language', 'de');
+    expect(app(EnvironmentContext::class)->current()?->environmentKey())->toBe($tenant->id)
+        ->and(PropertyDocument::query()->count())->toBe(0);
+    expect(app(PlatformRoot::class)->run(fn (): string => PropertyDocument::query()->sole()->data->language))->toBe('de');
 });

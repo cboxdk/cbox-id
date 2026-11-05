@@ -228,7 +228,8 @@ it('keeps the most-loaded console pages within budget', function (string $route,
     // The live MFA check adds three bounded reads (memberships, TOTP and SMS).
     // Repeated statements and per-organization growth remain checked below.
     // One bounded existence read for the shared app catalog; no per-organization reads.
-    'settings' => ['settings', 34],
+    // One bounded read of the signed-in person's shared language preference.
+    'settings' => ['settings', 35],
 ]);
 
 /**
