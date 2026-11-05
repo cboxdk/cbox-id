@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Platform\AppLauncher;
-use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
-final readonly class AppsController extends PageController
+/** Keep existing app-picker bookmarks in the personal console. */
+final class AppsController
 {
-    public function __invoke(AppLauncher $apps): Response
+    public function __invoke(): RedirectResponse
     {
-        return $this->page('account/apps', __('console.catalog_switch_app'), ['apps' => $apps->apps()]);
+        return to_route('account', ['switch-app' => '1']);
     }
 }

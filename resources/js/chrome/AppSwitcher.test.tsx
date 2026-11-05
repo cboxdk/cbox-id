@@ -15,21 +15,16 @@ const app = {
 };
 
 describe('AppSwitcher', () => {
-    it('opens by keyboard, searches real app links, and restores focus on Escape', async () => {
+    it('opens the inline grid by keyboard and restores focus on Escape', async () => {
         setPageProps({ appCatalog: [app] });
         const user = userEvent.setup();
-        render(<AppSwitcher compact />);
+        render(<AppSwitcher />);
         const trigger = screen.getByRole('button', { name: 'Switch app' });
         trigger.focus();
         await user.keyboard('{Enter}');
-        expect(screen.getByRole('textbox', { name: 'Search apps' })).toHaveFocus();
-        expect(screen.getByRole('link', { name: /Cbox · Billing/ })).toHaveAttribute(
-            'href',
-            app.launch_url,
-        );
-        await user.type(screen.getByRole('textbox'), 'missing');
-        expect(screen.queryByRole('link')).not.toBeInTheDocument();
-        expect(screen.getByText('No apps match your search.')).toBeVisible();
+        const link = screen.getByRole('link', { name: 'Billing' });
+        expect(link).toHaveFocus();
+        expect(link).toHaveAttribute('href', app.launch_url);
         await user.keyboard('{Escape}');
         expect(trigger).toHaveFocus();
     });

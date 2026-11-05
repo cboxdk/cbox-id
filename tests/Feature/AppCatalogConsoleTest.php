@@ -32,10 +32,9 @@ it('keeps validation errors beside the field that needs correcting', function ()
     expect(CatalogEntry::query()->count())->toBe(0);
 });
 
-it('serves the personal app picker independently of the dashboard', function (): void {
+it('opens old picker bookmarks in the personal console', function (): void {
     $subject = app(Subjects::class)->create('apps@example.test', 'App user', 'supersecret123');
     $session = app(SessionManager::class)->start($subject->id, null, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
-    $this->get(route('apps'))->assertOk()->assertInertia(fn ($page) => $page
-        ->component('account/apps')->where('apps', []));
+    $this->get(route('apps'))->assertRedirect(route('account', ['switch-app' => '1']));
 });

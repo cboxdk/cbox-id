@@ -1,8 +1,9 @@
+import { ServiceMark, hasServiceMark } from './ServiceMark';
 import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CatalogApp, SharedProps } from '@/types';
-import { Icon, Input, Popover, PopoverContent, PopoverTrigger } from '@/ui';
+import { Icon, Popover, PopoverContent, PopoverTrigger } from '@/ui';
 
 export function CatalogAppIcon({ app }: { app: Pick<CatalogApp, 'name' | 'icon_url'> }) {
     const [failed, setFailed] = useState<string | null>(null);
@@ -28,10 +29,12 @@ export function CatalogAppIcon({ app }: { app: Pick<CatalogApp, 'name' | 'icon_u
 let lastCatalogRefresh = Date.now();
 
 /** The payload is already filtered by ID. This component never invents grants or apps. */
-export function AppSwitcher({ compact = false }: { compact?: boolean }) {
+export function AppSwitcher() {
     const { t } = useTranslator();
-    const { appCatalog = [] } = usePage<SharedProps>().props;
-    const [query, setQuery] = useState('');
+    const page = usePage<SharedProps>();
+    const { appCatalog = [] } = page.props;
+    const fromBookmark = new URLSearchParams(page.url?.split('?')[1]).get('switch-app') === '1';
+    const firstApp = useRef<HTMLAnchorElement>(null);
     const refresh = useCallback(() => {
         if (document.visibilityState !== 'visible' || Date.now() - lastCatalogRefresh < 60000)
             return;
@@ -46,62 +49,65 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
             window.removeEventListener('focus', refresh);
         };
     }, [refresh]);
-    const apps = appCatalog.filter((app) =>
-        `${app.name} ${app.description ?? ''}`.toLowerCase().includes(query.toLowerCase()),
-    );
+    const label = t('console.catalog_switch_app');
     return (
         <Popover
+            defaultOpen={fromBookmark}
             onOpenChange={(open) => {
-                if (open) {
-                    setQuery('');
-                    refresh();
-                }
+                if (open) refresh();
             }}
         >
-            <PopoverTrigger
-                className={compact ? 'btn btn-ghost' : 'btn btn-secondary w-full'}
-                aria-label={t('console.catalog_switch_app')}
-            >
-                <Icon name="layers" className="w-4 h-4" />
-                <span>{t('console.catalog_switch_app')}</span>
+            <PopoverTrigger className="cbx-launch-trigger" aria-label={label} title={label}>
+                <svg
+                    aria-hidden="true"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 18 18"
+                    fill="currentColor"
+                >
+                    {[3, 9, 15].flatMap((y) =>
+                        [3, 9, 15].map((x) => <circle key={x + ':' + y} cx={x} cy={y} r="1.65" />),
+                    )}
+                </svg>
             </PopoverTrigger>
             <PopoverContent
                 side="bottom"
-                className="w-80 max-w-[calc(100vw-2rem)] p-3"
-                aria-label={t('console.your_apps_13b17cc7')}
+                align="end"
+                onOpenAutoFocus={(event) => {
+                    if (firstApp.current) {
+                        event.preventDefault();
+                        firstApp.current.focus();
+                    }
+                }}
+                collisionPadding={8}
+                className="cbx-launch-panel"
+                aria-label={label}
             >
-                <h2 className="mb-3 font-semibold">{t('console.your_apps_13b17cc7')}</h2>
-                <Input
-                    aria-label={t('console.search_apps_a10a36fa')}
-                    placeholder={t('console.search_apps_a10a36fa') + '…'}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                />
-                <nav
-                    aria-label={t('console.apps_89dd7484')}
-                    className="mt-2 max-h-80 overflow-y-auto space-y-1"
-                >
-                    {apps.map((app) => (
-                        <a
-                            key={app.key}
-                            href={app.launch_url}
-                            className="flex items-center gap-3 rounded-lg p-2 hover:bg-[var(--muted)] focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                        >
-                            <CatalogAppIcon app={app} />
-                            <span className="min-w-0">
-                                <span className="block truncate font-medium">{app.name}</span>
-                                <span className="block text-xs text-[var(--muted-foreground)]">
-                                    {app.description}
-                                </span>
-                            </span>
-                        </a>
-                    ))}
-                    {apps.length === 0 && (
-                        <p className="p-2 text-sm text-[var(--muted-foreground)]">
-                            {query ? t('console.catalog_no_matches') : t('console.catalog_empty')}
-                        </p>
-                    )}
-                </nav>
+                <h2>{label}</h2>
+                {appCatalog.length ? (
+                    <nav className="cbx-launch-grid" aria-label={t('console.apps_89dd7484')}>
+                        {appCatalog.map((app, index) => (
+                            <a
+                                key={app.key}
+                                ref={index === 0 ? firstApp : undefined}
+                                href={app.launch_url}
+                                aria-current={app.key === 'id' ? 'true' : undefined}
+                            >
+                                {hasServiceMark(app.key) ? (
+                                    <ServiceMark service={app.key} />
+                                ) : (
+                                    <CatalogAppIcon app={app} />
+                                )}
+                                <span>{app.name.replace(/^Cbox\s*·\s*/i, '')}</span>
+                                {app.key === 'id' && (
+                                    <Icon name="check" className="cbx-launch-check" />
+                                )}
+                            </a>
+                        ))}
+                    </nav>
+                ) : (
+                    <p>{t('console.catalog_empty')}</p>
+                )}
             </PopoverContent>
         </Popover>
     );
