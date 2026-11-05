@@ -17,6 +17,8 @@ export interface DialogProps {
     /** The buttons, right-aligned in a footer. Destructive last, cancel first. */
     footer?: ReactNode;
     size?: 'sm' | 'md' | 'lg';
+    /** Details enter from the right; short tasks rise from the bottom on a phone. */
+    presentation?: 'dialog' | 'panel' | 'sheet';
     /**
      * The control focus moves to when the dialog opens — the password field of a "Confirm
      * it's you", the name field of a rename. Without it Radix focuses the first tabbable
@@ -91,6 +93,7 @@ export function Dialog({
     description,
     footer,
     size = 'md',
+    presentation = 'dialog',
     initialFocus,
     children,
 }: DialogProps) {
@@ -103,7 +106,12 @@ export function Dialog({
             <Primitive.Portal>
                 <Primitive.Overlay className="cbx-overlay" />
                 <Primitive.Content
-                    className={cn('cbx-dialog', `cbx-dialog--${size}`)}
+                    className={cn(
+                        'cbx-dialog',
+                        `cbx-dialog--${size}`,
+                        presentation !== 'dialog' && `cbx-dialog--${presentation}`,
+                    )}
+                    {...(description === undefined ? { 'aria-describedby': undefined } : {})}
                     {...returnFocus}
                 >
                     <div className="cbx-dialog-hd">

@@ -175,14 +175,14 @@ it('resolves an area for every navigable route', function (): void {
  * own on the rail, so it must not be swallowed by Agents the way a detail route is — hence
  * its route name sits outside `environment.agents.*`.
  */
-it('files the AI agents area with Agents, Approvals and Connect, each lit on its own', function (): void {
+it('keeps agent tasks discoverable under Developers, each lit on its own', function (): void {
     $nav = (new ConsoleNavigation)->environment();
     $area = $nav->areaFor('environment.agents');
 
-    expect($area?->label)->toBe('AI agents')
-        ->and(array_map(fn ($page): string => $page->label, $area->pages ?? []))->toBe(['Agents', 'Approvals', 'Connect'])
-        ->and($nav->areaFor('environment.agents.create')?->label)->toBe('AI agents')
-        ->and($nav->areaFor('environment.agent-connect')?->label)->toBe('AI agents')
+    expect($area?->label)->toBe('Developers')
+        ->and(array_map(fn ($page): string => $page->label, $area->pages ?? []))->toContain('Agents', 'Approvals', 'Connect an agent')
+        ->and($nav->areaFor('environment.agents.create')?->label)->toBe('Developers')
+        ->and($nav->areaFor('environment.agent-connect')?->label)->toBe('Developers')
         // The frontend keys stay a developer's page; the management keys' old URL is a
         // redirect to Agents and lights nothing on its own.
         ->and($nav->areaFor('environment.keys.frontend')?->label)->toBe('Developers');

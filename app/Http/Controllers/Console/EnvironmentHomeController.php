@@ -64,7 +64,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.organizations'),
                 ],
                 [
-                    'label' => __('console.users_6b0cc904'),
+                    'label' => __('console.ux_active_users'),
                     'icon' => 'members',
                     'count' => User::query()->where('status', UserStatus::Active->value)->count(),
                     'href' => route('environment.users'),

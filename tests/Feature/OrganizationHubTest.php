@@ -99,9 +99,8 @@ it('draws every tab of an organization\'s page under its own URL, with the heade
                 ->component($component)
                 ->where('organizationHub.id', $orgId)
                 ->where('organizationHub.name', 'Tenant Co')
-                // Nine tabs, the page's group lit — fourteen in one row ran off a laptop's
-                // screen — and the group's own pages as a second row where it has several.
-                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 9
+                // Five task areas; every existing route still lights its group.
+                ->where('organizationHub.tabs', fn (Collection $drawn): bool => $drawn->count() === 5
                     && $drawn->firstWhere('current', true)['key'] === OrganizationTabs::groupOf($tab))
                 ->where('organizationHub.subTabs', fn (Collection $drawn): bool => $drawn->isEmpty()
                     || $drawn->firstWhere('current', true)['key'] === $tab));

@@ -1,6 +1,6 @@
 import { useTranslator } from '@/i18n';
 import { useForm, usePage } from '@inertiajs/react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import type { OrganizationHub } from '@/types';
 import {
     Breadcrumb,
@@ -76,7 +76,7 @@ export function OrganizationFrame({
 
                     <Button variant="primary" size="sm" onClick={() => setLinking(true)}>
                         <Icon name="external" className="w-4 h-4" />
-                        {tc('console.admin_portal_link_f7e62127')}
+                        {tc('console.ux_invite_it')}
                     </Button>
                 </div>
             </div>
@@ -88,12 +88,6 @@ export function OrganizationFrame({
                     tabs={hub.tabs}
                     label={tc('console.value0_pages_e0b5cf6d', { value0: hub.name })}
                 />
-                {/*
-                    The shown page's group, as a second row — Members beside its pending
-                    Invitations, the two audit logs, Settings' four pages. Fourteen tabs in
-                    one row ran off the edge of a laptop screen; nine tabs and a row for the
-                    group fit.
-                */}
                 <LinkTabs
                     tabs={hub.subTabs}
                     label={tc('console.value0_pages_e0b5cf6d', {
@@ -105,12 +99,14 @@ export function OrganizationFrame({
 
             {children}
 
-            <PortalLinkDialog
-                open={linking}
-                onOpenChange={setLinking}
-                name={hub.name}
-                link={hub.portalLink}
-            />
+            {linking && (
+                <PortalLinkDialog
+                    open={linking}
+                    onOpenChange={setLinking}
+                    name={hub.name}
+                    link={hub.portalLink}
+                />
+            )}
         </div>
     );
 }
@@ -147,6 +143,14 @@ function PortalLinkDialog({
         locale: link.defaultLocale,
     });
 
+    const [step, setStep] = useState<'task' | 'delivery'>('task');
+    const formId = useId();
+    const stepHeading = useRef<HTMLHeadingElement>(null);
+    const goTo = (next: 'task' | 'delivery') => {
+        setStep(next);
+        requestAnimationFrame(() => stepHeading.current?.focus());
+    };
+
     const toggle = (value: string, checked: boolean): void => {
         form.setData(
             'intents',
@@ -159,6 +163,12 @@ function PortalLinkDialog({
     const submit = (): void => {
         form.post(link.href, {
             preserveScroll: true,
+            onError: (errors) =>
+                goTo(
+                    Object.keys(errors).some((key) => key.startsWith('intents'))
+                        ? 'task'
+                        : 'delivery',
+                ),
             onSuccess: () => {
                 onOpenChange(false);
                 form.reset('email');
@@ -170,105 +180,152 @@ function PortalLinkDialog({
         <Dialog
             open={open}
             onOpenChange={onOpenChange}
-            title={tc('console.admin_portal_link_f7e62127')}
+            presentation="sheet"
+            initialFocus={stepHeading}
+            title={tc('console.ux_invite_it')}
             description={tc('console.a_single_use_link_value0_s_it_administrator__10ae0882', {
                 value0: name,
             })}
             footer={
                 <>
-                    <DialogClose asChild>
-                        <Button>{tc('console.cancel_19766ed6')}</Button>
-                    </DialogClose>
+                    {step === 'delivery' ? (
+                        <Button disabled={form.processing} onClick={() => goTo('task')}>
+                            {tc('console.ux_back')}
+                        </Button>
+                    ) : (
+                        <DialogClose asChild>
+                            <Button>{tc('console.cancel_19766ed6')}</Button>
+                        </DialogClose>
+                    )}
                     <Button
+                        type="submit"
+                        form={formId}
                         variant="primary"
                         loading={form.processing}
                         disabled={form.data.intents.length === 0}
-                        onClick={submit}
                     >
-                        {form.data.email.trim() === ''
-                            ? tc('console.create_link_e6b850cf')
-                            : tc('console.create_and_send_link_54020cd9')}
+                        {step === 'task'
+                            ? tc('console.continue_31fbef16')
+                            : form.data.email.trim() === ''
+                              ? tc('console.create_link_e6b850cf')
+                              : tc('console.create_and_send_link_54020cd9')}
                     </Button>
                 </>
             }
         >
             <form
+                id={formId}
                 className="space-y-5"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    submit();
+                    if (step === 'task') goTo('delivery');
+                    else submit();
                 }}
             >
-                <fieldset>
-                    <legend className="text-sm font-medium mb-2">
-                        {tc('console.what_it_opens_08a62c98')}
-                    </legend>
-                    <div className="space-y-2">
-                        {link.intents.map((intent) => (
-                            <Checkbox
-                                key={intent.value}
-                                name="intents[]"
-                                value={intent.value}
-                                checked={form.data.intents.includes(intent.value)}
-                                disabled={!intent.available}
-                                onCheckedChange={(checked) => toggle(intent.value, checked)}
-                                label={intent.label}
-                                hint={
-                                    intent.available
-                                        ? intent.description
-                                        : tc(
-                                              'console.value0_not_included_in_this_organization_s_p_a6447bb1',
-                                              { value0: intent.description },
-                                          )
-                                }
-                            />
-                        ))}
-                    </div>
-                    {form.errors.intents !== undefined && (
-                        <p role="alert" className="field-error mt-2">
-                            {form.errors.intents}
-                        </p>
-                    )}
-                </fieldset>
-
-                <Field
-                    label={tc('console.link_expires_after_5a55f779')}
-                    error={form.errors.expires_in_minutes}
+                <div
+                    className="flex gap-3 text-xs text-[var(--muted-foreground)]"
+                    aria-label={tc('console.setup_progress_e9b4495a')}
                 >
-                    <Select
-                        name="expires_in_minutes"
-                        value={form.data.expires_in_minutes}
-                        onValueChange={(minutes) => form.setData('expires_in_minutes', minutes)}
-                        options={link.lifetimes}
-                    />
-                </Field>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <Field
-                        label={tc('console.email_it_to_6854d0fa')}
-                        optional
-                        hint={tc('console.their_it_contact_left_blank_you_copy_the_lin_2fe54822')}
-                        error={form.errors.email}
-                    >
-                        <Input
-                            name="email"
-                            type="email"
-                            autoComplete="off"
-                            placeholder="it@customer.com"
-                            value={form.data.email}
-                            onChange={(event) => form.setData('email', event.target.value)}
-                        />
-                    </Field>
-                    <Field label={tc('console.email_language_3e266c95')} error={form.errors.locale}>
-                        <Select
-                            name="locale"
-                            value={form.data.locale}
-                            disabled={form.data.email.trim() === ''}
-                            onValueChange={(locale) => form.setData('locale', locale)}
-                            options={link.locales}
-                        />
-                    </Field>
+                    <span aria-current={step === 'task' ? 'step' : undefined}>
+                        {tc('console.ux_task')}
+                    </span>
+                    <span aria-current={step === 'delivery' ? 'step' : undefined}>
+                        {tc('console.ux_delivery')}
+                    </span>
                 </div>
+                <h2 ref={stepHeading} tabIndex={-1} className="font-medium outline-none">
+                    {tc(step === 'task' ? 'console.ux_task' : 'console.ux_delivery')}
+                </h2>
+                {step === 'task' ? (
+                    <fieldset>
+                        <legend className="text-sm font-medium mb-2">
+                            {tc('console.what_it_opens_08a62c98')}
+                        </legend>
+                        <div className="space-y-2">
+                            {link.intents.map((intent) => (
+                                <Checkbox
+                                    key={intent.value}
+                                    name="intents[]"
+                                    value={intent.value}
+                                    checked={form.data.intents.includes(intent.value)}
+                                    disabled={!intent.available}
+                                    onCheckedChange={(checked) => toggle(intent.value, checked)}
+                                    label={intent.label}
+                                    hint={
+                                        intent.available
+                                            ? intent.description
+                                            : tc(
+                                                  'console.value0_not_included_in_this_organization_s_p_a6447bb1',
+                                                  { value0: intent.description },
+                                              )
+                                    }
+                                />
+                            ))}
+                        </div>
+                        {form.errors.intents !== undefined && (
+                            <p role="alert" className="field-error mt-2">
+                                {form.errors.intents}
+                            </p>
+                        )}
+                    </fieldset>
+                ) : (
+                    <>
+                        <div className="rounded-lg border border-[var(--border)] p-3 text-sm">
+                            <p className="text-xs text-[var(--muted-foreground)] mb-1">
+                                {tc('console.what_it_opens_08a62c98')}
+                            </p>
+                            {link.intents
+                                .filter((intent) => form.data.intents.includes(intent.value))
+                                .map((intent) => intent.label)
+                                .join(' · ')}
+                        </div>
+                        <Field
+                            label={tc('console.link_expires_after_5a55f779')}
+                            error={form.errors.expires_in_minutes}
+                        >
+                            <Select
+                                name="expires_in_minutes"
+                                value={form.data.expires_in_minutes}
+                                onValueChange={(minutes) =>
+                                    form.setData('expires_in_minutes', minutes)
+                                }
+                                options={link.lifetimes}
+                            />
+                        </Field>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <Field
+                                label={tc('console.email_it_to_6854d0fa')}
+                                optional
+                                hint={tc(
+                                    'console.their_it_contact_left_blank_you_copy_the_lin_2fe54822',
+                                )}
+                                error={form.errors.email}
+                            >
+                                <Input
+                                    name="email"
+                                    type="email"
+                                    autoComplete="off"
+                                    placeholder="it@customer.com"
+                                    value={form.data.email}
+                                    onChange={(event) => form.setData('email', event.target.value)}
+                                />
+                            </Field>
+                            <Field
+                                label={tc('console.email_language_3e266c95')}
+                                error={form.errors.locale}
+                            >
+                                <Select
+                                    name="locale"
+                                    value={form.data.locale}
+                                    disabled={form.data.email.trim() === ''}
+                                    onValueChange={(locale) => form.setData('locale', locale)}
+                                    options={link.locales}
+                                />
+                            </Field>
+                        </div>
+                    </>
+                )}
             </form>
         </Dialog>
     );

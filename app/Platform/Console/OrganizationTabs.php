@@ -33,6 +33,8 @@ final readonly class OrganizationTabs
 
     public const MEMBERS = 'members';
 
+    public const ACCESS = 'access';
+
     public const INVITATIONS = 'invitations';
 
     public const SSO = 'sso';
@@ -83,33 +85,15 @@ final readonly class OrganizationTabs
     ];
 
     /**
-     * THE ROW A PERSON READS — nine tabs, each a group of the pages above.
-     *
-     * Fourteen tabs used to sit in one row, and at a laptop's width the last two — App audit
-     * logs and Settings — were cut off the edge of the page: a row that has to be scrolled
-     * sideways to find Settings is a row nobody finds Settings in. So pages that are the
-     * same subject share one tab, and the tab draws the group's pages as a second, smaller
-     * row beneath it: Members beside its pending Invitations, the Audit log beside the App
-     * audit logs, and the organization's housekeeping — its details, branding, member API
-     * keys and support access — under Settings, where every other console puts them.
-     *
-     * The enterprise trio (SSO, Directory Sync, Domains), Roles and the authentication policy stay
-     * a click away each, because those are what an environment administrator opens an
-     * organization to do. Every page keeps its URL; only where its link is drawn changed.
-     *
-     * Group key => [the tab's label, its pages in order]. The first page is where the tab
-     * lands.
+     * Five task areas. Every existing page keeps its URL and remains reachable through
+     * its area's secondary navigation, including direct links into access settings.
      *
      * @var array<string, array{0: string, 1: list<string>}>
      */
     private const GROUPS = [
         self::OVERVIEW => ['Overview', [self::OVERVIEW]],
         self::MEMBERS => ['Members', [self::MEMBERS, self::INVITATIONS]],
-        self::SSO => ['SSO', [self::SSO]],
-        self::DIRECTORY_SYNC => ['Directory Sync', [self::DIRECTORY_SYNC]],
-        self::DOMAINS => ['Domains', [self::DOMAINS]],
-        self::ROLES => ['Roles', [self::ROLES]],
-        self::POLICY => [Vocabulary::AUTHENTICATION_POLICY, [self::POLICY]],
+        self::ACCESS => ['Sign-in & access', [self::SSO, self::DIRECTORY_SYNC, self::DOMAINS, self::ROLES, self::POLICY]],
         self::AUDIT => ['Audit log', [self::AUDIT, self::AUDIT_LOGS]],
         self::SETTINGS => ['Settings', [self::SETTINGS, self::BRANDING, self::API_KEYS, self::SUPPORT]],
     ];
@@ -126,7 +110,7 @@ final readonly class OrganizationTabs
         foreach (self::GROUPS as $group => [$label, $pages]) {
             $tabs[] = new LinkTabProps(
                 $group,
-                ConsoleStrings::text($label),
+                $group === self::ACCESS ? __('console.ux_login_access') : ConsoleStrings::text($label),
                 route(self::TABS[$pages[0]][1], ['organization' => $organizationId]),
                 in_array($current, $pages, true),
             );

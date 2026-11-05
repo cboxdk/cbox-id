@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 
-function Harness() {
+function Harness({ presentation = 'dialog' }: { presentation?: 'dialog' | 'panel' | 'sheet' }) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -16,6 +16,7 @@ function Harness() {
             <button type="button">Behind the dialog</button>
 
             <Dialog
+                presentation={presentation}
                 open={open}
                 onOpenChange={setOpen}
                 title="Delete this endpoint?"
@@ -34,9 +35,9 @@ function Harness() {
     );
 }
 
-describe('Dialog', () => {
+describe.each(['dialog', 'panel', 'sheet'] as const)('Dialog (%s)', (presentation) => {
     it('is announced by its title and its description, not by its title alone', async () => {
-        render(<Harness />);
+        render(<Harness presentation={presentation} />);
         await userEvent.click(screen.getByRole('button', { name: 'Delete endpoint' }));
 
         const dialog = screen.getByRole('dialog');
@@ -48,7 +49,7 @@ describe('Dialog', () => {
     });
 
     it('traps Tab inside itself, which the Alpine version never did', async () => {
-        render(<Harness />);
+        render(<Harness presentation={presentation} />);
         await userEvent.click(screen.getByRole('button', { name: 'Delete endpoint' }));
 
         const inside = [
@@ -68,7 +69,7 @@ describe('Dialog', () => {
     });
 
     it('closes on Escape and gives focus back to what opened it', async () => {
-        render(<Harness />);
+        render(<Harness presentation={presentation} />);
 
         const trigger = screen.getByRole('button', { name: 'Delete endpoint' });
         await userEvent.click(trigger);
@@ -82,14 +83,14 @@ describe('Dialog', () => {
     });
 
     it('hides the page behind it from assistive technology while it is open', async () => {
-        render(<Harness />);
+        render(<Harness presentation={presentation} />);
         await userEvent.click(screen.getByRole('button', { name: 'Delete endpoint' }));
 
         expect(screen.queryByRole('button', { name: 'Behind the dialog' })).not.toBeInTheDocument();
     });
 
     it('has no accessibility violations', async () => {
-        const { baseElement } = render(<Harness />);
+        const { baseElement } = render(<Harness presentation={presentation} />);
         await userEvent.click(screen.getByRole('button', { name: 'Delete endpoint' }));
 
         await expect(baseElement).toHaveNoAxeViolations();

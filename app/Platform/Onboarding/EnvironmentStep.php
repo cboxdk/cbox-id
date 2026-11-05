@@ -25,6 +25,11 @@ enum EnvironmentStep: string
     case InviteTeammate = 'invite_teammate';
     case GoLive = 'go_live';
 
+    public function isOptional(): bool
+    {
+        return ! in_array($this, [self::CreateApp, self::AddRedirect, self::FirstSignIn], true);
+    }
+
     public function title(): string
     {
         return match ($this) {

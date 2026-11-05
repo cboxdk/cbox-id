@@ -107,6 +107,12 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         $query = User::query()->orderBy('email');
 
+        $status = $request->string('status', 'active')->toString();
+        abort_unless(in_array($status, ['all', 'active', 'disabled', 'locked'], true), 422);
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
         $term = trim($request->string('q')->toString());
 
         if ($term !== '') {
@@ -140,8 +146,41 @@ final readonly class EnvironmentUserController extends ConsoleController
             ], $page->getCollection()->all()),
             'pagination' => SimplePaginationProps::from($page),
             'search' => $term,
+            'statusFilter' => $status,
+            'selectedUser' => $request->filled('selected')
+                ? $this->preview($request->string('selected')->toString())
+                : null,
             'createHref' => route('environment.users.create'),
         ]);
+    }
+
+    /** Only the information needed for a quick lookup; full management stays on its own page.
+     * @return array<string, mixed>
+     */
+    private function preview(string $id): array
+    {
+        $user = $this->resolve($id);
+        $memberships = app(Memberships::class)->forUser($user->id);
+        $names = Organization::query()
+            ->whereIn('id', array_map(static fn (Membership $membership): string => $membership->organization_id, $memberships->all()))
+            ->pluck('name', 'id');
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => $user->status->value,
+            'verified' => $user->email_verified_at !== null,
+            'hasMfa' => app(Mfa::class)->hasConfirmedTotp($user->id) || app(SmsFactors::class)->isEnrolled($user->id),
+            'memberships' => array_map(static fn (Membership $membership): array => [
+                'id' => $membership->organization_id,
+                'name' => $names[$membership->organization_id] ?? $membership->organization_id,
+                'role' => $membership->role->value,
+                'href' => route('environment.organizations.show', $membership->organization_id),
+            ], $memberships->all()),
+            'href' => route('environment.users.show', $user->id),
+            'updateHref' => route('environment.users.update', $user->id),
+        ];
     }
 
     public function create(): Response
@@ -354,11 +393,15 @@ final readonly class EnvironmentUserController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        $result = $this->act(UpdateUser::class, [
-            'id' => $user,
-            'name' => $request->name(),
-            'email' => $request->email(),
-        ], ['name' => 'name', 'email' => 'email'], 'email');
+        $changes = ['id' => $user];
+        if ($request->has('name')) {
+            $changes['name'] = $request->name();
+        }
+        if ($request->has('email')) {
+            $changes['email'] = $request->email();
+        }
+
+        $result = $this->act(UpdateUser::class, $changes, ['name' => 'name', 'email' => 'email'], 'email');
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.profile_updated_3a06720a'));
     }

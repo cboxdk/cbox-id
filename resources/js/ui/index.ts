@@ -31,6 +31,7 @@ export { Combobox, type ComboboxOption } from './Combobox';
 export { ConfirmDelete } from './ConfirmDelete';
 export { CopyButton } from './CopyButton';
 export { Dialog, DialogClose } from './Dialog';
+export { Disclosure } from './Disclosure';
 export { Divider } from './Divider';
 export { type DomainClaim, DomainClaims } from './DomainClaims';
 export {
