@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cbox\Id\Devices\Enums\DeviceStatus;
+use Cbox\Id\Devices\Http\Middleware\RequireAuthenticator;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Support\EnrolmentToken;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
@@ -18,6 +19,7 @@ uses(RefreshDatabase::class);
  * runs for real without minting signed JWTs.
  */
 beforeEach(function (): void {
+    $this->withoutMiddleware(RequireAuthenticator::class);
     $this->app->instance(TokenIntrospector::class, new class implements TokenIntrospector
     {
         public function introspect(string $token): Introspection
@@ -168,7 +170,7 @@ it('deregisters a device', function (): void {
 
     $this->deleteJson("/api/v1/devices/{$id}", [], deviceAuth('alice-tok'))->assertStatus(204);
 
-    expect(Device::query()->count())->toBe(0);
+    expect(Device::query()->where('status', '!=', DeviceStatus::Revoked->value)->count())->toBe(0);
 });
 
 it('answers for another user device exactly as for a missing one', function (): void {

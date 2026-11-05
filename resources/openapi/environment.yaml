@@ -1562,6 +1562,13 @@ paths:
       security:
         -
           AuthenticatorToken: []
+      parameters:
+        -
+          name: cursor
+          in: query
+          description: "The previous page's next_cursor; requests are ordered by descending ULID."
+          schema:
+            type: string
       responses:
         200:
           description: OK
@@ -1580,6 +1587,8 @@ paths:
           $ref: '#/components/responses/BearerUnauthorized'
         403:
           $ref: '#/components/responses/BearerForbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
   '/approvals/{id}':
@@ -1662,6 +1671,16 @@ paths:
       parameters:
         -
           $ref: '#/components/parameters/Id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum:
+                    - not_me
       responses:
         200:
           description: Denied.
@@ -3978,6 +3997,39 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /authenticator/me:
+    get:
+      operationId: authenticatorIdentity
+      tags:
+        - Devices
+      summary: 'Verified identity for the authenticator'
+      description: 'Requires the provisioned public authenticator client, devices.manage and a DPoP proof. Available before device registration; revoked keys are refused.'
+      responses:
+        200:
+          description: 'The signed-in subject and display label.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - subject
+                      - label
+                    properties:
+                      subject:
+                        type: string
+                      label:
+                        type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
   /branding/appearance:
     get:
       tags:
@@ -4350,7 +4402,6 @@ paths:
               required:
                 - install_id
                 - platform
-                - push_token
                 - name
               properties:
                 install_id:
@@ -4368,8 +4419,16 @@ paths:
                     - ios
                     - android
                 push_token:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   maxLength: 4096
+                enrolment_token:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 4096
+                  description: 'Required for a new installation.'
                 name:
                   type: string
                   maxLength: 100
@@ -21350,6 +21409,16 @@ components:
             - string
             - 'null'
           format: date-time
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - denied
+            - expired
+            - reported
+        purpose:
+          type: string
     ApprovalDecision:
       type: object
       required:
@@ -21363,6 +21432,7 @@ components:
           enum:
             - approved
             - denied
+            - reported
     VaultSecret:
       type: object
       required:

@@ -1878,6 +1878,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /authenticator/me:
+    get:
+      operationId: authenticatorIdentity
+      tags: [Devices]
+      summary: Verified identity for the authenticator
+      description: Requires the provisioned public authenticator client, devices.manage and a DPoP proof. Available before device registration; revoked keys are refused.
+      responses:
+        '200':
+          description: The signed-in subject and display label.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [subject, label]
+                    properties:
+                      subject: { type: string }
+                      label: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /devices:
     post:
       tags: [Devices]
@@ -1898,7 +1922,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [install_id, platform, push_token, name]
+              required: [install_id, platform, name]
               properties:
                 install_id:
                   type: string
@@ -1910,7 +1934,8 @@ paths:
                     and `ANDROID_ID` both reset on reinstall and are shared across one
                     vendor's apps.
                 platform: { type: string, enum: [ios, android] }
-                push_token: { type: string, maxLength: 4096 }
+                push_token: { type: [string, 'null'], maxLength: 4096 }
+                enrolment_token: { type: [string, 'null'], maxLength: 4096, description: Required for a new installation. }
                 name: { type: string, maxLength: 100, description: Shown in the console. Control characters are stripped. }
                 app_version: { type: [string, 'null'], maxLength: 32 }
                 os_version: { type: [string, 'null'], maxLength: 32 }
@@ -1997,6 +2022,11 @@ paths:
         approvals page shows, for the signed-in subject only.
       security:
         - AuthenticatorToken: []
+      parameters:
+        - name: cursor
+          in: query
+          description: The previous page's next_cursor; requests are ordered by descending ULID.
+          schema: { type: string }
       responses:
         '200':
           description: OK
@@ -2011,6 +2041,7 @@ paths:
                   meta: { $ref: '#/components/schemas/PageMeta' }
         '401': { $ref: '#/components/responses/BearerUnauthorized' }
         '403': { $ref: '#/components/responses/BearerForbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /approvals/{id}:
@@ -2076,6 +2107,13 @@ paths:
         - AuthenticatorToken: []
       parameters:
         - $ref: '#/components/parameters/Id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, enum: [not_me] }
       responses:
         '200':
           description: Denied.
@@ -2699,12 +2737,14 @@ components:
         organization_id: { type: [string, 'null'] }
         requested_at: { type: [string, 'null'], format: date-time }
         expires_at: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [pending, approved, denied, expired, reported] }
+        purpose: { type: string }
     ApprovalDecision:
       type: object
       required: [id, status]
       properties:
         id: { type: string }
-        status: { type: string, enum: [approved, denied] }
+        status: { type: string, enum: [approved, denied, reported] }
     VaultSecret:
       type: object
       required: [id, name, provider, revoked]

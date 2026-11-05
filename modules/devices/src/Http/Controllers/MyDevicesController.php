@@ -75,6 +75,7 @@ final readonly class MyDevicesController extends ConsoleController
             'appStoreUrl' => $this->appStoreUrl(),
             'devices' => Device::query()
                 ->where('subject_id', app(CurrentUser::class)->id())
+                ->where('status', '!=', DeviceStatus::Revoked->value)
                 ->orderByDesc('last_seen_at')
                 ->get()
                 ->map(static fn (Device $device): array => [

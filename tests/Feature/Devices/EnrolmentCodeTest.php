@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Devices\Http\Middleware\RequireAuthenticator;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Models\EnrolmentCode;
 use Cbox\Id\Devices\Support\EnrolmentToken;
@@ -20,6 +21,7 @@ use Illuminate\Support\Str;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    $this->withoutMiddleware(RequireAuthenticator::class);
     $this->app->instance(TokenIntrospector::class, new class implements TokenIntrospector
     {
         public function introspect(string $token): Introspection

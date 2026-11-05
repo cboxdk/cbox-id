@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices\Http\Controllers;
 
+use Cbox\Id\Devices\Models\ApprovalReport;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -44,17 +45,22 @@ final class ApprovalController
 
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate(['cursor' => ['nullable', 'ulid']]);
+        $cursor = is_array($validated) ? ($validated['cursor'] ?? null) : null;
         $requests = BackchannelAuthRequest::query()
             ->where('user_id', $this->subject($request))
             ->where('status', GrantPollStatus::Pending->value)
             ->where('expires_at', '>', Carbon::now())
-            ->orderByDesc('created_at')
-            ->limit(50)
+            ->when(is_string($cursor), fn ($query) => $query->where('id', '<', $cursor))
+            ->orderByDesc('id')
+            ->limit(51)
             ->get();
+        $hasMore = $requests->count() > 50;
+        $page = $requests->take(50);
 
         return new JsonResponse([
-            'data' => $requests->map(fn (BackchannelAuthRequest $r): array => $this->present($r))->all(),
-            'meta' => ['limit' => 50, 'has_more' => false, 'next_cursor' => null],
+            'data' => $page->map(fn (BackchannelAuthRequest $r): array => $this->present($r))->all(),
+            'meta' => ['limit' => 50, 'has_more' => $hasMore, 'next_cursor' => $hasMore ? $page->last()?->id : null],
         ]);
     }
 
@@ -81,6 +87,8 @@ final class ApprovalController
 
     private function decide(Request $request, string $id, bool $approve): JsonResponse
     {
+        $request->validate(['reason' => ['nullable', 'in:not_me']]);
+        $reported = ! $approve && $request->input('reason') === 'not_me';
         $subjectId = $this->subject($request);
 
         // The organization is taken from the REQUEST's own recorded context, not from
@@ -108,8 +116,12 @@ final class ApprovalController
             ], 409);
         }
 
+        if ($reported) {
+            ApprovalReport::query()->create(['subject_id' => $subjectId, 'request_id' => $id]);
+        }
+
         $this->audit->record(new AuditEvent(
-            action: $approve ? 'approval.approved' : 'approval.denied',
+            action: $approve ? 'approval.approved' : ($reported ? 'approval.reported' : 'approval.denied'),
             actorType: ActorType::User,
             actorId: $subjectId,
             organizationId: is_string($organizationId) ? $organizationId : null,
@@ -121,7 +133,7 @@ final class ApprovalController
 
         return new JsonResponse(['data' => [
             'id' => $id,
-            'status' => $approve ? GrantPollStatus::Approved->value : GrantPollStatus::Denied->value,
+            'status' => $approve ? 'approved' : ($reported ? 'reported' : 'denied'),
         ]]);
     }
 
@@ -152,6 +164,8 @@ final class ApprovalController
             // The INTERNAL id. Never auth_req_id, which is the initiating client's
             // polling secret and is stored only as a hash.
             'id' => $approval->id,
+            'status' => $this->status($approval),
+            'purpose' => $approval->getAttribute('purpose') ?? 'authentication',
             'client_id' => $approval->client_id,
             'client_name' => $client->name ?? $approval->client_id,
             // The transaction description the user is meant to compare against what the
@@ -173,6 +187,18 @@ final class ApprovalController
      * `expires_at` is annotated non-nullable while the column is not. Neither is this
      * module's to fix, so the uncertainty is resolved at the boundary where it is used.
      */
+    private function status(BackchannelAuthRequest $approval): string
+    {
+        if ($approval->status === GrantPollStatus::Pending && $approval->expires_at->isPast()) {
+            return 'expired';
+        }
+        if ($approval->status === GrantPollStatus::Denied && ApprovalReport::query()->where('request_id', $approval->id)->exists()) {
+            return 'reported';
+        }
+
+        return $approval->status === GrantPollStatus::Redeemed ? 'approved' : $approval->status->value;
+    }
+
     private function iso(mixed $value): ?string
     {
         return $value instanceof DateTimeInterface

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Devices\Http\Middleware\RequireAuthenticator;
+use Cbox\Id\Devices\Models\ApprovalReport;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -20,6 +22,7 @@ uses(RefreshDatabase::class);
  * against genuine ids rather than strings that only look like them.
  */
 beforeEach(function (): void {
+    $this->withoutMiddleware(RequireAuthenticator::class);
     $alice = app(Subjects::class)->create('alice@acme.test', 'Alice', 'supersecret123');
     $bob = app(Subjects::class)->create('bob@acme.test', 'Bob', 'supersecret123');
 
@@ -174,4 +177,34 @@ it('cannot be used by one subject to approve on behalf of another', function ():
     $this->postJson("/api/v1/approvals/{$id}/approve", [], approvalAuth('bob-tok'))->assertStatus(409);
 
     expect(BackchannelAuthRequest::query()->whereKey($id)->value('status'))->toBe(GrantPollStatus::Pending);
+});
+
+it('persists an unexpected-request report with its denial', function (): void {
+    $id = raiseApproval($this->alice);
+    $this->postJson("/api/v1/approvals/{$id}/deny", ['reason' => 'not_me'], approvalAuth('alice-tok'))
+        ->assertOk()->assertJsonPath('data.status', 'reported');
+    $this->getJson("/api/v1/approvals/{$id}", approvalAuth('alice-tok'))->assertJsonPath('data.status', 'reported');
+    $this->postJson("/api/v1/approvals/{$id}/deny", ['reason' => 'not_me'], approvalAuth('alice-tok'))->assertConflict();
+    expect(ApprovalReport::query()->where('request_id', $id)->count())->toBe(1);
+});
+
+it('does not allow a report to be attached to another users request', function (): void {
+    $id = raiseApproval($this->alice);
+    $this->postJson("/api/v1/approvals/{$id}/deny", ['reason' => 'not_me'], approvalAuth('bob-tok'))->assertConflict();
+    expect(ApprovalReport::query()->count())->toBe(0);
+});
+
+it('paginates more than fifty pending requests without dropping or repeating them', function (): void {
+    $id = raiseApproval($this->alice);
+    $prototype = BackchannelAuthRequest::query()->findOrFail($id);
+    for ($number = 0; $number < 51; $number++) {
+        $copy = $prototype->replicate();
+        $copy->auth_req_id_hash = hash('sha256', 'page-'.$number);
+        $copy->save();
+    }
+    $first = $this->getJson('/api/v1/approvals', approvalAuth('alice-tok'))->assertOk()
+        ->assertJsonCount(50, 'data')->assertJsonPath('meta.has_more', true);
+    $next = $this->getJson('/api/v1/approvals?cursor='.$first->json('meta.next_cursor'), approvalAuth('alice-tok'))->assertOk()
+        ->assertJsonCount(2, 'data')->assertJsonPath('meta.has_more', false);
+    expect(array_intersect(array_column($first->json('data'), 'id'), array_column($next->json('data'), 'id')))->toBe([]);
 });

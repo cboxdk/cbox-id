@@ -42,6 +42,8 @@ final class BootstrapController
 
         return new JsonResponse([
             'issuer' => $issuer,
+            'api_version' => 2,
+            'capabilities' => ['polling_enrolment', 'device_revocation', 'approval_reports', 'account_push_routes'],
             'client_id' => $client->client_id,
             'scopes' => AuthenticatorClient::SCOPES,
             'redirect_uris' => $client->redirect_uris,

@@ -9,6 +9,8 @@ use Cbox\Id\Devices\Http\Controllers\BootstrapController;
 use Cbox\Id\Devices\Http\Controllers\DeviceController;
 use Cbox\Id\Devices\Http\Controllers\DeviceInventoryController;
 use Cbox\Id\Devices\Http\Controllers\MyDevicesController;
+use Cbox\Id\Devices\Http\Controllers\PrivacyController;
+use Cbox\Id\Devices\Http\Middleware\RequireAuthenticator;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -95,33 +97,40 @@ Route::middleware(['api', ResolveEnvironment::class, 'throttle:api-devices'])
     ->prefix('api/v1')
     ->group(function (): void {
         Route::post('devices', [DeviceController::class, 'store'])
-            ->middleware('scope:devices.manage')
+            ->middleware(['scope:devices.manage', RequireAuthenticator::class.':enrolling'])
             ->name('api.devices.store');
 
+        Route::get('authenticator/me', [DeviceController::class, 'me'])
+            ->middleware(['scope:devices.manage', RequireAuthenticator::class.':enrolling'])
+            ->name('api.authenticator.me');
+
         Route::get('devices', [DeviceController::class, 'index'])
-            ->middleware('scope:devices.manage')
+            ->middleware(['scope:devices.manage', RequireAuthenticator::class])
             ->name('api.devices.index');
 
         Route::delete('devices/{id}', [DeviceController::class, 'destroy'])
-            ->middleware('scope:devices.manage')
+            ->middleware(['scope:devices.manage', RequireAuthenticator::class])
             ->name('api.devices.destroy');
 
         // Read and write are separate scopes so a future read-only surface — a watch
         // complication, a home-screen widget — can show pending approvals without
         // carrying the authority to answer them.
         Route::get('approvals', [ApprovalController::class, 'index'])
-            ->middleware('scope:approvals.read')
+            ->middleware(['scope:approvals.read', RequireAuthenticator::class])
             ->name('api.approvals.index');
 
         Route::get('approvals/{id}', [ApprovalController::class, 'show'])
-            ->middleware('scope:approvals.read')
+            ->middleware(['scope:approvals.read', RequireAuthenticator::class])
             ->name('api.approvals.show');
 
         Route::post('approvals/{id}/approve', [ApprovalController::class, 'approve'])
-            ->middleware('scope:approvals.write')
+            ->middleware(['scope:approvals.write', RequireAuthenticator::class])
             ->name('api.approvals.approve');
 
         Route::post('approvals/{id}/deny', [ApprovalController::class, 'deny'])
-            ->middleware('scope:approvals.write')
+            ->middleware(['scope:approvals.write', RequireAuthenticator::class])
             ->name('api.approvals.deny');
     });
+
+// Public policy/support page for the App Store listing; no account or session required.
+Route::get('/authenticator/privacy', PrivacyController::class)->middleware('throttle:60,1')->name('authenticator.privacy');

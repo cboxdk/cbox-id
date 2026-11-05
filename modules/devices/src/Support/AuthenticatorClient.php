@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices\Support;
 
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 
 /**
@@ -64,7 +65,10 @@ final class AuthenticatorClient
      */
     public static function find(): ?Client
     {
-        return Client::query()->where('name', self::NAME)->first();
+        return Client::query()->where('name', self::NAME)
+            ->where('type', ClientType::Public->value)
+            ->where('first_party', true)->whereNull('organization_id')
+            ->whereNull('registration_access_token_hash')->first();
     }
 
     public static function defaultEnvironmentId(): string
