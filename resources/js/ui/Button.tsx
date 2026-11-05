@@ -78,9 +78,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
             // the attribute — an anchor rendered through asChild must not.
             type={asChild ? undefined : (type ?? 'button')}
             className={cn('btn', VARIANT[variant], SIZE[size], className)}
-            disabled={asChild ? undefined : (disabled ?? loading)}
+            disabled={asChild ? undefined : disabled || loading}
             aria-busy={loading || undefined}
-            aria-disabled={asChild && (disabled ?? loading) ? true : undefined}
+            aria-disabled={asChild && (disabled || loading) ? true : undefined}
             {...props}
         >
             {loading ? (

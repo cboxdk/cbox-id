@@ -29,6 +29,7 @@ it('edits a user in context and keeps the query, focus and deep link', function 
         ->assertSee('Profile updated.')
         ->assertVisible('[role="dialog"]')
         ->assertSee('Dana Updated')
+        ->assertScript('document.activeElement?.getAttribute("aria-label")', 'Edit Name')
         ->assertScript('new URL(location.href).searchParams.get("q")', 'dana');
     $page->click('[aria-label="Edit Name"]')->fill('name', 'Not saved');
     $page->script('window.confirm = () => false');
@@ -40,11 +41,14 @@ it('edits a user in context and keeps the query, focus and deep link', function 
         ->assertNoJavaScriptErrors()
         ->wait(1)->assertNoAccessibilityIssues()
         ->screenshot(filename: 'polish-user-panel');
+    // Let the original notification expire so Back cannot pass by retaining it.
+    $page->wait(5)->assertDontSee('Profile updated.');
     $page->click('[aria-label="Close"]')->assertNotPresent('[role="dialog"]')
         ->assertScript('new URL(location.href).searchParams.get("q")', 'dana')
         ->assertScript('document.activeElement?.getAttribute("data-user-id")', $user->id);
     $page->script('history.back()');
-    $page->assertVisible('[role="dialog"]')->assertSee('Dana Updated');
+    $page->assertVisible('[role="dialog"]')->assertSee('Dana Updated')
+        ->assertDontSee('Profile updated.');
     $page->click('Open full profile')
         ->click('a[href$="section=security"]')->assertSee('Security & lifecycle')
         ->assertNoJavaScriptErrors();
@@ -64,6 +68,15 @@ it('fits the user panel on a phone and restores the URL selection on reload', fu
         ->screenshot(filename: $dark ? 'polish-user-mobile-dark' : 'polish-user-mobile');
     $page->script('location.reload()');
     $page->assertVisible('[role="dialog"]')->assertSee('Mobile Example');
+    $page->click('[aria-label="Close"]')->assertNotPresent('[role="dialog"]')
+        ->assertScript('(() => {
+            const row = document.querySelector("[data-user-id=\"'.$user->id.'\"]");
+            const email = row.querySelector("span.text-sm");
+            const statuses = row.querySelector(".cbx-user-row-status");
+            return email.scrollWidth <= email.clientWidth
+                && statuses.getBoundingClientRect().top >= email.getBoundingClientRect().bottom;
+        })()', true)
+        ->screenshot(filename: $dark ? 'polish-user-list-mobile-dark' : 'polish-user-list-mobile');
 })->with([false, true]);
 
 it('reviews the portal task before creating a link and uses a sheet on a phone', function (): void {

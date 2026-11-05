@@ -3613,6 +3613,20 @@
         .cbx-entity-row > .cbx-avatar {
             display: none;
         }
+        .cbx-user-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 16px;
+        }
+        .cbx-user-row-status {
+            grid-column: 1;
+            grid-row: 2;
+            justify-content: flex-start;
+        }
+        .cbx-user-row-chevron {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            align-self: center;
+        }
         .cbx-segmented {
             width: 100%;
         }
