@@ -239,7 +239,6 @@ Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware(['lo
  * discloses nothing and changes nothing but the next render.
  */
 Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->name('locale.update');
-Route::post('/console/locale', ConsoleLocaleController::class)->middleware(['platform.auth', 'throttle:30,1'])->name('console.locale.update');
 
 /*
  * The apex — one destination, because there is one console.
@@ -710,6 +709,7 @@ Route::get('/switch-app', AppsController::class)
     ->middleware(['plane:console', 'platform.auth', 'console.customer'])->name('apps');
 
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer', 'console.root'])->group(function (): void {
+    Route::post('/console/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('console.locale.update');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
 
