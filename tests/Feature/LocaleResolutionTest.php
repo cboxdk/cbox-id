@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\ResolveConsoleLocale;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\HostedLocale;
 use App\Platform\Locale\LocaleResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -197,18 +198,18 @@ it('narrows tags to the closed set', function (?string $tag, ?HostedLocale $expe
     ['english', null],
 ]);
 
-it('remembers the console language independently of the hosted authorization language', function (): void {
+it('shares the console language independently of the hosted authorization language', function (): void {
     ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
     signInAsMember($subjectId);
     session()->put(LocaleResolver::SESSION_KEY, 'fr');
 
-    test()->from(route('dashboard'))->post(route('console.locale.update'), ['locale' => 'da'])
+    test()->from(route('dashboard'))->post(route('console.locale.update'), ['locale' => 'da', 'user_id' => $subjectId])
         ->assertRedirect(route('dashboard'))
-        ->assertCookie(ResolveConsoleLocale::COOKIE, 'da');
+        ->assertCookieExpired(ResolveConsoleLocale::COOKIE);
     expect(session(LocaleResolver::SESSION_KEY))->toBe('fr');
 
     $response = test()->withHeader('Accept-Language', 'en')
-        ->withCookie(ResolveConsoleLocale::COOKIE, 'da')
+        ->withHeader('Accept-Language', 'da')
         ->get(route('dashboard'));
     $response->assertOk()->assertHeader('Content-Language', 'da');
     expect(((array) $response->inertiaProps())['i18n']['locale'])->toBe('da');
@@ -220,13 +221,15 @@ it('does not let hosted language restrictions remove Danish from the console', f
     config()->set('cbox-id.locales.enabled', ['fr']);
     config()->set('cbox-id.locales.default', 'fr');
 
-    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')->get(route('dashboard'));
+    $response = test()->withHeader('Accept-Language', 'da')->get(route('dashboard'));
     $response->assertOk()->assertHeader('Content-Language', 'da');
     expect(collect(((array) $response->inertiaProps())['i18n']['locales'])->pluck('code')->all())->toBe(HostedLocale::codes());
 });
 
 it('rejects unsupported console language choices without changing the preference', function (mixed $locale): void {
-    test()->postJson(route('console.locale.update'), ['locale' => $locale])
+    ['subjectId' => $subjectId] = provisionAccount();
+    signInAsMember($subjectId);
+    test()->postJson(route('console.locale.update'), ['locale' => $locale, 'user_id' => $subjectId])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('locale')
         ->assertCookieMissing(ResolveConsoleLocale::COOKIE);
@@ -248,7 +251,7 @@ it('translates administration titles and help while preserving user data and ide
     $name = 'Delete <Save> & Environment';
     $person = app(Subjects::class)->create('language-data@example.test', $name, 'supersecret123');
 
-    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')
+    $response = test()->withHeader('Accept-Language', 'da')
         ->get(route('environment.users'));
     $response->assertOk()->assertHeader('Content-Language', 'da');
     $props = (array) $response->inertiaProps();
@@ -257,7 +260,7 @@ it('translates administration titles and help while preserving user data and ide
     $row = collect($props['users'])->firstWhere('id', $person->id);
     expect($row['name'])->toBe($name)->and($row['email'])->toBe('language-data@example.test');
 
-    $english = test()->withCookie(ResolveConsoleLocale::COOKIE, 'en')
+    $english = test()->withHeader('Accept-Language', 'en')
         ->get(route('environment.users'));
     expect(((array) $english->inertiaProps())['title'])->toBe('Users');
 });
@@ -265,7 +268,7 @@ it('translates administration titles and help while preserving user data and ide
 it('validates an administrator form in the selected console language', function (): void {
     actAsEnvironmentAdminOfATenant();
     confirmConsoleStepUp();
-    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')
+    $response = test()->withHeader('Accept-Language', 'da')
         ->withCredentials()->postJson(route('environment.users.store'), ['name' => '', 'email' => 'not-an-email']);
     $response->assertUnprocessable()->assertJsonValidationErrors(['email']);
     expect($response->json('errors.email.0'))->toContain('gyldig');
@@ -274,7 +277,7 @@ it('validates an administrator form in the selected console language', function 
 it('translates built-in security rules and fields without changing their keys or conditions', function (): void {
     actAsEnvironmentAdminOfATenant();
     confirmConsoleStepUp();
-    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, 'da')->get(route('environment.radar.rules'));
+    $response = test()->withHeader('Accept-Language', 'da')->get(route('environment.radar.rules'));
     $response->assertOk();
     $props = (array) $response->inertiaProps();
     $builtin = collect($props['settings']['builtin_rules'])->firstWhere('key', 'new_device');
@@ -291,9 +294,9 @@ it('persists every supported console language independently of hosted policy', f
     actAsEnvironmentAdminOfATenant();
     config()->set('cbox-id.locales.enabled', ['en']);
     test()->from(route('environment.users'))
-        ->post(route('console.locale.update'), ['locale' => $locale])
+        ->post(route('environment.locale.update'), ['locale' => $locale, 'user_id' => app(EnvironmentAdminAuth::class)->subjectId()])
         ->assertRedirect(route('environment.users'))
-        ->assertCookie(ResolveConsoleLocale::COOKIE, $locale);
+        ->assertCookieExpired(ResolveConsoleLocale::COOKIE);
 
     $response = test()->withCookie(ResolveConsoleLocale::COOKIE, $locale)->get(route('environment.users'));
     $response->assertOk()->assertHeader('Content-Language', $locale);

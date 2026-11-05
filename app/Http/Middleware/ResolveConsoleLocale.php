@@ -35,7 +35,7 @@ final class ResolveConsoleLocale
 
         // Hosted routes resolve their own language later in the middleware stack.
         if (! $response->headers->has('Content-Language')) {
-            $response->headers->set('Content-Language', $locale->value);
+            $response->headers->set('Content-Language', app()->getLocale());
         }
 
         return $response;

@@ -155,5 +155,6 @@ it('shows one page of requests and pays a flat number of queries for it', functi
     // is. And every row carries a resolved name, which is what the per-row query bought.
     expect($rows)->toHaveCount(25)
         ->and(collect($rows)->pluck('app')->unique()->all())->toBe(['Agent'])
-        ->and($queries)->toBeLessThan(15);
+        // One bounded read of the administrator's shared language, independent of row count.
+        ->and($queries)->toBeLessThan(16);
 });
