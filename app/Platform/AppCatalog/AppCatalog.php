@@ -19,6 +19,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Uri;
 use Illuminate\Validation\ValidationException;
 
 final readonly class AppCatalog
@@ -148,7 +149,14 @@ final readonly class AppCatalog
                     continue;
                 }
             }
-            $apps[] = $this->present($entry);
+            $item = $this->present($entry);
+            // The published launch endpoint starts authorization in the destination's
+            // own session. Organization is a request, never an access grant.
+            if ($organizationId !== null) {
+                $item['launch_url'] = (string) Uri::of($entry->launch_url)
+                    ->withQuery(['organization' => $organizationId]);
+            }
+            $apps[] = $item;
         }
 
         return $apps;
