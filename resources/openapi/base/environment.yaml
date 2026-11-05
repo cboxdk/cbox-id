@@ -2355,8 +2355,55 @@ paths:
                   scope: { type: string }
                   audience: { type: string }
 
+  /service-connections/{id}/events:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: listServiceConnectionEvents
+      summary: Read events for the organization that approved this service grant
+      description: |
+        Requires an active cbox_id_events grant and its leased service-account JWT.
+        Every page revalidates consumer registration, organization, environment and
+        the exact issuer audience. Revocation stops existing leases immediately.
+        An organization_id query parameter is prohibited; the grant fixes this boundary.
+        Events are ordered by ID. Preserve the last event ID as the next polling cursor
+        when meta.next_cursor is null at the end of the currently available results.
+      security: [{ ServiceConnectionEvents: [] }]
+      parameters:
+        - { name: after, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 100 } }
+        - name: types
+          in: query
+          description: Optional event-type allow-list, encoded as types[0], types[1], etc.
+          style: form
+          explode: true
+          schema: { type: array, maxItems: 50, items: { type: string, minLength: 1, maxLength: 190 } }
+      responses:
+        '401': { description: "Missing, invalid or wrong-audience bearer token" }
+        '403': { description: "Inactive organization, revoked consumer trust or insufficient scope" }
+        '404': { description: No active grant belonging to this service account }
+        '422': { description: Invalid query parameters }
+        '429': { description: Request rate exceeded }
+        '200':
+          description: Organization-scoped event page; Cache-Control is no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { type: array, maxItems: 100, items: { $ref: '#/components/schemas/DomainEvent' } }
+                  meta:
+                    type: object
+                    required: [limit, has_more, next_cursor]
+                    properties:
+                      limit: { type: integer, minimum: 1, maximum: 100 }
+                      has_more: { type: boolean }
+                      next_cursor: { type: [string, 'null'] }
+
 components:
   securitySchemes:
+    ServiceConnectionEvents: { type: http, scheme: bearer, bearerFormat: JWT, description: Organization service-account lease with signals:events:read and the exact realm issuer audience }
     ServiceConnectionAdmin: { type: http, scheme: bearer, description: Organization administrator token with service_connections.manage }
     ServiceConnectionProvider: { type: http, scheme: bearer, description: Provider machine token with service_connections.inspect }
     ServiceConnectionConsumer: { type: http, scheme: bearer, description: Consumer machine token with service_connections.lease }

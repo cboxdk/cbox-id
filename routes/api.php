@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AppManifestController;
+use App\Http\Controllers\Api\ConnectionEventsController;
 use App\Http\Controllers\Api\Environment\ActionApprovalController;
 use App\Http\Controllers\Api\PipeTokenController;
 use App\Http\Controllers\Api\ServiceConnectionController;
@@ -182,4 +183,5 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])->prefix('v1
     Route::post('/{id}/status', [ServiceConnectionController::class, 'inspect'])->middleware('scope:service_connections.lease');
     Route::post('/{id}/inspect', [ServiceConnectionController::class, 'inspect'])->middleware('scope:service_connections.inspect');
     Route::post('/{id}/token', [ServiceConnectionController::class, 'token'])->middleware('scope:service_connections.lease');
+    Route::get('/{id}/events', ConnectionEventsController::class)->middleware('scope:signals:events:read');
 });
