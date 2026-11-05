@@ -19,8 +19,8 @@ use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Kernel\Tenancy\GenericTenant;
 use Cbox\Id\Organization\MembershipDirectoryRevision;
 use Cbox\Id\Organization\Models\Membership;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * An organization's roster, a page at a time: each member's tier and status, with the
