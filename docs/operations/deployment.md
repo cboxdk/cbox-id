@@ -458,6 +458,13 @@ configuration they never made is how the setting came to be ignored in the first
 
 ## Reverse proxy notes
 
+- Sessions store `CF-IPCountry` and, when present, `CF-IPCity` from requests arriving
+  through `TRUSTED_PROXIES`. Preserve Cloudflare's
+  [visitor location headers](https://developers.cloudflare.com/rules/transform/managed-transforms/reference/#http-request-headers)
+  through the ingress and restrict origin access to that path. These values appear
+  under **My account → Sessions & activity**, without an external IP lookup.
+  Existing sessions fill missing details when their device returns; location is
+  only filled when the request matches the session's recorded IP.
 - Terminate TLS; forward the real scheme/host (`X-Forwarded-Proto`/`-Host`) and
   configure Laravel's trusted proxies (`TRUSTED_PROXIES`, see
   [Configuration](../configuration/environment-variables.md#reverse-proxy)) so

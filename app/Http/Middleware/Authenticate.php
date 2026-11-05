@@ -9,6 +9,7 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IntendedUrl;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
+use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
@@ -142,6 +143,8 @@ final class Authenticate
         if ($organization !== null && $refusal !== null) {
             abort(403, 'This organization has been '.$refusal.'. Contact your platform operator.');
         }
+
+        SessionMetadata::captureMissing($session, $request);
 
         $this->current->set($subject, $session, $organization, $role);
 

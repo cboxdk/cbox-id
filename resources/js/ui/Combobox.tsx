@@ -92,7 +92,9 @@ export function Combobox<T extends string>({
                 </span>
             </PopoverTrigger>
 
-            <PopoverContent className="cbx-combobox">
+            {/* The popup follows the trigger's width. Measure its animated opening on
+                frames so resizing it cannot feed back into the trigger's ResizeObserver. */}
+            <PopoverContent className="cbx-combobox" updatePositionStrategy="always">
                 <Command
                     filter={(itemValue, search, keywords) => {
                         const haystack = [itemValue, ...(keywords ?? [])].join(' ').toLowerCase();

@@ -18,6 +18,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- Record browser and IP details for email-link and SSO sessions, and store Cloudflare country/city headers from trusted proxies. Sessions & activity now shows location, IP, sign-in method and activity in readable fields; returning devices can fill only their own missing metadata.
+- Upgrade Pest's browser plugin to 5.2, fixing hidden screenshot-cleanup warnings that returned exit code 1 after passing browser tests. Warning and risky-test failures remain enabled.
+- Position searchable pickers on animation frames to avoid ResizeObserver loops during opening. Clear cached browser-test controllers between requests and wait for save-bar animations before checking contrast.
 - Upgrade the identity engine to published `laravel-id v1.27.3`, allowing ChatGPT MCP connections to request the advertised `openid email` scopes. Remove the temporary identity-engine path alias and bundled source; retain the separate Signals client integration.
 
 ### Security

@@ -628,6 +628,7 @@ final class PlatformAuth
         // Record the request IP + user-agent on the session so adaptive-risk signals
         // (new device, geo-velocity) have a history to compare future logins against.
         $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
+        SessionMetadata::captureMissing($session, $request);
 
         // And tell Radar a sign-in SUCCEEDED here, from this device, so "new device" and
         // "impossible travel" are measured against sign-ins that happened — never against an
@@ -667,6 +668,7 @@ final class PlatformAuth
         $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
 
         $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
+        SessionMetadata::captureMissing($session, $request);
 
         app(Radar::class)->succeeded($request, $subjectId);
 
@@ -693,6 +695,8 @@ final class PlatformAuth
      */
     public function adopt(Request $request, Session $session): void
     {
+        SessionMetadata::captureMissing($session, $request);
+
         session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         $organizationId = $session->organization_id

@@ -85,7 +85,14 @@ uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 
 // Pest 4 browser tests (real Chromium via Playwright) — boot the full app the same
 // way, so `visit()` drives the running application with its middleware and DB.
-uses(TestCase::class, RefreshDatabase::class)->in('Browser');
+uses(TestCase::class, RefreshDatabase::class)->beforeEach(function (): void {
+    // Pest 5.2 forgets request-scoped services after each browser request. Laravel's
+    // cached route controller must go too, or its constructor retains the old scope.
+    // This mirrors a fresh PHP request (and Octane's controller cleanup).
+    app()->terminating(static function (): void {
+        app('router')->current()?->flushController();
+    });
+})->in('Browser');
 
 /**
  * Stand up the PLATFORM-ROOT environment ("tenant 1"), the environment account members

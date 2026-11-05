@@ -47,7 +47,7 @@
         "nunomaduro/collision": "^8.6",
         "opis/json-schema": "^2.4",
         "pestphp/pest": "^5.0",
-        "pestphp/pest-plugin-browser": "^5.0",
+        "pestphp/pest-plugin-browser": "^5.2",
         "phpunit/phpunit": "^13.0"
     },
     "autoload": {

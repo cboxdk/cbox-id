@@ -136,6 +136,7 @@ it('keeps the save bar above the phone\'s navigation bar at 390px', function ():
         // Above the bottom navigation bar, not under it, and nothing wider than the phone.
         ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect().bottom <= document.querySelector("[data-cbox-mobile-nav]").getBoundingClientRect().top', true)
         ->assertScript('document.documentElement.scrollWidth <= 390', true)
+        ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getAnimations().every((animation) => animation.playState === "finished")', true)
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'fix-branding-logo-mobile');
 
