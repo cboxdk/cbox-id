@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\ServiceConnections\ServiceConnection;
+use Cbox\Id\Kernel\Events\Contracts\EventBus;
+use Cbox\Id\Kernel\Events\ValueObjects\DomainEvent;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
@@ -103,4 +106,33 @@ it('limits live grant inspection to its provider and consumer and reports centra
     $this->withToken('admin')->deleteJson('/api/v1/service-connections/'.$id)->assertOk();
     $this->withToken('provider')->postJson('/api/v1/service-connections/'.$id.'/inspect')->assertOk()->assertJsonPath('active', false);
     $this->withToken('machine')->postJson('/api/v1/service-connections/'.$id.'/status')->assertOk()->assertJsonPath('active', false);
+});
+
+it('reads ID events through a real leased organization grant and stops after revocation', function (): void {
+    $issuer = app(IssuerResolver::class)->issuer();
+    config(['service-connections.services.cbox_id_events.audience' => $issuer]);
+    $grant = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_id_events')->assertOk()->json('id');
+    $lease = $this->withToken('machine')->postJson('/api/v1/service-connections/'.$grant.'/token')->assertOk()->json('access_token');
+    $bus = app(EventBus::class);
+    $first = $bus->emit(new DomainEvent('signals.acceptance', ['example' => 1], $this->organization->id));
+    $second = $bus->emit(new DomainEvent('signals.acceptance', ['example' => 2], $this->organization->id));
+    $bus->emit(new DomainEvent('signals.acceptance', ['example' => 'foreign'], 'other-org'));
+    app()->instance(TokenIntrospector::class, $this->realIntrospector);
+    $url = '/api/v1/service-connections/'.$grant.'/events?types[]=signals.acceptance&limit=1';
+    $this->withToken($lease)->getJson($url)->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $first->id)->assertJsonPath('meta.has_more', true);
+    $this->withToken($lease)->getJson($url.'&after='.$first->id)->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $second->id)->assertJsonPath('meta.has_more', false);
+    $this->withToken($lease)->getJson($url.'&organization_id=other-org')->assertUnprocessable();
+    ServiceConnection::query()->whereKey($grant)->update(['revoked_at' => now()]);
+    $this->withToken($lease)->getJson($url)->assertNotFound();
+});
+
+it('stops event reads when consumer trust is removed, even with an unexpired lease', function (): void {
+    config(['service-connections.services.cbox_id_events.audience' => app(IssuerResolver::class)->issuer()]);
+    $grant = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_id_events')->assertOk()->json('id');
+    $lease = $this->withToken('machine')->postJson('/api/v1/service-connections/'.$grant.'/token')->assertOk()->json('access_token');
+    app()->instance(TokenIntrospector::class, $this->realIntrospector);
+    config(['service-connections.consumers' => []]);
+    $this->withToken($lease)->getJson('/api/v1/service-connections/'.$grant.'/events')->assertForbidden();
 });
