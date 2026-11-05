@@ -764,6 +764,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Renaming a passkey is outside the step-up for the same reason the name above is: a
     // label is not a credential, and changing it grants nothing. Adding and removing one
     // are behind it.
+    Route::patch('/account/two-factor/apps/{factor}', [AccountController::class, 'renameTotpDevice'])->name('account.mfa.totp.update');
     Route::patch('/account/passkeys/{passkey}', [AccountController::class, 'renamePasskey'])->name('account.passkeys.update');
     // The console's "Send confirmation link" — the button the unconfirmed-email refusal
     // points at. Limited per person inside the action as well.
@@ -773,6 +774,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 
     Route::middleware('sudo')->group(function (): void {
         Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
+        Route::delete('/account/two-factor/apps/{factor}', [AccountController::class, 'removeTotpDevice'])->name('account.mfa.totp.destroy');
         Route::post('/account/two-factor/enrol', [AccountController::class, 'enrolMfa'])->name('account.mfa.enrol');
         Route::post('/account/two-factor/confirm', [AccountController::class, 'confirmMfa'])->name('account.mfa.confirm');
         Route::post('/account/two-factor/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.mfa.recovery-codes');

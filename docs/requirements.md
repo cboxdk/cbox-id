@@ -117,4 +117,4 @@ production's major. `tests/Feature/DeploymentManifestTest.php` fails if that maj
 the local manifest (`cbox.yaml`) runs and the one named on this page drift apart. See
 [Deployment](operations/deployment.md).
 
-The identity engine uses the published `cboxdk/laravel-id` release `^1.28.0`. The optional Signals enforcement integration still uses the reviewed, unpublished `cboxdk/laravel-signals-client` source at `dev-sd/signals-implementation as 0.1.0`; that client is a development branch alias. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.
+The identity engine uses the published `cboxdk/laravel-id` release `^1.28.0`, including independent named authenticator apps. The optional Signals enforcement integration still uses the reviewed, unpublished `cboxdk/laravel-signals-client` source at `dev-sd/signals-implementation as 0.1.0`; that client is a development branch alias. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.

@@ -145,6 +145,9 @@ declare module '@inertiajs/core' {
              * would be readable by pressing Back long after the page that showed it is gone.
              */
             mfaSecret?: string;
+            mfaFactorId?: string;
+            mfaDeviceName?: string;
+            mfaCancelHref?: string;
             /** The SVG for {@see mfaSecret}, rendered server-side from the otpauth:// URI. */
             mfaQrCode?: string;
             /**
