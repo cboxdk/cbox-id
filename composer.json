@@ -18,7 +18,7 @@
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^1.0",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "dev-sd/signals-auth-assessment as 1.27.2",
+        "cboxdk/laravel-id": "^1.27.3",
         "cboxdk/laravel-postal": "^0.1.1",
         "cboxdk/laravel-queue-autoscale": "^4.3",
         "cboxdk/laravel-queue-metrics": "^3.4",
@@ -141,16 +141,6 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [
-        {
-            "type": "path",
-            "url": "../laravel-id",
-            "options": {
-                "symlink": true,
-                "versions": {
-                    "cboxdk/laravel-id": "dev-sd/signals-auth-assessment"
-                }
-            }
-        },
         {
             "type": "path",
             "url": "../../laravel-signals-client",

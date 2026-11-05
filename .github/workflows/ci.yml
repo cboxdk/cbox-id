@@ -48,7 +48,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
 
       # Larastan boots the application, which wants an encryption key.
@@ -100,7 +100,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite manifest.
@@ -148,7 +148,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Install Node dependencies
@@ -218,7 +218,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
@@ -321,7 +321,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite

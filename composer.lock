@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "25088d64920ebaa9dbe67514e04f716a",
+    "content-hash": "fc9819111dc5c277b4840400c6d72903",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -718,11 +718,17 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "dev-sd/signals-auth-assessment",
+            "version": "v1.27.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-id.git",
+                "reference": "c3127468cd434b133e799d42d7973a335f01cd60"
+            },
             "dist": {
-                "type": "path",
-                "url": "../laravel-id",
-                "reference": "60254bb20e449f8d65057a96686c77be0e9c3aba"
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/c3127468cd434b133e799d42d7973a335f01cd60",
+                "reference": "c3127468cd434b133e799d42d7973a335f01cd60",
+                "shasum": ""
             },
             "require": {
                 "cboxdk/laravel-audit-chain": "^0.1",
@@ -764,46 +770,15 @@
                     "Cbox\\Id\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Cbox\\Id\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "lint": [
-                    "pint --test"
-                ],
-                "analyse": [
-                    "phpstan analyse --no-progress --memory-limit=1G"
-                ],
-                "test": [
-                    "@php -d memory_limit=1G vendor/bin/pest"
-                ],
-                "license-check": [
-                    "@php bin/check-licenses.php"
-                ],
-                "sbom": [
-                    "@php bin/generate-sbom.php"
-                ],
-                "sbom-check": [
-                    "@php bin/generate-sbom.php --check"
-                ],
-                "qa": [
-                    "@lint",
-                    "@analyse",
-                    "@test",
-                    "@license-check",
-                    "@sbom-check",
-                    "@composer audit"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "keywords": [
-                "audit",
-                "authentication",
+                "Audit",
+                "Authentication",
+                "SSO",
                 "cbox",
                 "identity",
                 "laravel",
@@ -811,13 +786,13 @@
                 "oidc",
                 "rbac",
                 "saml",
-                "scim",
-                "sso"
+                "scim"
             ],
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-id/issues",
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.27.3"
+            },
+            "time": "2026-11-05T10:01:47+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",
@@ -1335,7 +1310,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../laravel-signals-client",
-                "reference": "87914a4b912bcd47982f75cebe1b676f17356c3d"
+                "reference": "e674331ca0efc53cb7429e9d427bcf20520c02a9"
             },
             "require": {
                 "cboxdk/laravel-webhook-signature": "^0.1",
@@ -14299,12 +14274,6 @@
     ],
     "aliases": [
         {
-            "package": "cboxdk/laravel-id",
-            "version": "dev-sd/signals-auth-assessment",
-            "alias": "1.27.2",
-            "alias_normalized": "1.27.2.0"
-        },
-        {
             "package": "cboxdk/laravel-signals-client",
             "version": "dev-sd/signals-implementation",
             "alias": "0.1.0",
@@ -14313,7 +14282,6 @@
     ],
     "minimum-stability": "dev",
     "stability-flags": {
-        "cboxdk/laravel-id": 20,
         "cboxdk/laravel-signals-client": 20
     },
     "prefer-stable": true,

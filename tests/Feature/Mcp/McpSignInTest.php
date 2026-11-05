@@ -7,6 +7,8 @@ use App\Platform\PlatformAuth;
 use App\Support\CliClient;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Crypto\Support\Base64Url;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -18,6 +20,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Firebase\JWT\JWT;
 use Illuminate\Testing\TestResponse;
 
 /*
@@ -199,6 +202,92 @@ it('signs a person in to another Cbox app\'s MCP server the deployment declared'
         ->and(explode(' ', (string) $claims['scope']))->toContain('mcp:read', 'mcp:write')
         ->and(explode(' ', (string) $claims['scope']))->not->toContain('webhooks:read');
 });
+
+it('connects ChatGPT to Work with the advertised OIDC scopes', function (string $registration): void {
+    $resource = 'https://app.cboxwork.com/mcp';
+    $callback = 'https://chatgpt.com/connector_platform_oauth_redirect';
+    config(['cbox-id.oauth.protected_resources' => [
+        ['identifier' => $resource, 'name' => 'Cbox Work', 'scopes' => ['mcp:read', 'mcp:write'], 'dynamic_clients' => true],
+    ]]);
+    [$subject] = mcpSignedIn();
+    $clientAuthentication = [];
+
+    if ($registration !== 'dcr') {
+        $clientId = 'https://chatgpt.com/oauth/client.json';
+        $document = [
+            'client_id' => $clientId,
+            'client_name' => 'ChatGPT',
+            'redirect_uris' => [$callback],
+            'grant_types' => ['authorization_code', 'refresh_token'],
+            'token_endpoint_auth_method' => 'none',
+        ];
+        $fetcher = $this->fakeClientMetadataDocuments();
+
+        if ($registration === 'signed_cimd') {
+            $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
+            openssl_pkey_export($key, $pem);
+            $details = openssl_pkey_get_details($key);
+            $document['token_endpoint_auth_method'] = 'private_key_jwt';
+            $document['token_endpoint_auth_methods_supported'] = ['none', 'private_key_jwt'];
+            $document['jwks_uri'] = 'https://chatgpt.com/oauth/jwks.json';
+            $fetcher->serve($document['jwks_uri'], ['keys' => [[
+                'kty' => 'RSA', 'alg' => 'RS256', 'use' => 'sig', 'kid' => 'chatgpt-test',
+                'n' => Base64Url::encode($details['rsa']['n']), 'e' => Base64Url::encode($details['rsa']['e']),
+            ]]]);
+            $clientAuthentication = [
+                'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+                'client_assertion' => JWT::encode([
+                    'iss' => $clientId,
+                    'sub' => $clientId,
+                    'aud' => rtrim(app(IssuerResolver::class)->issuer(), '/').'/oauth/token',
+                    'jti' => bin2hex(random_bytes(16)),
+                    'iat' => time(),
+                    'exp' => time() + 60,
+                ], (string) $pem, 'RS256', 'chatgpt-test'),
+            ];
+        }
+
+        $fetcher->serve($clientId, $document);
+    } else {
+        $clientId = (string) registerMcpClient([
+            'client_name' => 'ChatGPT',
+            'redirect_uris' => [$callback],
+        ])->assertCreated()->json('client_id');
+    }
+
+    $props = consentScreen([
+        'client_id' => $clientId,
+        'redirect_uri' => $callback,
+        'scope' => 'openid email offline_access mcp:read mcp:write',
+        'resource' => $resource,
+    ]);
+
+    parse_str((string) parse_url((string) leftFor(answerConsent($props)), PHP_URL_QUERY), $query);
+    $tokens = test()->post('/oauth/token', [
+        'grant_type' => 'authorization_code',
+        'code' => $query['code'],
+        'redirect_uri' => $callback,
+        'client_id' => $clientId,
+        'code_verifier' => pkcePair()['verifier'],
+        'resource' => $resource,
+        ...$clientAuthentication,
+    ])->assertOk();
+
+    expect($tokens->json('id_token'))->toBeString()
+        ->and($tokens->json('refresh_token'))->toBeString();
+
+    $claims = json_decode((string) base64_decode(strtr(explode('.', (string) $tokens->json('access_token'))[1], '-_', '+/')), true);
+    expect($claims['aud'])->toEqualCanonicalizing([$resource, app(IssuerResolver::class)->issuer()])
+        ->and($claims['sub'])->toBe($subject)
+        ->and(explode(' ', (string) $claims['scope']))->toEqualCanonicalizing([
+            'mcp:read', 'mcp:write', 'openid', 'email', 'offline_access',
+        ]);
+
+    $this->withToken((string) $tokens->json('access_token'))->getJson('/oauth/userinfo')
+        ->assertOk()
+        ->assertJsonPath('sub', $subject)
+        ->assertJsonPath('email', 'ada@acme.test');
+})->with(['dynamic registration' => 'dcr', 'metadata document' => 'cimd', 'signed metadata document' => 'signed_cimd']);
 
 it('closes /mcp to self-registered clients when the operator says so', function (): void {
     mcpSignedIn();

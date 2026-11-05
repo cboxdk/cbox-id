@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Export two reviewed clean commits for the integration image, without local secrets."""
+"""Export a reviewed Signals client commit for the integration image, without local secrets."""
 import argparse,json,subprocess,tarfile,tempfile
 from pathlib import Path
 parser=argparse.ArgumentParser()
-parser.add_argument('--id-package',type=Path,required=True)
 parser.add_argument('--signals-client',type=Path,required=True)
 parser.add_argument('--output',type=Path,required=True)
 args=parser.parse_args()
 if args.output.exists():raise SystemExit('Choose a new output directory; existing artifacts are never overwritten')
-repos={'id-package':args.id_package.resolve(),'signals-client':args.signals_client.resolve()}
+repos={'signals-client':args.signals_client.resolve()}
 revisions={}
 for label,repo in repos.items():
     if subprocess.check_output(['git','status','--porcelain'],cwd=repo,text=True).strip():raise SystemExit(f'{label} must be a clean, reviewed checkout')

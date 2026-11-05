@@ -1,10 +1,4 @@
 {
-  "laravel-id": {
-    "revision": "60254bb20e449f8d65057a96686c77be0e9c3aba",
-    "sha256": "33c02d817624659fc458554476956ae34a844d17b3c5faa7beae080ffaa5db23",
-    "license": "MIT",
-    "published": false
-  },
   "laravel-signals-client": {
     "revision": "87914a4b912bcd47982f75cebe1b676f17356c3d",
     "sha256": "afae7eff4af20936667056fc5cfec670968ed5e478e4c8e6e20fa3b3020aaec3",

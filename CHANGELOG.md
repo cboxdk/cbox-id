@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Fixed
+
+- Upgrade the identity engine to published `laravel-id v1.27.3`, allowing ChatGPT MCP connections to request the advertised `openid email` scopes. Remove the temporary identity-engine path alias and bundled source; retain the separate Signals client integration.
+
 ### Security
 
 - Update Symfony Filesystem, HttpFoundation, HttpKernel, Routing and the development YAML parser to patched 8.1.11 releases following the November 4 advisories.

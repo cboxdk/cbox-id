@@ -27,21 +27,19 @@ Run the ordinary feature suite and `tests/Integration/signals-auth-roundtrip.py`
 Before a reviewed image build, export source-only contexts from clean reviewed commits. The exporter refuses dirty checkouts and private/development paths; it records exact commit IDs:
 
 ```sh
-python3 bin/prepare-signals-contexts.py --id-package ../laravel-id \
-  --signals-client ../../laravel-signals-client --output /tmp/id-signals-contexts
-docker buildx build --build-context id-package=/tmp/id-signals-contexts/id-package \
-  --build-context signals-client=/tmp/id-signals-contexts/signals-client \
+python3 bin/prepare-signals-contexts.py --signals-client ../../laravel-signals-client --output /tmp/id-signals-contexts
+docker buildx build --build-context signals-client=/tmp/id-signals-contexts/signals-client \
   -t cbox-id:signals-qualified .
 ```
 
-The committed development lock explicitly names the unpublished branches, with compatibility aliases. Do not describe them as published stable releases. The image copies those contexts at the paths resolved by Composer. Public package releases and production ID activation still require their own release authorization and verification.
+The identity engine is installed from the published `laravel-id ^1.27.3` release. Only the Signals client still uses a reviewed development branch and compatibility alias. The image copies that client context at the path resolved by Composer. Its public release and production activation require their own authorization and verification.
 
 
 ### Reproducible integration CI
 
 `build/dependencies/signals-packages.json` records the exact unpublished MIT source
-commits and SHA-256 archives. `php bin/unpack-signals-packages.php ../laravel-id
-../../laravel-signals-client` prepares new Composer destinations in a clean CI job;
+commit and SHA-256 archive for the Signals client.
+`php bin/unpack-signals-packages.php ../../laravel-signals-client` prepares its new Composer destination in a clean CI job;
 existing destinations are refused. Image jobs unpack the same archives to named
 BuildKit contexts. No sibling checkout, developer environment or credential enters CI.
 The clean-checkout exporter remains available when reviewing a new source snapshot.

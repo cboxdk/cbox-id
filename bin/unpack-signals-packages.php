@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 // Clean CI/build inputs, never a developer's sibling working tree or credentials.
-if ($argc !== 3) {
-    throw new RuntimeException('Pass new laravel-id and Signals client destination directories.');
+if ($argc !== 2) {
+    throw new RuntimeException('Pass a new Signals client destination directory.');
 }
 $root = dirname(__DIR__).'/build/dependencies';
 $manifest = json_decode(file_get_contents($root.'/signals-packages.json'), true, 512, JSON_THROW_ON_ERROR);
-foreach (['laravel-id' => $argv[1], 'laravel-signals-client' => $argv[2]] as $name => $destination) {
+foreach (['laravel-signals-client' => $argv[1]] as $name => $destination) {
     if (file_exists($destination) || is_link($destination)) {
         throw new RuntimeException('Refusing to overwrite an existing package destination.');
     }
