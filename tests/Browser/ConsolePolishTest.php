@@ -8,13 +8,17 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 
-beforeEach(function (): void {
+function polishConsole(): void
+{
+    // Run inside the test, after Pest has aligned app.url with its browser server.
+    // A beforeEach fixture would claim the developer's or CI's .env host instead.
     installedDeployment();
     actAsEnvironmentAdminOfATenant();
     app(EnvironmentSudo::class)->confirm();
-});
+}
 
 it('edits a user in context and keeps the query, focus and deep link', function (): void {
+    polishConsole();
     $user = app(Subjects::class)->create('dana@polish.test', 'Dana Example');
     $page = visit('/admin/users?q=dana');
     $row = '[data-user-id="'.$user->id.'"]';
@@ -47,6 +51,7 @@ it('edits a user in context and keeps the query, focus and deep link', function 
 });
 
 it('fits the user panel on a phone and restores the URL selection on reload', function (bool $dark): void {
+    polishConsole();
     $user = app(Subjects::class)->create('mobile@polish.test', 'Mobile Example');
     $page = visit('/admin/users?selected='.$user->id);
     if ($dark) {
@@ -62,6 +67,7 @@ it('fits the user panel on a phone and restores the URL selection on reload', fu
 })->with([false, true]);
 
 it('reviews the portal task before creating a link and uses a sheet on a phone', function (): void {
+    polishConsole();
     $org = app(Organizations::class)->create(new NewOrganization('Polish Company', 'polish-company'));
     $page = visit('/admin/organizations/'.$org->id);
     $page->assertSee('Not configured')->screenshot(filename: 'polish-organization');
@@ -79,6 +85,7 @@ it('reviews the portal task before creating a link and uses a sheet on a phone',
 });
 
 it('reveals an invalid advanced app setting instead of leaving its error hidden', function (): void {
+    polishConsole();
     $page = visit('/admin/apps/new');
     $page->fill('name', 'Polished App')->fill('redirectUris', 'https://app.example/callback')
         ->click('summary:has-text("Sign-out URIs")')->fill('postLogoutRedirectUris', 'http://insecure.example/signed-out')

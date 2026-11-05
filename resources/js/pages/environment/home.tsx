@@ -7,7 +7,7 @@ import { type ChecklistProps, EnvironmentChecklist } from './checklist';
 
 type Props = PageProps<{
     stats: { label: string; icon: IconName; count: number; href: string }[];
-    quickActions: { label: string; href: string }[];
+    quickActions: { label: string; href: string; icon?: IconName }[];
     help: HelpContent;
     /** "Get started", until it is done or put away. */
     checklist: (ChecklistProps & { href: string; dismissHref: string }) | null;
@@ -63,7 +63,7 @@ export default function EnvironmentHome({ stats, quickActions, help, checklist }
                     {quickActions.map((action) => (
                         <Button key={action.href} asChild size="sm">
                             <Link href={action.href}>
-                                <Icon name="plus" className="w-4 h-4" />
+                                <Icon name={action.icon ?? 'plus'} className="w-4 h-4" />
                                 {action.label}
                             </Link>
                         </Button>
