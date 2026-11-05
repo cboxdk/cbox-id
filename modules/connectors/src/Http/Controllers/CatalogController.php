@@ -7,6 +7,7 @@ namespace Cbox\Id\Connectors\Http\Controllers;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Inertia\Response;
@@ -75,7 +76,7 @@ final readonly class CatalogController extends ConnectorsPage
                 'key' => $descriptor->key,
                 'name' => $descriptor->name,
                 'summary' => $descriptor->summary,
-                'group' => $descriptor->group,
+                'group' => ConsoleStrings::text($descriptor->group),
                 'direction' => $descriptor->category->isOutbound() ? 'Outbound' : 'Inbound',
                 'count' => $count,
                 'active' => $tally['active'],
@@ -94,9 +95,9 @@ final readonly class CatalogController extends ConnectorsPage
             ];
         }
 
-        return $this->page('connectors::catalog', 'Catalog', [
+        return $this->page('connectors::catalog', __('console.catalog_3877d148'), [
             'help' => HelpProps::for(HelpTopic::Connectors),
-            'groups' => $catalog->groups(),
+            'groups' => array_map(ConsoleStrings::text(...), $catalog->groups()),
             'types' => $types,
             'totals' => ['connections' => $live, 'failing' => $failing],
             'connectionsHref' => $this->url('connectors.connections'),

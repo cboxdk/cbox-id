@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import type { InertiaFormProps } from '@inertiajs/react';
 import {
     Checkbox,
@@ -45,6 +46,8 @@ export function ServiceProviderFields({
     organizations: OrganizationOption[];
     hasCertificate: boolean;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <>
             {/*
@@ -54,21 +57,24 @@ export function ServiceProviderFields({
                 rather than passing for "not set".
             */}
             <Panel
-                title="Who can sign in"
-                description="Only the active members of the organization you choose are signed in to this application. Everyone else is refused, and the refusal is in the audit log."
+                title={tc('console.who_can_sign_in_ab90f610')}
+                description={tc('console.only_the_active_members_of_the_organization__a4a82dec')}
             >
                 <div className="space-y-3">
-                    <Field label="For which organization?" error={form.errors.organizationId}>
+                    <Field
+                        label={tc('console.for_which_organization_aaca2bbd')}
+                        error={form.errors.organizationId}
+                    >
                         <Combobox
-                            aria-label="Owning organization"
+                            aria-label={tc('console.owning_organization_39ad6d9c')}
                             value={form.data.organizationId}
                             onValueChange={(organization) =>
                                 form.setData('organizationId', organization)
                             }
                             options={organizations}
-                            placeholder="Find an organization…"
-                            searchPlaceholder="Search organizations…"
-                            emptyMessage="No organization matches that."
+                            placeholder={tc('console.find_an_organization_eb2523db')}
+                            searchPlaceholder={tc('console.search_organizations_0156eb39')}
+                            emptyMessage={tc('console.no_organization_matches_that_a20012de')}
                         />
                     </Field>
 
@@ -77,20 +83,20 @@ export function ServiceProviderFields({
                             className="block text-sm"
                             style={{ color: 'var(--warning-strong)' }}
                         >
-                            Environment-wide: anyone with an account in this environment, in any
-                            organization, can sign in to this application. Name an organization
-                            unless that is what you mean.
+                            {tc('console.environment_wide_anyone_with_an_account_in_t_c60d926c')}
                         </output>
                     )}
                 </div>
             </Panel>
 
-            <Panel title="Configuration">
+            <Panel title={tc('console.configuration_b332c349')}>
                 <div className="space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Field
-                            label="SP entity ID"
-                            hint="The identifier the application calls itself in its AuthnRequests."
+                            label={tc('console.sp_entity_id_4ff9267b')}
+                            hint={tc(
+                                'console.the_identifier_the_application_calls_itself__afe05ddf',
+                            )}
                             error={form.errors.entityId}
                         >
                             <Input
@@ -103,8 +109,10 @@ export function ServiceProviderFields({
                         </Field>
 
                         <Field
-                            label="Assertion Consumer Service URL"
-                            hint="Where the signed assertion is posted back. Must be https."
+                            label={tc('console.assertion_consumer_service_url_5dacfb65')}
+                            hint={tc(
+                                'console.where_the_signed_assertion_is_posted_back_mu_2dc6e396',
+                            )}
                             error={form.errors.acsUrl}
                         >
                             <Input
@@ -117,7 +125,10 @@ export function ServiceProviderFields({
                             />
                         </Field>
 
-                        <Field label="NameID format" error={form.errors.nameIdFormat}>
+                        <Field
+                            label={tc('console.nameid_format_1f9977db')}
+                            error={form.errors.nameIdFormat}
+                        >
                             <Select
                                 value={form.data.nameIdFormat}
                                 onValueChange={(format) => form.setData('nameIdFormat', format)}
@@ -126,14 +137,16 @@ export function ServiceProviderFields({
                         </Field>
 
                         <Field
-                            label="NameID attribute"
-                            hint="The field on the person that becomes the assertion's subject."
+                            label={tc('console.nameid_attribute_be652806')}
+                            hint={tc(
+                                'console.the_field_on_the_person_that_becomes_the_ass_cc8b8aae',
+                            )}
                             error={form.errors.nameIdAttribute}
                         >
                             <Input
                                 name="nameIdAttribute"
                                 className="mono"
-                                placeholder="email"
+                                placeholder={tc('console.email_82244417')}
                                 value={form.data.nameIdAttribute}
                                 onChange={(event) =>
                                     form.setData('nameIdAttribute', event.target.value)
@@ -150,11 +163,11 @@ export function ServiceProviderFields({
                         for.
                     */}
                     <MetadataRows
-                        label="Attribute mappings"
-                        hint="Each claim the assertion carries, and the field on the person it is read from."
-                        keyLabel="SAML attribute"
-                        valueLabel="User field"
-                        addLabel="Add attribute"
+                        label={tc('console.attribute_mappings_8de25d26')}
+                        hint={tc('console.each_claim_the_assertion_carries_and_the_fie_3bbc28c0')}
+                        keyLabel={tc('console.saml_attribute_0feaa60e')}
+                        valueLabel={tc('console.user_field_f8d3ac04')}
+                        addLabel={tc('console.add_attribute_dd77952c')}
                         rows={form.data.attributeMappings}
                         onChange={(rows) => form.setData('attributeMappings', rows)}
                     />
@@ -162,8 +175,8 @@ export function ServiceProviderFields({
             </Panel>
 
             <Panel
-                title="Signed requests"
-                description="Verify that AuthnRequests really come from this application, using its own signing certificate."
+                title={tc('console.signed_requests_b6cc80d3')}
+                description={tc('console.verify_that_authnrequests_really_come_from_t_f3c58c70')}
             >
                 <div className="space-y-4">
                     <Checkbox
@@ -171,17 +184,21 @@ export function ServiceProviderFields({
                         onCheckedChange={(checked) =>
                             form.setData('wantAuthnRequestsSigned', checked)
                         }
-                        label="Require signed AuthnRequests"
-                        hint="A certificate is required — without one there is nothing to verify against."
+                        label={tc('console.require_signed_authnrequests_b4dc0e7e')}
+                        hint={tc('console.a_certificate_is_required_without_one_there__4c7c5647')}
                     />
 
                     {form.data.wantAuthnRequestsSigned && (
                         <Field
-                            label="SP signing certificate"
+                            label={tc('console.sp_signing_certificate_45095350')}
                             hint={
                                 hasCertificate
-                                    ? 'A certificate is on file. Paste a new one to replace it, or leave this blank to keep it.'
-                                    : 'The application’s public certificate, in PEM.'
+                                    ? tc(
+                                          'console.a_certificate_is_on_file_paste_a_new_one_to__d7521100',
+                                      )
+                                    : tc(
+                                          'console.the_application_s_public_certificate_in_pem_d0cce440',
+                                      )
                             }
                             optional={hasCertificate}
                             error={form.errors.certificate}

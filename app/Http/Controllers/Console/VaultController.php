@@ -70,7 +70,7 @@ final readonly class VaultController extends ConsoleController
 
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('console/vault/index', 'Token vault', [
+        return $this->page('console/vault/index', __('console.token_vault_1d74ef9e'), [
             'help' => HelpProps::for(HelpTopic::TokenVault),
             'secrets' => array_map(fn (VaultSecret $secret): array => $this->row($secret), $page->getCollection()->all()),
             'pagination' => PaginationProps::from($page),
@@ -96,15 +96,15 @@ final readonly class VaultController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        return $this->page('console/vault/create', 'New stored token', [
+        return $this->page('console/vault/create', __('console.new_stored_token_81b93591'), [
             /*
              * ONE name, asked for by name. Indexing the whole organization map to label a
              * single form hydrated every organization in the environment — a tenant with a
              * few thousand paid for all of them to render one sentence.
              */
             'scopeLabel' => $this->scope->organizationId() === null
-                ? 'this environment'
-                : ($this->scope->organizationName() ?? 'this organization'),
+                ? __('console.this_environment_42756031')
+                : ($this->scope->organizationName() ?? __('console.this_organization_cab32fc4')),
             'indexHref' => $this->url('vault'),
             'storeHref' => $this->url('vault.store'),
         ]);
@@ -151,7 +151,7 @@ final readonly class VaultController extends ConsoleController
         $secret = $result->value;
 
         return to_route($this->routeName('vault.show'), $secret->id)
-            ->with('status', 'Secret sealed and stored — its value is never shown again.');
+            ->with('status', __('console.secret_sealed_and_stored_its_value_is_never__61f7ff4d'));
     }
 
     public function show(string $secret, VaultScope $vault): Response
@@ -198,7 +198,7 @@ final readonly class VaultController extends ConsoleController
         // A revoked secret has no future lease to serve, so rotating one would replace a
         // sealed value nothing can ever open — busywork that reads as a fix.
         if ($model->isRevoked()) {
-            return back()->withErrors(['secret' => 'This secret is revoked — it can no longer be rotated.']);
+            return back()->withErrors(['secret' => __('console.this_secret_is_revoked_it_can_no_longer_be_r_cba2e557')]);
         }
 
         $result = $this->act(RotateVaultSecret::class, [
@@ -207,7 +207,7 @@ final readonly class VaultController extends ConsoleController
             'secret' => $request->secret(),
         ], fallback: 'secret');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Secret rotated — the sealed value was replaced.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.secret_rotated_the_sealed_value_was_replaced_246ba95e'));
     }
 
     public function grant(GrantVaultAccessRequest $request, string $secret, VaultScope $vault): RedirectResponse
@@ -217,7 +217,7 @@ final readonly class VaultController extends ConsoleController
         $model = $this->resolve($secret, $vault);
 
         if ($model->isRevoked()) {
-            return back()->withErrors(['client' => 'This secret is revoked — no client can lease it.']);
+            return back()->withErrors(['client' => __('console.this_secret_is_revoked_no_client_can_lease_i_73392e58')]);
         }
 
         $result = $this->act(GrantVaultAccess::class, [
@@ -226,7 +226,7 @@ final readonly class VaultController extends ConsoleController
             'client_id' => $request->clientId(),
         ], ['client_id' => 'client'], fallback: 'client');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_granted_3c3c8f0f'));
     }
 
     public function revokeGrant(string $secret, string $client, VaultScope $vault): RedirectResponse
@@ -239,7 +239,7 @@ final readonly class VaultController extends ConsoleController
             'organization_id' => $this->scope->organizationId(),
         ]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_revoked_b474f694'));
     }
 
     public function revoke(string $secret, VaultScope $vault): RedirectResponse
@@ -256,7 +256,7 @@ final readonly class VaultController extends ConsoleController
         }
 
         return to_route($this->routeName('vault'))
-            ->with('status', 'Secret revoked — no future lease can open it.');
+            ->with('status', __('console.secret_revoked_no_future_lease_can_open_it_1ce9141d'));
     }
 
     /**

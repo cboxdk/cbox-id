@@ -49,10 +49,10 @@ final class SaveAuthPolicyRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'minLength' => 'minimum length',
-            'maxAgeDays' => 'maximum age',
-            'reuseHistory' => 'reuse history',
-            'lockoutThreshold' => 'lockout threshold',
+            'minLength' => __('console.minimum_length_3066b58a'),
+            'maxAgeDays' => __('console.maximum_age_d4612534'),
+            'reuseHistory' => __('console.reuse_history_95032e9e'),
+            'lockoutThreshold' => __('console.lockout_threshold_af20f45e'),
         ];
     }
 

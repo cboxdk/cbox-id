@@ -47,8 +47,8 @@ final class IssueAppApiKeyRequest extends FormRequest
     {
         return [
             ...KeyExpiry::messages(),
-            'client_id.required' => 'Choose the app this key is for.',
-            'name.required' => 'Give the key a name, so you can tell it apart later.',
+            'client_id.required' => __('console.choose_the_app_this_key_is_for_3ed7d47f'),
+            'name.required' => __('console.give_the_key_a_name_so_you_can_tell_it_apart_b1072a92'),
         ];
     }
 

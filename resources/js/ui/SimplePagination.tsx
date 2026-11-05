@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Link } from '@inertiajs/react';
 import type { SimplePagination as SimplePaginationState } from '@/types';
 import { Icon } from './Icon';
@@ -29,13 +30,20 @@ export function SimplePagination({
     noun = 'result',
     pluralNoun,
 }: SimplePaginationProps) {
+    const { t: tc } = useUiTranslator();
+
     const { currentPage, count, hasMore } = pagination;
     const plural = pluralNoun ?? `${noun}s`;
 
     return (
-        <nav className="flex items-center justify-between gap-3 flex-wrap" aria-label="Pagination">
+        <nav
+            className="flex items-center justify-between gap-3 flex-wrap"
+            aria-label={tc('console.pagination_7b3f674b', 'Pagination')}
+        >
             <p style={{ fontSize: '13px', color: 'var(--muted-foreground)' }} aria-live="polite">
-                Page {currentPage} · {count} {count === 1 ? noun : plural} on this page
+                {tc('console.page_6076934f', 'Page ')}
+                {currentPage} · {count} {count === 1 ? noun : plural}
+                {tc('console.on_this_page_c990cc6a', ' on this page')}
             </p>
 
             {(currentPage > 1 || hasMore) && (
@@ -51,7 +59,7 @@ export function SimplePagination({
                                 className="w-4 h-4"
                                 style={{ transform: 'rotate(90deg)' }}
                             />
-                            Previous
+                            {tc('console.previous_a57b08a4', 'Previous')}
                         </Link>
                     ) : (
                         <span
@@ -64,7 +72,7 @@ export function SimplePagination({
                                 className="w-4 h-4"
                                 style={{ transform: 'rotate(90deg)' }}
                             />
-                            Previous
+                            {tc('console.previous_a57b08a4', 'Previous')}
                         </span>
                     )}
 
@@ -74,7 +82,7 @@ export function SimplePagination({
                             className="btn btn-ghost btn-sm"
                             rel="next"
                         >
-                            Next
+                            {tc('console.next_1ff57a29', 'Next')}
                             <Icon
                                 name="chevron"
                                 className="w-4 h-4"
@@ -87,7 +95,7 @@ export function SimplePagination({
                             aria-disabled="true"
                             style={{ opacity: 0.5 }}
                         >
-                            Next
+                            {tc('console.next_1ff57a29', 'Next')}
                             <Icon
                                 name="chevron"
                                 className="w-4 h-4"

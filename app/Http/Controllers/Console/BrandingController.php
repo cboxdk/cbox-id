@@ -73,7 +73,7 @@ final readonly class BrandingController extends ConsoleController
         $environment = $this->environment($environments);
         $target = $environmentDefault ? $environment : $organization;
 
-        return $this->page('console/branding', 'Branding', [
+        return $this->page('console/branding', __('console.branding_d417aa16'), [
             'help' => HelpProps::for(HelpTopic::Branding),
             /*
              * `appearance`, NOT `theme`. The shell shares a prop called `theme` — the
@@ -150,7 +150,7 @@ final readonly class BrandingController extends ConsoleController
 
         if ($request->environmentDefault()) {
             abort_unless($environmentDefault, 403,
-                'Only an environment administrator may change the environment default theme, on the environment\'s own Branding page.');
+                __('console.only_an_environment_administrator_may_change_761a9768'));
         }
 
         $profile = $request->profile();
@@ -192,7 +192,7 @@ final readonly class BrandingController extends ConsoleController
             }
         }
 
-        return back()->with('status', $environmentDefault ? 'Environment branding saved.' : 'Branding saved.');
+        return back()->with('status', $environmentDefault ? __('console.environment_branding_saved_387e1643') : __('console.branding_saved_9be6a954'));
     }
 
     /**
@@ -239,7 +239,7 @@ final readonly class BrandingController extends ConsoleController
             return back()->withInput()->withErrors($refused);
         }
 
-        return back()->with('status', 'Branding saved.');
+        return back()->with('status', __('console.branding_saved_9be6a954'));
     }
 
     /**

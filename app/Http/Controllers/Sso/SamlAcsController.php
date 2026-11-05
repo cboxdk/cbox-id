@@ -14,6 +14,7 @@ use Cbox\Id\Federation\Contracts\FederationFlow;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\ConnectionInactive;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
+use Cbox\Id\Federation\Support\SamlBrowserBinding;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
 use Cbox\Id\Identity\Exceptions\AccountInactive;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,7 @@ final class SamlAcsController extends Controller
         private readonly FederationFlow $flow,
         private readonly FederatedLanding $landing,
         private readonly AccountLinking $linking,
+        private readonly SamlBrowserBinding $browserBinding,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -61,7 +63,9 @@ final class SamlAcsController extends Controller
         }
 
         try {
+            $this->browserBinding->assertMatches($request, $model->id, $samlResponse);
             $principal = $this->validator->validate($model, $samlResponse);
+            $this->browserBinding->forget($model->id);
         } catch (InvalidAssertion|ConnectionInactive $e) {
             Log::warning('cbox-id: SAML assertion rejected.', [
                 'connection_id' => $model->id,

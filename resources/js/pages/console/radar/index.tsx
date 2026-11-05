@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { type FormEvent, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -85,6 +86,10 @@ export default function RadarDecisions({
     firstHref,
     listStoreHref,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const [draft, setDraft] = useState<Filters>(filters);
     const [open, setOpen] = useState<string | null>(null);
     const filtered = Object.values(filters).some((value) => value !== '');
@@ -106,61 +111,67 @@ export default function RadarDecisions({
             help={help}
             tabs={tabs}
             mode={mode}
-            description="Radar judges every sign-in and sign-up — credential stuffing, bot-like speed, impossible travel, new devices, anonymising networks, throwaway addresses, and your own rules and lists — and records why."
+            description={tc('console.radar_judges_every_sign_in_and_sign_up_crede_9c16eda1')}
         >
-            <section className="mt-6 grid gap-3 sm:grid-cols-3" aria-label="The last 24 hours">
+            <section
+                className="mt-6 grid gap-3 sm:grid-cols-3"
+                aria-label={tc('console.the_last_24_hours_7ef73a06')}
+            >
                 <Stat
                     icon="check"
                     tone="success"
-                    label="Allowed, last 24h"
-                    value={summary.allow.toLocaleString()}
+                    label={tc('console.allowed_last_24h_9942a928')}
+                    value={summary.allow.toLocaleString(locale)}
                 />
                 <Stat
                     icon="shield"
                     tone="warning"
-                    label="Challenged, last 24h"
-                    value={summary.challenge.toLocaleString()}
+                    label={tc('console.challenged_last_24h_437a6554')}
+                    value={summary.challenge.toLocaleString(locale)}
                 />
                 <Stat
                     icon="warning"
                     tone="neutral"
-                    label="Blocked, last 24h"
-                    value={summary.block.toLocaleString()}
+                    label={tc('console.blocked_last_24h_f6a8e9fa')}
+                    value={summary.block.toLocaleString(locale)}
                 />
             </section>
 
             <form onSubmit={apply} className="mt-6 grid gap-3 sm:grid-cols-6 items-end">
-                <Field label="Verdict">
+                <Field label={tc('console.verdict_4a36f89d')}>
                     <Select
                         value={draft.verdict === '' ? ANY : draft.verdict}
                         onValueChange={set('verdict')}
                         options={[
-                            { value: ANY, label: 'Any' },
-                            { value: 'allow', label: 'Allow' },
-                            { value: 'challenge', label: 'Challenge' },
-                            { value: 'block', label: 'Block' },
+                            { value: ANY, label: tc('console.any_2b505597') },
+                            { value: 'allow', label: tc('console.allow_e213c161') },
+                            { value: 'challenge', label: tc('console.challenge_27cf1792') },
+                            { value: 'block', label: tc('console.block_211d0bb8') },
                         ]}
                     />
                 </Field>
-                <Field label="Flow">
+                <Field label={tc('console.flow_f1273dc7')}>
                     <Select
                         value={draft.flow === '' ? ANY : draft.flow}
                         onValueChange={set('flow')}
                         options={[
-                            { value: ANY, label: 'Both' },
-                            { value: 'sign_in', label: 'Sign-in' },
-                            { value: 'sign_up', label: 'Sign-up' },
+                            { value: ANY, label: tc('console.both_b6c1d862') },
+                            { value: 'sign_in', label: tc('console.sign_in_5bbbe531') },
+                            { value: 'sign_up', label: tc('console.sign_up_3cc08ebe') },
                         ]}
                     />
                 </Field>
-                <Field label="Rule" className="sm:col-span-2">
+                <Field label={tc('console.rule_62845f31')} className="sm:col-span-2">
                     <Select
                         value={draft.rule === '' ? ANY : draft.rule}
                         onValueChange={set('rule')}
-                        options={[{ value: ANY, label: 'Any rule' }, ...ruleOptions]}
+                        options={[
+                            { value: ANY, label: tc('console.any_rule_d2a1b565') },
+                            ...ruleOptions,
+                        ]}
                     />
                 </Field>
-                <Field label="Country">
+                <Field label={tc('console.country_701d021d')}>
                     <Input
                         value={draft.country}
                         maxLength={2}
@@ -170,7 +181,7 @@ export default function RadarDecisions({
                         }
                     />
                 </Field>
-                <Field label="Device">
+                <Field label={tc('console.device_6ba0bdec')}>
                     <Input
                         className="mono"
                         value={draft.device}
@@ -178,9 +189,9 @@ export default function RadarDecisions({
                     />
                 </Field>
                 <Field
-                    label="Email address"
+                    label={tc('console.email_address_f2488fd4')}
                     className="sm:col-span-2"
-                    hint="Matched by pseudonym; never shown."
+                    hint={tc('console.matched_by_pseudonym_never_shown_a97f8fe1')}
                 >
                     <Input
                         type="email"
@@ -189,9 +200,9 @@ export default function RadarDecisions({
                     />
                 </Field>
                 <Field
-                    label="IP address"
+                    label={tc('console.ip_address_0302a467')}
                     className="sm:col-span-2"
-                    hint="Matched by pseudonym; never shown."
+                    hint={tc('console.matched_by_pseudonym_never_shown_a97f8fe1')}
                 >
                     <Input
                         className="mono"
@@ -199,14 +210,14 @@ export default function RadarDecisions({
                         onChange={(event) => setDraft({ ...draft, ip: event.target.value })}
                     />
                 </Field>
-                <Field label="From">
+                <Field label={tc('console.from_21819769')}>
                     <Input
                         type="date"
                         value={draft.from}
                         onChange={(event) => setDraft({ ...draft, from: event.target.value })}
                     />
                 </Field>
-                <Field label="To">
+                <Field label={tc('console.to_f4b06ef6')}>
                     <Input
                         type="date"
                         value={draft.to}
@@ -216,11 +227,13 @@ export default function RadarDecisions({
                 <div className="sm:col-span-6 flex flex-wrap items-center gap-2">
                     <Button type="submit">
                         <Icon name="search" className="w-4 h-4" />
-                        Filter
+                        {tc('console.filter_638e249f')}
                     </Button>
                     {filtered && (
                         <Button asChild variant="ghost">
-                            <Link href={window.location.pathname}>Clear filters</Link>
+                            <Link href={window.location.pathname}>
+                                {tc('console.clear_filters_7179ea00')}
+                            </Link>
                         </Button>
                     )}
                 </div>
@@ -232,11 +245,19 @@ export default function RadarDecisions({
                         <EmptyState
                             icon="shield"
                             equivalent="radar.decisions.list"
-                            title={filtered ? 'No decisions match' : 'No decisions yet'}
+                            title={
+                                filtered
+                                    ? tc('console.no_decisions_match_db5e0252')
+                                    : tc('console.no_decisions_yet_a30edf59')
+                            }
                             description={
                                 filtered
-                                    ? 'Nothing recorded matches these filters. Widen the range or clear a filter.'
-                                    : 'Every sign-in and sign-up in this environment is judged and recorded here, from the first attempt.'
+                                    ? tc(
+                                          'console.nothing_recorded_matches_these_filters_widen_804705cd',
+                                      )
+                                    : tc(
+                                          'console.every_sign_in_and_sign_up_in_this_environmen_083be88e',
+                                      )
                             }
                         />
                     </div>
@@ -257,18 +278,21 @@ export default function RadarDecisions({
             </div>
 
             {(nextHref !== null || firstHref !== null) && (
-                <nav className="mt-4 flex items-center gap-2" aria-label="Pagination">
+                <nav
+                    className="mt-4 flex items-center gap-2"
+                    aria-label={tc('console.pagination_7b3f674b')}
+                >
                     {firstHref !== null && (
                         <Button asChild variant="ghost">
                             <Link href={firstHref} preserveScroll>
-                                Newest
+                                {tc('console.newest_d15efa17')}
                             </Link>
                         </Button>
                     )}
                     {nextHref !== null && (
                         <Button asChild>
                             <Link href={nextHref} preserveScroll>
-                                Older
+                                {tc('console.older_03281c88')}
                             </Link>
                         </Button>
                     )}
@@ -291,6 +315,10 @@ function DecisionRow({
     onToggle: () => void;
     listStoreHref: string;
 }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const deny = useForm({ list: 'deny', kind: 'device', value: decision.device ?? '', note: '' });
 
     return (
@@ -302,9 +330,13 @@ function DecisionRow({
                 className="w-full text-left flex flex-wrap items-center gap-3 p-4 hover:bg-[var(--surface-2)]"
             >
                 <Pill tone={VERDICT_TONE[decision.verdict]}>{decision.verdict}</Pill>
-                {!decision.enforced && decision.verdict !== 'allow' && <Badge>monitor only</Badge>}
+                {!decision.enforced && decision.verdict !== 'allow' && (
+                    <Badge>{tc('console.monitor_only_398d456f')}</Badge>
+                )}
                 <span className="text-sm font-medium">
-                    {decision.flow === 'sign_up' ? 'Sign-up' : 'Sign-in'}
+                    {decision.flow === 'sign_up'
+                        ? tc('console.sign_up_3cc08ebe')
+                        : tc('console.sign_in_5bbbe531')}
                     {decision.method !== null && decision.flow === 'sign_in' && (
                         <span style={{ color: 'var(--faint)' }}>
                             {' '}
@@ -313,7 +345,7 @@ function DecisionRow({
                     )}
                 </span>
                 <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {decision.rule_name ?? 'No rule matched'}
+                    {decision.rule_name ?? tc('console.no_rule_matched_c849aafd')}
                 </span>
                 {decision.country !== null && <Badge tone="info">{decision.country}</Badge>}
                 {decision.email_domain !== null && (
@@ -322,7 +354,7 @@ function DecisionRow({
                     </span>
                 )}
                 <span className="ml-auto text-xs" style={{ color: 'var(--faint)' }}>
-                    {absoluteTime(decision.assessed_at)}
+                    {absoluteTime(decision.assessed_at, locale)}
                 </span>
             </button>
 
@@ -333,11 +365,13 @@ function DecisionRow({
                             className="text-xs font-semibold uppercase tracking-wide"
                             style={{ color: 'var(--faint)' }}
                         >
-                            Why
+                            {tc('console.why_d3ae14a5')}
                         </h3>
                         <ul className="mt-2 grid gap-1 text-sm">
                             {decision.reasons.length === 0 ? (
-                                <li style={{ color: 'var(--muted)' }}>Nothing fired.</li>
+                                <li style={{ color: 'var(--muted)' }}>
+                                    {tc('console.nothing_fired_d12bb320')}
+                                </li>
                             ) : (
                                 decision.reasons.map((reason) => <li key={reason}>{reason}</li>)
                             )}
@@ -355,9 +389,9 @@ function DecisionRow({
                             </div>
                         )}
                         <p className="mt-3 text-xs" style={{ color: 'var(--faint)' }}>
-                            Risk score {decision.risk_score} (
-                            {decision.risk_outcome.replace('_', ' ')}) · recorded under{' '}
-                            {decision.mode}
+                            {tc('console.risk_score_64948c4c')}
+                            {decision.risk_score} ({decision.risk_outcome.replace('_', ' ')}
+                            {tc('console.recorded_under_606b659d')} {decision.mode}
                         </p>
                     </div>
                     <div>
@@ -365,7 +399,7 @@ function DecisionRow({
                             className="text-xs font-semibold uppercase tracking-wide"
                             style={{ color: 'var(--faint)' }}
                         >
-                            Facts
+                            {tc('console.facts_3683709d')}
                         </h3>
                         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                             {Object.entries(decision.facts).map(([key, value]) => (
@@ -379,7 +413,7 @@ function DecisionRow({
                             {decision.asn !== null && (
                                 <div className="contents">
                                     <dt className="mono text-xs" style={{ color: 'var(--muted)' }}>
-                                        asn
+                                        {tc('console.asn_103a0c3e')}
                                     </dt>
                                     <dd className="mono text-xs">AS{decision.asn}</dd>
                                 </div>
@@ -391,7 +425,8 @@ function DecisionRow({
                                     className="mono text-xs break-all"
                                     style={{ color: 'var(--faint)' }}
                                 >
-                                    device {decision.device.slice(0, 16)}…
+                                    {tc('console.device_63be5889')}
+                                    {decision.device.slice(0, 16)}…
                                 </span>
                                 <Button
                                     size="sm"
@@ -401,7 +436,7 @@ function DecisionRow({
                                         deny.post(listStoreHref, { preserveScroll: true })
                                     }
                                 >
-                                    Deny this device
+                                    {tc('console.deny_this_device_eeb0f48f')}
                                 </Button>
                                 {deny.errors.value !== undefined && (
                                     <p role="alert" className="field-error">

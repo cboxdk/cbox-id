@@ -32,7 +32,7 @@ final class CopyClientRequest extends FormRequest
             'environment' => ['required', 'string', 'max:64'],
             'name' => ['required', 'string', 'max:190'],
             'redirectUris' => ['nullable', 'string', 'max:2000', new SecureUriLines(
-                'Each redirect URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/callback.',
+                __('console.each_redirect_uri_must_use_https_http_is_all_5445c31e'),
             )],
         ];
     }
@@ -43,7 +43,7 @@ final class CopyClientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'environment.required' => 'Choose the environment to copy this app into.',
+            'environment.required' => __('console.choose_the_environment_to_copy_this_app_into_64096342'),
         ];
     }
 

@@ -40,13 +40,13 @@ final class SaveApiKeyPrefixRequest extends FormRequest
                     }
 
                     if (preg_match(ApiKeyPrefix::PATTERN, $value) !== 1) {
-                        $fail('Use 2 to 16 lowercase letters or digits, starting with a letter, then _live or _test — for example acme_live.');
+                        $fail(__('console.use_2_to_16_lowercase_letters_or_digits_star_cda1343d'));
 
                         return;
                     }
 
                     if (ApiKeyPrefix::tryFrom($value) === null) {
-                        $fail('That prefix is reserved for Cbox ID\'s own keys. Choose another.');
+                        $fail(__('console.that_prefix_is_reserved_for_cbox_id_s_own_ke_ae985061'));
                     }
                 },
             ],

@@ -42,7 +42,7 @@ final class StorePermissionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.regex' => 'A permission key is two words joined by a colon — a feature and an action, like invoices:create.',
+            'name.regex' => __('console.a_permission_key_is_two_words_joined_by_a_co_b830fc34'),
         ];
     }
 

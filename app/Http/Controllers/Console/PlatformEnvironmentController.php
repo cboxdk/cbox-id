@@ -128,7 +128,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             return ['rows' => array_values($rows), 'pagination' => SimplePaginationProps::from($environments)];
         });
 
-        return $this->page('console/platform/environments', 'Environments', [
+        return $this->page('console/platform/environments', __('console.environments_07437cd6'), [
             'help' => HelpProps::for(HelpTopic::Environments),
             'environments' => $page['rows'],
             'pagination' => $page['pagination'],
@@ -166,7 +166,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
 
         return back()->with('status', $domain === null
             ? 'Environment "'.$environment['name'].'" created.'
-            : 'Environment "'.$environment['name'].'" created. Add '.$domain.' from the environment\'s domain settings to verify it by DNS — an unverified domain cannot be its issuer.');
+            : 'Environment "'.$environment['name'].'" created. Add '.$domain.__('console.from_the_environment_s_domain_settings_to_ve_ffb7d1f5'));
     }
 
     /**
@@ -195,7 +195,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', 'Provisioned an organization and admin in "'.AsOperator::environment($environment)->name.'".');
+        return back()->with('status', __('console.provisioned_an_organization_and_admin_in_39af149f').AsOperator::environment($environment)->name.'".');
     }
 
     /**

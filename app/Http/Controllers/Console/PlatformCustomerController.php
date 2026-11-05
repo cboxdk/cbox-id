@@ -11,6 +11,7 @@ use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreateCustomerRequest;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OperatorEnvironment;
 use Carbon\CarbonInterface;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -146,7 +147,7 @@ final readonly class PlatformCustomerController extends ConsoleController
             return ['rows' => array_values($rows), 'pagination' => SimplePaginationProps::from($customers)];
         });
 
-        return $this->page('console/platform/customers', 'Workspaces', [
+        return $this->page('console/platform/customers', __('console.workspaces_1377264b'), [
             'help' => HelpProps::for(HelpTopic::Workspaces),
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
@@ -185,8 +186,8 @@ final readonly class PlatformCustomerController extends ConsoleController
         // provisioning has just made impossible — so it means something changed underneath,
         // and the operator should know the workspace exists but the invitation did not go.
         $status = $workspace['owner_invited']
-            ? 'Workspace created. '.$request->ownerEmail().' has been emailed a link to set their password.'
-            : 'Workspace created, but the owner could not be sent a link. Ask them to use "Forgot password".';
+            ? __('console.workspace_created_29252ade').$request->ownerEmail().__('console.has_been_emailed_a_link_to_set_their_passwor_614ca5f9')
+            : __('console.workspace_created_but_the_owner_could_not_be_61b8b11a');
 
         return redirect()->route('platform.workspaces.show', $workspace['id'])->with('status', $status);
     }
@@ -349,7 +350,7 @@ final readonly class PlatformCustomerController extends ConsoleController
                 'id' => $membership->id,
                 'email' => $people[$membership->user_id]->email ?? null,
                 'name' => is_string($name) && $name !== '' ? $name : null,
-                'role' => $membership->role->label(),
+                'role' => ConsoleStrings::text($membership->role->label()),
                 'status' => $membership->status->value,
                 'active' => $membership->status === MembershipStatus::Active,
                 'allEnvironments' => $membership->getAttribute('all_environments') === true,
@@ -387,8 +388,8 @@ final readonly class PlatformCustomerController extends ConsoleController
         }
 
         return back()->with('status', $suspending
-            ? 'Workspace suspended — its members can no longer sign in and its environments stop serving auth.'
-            : 'Workspace reactivated.');
+            ? __('console.workspace_suspended_its_members_can_no_longe_82d7790e')
+            : __('console.workspace_reactivated_d4e75684'));
     }
 
     /**

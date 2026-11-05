@@ -44,7 +44,7 @@ final class RotateClientSecretRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'grace.in' => 'Choose how long the current secret keeps working from the periods offered.',
+            'grace.in' => __('console.choose_how_long_the_current_secret_keeps_wor_71915760'),
         ];
     }
 

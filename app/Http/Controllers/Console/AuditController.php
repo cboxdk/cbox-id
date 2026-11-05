@@ -14,6 +14,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -121,7 +122,7 @@ final readonly class AuditController extends ConsoleController
         // for the names this page shows.
         $owners = $filter->active() ? [] : $this->scope->organizationNames($entries->getCollection()->pluck('organization_id'));
 
-        return $this->page('console/audit', Vocabulary::AUDIT_LOG, [
+        return $this->page('console/audit', ConsoleStrings::text(Vocabulary::AUDIT_LOG), [
             'help' => HelpProps::for(HelpTopic::ActivityLog),
             'entries' => $entries->getCollection()->map(fn (AuditEntry $entry): array => [
                 ...self::actor($entry, $resolved, $agents, $agentsHref),

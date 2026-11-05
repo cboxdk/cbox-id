@@ -10,6 +10,7 @@ use App\Http\Props\Console\AppHeaderProps;
 use App\Http\Props\Console\CopyTargetProps;
 use App\Platform\AppKind;
 use App\Platform\Apps\CopyTargets;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Models\Environment;
@@ -58,17 +59,17 @@ final readonly class AppHeader
         // and, marked first-party, skips every organization's consent screen. Promoting an
         // organization's app into that is a change of what it is, not a copy of it.
         if ($client->organization_id !== null) {
-            return 'This app belongs to an organization, and an organization exists in one environment only. Download its blueprint and register it in the other environment under the organization it belongs to there.';
+            return ConsoleStrings::message('console.this_app_belongs_to_an_organization_and_an_o_5487ac51');
         }
 
         // Registered through RFC 7591 by whoever reached the registration endpoint, so it
         // is not the environment's own app — a copy made here would be.
         if ($client->isDynamicallyRegistered()) {
-            return 'This app registered itself, so it is not one of this environment\'s own apps. It can register itself in the other environment the same way.';
+            return ConsoleStrings::message('console.this_app_registered_itself_so_it_is_not_one__ec7cea33');
         }
 
         if ($client->type === ClientType::Confidential && ! AppTabs::holdsSharedSecret($client)) {
-            return 'This app signs in with its own keys, and each environment should hold keys of its own. Download its blueprint and register it in the other environment with that environment\'s key set.';
+            return ConsoleStrings::message('console.this_app_signs_in_with_its_own_keys_and_each_a40a0c9b');
         }
 
         return null;
@@ -80,7 +81,7 @@ final readonly class AppHeader
         $refusal = self::copyRefusal($client);
 
         if ($refusal === null && $targets === []) {
-            $refusal = 'There is no other environment in this project that you administer. Add one to the project, or ask for access to it, and it appears here.';
+            $refusal = ConsoleStrings::message('console.there_is_no_other_environment_in_this_projec_bfd62f34');
         }
 
         return new AppCopyProps(

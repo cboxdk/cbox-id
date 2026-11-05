@@ -35,6 +35,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Models\Role;
@@ -95,7 +96,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/organizations/index', Vocabulary::ORGANIZATIONS, [
+        return $this->page('environment/organizations/index', ConsoleStrings::text(Vocabulary::ORGANIZATIONS), [
             'help' => HelpProps::for(HelpTopic::Organizations),
             'organizations' => array_map(static fn (Organization $organization): array => [
                 'id' => $organization->id,
@@ -114,7 +115,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/organizations/create', 'New organization', [
+        return $this->page('environment/organizations/create', __('console.new_organization_62e34b70'), [
             'indexHref' => route('environment.organizations'),
             'storeHref' => route('environment.organizations.store'),
         ]);
@@ -142,7 +143,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         $organization = $result->value;
 
         return to_route('environment.organizations.show', $organization->id)
-            ->with('status', 'Organization created.');
+            ->with('status', __('console.organization_created_abe7549f'));
     }
 
     /**
@@ -163,10 +164,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             'slug' => Str::slug($request->slug()),
             'metadata' => $request->metadata(),
         ], ['name' => 'name', 'slug' => 'slug', 'metadata' => 'metadata'], 'name', [
-            'slug_taken' => 'That URL handle is already used by another organization.',
+            'slug_taken' => __('console.that_url_handle_is_already_used_by_another_o_f2791721'),
         ]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_updated_86eb8ecc'));
     }
 
     public function suspend(): RedirectResponse
@@ -177,7 +178,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $result = $this->act(SuspendOrganization::class, ['id' => $organization]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization suspended.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_suspended_b3cca290'));
     }
 
     public function reactivate(): RedirectResponse
@@ -188,7 +189,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $result = $this->act(ReactivateOrganization::class, ['id' => $organization]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization reactivated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_reactivated_cdae875e'));
     }
 
     /**
@@ -206,7 +207,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.organizations')->with('status', 'Organization deleted.');
+            : to_route('environment.organizations')->with('status', __('console.organization_deleted_460d291d'));
     }
 
     /**
@@ -225,7 +226,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             'role' => $request->role()->value,
             'roles' => $request->accessRoleIds(),
         ], ['email' => 'email', 'user_id' => 'email', 'role' => 'role', 'roles' => 'accessRoles', 'organization_id' => 'email'], 'email', [
-            'already_member' => 'That user is already a member.',
+            'already_member' => __('console.that_user_is_already_a_member_51a8e24c'),
         ]);
 
         if ($result instanceof RedirectResponse) {
@@ -233,10 +234,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         }
 
         if ($result->status === 200) {
-            return back()->withInput()->withErrors(['email' => 'That user is already a member.']);
+            return back()->withInput()->withErrors(['email' => __('console.that_user_is_already_a_member_51a8e24c')]);
         }
 
-        return back()->with('status', 'Member added.');
+        return back()->with('status', __('console.member_added_ccf89720'));
     }
 
     public function changeMemberRole(Request $request, string $member): RedirectResponse
@@ -259,9 +260,9 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             'organization_id' => $organization,
             'user_id' => $member,
             'role' => $next->value,
-        ], ['role' => 'role'], 'role', ['last_owner' => 'An organization must keep at least one owner.']);
+        ], ['role' => 'role'], 'role', ['last_owner' => __('console.an_organization_must_keep_at_least_one_owner_ae832206')]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Built-in role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.built_in_role_updated_a1cff526'));
     }
 
     /**
@@ -287,12 +288,12 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         if (! $request->boolean('granted')) {
             $result = $this->act(RevokeMemberRole::class, $input, ['role_id' => 'accessRole'], 'accessRole');
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access revoked.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_revoked_b474f694'));
         }
 
         $result = $this->act(GrantMemberRole::class, $input, ['role_id' => 'accessRole'], 'accessRole');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_granted_3c3c8f0f'));
     }
 
     public function removeMember(string $member): RedirectResponse
@@ -304,9 +305,9 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         $result = $this->act(RemoveMember::class, [
             'organization_id' => $organization,
             'user_id' => $member,
-        ], ['user_id' => 'member'], 'member', ['last_owner' => 'An organization must keep at least one owner.']);
+        ], ['user_id' => 'member'], 'member', ['last_owner' => __('console.an_organization_must_keep_at_least_one_owner_ae832206')]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Member removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.member_removed_d6fe67b5'));
     }
 
     /**
@@ -336,7 +337,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', 'Invitation sent to '.$request->email().'.');
+        return back()->with('status', __('console.invitation_sent_to_1294f712').$request->email().'.');
     }
 
     public function resendInvitation(string $invitation): RedirectResponse
@@ -353,7 +354,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $sent = $result->value;
 
-        return back()->with('status', 'Invitation sent again'.($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
+        return back()->with('status', __('console.invitation_sent_again_31ffca77').($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
     }
 
     public function revokeInvitation(string $invitation): RedirectResponse
@@ -368,7 +369,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             return back()->with('error', $result->getMessage());
         }
 
-        return back()->with('status', 'Invitation revoked. That link no longer works.');
+        return back()->with('status', __('console.invitation_revoked_that_link_no_longer_works_c1b9fc24'));
     }
 
     /**
@@ -386,7 +387,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $result = $this->act(TransferOwnership::class, ['id' => $organization, 'user_id' => $member], ['user_id' => 'member'], 'member');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Ownership transferred.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.ownership_transferred_ca25b345'));
     }
 
     public function addDomain(AddOrganizationDomainRequest $request): RedirectResponse
@@ -402,7 +403,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Domain added — add the DNS TXT record shown below, then verify.');
+            : back()->with('status', __('console.domain_added_add_the_dns_txt_record_shown_be_6b181a34'));
     }
 
     public function verifyDomain(string $domain): RedirectResponse
@@ -413,7 +414,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $result = $this->act(VerifyOrganizationDomain::class, ['organization_id' => $organization, 'domain_id' => $domain], [], 'domain');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain verified.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.domain_verified_11272c96'));
     }
 
     /**
@@ -435,7 +436,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             'enabled' => ! $model->capture,
         ], [], 'domain');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain capture updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.domain_capture_updated_eb431b8f'));
     }
 
     public function removeDomain(string $domain): RedirectResponse
@@ -446,7 +447,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $result = $this->act(RemoveOrganizationDomain::class, ['organization_id' => $organization, 'domain_id' => $domain], [], 'domain');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.domain_removed_2ccaa6d3'));
     }
 
     /** The environment console's own gate: a membership administering THIS environment. */

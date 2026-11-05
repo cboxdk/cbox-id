@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -53,6 +54,8 @@ export default function DomainsOverview({
     organizationsHref,
     ssoHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -77,10 +80,9 @@ export default function DomainsOverview({
                 help={help}
                 description={
                     <>
-                        The email domains your organizations have claimed. A verified domain sends
-                        everyone with an address on it to that organization’s{' '}
-                        <Link href={ssoHref}>Enterprise SSO</Link>. Each one is verified on its
-                        organization’s page.
+                        {tc('console.the_email_domains_your_organizations_have_cl_5dee8f00')}{' '}
+                        <Link href={ssoHref}>{tc('console.enterprise_sso_0f8d7e8e')}</Link>
+                        {tc('console.each_one_is_verified_on_its_organization_s_p_11878ff6')}
                     </>
                 }
             />
@@ -95,13 +97,17 @@ export default function DomainsOverview({
                     <Input
                         type="search"
                         style={{ maxWidth: '24rem' }}
-                        placeholder="Search by domain"
-                        aria-label="Search domains"
+                        placeholder={tc('console.search_by_domain_8457a6d8')}
+                        aria-label={tc('console.search_domains_df3b2794')}
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
                     />
                     <output className="sr-only">
-                        {pagination.total} {pagination.total === 1 ? 'domain' : 'domains'} found.
+                        {pagination.total}{' '}
+                        {pagination.total === 1
+                            ? tc('console.domain_f2ff8386')
+                            : tc('console.domains_1b0ec195')}
+                        {tc('console.found_599e25a3')}
                     </output>
                 </div>
 
@@ -113,22 +119,36 @@ export default function DomainsOverview({
                         search !== '' ? (
                             <EmptyState
                                 icon="search"
-                                title={`No matches for "${search}"`}
-                                description="No claimed domain matches that. Try part of the domain, without the @."
+                                title={tc('console.no_matches_for_value0_617e79ef', {
+                                    value0: search,
+                                })}
+                                description={tc(
+                                    'console.no_claimed_domain_matches_that_try_part_of_t_1212eb45',
+                                )}
                             />
                         ) : (
                             <EmptyState
                                 icon="building"
-                                title="No organization has claimed a domain yet"
-                                description="A domain is claimed by one organization and proved with a DNS record. Once verified, everyone with an address on it can be sent straight to that organization’s single sign-on."
+                                title={tc(
+                                    'console.no_organization_has_claimed_a_domain_yet_707e5ab8',
+                                )}
+                                description={tc(
+                                    'console.a_domain_is_claimed_by_one_organization_and__85c4b058',
+                                )}
                                 steps={[
-                                    'Open the organization, and its Domains tab.',
-                                    'Add the domain, and publish the TXT record it shows — or send the organization’s IT admin an Admin Portal link to do it.',
-                                    'Verify it, then turn on capture to route everyone on it to their SSO.',
+                                    tc(
+                                        'console.open_the_organization_and_its_domains_tab_185d9406',
+                                    ),
+                                    tc(
+                                        'console.add_the_domain_and_publish_the_txt_record_it_ddb14174',
+                                    ),
+                                    tc(
+                                        'console.verify_it_then_turn_on_capture_to_route_ever_f88a6ce1',
+                                    ),
                                 ]}
                                 actions={
                                     <Link href={organizationsHref} className="btn btn-primary">
-                                        Open Organizations
+                                        {tc('console.open_organizations_db4241ab')}
                                     </Link>
                                 }
                             />
@@ -157,9 +177,13 @@ export default function DomainsOverview({
                                     </span>
                                 </div>
                                 <Pill tone={domain.verified ? 'success' : 'warning'}>
-                                    {domain.verified ? 'Verified' : 'Waiting for DNS'}
+                                    {domain.verified
+                                        ? tc('console.verified_4f783840')
+                                        : tc('console.waiting_for_dns_38500dff')}
                                 </Pill>
-                                {domain.capture && <Badge tone="info">Capture on</Badge>}
+                                {domain.capture && (
+                                    <Badge tone="info">{tc('console.capture_on_f676810d')}</Badge>
+                                )}
                                 <Icon
                                     name="chevron"
                                     className="w-4 h-4 shrink-0"
@@ -172,7 +196,8 @@ export default function DomainsOverview({
 
                 <Pagination
                     pagination={pagination}
-                    noun="domain"
+                    noun={tc('console.domain_f2ff8386')}
+                    pluralNoun={tc('console.domains_1b0ec195')}
                     href={(page) => listHref(search, page)}
                 />
             </div>

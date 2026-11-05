@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Locale\HostedLocale;
 use App\Platform\Portal\IdpGuideDocs;
 use App\Platform\Portal\PortalGuides;
 use Cbox\Id\Federation\IdentityProviderGuides;
@@ -48,7 +49,7 @@ it('has the steps translated for every guide in every language', function (strin
         expect(trans("portal.guides.{$kind}.{$guide['key']}", [], $locale))->toBeArray("portal.guides.{$kind}.{$guide['key']} is not translated in {$locale}")
             ->and($guide['steps'])->not->toBe([]);
     }
-})->with(['en', 'da', 'de', 'fr', 'nb', 'sv']);
+})->with(HostedLocale::codes());
 
 it('falls back to the framework\'s English steps for a guide with no translation', function (): void {
     // The portal catalogue as it would be the day the framework adds a guide nobody has

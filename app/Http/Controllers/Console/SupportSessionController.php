@@ -51,7 +51,7 @@ final readonly class SupportSessionController extends ConsoleController
          */
         if (! $support->isEligible($request->clientId())) {
             return back()->withInput()->withErrors([
-                'app' => 'Support sessions reach only first-party apps this environment owns.',
+                'app' => __('console.support_sessions_reach_only_first_party_apps_5884a7e2'),
             ]);
         }
 
@@ -62,7 +62,7 @@ final readonly class SupportSessionController extends ConsoleController
 
         if ($membership === null || $membership->status !== MembershipStatus::Active) {
             return back()->withInput()->withErrors([
-                'organization' => 'They are not an active member of that organization.',
+                'organization' => __('console.they_are_not_an_active_member_of_that_organi_006b23b0'),
             ]);
         }
 
@@ -76,7 +76,7 @@ final readonly class SupportSessionController extends ConsoleController
             'environment.users.show',
             'environment.users.show',
             ['user' => $target->id],
-            'Signing in to an app as this person lets you act as them there.',
+            __('console.signing_in_to_an_app_as_this_person_lets_you_11b85bdb'),
         );
 
         if ($challenge !== null) {
@@ -117,7 +117,7 @@ final readonly class SupportSessionController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Support session ended — every token it issued is revoked.');
+            : back()->with('status', __('console.support_session_ended_every_token_it_issued__3b91bce1'));
     }
 
     /** The administrator acting, as a subject of the platform root. */

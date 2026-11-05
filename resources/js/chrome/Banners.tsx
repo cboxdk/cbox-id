@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import type { SharedProps } from '@/types';
@@ -8,6 +9,8 @@ import { Icon } from '@/ui';
  * it for the sign-in their customers use.
  */
 export function SandboxBanner() {
+    const { t: tc } = useTranslator();
+
     const { environment } = usePage<SharedProps>().props;
 
     if (!environment.sandbox) {
@@ -31,8 +34,9 @@ export function SandboxBanner() {
         >
             <Icon name="shield" className="w-3.5 h-3.5 shrink-0" />
             <span>
-                Sandbox environment — for testing only. This is <strong>not</strong> your production
-                sign-in, and no real emails are sent.
+                {tc('console.sandbox_environment_for_testing_only_this_is_a3021800')}
+                <strong>{tc('console.not_254bb97b')}</strong>
+                {tc('console.your_production_sign_in_and_no_real_emails_a_aeb1af1b')}
             </span>
         </div>
     );
@@ -47,6 +51,8 @@ export function SandboxBanner() {
  * the one click that resolves it.
  */
 export function EmailConfirmationBanner() {
+    const { t: tc } = useTranslator();
+
     const { auth } = usePage<SharedProps>().props;
     const [sending, setSending] = useState(false);
     const user = auth.user;
@@ -69,8 +75,9 @@ export function EmailConfirmationBanner() {
         >
             <Icon name="mail" className="w-3.5 h-3.5 shrink-0" />
             <span>
-                Confirm your email address{user.email ? ` (${user.email})` : ''} to make changes in
-                the console.
+                {tc('console.confirm_your_email_address_b835b7d6')}
+                {user.email ? ` (${user.email})` : ''}
+                {tc('console.to_make_changes_in_the_console_a92ad729')}
             </span>
             {confirmUrl !== null ? (
                 <button
@@ -89,11 +96,13 @@ export function EmailConfirmationBanner() {
                         )
                     }
                 >
-                    {sending ? 'Sending…' : 'Send confirmation link'}
+                    {sending
+                        ? tc('console.sending_b8ed5279')
+                        : tc('console.send_confirmation_link_356b897b')}
                 </button>
             ) : accountUrl !== null ? (
                 <a className="underline underline-offset-2" href={accountUrl}>
-                    Send a link from your account
+                    {tc('console.send_a_link_from_your_account_31162742')}
                 </a>
             ) : null}
         </div>
@@ -114,6 +123,8 @@ export function EmailConfirmationBanner() {
  * nothing at all.
  */
 export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
+    const { t: tc } = useTranslator();
+
     const { impersonation } = usePage<SharedProps>().props;
     const granted = impersonation?.expiresInSeconds ?? 0;
 
@@ -168,17 +179,20 @@ export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
             }}
         >
             <span>
-                <span aria-hidden="true">⚠</span> You are impersonating{' '}
-                {impersonation.email ?? impersonation.subject} for support. Everything you do is
-                logged.
+                <span aria-hidden="true">⚠</span>
+                {tc('console.you_are_impersonating_db99f334')}{' '}
+                {impersonation.email ?? impersonation.subject}
+                {tc('console.for_support_everything_you_do_is_logged_1cdff084')}
                 {impersonation.reason !== null && (
                     <span style={{ fontWeight: 400, opacity: 0.9 }}>
                         {' '}
-                        (reason: {impersonation.reason})
+                        {tc('console.reason_e93057d6')}
+                        {impersonation.reason})
                     </span>
                 )}{' '}
                 <span style={{ fontWeight: 400, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>
-                    — {minutes}:{String(seconds).padStart(2, '0')} left
+                    — {minutes}:{String(seconds).padStart(2, '0')}
+                    {tc('console.left_bce319cf')}
                 </span>
             </span>
 
@@ -195,7 +209,7 @@ export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
                     cursor: 'pointer',
                 }}
             >
-                Exit impersonation
+                {tc('console.exit_impersonation_357bef8f')}
             </button>
         </div>
     );

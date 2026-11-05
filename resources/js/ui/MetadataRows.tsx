@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Button, Icon, Input } from '.';
 
 export interface MetadataRow {
@@ -19,11 +20,11 @@ export interface MetadataRow {
 export function MetadataRows({
     rows,
     onChange,
-    label = 'Metadata',
+    label: suppliedLabel,
     hint,
-    keyLabel = 'Key',
-    valueLabel = 'Value',
-    addLabel = 'Add row',
+    keyLabel: suppliedKeylabel,
+    valueLabel: suppliedValuelabel,
+    addLabel: suppliedAddlabel,
 }: {
     rows: MetadataRow[];
     onChange: (rows: MetadataRow[]) => void;
@@ -41,6 +42,11 @@ export function MetadataRows({
     valueLabel?: string;
     addLabel?: string;
 }) {
+    const { t: tc } = useUiTranslator();
+    const label = suppliedLabel ?? tc('console.metadata_9eddf573', 'Metadata');
+    const keyLabel = suppliedKeylabel ?? tc('console.key_99a52df3', 'Key');
+    const valueLabel = suppliedValuelabel ?? tc('console.value_8e37953d', 'Value');
+    const addLabel = suppliedAddlabel ?? tc('console.add_row_1868a8dd', 'Add row');
     const update = (index: number, patch: Partial<MetadataRow>): void => {
         onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
     };

@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { usePage } from '@inertiajs/react';
 import type { SharedProps } from '@/types';
 
@@ -21,6 +22,7 @@ export interface EnvBadgeProps {
  * word is the badge and the tint only reinforces it.
  */
 export function EnvBadge({ type }: EnvBadgeProps = {}) {
+    const { t: tc } = useUiTranslator();
     const { environment } = usePage<SharedProps>().props;
     const shown = type === undefined ? environment.type : type;
 
@@ -28,13 +30,22 @@ export function EnvBadge({ type }: EnvBadgeProps = {}) {
         return null;
     }
 
+    const labels: Record<string, string> = {
+        production: tc('console.production_13a7c655', 'Production'),
+        sandbox: tc('console.sandbox_67fc6249', 'Sandbox'),
+        development: tc('console.development_21b6a798', 'Development'),
+        staging: tc('console.staging_a8e7ac92', 'Staging'),
+        test: tc('console.test_532eaabd', 'Test'),
+    };
+    const label = labels[shown] ?? shown.charAt(0).toUpperCase() + shown.slice(1);
+
     return (
         <span
             className="cbx-env-badge"
             data-env-type={shown}
-            title={`${shown.charAt(0).toUpperCase()}${shown.slice(1)} environment`}
+            title={tc('console.name_environment_20a85a3f', ':name environment', { name: label })}
         >
-            {shown.toUpperCase()}
+            {label.toUpperCase()}
         </span>
     );
 }

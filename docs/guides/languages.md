@@ -6,7 +6,7 @@ description: Which languages the sign-in pages, consent screen, Admin Portal and
 
 # Languages
 
-The pages **your users and your customers' IT admins** see can be shown in six
+The pages **your users and your customers' IT admins** see can be shown in ten
 languages:
 
 | Code | Language |
@@ -17,14 +17,31 @@ languages:
 | `sv` | Svenska |
 | `nb` | Norsk bokmål |
 | `fr` | Français |
+| `fi` | Suomi |
+| `es` | Español |
+| `it` | Italiano |
+| `nl` | Nederlands |
 
 That covers sign-in, sign-up, two-factor and step-up prompts, password reset,
 invitations and email confirmation, the OAuth consent screen and organization picker,
 the device sign-in page a TV's QR code opens ([Sign in on TVs and devices](sign-in-on-tvs-and-devices.md)),
 the Admin Portal, the error pages, and the emails those flows send.
 
-The **admin console stays in English**, whatever language your browser prefers. So does
-the console's own "confirm it's you" prompt, both the dialog and the full-page screen.
+The **signed-in app, including organization and platform administration, supports the same ten
+languages**. Choose your language in the top-right language menu. The choice is remembered
+in this browser for a year, independently of the hosted sign-in language and its environment
+policy. Without a console preference, the existing hosted preference or the browser's first
+supported language is used, falling back to English. The console's confirmation prompts,
+validation, dates and numbers follow the selected language. Customer names, credentials,
+permission identifiers and code examples retain their original values.
+
+Existing deployments that explicitly set `CBOX_ID_LOCALES` keep that hosted-language
+allowlist. Add `fi,es,it,nl` there to offer the four new hosted languages, or use the full
+list `en,da,de,sv,nb,fr,fi,es,it,nl`. Organization language restrictions still apply.
+
+The additional console catalogues and the four new hosted catalogues were machine-translated,
+with reviewed core interface terms. Automated checks cover keys, placeholders and plural
+forms; these checks do not replace native-speaker proofreading of every sentence.
 
 ## How a visitor's language is chosen
 

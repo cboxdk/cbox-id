@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import { Button, Icon, Pill, Progress } from '@/ui';
 
@@ -37,6 +38,8 @@ export function EnvironmentChecklist({
     href?: string;
     onDismiss?: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const steps = compact
         ? checklist.steps.filter((step) => !step.done).slice(0, 3)
         : checklist.steps;
@@ -45,27 +48,32 @@ export function EnvironmentChecklist({
         <section className="card p-5" aria-labelledby="environment-checklist-title">
             <div className="flex flex-wrap items-center gap-3">
                 <h2 id="environment-checklist-title" className="font-semibold">
-                    Get started
+                    {tc('console.get_started_61e8d44a')}
                 </h2>
                 <div className="flex flex-1 items-center gap-3 min-w-[10rem]">
-                    <Progress percent={checklist.percent} label="Setup progress" />
+                    <Progress
+                        percent={checklist.percent}
+                        label={tc('console.setup_progress_e9b4495a')}
+                    />
                     <span
                         className="text-sm mono shrink-0"
                         style={{ color: 'var(--muted-foreground)' }}
                     >
-                        {checklist.completed} of {checklist.total}
+                        {checklist.completed}
+                        {tc('console.of_a4282e4b')}
+                        {checklist.total}
                     </span>
                 </div>
                 {compact && (
                     <div className="flex items-center gap-2">
                         {href !== undefined && (
                             <Button asChild size="sm">
-                                <Link href={href}>See all</Link>
+                                <Link href={href}>{tc('console.see_all_d7a8c446')}</Link>
                             </Button>
                         )}
                         {onDismiss !== undefined && (
                             <Button size="sm" variant="ghost" onClick={onDismiss}>
-                                Hide
+                                {tc('console.hide_ac20a57b')}
                             </Button>
                         )}
                     </div>
@@ -74,7 +82,7 @@ export function EnvironmentChecklist({
 
             {checklist.next !== null && (
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Next up:{' '}
+                    {tc('console.next_up_1eab46b7')}{' '}
                     <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>
                         {checklist.next}
                     </span>
@@ -119,7 +127,9 @@ export function EnvironmentChecklist({
                                 >
                                     {step.title}
                                 </h3>
-                                {step.done && <Pill tone="success">Done</Pill>}
+                                {step.done && (
+                                    <Pill tone="success">{tc('console.done_11a6767d')}</Pill>
+                                )}
                             </div>
                             {!compact && (
                                 <p

@@ -94,13 +94,13 @@ final readonly class ConnectionsController extends ConnectorsPage
             'status' => $status !== '' ? $status : null,
         ]);
 
-        return $this->page('connectors::connections', 'Connections', [
+        return $this->page('connectors::connections', __('console.connections_dc273117'), [
             'help' => HelpProps::for(HelpTopic::Connectors),
             'connections' => array_map(fn (ConnectionSummary $row): array => $this->row($row, $offered[$row->category->value], $names), $found['rows']),
             'pagination' => PaginationProps::from($paginator),
             'filtered' => $type !== '' || $status !== '',
             'types' => [
-                ['key' => '', 'label' => 'Every type', 'count' => self::sum($counts, $categories, 'total'), 'href' => $this->withQuery($base, array_diff_key($keep, ['type' => 1])), 'selected' => $type === ''],
+                ['key' => '', 'label' => __('console.every_type_004c1e2f'), 'count' => self::sum($counts, $categories, 'total'), 'href' => $this->withQuery($base, array_diff_key($keep, ['type' => 1])), 'selected' => $type === ''],
                 ...array_values(array_map(fn (ConnectorDescriptor $descriptor): array => [
                     'key' => $descriptor->key,
                     'label' => $descriptor->name,
@@ -110,7 +110,7 @@ final readonly class ConnectionsController extends ConnectorsPage
                 ], $offered)),
             ],
             'statuses' => [
-                ['key' => '', 'label' => 'All', 'count' => self::sum($counts, $listed, 'total'), 'href' => $this->withQuery($base, array_diff_key($keep, ['status' => 1])), 'selected' => $status === ''],
+                ['key' => '', 'label' => __('console.all_a52ace42'), 'count' => self::sum($counts, $listed, 'total'), 'href' => $this->withQuery($base, array_diff_key($keep, ['status' => 1])), 'selected' => $status === ''],
                 ...array_map(fn (string $key, string $label): array => [
                     'key' => $key,
                     'label' => $label,

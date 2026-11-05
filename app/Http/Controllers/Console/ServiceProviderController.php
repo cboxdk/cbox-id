@@ -15,6 +15,7 @@ use App\Http\Requests\Console\SaveServiceProviderRequest;
 use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
@@ -84,7 +85,7 @@ final readonly class ServiceProviderController extends ConsoleController
             static fn (?string $id): bool => $id !== null && $id !== '',
         )));
 
-        return $this->page('environment/sso-providers/index', Vocabulary::SAML_APPS, [
+        return $this->page('environment/sso-providers/index', ConsoleStrings::text(Vocabulary::SAML_APPS), [
             'help' => HelpProps::for(HelpTopic::SamlApplications),
             // The other direction, which the description sends people to — as a link.
             'connectionsHref' => route('environment.connections'),
@@ -120,7 +121,7 @@ final readonly class ServiceProviderController extends ConsoleController
     {
         $this->assertEnvironmentAdmin();
 
-        return $this->page('environment/sso-providers/create', 'New SAML app', [
+        return $this->page('environment/sso-providers/create', __('console.new_saml_app_88ec6ac7'), [
             'formats' => $this->formatProps(),
             'organizations' => $this->organizationOptions(),
             'defaults' => [
@@ -145,7 +146,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
         // An SP is a trust relationship with somebody else's system, which is exactly the
         // shape this gate holds until an address is confirmed.
-        app(VerifiedEmailGate::class)->require('register a SAML app');
+        app(VerifiedEmailGate::class)->require(__('console.register_a_saml_app_cb2b096f'));
 
         $result = $this->act(CreateSamlApp::class, [
             'entity_id' => $request->entityId(),
@@ -160,7 +161,7 @@ final readonly class ServiceProviderController extends ConsoleController
         $provider = $result->value;
 
         return to_route('environment.sso-providers.show', $provider->id)
-            ->with('status', 'SAML app registered.');
+            ->with('status', __('console.saml_app_registered_800550fe'));
     }
 
     public function show(string $provider): Response
@@ -210,7 +211,7 @@ final readonly class ServiceProviderController extends ConsoleController
             ...$this->input($request),
         ], self::FIELDS, 'entityId');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'SAML app updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.saml_app_updated_674a9069'));
     }
 
     public function destroy(string $provider): RedirectResponse
@@ -221,7 +222,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.sso-providers')->with('status', 'SAML app removed.');
+            : to_route('environment.sso-providers')->with('status', __('console.saml_app_removed_c065daf0'));
     }
 
     /**
@@ -297,7 +298,7 @@ final readonly class ServiceProviderController extends ConsoleController
      */
     private function organizationOptions(): array
     {
-        $options = [['value' => '', 'label' => 'Every organization (environment-wide)', 'keywords' => []]];
+        $options = [['value' => '', 'label' => __('console.every_organization_environment_wide_6e657097'), 'keywords' => []]];
 
         foreach (Organization::query()->orderBy('name')->get(['id', 'name', 'slug']) as $organization) {
             $options[] = [

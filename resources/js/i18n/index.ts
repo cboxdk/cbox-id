@@ -6,7 +6,7 @@ import type { MessageKey } from './keys';
 export type { MessageKey } from './keys';
 
 /**
- * THE HOSTED PAGES' TRANSLATOR — deliberately small, and deliberately Laravel-shaped.
+ * THE PAGE TRANSLATOR — deliberately small, and deliberately Laravel-shaped.
  *
  * The catalogue is the server's: `lang/{locale}/*.php`, the same files PHP renders the
  * page title, the validation errors and the mail from. A page receives its own group's
@@ -22,7 +22,7 @@ export type { MessageKey } from './keys';
  *
  * WHY KEYS ARE TYPED. `MessageKey` is generated from the English catalogue by
  * `php artisan i18n:types`, so a page that asks for a key English does not have fails
- * `tsc`, not a person reading the page in Swedish. LangParityTest holds the other five
+ * `tsc`, not a person reading the page in Swedish. LangParityTest holds all other
  * languages to the same key set.
  */
 
@@ -128,9 +128,8 @@ export function createTranslator(locale: string, messages: Messages): Translator
 const EMPTY: Messages = Object.freeze({});
 
 /**
- * The translator for the page being rendered. On a page with no catalogue — the console —
- * every lookup answers with its key, which is how a hosted component rendered somewhere
- * it was not meant to be shows itself.
+ * The translator for the current Inertia page, updated when its language changes.
+ * Missing keys stay visible so catalogue mistakes can be detected.
  */
 export function useTranslator(): Translator {
     const { i18n } = usePage<SharedProps>().props;
@@ -144,7 +143,7 @@ export function useTranslator(): Translator {
  * Keep `<html lang>` true across client-side visits.
  *
  * The root view writes it on the first byte from the server's locale, but Inertia never
- * re-renders `<html>`: signing in on a Danish page and landing on the (English) console
+ * re-renders `<html>`: moving between hosted and console pages in different languages
  * would leave the whole console declared Danish to every screen reader — which then
  * reads English text with Danish pronunciation. Each layout states its language.
  */

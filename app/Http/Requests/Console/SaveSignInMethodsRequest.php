@@ -36,8 +36,8 @@ final class SaveSignInMethodsRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'sessionIdleMinutes' => 'idle timeout',
-            'sessionAbsoluteMinutes' => 'session lifetime',
+            'sessionIdleMinutes' => __('console.idle_timeout_10d38cd7'),
+            'sessionAbsoluteMinutes' => __('console.session_lifetime_fd497c4d'),
         ];
     }
 

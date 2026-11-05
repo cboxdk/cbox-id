@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -33,6 +34,8 @@ type Props = PageProps<{
 }>;
 
 export default function PlatformSearch({ term, ready, organizations, users, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const [query, setQuery] = useState(term);
 
     useEffect(() => {
@@ -57,7 +60,7 @@ export default function PlatformSearch({ term, ready, organizations, users, help
         <>
             <PageHeader
                 help={help}
-                description="Find an organization or a user across every environment — not only the one the console is pointed at."
+                description={tc('console.find_an_organization_or_a_user_across_every__e71f4ea0')}
             />
 
             {/*
@@ -67,14 +70,20 @@ export default function PlatformSearch({ term, ready, organizations, users, help
             */}
             <output className="sr-only">
                 {ready
-                    ? `${organizations.length} ${organizations.length === 1 ? 'organization' : 'organizations'} and ${users.length} ${users.length === 1 ? 'user' : 'users'} found for “${term}”.`
-                    : 'Type at least two characters to search.'}
+                    ? tc('console.value0_value1_and_value2_value3_found_for_va_8c68eb98', {
+                          value0: organizations.length,
+                          value1: organizations.length === 1 ? 'organization' : 'organizations',
+                          value2: users.length,
+                          value3: users.length === 1 ? 'user' : 'users',
+                          value4: term,
+                      })
+                    : tc('console.type_at_least_two_characters_to_search_7bff2871')}
             </output>
 
             <div className="card p-4 mb-5 mt-8">
                 <Field
-                    label="Search term"
-                    hint="Matches organization name/slug and user email/name. Case-insensitive; literal % and _ are not wildcards."
+                    label={tc('console.search_term_c474ada7')}
+                    hint={tc('console.matches_organization_name_slug_and_user_emai_1c34d2a1')}
                 >
                     <div className="relative">
                         <span
@@ -87,7 +96,7 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                         <Input
                             type="search"
                             style={{ paddingLeft: '2.25rem' }}
-                            placeholder="Name, slug or email…"
+                            placeholder={tc('console.name_slug_or_email_ed821ca9')}
                             autoComplete="off"
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
@@ -99,18 +108,22 @@ export default function PlatformSearch({ term, ready, organizations, users, help
             {!ready ? (
                 <EmptyState
                     icon="search"
-                    title="Type at least two characters"
-                    description="Searches organizations and users across every environment on this install."
+                    title={tc('console.type_at_least_two_characters_63f28ffe')}
+                    description={tc(
+                        'console.searches_organizations_and_users_across_ever_031a8626',
+                    )}
                 />
             ) : (
                 <>
                     <div className="mb-5">
                         <Panel
-                            title="Organizations"
+                            title={tc('console.organizations_2730183d')}
                             action={
                                 <span className="text-xs" style={{ color: 'var(--faint)' }}>
                                     {organizations.length}{' '}
-                                    {organizations.length === 1 ? 'match' : 'matches'}
+                                    {organizations.length === 1
+                                        ? tc('console.match_4945a70f')
+                                        : tc('console.matches_a5408438')}
                                 </span>
                             }
                         >
@@ -119,7 +132,8 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                                     className="py-6 text-center text-sm"
                                     style={{ color: 'var(--faint)' }}
                                 >
-                                    No organizations match “{term}”.
+                                    {tc('console.no_organizations_match_0e4ba25a')}
+                                    {term}”.
                                 </p>
                             ) : (
                                 organizations.map((organization, index) => (
@@ -129,7 +143,9 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                                         plane={organization.plane}
                                         action={
                                             <Button asChild size="sm">
-                                                <Link href={organization.href}>View</Link>
+                                                <Link href={organization.href}>
+                                                    {tc('console.view_dcc839a4')}
+                                                </Link>
                                             </Button>
                                         }
                                     >
@@ -140,7 +156,7 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                                                     tone="destructive"
                                                     className="align-middle ml-1"
                                                 >
-                                                    Suspended
+                                                    {tc('console.suspended_e392a389')}
                                                 </Pill>
                                             )}
                                         </p>
@@ -157,10 +173,13 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                     </div>
 
                     <Panel
-                        title="Users"
+                        title={tc('console.users_6b0cc904')}
                         action={
                             <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {users.length} {users.length === 1 ? 'match' : 'matches'}
+                                {users.length}{' '}
+                                {users.length === 1
+                                    ? tc('console.match_4945a70f')
+                                    : tc('console.matches_a5408438')}
                             </span>
                         }
                     >
@@ -169,7 +188,8 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                                 className="py-6 text-center text-sm"
                                 style={{ color: 'var(--faint)' }}
                             >
-                                No users match “{term}”.
+                                {tc('console.no_users_match_0ca0f315')}
+                                {term}”.
                             </p>
                         ) : (
                             users.map((user, index) => (
@@ -185,11 +205,13 @@ export default function PlatformSearch({ term, ready, organizations, users, help
                                                 className="text-xs"
                                                 style={{ color: 'var(--faint)' }}
                                             >
-                                                No organization
+                                                {tc('console.no_organization_0359b7c6')}
                                             </span>
                                         ) : (
                                             <Button asChild size="sm">
-                                                <Link href={user.href}>View</Link>
+                                                <Link href={user.href}>
+                                                    {tc('console.view_dcc839a4')}
+                                                </Link>
                                             </Button>
                                         )
                                     }

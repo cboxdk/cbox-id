@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -9,6 +10,8 @@ type Props = PageProps<{
 }>;
 
 export default function CreateUser({ indexHref, storeHref }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         email: '',
         name: '',
@@ -18,10 +21,14 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Users" />
+            <Breadcrumb href={indexHref} label={tc('console.users_6b0cc904')} />
 
             <div className="mt-2">
-                <PageHeader description="No password is set here — they get a sign-in link by email and choose how they sign in." />
+                <PageHeader
+                    description={tc(
+                        'console.no_password_is_set_here_they_get_a_sign_in_l_5e488804',
+                    )}
+                />
             </div>
 
             <form
@@ -34,7 +41,7 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
             >
                 <Panel>
                     <div className="space-y-4">
-                        <Field label="Email" error={form.errors.email}>
+                        <Field label={tc('console.email_969ccbd3')} error={form.errors.email}>
                             <Input
                                 name="email"
                                 type="email"
@@ -45,10 +52,14 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
                             />
                         </Field>
 
-                        <Field label="Name" optional error={form.errors.name}>
+                        <Field
+                            label={tc('console.name_dcd1d522')}
+                            optional
+                            error={form.errors.name}
+                        >
                             <Input
                                 name="name"
-                                placeholder="Full name"
+                                placeholder={tc('console.full_name_f13a64ba')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
@@ -57,18 +68,20 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
                         <Checkbox
                             checked={form.data.sendLink}
                             onCheckedChange={(checked) => form.setData('sendLink', checked)}
-                            label="Email them a sign-in link"
-                            hint="Valid once, and short-lived. Turn this off only if you are creating the account ahead of time and will send the link yourself."
+                            label={tc('console.email_them_a_sign_in_link_39a8ca7c')}
+                            hint={tc(
+                                'console.valid_once_and_short_lived_turn_this_off_onl_521114e3',
+                            )}
                         />
                     </div>
                 </Panel>
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create user
+                        {tc('console.create_user_f06da128')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
 

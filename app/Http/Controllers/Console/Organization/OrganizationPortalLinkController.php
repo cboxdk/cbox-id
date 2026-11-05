@@ -57,7 +57,7 @@ final readonly class OrganizationPortalLinkController extends OrganizationTabCon
 
         return match (true) {
             is_string($sentTo) => back()->with('status', "Setup link sent to {$sentTo}."),
-            ($result->payload['email_suppressed'] ?? false) === true => back()->with('status', 'Sandbox environments send no email — copy the setup link below and share it yourself.'),
+            ($result->payload['email_suppressed'] ?? false) === true => back()->with('status', __('console.sandbox_environments_send_no_email_copy_the__e5709a6a')),
             default => back(),
         };
     }
@@ -79,6 +79,6 @@ final readonly class OrganizationPortalLinkController extends OrganizationTabCon
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Admin Portal link revoked.');
+            : back()->with('status', __('console.admin_portal_link_revoked_6a3267cd'));
     }
 }

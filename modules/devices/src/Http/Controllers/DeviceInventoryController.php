@@ -83,7 +83,7 @@ final readonly class DeviceInventoryController extends ConsoleController
          */
         $personal = $this->scope->routeName('devices.mine');
 
-        return $this->page('devices::index', 'Trusted devices', [
+        return $this->page('devices::index', __('console.trusted_devices_7d989273'), [
             'devices' => array_map(static fn (Device $device): array => [
                 'id' => $device->id,
                 'name' => $device->name,

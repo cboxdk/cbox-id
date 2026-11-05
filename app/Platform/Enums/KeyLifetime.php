@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Enums;
 
+use App\Platform\Locale\ConsoleStrings;
 use Carbon\CarbonImmutable;
 
 /**
@@ -33,11 +34,11 @@ enum KeyLifetime: string
     public function label(): string
     {
         return match ($this) {
-            self::Never => 'Never expires',
-            self::Days30 => '30 days',
-            self::Days90 => '90 days',
-            self::Days365 => '1 year',
-            self::Custom => 'Custom date',
+            self::Never => __('console.never_expires_6a989420'),
+            self::Days30 => ConsoleStrings::message('console.30_days_ffd72805'),
+            self::Days90 => ConsoleStrings::message('console.90_days_38825b0f'),
+            self::Days365 => ConsoleStrings::message('console.1_year_91647bad'),
+            self::Custom => __('console.custom_date_43bce053'),
         };
     }
 

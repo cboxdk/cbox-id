@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -22,17 +23,26 @@ type Props = PageProps<{
 }>;
 
 export default function Billing({ projects, usage, help }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <>
-            <PageHeader help={help} description="Plans are per project; usage rolls up across every environment this organization owns." />
+            <PageHeader
+                help={help}
+                description={tc('console.plans_are_per_project_usage_rolls_up_across__1da55f6c')}
+            />
 
             {/* The billing anchor is the PROJECT — one customer can own several products. */}
-            <Panel title="Projects" flush className="mt-6">
+            <Panel title={tc('console.projects_04e2a972')} flush className="mt-6">
                 {projects.length === 0 ? (
                     <EmptyState
                         icon="layers"
-                        title="No projects yet"
-                        description="Each project you create appears here with its plan and environment allowance."
+                        title={tc('console.no_projects_yet_f83c8065')}
+                        description={tc(
+                            'console.each_project_you_create_appears_here_with_it_43199044',
+                        )}
                     />
                 ) : (
                     projects.map((project, index) => (
@@ -48,19 +58,20 @@ export default function Billing({ projects, usage, help }: Props) {
                         >
                             <div className="min-w-0">
                                 <p className="font-medium truncate">{project.name}</p>
-                                <p
-                                    className="text-xs"
-                                    style={{ color: 'var(--muted-foreground)' }}
-                                >
-                                    Early access — free
+                                <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                                    {tc('console.early_access_free_eaed27bb')}
                                 </p>
                             </div>
                             <span
                                 className="text-sm tabular-nums shrink-0"
                                 style={{ color: 'var(--muted)' }}
                             >
-                                {project.used} of {project.limit}{' '}
-                                {project.limit === 1 ? 'environment' : 'environments'}
+                                {project.used}
+                                {tc('console.of_a4282e4b')}
+                                {project.limit}{' '}
+                                {project.limit === 1
+                                    ? tc('console.environment_ba528516')
+                                    : tc('console.environments_d5f6d542')}
                             </span>
                         </Link>
                     ))
@@ -70,22 +81,22 @@ export default function Billing({ projects, usage, help }: Props) {
             {/* Live usage — the figures enterprise billing is based on, across all projects. */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Stat
-                    label="Organizations — across your environments"
-                    value={usage.organizations.toLocaleString()}
+                    label={tc('console.organizations_across_your_environments_0f0a8102')}
+                    value={usage.organizations.toLocaleString(locale)}
                 />
                 <Stat
-                    label="SSO connections — billed"
-                    value={usage.connections.toLocaleString()}
+                    label={tc('console.sso_connections_billed_cf94ded5')}
+                    value={usage.connections.toLocaleString(locale)}
                 />
-                <Stat label="Sign-ins — this month" value={usage.signIns.toLocaleString()} />
+                <Stat
+                    label={tc('console.sign_ins_this_month_b8097e2d')}
+                    value={usage.signIns.toLocaleString(locale)}
+                />
             </div>
 
-            <Panel title="How pricing works" className="mt-4">
+            <Panel title={tc('console.how_pricing_works_3090dcf5')} className="mt-4">
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    Each project is billed on its own plan — usage-based on monthly active users and
-                    enterprise connections (SSO &amp; SCIM) across that project&rsquo;s environments.
-                    Sandbox environments carry no connection charge. Per-project billing arrives with
-                    general availability; every project is free during early access.
+                    {tc('console.each_project_is_billed_on_its_own_plan_usage_491e1817')}
                 </p>
             </Panel>
         </>

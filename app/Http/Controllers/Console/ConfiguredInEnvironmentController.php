@@ -25,7 +25,7 @@ final readonly class ConfiguredInEnvironmentController extends ConsoleController
 {
     public function show(string $route, ?string $twin): Response
     {
-        $label = RootHostConsole::label($route) ?? 'This page';
+        $label = RootHostConsole::label($route) ?? __('console.this_page_ebf2023c');
 
         return $this->page('console/configured-in-environment', $label, [
             'label' => $label,

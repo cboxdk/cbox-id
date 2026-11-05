@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -22,6 +23,8 @@ type Props = PageProps<{
 }>;
 
 export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Props) {
+    const { t: tc } = useTranslator();
+
     const [removing, setRemoving] = useState<DeviceRow | null>(null);
 
     /*
@@ -46,15 +49,14 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description="Phones enrolled in the authenticator app. They receive approval prompts and alerts when your account signs in somewhere new."
+                description={tc('console.phones_enrolled_in_the_authenticator_app_the_c53bb961')}
             />
 
             {enrolment === null ? (
                 /* Reached only when self-provisioning failed — the error is in the logs. */
-                <Panel title="Add a phone">
+                <Panel title={tc('console.add_a_phone_f2ec926d')}>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Setting up the authenticator app for this environment didn&rsquo;t succeed.
-                        The error has been logged — reload this page to try again.
+                        {tc('console.setting_up_the_authenticator_app_for_this_en_90ff9348')}
                     </p>
                 </Panel>
             ) : (
@@ -76,14 +78,16 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                         <div className="hidden sm:block shrink-0 max-w-full">
                             <img
                                 src={enrolment.qr}
-                                alt="Enrolment QR code"
+                                alt={tc('console.enrolment_qr_code_815a6720')}
                                 width={220}
                                 height={220}
                             />
                         </div>
 
                         <div className="min-w-0 space-y-3">
-                            <h2 className="text-base font-medium">Add a phone</h2>
+                            <h2 className="text-base font-medium">
+                                {tc('console.add_a_phone_f2ec926d')}
+                            </h2>
 
                             {/*
                                 The instructions differ by which device you are on, so they
@@ -91,16 +95,19 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                 is half-wrong everywhere.
                             */}
                             <p className="text-sm sm:hidden" style={{ color: 'var(--muted)' }}>
-                                Open <strong>Cbox ID</strong> on this phone to finish enrolling
-                                it.
+                                {tc('console.open_b8039d1d')}
+                                <strong>{tc('console.cbox_id_ce17c4bb')}</strong>
+                                {tc('console.on_this_phone_to_finish_enrolling_it_7ee957d6')}
                             </p>
                             <p
                                 className="hidden sm:block text-sm"
                                 style={{ color: 'var(--muted)' }}
                             >
-                                Install <strong>Cbox ID</strong> on your phone, open it, and scan
-                                this code. You&rsquo;ll then sign in with your normal account in
-                                the browser.
+                                {tc('console.install_240466e4')}
+                                <strong>{tc('console.cbox_id_ce17c4bb')}</strong>
+                                {tc(
+                                    'console.on_your_phone_open_it_and_scan_this_code_you_a544ca67',
+                                )}
                             </p>
 
                             {/*
@@ -110,7 +117,7 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                             */}
                             <div className="flex flex-wrap items-center gap-3 pt-1">
                                 <a href={enrolment.uri} className="btn btn-primary sm:hidden">
-                                    Open the Cbox ID app
+                                    {tc('console.open_the_cbox_id_app_772f3270')}
                                 </a>
                                 {/*
                                     `sm:block`, NOT `sm:inline`. In the compiled stylesheet
@@ -124,7 +131,9 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                     className="hidden sm:block text-sm underline"
                                     style={{ color: 'var(--muted)' }}
                                 >
-                                    Reading this on the phone itself? Open the app
+                                    {tc(
+                                        'console.reading_this_on_the_phone_itself_open_the_ap_4b487e64',
+                                    )}
                                 </a>
                                 {appStoreUrl !== null && (
                                     <a
@@ -134,7 +143,7 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                         className="text-sm underline"
                                         style={{ color: 'var(--muted)' }}
                                     >
-                                        Get the app
+                                        {tc('console.get_the_app_ec196e05')}
                                     </a>
                                 )}
                             </div>
@@ -145,9 +154,9 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                 being true the moment the code started carrying an identity.
                             */}
                             <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                                This link expires after two minutes and only works once, for your
-                                account. It refreshes on its own while this page is open —
-                                don&rsquo;t share a screenshot of it.
+                                {tc(
+                                    'console.this_link_expires_after_two_minutes_and_only_2009db22',
+                                )}
                             </p>
                         </div>
                     </div>
@@ -155,15 +164,17 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
             )}
 
             <div className="card">
-                <Table caption="The phones enrolled in the authenticator app for your account.">
+                <Table
+                    caption={tc('console.the_phones_enrolled_in_the_authenticator_app_00b01bfd')}
+                >
                     <thead>
                         <tr>
-                            <Th>Device</Th>
-                            <Th>Platform</Th>
-                            <Th>Status</Th>
-                            <Th>Last seen</Th>
+                            <Th>{tc('console.device_6ba0bdec')}</Th>
+                            <Th>{tc('console.platform_c78ffe19')}</Th>
+                            <Th>{tc('console.status_920e413c')}</Th>
+                            <Th>{tc('console.last_seen_21fd79c7')}</Th>
                             <Th>
-                                <span className="sr-only">Actions</span>
+                                <span className="sr-only">{tc('console.actions_ff8059dc')}</span>
                             </Th>
                         </tr>
                     </thead>
@@ -175,7 +186,9 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                     className="py-10 text-center"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    No devices enrolled yet — use the card above to add your phone.
+                                    {tc(
+                                        'console.no_devices_enrolled_yet_use_the_card_above_t_b9a12da2',
+                                    )}
                                 </Td>
                             </tr>
                         ) : (
@@ -198,10 +211,12 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                         <Button
                                             size="sm"
                                             variant="danger"
-                                            aria-label={`Remove ${device.name}`}
+                                            aria-label={tc('console.remove_value0_b597e5fb', {
+                                                value0: device.name,
+                                            })}
                                             onClick={() => setRemoving(device)}
                                         >
-                                            Remove
+                                            {tc('console.remove_c3812fc4')}
                                         </Button>
                                     </Td>
                                 </tr>
@@ -214,11 +229,17 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
             <Dialog
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
-                title={removing === null ? '' : `Remove ${removing.name}?`}
-                description="It stops receiving approval prompts and alerts. You can enrol it again from this page."
+                title={
+                    removing === null
+                        ? ''
+                        : tc('console.remove_value0_b8b38a7a', { value0: removing.name })
+                }
+                description={tc('console.it_stops_receiving_approval_prompts_and_aler_5c22711e')}
                 footer={
                     <>
-                        <Button onClick={() => setRemoving(null)}>Cancel</Button>
+                        <Button onClick={() => setRemoving(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -230,7 +251,7 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                                 }
                             }}
                         >
-                            Remove
+                            {tc('console.remove_c3812fc4')}
                         </Button>
                     </>
                 }

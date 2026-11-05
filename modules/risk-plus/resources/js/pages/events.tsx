@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Pill, Table, Td, TdMono, Th } from '@/ui';
@@ -19,34 +20,44 @@ type Props = PageProps<{
 }>;
 
 export default function RiskEvents({ events, wholeEnvironment, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const scope = wholeEnvironment
-        ? ', across this environment'
-        : ", for this organization's members";
+        ? tc('console.across_this_environment_92c427a7')
+        : tc('console.for_this_organization_s_members_fcaf6d7e');
 
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description={`Sign-ins and requests the platform scored as suspicious enough to flag${scope}. Newest first.`}
+                description={tc('console.sign_ins_and_requests_the_platform_scored_as_091fe5e6', {
+                    value0: scope,
+                })}
             />
 
             {events.length === 0 ? (
                 <EmptyState
                     icon="shield"
-                    title="No elevated risk events yet"
-                    description="A flagged sign-in appears here as soon as one is scored. Nothing to do until one is."
+                    title={tc('console.no_elevated_risk_events_yet_75ea2b81')}
+                    description={tc(
+                        'console.a_flagged_sign_in_appears_here_as_soon_as_on_234914f4',
+                    )}
                 />
             ) : (
                 <div className="card overflow-hidden">
                     <div className="overflow-x-auto">
-                        <Table caption="Flagged sign-ins and requests, newest first, with the score and the reasons behind it">
+                        <Table
+                            caption={tc(
+                                'console.flagged_sign_ins_and_requests_newest_first_w_c0c618d5',
+                            )}
+                        >
                             <thead>
                                 <tr>
-                                    <Th>When</Th>
-                                    <Th>Action</Th>
-                                    <Th>Outcome</Th>
-                                    <Th className="text-right">Score</Th>
-                                    <Th>Reasons</Th>
+                                    <Th>{tc('console.when_cf9c7aa2')}</Th>
+                                    <Th>{tc('console.action_64cff131')}</Th>
+                                    <Th>{tc('console.outcome_4e80abb5')}</Th>
+                                    <Th className="text-right">{tc('console.score_38e5a46c')}</Th>
+                                    <Th>{tc('console.reasons_72ed245d')}</Th>
                                 </tr>
                             </thead>
                             <tbody>

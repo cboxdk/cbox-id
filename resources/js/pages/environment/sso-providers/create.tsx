@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -23,6 +24,8 @@ export default function RegisterServiceProvider({
     indexHref,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         entityId: '',
         acsUrl: '',
@@ -36,10 +39,14 @@ export default function RegisterServiceProvider({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="SAML apps" />
+            <Breadcrumb href={indexHref} label={tc('console.saml_apps_072d5a25')} />
 
             <div className="mt-2">
-                <PageHeader description="Register an application that uses this environment as its SAML identity provider." />
+                <PageHeader
+                    description={tc(
+                        'console.register_an_application_that_uses_this_envir_8eee8cef',
+                    )}
+                />
             </div>
 
             <form
@@ -59,10 +66,10 @@ export default function RegisterServiceProvider({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Register application
+                        {tc('console.register_application_8ff923b3')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

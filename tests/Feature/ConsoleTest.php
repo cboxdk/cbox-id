@@ -85,7 +85,7 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
 
     $shown->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('newToken', $token));
 
-    expect(json_encode($shown->inertiaProps()))->toBeString()->not->toContain('scim_');
+    expect(json_encode($shown->inertiaProps()))->toBeString()->not->toContain($token);
 
     // …and the next visit carries nothing at all.
     test()->get(route('directories.show', $directory->id))

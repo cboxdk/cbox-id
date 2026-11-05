@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Dialog as Primitive } from 'radix-ui';
 import { type ReactNode, type RefObject, useRef } from 'react';
 import { cn } from '@/lib/cn';
@@ -93,6 +94,8 @@ export function Dialog({
     initialFocus,
     children,
 }: DialogProps) {
+    const { t: tc } = useUiTranslator();
+
     const returnFocus = useReturnFocus(initialFocus);
 
     return (
@@ -112,7 +115,10 @@ export function Dialog({
                                 </Primitive.Description>
                             )}
                         </div>
-                        <Primitive.Close className="cbx-iconbtn" aria-label="Close">
+                        <Primitive.Close
+                            className="cbx-iconbtn"
+                            aria-label={tc('console.close_7d9eb7ac', 'Close')}
+                        >
                             <Icon name="close" className="w-4 h-4" />
                         </Primitive.Close>
                     </div>

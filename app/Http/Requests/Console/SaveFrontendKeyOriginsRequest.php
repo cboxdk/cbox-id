@@ -36,7 +36,7 @@ final class SaveFrontendKeyOriginsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'origins.required' => 'List at least one origin — a key presentable from nowhere is a revoked key. Revoke it instead.',
+            'origins.required' => __('console.list_at_least_one_origin_a_key_presentable_f_71e6ca50'),
         ];
     }
 

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -41,6 +42,8 @@ export default function EnvironmentDomains({
     urls,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     /*
      * "DNS has not propagated" is not an error about the DOMAIN — the value is fine and
      * the record is probably right — so the server reports it under a key no input owns,
@@ -54,20 +57,22 @@ export default function EnvironmentDomains({
         <div style={{ maxWidth: '42rem' }}>
             <PageHeader
                 help={help}
-                description="Serve an environment's identity endpoints on your own domain, verified by DNS."
+                description={tc('console.serve_an_environment_s_identity_endpoints_on_c475397f')}
             />
 
             {environments.length === 0 ? (
                 <div className="card mt-6">
                     <EmptyState
                         icon="layers"
-                        title="No environments yet"
-                        description="Create an environment first, then you can give it a custom domain."
+                        title={tc('console.no_environments_yet_8c63cac4')}
+                        description={tc(
+                            'console.create_an_environment_first_then_you_can_giv_e7ae7f95',
+                        )}
                     />
                 </div>
             ) : (
                 <div className="mt-6 space-y-6">
-                    <Field label="Environment">
+                    <Field label={tc('console.environment_9e471951')}>
                         <Select
                             value={selected}
                             onValueChange={(environment) =>
@@ -107,12 +112,16 @@ export default function EnvironmentDomains({
             <ConfirmDelete
                 open={removing}
                 onOpenChange={setRemoving}
-                name={verifiedDomain ?? challenge?.domain ?? 'this domain'}
-                verb={verifiedDomain !== null ? 'Stop serving' : 'Cancel verification'}
+                name={verifiedDomain ?? challenge?.domain ?? tc('console.this_domain_d9e25fa6')}
+                verb={
+                    verifiedDomain !== null
+                        ? tc('console.stop_serving_339887ce')
+                        : tc('console.cancel_verification_2ce006fd')
+                }
                 consequence={
                     verifiedDomain !== null
-                        ? 'This environment falls back to its default domain. Every client pinned to the current issuer, discovery URL or JWKS URL breaks until it is repointed.'
-                        : 'The DNS TXT challenge stops being valid — re-adding the domain issues a new one.'
+                        ? tc('console.this_environment_falls_back_to_its_default_d_201d6a2d')
+                        : tc('console.the_dns_txt_challenge_stops_being_valid_re_a_0338f0b8')
                 }
                 onConfirm={() => {
                     setRemoving(false);
@@ -136,6 +145,8 @@ function Live({
     environment: string;
     onRemove: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="space-y-4">
             <div
@@ -152,17 +163,20 @@ function Live({
                         style={{ color: 'var(--success-strong)' }}
                     />
                     <span className="font-medium">{domain}</span>
-                    <Badge>Verified</Badge>
+                    <Badge>{tc('console.verified_4f783840')}</Badge>
                 </div>
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    This environment's issuer, discovery and JWKS are served on{' '}
-                    <span className="mono">https://{domain}</span>. Point the host at your ingress
-                    and terminate TLS there.
+                    {tc('console.this_environment_s_issuer_discovery_and_jwks_4b31ffd3')}{' '}
+                    <span className="mono">
+                        {tc('console.https_66dfeeed')}
+                        {domain}
+                    </span>
+                    {tc('console.point_the_host_at_your_ingress_and_terminate_aefa18ac')}
                 </p>
             </div>
 
             <Button variant="danger" onClick={onRemove} data-environment={environment}>
-                Remove domain
+                {tc('console.remove_domain_5ce43507')}
             </Button>
         </div>
     );
@@ -188,22 +202,26 @@ function Pending({
     urls: { verify: string };
     onCancel: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const [verifying, setVerifying] = useState(false);
 
     return (
         <Panel
-            title="Prove you control the domain"
+            title={tc('console.prove_you_control_the_domain_d57cf229')}
             description={
                 <>
-                    Add this DNS <b>TXT</b> record at your domain, then verify. It proves you
-                    control <span className="mono">{challenge.domain}</span>.
+                    {tc('console.add_this_dns_41ae6113')}
+                    <b>TXT</b>
+                    {tc('console.record_at_your_domain_then_verify_it_proves__1c7dd39b')}
+                    <span className="mono">{challenge.domain}</span>.
                 </>
             }
         >
             <dl className="rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-                <Record label="Type" value="TXT" copyable={false} />
-                <Record label="Name" value={challenge.recordName} />
-                <Record label="Value" value={challenge.recordValue} last />
+                <Record label={tc('console.type_baaddf70')} value="TXT" copyable={false} />
+                <Record label={tc('console.name_dcd1d522')} value={challenge.recordName} />
+                <Record label={tc('console.value_8e37953d')} value={challenge.recordValue} last />
             </dl>
 
             {verifyError !== undefined && (
@@ -225,9 +243,9 @@ function Pending({
                         );
                     }}
                 >
-                    Verify
+                    {tc('console.verify_eea2745e')}
                 </Button>
-                <Button onClick={onCancel}>Cancel</Button>
+                <Button onClick={onCancel}>{tc('console.cancel_19766ed6')}</Button>
             </div>
         </Panel>
     );
@@ -265,10 +283,12 @@ function Record({
 
 /** No domain yet. */
 function RequestDomain({ environment, href }: { environment: string; href: string }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ environment, domain: '' });
 
     return (
-        <Panel title="Add a domain">
+        <Panel title={tc('console.add_a_domain_a86506fa')}>
             <form
                 className="space-y-4"
                 onSubmit={(event) => {
@@ -280,8 +300,8 @@ function RequestDomain({ environment, href }: { environment: string; href: strin
                 }}
             >
                 <Field
-                    label="Custom domain"
-                    hint="A hostname you control — usually a subdomain, like id.yourcompany.com."
+                    label={tc('console.custom_domain_d7d4c1e4')}
+                    hint={tc('console.a_hostname_you_control_usually_a_subdomain_l_01b144f8')}
                     error={form.errors.domain}
                 >
                     <Input
@@ -295,7 +315,7 @@ function RequestDomain({ environment, href }: { environment: string; href: strin
                 </Field>
 
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    Add domain
+                    {tc('console.add_domain_d86476ae')}
                 </Button>
             </form>
         </Panel>

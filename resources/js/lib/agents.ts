@@ -1,3 +1,4 @@
+import type { Translator } from '@/i18n';
 /**
  * The agent scope picker's rules, as plain functions — what a preset grants, how risky a
  * set of scopes is, and how the picker groups them — so they are tested once here rather
@@ -178,4 +179,35 @@ export function unheldScopes(selected: string[], scopes: AgentScope[]): AgentSco
     return scopes.filter(
         (scope) => selected.includes(scope.value) && !scope.held && scope.risk !== 'read',
     );
+}
+
+/** Presentation only; preset IDs, approval levels and scope selection stay unchanged. */
+export function presetPresentation(
+    id: PresetId,
+    t: Translator['t'],
+): { label: string; description: string } {
+    const copy = {
+        'read-only': {
+            label: t('console.read_only_72bb9089'),
+            description: t('console.reads_everything_it_is_offered_and_changes_n_d3c6cccb'),
+        },
+        support: {
+            label: t('console.support_agent_901d4eb2'),
+            description: t('console.reads_everything_and_helps_people_users_memb_4a7c0b0d'),
+        },
+        'full-admin': {
+            label: t('console.full_admin_53de3944'),
+            description: t('console.every_scope_critical_actions_keys_secrets_si_c77ffe54'),
+        },
+    };
+    return copy[id];
+}
+
+export function riskLabel(risk: Risk, t: Translator['t']): string {
+    return {
+        read: t('console.read_9b9a8d05'),
+        write: t('console.write_3f00927a'),
+        destructive: t('console.destructive_c3e58a73'),
+        critical: t('console.critical_427dd296'),
+    }[risk];
 }

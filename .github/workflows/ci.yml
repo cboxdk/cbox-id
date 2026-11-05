@@ -162,6 +162,12 @@ jobs:
           cp .env.example .env || true
           php artisan key:generate --force
 
+      - name: Frontend types and component tests
+        run: |
+          node --test bin/lib/wayfinder-compat.test.mjs
+          npm run typecheck
+          npm test
+
       # `docs-screenshots` IS EXCLUDED. It rewrites docs/screenshots/*.png
       # (tests/Browser/DocsScreenshotsTest.php), and runs in its own workflow on every
       # release tag (docs-screenshots.yml), which proposes the pictures as a pull request.
@@ -181,6 +187,16 @@ jobs:
       # longest job, fix those waits before reaching for `--parallel` here.
       - name: Tests (Browser — axe-core a11y, real-browser smoke, visual)
         run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots
+
+      - name: Keep the visual diff when a browser comparison fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-visual-diff
+          path: tests/Browser/Screenshots/ImageDiffView/*.html
+          if-no-files-found: ignore
+          retention-days: 3
+
 
   # ---------------------------------------------------------------------------
   # SUPPLY CHAIN — its own job so it ALWAYS runs.

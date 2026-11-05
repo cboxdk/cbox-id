@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import {
     confirmStepUp,
@@ -12,7 +13,7 @@ import { Button, Dialog, Icon, PasswordField } from '@/ui';
 /**
  * "CONFIRM IT'S YOU" — the step-up, asked on the page the person is on.
  *
- * Mounted once, beside the app, and shown whenever something asks for a step-up
+ * Mounted inside the console's Inertia context, and shown whenever something asks for a step-up
  * (see `lib/stepUp`): a refused Inertia visit, or the passkey ceremony. It confirms
  * against the endpoint the server named — the organization plane's or the environment
  * plane's, never one for the other — and then lets whatever was waiting carry on, so the
@@ -32,6 +33,8 @@ export function StepUpDialog() {
 }
 
 function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
+    const { t: tc } = useTranslator();
+
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -59,7 +62,7 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
         }
 
         if (password === '') {
-            setError('Enter your password.');
+            setError(tc('console.enter_your_password_f0d4a579'));
             field.current?.focus();
 
             return;
@@ -68,7 +71,12 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
         setBusy(true);
         setError(null);
 
-        const outcome = await confirmStepUp(prompt.challenge, password);
+        const outcome = await confirmStepUp(prompt.challenge, password, {
+            offline: tc('console.you_appear_to_be_offline_check_your_connecti_0d700f8e'),
+            expired: tc('console.this_page_has_expired_reload_it_and_try_agai_70dbb1a7'),
+            failed: tc('console.that_did_not_work_try_again_d38eba7d'),
+            reload: tc('console.that_did_not_work_reload_the_page_and_try_ag_d90cc6b4'),
+        });
 
         setBusy(false);
 
@@ -93,16 +101,20 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                     stepUpCancelled();
                 }
             }}
-            title="Confirm it's you"
+            title={tc('console.confirm_it_s_you_6176eec2')}
             description={
                 continuing
-                    ? 'You are confirmed for the next few minutes.'
-                    : `${prompt.challenge.reason ?? 'This is a protected action.'} Re-enter your password to continue.`
+                    ? tc('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')
+                    : tc('console.value0_re_enter_your_password_to_continue_2263dcfb', {
+                          value0:
+                              prompt.challenge.reason ??
+                              tc('console.this_is_a_protected_action_b796636f'),
+                      })
             }
             footer={
                 continuing ? (
                     <>
-                        <Button onClick={stepUpCancelled}>Cancel</Button>
+                        <Button onClick={stepUpCancelled}>{tc('console.cancel_19766ed6')}</Button>
                         <Button
                             ref={carryOn}
                             variant="primary"
@@ -116,9 +128,9 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                     </>
                 ) : (
                     <>
-                        <Button onClick={stepUpCancelled}>Cancel</Button>
+                        <Button onClick={stepUpCancelled}>{tc('console.cancel_19766ed6')}</Button>
                         <Button type="submit" form="cbx-step-up" variant="primary" loading={busy}>
-                            Confirm
+                            {tc('console.confirm_eebdd24a')}
                         </Button>
                     </>
                 )
@@ -131,13 +143,13 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                         className="w-4 h-4 shrink-0"
                         style={{ color: 'var(--success-strong)' }}
                     />
-                    Password confirmed. Continue when you are ready.
+                    {tc('console.password_confirmed_continue_when_you_are_rea_b96fdf24')}
                 </output>
             ) : (
                 <form id="cbx-step-up" noValidate onSubmit={(event) => void submit(event)}>
                     <PasswordField
                         ref={field}
-                        label="Password"
+                        label={tc('console.password_e7cf3ef4')}
                         name="password"
                         autoComplete="current-password"
                         error={error}

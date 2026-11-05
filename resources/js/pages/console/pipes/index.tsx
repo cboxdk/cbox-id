@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -26,11 +27,13 @@ type Props = PageProps<{
  * whether or not anybody has set it up yet.
  */
 export default function PipesIndex({ help, providers }: Props) {
+    const { t: tc } = useTranslator();
+
     return (
         <>
             <PageHeader
                 help={help}
-                description="Let the people who use your apps connect their own GitHub, Google, Slack or Salesforce account, so your apps can call those APIs on their behalf. Their tokens are stored encrypted, refreshed here, and leased only to the apps you grant."
+                description={tc('console.let_the_people_who_use_your_apps_connect_the_19a2d0ed')}
             />
 
             <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -47,16 +50,27 @@ export default function PipesIndex({ help, providers }: Props) {
                             </div>
                             {provider.configured ? (
                                 <Pill tone={provider.enabled ? 'success' : 'neutral'}>
-                                    {provider.enabled ? 'Enabled' : 'Disabled'}
+                                    {provider.enabled
+                                        ? tc('console.enabled_92c1cdfd')
+                                        : tc('console.disabled_75081b59')}
                                 </Pill>
                             ) : (
-                                <Pill>Not set up</Pill>
+                                <Pill>{tc('console.not_set_up_94b768af')}</Pill>
                             )}
                         </div>
                         <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                             {provider.configured
-                                ? `${provider.connections} connected ${provider.connections === 1 ? 'account' : 'accounts'} · ${provider.grants} ${provider.grants === 1 ? 'app' : 'apps'} granted`
-                                : 'People cannot connect this provider yet.'}
+                                ? tc(
+                                      'console.value0_connected_value1_value2_value3_grante_0455f24d',
+                                      {
+                                          value0: provider.connections,
+                                          value1:
+                                              provider.connections === 1 ? 'account' : 'accounts',
+                                          value2: provider.grants,
+                                          value3: provider.grants === 1 ? 'app' : 'apps',
+                                      },
+                                  )
+                                : tc('console.people_cannot_connect_this_provider_yet_a24e2212')}
                         </p>
                         <div className="mt-3">
                             <Button
@@ -65,7 +79,9 @@ export default function PipesIndex({ help, providers }: Props) {
                                 variant={provider.configured ? undefined : 'primary'}
                             >
                                 <Link href={provider.href}>
-                                    {provider.configured ? 'Manage' : 'Set up'}
+                                    {provider.configured
+                                        ? tc('console.manage_5a234448')
+                                        : tc('console.set_up_4da10f1f')}
                                 </Link>
                             </Button>
                         </div>

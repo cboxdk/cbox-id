@@ -38,6 +38,7 @@ export default defineConfig({
         // is that a renamed or removed route becomes a TypeScript error rather than a
         // 404 somebody finds in production: nothing in resources/js spells a URL.
         wayfinder({
+            command: 'node bin/generate-ui-routes.mjs',
             formVariants: true,
         }),
     ],

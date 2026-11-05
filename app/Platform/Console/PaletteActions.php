@@ -8,6 +8,7 @@ use App\Http\Props\Shell\NavAreaProps;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Connect\ActionSnippets;
+use App\Platform\Locale\ConsoleStrings;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 
@@ -153,7 +154,7 @@ final readonly class PaletteActions
         }
 
         // A verb that needs a record first opens the list to pick one from.
-        return $verb === 'Create' ? $label : $label.'…';
+        return $verb === 'Create' ? ConsoleStrings::text($label) : ConsoleStrings::text($label).'…';
     }
 
     private static function singular(string $word): string

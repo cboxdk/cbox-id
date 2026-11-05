@@ -19,6 +19,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\PlaneResolver;
@@ -64,7 +65,7 @@ final readonly class AgentController extends ConsoleController
 
         $me = $auth->subjectId();
 
-        return $this->page('environment/agents/index', Vocabulary::AGENTS, [
+        return $this->page('environment/agents/index', ConsoleStrings::text(Vocabulary::AGENTS), [
             'help' => HelpProps::for(HelpTopic::Agents),
             'agents' => array_map(static fn (AgentRowProps $row): array => $row->toArray(), $roster['rows']),
             'inactiveCount' => $roster['inactive'],
@@ -93,7 +94,7 @@ final readonly class AgentController extends ConsoleController
         $auth = $this->environmentAdmin();
         $preset = $request->string('preset')->toString();
 
-        return $this->page('environment/agents/create', 'New agent', [
+        return $this->page('environment/agents/create', __('console.new_agent_98a23e6d'), [
             'help' => HelpProps::for(HelpTopic::Agents),
             'environmentId' => (string) $auth->environmentId(),
             'scopes' => array_map(static fn (AgentScope $scope): array => $scope->toArray(), $scopes->catalogue()),
@@ -103,10 +104,10 @@ final readonly class AgentController extends ConsoleController
                 'danger' => $action->danger->value,
             ], $scopes->actions()),
             'approvalLevels' => [
-                ['value' => 'none', 'label' => 'None', 'hint' => 'The agent acts on its own, within its scopes.'],
-                ['value' => Danger::Critical->value, 'label' => 'Critical actions', 'hint' => 'Minting keys, rotating secrets, changing how people sign in.'],
-                ['value' => Danger::Destructive->value, 'label' => 'Destructive and above', 'hint' => 'Also anything that deletes or revokes.'],
-                ['value' => Danger::Write->value, 'label' => 'Every change', 'hint' => 'The agent reads freely and asks before it writes anything.'],
+                ['value' => 'none', 'label' => __('console.none_dc937b59'), 'hint' => __('console.the_agent_acts_on_its_own_within_its_scopes_e60e0ea6')],
+                ['value' => Danger::Critical->value, 'label' => __('console.critical_actions_cdc5e469'), 'hint' => __('console.minting_keys_rotating_secrets_changing_how_p_b689e578')],
+                ['value' => Danger::Destructive->value, 'label' => __('console.destructive_and_above_0f4a2472'), 'hint' => __('console.also_anything_that_deletes_or_revokes_ceebe14f')],
+                ['value' => Danger::Write->value, 'label' => __('console.every_change_c066965f'), 'hint' => __('console.the_agent_reads_freely_and_asks_before_it_wr_9ee7021d')],
             ],
             // Agents are usually for a piece of work, so the default is a lifetime rather
             // than forever — and the console offers the presets an agent is minted with.
@@ -141,7 +142,7 @@ final readonly class AgentController extends ConsoleController
         $mcp = $this->mcp();
         $origin = $mcp === null ? rtrim(url('/'), '/') : self::origin($mcp->identifier);
 
-        return $this->page('environment/agents/connect', 'Connect', [
+        return $this->page('environment/agents/connect', __('console.connect_1a2303ed'), [
             'help' => HelpProps::for(HelpTopic::ConnectAgent),
             'mcpUrl' => $mcp->identifier ?? $origin.McpProtectedResources::PATH,
             'metadataUrl' => $mcp?->metadataUrl() ?? $origin.ProtectedResource::WELL_KNOWN.McpProtectedResources::PATH,

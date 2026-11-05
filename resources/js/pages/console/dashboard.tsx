@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -11,15 +12,6 @@ import {
     Progress,
     type StatTone,
 } from '@/ui';
-
-interface App {
-    name: string;
-    url: string;
-    host: string;
-    initial: string;
-    /** A stable hue per app name, so each tile keeps a recognisable colour. */
-    hue: number;
-}
 
 interface ModuleCard {
     key: string;
@@ -46,7 +38,6 @@ type Props = PageProps<{
     heading: string;
     greeting: string;
     isAdmin: boolean;
-    apps: App[];
     role: string;
     organizationName: string | null;
     memberCount: number;
@@ -75,7 +66,6 @@ export default function Dashboard({
     heading,
     greeting,
     isAdmin,
-    apps,
     role,
     organizationName,
     memberCount,
@@ -86,11 +76,13 @@ export default function Dashboard({
     help,
     urls,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <>
             <PageHeader title={heading} help={help} description={greeting} />
-
-            {apps.length > 0 && <Apps apps={apps} />}
 
             {isAdmin ? (
                 <>
@@ -122,10 +114,11 @@ export default function Dashboard({
                                 className="flex items-center gap-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <Icon name="members" className="w-4 h-4" /> Members
+                                <Icon name="members" className="w-4 h-4" />
+                                {tc('console.members_0240fc22')}
                             </div>
                             <p className="mt-2 text-3xl font-semibold tracking-tight mono">
-                                {memberCount.toLocaleString()}
+                                {memberCount.toLocaleString(locale)}
                             </p>
                         </div>
                         <div className="card p-5">
@@ -133,11 +126,14 @@ export default function Dashboard({
                                 className="flex items-center gap-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <Icon name="connections" className="w-4 h-4" /> Enterprise SSO
+                                <Icon name="connections" className="w-4 h-4" />
+                                {tc('console.enterprise_sso_d3bef1d7')}
                             </div>
                             <p className="mt-2 text-lg font-semibold">
                                 <Pill tone={ssoActive ? 'success' : 'neutral'}>
-                                    {ssoActive ? 'Active' : 'Not configured'}
+                                    {ssoActive
+                                        ? tc('console.active_92340695')
+                                        : tc('console.not_configured_dd1841d2')}
                                 </Pill>
                             </p>
                         </div>
@@ -146,7 +142,8 @@ export default function Dashboard({
                                 className="flex items-center gap-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <Icon name="shield" className="w-4 h-4" /> Your role
+                                <Icon name="shield" className="w-4 h-4" />
+                                {tc('console.your_role_2c73fd13')}
                             </div>
                             <p className="mt-2 text-lg font-semibold">{role}</p>
                         </div>
@@ -182,7 +179,7 @@ export default function Dashboard({
                 </>
             ) : (
                 /*
-                    MEMBER OVERVIEW: their apps, above, plus a nudge to their own security.
+                    MEMBER OVERVIEW: a nudge to their own security.
                     Org stats, the org-wide audit feed, the module cards and the setup
                     checklist are admin surfaces — a plain member neither manages nor needs
                     to see them.
@@ -193,7 +190,8 @@ export default function Dashboard({
                             className="flex items-center gap-2 text-sm"
                             style={{ color: 'var(--muted-foreground)' }}
                         >
-                            <Icon name="shield" className="w-4 h-4" /> Your role
+                            <Icon name="shield" className="w-4 h-4" />
+                            {tc('console.your_role_2c73fd13')}
                         </div>
                         {/*
                             The separator belongs to the organization name, not to the role:
@@ -215,63 +213,21 @@ export default function Dashboard({
                             className="flex items-center gap-2 text-sm"
                             style={{ color: 'var(--muted-foreground)' }}
                         >
-                            <Icon name="key" className="w-4 h-4" /> Your security
+                            <Icon name="key" className="w-4 h-4" />
+                            {tc('console.your_security_4cb5de89')}
                         </div>
                         <p className="mt-2 text-sm">
-                            Add a passkey or two-factor authentication to keep your account safe.
+                            {tc('console.add_a_passkey_or_two_factor_authentication_t_1e16b90d')}
                         </p>
                         <Button asChild size="sm" variant="primary" className="mt-3 self-start">
-                            <Link href={urls.account}>Manage security</Link>
+                            <Link href={urls.account}>
+                                {tc('console.manage_security_9292d619')}
+                            </Link>
                         </Button>
                     </div>
                 </div>
             )}
         </>
-    );
-}
-
-function Apps({ apps }: { apps: App[] }) {
-    return (
-        <section className="mb-6">
-            <h2
-                className="text-xs font-medium uppercase mb-3"
-                style={{ color: 'var(--muted-foreground)', letterSpacing: '0.06em' }}
-            >
-                Your apps
-            </h2>
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {apps.map((app) => (
-                    // A real `<a>`, not an Inertia visit: these leave this application
-                    // entirely, which is the whole point of the launcher.
-                    <a key={app.url} href={app.url} className="cbx-app-tile">
-                        <span
-                            className="cbx-app-logo"
-                            aria-hidden="true"
-                            style={{
-                                background: `linear-gradient(135deg, oklch(0.63 0.15 ${app.hue}), oklch(0.5 0.17 ${(app.hue + 28) % 360}))`,
-                            }}
-                        >
-                            {app.initial}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                            <span
-                                className="block truncate font-semibold"
-                                style={{ color: 'var(--foreground)' }}
-                            >
-                                {app.name}
-                            </span>
-                            <span
-                                className="block truncate text-xs mono"
-                                style={{ color: 'var(--muted-foreground)' }}
-                            >
-                                {app.host}
-                            </span>
-                        </span>
-                        <Icon name="external" className="cbx-app-go w-4 h-4" aria-hidden="true" />
-                    </a>
-                ))}
-            </div>
-        </section>
     );
 }
 
@@ -282,6 +238,8 @@ function FirstRun({
     checklist: NonNullable<Props['checklist']>;
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div
             className="card p-5 mb-4"
@@ -302,15 +260,20 @@ function FirstRun({
                         <Icon name="rocket" className="w-4 h-4" />
                     </span>
                     <div className="min-w-0">
-                        <p className="font-semibold">Nothing is set up yet</p>
+                        <p className="font-semibold">
+                            {tc('console.nothing_is_set_up_yet_0c0c66c3')}
+                        </p>
                         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            {checklist.total} steps, in the order that makes sense — starting with{' '}
-                            {checklist.nextTitle ?? 'the basics'}.
+                            {checklist.total}
+                            {tc(
+                                'console.steps_in_the_order_that_makes_sense_starting_fbaba61b',
+                            )}{' '}
+                            {checklist.nextTitle ?? tc('console.the_basics_abf82d2f')}.
                         </p>
                     </div>
                 </div>
                 <Button asChild variant="primary" className="shrink-0">
-                    <Link href={href}>Start setting up</Link>
+                    <Link href={href}>{tc('console.start_setting_up_202f2866')}</Link>
                 </Button>
             </div>
         </div>
@@ -326,6 +289,8 @@ function FirstRun({
  * it looks is not its business.
  */
 function ModuleCardTile({ card }: { card: ModuleCard }) {
+    const { t: tc } = useTranslator();
+
     const toneClass =
         card.tone === 'success'
             ? 'cbx-stat-icon--success'
@@ -374,7 +339,7 @@ function ModuleCardTile({ card }: { card: ModuleCard }) {
                     className="mt-4 inline-block text-sm font-medium"
                     style={{ color: 'var(--accent-strong)' }}
                 >
-                    {card.linkLabel ?? 'Open'} →
+                    {card.linkLabel ?? tc('console.open_ed077f3d')} →
                 </Link>
             )}
         </div>
@@ -382,20 +347,22 @@ function ModuleCardTile({ card }: { card: ModuleCard }) {
 }
 
 function RecentActivity({ recent, href }: { recent: Props['recent']; href: string | null }) {
+    const { t: tc } = useTranslator();
+
     return (
         <Panel
-            title="Recent activity"
+            title={tc('console.recent_activity_6cb44b56')}
             action={
                 href !== null ? (
                     <Link href={href} className="text-sm" style={{ color: 'var(--accent-strong)' }}>
-                        View audit log
+                        {tc('console.view_audit_log_d34e55be')}
                     </Link>
                 ) : undefined
             }
         >
             {recent.length === 0 ? (
                 <p className="py-6 text-center text-sm" style={{ color: 'var(--faint)' }}>
-                    No activity recorded yet.
+                    {tc('console.no_activity_recorded_yet_09f1c438')}
                 </p>
             ) : (
                 <ul>
@@ -448,22 +415,27 @@ function Checklist({
     getStartedHref: string;
     dismissHref: string;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="card min-w-0 p-5">
             <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold">Finish setting up</h3>
+                <h3 className="font-semibold">{tc('console.finish_setting_up_51eb40d7')}</h3>
                 <button
                     type="button"
                     className="cbx-help-link"
                     style={{ color: 'var(--muted-foreground)' }}
                     onClick={() => router.post(dismissHref, {}, { preserveScroll: true })}
                 >
-                    Hide
+                    {tc('console.hide_ac20a57b')}
                 </button>
             </div>
 
             <div className="mt-3 flex items-center gap-3">
-                <Progress percent={checklist.percent} label="Setup progress" />
+                <Progress
+                    percent={checklist.percent}
+                    label={tc('console.setup_progress_e9b4495a')}
+                />
                 <span
                     className="text-xs mono shrink-0"
                     style={{ color: 'var(--muted-foreground)' }}
@@ -516,7 +488,7 @@ function Checklist({
             <Button asChild size="sm" className="mt-4 w-full justify-center">
                 <Link href={getStartedHref}>
                     <Icon name="rocket" className="w-4 h-4" />
-                    Open the setup guide
+                    {tc('console.open_the_setup_guide_7c0189e5')}
                 </Link>
             </Button>
         </div>

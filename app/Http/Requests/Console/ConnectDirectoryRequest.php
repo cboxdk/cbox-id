@@ -95,11 +95,11 @@ final class ConnectDirectoryRequest extends FormRequest
     public function credentialProblem(DirectoryProvider $provider): string
     {
         if ($provider !== DirectoryProvider::GoogleWorkspace) {
-            return 'Enter the Entra tenant ID, client ID, and client secret.';
+            return __('console.enter_the_entra_tenant_id_client_id_and_clie_318905a2');
         }
 
         return trim((string) $this->string('googleAdminEmail')) === ''
-            ? 'Enter the admin email to impersonate.'
-            : 'Paste the full service-account JSON key (it must contain client_email and private_key).';
+            ? __('console.enter_the_admin_email_to_impersonate_cf555100')
+            : __('console.paste_the_full_service_account_json_key_it_m_9ffc8f83');
     }
 }

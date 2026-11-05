@@ -40,20 +40,20 @@ final readonly class AgentRowProps implements Prop
     public static function approvalLabel(?StepUpPolicy $policy): string
     {
         if ($policy === null) {
-            return 'No approval needed';
+            return __('console.no_approval_needed_f4d6c290');
         }
 
         $level = match ($policy->minDanger) {
-            Danger::Critical => 'Approval for critical actions',
-            Danger::Destructive => 'Approval for destructive and critical actions',
-            Danger::Write, Danger::Read => 'Approval for every change',
+            Danger::Critical => __('console.approval_for_critical_actions_b750f416'),
+            Danger::Destructive => __('console.approval_for_destructive_and_critical_action_a076714f'),
+            Danger::Write, Danger::Read => __('console.approval_for_every_change_617da932'),
             null => null,
         };
 
         $named = count($policy->actions);
 
         if ($level === null) {
-            return 'Approval for '.$named.' named '.($named === 1 ? 'action' : 'actions');
+            return __('console.approval_for_6edbf3ac').$named.' named '.($named === 1 ? 'action' : 'actions');
         }
 
         return $named === 0 ? $level : $level.' + '.$named.' named';

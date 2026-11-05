@@ -317,6 +317,8 @@
         --input: oklch(0.32 0.013 80);
         --ring: oklch(0.65 0.18 258);
         --sidebar: oklch(0.21 0.009 80);
+        --rail-gutter: var(--sidebar);
+        --rail-docked-shadow: none;
         --sidebar-foreground: oklch(0.955 0.006 90);
         --sidebar-muted: oklch(0.65 0.016 85);
         --sidebar-accent: oklch(0.275 0.012 80);
@@ -375,6 +377,8 @@
     --input: oklch(0.32 0.013 80);
     --ring: oklch(0.65 0.18 258);
     --sidebar: oklch(0.21 0.009 80);
+    --rail-gutter: var(--sidebar);
+    --rail-docked-shadow: none;
     --sidebar-foreground: oklch(0.955 0.006 90);
     --sidebar-muted: oklch(0.65 0.016 85);
     --sidebar-accent: oklch(0.275 0.012 80);
@@ -444,48 +448,112 @@
 /* Subtle blue-tinted radial wash on the main scroll column — every Cbox app. */
 .canvas-gradient {
     background:
-        radial-gradient(
-            ellipse 1200px 600px at 100% 0%,
-            oklch(0.5 0.17 258 / 0.04) 0%,
-            transparent 60%
-        ),
-        radial-gradient(
-            ellipse 800px 400px at 0% 100%,
-            oklch(0.75 0.08 75 / 0.05) 0%,
-            transparent 60%
-        ),
-        var(--canvas);
+        radial-gradient(ellipse at 30% 0, var(--accent-soft), transparent 48%), var(--canvas);
 }
-:root[data-theme='dark'] .canvas-gradient,
-.canvas-gradient:where([data-theme='dark'] *) {
-    background:
-        radial-gradient(
-            ellipse 1200px 600px at 100% 0%,
-            oklch(0.65 0.18 258 / 0.06) 0%,
-            transparent 60%
-        ),
-        radial-gradient(
-            ellipse 800px 400px at 0% 100%,
-            oklch(0.75 0.08 75 / 0.06) 0%,
-            transparent 60%
-        ),
-        var(--canvas);
+.cbx-service-mark {
+    width: 24px;
+    height: 24px;
+    color: var(--mark-light);
+}
+:root[data-theme='dark'] .cbx-service-mark {
+    color: var(--mark-dark);
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .canvas-gradient {
-        background:
-            radial-gradient(
-                ellipse 1200px 600px at 100% 0%,
-                oklch(0.65 0.18 258 / 0.06) 0%,
-                transparent 60%
-            ),
-            radial-gradient(
-                ellipse 800px 400px at 0% 100%,
-                oklch(0.75 0.08 75 / 0.06) 0%,
-                transparent 60%
-            ),
-            var(--canvas);
+    :root:not([data-theme='light']) .cbx-service-mark {
+        color: var(--mark-dark);
     }
+}
+.cbx-rail .cbx-rail-brand {
+    width: auto;
+    height: 32px;
+    gap: 7px;
+    padding: 0 4px;
+    margin: 0;
+    color: var(--foreground);
+}
+.cbx-rail .cbx-rail-brand .cbx-service-mark {
+    width: 22px;
+    height: 22px;
+}
+.cbx-rail-wordmark,
+.cbx-service-name {
+    display: none;
+}
+:is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-rail-wordmark {
+    display: block;
+    width: 56px;
+    height: 19px;
+    background: var(--primary);
+    mask: url('/brand/cbox-logo-neg-100.png') center / contain no-repeat;
+}
+:is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-service-name {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+}
+:root[data-theme='dark'] .cbx-rail .cbx-rail-wordmark {
+    background: var(--foreground);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .cbx-rail .cbx-rail-wordmark {
+        background: var(--foreground);
+    }
+}
+.cbx-launch-trigger {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: 8px;
+    color: var(--foreground);
+    cursor: pointer;
+}
+.cbx-launch-trigger:hover,
+.cbx-launch-trigger[data-state='open'],
+.cbx-launch-grid a:hover {
+    background: var(--secondary);
+}
+.cbx-popover.cbx-launch-panel {
+    width: min(292px, calc(100vw - 16px));
+    max-height: var(--radix-popover-content-available-height);
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 12px;
+}
+.cbx-launch-panel h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 4px 8px;
+}
+.cbx-launch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+}
+.cbx-launch-grid a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    min-height: 60px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--foreground);
+    text-align: center;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+.cbx-launch-check {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    color: var(--accent-strong);
 }
 
 @layer components {
@@ -1565,63 +1633,6 @@
         font-weight: 600;
     }
 
-    /* App launcher tile — the first-party "portal". A colour-branded logo per app,
-     * a tactile hover lift, and an arrow that slides in to say "this opens". */
-    .cbx-app-tile {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 14px 16px;
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        background: var(--card);
-        box-shadow: var(--shadow-card);
-        text-decoration: none;
-        transition:
-            transform var(--dur-hover) var(--ease),
-            border-color var(--dur-hover) var(--ease),
-            box-shadow var(--dur-hover) var(--ease);
-    }
-    .cbx-app-tile:hover {
-        transform: translateY(-2px);
-        border-color: var(--accent-edge);
-        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
-    }
-    .cbx-app-tile:active {
-        transform: translateY(0);
-    }
-    .cbx-app-logo {
-        display: grid;
-        place-items: center;
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        flex-shrink: 0;
-        color: #fff;
-        font-family: var(--font-display);
-        font-size: 16px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.28),
-            0 2px 6px rgba(0, 0, 0, 0.18);
-    }
-    .cbx-app-go {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-        color: var(--muted-foreground);
-        opacity: 0;
-        transform: translateX(-5px);
-        transition:
-            opacity var(--dur-hover) var(--ease),
-            transform var(--dur-hover) var(--ease);
-    }
-    .cbx-app-tile:hover .cbx-app-go {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
     /* Handshake / flow explainer — a row of numbered steps with arrows between,
      * used to show OAuth redirects visually. Wraps + arrows turn downward on narrow. */
 
@@ -1647,8 +1658,12 @@
         border-color: var(--border-strong);
         color: var(--foreground);
     }
-    .cbx-search .label {
+    .cbx-search-label {
         flex: 1;
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 16px;
         text-align: left;
     }
     /* On a phone the search is the icon alone — the same palette, a thumb's width. */
@@ -1679,8 +1694,8 @@
         padding: 0 16px;
         box-sizing: border-box;
         border-bottom: 1px solid var(--border);
-        background: color-mix(in oklch, var(--background) 80%, transparent);
-        backdrop-filter: blur(12px);
+        background: var(--background);
+        flex-shrink: 0;
         position: sticky;
         top: 0;
         z-index: 20;
@@ -1885,7 +1900,7 @@
     :root.cbx-nav-pinned .cbx-rail {
         width: 210px;
         border-color: var(--border);
-        box-shadow: var(--shadow-card);
+        box-shadow: var(--rail-docked-shadow, var(--shadow-card));
     }
     .cbx-rail.open a .lbl,
     :root.cbx-nav-pinned .cbx-rail a .lbl {
@@ -1896,6 +1911,7 @@
      * rail width + its two 6px insets (222px) so content docks cleanly beside it. */
     .cbx-rail-spacer {
         display: none;
+        background: var(--rail-gutter, transparent);
     }
     @media (min-width: 1024px) {
         .cbx-rail-spacer {

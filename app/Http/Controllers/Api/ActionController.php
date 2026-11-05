@@ -95,7 +95,12 @@ final readonly class ActionController
             return response()->json(['error' => $refused->error, 'message' => $refused->getMessage()], $refused->status);
         }
 
-        return $this->render($result, $action->status);
+        $response = $this->render($result, $action->status);
+        if ($action->name === 'account.apps.list') {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
+
+        return $response;
     }
 
     /**

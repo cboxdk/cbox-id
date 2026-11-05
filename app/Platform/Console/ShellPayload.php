@@ -469,19 +469,19 @@ final readonly class ShellPayload
      */
     private function environmentActsOn(bool $root): ShellActsOnProps
     {
-        $name = $this->environmentName() ?? 'This environment';
+        $name = $this->environmentName() ?? __('console.this_environment_549c0268');
         $host = $this->request->getHost();
 
         if ($root) {
             return new ShellActsOnProps(
                 kind: 'environment',
                 label: $name,
-                detail: 'The platform’s own environment on '.$host.': how every workspace owner and every operator signs in to Cbox ID, and the sign-in for every environment console. A change here applies to all of them.',
+                detail: __('console.the_platform_s_own_environment_on_433acd6a').$host.__('console.how_every_workspace_owner_and_every_operator_e9fcbcc4'),
                 critical: true,
             );
         }
 
-        return new ShellActsOnProps(kind: 'environment', label: $name, detail: 'Environment on '.$host);
+        return new ShellActsOnProps(kind: 'environment', label: $name, detail: __('console.environment_on_8fc82076').$host);
     }
 
     /**
@@ -497,8 +497,8 @@ final readonly class ShellPayload
     {
         return new ShellActsOnProps(
             kind: 'platform',
-            label: 'The whole deployment',
-            detail: 'Every workspace, environment and operator on '.$this->request->getHost().'. A suspension, a new environment or an operator change here applies across all of them.',
+            label: __('console.the_whole_deployment_3cbe949f'),
+            detail: __('console.every_workspace_environment_and_operator_on_76c0e982').$this->request->getHost().__('console.a_suspension_a_new_environment_or_an_operato_07c51641'),
             critical: true,
         );
     }
@@ -510,7 +510,7 @@ final readonly class ShellPayload
             return $this->platformActsOn();
         }
 
-        $name = $this->user->organization()->name ?? 'Your organization';
+        $name = $this->user->organization()->name ?? __('console.your_organization_8fd3f0c7');
 
         if ($workspace) {
             // Team sign-in says whose sign-in it is: the workspace's own team, signing in to
@@ -523,8 +523,8 @@ final readonly class ShellPayload
                 kind: 'workspace',
                 label: $name,
                 detail: $teamSignIn
-                    ? 'How your workspace’s own team signs in to Cbox ID — not your apps: their sign-in is set in each environment’s console.'
-                    : 'Your workspace: its projects, team, keys and billing. Sign-in for your apps is set in each environment’s console.',
+                    ? __('console.how_your_workspace_s_own_team_signs_in_to_cb_8f578e9b')
+                    : __('console.your_workspace_its_projects_team_keys_and_bi_d55c648f'),
             );
         }
 
@@ -537,7 +537,7 @@ final readonly class ShellPayload
         return new ShellActsOnProps(
             kind: 'organization',
             label: $name,
-            detail: $environment === null ? 'Organization' : 'Organization in '.$environment,
+            detail: $environment === null ? 'Organization' : __('console.organization_in_b5bb405d').$environment,
         );
     }
 

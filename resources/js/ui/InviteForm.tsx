@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Button } from './Button';
@@ -97,6 +98,8 @@ export function InviteForm({
     onDone,
     onCancel,
 }: InviteFormProps) {
+    const { t: tc } = useUiTranslator();
+
     const offered = roles.filter((role) => !role.disabled);
     const initialRole = offered.some((role) => role.value === defaultRole)
         ? defaultRole
@@ -115,8 +118,11 @@ export function InviteForm({
 
     const builtInRole = (
         <Field
-            label="Built-in role"
-            hint="Exactly one. It decides what they may administer."
+            label={tc('console.built_in_role_9f680a16', 'Built-in role')}
+            hint={tc(
+                'console.exactly_one_it_decides_what_they_may_adminis_f417665e',
+                'Exactly one. It decides what they may administer.',
+            )}
             error={form.errors.role}
             className="max-w-sm"
         >
@@ -133,7 +139,7 @@ export function InviteForm({
     return (
         <form
             className="space-y-4"
-            aria-label="Invite someone"
+            aria-label={tc('console.invite_someone_9b7639e8', 'Invite someone')}
             onSubmit={(event) => {
                 event.preventDefault();
                 form.transform((data) => ({
@@ -154,7 +160,10 @@ export function InviteForm({
                 });
             }}
         >
-            <Field label="Email address" error={form.errors.email}>
+            <Field
+                label={tc('console.email_address_f2488fd4', 'Email address')}
+                error={form.errors.email}
+            >
                 <Input
                     name="email"
                     type="email"
@@ -166,11 +175,18 @@ export function InviteForm({
             </Field>
 
             {withName && (
-                <Field label="Name" optional error={form.errors.name}>
+                <Field
+                    label={tc('console.name_dcd1d522', 'Name')}
+                    optional
+                    error={form.errors.name}
+                >
                     <Input
                         name="name"
                         autoComplete="off"
-                        placeholder="How they appear on the list"
+                        placeholder={tc(
+                            'console.how_they_appear_on_the_list_da4d8376',
+                            'How they appear on the list',
+                        )}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
@@ -187,11 +203,14 @@ export function InviteForm({
             */}
             {accessRoles.length > 0 ? (
                 <fieldset className="space-y-3">
-                    <legend className="label">Roles</legend>
+                    <legend className="label">{tc('console.roles_c2533705', 'Roles')}</legend>
                     {builtInRole}
                     <Field
-                        label="App and custom roles"
-                        hint="Any number, granted the moment they accept."
+                        label={tc('console.app_and_custom_roles_ecb0207e', 'App and custom roles')}
+                        hint={tc(
+                            'console.any_number_granted_the_moment_they_accept_0cc4bd0c',
+                            'Any number, granted the moment they accept.',
+                        )}
                         optional
                         error={form.errors.accessRoles}
                     >
@@ -244,11 +263,16 @@ export function InviteForm({
                         className="rounded-lg p-3 space-y-3"
                         style={{ border: '1px solid var(--border)' }}
                     >
-                        <legend className="label px-1">After they accept</legend>
+                        <legend className="label px-1">
+                            {tc('console.after_they_accept_ddda6664', 'After they accept')}
+                        </legend>
 
                         <Field
-                            label="Send them to"
-                            hint="Where they land once they have joined."
+                            label={tc('console.send_them_to_d21b2a72', 'Send them to')}
+                            hint={tc(
+                                'console.where_they_land_once_they_have_joined_b493a7da',
+                                'Where they land once they have joined.',
+                            )}
                             error={form.errors.client_id}
                         >
                             <Select
@@ -264,7 +288,10 @@ export function InviteForm({
                                     })
                                 }
                                 options={[
-                                    { value: '__console', label: 'This console' },
+                                    {
+                                        value: '__console',
+                                        label: tc('console.this_console_32a05921', 'This console'),
+                                    },
                                     ...apps.map((candidate) => ({
                                         value: candidate.clientId,
                                         label: candidate.name,
@@ -275,7 +302,7 @@ export function InviteForm({
 
                         {app !== undefined && (
                             <Field
-                                label="Return address"
+                                label={tc('console.return_address_6659c2a3', 'Return address')}
                                 optional
                                 hint={`A page on ${app.origins.join(' or ')}. Leave empty to land in the console, with ${app.name} named on the invitation.`}
                                 error={form.errors.return_to}
@@ -300,17 +327,20 @@ export function InviteForm({
                         variant="ghost"
                         onClick={() => setReturning(true)}
                     >
-                        Send them to an app afterwards…
+                        {tc(
+                            'console.send_them_to_an_app_afterwards_7f7ac529',
+                            'Send them to an app afterwards…',
+                        )}
                     </Button>
                 ))}
 
             <div className="flex items-center gap-2">
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    Send invitation
+                    {tc('console.send_invitation_dba4038b', 'Send invitation')}
                 </Button>
                 {onCancel !== undefined && (
                     <Button type="button" onClick={onCancel}>
-                        Cancel
+                        {tc('console.cancel_19766ed6', 'Cancel')}
                     </Button>
                 )}
             </div>

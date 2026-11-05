@@ -12,6 +12,7 @@ use App\Http\Props\Shared\I18nProps;
 use App\Http\Props\Shared\ImpersonationProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Appearance\BrandContext;
+use App\Platform\AppLauncher;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentEnvironment;
@@ -68,6 +69,7 @@ final class HandleInertiaRequests extends Middleware
         'impersonation',
         'flash',
         'shell',
+        'appCatalog',
         'i18n',
         'apiEquivalents',
         // Inertia's own, from `parent::share()`.
@@ -137,6 +139,7 @@ final class HandleInertiaRequests extends Middleware
              * membership lookups behind it. See {@see ShellPayload} for what goes in.
              */
             'shell' => fn (): ?ShellProps => app(ShellPayload::class)->build(),
+            'appCatalog' => fn (): array => app(AppLauncher::class)->apps(),
 
             /*
              * THE HOSTED PAGES' LANGUAGE — the locale, the picker's options, and the one

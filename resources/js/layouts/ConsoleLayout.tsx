@@ -1,6 +1,10 @@
+import { UiTranslationProvider } from '@/i18n/ui';
+import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { AppSwitcher } from '@/chrome/AppSwitcher';
 import { AccountMenu } from '@/chrome/AccountMenu';
+import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { ContextSwitcher } from '@/chrome/ContextSwitcher';
@@ -9,7 +13,7 @@ import { Rail } from '@/chrome/Rail';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Subnav } from '@/chrome/Subnav';
 import { Toaster } from '@/chrome/Toaster';
-import { useDocumentLanguage } from '@/i18n';
+import { useDocumentLanguage, useTranslator } from '@/i18n';
 import { setNavPinned } from '@/lib/theme';
 import { OrganizationFrame } from '@/pages/environment/organizations/frame';
 import type { SharedProps, ShellActsOn } from '@/types';
@@ -46,7 +50,18 @@ export interface ConsoleLayoutProps {
  * own and a way out, so an operator on the root host moved between two consoles. It is an
  * area of the console now, and the line above the page is what says so.
  */
-export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
+export default function ConsoleLayout(props: ConsoleLayoutProps) {
+    const translator = useTranslator();
+    return (
+        <UiTranslationProvider translator={translator}>
+            <ConsoleShell {...props} />
+        </UiTranslationProvider>
+    );
+}
+
+function ConsoleShell({ children: page }: ConsoleLayoutProps) {
+    const { t: tc } = useTranslator();
+
     const { shell, auth, title, environment, organizationHub } = usePage<SharedProps>().props;
 
     // A page under `/admin/organizations/{organization}/…` is a tab of that organization's
@@ -58,8 +73,8 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
             page
         );
 
-    // The console is English, whatever language the sign-in page before it was in.
-    useDocumentLanguage('en');
+    const { locale } = useTranslator();
+    useDocumentLanguage(locale);
 
     const [pinned, setPinned] = useState(shell?.navPinned ?? true);
     // Read in a lazy initialiser rather than an effect: reading it after mount renders
@@ -112,6 +127,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 <Head title={title} />
                 <RouteAnnouncer />
                 <Toaster />
+                <StepUpDialog />
                 <main id="main-content" className="canvas-gradient">
                     {children}
                 </main>
@@ -145,6 +161,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
             <Head title={title} />
             <RouteAnnouncer />
             <Toaster />
+            <StepUpDialog />
             <SandboxBanner />
             <EmailConfirmationBanner />
             <ImpersonationBanner exitUrl={exitImpersonation.url()} />
@@ -176,8 +193,10 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                     areas={shell.areas}
                     heading={
                         onEnvironment
-                            ? (standingIn ?? environment.name ?? 'Environment')
-                            : (workspace?.label ?? organization?.name ?? 'Console')
+                            ? (standingIn ?? environment.name ?? tc('console.environment_9e471951'))
+                            : (workspace?.label ??
+                              organization?.name ??
+                              tc('console.console_29a40861'))
                     }
                     subheading={onEnvironment ? (workspace?.label ?? null) : null}
                     user={auth.user}
@@ -200,7 +219,9 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
                             <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
+                            <ConsoleLanguagePicker />
 
+                            <AppSwitcher />
                             <AccountMenu
                                 user={auth.user}
                                 logoutUrl={shell.logoutHref ?? logout.url()}
@@ -237,13 +258,6 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     );
 }
 
-const ACTS_ON_NOUN: Record<ShellActsOn['kind'], string> = {
-    environment: 'Environment',
-    workspace: 'Workspace',
-    organization: 'Organization',
-    platform: 'Platform admin',
-};
-
 const ACTS_ON_ICON = {
     environment: 'layers',
     workspace: 'briefcase',
@@ -258,6 +272,13 @@ const ACTS_ON_ICON = {
  * admin it is a warning too, with the lock: those pages act on every workspace at once.
  */
 function ActsOn({ actsOn }: { actsOn: ShellActsOn }) {
+    const { t: tc } = useTranslator();
+    const ACTS_ON_NOUN: Record<ShellActsOn['kind'], string> = {
+        environment: tc('console.environment_9e471951'),
+        workspace: tc('console.workspace_87bb59ba'),
+        organization: tc('console.organization_d764d425'),
+        platform: tc('console.platform_admin_69652f55'),
+    };
     const what = (
         <span>
             {ACTS_ON_NOUN[actsOn.kind]}: <span className="cbx-acts-on-what">{actsOn.label}</span>

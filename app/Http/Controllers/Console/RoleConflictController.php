@@ -88,7 +88,7 @@ final readonly class RoleConflictController extends ConsoleController
 
         $owners = $this->organizationNames($policies->pluck('organization_id')->all());
 
-        return $this->page('console/role-conflicts/index', 'Role conflicts', [
+        return $this->page('console/role-conflicts/index', __('console.role_conflicts_1f4cf2a5'), [
             'help' => HelpProps::for(HelpTopic::RoleConflicts),
             'rules' => $policies->map(fn (SodPolicy $policy): array => [
                 'id' => $policy->id,
@@ -153,7 +153,7 @@ final readonly class RoleConflictController extends ConsoleController
             ->limit(self::PICKER_LIMIT)
             ->get(['id', 'name']);
 
-        return $this->page('console/role-conflicts/create', 'New role conflict', [
+        return $this->page('console/role-conflicts/create', __('console.new_role_conflict_0c19c020'), [
             'roles' => $roles->map(fn (Role $role): array => [
                 'id' => $role->id,
                 'name' => $role->name,
@@ -183,7 +183,7 @@ final readonly class RoleConflictController extends ConsoleController
              */
             if ($this->scope->plane() !== ConsolePlane::Environment) {
                 return back()->withInput()->withErrors([
-                    'environmentWide' => 'Only an environment administrator may write a rule for every organization.',
+                    'environmentWide' => __('console.only_an_environment_administrator_may_write__39184ea2'),
                 ]);
             }
 
@@ -210,7 +210,7 @@ final readonly class RoleConflictController extends ConsoleController
         $policy = $result->value;
 
         return to_route($this->scope->routeName('sod-policies.show'), $policy->id)
-            ->with('status', 'Rule "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
+            ->with('status', 'Rule "'.$policy->name.__('console.defined_over_586e5440').count($policy->role_ids).' roles.');
     }
 
     public function show(Request $request, string $policy, SegregationOfDuties $sod, Subjects $subjects): Response
@@ -310,8 +310,8 @@ final readonly class RoleConflictController extends ConsoleController
         }
 
         return back()->with('status', $model->active
-            ? 'Rule deactivated — grants that would break it are allowed again.'
-            : 'Rule activated — grants that would break it are blocked from now on.');
+            ? __('console.rule_deactivated_grants_that_would_break_it__65b2c178')
+            : __('console.rule_activated_grants_that_would_break_it_ar_fb4adf4c'));
     }
 
     public function destroy(string $policy): RedirectResponse

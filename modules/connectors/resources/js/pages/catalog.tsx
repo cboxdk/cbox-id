@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -40,10 +41,6 @@ type Props = PageProps<{
     wholeEnvironment: boolean;
 }>;
 
-function plural(count: number, one: string, many: string): string {
-    return `${count.toLocaleString()} ${count === 1 ? one : many}`;
-}
-
 /**
  * Connectors › Catalog — every kind of integration, and the next step for each.
  *
@@ -62,18 +59,24 @@ export default function Catalog({
     failingHref,
     wholeEnvironment,
 }: Props) {
-    const scope = wholeEnvironment ? 'in this environment' : 'for this organization';
+    const { t: tc, locale } = useTranslator();
+    const plural = (count: number, one: string, many: string) =>
+        `${count.toLocaleString(locale)} ${count === 1 ? one : many}`;
+
+    const scope = wholeEnvironment
+        ? tc('console.in_this_environment_d3511377')
+        : tc('console.for_this_organization_a02ed7fb');
 
     return (
         <div className="space-y-8">
             <PageHeader
                 help={help}
-                description="Every kind of integration this platform has. Set one up from its card, or manage the ones you have — each card leads to the page where that integration lives."
+                description={tc('console.every_kind_of_integration_this_platform_has__4b2a3ee2')}
                 actions={
                     <Button asChild className="shrink-0">
                         <Link href={connectionsHref}>
                             <Icon name="connections" className="w-4 h-4" />
-                            All connections
+                            {tc('console.all_connections_72038b84')}
                         </Link>
                     </Button>
                 }
@@ -95,23 +98,38 @@ export default function Catalog({
                         />
                         <p className="min-w-0 flex-1 text-sm" style={{ minWidth: '12rem' }}>
                             <strong>
-                                {plural(totals.failing, 'connection is', 'connections are')} failing
+                                {plural(
+                                    totals.failing,
+                                    tc('console.connection_is_bdb336f1'),
+                                    tc('console.connections_are_141d19ac'),
+                                )}
+                                {tc('console.failing_f533a6e9')}
                             </strong>{' '}
-                            {scope}. Their own records say the last attempt did not get through.
+                            {scope}
+                            {tc('console.their_own_records_say_the_last_attempt_did_n_82c772c8')}
                         </p>
                         <Button asChild size="sm" variant="primary">
-                            <Link href={failingHref}>Review failing</Link>
+                            <Link href={failingHref}>{tc('console.review_failing_f17758a8')}</Link>
                         </Button>
                     </div>
                 </div>
             ) : (
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {totals.connections === 0
-                        ? `Nothing is connected ${scope} yet. Pick what you need below.`
-                        : `${plural(totals.connections, 'connection', 'connections')} ${scope}, none failing.`}{' '}
+                        ? tc('console.nothing_is_connected_value0_yet_pick_what_yo_fa315245', {
+                              value0: scope,
+                          })
+                        : tc('console.value0_value1_none_failing_a5d264cb', {
+                              value0: plural(
+                                  totals.connections,
+                                  tc('console.connection_b38d9d16'),
+                                  tc('console.connections_1e5fac86'),
+                              ),
+                              value1: scope,
+                          })}{' '}
                     {totals.connections > 0 && (
                         <Link href={connectionsHref} className="underline underline-offset-2">
-                            See them all
+                            {tc('console.see_them_all_74900e3c')}
                         </Link>
                     )}
                 </p>
@@ -146,6 +164,10 @@ export default function Catalog({
 }
 
 function ConnectorCard({ type }: { type: ConnectorType }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     // Where the card itself goes: the list once there is something in it, the setup form
     // before — the next step either way.
     const primary = type.count > 0 || type.setupHref === null ? type.manageHref : type.setupHref;
@@ -172,14 +194,16 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
 
                 {type.failing > 0 ? (
                     <Pill tone="warning" className="shrink-0 tabular-nums">
-                        {type.failing.toLocaleString()} failing
+                        {type.failing.toLocaleString(locale)}
+                        {tc('console.failing_f533a6e9')}
                     </Pill>
                 ) : type.count > 0 ? (
                     <Pill tone="success" className="shrink-0 tabular-nums">
-                        {type.count.toLocaleString()} live
+                        {type.count.toLocaleString(locale)}
+                        {tc('console.live_846b33ce')}
                     </Pill>
                 ) : (
-                    <Pill className="shrink-0">Not set up</Pill>
+                    <Pill className="shrink-0">{tc('console.not_set_up_94b768af')}</Pill>
                 )}
             </div>
 
@@ -189,13 +213,17 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
 
             {type.options.length > 0 && (
                 <div className="relative z-10 mt-3">
-                    <p className="sr-only">Set up {type.name} with</p>
+                    <p className="sr-only">
+                        {tc('console.set_up_f0ed49ff')}
+                        {type.name}
+                        {tc('console.with_6a413b57')}
+                    </p>
                     <ul className="flex flex-wrap gap-1.5">
                         {type.options.map((option) => (
                             <li key={option.key}>
                                 <Link href={option.href} className="cbx-connector-option">
                                     <ProviderMark provider={option.key} size={14} />
-                                    <span className="sr-only">Set up </span>
+                                    <span className="sr-only">{tc('console.set_up_f0ed49ff')}</span>
                                     {option.label}
                                 </Link>
                             </li>
@@ -203,7 +231,8 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
                         {type.moreOptions > 0 && type.setupHref !== null && (
                             <li>
                                 <Link href={type.setupHref} className="cbx-connector-option">
-                                    +{type.moreOptions} more
+                                    +{type.moreOptions}
+                                    {tc('console.more_226ba18b')}
                                 </Link>
                             </li>
                         )}
@@ -217,7 +246,8 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
                         <Link href={type.setupHref}>
                             <Icon name="plus" className="w-3.5 h-3.5" />
                             <span>
-                                Set up<span className="sr-only"> {type.name}</span>
+                                {tc('console.set_up_4da10f1f')}
+                                <span className="sr-only"> {type.name}</span>
                             </span>
                         </Link>
                     </Button>
@@ -226,8 +256,9 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
                     <Button asChild size="sm" variant="primary">
                         <Link href={type.manageHref}>
                             <span>
-                                Manage<span className="sr-only"> {type.name}</span>
-                                {` (${type.count.toLocaleString()})`}
+                                {tc('console.manage_5a234448')}
+                                <span className="sr-only"> {type.name}</span>
+                                {` (${type.count.toLocaleString(locale)})`}
                             </span>
                         </Link>
                     </Button>
@@ -238,7 +269,7 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
                         className="text-xs font-medium underline underline-offset-2"
                         style={{ color: 'var(--warning-strong)' }}
                     >
-                        See what is failing
+                        {tc('console.see_what_is_failing_1e6030de')}
                     </Link>
                 )}
                 {type.docsHref !== null && (
@@ -249,9 +280,9 @@ function ConnectorCard({ type }: { type: ConnectorType }) {
                         className="ml-auto inline-flex items-center gap-1 text-xs underline-offset-2 hover:underline"
                         style={{ color: 'var(--muted-foreground)' }}
                     >
-                        Guide
+                        {tc('console.guide_8dd65d09')}
                         <Icon name="external" className="w-3 h-3" aria-hidden="true" />
-                        <span className="sr-only">(opens in a new tab)</span>
+                        <span className="sr-only">{tc('console.opens_in_a_new_tab_1d183356')}</span>
                     </a>
                 )}
             </div>

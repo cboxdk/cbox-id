@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IntendedUrl;
+use App\Platform\Locale\HostedLocale;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInLineage;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -314,6 +315,7 @@ it('lands every sign-out on a signed-out page that renders on both hosts and ent
 });
 
 it('says so in every language the hosted pages speak', function (string $locale): void {
+    config()->set('cbox-id.locales.enabled', HostedLocale::codes());
     $page = $this->get($this->root.'/signed-out?ui_locales='.$locale)->assertOk();
 
     $messages = $page->inertiaProps('i18n.messages');
@@ -327,7 +329,7 @@ it('says so in every language the hosted pages speak', function (string $locale)
     if ($locale !== 'en') {
         expect($messages['auth.signed_out.heading'])->not->toBe(trans('auth.signed_out.heading', [], 'en'));
     }
-})->with(['en', 'da', 'de', 'fr', 'nb', 'sv']);
+})->with(HostedLocale::codes());
 
 it('clears the browser\'s page history and keeps console pages out of its caches', function (): void {
     signInAndOpenConsole();

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Locale\HostedLocale;
 use App\Platform\Locale\HostedTranslations;
 
@@ -24,7 +25,7 @@ use App\Platform\Locale\HostedTranslations;
  */
 const LANG_ROOT = __DIR__.'/../../lang';
 
-const PARITY_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'mail', 'errors'];
+const PARITY_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'mail', 'errors', 'console'];
 
 /** @return array<string, string> */
 function catalogue(string $locale, string $namespace): array
@@ -43,7 +44,7 @@ function catalogue(string $locale, string $namespace): array
 /** @return list<string> */
 function placeholdersIn(string $line): array
 {
-    preg_match_all('/:([a-z][A-Za-z0-9_]*)/', $line, $matches);
+    preg_match_all('/(?:(?<![\p{L}\p{N}_]):|:(?=value[0-9]))([a-z][A-Za-z0-9_]*)/u', $line, $matches);
 
     $names = array_values(array_unique($matches[1]));
     sort($names);
@@ -112,3 +113,32 @@ it('translates every framework validation message', function (string $locale): v
         expect(placeholdersIn($translated[$key]))->toBe(placeholdersIn($line), "{$locale}: {$key} changes its placeholders");
     }
 })->with(otherLocales());
+
+it('distinguishes placeholders from Swedish and Finnish colon inflections', function (): void {
+    expect(placeholdersIn('API:er och :organization'))->toBe(['organization'])
+        ->and(placeholdersIn(':provider:llä API:n kautta'))->toBe(['provider'])
+        ->and(placeholdersIn('New :injected'))->toBe(['injected'])
+        ->and(placeholdersIn('app:value0'))->toBe(['value0']);
+});
+
+it('preserves executable commands and permission examples in every language', function (string $locale): void {
+    $messages = catalogue($locale, 'console');
+    expect($messages['console.php_artisan_id_compliance_export_a7898bc2'])->toBe('php artisan id-compliance:export')
+        ->and($messages['console.php_artisan_id_compliance_retention_b63e26c9'])->toBe('php artisan id-compliance:retention')
+        ->and($messages['console.one_long_running_process_php_artisan_queue_a_9e4a3b67'])->toContain('php artisan queue:autoscale')
+        ->and($messages['console.an_accountant_may_invoices_write_5f99429d'])->toContain('invoices:write')
+        ->and($messages[ConsoleStrings::key('X-Cbox-Signature')])->toBe('X-Cbox-Signature')
+        ->and($messages[ConsoleStrings::key('type, type:id or type:id#relation')])->toContain('type:id#relation')
+        ->and($messages[ConsoleStrings::key('The scheduled export records a run here every five minutes once schedule:run is running and a sink is configured.')])->toContain('schedule:run')
+        ->and($messages['console.sub_the_person_s_id_org_the_organization_the_6eaa9420'])->toBe(catalogue('en', 'console')['console.sub_the_person_s_id_org_the_organization_the_6eaa9420']);
+})->with(otherLocales());
+
+it('names passkeys distinctly from passwords in the additional languages', function (string $locale, string $term): void {
+    $messages = catalogue($locale, 'console');
+    $label = mb_strtolower($messages['console.add_passkey_a323d84f']);
+    expect($label)->toContain($term)
+        ->and($label)->not->toContain(mb_strtolower($messages[ConsoleStrings::key('Password')]));
+})->with([
+    ['de', 'passkey'], ['sv', 'passnyckel'], ['nb', 'passnøkkel'], ['fi', 'pääsyavai'],
+    ['fr', 'clé'], ['es', 'clave de acceso'], ['it', 'passkey'], ['nl', 'passkey'],
+]);

@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type FontStacks,
@@ -105,6 +106,8 @@ export function ThemeEditor({
     imagesAccepted = true,
     onChange,
 }: ThemeEditorProps) {
+    const { t: tc } = useUiTranslator();
+
     const [draft, setDraft] = useState<Theme>(value);
     const [images, setImages] = useState<ImageChanges>({});
 
@@ -233,10 +236,21 @@ export function ThemeEditor({
                 >
                     <Icon name="warning" className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>
-                        <b>Upload your logo — remote logo URLs are no longer shown.</b> A logo
-                        linked from another site told that site about every person who opened your
-                        sign-in page, so hosted pages now draw only images uploaded here. Upload it
-                        under <i>Logo &amp; favicon</i> below, or remove it to stop this notice.
+                        <b>
+                            {tc(
+                                'console.upload_your_logo_remote_logo_urls_are_no_lon_8077b388',
+                                'Upload your logo — remote logo URLs are no longer shown.',
+                            )}
+                        </b>
+                        {tc(
+                            'console.a_logo_linked_from_another_site_told_that_si_0864dc5e',
+                            ' A logo linked from another site told that site about every person who opened your sign-in page, so hosted pages now draw only images uploaded here. Upload it under ',
+                        )}
+                        <i>{tc('console.logo_amp_favicon_c342dcb5', 'Logo &amp; favicon')}</i>
+                        {tc(
+                            'console.below_or_remove_it_to_stop_this_notice_f33a72e8',
+                            ' below, or remove it to stop this notice.',
+                        )}
                     </span>
                 </output>
             )}
@@ -244,7 +258,9 @@ export function ThemeEditor({
             <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr] items-start">
                 <div className="space-y-5 lg:sticky lg:top-6">
                     <section className="card p-4">
-                        <p className="cbx-nav-group mb-3">Presets</p>
+                        <p className="cbx-nav-group mb-3">
+                            {tc('console.presets_954f93fe', 'Presets')}
+                        </p>
                         <div className="grid grid-cols-2 gap-2">
                             {Object.entries(presets).map(([id, preset]) => (
                                 <button
@@ -295,7 +311,7 @@ export function ThemeEditor({
                     <section className="card p-4">
                         <div className="flex items-center justify-between mb-3">
                             <p className="cbx-nav-group" style={{ margin: 0 }}>
-                                Colours
+                                {tc('console.colours_88f20221', 'Colours')}
                             </p>
                             <fieldset
                                 className="inline-flex rounded-lg p-0.5"
@@ -305,7 +321,12 @@ export function ThemeEditor({
                                     padding: '2px',
                                 }}
                             >
-                                <legend className="sr-only">Which mode to edit</legend>
+                                <legend className="sr-only">
+                                    {tc(
+                                        'console.which_mode_to_edit_1359ffa8',
+                                        'Which mode to edit',
+                                    )}
+                                </legend>
                                 {(['light', 'dark'] as const).map((candidate) => (
                                     <button
                                         key={candidate}
@@ -349,7 +370,10 @@ export function ThemeEditor({
                                 className="text-[12px]"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                Contrast (primary · background)
+                                {tc(
+                                    'console.contrast_primary_background_138e6edf',
+                                    'Contrast (primary · background)',
+                                )}
                             </span>
                             <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold">
                                 <span className="mono">{aa.ratio}:1</span>
@@ -360,12 +384,16 @@ export function ThemeEditor({
 
                     <section className="card p-4 space-y-4">
                         <div>
-                            <p className="cbx-nav-group mb-2">Corners</p>
+                            <p className="cbx-nav-group mb-2">
+                                {tc('console.corners_1d3cc47e', 'Corners')}
+                            </p>
                             <fieldset
                                 className="flex flex-wrap gap-1.5"
                                 style={{ border: 0, padding: 0 }}
                             >
-                                <legend className="sr-only">Corners</legend>
+                                <legend className="sr-only">
+                                    {tc('console.corners_1d3cc47e', 'Corners')}
+                                </legend>
                                 {radii.map((radius) => (
                                     <button
                                         key={radius}
@@ -395,7 +423,9 @@ export function ThemeEditor({
                         </div>
 
                         <div>
-                            <p className="cbx-nav-group mb-2">Typeface</p>
+                            <p className="cbx-nav-group mb-2">
+                                {tc('console.typeface_3a8c1076', 'Typeface')}
+                            </p>
                             {/*
                                 Each option is drawn IN its face, so the choice is made by
                                 looking rather than by reading a name. Every face is
@@ -406,7 +436,9 @@ export function ThemeEditor({
                                 className="grid grid-cols-2 gap-1.5"
                                 style={{ border: 0, padding: 0 }}
                             >
-                                <legend className="sr-only">Typeface</legend>
+                                <legend className="sr-only">
+                                    {tc('console.typeface_3a8c1076', 'Typeface')}
+                                </legend>
                                 {Object.entries(fonts).map(([key, stack]) => (
                                     <button
                                         key={key}
@@ -430,7 +462,7 @@ export function ThemeEditor({
                                             aria-hidden="true"
                                             className="text-[17px] leading-none"
                                         >
-                                            Aa
+                                            {tc('console.aa_81acaafb', 'Aa')}
                                         </span>
                                         <span className="truncate">{nameOf(key)}</span>
                                     </button>
@@ -446,22 +478,28 @@ export function ThemeEditor({
                     */}
                     <section className="card p-4 space-y-4" aria-labelledby="theme-images">
                         <p id="theme-images" className="cbx-nav-group" style={{ margin: 0 }}>
-                            Logo &amp; favicon
+                            {tc('console.logo_amp_favicon_c342dcb5', 'Logo &amp; favicon')}
                         </p>
                         {imagesAccepted ? (
                             <>
                                 <ImagePicker
                                     kind="logo"
-                                    label="Logo"
-                                    hint="Shown above the sign-in form and in emails. PNG, JPEG or WebP, up to 1 MB. A wide image about 36px tall reads best."
+                                    label={tc('console.logo_d707dc2f', 'Logo')}
+                                    hint={tc(
+                                        'console.shown_above_the_sign_in_form_and_in_emails_p_a92637fe',
+                                        'Shown above the sign-in form and in emails. PNG, JPEG or WebP, up to 1 MB. A wide image about 36px tall reads best.',
+                                    )}
                                     value={draft.logo}
                                     error={imageErrors.logo}
                                     onChange={(next) => pickImage('logo', next)}
                                 />
                                 <ImagePicker
                                     kind="favicon"
-                                    label="Favicon"
-                                    hint="The browser-tab icon on your sign-in pages. A square PNG, ICO or WebP, up to 256 KB."
+                                    label={tc('console.favicon_42955289', 'Favicon')}
+                                    hint={tc(
+                                        'console.the_browser_tab_icon_on_your_sign_in_pages_a_04f6f405',
+                                        'The browser-tab icon on your sign-in pages. A square PNG, ICO or WebP, up to 256 KB.',
+                                    )}
                                     value={draft.favicon}
                                     error={imageErrors.favicon}
                                     onChange={(next) => pickImage('favicon', next)}
@@ -469,20 +507,28 @@ export function ThemeEditor({
                             </>
                         ) : (
                             <p className="text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
-                                Image uploads need the white-label module, which is not enabled on
-                                this install.
+                                {tc(
+                                    'console.image_uploads_need_the_white_label_module_wh_4c170783',
+                                    'Image uploads need the white-label module, which is not enabled on this install.',
+                                )}
                             </p>
                         )}
                     </section>
 
                     <section className="card p-4">
-                        <p className="cbx-nav-group mb-3">Export &amp; reset</p>
+                        <p className="cbx-nav-group mb-3">
+                            {tc('console.export_amp_reset_6914d5e2', 'Export &amp; reset')}
+                        </p>
                         <div className="grid grid-cols-2 gap-2">
                             <Button size="sm" icon="copy" onClick={() => copy('css')}>
-                                {copied === 'css' ? 'Copied' : 'Copy CSS'}
+                                {copied === 'css'
+                                    ? tc('console.copied_8d525e5f', 'Copied')
+                                    : tc('console.copy_css_cd5fa760', 'Copy CSS')}
                             </Button>
                             <Button size="sm" icon="copy" onClick={() => copy('json')}>
-                                {copied === 'json' ? 'Copied' : 'Copy JSON'}
+                                {copied === 'json'
+                                    ? tc('console.copied_8d525e5f', 'Copied')
+                                    : tc('console.copy_json_7708c6e2', 'Copy JSON')}
                             </Button>
                         </div>
                         <Button
@@ -492,7 +538,8 @@ export function ThemeEditor({
                             style={{ color: 'var(--muted-foreground)' }}
                             onClick={() => applyPreset(draft.preset)}
                         >
-                            Reset to {presets[draft.preset]?.label ?? draft.preset}
+                            {tc('console.reset_to_39146227', 'Reset to ')}
+                            {presets[draft.preset]?.label ?? draft.preset}
                         </Button>
                     </section>
                 </div>
@@ -501,10 +548,12 @@ export function ThemeEditor({
                 <div className="lg:sticky lg:top-6">
                     <div className="flex items-center justify-between mb-2">
                         <p className="cbx-nav-group" style={{ margin: 0 }}>
-                            Live preview
+                            {tc('console.live_preview_f65ddc1f', 'Live preview')}
                         </p>
                         <span className="text-[11px]" style={{ color: 'var(--faint)' }}>
-                            Editing the {mode} theme
+                            {tc('console.editing_the_8aa39c55', 'Editing the ')}
+                            {mode}
+                            {tc('console.theme_ac06016a', ' theme')}
                         </span>
                     </div>
 
@@ -553,7 +602,8 @@ export function ThemeEditor({
                                 ) : (
                                     <Icon name="shield" className="w-3 h-3" />
                                 )}
-                                {host}.cboxid.com
+                                {host}
+                                {tc('console.cboxid_com_59f8b474', '.cboxid.com')}
                             </span>
                         </div>
 
@@ -565,7 +615,12 @@ export function ThemeEditor({
                             line above it instead.
                         */}
                         <p className="sr-only">
-                            Live preview of your hosted sign-in screen, in {mode} mode.
+                            {tc(
+                                'console.live_preview_of_your_hosted_sign_in_screen_i_c411efbb',
+                                'Live preview of your hosted sign-in screen, in ',
+                            )}
+                            {mode}
+                            {tc('console.mode_aaf88d02', ' mode.')}
                         </p>
                         <div
                             className="p-8 sm:p-12 transition-colors"
@@ -607,7 +662,7 @@ export function ThemeEditor({
                                             {(draft.name || 'A').charAt(0).toUpperCase()}
                                         </span>
                                         <span className="font-semibold">
-                                            {draft.name || 'Acme'}
+                                            {draft.name || tc('console.acme_37036cd8', 'Acme')}
                                         </span>
                                     </div>
                                 )}
@@ -617,13 +672,17 @@ export function ThemeEditor({
                                         className="text-xl font-bold tracking-tight"
                                         style={{ fontFamily: 'var(--font-display)' }}
                                     >
-                                        Sign in to {draft.name || 'Acme'}
+                                        {tc('console.sign_in_to_f5e5226a', 'Sign in to ')}
+                                        {draft.name || tc('console.acme_37036cd8', 'Acme')}
                                     </h2>
                                     <p
                                         className="mt-1 text-sm"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        Welcome back — please sign in to continue.
+                                        {tc(
+                                            'console.welcome_back_please_sign_in_to_continue_c8c5c82c',
+                                            'Welcome back — please sign in to continue.',
+                                        )}
                                     </p>
 
                                     <div className="mt-6 space-y-2.5">
@@ -632,7 +691,10 @@ export function ThemeEditor({
                                             style={{ justifyContent: 'center' }}
                                         >
                                             <Icon name="shield" className="w-4 h-4" />
-                                            Continue with SSO
+                                            {tc(
+                                                'console.continue_with_sso_aa60655c',
+                                                'Continue with SSO',
+                                            )}
                                         </span>
                                     </div>
 
@@ -644,34 +706,39 @@ export function ThemeEditor({
                                             className="h-px flex-1"
                                             style={{ background: 'var(--border)' }}
                                         />
-                                        or
+                                        {tc('console.or_7175517a', 'or')}
                                         <span
                                             className="h-px flex-1"
                                             style={{ background: 'var(--border)' }}
                                         />
                                     </div>
 
-                                    <p className="label">Email address</p>
+                                    <p className="label">
+                                        {tc('console.email_address_f2488fd4', 'Email address')}
+                                    </p>
                                     <span className="input block">you@company.com</span>
                                     <span
                                         className="btn btn-primary w-full mt-4"
                                         style={{ justifyContent: 'center' }}
                                     >
-                                        Continue
+                                        {tc('console.continue_31fbef16', 'Continue')}
                                     </span>
 
                                     <p
                                         className="mt-6 text-center text-[13px]"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        Don't have an account?{' '}
+                                        {tc(
+                                            'console.don_t_have_an_account_1b545b23',
+                                            "Don't have an account?",
+                                        )}{' '}
                                         <span
                                             style={{
                                                 color: 'var(--accent-strong)',
                                                 fontWeight: 600,
                                             }}
                                         >
-                                            Sign up
+                                            {tc('console.sign_up_5e2b8e96', 'Sign up')}
                                         </span>
                                     </p>
                                 </div>
@@ -681,7 +748,10 @@ export function ThemeEditor({
                                     style={{ color: 'var(--faint)' }}
                                 >
                                     <Icon name="shield" className="w-3 h-3" />
-                                    Secured by Cbox ID
+                                    {tc(
+                                        'console.secured_by_cbox_id_825b849f',
+                                        'Secured by Cbox ID',
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -689,10 +759,19 @@ export function ThemeEditor({
 
                     <p className="mt-3 text-[12px]" style={{ color: 'var(--faint)' }}>
                         {scope === 'environment'
-                            ? "This is your environment's default sign-in. An organization can override it with its own theme."
+                            ? tc(
+                                  'console.this_is_your_environment_s_default_sign_in_a_d17d58dd',
+                                  "This is your environment's default sign-in. An organization can override it with its own theme.",
+                              )
                             : scope === 'organization'
-                              ? "This overrides your environment's default for your organization's sign-in."
-                              : 'This is exactly how your sign-in renders — the preview shares the resolver that themes the live page.'}
+                              ? tc(
+                                    'console.this_overrides_your_environment_s_default_fo_41bfb686',
+                                    "This overrides your environment's default for your organization's sign-in.",
+                                )
+                              : tc(
+                                    'console.this_is_exactly_how_your_sign_in_renders_the_a4878600',
+                                    'This is exactly how your sign-in renders — the preview shares the resolver that themes the live page.',
+                                )}
                     </p>
                 </div>
             </div>
@@ -722,6 +801,8 @@ function ImagePicker({
     error?: string;
     onChange: (next: string | null) => void;
 }) {
+    const { t: tc } = useUiTranslator();
+
     const input = useRef<HTMLInputElement>(null);
     const [problem, setProblem] = useState<string | null>(null);
     const rules = IMAGE_RULES[kind];
@@ -793,7 +874,9 @@ function ImagePicker({
                         aria-describedby={`${id}-hint`}
                         onClick={() => input.current?.click()}
                     >
-                        {value !== '' ? 'Replace' : 'Upload'}
+                        {value !== ''
+                            ? tc('console.replace_95e15439', 'Replace')
+                            : tc('console.upload_865e89de', 'Upload')}
                     </Button>
                     {value !== '' && (
                         <Button
@@ -804,7 +887,7 @@ function ImagePicker({
                                 onChange(null);
                             }}
                         >
-                            Remove
+                            {tc('console.remove_c3812fc4', 'Remove')}
                         </Button>
                     )}
                 </div>

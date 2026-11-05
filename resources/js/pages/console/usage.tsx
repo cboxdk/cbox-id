@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Panel, Table, Td, TdMono, Th } from '@/ui';
@@ -25,21 +26,31 @@ export default function Usage({
     window: period,
     help,
 }: Props) {
-    const scope = environmentWide ? 'this environment' : (organization ?? 'your organization');
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
+    const scope = environmentWide
+        ? tc('console.this_environment_42756031')
+        : (organization ?? tc('console.your_organization_bb0bdf0a'));
 
     return (
         <>
             <PageHeader
                 help={help}
-                description={`Activity across ${scope} — last 30 days. This is analytics; the SaaS bills separately.`}
+                description={tc('console.activity_across_value0_last_30_days_this_is__8ff061d6', {
+                    value0: scope,
+                })}
             />
 
             {metrics.length === 0 ? (
                 <div className="mt-6">
                     <EmptyState
                         icon="audit"
-                        title="No activity recorded yet"
-                        description="Usage counters fill as your team signs in, invites members, and issues tokens."
+                        title={tc('console.no_activity_recorded_yet_2d3a6f4f')}
+                        description={tc(
+                            'console.usage_counters_fill_as_your_team_signs_in_in_a589d0b9',
+                        )}
                     />
                 </div>
             ) : (
@@ -54,7 +65,7 @@ export default function Usage({
                                     {metric.label}
                                 </div>
                                 <p className="mt-2 text-3xl font-semibold tracking-tight mono">
-                                    {metric.total.toLocaleString()}
+                                    {metric.total.toLocaleString(locale)}
                                 </p>
                             </div>
                         ))}
@@ -62,7 +73,7 @@ export default function Usage({
 
                     <div className="mt-4">
                         <Panel
-                            title="Sign-ins over time"
+                            title={tc('console.sign_ins_over_time_7418e68f')}
                             action={
                                 <span className="text-xs mono" style={{ color: 'var(--faint)' }}>
                                     {period.from} – {period.to}
@@ -74,13 +85,19 @@ export default function Usage({
                     </div>
 
                     <div className="mt-4">
-                        <Panel title="All metrics">
-                            <Table caption="Every usage counter for this window, and the raw metric key behind it">
+                        <Panel title={tc('console.all_metrics_ba2b7011')}>
+                            <Table
+                                caption={tc(
+                                    'console.every_usage_counter_for_this_window_and_the__22633817',
+                                )}
+                            >
                                 <thead>
                                     <tr>
-                                        <Th>Metric</Th>
-                                        <Th>Key</Th>
-                                        <Th className="text-right">Total</Th>
+                                        <Th>{tc('console.metric_2d275a74')}</Th>
+                                        <Th>{tc('console.key_99a52df3')}</Th>
+                                        <Th className="text-right">
+                                            {tc('console.total_c9b3c382')}
+                                        </Th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -94,7 +111,7 @@ export default function Usage({
                                             */}
                                             <TdMono>{metric.key}</TdMono>
                                             <Td className="text-right mono font-medium">
-                                                {metric.total.toLocaleString()}
+                                                {metric.total.toLocaleString(locale)}
                                             </Td>
                                         </tr>
                                     ))}
@@ -117,6 +134,10 @@ export default function Usage({
  * read one day; the shape is what the eye is here for.
  */
 function SignInBars({ series }: { series: Props['series'] }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const max = series.reduce((highest, point) => Math.max(highest, point.value), 0);
     const total = series.reduce((sum, point) => sum + point.value, 0);
 
@@ -129,8 +150,13 @@ function SignInBars({ series }: { series: Props['series'] }) {
                 and it is available to anybody who wants the summary without counting bars.
             */}
             <figcaption className="sr-only">
-                Daily sign-ins over the last {series.length} days: {total.toLocaleString()} in
-                total, peaking at {max.toLocaleString()} in a day.
+                {tc('console.daily_sign_ins_over_the_last_9efbf559')}
+                {series.length}
+                {tc('console.days_7541abbc')}
+                {total.toLocaleString(locale)}
+                {tc('console.in_total_peaking_at_883c8b50')}
+                {max.toLocaleString(locale)}
+                {tc('console.in_a_day_5b32e772')}
             </figcaption>
 
             <div
@@ -142,7 +168,7 @@ function SignInBars({ series }: { series: Props['series'] }) {
                     <div
                         key={point.day}
                         className="flex-1 rounded-t"
-                        title={`${point.label}: ${point.value.toLocaleString()}`}
+                        title={`${point.label}: ${point.value.toLocaleString(locale)}`}
                         style={{
                             // A floor of 2%, so a day with no sign-ins is still a visible
                             // baseline rather than a gap the eye reads as missing data.

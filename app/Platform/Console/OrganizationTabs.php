@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Http\Props\Shared\LinkTabProps;
+use App\Platform\Locale\ConsoleStrings;
 
 /**
  * THE ORGANIZATION PAGE'S TABS — each one a page of its own, with its own URL under
@@ -125,7 +126,7 @@ final readonly class OrganizationTabs
         foreach (self::GROUPS as $group => [$label, $pages]) {
             $tabs[] = new LinkTabProps(
                 $group,
-                $label,
+                ConsoleStrings::text($label),
                 route(self::TABS[$pages[0]][1], ['organization' => $organizationId]),
                 in_array($current, $pages, true),
             );
@@ -149,7 +150,7 @@ final readonly class OrganizationTabs
 
             return array_map(static fn (string $key): LinkTabProps => new LinkTabProps(
                 $key,
-                self::TABS[$key][0],
+                ConsoleStrings::text(self::TABS[$key][0]),
                 route(self::TABS[$key][1], ['organization' => $organizationId]),
                 $key === $current,
             ), $pages);

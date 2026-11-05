@@ -1,3 +1,4 @@
+import { consoleI18n } from './catalogue';
 import type { SharedProps } from '@/types';
 
 /**
@@ -12,6 +13,7 @@ import type { SharedProps } from '@/types';
  * default, mutable per test through {@see setPageProps}, and reset between tests.
  */
 export const DEFAULT_PAGE_PROPS: SharedProps = {
+    appCatalog: [],
     app: {
         name: 'Cbox ID',
         tagline: 'One identity layer for every app you ship.',
@@ -25,7 +27,7 @@ export const DEFAULT_PAGE_PROPS: SharedProps = {
     impersonation: null,
     flash: { status: null, error: null },
     shell: null,
-    i18n: null,
+    i18n: consoleI18n(),
     apiEquivalents: {},
     errors: {},
 };

@@ -48,9 +48,9 @@ final class KeyExpiry
     public static function messages(): array
     {
         return [
-            'expiresOn.required' => 'Choose the date the key should stop working.',
-            'expiresOn.after' => 'Choose a date after today.',
-            'expiresOn.before' => 'Choose a date within the next ten years.',
+            'expiresOn.required' => __('console.choose_the_date_the_key_should_stop_working_001d29b7'),
+            'expiresOn.after' => __('console.choose_a_date_after_today_c0b95f45'),
+            'expiresOn.before' => __('console.choose_a_date_within_the_next_ten_years_9cc6cdfb'),
         ];
     }
 

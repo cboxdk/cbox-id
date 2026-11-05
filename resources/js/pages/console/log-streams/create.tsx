@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -31,6 +32,8 @@ export default function CreateLogStream({
     indexHref,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const first =
         destinations.find((destination) => destination.value === selected) ?? destinations[0];
     const form = useForm<StreamForm>({
@@ -45,10 +48,14 @@ export default function CreateLogStream({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Log streams" />
+            <Breadcrumb href={indexHref} label={tc('console.log_streams_aff03056')} />
 
             <div className="mt-2">
-                <PageHeader description="Where a copy of every audit entry is delivered as it is written." />
+                <PageHeader
+                    description={tc(
+                        'console.where_a_copy_of_every_audit_entry_is_deliver_c6b9e401',
+                    )}
+                />
             </div>
 
             <form
@@ -61,7 +68,7 @@ export default function CreateLogStream({
                 }}
             >
                 <Panel
-                    title="What it carries"
+                    title={tc('console.what_it_carries_15f5b403')}
                     description={
                         /*
                          * SAID BEFORE IT IS CREATED. The two planes mint materially
@@ -70,14 +77,14 @@ export default function CreateLogStream({
                          * console you are already inside.
                          */
                         shipsWholeEnvironment
-                            ? "Every organization's entries in this environment, including organizations other than your own."
-                            : "This organization's entries, and nothing from any other organization."
+                            ? tc('console.every_organization_s_entries_in_this_environ_1e2838e1')
+                            : tc('console.this_organization_s_entries_and_nothing_from_1ab06e62')
                     }
                 >
-                    <Field label="Name" error={form.errors.name}>
+                    <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                         <Input
                             name="name"
-                            placeholder="Splunk — production"
+                            placeholder={tc('console.splunk_production_96e53a09')}
                             value={form.data.name}
                             onChange={(event) => form.setData('name', event.target.value)}
                         />
@@ -91,10 +98,10 @@ export default function CreateLogStream({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create stream
+                        {tc('console.create_stream_cd51d4b0')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

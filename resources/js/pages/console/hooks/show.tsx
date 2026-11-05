@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -30,6 +31,8 @@ type Props = PageProps<{
 }>;
 
 export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) {
+    const { t: tc } = useTranslator();
+
     // The signing secret, on the flash channel and nowhere else: the endpoint authenticates
     // every call we make to it with this, and props are written into the history entry.
     const newSecret = usePage().flash.newSecret;
@@ -51,13 +54,15 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Hooks" />
+                <Breadcrumb href={indexHref} label={tc('console.hooks_d412a062')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title mono truncate" style={{ fontSize: '1.25rem' }}>
                         {hook.url}
                     </h1>
                     <Pill tone={hook.active ? 'success' : 'warning'}>
-                        {hook.active ? 'Active' : 'Paused'}
+                        {hook.active
+                            ? tc('console.active_92340695')
+                            : tc('console.paused_e159b061')}
                     </Pill>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -69,9 +74,9 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
                 <RevealedSecret secret={newSecret} onDismiss={() => setSecretDismissed(true)} />
             )}
 
-            <Panel title="Details">
+            <Panel title={tc('console.details_45989de4')}>
                 <KvList>
-                    <Kv label="Hook point" prose>
+                    <Kv label={tc('console.hook_point_57b75ff5')} prose>
                         <span className="flex items-center gap-2 flex-wrap">
                             <Badge>{hook.point}</Badge>
                             <span style={{ color: 'var(--muted-foreground)' }}>
@@ -79,46 +84,56 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
                             </span>
                         </span>
                     </Kv>
-                    <Kv label="Organization" prose>
-                        <Badge>{hook.owner ?? 'All organizations'}</Badge>
+                    <Kv label={tc('console.organization_d764d425')} prose>
+                        <Badge>{hook.owner ?? tc('console.all_organizations_e3002b23')}</Badge>
                     </Kv>
-                    <Kv label="Endpoint URL">{hook.url}</Kv>
+                    <Kv label={tc('console.endpoint_url_2578179d')}>{hook.url}</Kv>
                 </KvList>
             </Panel>
 
             {mayManage ? (
                 <>
                     <Panel
-                        title={hook.active ? 'Pause endpoint' : 'Resume endpoint'}
+                        title={
+                            hook.active
+                                ? tc('console.pause_endpoint_b58b90e3')
+                                : tc('console.resume_endpoint_f4e2aed4')
+                        }
                         description={
                             hook.active
-                                ? 'It stops being called at the hook point. The operation it answers at goes ahead without it.'
-                                : 'It is called again at the hook point from the next matching operation.'
+                                ? tc(
+                                      'console.it_stops_being_called_at_the_hook_point_the__72937229',
+                                  )
+                                : tc(
+                                      'console.it_is_called_again_at_the_hook_point_from_th_a4d12b55',
+                                  )
                         }
                     >
                         <Button
                             size="sm"
                             onClick={() => router.post(urls.toggle, {}, { preserveScroll: true })}
                         >
-                            {hook.active ? 'Pause' : 'Activate'}
+                            {hook.active
+                                ? tc('console.pause_858e4ba7')
+                                : tc('console.activate_24433c70')}
                         </Button>
                     </Panel>
 
                     <Panel
-                        title="Remove endpoint"
-                        description="The hook stops being called and its signing secret is destroyed."
+                        title={tc('console.remove_endpoint_576e9393')}
+                        description={tc(
+                            'console.the_hook_stops_being_called_and_its_signing__baa86fc7',
+                        )}
                     >
                         <Button size="sm" variant="danger" onClick={() => setConfirming(true)}>
-                            Remove endpoint
+                            {tc('console.remove_endpoint_576e9393')}
                         </Button>
                     </Panel>
                 </>
             ) : (
-                <Panel title="Managed by your operator">
+                <Panel title={tc('console.managed_by_your_operator_3e30ba47')}>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        This endpoint belongs to the environment and fires for every organization in
-                        it. It is shown here because it runs on your sign-ins — your operator
-                        manages it.
+                        {tc('console.this_endpoint_belongs_to_the_environment_and_2bbbb6fd')}
                     </p>
                 </Panel>
             )}
@@ -128,7 +143,7 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
                 onOpenChange={setConfirming}
                 name={hook.url}
                 verb="Remove"
-                consequence="The hook stops being called and its signing secret is destroyed. This cannot be undone."
+                consequence={tc('console.the_hook_stops_being_called_and_its_signing__ad833a77')}
                 onConfirm={() => {
                     setConfirming(false);
                     router.delete(urls.destroy);
@@ -146,6 +161,8 @@ export default function HookDetail({ hook, mayManage, indexHref, urls }: Props) 
  * somewhere on a screen they have not read yet.
  */
 function RevealedSecret({ secret, onDismiss }: { secret: string; onDismiss: () => void }) {
+    const { t: tc } = useTranslator();
+
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -166,26 +183,30 @@ function RevealedSecret({ secret, onDismiss }: { secret: string; onDismiss: () =
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                     <p className="text-sm font-semibold" style={{ color: 'var(--warning-strong)' }}>
-                        Copy this signing secret now — it won't be shown again.
+                        {tc('console.copy_this_signing_secret_now_it_won_t_be_sho_2331f9ee')}
                     </p>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        There is no rotation on a hook: if this is lost, the endpoint has to be
-                        registered again.
+                        {tc('console.there_is_no_rotation_on_a_hook_if_this_is_lo_5577289c')}
                     </p>
                 </div>
                 <Button size="sm" className="shrink-0" onClick={onDismiss}>
-                    Dismiss
+                    {tc('console.dismiss_48845bff')}
                 </Button>
             </div>
 
             <div className="mt-4 flex items-start gap-2">
                 <code className="mono text-sm break-all select-all flex-1">{secret}</code>
-                <CopyButton value={secret} variant="primary" label="Copy secret" />
+                <CopyButton
+                    value={secret}
+                    variant="primary"
+                    label={tc('console.copy_secret_9b80d4b3')}
+                />
             </div>
 
             <p className="mt-3 text-xs" style={{ color: 'var(--warning-strong)' }}>
-                Your endpoint verifies the <code className="mono">X-Cbox-Signature</code> header on
-                each request with this secret.
+                {tc('console.your_endpoint_verifies_the_7f130ed2')}
+                <code className="mono">{tc('console.x_cbox_signature_f04741a9')}</code>
+                {tc('console.header_on_each_request_with_this_secret_c60410e2')}
             </p>
         </div>
     );

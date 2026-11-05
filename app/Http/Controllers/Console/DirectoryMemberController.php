@@ -28,6 +28,7 @@ use App\Platform\Invitations\AppReturnTargets;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Membership\AfterLeaving;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -128,7 +129,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             ];
         }
 
-        return $this->page('console/directory-members', Vocabulary::MEMBERS, [
+        return $this->page('console/directory-members', ConsoleStrings::text(Vocabulary::MEMBERS), [
             'isAdmin' => $isAdmin,
             'members' => $rows,
             'pagination' => PaginationProps::from($page),
@@ -197,7 +198,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', 'Invitation sent to '.$request->email().'.');
+        return back()->with('status', __('console.invitation_sent_to_1294f712').$request->email().'.');
     }
 
     /** Send a pending invitation again, on a fresh link. */
@@ -213,7 +214,7 @@ final readonly class DirectoryMemberController extends ConsoleController
 
         $sent = $result->value;
 
-        return back()->with('status', 'Invitation sent again'.($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
+        return back()->with('status', __('console.invitation_sent_again_31ffca77').($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
     }
 
     public function revokeInvitation(string $invitation): RedirectResponse
@@ -226,7 +227,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return back()->with('error', $result->getMessage());
         }
 
-        return back()->with('status', 'Invitation revoked. That link no longer works.');
+        return back()->with('status', __('console.invitation_revoked_that_link_no_longer_works_c1b9fc24'));
     }
 
     /**
@@ -250,9 +251,9 @@ final readonly class DirectoryMemberController extends ConsoleController
             'organization_id' => $this->organizationId(),
             'user_id' => $member,
             'role' => $next->value,
-        ], ['role' => 'role', 'user_id' => 'member'], 'role', ['last_owner' => 'The organization must keep at least one owner.']);
+        ], ['role' => 'role', 'user_id' => 'member'], 'role', ['last_owner' => __('console.the_organization_must_keep_at_least_one_owne_f3917bab')]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Built-in role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.built_in_role_updated_a1cff526'));
     }
 
     /**
@@ -273,12 +274,12 @@ final readonly class DirectoryMemberController extends ConsoleController
         if (! $request->boolean('granted')) {
             $result = $this->act(RevokeMemberRole::class, $input, ['role_id' => 'role', 'user_id' => 'member'], 'role');
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role revoked.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_revoked_8cb5dd54'));
         }
 
         $result = $this->act(GrantMemberRole::class, $input, ['role_id' => 'role', 'user_id' => 'member'], 'role');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role granted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_granted_58d5cb32'));
     }
 
     /**
@@ -293,9 +294,9 @@ final readonly class DirectoryMemberController extends ConsoleController
         $result = $this->act(RemoveMember::class, [
             'organization_id' => $this->organizationId(),
             'user_id' => $member,
-        ], ['user_id' => 'member'], 'member', ['last_owner' => 'The organization must keep at least one owner.']);
+        ], ['user_id' => 'member'], 'member', ['last_owner' => __('console.the_organization_must_keep_at_least_one_owne_f3917bab')]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Member removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.member_removed_d6fe67b5'));
     }
 
     /**
@@ -319,7 +320,7 @@ final readonly class DirectoryMemberController extends ConsoleController
 
         $subject = $subjects->find($member);
 
-        return back()->with('status', 'Ownership transferred to '.($subject->name ?? $subject->email ?? 'that member').'. You are now an admin.');
+        return back()->with('status', __('console.ownership_transferred_to_d375650c').($subject->name ?? $subject->email ?? __('console.that_member_4103a653')).__('console.you_are_now_an_admin_a2e4aa5f'));
     }
 
     /**
@@ -332,7 +333,7 @@ final readonly class DirectoryMemberController extends ConsoleController
     {
         $me = app(CurrentUser::class);
         $organizationId = $this->organizationId();
-        $name = $me->organization()->name ?? 'the organization';
+        $name = $me->organization()->name ?? __('console.the_organization_7b4eb279');
 
         $result = $this->act(LeaveOrganization::class, ['organization_id' => $organizationId], ['organization_id' => 'member'], 'member');
 
@@ -340,7 +341,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return $result;
         }
 
-        return $after->land($request, $me->id(), $organizationId, 'You left '.$name.'.');
+        return $after->land($request, $me->id(), $organizationId, __('console.you_left_44582a29').$name.'.');
     }
 
     private function assertAdmin(): void
@@ -454,7 +455,7 @@ final readonly class DirectoryMemberController extends ConsoleController
                 'key' => $role->key ?? 'org',
                 // Grouped org-wide vs per-app: "what a person can do" reads differently
                 // depending on which apps it reaches.
-                'group' => $clientId === null ? 'Custom roles' : ($appNames[$clientId] ?? $clientId),
+                'group' => $clientId === null ? __('console.custom_roles_c703c7f9') : ($appNames[$clientId] ?? $clientId),
                 'permissions' => $permissions[$role->id] ?? [],
             ];
         }

@@ -102,6 +102,8 @@ tags:
   -
     name: Governance
   -
+    name: 'App catalog'
+  -
     name: 'Audit log'
   -
     name: 'App audit logs'
@@ -1229,6 +1231,322 @@ paths:
           $ref: '#/components/responses/NotFound'
         409:
           $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  /app-catalog:
+    get:
+      tags:
+        - 'App catalog'
+      summary: 'List catalog apps, including drafts and visibility settings.'
+      description: 'Requires scope `app_catalog:read`. Danger: read.'
+      operationId: app_catalog_list
+      x-action: app_catalog.list
+      x-scope: 'app_catalog:read'
+      x-danger: read
+      parameters:
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - name
+                        - description
+                        - launch_url
+                        - icon_url
+                        - position
+                        - version
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - 'null'
+                        launch_url:
+                          type: string
+                          format: uri
+                        icon_url:
+                          type:
+                            - string
+                            - 'null'
+                        position:
+                          type: integer
+                        version:
+                          type: integer
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/app-catalog/{key}':
+    delete:
+      tags:
+        - 'App catalog'
+      summary: 'Remove a catalog app without deleting its OAuth clients or user data.'
+      description: 'Requires scope `app_catalog:write`. Danger: destructive.'
+      operationId: app_catalog_delete
+      x-action: app_catalog.delete
+      x-scope: 'app_catalog:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+                  minimum: 1
+              required:
+                - version
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      tags:
+        - 'App catalog'
+      summary: 'Create or replace a catalog app, its icon and visibility. Version zero creates; a stale version conflicts.'
+      description: 'Requires scope `app_catalog:write`. Danger: write.'
+      operationId: app_catalog_save
+      x-action: app_catalog.save
+      x-scope: 'app_catalog:write'
+      x-danger: write
+      parameters:
+        -
+          name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+                  minimum: 0
+                name:
+                  type: string
+                  maxLength: 120
+                description:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 300
+                launch_url:
+                  type: string
+                  description: 'Explicit HTTPS entry point. Never inferred from OAuth redirects.'
+                  maxLength: 2048
+                enabled:
+                  type: boolean
+                position:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                audience:
+                  type: string
+                  enum:
+                    - everyone
+                    - organizations
+                    - users
+                organization_ids:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 64
+                user_ids:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 64
+                client_ids:
+                  type: array
+                  description: 'Environment-wide OAuth client ids associated with this app. Does not grant access.'
+                  maxItems: 100
+                  items:
+                    type: string
+                    maxLength: 190
+                required_feature:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Optional feature-flag key. Hidden when off for this person and organization.'
+                  maxLength: 64
+                icon:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'PNG, JPEG or WebP data URI, up to 128 KiB and 512 pixels. Omit to retain; null clears. SVG and remote URLs are refused.'
+                  maxLength: 180000
+              required:
+                - version
+                - name
+                - launch_url
+                - enabled
+                - position
+                - audience
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags:
+        - 'App catalog'
+      summary: 'Read a catalog app and its publication settings.'
+      description: 'Requires scope `app_catalog:read`. Danger: read.'
+      operationId: app_catalog_show
+      x-action: app_catalog.show
+      x-scope: 'app_catalog:read'
+      x-danger: read
+      parameters:
+        -
+          name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
         422:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
@@ -10649,6 +10967,10 @@ paths:
                     - sv
                     - nb
                     - fr
+                    - fi
+                    - es
+                    - it
+                    - nl
               required:
                 - intents
       responses:
@@ -14050,6 +14372,222 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /service-connections:
+    get:
+      operationId: listOrganizationServiceConnections
+      summary: "List the authorized organization's service grants"
+      security:
+        -
+          ServiceConnectionAdmin: []
+      responses:
+        401:
+          description: 'The token is missing, invalid or addressed to another audience'
+        403:
+          description: 'The caller lacks permission for this organization or grant'
+        404:
+          description: 'The requested organization, service or grant is unavailable'
+        429:
+          description: 'Request rate exceeded'
+        200:
+          description: 'Active and revoked grants'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrganizationServiceGrant'
+  '/service-connections/{id}':
+    parameters:
+      -
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: 'Service name for creation or grant ID for revocation'
+    post:
+      operationId: connectOrganizationService
+      summary: 'Grant a trusted application access to the selected service'
+      description: "An organization administrator authorizes cbox_billing or cbox_telemetry. Repeating the request returns the organization's existing active grant."
+      security:
+        -
+          ServiceConnectionAdmin: []
+      responses:
+        401:
+          description: 'The token is missing, invalid or addressed to another audience'
+        403:
+          description: 'The caller lacks permission for this organization or grant'
+        404:
+          description: 'The requested organization, service or grant is unavailable'
+        429:
+          description: 'Request rate exceeded'
+        200:
+          description: 'Organization grant'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationServiceGrant'
+    delete:
+      operationId: revokeOrganizationService
+      summary: 'Revoke the grant and retire its service account'
+      security:
+        -
+          ServiceConnectionAdmin: []
+      responses:
+        401:
+          description: 'The token is missing, invalid or addressed to another audience'
+        403:
+          description: 'The caller lacks permission for this organization or grant'
+        404:
+          description: 'The requested organization, service or grant is unavailable'
+        429:
+          description: 'Request rate exceeded'
+        200:
+          description: 'Revocation confirmed'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - revoked
+                properties:
+                  revoked:
+                    type: boolean
+  '/service-connections/{id}/inspect':
+    parameters:
+      -
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: inspectProviderConnection
+      summary: 'Inspect the connection before delivering data'
+      security:
+        -
+          ServiceConnectionProvider: []
+      responses:
+        401:
+          description: 'The token is missing, invalid or addressed to another audience'
+        403:
+          description: 'The caller lacks permission for this organization or grant'
+        404:
+          description: 'The requested organization, service or grant is unavailable'
+        429:
+          description: 'Request rate exceeded'
+        200:
+          description: 'Inspect the connection before delivering data'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - active
+                properties:
+                  active:
+                    type: boolean
+                  service_client_id:
+                    type: string
+                  organization_id:
+                    type: string
+                  audience:
+                    type: string
+                  service:
+                    type: string
+  '/service-connections/{id}/status':
+    parameters:
+      -
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: inspectConsumerConnection
+      summary: 'Check whether the connection remains active'
+      security:
+        -
+          ServiceConnectionConsumer: []
+      responses:
+        401:
+          description: 'The token is missing, invalid or addressed to another audience'
+        403:
+          description: 'The caller lacks permission for this organization or grant'
+        404:
+          description: 'The requested organization, service or grant is unavailable'
+        429:
+          description: 'Request rate exceeded'
+        200:
+          description: 'Check whether the connection remains active'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - active
+                properties:
+                  active:
+                    type: boolean
+                  service_client_id:
+                    type: string
+                  organization_id:
+                    type: string
+                  audience:
+                    type: string
+                  service:
+                    type: string
+  '/service-connections/{id}/token':
+    parameters:
+      -
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: leaseServiceConnectionToken
+      summary: 'Lease a short-lived token for the connection resource'
+      security:
+        -
+          ServiceConnectionConsumer: []
+      responses:
+        401:
+          description: 'The token is missing, invalid or addressed to another audience'
+        403:
+          description: 'The caller lacks permission for this organization or grant'
+        404:
+          description: 'The requested organization, service or grant is unavailable'
+        429:
+          description: 'Request rate exceeded'
+        200:
+          description: 'Lease a short-lived token for the connection resource'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - access_token
+                  - token_type
+                  - expires_in
+                  - scope
+                  - audience
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                  expires_in:
+                    type: integer
+                  scope:
+                    type: string
+                  audience:
+                    type: string
   /sign-in/policy:
     get:
       tags:
@@ -20137,6 +20675,18 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
+    ServiceConnectionAdmin:
+      type: http
+      scheme: bearer
+      description: 'Organization administrator token with service_connections.manage'
+    ServiceConnectionProvider:
+      type: http
+      scheme: bearer
+      description: 'Provider machine token with service_connections.inspect'
+    ServiceConnectionConsumer:
+      type: http
+      scheme: bearer
+      description: 'Consumer machine token with service_connections.lease'
     UserPropertiesAccessToken:
       type: http
       scheme: bearer
@@ -20310,6 +20860,36 @@ components:
       schema:
         type: string
   schemas:
+    OrganizationServiceGrant:
+      type: object
+      required:
+        - id
+        - organization_id
+        - service
+        - consumer_client_id
+        - audience
+        - scopes
+        - revoked_at
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        service:
+          type: string
+        consumer_client_id:
+          type: string
+        audience:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
     UserPropertySnapshot:
       type: object
       required:

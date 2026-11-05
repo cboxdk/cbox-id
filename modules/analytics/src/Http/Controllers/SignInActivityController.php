@@ -7,6 +7,7 @@ namespace Cbox\Id\Analytics\Http\Controllers;
 use App\Http\Controllers\Console\ConsoleController;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Analytics\Contracts\ReportReader;
 use Illuminate\Support\Carbon;
 use Inertia\Response;
@@ -82,7 +83,7 @@ final readonly class SignInActivityController extends ConsoleController
 
                 $tiles[] = [
                     'key' => $metric['key'],
-                    'label' => $metric['label'],
+                    'label' => ConsoleStrings::text($metric['label']),
                     'total' => array_sum($counts),
                     'bars' => $bars,
                     // The window is floored at 1, so there is always at least one bar.
@@ -94,7 +95,7 @@ final readonly class SignInActivityController extends ConsoleController
             $logins = (int) ($snapshot['auth.login'] ?? 0);
             $mfa = (int) ($snapshot['auth.mfa_enrolled'] ?? 0);
 
-            return $this->page('analytics::sign-in-activity', 'Sign-in activity', [
+            return $this->page('analytics::sign-in-activity', __('console.sign_in_activity_3a93b0be'), [
                 'help' => HelpProps::for(HelpTopic::SignInActivity),
                 'window' => $window,
                 'tiles' => $tiles,
@@ -104,7 +105,7 @@ final readonly class SignInActivityController extends ConsoleController
         } catch (Throwable $e) {
             report($e);
 
-            return $this->page('analytics::sign-in-activity', 'Sign-in activity', [
+            return $this->page('analytics::sign-in-activity', __('console.sign_in_activity_3a93b0be'), [
                 'help' => HelpProps::for(HelpTopic::SignInActivity),
                 'window' => $window,
                 'tiles' => [],

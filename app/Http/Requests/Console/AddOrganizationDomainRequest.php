@@ -35,7 +35,7 @@ final class AddOrganizationDomainRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['domain.regex' => 'Enter a domain name — acme.com, not an address or a URL.'];
+        return ['domain.regex' => __('console.enter_a_domain_name_acme_com_not_an_address__791a506a')];
     }
 
     public function domain(): string

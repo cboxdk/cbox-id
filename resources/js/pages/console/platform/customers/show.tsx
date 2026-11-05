@@ -1,3 +1,6 @@
+import { useConsoleCount } from '@/i18n/count';
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -66,16 +69,12 @@ type Props = PageProps<{
     toggleHref: string;
 }>;
 
-function plural(count: number, noun: string): string {
-    return `${count} ${count === 1 ? noun : `${noun}s`}`;
-}
-
 /** What a control that repoints the console has to say before it does it. */
-const TARGET_COPY =
-    'Every page you open from now on — organizations, usage, organization detail — reads that environment instead of the current one. Nothing is changed in either.';
+const TARGET_COPY = (tc: Translator['t']) =>
+    tc('console.every_page_you_open_from_now_on_organization_7ba726d3');
 
-const OPEN_COPY =
-    'The console is pointed at this environment and every page you open from now on reads it instead of the current one. Nothing is changed in either.';
+const OPEN_COPY = (tc: Translator['t']) =>
+    tc('console.the_console_is_pointed_at_this_environment_a_4d2a0145');
 
 export default function Customer({
     customer,
@@ -87,6 +86,9 @@ export default function Customer({
     indexHref,
     toggleHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+    const plural = useConsoleCount();
+
     const [suspending, setSuspending] = useState(false);
     const [confirming, setConfirming] = useState<{
         href: string;
@@ -103,7 +105,8 @@ export default function Customer({
                     className="inline-flex items-center gap-1 text-sm"
                     style={{ color: 'var(--muted)' }}
                 >
-                    <span aria-hidden="true">&larr;</span> Back to workspaces
+                    <span aria-hidden="true">{tc('console.larr_848fc0e7')}</span>
+                    {tc('console.back_to_workspaces_279ec831')}
                 </Link>
             </div>
 
@@ -113,13 +116,15 @@ export default function Customer({
                 the label from there.
             */}
             <PageHeader
-                description="One workspace on this install — its team, its projects, and every environment those projects own. Suspending it signs out its members and stops all of them serving auth."
+                description={tc('console.one_workspace_on_this_install_its_team_its_p_e343ed1c')}
                 actions={
                     <Button
                         variant={customer.active ? 'danger' : 'primary'}
                         onClick={() => setSuspending(true)}
                     >
-                        {customer.active ? 'Suspend' : 'Reactivate'}
+                        {customer.active
+                            ? tc('console.suspend_4948e134')
+                            : tc('console.reactivate_2dc7478f')}
                     </Button>
                 }
             />
@@ -127,29 +132,31 @@ export default function Customer({
             <Panel title={customer.name} className="mb-5 mt-8">
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                     {customer.active ? (
-                        <Pill tone="success">Active</Pill>
+                        <Pill tone="success">{tc('console.active_92340695')}</Pill>
                     ) : (
-                        <Pill tone="destructive">Suspended</Pill>
+                        <Pill tone="destructive">{tc('console.suspended_e392a389')}</Pill>
                     )}
                 </div>
 
                 <KvList>
-                    <Kv label="Organization ID">{customer.id}</Kv>
-                    <Kv label="Members" prose>
+                    <Kv label={tc('console.organization_id_1f466322')}>{customer.id}</Kv>
+                    <Kv label={tc('console.members_1044a4c0')} prose>
                         {memberTotal}
                     </Kv>
-                    <Kv label="Projects" prose>
+                    <Kv label={tc('console.projects_04e2a972')} prose>
                         {projects.length}
                     </Kv>
-                    <Kv label="Environments" prose>
+                    <Kv label={tc('console.environments_07437cd6')} prose>
                         {environmentTotal}
                     </Kv>
-                    {customer.createdAt !== null && <Kv label="Created">{customer.createdAt}</Kv>}
+                    {customer.createdAt !== null && (
+                        <Kv label={tc('console.created_d70b9e24')}>{customer.createdAt}</Kv>
+                    )}
                 </KvList>
             </Panel>
 
             <Panel
-                title="Team"
+                title={tc('console.team_5985039f')}
                 flush
                 action={
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
@@ -163,20 +170,18 @@ export default function Customer({
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        Nobody is on this workspace — it has no owner, so nobody can sign in to
-                        administer it. That is a provisioning failure worth chasing, not an empty
-                        list.
+                        {tc('console.nobody_is_on_this_workspace_it_has_no_owner__554101fb')}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <Table caption={`The people on ${customer.name}, and what each may reach.`}>
                             <thead>
                                 <tr>
-                                    <Th>Member</Th>
-                                    <Th>Built-in role</Th>
-                                    <Th>Status</Th>
-                                    <Th>Environments</Th>
-                                    <Th>Last sign-in</Th>
+                                    <Th>{tc('console.member_7c968fb7')}</Th>
+                                    <Th>{tc('console.built_in_role_9f680a16')}</Th>
+                                    <Th>{tc('console.status_920e413c')}</Th>
+                                    <Th>{tc('console.environments_07437cd6')}</Th>
+                                    <Th>{tc('console.last_sign_in_0b70af7a')}</Th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -203,13 +208,15 @@ export default function Customer({
                                             className="whitespace-nowrap text-xs"
                                             style={{ color: 'var(--muted)' }}
                                         >
-                                            {member.allEnvironments ? 'All' : 'Selected only'}
+                                            {member.allEnvironments
+                                                ? tc('console.all_a52ace42')
+                                                : tc('console.selected_only_e624c530')}
                                         </Td>
                                         <Td
                                             className="whitespace-nowrap text-xs"
                                             style={{ color: 'var(--faint)' }}
                                         >
-                                            {member.lastLogin ?? 'Never'}
+                                            {member.lastLogin ?? tc('console.never_6300ef80')}
                                         </Td>
                                     </tr>
                                 ))}
@@ -225,7 +232,9 @@ export default function Customer({
             */}
             <section>
                 <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-                    <h2 className="text-sm font-semibold">Projects &amp; environments</h2>
+                    <h2 className="text-sm font-semibold">
+                        {tc('console.projects_amp_environments_bba149d1')}
+                    </h2>
                     <output className="text-xs" style={{ color: 'var(--faint)' }}>
                         {plural(projects.length, 'project')},{' '}
                         {plural(environmentTotal, 'environment')}
@@ -235,8 +244,10 @@ export default function Customer({
                 {projects.length === 0 && unfiledEnvironments.length === 0 && (
                     <EmptyState
                         icon="layers"
-                        title="No projects yet"
-                        description="A project is one IdP product this workspace owns, and it is what environments hang off — so until the workspace creates one from its own console, there is nothing here to target or open. Nothing on this screen creates one on the workspace's behalf."
+                        title={tc('console.no_projects_yet_f83c8065')}
+                        description={tc(
+                            'console.a_project_is_one_idp_product_this_workspace__a5e40dff',
+                        )}
                     />
                 )}
 
@@ -249,16 +260,21 @@ export default function Customer({
                             <span className="flex flex-wrap items-center gap-2 min-w-0">
                                 {project.name}
                                 {project.active ? (
-                                    <Pill tone="success">Active</Pill>
+                                    <Pill tone="success">{tc('console.active_92340695')}</Pill>
                                 ) : (
-                                    <Pill tone="destructive">Suspended</Pill>
+                                    <Pill tone="destructive">
+                                        {tc('console.suspended_e392a389')}
+                                    </Pill>
                                 )}
                             </span>
                         }
                         action={
                             <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {project.environments.length} of {project.environmentLimit}{' '}
-                                environments · {project.remaining} left on plan
+                                {project.environments.length}
+                                {tc('console.of_a4282e4b')}
+                                {project.environmentLimit} {tc('console.environments_84c2d9c8')}
+                                {project.remaining}
+                                {tc('console.left_on_plan_6bf538d4')}
                             </span>
                         }
                     >
@@ -267,7 +283,9 @@ export default function Customer({
                                 className="px-5 py-8 text-center text-sm"
                                 style={{ color: 'var(--faint)' }}
                             >
-                                This project has no environments yet — nothing under it serves auth.
+                                {tc(
+                                    'console.this_project_has_no_environments_yet_nothing_a2247eb5',
+                                )}
                             </div>
                         ) : (
                             <EnvironmentTable
@@ -283,22 +301,32 @@ export default function Customer({
                     <Panel
                         flush
                         className="mb-5"
-                        title="Not in a project"
-                        action={<Pill tone="warning">Unfiled</Pill>}
+                        title={tc('console.not_in_a_project_894f81c5')}
+                        action={<Pill tone="warning">{tc('console.unfiled_d64dc9ae')}</Pill>}
                     >
                         <div className="px-5 pt-4 text-sm" style={{ color: 'var(--muted)' }}>
-                            This workspace owns {plural(unfiledEnvironments.length, 'environment')}{' '}
-                            that no project holds, so nothing bills for{' '}
-                            {unfiledEnvironments.length === 1 ? 'it' : 'them'} and{' '}
-                            {unfiledEnvironments.length === 1 ? 'it does' : 'they do'} not appear on
-                            the customer&rsquo;s own project pages. Shown here rather than left
-                            invisible; nothing on this screen reassigns{' '}
-                            {unfiledEnvironments.length === 1 ? 'it' : 'them'}.
+                            {tc('console.this_workspace_owns_02f34b4d')}{' '}
+                            {plural(unfiledEnvironments.length, 'environment')}
+                            {tc('console.that_no_project_holds_so_nothing_bills_for_a4fae307')}{' '}
+                            {unfiledEnvironments.length === 1
+                                ? tc('console.it_2ad8a704')
+                                : tc('console.them_c9a8dc33')}
+                            {tc('console.and_2e5f7696')}{' '}
+                            {unfiledEnvironments.length === 1
+                                ? tc('console.it_does_386ef68e')
+                                : tc('console.they_do_b2ef8abf')}
+                            {tc('console.not_appear_on_the_customer_rsquo_s_own_proje_d4a73b77')}{' '}
+                            {unfiledEnvironments.length === 1
+                                ? tc('console.it_2ad8a704')
+                                : tc('console.them_c9a8dc33')}
+                            .
                         </div>
 
                         <div className="mt-4">
                             <EnvironmentTable
-                                caption="Environments this workspace owns that no project holds."
+                                caption={tc(
+                                    'console.environments_this_workspace_owns_that_no_pro_c28359ff',
+                                )}
                                 environments={unfiledEnvironments}
                                 onConfirm={setConfirming}
                                 openOnly
@@ -309,9 +337,7 @@ export default function Customer({
             </section>
 
             <p className="mt-4 text-xs" style={{ color: 'var(--faint)' }}>
-                Suspension is the only thing this page changes, and it is reversible. Targeting and
-                opening an environment move the console&rsquo;s own view; they change nothing in
-                either environment.
+                {tc('console.suspension_is_the_only_thing_this_page_chang_4b1a3610')}
             </p>
 
             <Dialog
@@ -320,12 +346,17 @@ export default function Customer({
                 title={`${customer.active ? 'Suspend' : 'Reactivate'} ${customer.name}?`}
                 description={
                     customer.active
-                        ? `Its ${plural(memberTotal, 'member')} are signed out and all ${plural(environmentTotal, 'environment')} it owns stop serving auth on the next request. You can reactivate it here.`
-                        : 'Its members can sign in again and its environments resume serving auth.'
+                        ? tc('console.its_value0_are_signed_out_and_all_value1_it__24f1c9af', {
+                              value0: plural(memberTotal, 'member'),
+                              value1: plural(environmentTotal, 'environment'),
+                          })
+                        : tc('console.its_members_can_sign_in_again_and_its_enviro_d369bd33')
                 }
                 footer={
                     <>
-                        <Button onClick={() => setSuspending(false)}>Cancel</Button>
+                        <Button onClick={() => setSuspending(false)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant={customer.active ? 'danger' : 'primary'}
                             onClick={() => {
@@ -333,7 +364,9 @@ export default function Customer({
                                 router.post(toggleHref, {}, { preserveScroll: true });
                             }}
                         >
-                            {customer.active ? 'Suspend' : 'Reactivate'}
+                            {customer.active
+                                ? tc('console.suspend_4948e134')
+                                : tc('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -351,7 +384,9 @@ export default function Customer({
                 description={confirming?.description ?? ''}
                 footer={
                     <>
-                        <Button onClick={() => setConfirming(null)}>Cancel</Button>
+                        <Button onClick={() => setConfirming(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="primary"
                             onClick={() => {
@@ -388,17 +423,19 @@ function EnvironmentTable({
     }) => void;
     openOnly?: boolean;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="overflow-x-auto">
             <Table caption={caption}>
                 <thead>
                     <tr>
-                        <Th>Environment</Th>
-                        <Th>Domain</Th>
-                        <Th className="text-right">Orgs</Th>
-                        <Th className="text-right">Users</Th>
+                        <Th>{tc('console.environment_9e471951')}</Th>
+                        <Th>{tc('console.domain_79fa3361')}</Th>
+                        <Th className="text-right">{tc('console.orgs_ff9e49b5')}</Th>
+                        <Th className="text-right">{tc('console.users_6b0cc904')}</Th>
                         <Th>
-                            <span className="sr-only">Actions</span>
+                            <span className="sr-only">{tc('console.actions_ff8059dc')}</span>
                         </Th>
                     </tr>
                 </thead>
@@ -424,12 +461,12 @@ function EnvironmentTable({
                                             {environment.name}
                                             {environment.isTarget && (
                                                 <Pill tone="success" className="align-middle ml-1">
-                                                    Target
+                                                    {tc('console.target_978354db')}
                                                 </Pill>
                                             )}
                                             {environment.sandbox && (
                                                 <Pill dot={false} className="align-middle ml-1">
-                                                    Sandbox
+                                                    {tc('console.sandbox_67fc6249')}
                                                 </Pill>
                                             )}
                                             {!environment.serving && (
@@ -437,7 +474,7 @@ function EnvironmentTable({
                                                     tone="destructive"
                                                     className="align-middle ml-1"
                                                 >
-                                                    Suspended
+                                                    {tc('console.suspended_e392a389')}
                                                 </Pill>
                                             )}
                                         </p>
@@ -451,24 +488,28 @@ function EnvironmentTable({
                                 </div>
                             </Td>
                             <Td style={{ color: 'var(--muted)' }}>
-                                {environment.domain ?? 'None — served on the fallback host'}
+                                {environment.domain ??
+                                    tc('console.none_served_on_the_fallback_host_7c84367e')}
                             </Td>
                             <Td className="text-right tabular-nums">{environment.orgs}</Td>
                             <Td className="text-right tabular-nums">{environment.users}</Td>
                             <Td className="text-right whitespace-nowrap">
                                 <Button
                                     size="sm"
-                                    aria-label={`Open the organizations in ${environment.name}`}
+                                    aria-label={tc(
+                                        'console.open_the_organizations_in_value0_bfb4f4bd',
+                                        { value0: environment.name },
+                                    )}
                                     onClick={() =>
                                         onConfirm({
                                             href: environment.openHref,
                                             title: `Open ${environment.name}?`,
-                                            description: OPEN_COPY,
-                                            action: 'Open organizations',
+                                            description: OPEN_COPY(tc),
+                                            action: tc('console.open_organizations_c2db39e8'),
                                         })
                                     }
                                 >
-                                    Open organizations
+                                    {tc('console.open_organizations_c2db39e8')}
                                 </Button>
 
                                 {openOnly ? null : environment.isTarget ? (
@@ -476,23 +517,26 @@ function EnvironmentTable({
                                         className="text-xs ml-2"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        Target
+                                        {tc('console.target_978354db')}
                                     </span>
                                 ) : (
                                     <Button
                                         size="sm"
                                         className="ml-2"
-                                        aria-label={`Point this console at ${environment.name}`}
+                                        aria-label={tc(
+                                            'console.point_this_console_at_value0_7211e979',
+                                            { value0: environment.name },
+                                        )}
                                         onClick={() =>
                                             onConfirm({
                                                 href: environment.targetHref,
                                                 title: `Point this console at ${environment.name}?`,
-                                                description: TARGET_COPY,
+                                                description: TARGET_COPY(tc),
                                                 action: 'Target',
                                             })
                                         }
                                     >
-                                        Target
+                                        {tc('console.target_978354db')}
                                     </Button>
                                 )}
                             </Td>

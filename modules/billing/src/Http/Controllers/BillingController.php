@@ -86,7 +86,7 @@ final readonly class BillingController extends ConsoleController
 
         $monthStart = now()->startOfMonth()->format('Y-m-d');
 
-        return $this->page('billing::billing', 'Billing', [
+        return $this->page('billing::billing', __('console.billing_3ac8bbca'), [
             'help' => HelpProps::for(HelpTopic::Billing),
             'projects' => $projectRows,
             'usage' => [

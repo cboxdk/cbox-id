@@ -52,7 +52,7 @@ final readonly class SudoController extends PageController
     {
         $this->rememberWhereFrom($request, StepUpPlane::Organization);
 
-        return $this->page('auth/sudo', "Confirm it's you", [
+        return $this->page('auth/sudo', __('console.confirm_it_s_you_6176eec2'), [
             /*
              * Why this screen appeared, when whatever raised it said so.
              *
@@ -98,7 +98,7 @@ final readonly class SudoController extends PageController
 
         $this->rememberWhereFrom($request, StepUpPlane::Environment);
 
-        return $this->page('auth/sudo', "Confirm it's you", [
+        return $this->page('auth/sudo', __('console.confirm_it_s_you_6176eec2'), [
             'reason' => StepUpReason::pending('environment.sudo'),
             'plane' => 'environment',
         ]);
@@ -119,7 +119,7 @@ final readonly class SudoController extends PageController
         // confirming a step-up for nobody.
         if ($subjectId === null) {
             return self::wantsJson($request)
-                ? new JsonResponse(['error' => 'Your session has ended. Sign in again.', 'redirect' => route('admin.login')], 401)
+                ? new JsonResponse(['error' => __('console.your_session_has_ended_sign_in_again_176c077e'), 'redirect' => route('admin.login')], 401)
                 : to_route('admin.login');
         }
 
@@ -169,14 +169,14 @@ final readonly class SudoController extends PageController
 
     private function incorrect(Request $request): RedirectResponse|JsonResponse
     {
-        return $this->refuse($request, 'That password is incorrect.', 422);
+        return $this->refuse($request, __('console.that_password_is_incorrect_5dc5ee0d'), 422);
     }
 
     private function throttled(Request $request, string $key): RedirectResponse|JsonResponse
     {
         $seconds = RateLimiter::availableIn($key);
 
-        return $this->refuse($request, 'Too many attempts. Try again in '.$seconds.' seconds.', 429, ['Retry-After' => (string) $seconds]);
+        return $this->refuse($request, __('console.too_many_attempts_try_again_in_021db289').$seconds.' seconds.', 429, ['Retry-After' => (string) $seconds]);
     }
 
     /**

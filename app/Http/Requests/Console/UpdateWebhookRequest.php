@@ -45,8 +45,8 @@ final class UpdateWebhookRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'eventTypes.required' => 'Choose at least one event for this endpoint to receive.',
-            'eventTypes.min' => 'Choose at least one event for this endpoint to receive.',
+            'eventTypes.required' => __('console.choose_at_least_one_event_for_this_endpoint__da248f8b'),
+            'eventTypes.min' => __('console.choose_at_least_one_event_for_this_endpoint__da248f8b'),
         ];
     }
 

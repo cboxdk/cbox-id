@@ -274,9 +274,15 @@ export type ConfirmOutcome = { ok: true } | { ok: false; error: string };
 export async function confirmStepUp(
     challenge: StepUpChallenge,
     password: string,
+    messages = {
+        offline: 'You appear to be offline. Check your connection and try again.',
+        expired: 'This page has expired. Reload it and try again.',
+        failed: 'That did not work. Try again.',
+        reload: 'That did not work. Reload the page and try again.',
+    },
 ): Promise<ConfirmOutcome> {
     if (!sameOrigin(challenge.confirm)) {
-        return { ok: false, error: 'That did not work. Reload the page and try again.' };
+        return { ok: false, error: messages.reload };
     }
 
     let response: Response;
@@ -296,7 +302,7 @@ export async function confirmStepUp(
     } catch {
         return {
             ok: false,
-            error: 'You appear to be offline. Check your connection and try again.',
+            error: messages.offline,
         };
     }
 
@@ -313,14 +319,14 @@ export async function confirmStepUp(
     }
 
     if (response.status === 419) {
-        return { ok: false, error: 'This page has expired. Reload it and try again.' };
+        return { ok: false, error: messages.expired };
     }
 
     if (isRecord(data) && typeof data.error === 'string') {
         return { ok: false, error: data.error };
     }
 
-    return { ok: false, error: 'That did not work. Try again.' };
+    return { ok: false, error: messages.failed };
 }
 
 type Router = typeof InertiaRouter;

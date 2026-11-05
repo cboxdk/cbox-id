@@ -13,6 +13,7 @@ use App\Http\Requests\Console\SaveFrontendKeyOriginsRequest;
 use App\Platform\Console\KeyTabs;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Illuminate\Http\RedirectResponse;
@@ -42,7 +43,7 @@ final readonly class FrontendKeyController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/keys/frontend', Vocabulary::API_KEYS, [
+        return $this->page('console/keys/frontend', ConsoleStrings::text(Vocabulary::API_KEYS), [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::FRONTEND),
             'keys' => PublishableKey::query()
@@ -89,7 +90,7 @@ final readonly class FrontendKeyController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Key created. Paste it into your frontend — it is meant to be public.');
+            : back()->with('status', __('console.key_created_paste_it_into_your_frontend_it_i_0e59b7a5'));
     }
 
     /**
@@ -123,7 +124,7 @@ final readonly class FrontendKeyController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Origins updated. The change is live on the next request.');
+            : back()->with('status', __('console.origins_updated_the_change_is_live_on_the_ne_6bb5bfb0'));
     }
 
     public function destroy(string $key): RedirectResponse
@@ -134,6 +135,6 @@ final readonly class FrontendKeyController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Key revoked. Pages still holding it stop working immediately.');
+            : back()->with('status', __('console.key_revoked_pages_still_holding_it_stop_work_e8d05be4'));
     }
 }

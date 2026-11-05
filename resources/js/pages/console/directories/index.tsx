@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -64,6 +65,8 @@ export default function DirectoriesIndex({
     createHref,
     inviteHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     // The setup link is a credential in a URL, so it rides the flash channel and never
     // the props — props are written into the browser's history entry.
     const portalUrl = usePage().flash.portalUrl;
@@ -92,7 +95,7 @@ export default function DirectoriesIndex({
         <>
             <PageHeader
                 help={help}
-                description="Let your identity provider create, update and deactivate people here on its own — and map its groups onto your roles."
+                description={tc('console.let_your_identity_provider_create_update_and_1208087e')}
                 actions={
                     canAct ? (
                         <>
@@ -104,13 +107,13 @@ export default function DirectoriesIndex({
                                         router.post(inviteHref, {}, { preserveScroll: true })
                                     }
                                 >
-                                    Invite your IT admin
+                                    {tc('console.invite_your_it_admin_3aba7671')}
                                 </Button>
                             )}
                             <Button asChild variant="primary" className="shrink-0">
                                 <Link href={createHref}>
                                     <Icon name="plus" className="w-4 h-4" />
-                                    New directory
+                                    {tc('console.new_directory_000ddb55')}
                                 </Link>
                             </Button>
                         </>
@@ -123,9 +126,11 @@ export default function DirectoriesIndex({
                     <div className="card">
                         <EmptyState
                             icon="directory"
-                            title="Syncing users in is an Enterprise feature"
+                            title={tc('console.syncing_users_in_is_an_enterprise_feature_c3b68cec')}
                             help={help}
-                            description="Contact your account team to enable it for this organization."
+                            description={tc(
+                                'console.contact_your_account_team_to_enable_it_for_t_c4ba4d29',
+                            )}
                         />
                     </div>
                 )}
@@ -145,12 +150,10 @@ export default function DirectoriesIndex({
                     >
                         <div className="flex items-center gap-2 font-semibold">
                             <Icon name="members" className="w-4 h-4" />
-                            Setup link for your IT admin
+                            {tc('console.setup_link_for_your_it_admin_df0a3a89')}
                         </div>
                         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            Send this single-use link to whoever configures your identity provider.
-                            It expires soon and works without an account. Copy it now — it is shown
-                            only once.
+                            {tc('console.send_this_single_use_link_to_whoever_configu_e8056999')}
                         </p>
                         <p
                             className="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all"
@@ -168,8 +171,8 @@ export default function DirectoriesIndex({
                     <Input
                         type="search"
                         style={{ maxWidth: '24rem' }}
-                        placeholder="Search by name"
-                        aria-label="Search directories"
+                        placeholder={tc('console.search_by_name_4ae2b333')}
+                        aria-label={tc('console.search_directories_72c57fbd')}
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
                     />
@@ -179,8 +182,11 @@ export default function DirectoriesIndex({
                         narrowed to nothing.
                     */}
                     <output className="sr-only">
-                        {pagination.total} {pagination.total === 1 ? 'directory' : 'directories'}{' '}
-                        found.
+                        {pagination.total}{' '}
+                        {pagination.total === 1
+                            ? tc('console.directory_33317878')
+                            : tc('console.directories_374cb37a')}{' '}
+                        {tc('console.found_ddbb3871')}
                     </output>
                 </div>
 
@@ -192,28 +198,42 @@ export default function DirectoriesIndex({
                         search !== '' ? (
                             <EmptyState
                                 icon="search"
-                                title={`No matches for "${search}"`}
-                                description="No directory matches that name. Try a different search term."
+                                title={tc('console.no_matches_for_value0_617e79ef', {
+                                    value0: search,
+                                })}
+                                description={tc(
+                                    'console.no_directory_matches_that_name_try_a_differe_bfc6957c',
+                                )}
                             />
                         ) : (
                             <EmptyState
                                 icon="directory"
                                 equivalent="directories.create"
-                                title="No directory connected yet"
+                                title={tc('console.no_directory_connected_yet_d4e7a522')}
                                 help={help}
-                                description="Today somebody adds and removes people here by hand. Connect the directory your company already keeps and it does both for you — including the removals, which are the ones that get forgotten."
+                                description={tc(
+                                    'console.today_somebody_adds_and_removes_people_here__01774e72',
+                                )}
                                 steps={[
-                                    'Choose SCIM if your provider pushes to us, Google Workspace or Entra if we should pull, or your HR system — Workday, BambooHR, Rippling, HiBob or Personio — so people arrive on their start date.',
-                                    'For SCIM: paste the endpoint and the token we mint into your provider.',
-                                    'For a pull directory: paste its credentials and we verify them before storing anything.',
-                                    'Map the groups you sync onto roles, so access follows the group.',
+                                    tc(
+                                        'console.choose_scim_if_your_provider_pushes_to_us_go_99b715bb',
+                                    ),
+                                    tc(
+                                        'console.for_scim_paste_the_endpoint_and_the_token_we_4dcda8c9',
+                                    ),
+                                    tc(
+                                        'console.for_a_pull_directory_paste_its_credentials_a_581eae82',
+                                    ),
+                                    tc(
+                                        'console.map_the_groups_you_sync_onto_roles_so_access_246e648d',
+                                    ),
                                 ]}
                                 actions={
                                     canAct ? (
                                         <Button asChild variant="primary">
                                             <Link href={createHref}>
                                                 <Icon name="plus" className="w-4 h-4" />
-                                                New directory
+                                                {tc('console.new_directory_000ddb55')}
                                             </Link>
                                         </Button>
                                     ) : undefined
@@ -250,7 +270,9 @@ export default function DirectoriesIndex({
                                 </div>
                                 <Badge>{directory.provider}</Badge>
                                 <Pill tone={directory.active ? 'success' : 'warning'}>
-                                    {directory.active ? 'Active' : directory.status}
+                                    {directory.active
+                                        ? tc('console.active_92340695')
+                                        : directory.status}
                                 </Pill>
                                 <Icon
                                     name="chevron"
@@ -267,8 +289,8 @@ export default function DirectoriesIndex({
 
                 <Pagination
                     pagination={pagination}
-                    noun="directory"
-                    pluralNoun="directories"
+                    noun={tc('console.directory_33317878')}
+                    pluralNoun={tc('console.directories_374cb37a')}
                     href={(page) => listHref(search, page)}
                 />
 
@@ -279,8 +301,10 @@ export default function DirectoriesIndex({
                 */}
                 {entitled && (
                     <Panel
-                        title="SCIM endpoint"
-                        description="Paste this into your identity provider, with the bearer token from the directory you connect."
+                        title={tc('console.scim_endpoint_59109538')}
+                        description={tc(
+                            'console.paste_this_into_your_identity_provider_with__6f366a6e',
+                        )}
                     >
                         <div className="flex items-center gap-2">
                             <code className="flex-1 min-w-0 truncate mono text-sm">

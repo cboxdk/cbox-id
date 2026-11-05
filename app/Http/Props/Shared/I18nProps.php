@@ -9,11 +9,10 @@ use App\Platform\Locale\HostedLocale;
 use App\Platform\Locale\HostedTranslations;
 
 /**
- * The language a hosted page is drawn in, the languages its picker offers, and the
+ * The language a page is drawn in, the languages its picker offers, and the
  * strings it needs — its own group's only. {@see HostedTranslations}.
  *
- * Null on every page that is not hosted, which is every console page: the console is
- * English and ships no catalogue.
+ * Console surfaces offer every supported language; hosted surfaces respect environment policy.
  */
 final readonly class I18nProps implements Prop
 {

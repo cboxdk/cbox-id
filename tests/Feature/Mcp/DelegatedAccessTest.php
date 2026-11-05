@@ -6,6 +6,8 @@ use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
+use App\Platform\AppCatalog\AppCatalog;
+use App\Platform\AppCatalog\CatalogEntryData;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\PlaneResolver;
@@ -401,4 +403,24 @@ it('serves the person\'s own account at /api/v1/me on their environment\'s host,
         ->postJson('/api/v1/platform/operators', [])
         ->assertForbidden()
         ->assertJsonPath('message', 'Only a platform operator can use this API.');
+});
+
+it('reads the personal catalog with a real account token and preserves its organization boundary', function (): void {
+    [$subject, $organization] = delegatedPerson();
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        name: 'App switcher', type: ClientType::Public,
+        redirectUris: ['http://127.0.0.1:33418/callback'],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        scopes: ['openid', 'account:apps:read'],
+    ))->client;
+    app(AppCatalog::class)->save('billing', CatalogEntryData::fromArray([
+        'version' => 0, 'name' => 'Billing', 'launch_url' => 'https://billing.example.com',
+        'enabled' => true, 'position' => 0, 'audience' => 'organizations', 'organization_ids' => [$organization],
+    ]));
+    $token = delegatedToken($subject, $organization, ['account:apps:read'], client: $client);
+    $this->withToken($token)->getJson('/api/v1/me/apps')->assertOk()->assertJsonPath('data.0.key', 'billing');
+    [$other, $another] = delegatedPerson(email: 'other@catalog.example');
+    $this->withToken($token)->getJson('/api/v1/me/apps?organization_id='.$another)->assertForbidden();
+    $wrongAudience = delegatedToken($subject, $organization, ['account:apps:read'], resource: 'https://billing.example.com', client: $client);
+    $this->withToken($wrongAudience)->getJson('/api/v1/me/apps')->assertUnauthorized();
 });

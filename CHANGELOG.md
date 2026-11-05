@@ -8,7 +8,20 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Security
+
+- Update Symfony Filesystem, HttpFoundation, HttpKernel, Routing and the development YAML parser to patched 8.1.11 releases following the November 4 advisories.
+
+### Fixed
+
+- Normalize repeated URI aliases and support Laravel’s `QUERY` method in generated Wayfinder helpers. Frontend typechecking and component tests now run in browser CI.
+
 ### Added
+
+- German, Swedish, Norwegian Bokmål, Finnish, French, Spanish, Italian and Dutch in the signed-in app. Finnish, Spanish, Italian and Dutch also cover hosted login, the Admin Portal, mail and validation. Core terms are reviewed; the new catalogues are machine-translated and checked for key, placeholder and plural parity.
+
+- Danish and English throughout the signed-in app, including organization and platform administration. Choose a language in the top-right language menu; the browser remembers it independently of hosted sign-in language settings.
+- Central app catalog with environment administration, uploaded icons, versioned management actions, personal `/api/v1/me/apps` filtering, and a shared desktop/mobile navigation selector. The dashboard uses the same published catalog. Includes an additive migration and rollout guide.
 
 - Shared user preferences and custom metadata via laravel-id 1.27.0. Namespace-management actions grant app-group reader/writer and webhook access; versioned OAuth patches and filtered change notifications synchronize consumers. Includes the additive namespace/document migration and integration guide.
 
@@ -173,6 +186,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - The "sign in first, then confirm" link interstitial (`/link/confirm`, `link.connect`, `link.decline`, `auth/link-confirm`, the `Authenticate` hold and `PlatformAuth::startPendingLink()` and friends). The link step replaces it, and proves control of the account before anything is linked rather than after a full sign-in.
 
 ### Security
+
+- Upgrade to laravel-id 1.27.2 and require the initiating browser’s host-only cookie before accepting an SP-initiated SAML login. The federation security update also uses protected, expiring, single-use OIDC flow cookies; pending federated sign-ins must restart after deployment.
 
 - Require an enrolled second factor after magic-link login and reject password-only login when required MFA is satisfied only by an enrolled passkey. Recheck existing sessions and OAuth consent, preserving the actual authentication methods after step-up. Factor enrolment rotates the session after proving possession.
 - Upgrade to laravel-id 1.26.6: reject code redemption, refresh and token issuance for inactive subjects and invalidate outstanding codes on deactivation. Regression coverage exercises all three bypasses and successful sign-ins.

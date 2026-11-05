@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Badge } from './Badge';
@@ -44,6 +45,8 @@ export function AppApiKeyList({
     empty: { title: string; description: ReactNode };
     consequence: string;
 }) {
+    const { t: tc } = useUiTranslator();
+
     const [revoking, setRevoking] = useState<AppApiKey | null>(null);
 
     if (keys.length === 0) {
@@ -66,7 +69,8 @@ export function AppApiKeyList({
                         <div className="min-w-0 flex-1 space-y-1.5">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium break-words min-w-0">
-                                    {key.name ?? 'Untitled key'}
+                                    {key.name ??
+                                        tc('console.untitled_key_c8ec47ab', 'Untitled key')}
                                 </span>
                                 <KeyStatusPill lifecycle={key.lifecycle} />
                                 <Badge>{key.appName}</Badge>
@@ -74,7 +78,9 @@ export function AppApiKeyList({
 
                             {key.holder !== null && (
                                 <p className="text-sm break-words">
-                                    <span className="sr-only">Held by </span>
+                                    <span className="sr-only">
+                                        {tc('console.held_by_0d69e27f', 'Held by ')}
+                                    </span>
                                     {key.holder.name}
                                     {key.holder.email !== null &&
                                         key.holder.email !== key.holder.name && (
@@ -92,11 +98,16 @@ export function AppApiKeyList({
                                         className="text-xs"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        No permissions — it identifies its holder and nothing more
+                                        {tc(
+                                            'console.no_permissions_it_identifies_its_holder_and__80cf422c',
+                                            'No permissions — it identifies its holder and nothing more',
+                                        )}
                                     </span>
                                 ) : (
                                     <>
-                                        <span className="sr-only">Permissions: </span>
+                                        <span className="sr-only">
+                                            {tc('console.permissions_529e126c', 'Permissions: ')}
+                                        </span>
                                         {key.permissions.map((permission) => (
                                             <Badge key={permission} className="mono">
                                                 {permission}
@@ -117,7 +128,7 @@ export function AppApiKeyList({
                                 aria-label={`Revoke ${key.name ?? key.prefix}`}
                                 onClick={() => setRevoking(key)}
                             >
-                                Revoke
+                                {tc('console.revoke_87e6d00b', 'Revoke')}
                             </Button>
                         )}
                     </li>

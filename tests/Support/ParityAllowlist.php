@@ -194,6 +194,8 @@ final class ParityAllowlist
             // Which organization the environment console is looking at.
             // The hosted pages' language picker: a cookie for the next render, nothing more.
             'locale.update',
+            // Independent language preference for the signed-in console.
+            'console.locale.update',
             // Which organization the console is looking at.
             'organization.switch',
             // Which environment the operator's console is pointed at — from the switcher, or

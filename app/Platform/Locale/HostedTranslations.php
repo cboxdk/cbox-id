@@ -6,25 +6,13 @@ namespace App\Platform\Locale;
 
 use App\Http\Controllers\PageController;
 use App\Http\Props\Shared\I18nProps;
-use App\Platform\Appearance\BrandContext;
 use Illuminate\Translation\Translator;
 
 /**
- * THE CATALOGUE A HOSTED PAGE IS HANDED — its own group's strings, and nothing else.
- *
- * A page names its group by being rendered ({@see PageController}),
- * the same way it names its layout: `auth/*` is the sign-in group, `oauth/*` the consent
- * group, `portal/*` the Admin Portal. Each gets the shared chrome (`hosted`) plus its own
- * namespace, flattened to dot keys — so the login page carries the sign-in strings and
- * not the Admin Portal's, and a console page carries nothing at all (the prop is null and
- * costs nothing).
- *
- * FALLBACK IS PER KEY, to English. LangParityTest keeps every catalogue complete, so in a
- * release this never fires; it is what keeps a key added in English and not yet
- * translated from rendering as `auth.login.title` in the meantime.
- *
- * Scoped to the request, like {@see BrandContext}: the controller
- * marks the page, the shared-prop closure reads the mark when Inertia builds the response.
+ * Per-surface catalogues shared with Inertia. Hosted groups receive their existing
+ * namespaces; signed-in pages receive the console catalogue in the selected language.
+ * Scoped to the request: PageController marks the component before props are resolved.
+ * Missing translations fall back per key to English; catalogue parity is tested.
  */
 final class HostedTranslations
 {
@@ -34,7 +22,7 @@ final class HostedTranslations
      *
      * @var list<string>
      */
-    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal'];
+    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console'];
 
     /** @var list<string>|null */
     private ?array $namespaces = null;
@@ -44,27 +32,23 @@ final class HostedTranslations
         private readonly HostedLocales $locales,
     ) {}
 
-    /**
-     * The page being rendered, by component name. Pages outside the hosted groups — the
-     * console, and the two console-chromed pages under `auth/` and at the root (sudo,
-     * device approval) — mark nothing and get no catalogue.
-     */
+    /** Select the catalogue for the component being rendered. */
     public function forPage(string $component): void
     {
         $this->namespaces = self::namespacesFor($component);
     }
 
     /**
-     * @return list<string>|null
+     * @return list<string>
      */
-    public static function namespacesFor(string $component): ?array
+    public static function namespacesFor(string $component): array
     {
         return match (true) {
-            $component === 'auth/sudo' => null,
+            $component === 'auth/sudo' => ['console', 'auth'],
             str_starts_with($component, 'auth/') => ['hosted', 'auth'],
             str_starts_with($component, 'oauth/') => ['hosted', 'oauth'],
             str_starts_with($component, 'portal/') => ['hosted', 'portal'],
-            default => null,
+            default => ['console'],
         };
     }
 
@@ -87,7 +71,9 @@ final class HostedTranslations
 
         return new I18nProps(
             locale: $locale,
-            locales: $this->locales->enabled(),
+            locales: in_array('console', $this->namespaces, true)
+                ? HostedLocale::cases()
+                : $this->locales->enabled(),
             messages: $messages,
         );
     }

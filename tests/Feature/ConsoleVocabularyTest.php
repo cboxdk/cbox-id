@@ -58,7 +58,7 @@ function vocabularySources(): array
         }
     }
 
-    $php = [base_path('app/Providers/ConsoleServiceProvider.php')];
+    $php = [base_path('app/Providers/ConsoleServiceProvider.php'), base_path('lang/en/console.php')];
 
     foreach ([
         base_path('app/Http/Controllers'),
@@ -130,6 +130,8 @@ const VOCABULARY_ALLOWED = [
     // it would send them looking for a value that does not exist under our name.
     ['resources/js/pages/console/directories/create.tsx', 'Tenant ID', 'Entra calls it that'],
     ['app/Http/Requests/Console/ConnectDirectoryRequest.php', 'Entra tenant ID', 'Entra calls it that'],
+    ['lang/en/console.php', 'Entra tenant ID', 'Entra calls it that'],
+    ['lang/en/console.php', 'Tenant ID', 'Entra calls it that'],
 ];
 
 it('keeps retired words out of everything the console shows', function (): void {

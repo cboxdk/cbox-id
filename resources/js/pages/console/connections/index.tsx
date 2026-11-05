@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -74,6 +75,8 @@ export default function ConnectionsIndex({
     urls,
     certificateWarnings,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     // Both on the flash channel: the portal link admits its holder to this tenant's SSO
     // setup with no account at all, and the DNS token is a one-shot instruction. Neither
     // belongs in a history entry.
@@ -106,7 +109,7 @@ export default function ConnectionsIndex({
         <>
             <PageHeader
                 help={help}
-                description="Let people sign in with the company account they already have, instead of a separate password here."
+                description={tc('console.let_people_sign_in_with_the_company_account__b98aff03')}
                 actions={
                     canAct ? (
                         <>
@@ -117,13 +120,13 @@ export default function ConnectionsIndex({
                                         router.post(urls.invite, {}, { preserveScroll: true })
                                     }
                                 >
-                                    Invite your IT admin
+                                    {tc('console.invite_your_it_admin_3aba7671')}
                                 </Button>
                             )}
                             <Button asChild variant="primary" className="shrink-0">
                                 <Link href={createHref}>
                                     <Icon name="plus" className="w-4 h-4" />
-                                    New connection
+                                    {tc('console.new_connection_729bceee')}
                                 </Link>
                             </Button>
                         </>
@@ -141,9 +144,11 @@ export default function ConnectionsIndex({
                 <div className="card mt-8">
                     <EmptyState
                         icon="connections"
-                        title="Single sign-on is an Enterprise feature"
+                        title={tc('console.single_sign_on_is_an_enterprise_feature_26381303')}
                         help={help}
-                        description="Letting your people sign in with Entra ID, Okta or Google Workspace is available on the Enterprise plan. Contact your account team to enable it for this organization."
+                        description={tc(
+                            'console.letting_your_people_sign_in_with_entra_id_ok_10c80076',
+                        )}
                     />
                 </div>
             ) : (
@@ -151,8 +156,10 @@ export default function ConnectionsIndex({
                     {portalUrl !== undefined && mayAdminister && (
                         <RevealedOnce
                             icon="members"
-                            title="Setup link for your IT admin"
-                            description="Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once."
+                            title={tc('console.setup_link_for_your_it_admin_df0a3a89')}
+                            description={tc(
+                                'console.send_this_single_use_link_to_whoever_configu_e8056999',
+                            )}
                             value={portalUrl}
                         />
                     )}
@@ -166,8 +173,8 @@ export default function ConnectionsIndex({
                         <Input
                             type="search"
                             style={{ maxWidth: '24rem' }}
-                            placeholder="Search by name"
-                            aria-label="Search connections"
+                            placeholder={tc('console.search_by_name_4ae2b333')}
+                            aria-label={tc('console.search_connections_b8826956')}
                             value={term}
                             onChange={(event) => setTerm(event.target.value)}
                         />
@@ -178,7 +185,10 @@ export default function ConnectionsIndex({
                             */}
                         <output className="sr-only">
                             {pagination.total}{' '}
-                            {pagination.total === 1 ? 'connection' : 'connections'} found.
+                            {pagination.total === 1
+                                ? tc('console.connection_b38d9d16')
+                                : tc('console.connections_1e5fac86')}
+                            {tc('console.found_599e25a3')}
                         </output>
                     </div>
 
@@ -190,28 +200,44 @@ export default function ConnectionsIndex({
                             search !== '' ? (
                                 <EmptyState
                                     icon="search"
-                                    title={`No matches for "${search}"`}
-                                    description="No connections match that name. Try a different search term."
+                                    title={tc('console.no_matches_for_value0_617e79ef', {
+                                        value0: search,
+                                    })}
+                                    description={tc(
+                                        'console.no_connections_match_that_name_try_a_differe_6555c50e',
+                                    )}
                                 />
                             ) : (
                                 <EmptyState
                                     icon="connections"
                                     equivalent="sso.connections.create"
-                                    title="No identity provider connected yet"
+                                    title={tc(
+                                        'console.no_identity_provider_connected_yet_91d235cb',
+                                    )}
                                     help={help}
-                                    description="Right now people sign in with credentials held here. Connect your provider and they use the company account they already have — and lose access here the moment you disable it there."
+                                    description={tc(
+                                        'console.right_now_people_sign_in_with_credentials_he_4538c692',
+                                    )}
                                     steps={[
-                                        'In Entra ID, Okta or Google Workspace, create an application for Cbox ID.',
-                                        'Add the connection — paste the provider’s metadata and the fields fill themselves.',
-                                        'Verify the email domains you own, so your people are routed to your provider automatically.',
-                                        'Activate the connection once a test sign-in works.',
+                                        tc(
+                                            'console.in_entra_id_okta_or_google_workspace_create__bd295fcb',
+                                        ),
+                                        tc(
+                                            'console.add_the_connection_paste_the_provider_s_meta_c0c33b44',
+                                        ),
+                                        tc(
+                                            'console.verify_the_email_domains_you_own_so_your_peo_3f6d7cfe',
+                                        ),
+                                        tc(
+                                            'console.activate_the_connection_once_a_test_sign_in__40db9d00',
+                                        ),
                                     ]}
                                     actions={
                                         canAct ? (
                                             <Button asChild variant="primary">
                                                 <Link href={createHref}>
                                                     <Icon name="plus" className="w-4 h-4" />
-                                                    New connection
+                                                    {tc('console.new_connection_729bceee')}
                                                 </Link>
                                             </Button>
                                         ) : undefined
@@ -249,7 +275,9 @@ export default function ConnectionsIndex({
                                     </div>
                                     <Pill tone="info">{connection.type}</Pill>
                                     <Badge tone={connection.active ? 'success' : 'neutral'}>
-                                        {connection.active ? 'Active' : connection.status}
+                                        {connection.active
+                                            ? tc('console.active_92340695')
+                                            : connection.status}
                                     </Badge>
                                     <Icon
                                         name="chevron"
@@ -266,7 +294,8 @@ export default function ConnectionsIndex({
 
                     <Pagination
                         pagination={pagination}
-                        noun="connection"
+                        noun={tc('console.connection_b38d9d16')}
+                        pluralNoun={tc('console.connections_1e5fac86')}
                         href={(page) => listHref(search, page)}
                     />
 
@@ -279,14 +308,15 @@ export default function ConnectionsIndex({
                         <div className="space-y-4">
                             <div>
                                 <h2 className="cbx-panel-title" style={{ fontSize: '18px' }}>
-                                    Verified domains
+                                    {tc('console.verified_domains_b01c494f')}
                                 </h2>
                                 <p
                                     className="mt-1 text-sm"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    Prove ownership of an email domain to route your team to SSO
-                                    automatically.
+                                    {tc(
+                                        'console.prove_ownership_of_an_email_domain_to_route__bc84ec01',
+                                    )}
                                 </p>
                             </div>
 
@@ -302,7 +332,10 @@ export default function ConnectionsIndex({
                                     }}
                                 >
                                     <div className="flex-1 min-w-[14rem]">
-                                        <Field label="Domain" error={domainForm.errors.domain}>
+                                        <Field
+                                            label={tc('console.domain_79fa3361')}
+                                            error={domainForm.errors.domain}
+                                        >
                                             <Input
                                                 name="domain"
                                                 className="mono"
@@ -323,7 +356,7 @@ export default function ConnectionsIndex({
                                         icon="plus"
                                         loading={domainForm.processing}
                                     >
-                                        Add domain
+                                        {tc('console.add_domain_d86476ae')}
                                     </Button>
                                 </form>
                             )}
@@ -331,13 +364,16 @@ export default function ConnectionsIndex({
                             {dns !== undefined && mayAdminister && (
                                 <RevealedOnce
                                     icon="connections"
-                                    title={`Verify ${dns.domain}`}
+                                    title={tc('console.verify_value0_93b08caa', {
+                                        value0: dns.domain,
+                                    })}
                                     description={
                                         <>
-                                            Add a TXT record at{' '}
-                                            <code className="mono">{dns.host}</code> with the value
-                                            below, then click Verify. DNS changes can take a few
-                                            minutes to propagate.
+                                            {tc('console.add_a_txt_record_at_a9e97634')}{' '}
+                                            <code className="mono">{dns.host}</code>
+                                            {tc(
+                                                'console.with_the_value_below_then_click_verify_dns_c_0e491031',
+                                            )}
                                         </>
                                     }
                                     value={dns.token}
@@ -349,8 +385,10 @@ export default function ConnectionsIndex({
                                     <div className="card">
                                         <EmptyState
                                             icon="directory"
-                                            title="No verified domains yet"
-                                            description="Verifying a domain you own — acme.com — lets Cbox ID recognise your people by their email address and send them straight to your provider, so nobody has to pick the right sign-in button."
+                                            title={tc('console.no_verified_domains_yet_77625b2a')}
+                                            description={tc(
+                                                'console.verifying_a_domain_you_own_acme_com_lets_cbo_7a9ae408',
+                                            )}
                                         />
                                     </div>
                                 ) : (
@@ -373,7 +411,7 @@ export default function ConnectionsIndex({
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={removing?.domain ?? ''}
-                consequence="This domain will no longer route its users through this organization's SSO. This cannot be undone."
+                consequence={tc('console.this_domain_will_no_longer_route_its_users_t_281a9227')}
                 onConfirm={() => {
                     const target = removing;
                     setRemoving(null);
@@ -398,6 +436,8 @@ function DomainCard({
     mayAdminister: boolean;
     onRemove: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const base = `${window.location.pathname}/domains/${domain.id}`;
 
     return (
@@ -407,9 +447,13 @@ function DomainCard({
                     <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold truncate mono">{domain.domain}</p>
                         <Pill tone={domain.verified ? 'success' : 'warning'}>
-                            {domain.verified ? 'Verified' : 'Pending'}
+                            {domain.verified
+                                ? tc('console.verified_4f783840')
+                                : tc('console.pending_331551b0')}
                         </Pill>
-                        {domain.capture && <Pill tone="info">Capture on</Pill>}
+                        {domain.capture && (
+                            <Pill tone="info">{tc('console.capture_on_f676810d')}</Pill>
+                        )}
                     </div>
                 </div>
 
@@ -424,11 +468,11 @@ function DomainCard({
                                     router.post(`${base}/verify`, {}, { preserveScroll: true })
                                 }
                             >
-                                Verify
+                                {tc('console.verify_eea2745e')}
                             </Button>
                         )}
                         <Button size="sm" variant="danger" onClick={onRemove}>
-                            Remove
+                            {tc('console.remove_c3812fc4')}
                         </Button>
                     </div>
                 )}
@@ -440,10 +484,11 @@ function DomainCard({
                     style={{ background: 'var(--secondary)' }}
                 >
                     <div className="min-w-0">
-                        <p className="text-sm font-medium">Capture</p>
+                        <p className="text-sm font-medium">{tc('console.capture_1900b478')}</p>
                         <p className="mt-0.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            Force everyone with an @{domain.domain} email to sign in through this
-                            organization's SSO.
+                            {tc('console.force_everyone_with_an_5fd7305e')}
+                            {domain.domain}
+                            {tc('console.email_to_sign_in_through_this_organization_s_dbbb86b2')}
                         </p>
                     </div>
                     <Button
@@ -451,7 +496,7 @@ function DomainCard({
                         variant={domain.capture ? 'primary' : 'ghost'}
                         onClick={() => router.post(`${base}/capture`, {}, { preserveScroll: true })}
                     >
-                        {domain.capture ? 'On' : 'Off'}
+                        {domain.capture ? tc('console.on_13001175') : tc('console.off_ca7981b4')}
                     </Button>
                 </div>
             )}

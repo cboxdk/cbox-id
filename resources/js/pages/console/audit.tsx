@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -122,6 +123,10 @@ export default function Audit({
     environmentWide,
     organizationFilter,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const [action, setAction] = useState(filters.action);
     const [search, setSearch] = useState(filters.q);
 
@@ -165,13 +170,13 @@ export default function Audit({
         <>
             <PageHeader
                 help={help}
-                description="Every change made here: who did what, to what, and when. Hash-chained, so a removed entry shows up."
+                description={tc('console.every_change_made_here_who_did_what_to_what__4f61494d')}
                 actions={
                     <div className="relative w-full sm:w-auto">
                         <Input
                             className="w-full sm:min-w-[16rem]"
-                            placeholder="Filter by action…"
-                            aria-label="Filter by action"
+                            placeholder={tc('console.filter_by_action_baf887de')}
+                            aria-label={tc('console.filter_by_action_ef58fbae')}
                             value={action}
                             onChange={(event) => setAction(event.target.value)}
                         />
@@ -188,8 +193,8 @@ export default function Audit({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search action or target"
-                    aria-label="Search the audit log"
+                    placeholder={tc('console.search_action_or_target_b9c2cfcf')}
+                    aria-label={tc('console.search_the_audit_log_eb31f4b3')}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                 />
@@ -206,13 +211,13 @@ export default function Audit({
                 */}
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                     <ChipGroup
-                        label="Who"
+                        label={tc('console.who_c17b94b8')}
                         options={actorKinds}
                         value={filters.actor}
                         onChoose={(value) => choose('actor', value)}
                     />
                     <ChipGroup
-                        label="Via"
+                        label={tc('console.via_2ed8b806')}
                         options={doors}
                         value={filters.via}
                         onChoose={(value) => choose('via', value)}
@@ -220,29 +225,32 @@ export default function Audit({
                 </div>
 
                 <output className="sr-only">
-                    {entries.length} {entries.length === 1 ? 'entry' : 'entries'} shown.
+                    {entries.length}{' '}
+                    {entries.length === 1
+                        ? tc('console.entry_923fe539')
+                        : tc('console.entries_87d05cd0')}
+                    {tc('console.shown_d2edca72')}
                 </output>
 
                 {environmentWide && (
                     <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                        Every organization in this environment. Add the Organization filter to
-                        narrow the trail to one.
+                        {tc('console.every_organization_in_this_environment_add_t_3839ba26')}
                     </p>
                 )}
             </div>
 
             <div className="card overflow-hidden mt-4">
                 <div className="overflow-x-auto">
-                    <Table caption="Audit log">
+                    <Table caption={tc('console.audit_log_e4d36f9a')}>
                         <thead>
                             <tr>
                                 <Th style={{ width: '1%' }} className="hidden sm:table-cell">
-                                    Seq
+                                    {tc('console.seq_43ac2602')}
                                 </Th>
-                                <Th>Action</Th>
-                                <Th>Actor</Th>
-                                <Th>Target</Th>
-                                <Th className="text-right">When</Th>
+                                <Th>{tc('console.action_64cff131')}</Th>
+                                <Th>{tc('console.actor_449995c4')}</Th>
+                                <Th>{tc('console.target_978354db')}</Th>
+                                <Th className="text-right">{tc('console.when_cf9c7aa2')}</Th>
                             </tr>
                         </thead>
                         <tbody>
@@ -257,15 +265,19 @@ export default function Audit({
                                         {filtered ? (
                                             <EmptyState
                                                 icon="search"
-                                                title="No matching entries"
-                                                description="No entry matches those filters. Try a broader term, or clear a filter."
+                                                title={tc('console.no_matching_entries_9c940e9d')}
+                                                description={tc(
+                                                    'console.no_entry_matches_those_filters_try_a_broader_afd8d040',
+                                                )}
                                             />
                                         ) : (
                                             <EmptyState
                                                 icon="audit"
-                                                title="Nothing recorded yet"
+                                                title={tc('console.nothing_recorded_yet_cb77e288')}
                                                 help={help}
-                                                description="Every administrative change — members, roles, connections, apps — lands here as it happens, with who did it and when. Nothing to configure; it records itself."
+                                                description={tc(
+                                                    'console.every_administrative_change_members_roles_co_ef641619',
+                                                )}
                                             />
                                         )}
                                     </Td>
@@ -394,12 +406,14 @@ export default function Audit({
                                                 <p className="mb-0.5 flex flex-wrap justify-end gap-1">
                                                     {entry.via !== null && (
                                                         <Pill tone="neutral" dot={false}>
-                                                            via {entry.via}
+                                                            {tc('console.via_c1035a0b')}
+                                                            {entry.via}
                                                         </Pill>
                                                     )}
                                                     {entry.approvedBy !== null && (
                                                         <Pill tone="success" dot={false}>
-                                                            approved by {entry.approvedBy}
+                                                            {tc('console.approved_by_11f61778')}
+                                                            {entry.approvedBy}
                                                         </Pill>
                                                     )}
                                                 </p>
@@ -409,9 +423,9 @@ export default function Audit({
                                                     className="text-xs"
                                                     style={{ color: 'var(--muted-foreground)' }}
                                                     dateTime={entry.recordedAt}
-                                                    title={absoluteTime(entry.recordedAt)}
+                                                    title={absoluteTime(entry.recordedAt, locale)}
                                                 >
-                                                    {relativeTime(entry.recordedAt)}
+                                                    {relativeTime(entry.recordedAt, locale)}
                                                 </time>
                                             )}
                                         </Td>
@@ -429,13 +443,13 @@ export default function Audit({
                     style={{ color: 'var(--faint)' }}
                 >
                     <Icon name="shield" className="w-3.5 h-3.5 shrink-0" />
-                    Entries are append-only and hash-chained — any tampering breaks the chain.
+                    {tc('console.entries_are_append_only_and_hash_chained_any_a42659c5')}
                 </p>
 
                 <SimplePagination
                     pagination={pagination}
-                    noun="entry"
-                    pluralNoun="entries"
+                    noun={tc('console.entry_923fe539')}
+                    pluralNoun={tc('console.entries_87d05cd0')}
                     href={(page) => filterHref(filters, page)}
                 />
             </div>
@@ -458,9 +472,14 @@ function ChipGroup({
     value: string | null;
     onChoose: (value: string) => void;
 }) {
+    const { t: tc } = useTranslator();
+
     return (
         <fieldset className="flex flex-wrap items-center gap-1.5 border-0 p-0 m-0 min-w-0">
-            <legend className="sr-only">Filter by {label.toLowerCase()}</legend>
+            <legend className="sr-only">
+                {tc('console.filter_by_9535ef75')}
+                {label.toLowerCase()}
+            </legend>
             <span className="text-xs" aria-hidden="true" style={{ color: 'var(--faint)' }}>
                 {label}
             </span>

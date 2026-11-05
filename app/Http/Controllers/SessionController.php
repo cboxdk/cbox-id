@@ -46,7 +46,7 @@ final class SessionController extends Controller
             return SignedOutController::landing(fromConsole: false);
         }
 
-        return redirect()->route('login')->with('status', 'You have been signed out.');
+        return redirect()->route('login')->with('status', __('console.you_have_been_signed_out_02b52a32'));
     }
 
     public function switchOrganization(Request $request, PlatformAuth $auth, Memberships $memberships, CurrentUser $me): RedirectResponse

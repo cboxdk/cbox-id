@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -10,9 +11,10 @@ import {
     matchingPreset,
     type PresetId,
     PRESETS,
+    presetPresentation,
     presetById,
     presetScopes,
-    RISK_LABEL,
+    riskLabel,
     RISK_TONE,
     unheldScopes,
 } from '@/lib/agents';
@@ -59,6 +61,8 @@ export default function CreateAgent({
     urls,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const { freshKey, freshKeyName } = usePage().flash;
     const initial = presetById(defaults.preset ?? 'read-only') ?? PRESETS[0];
 
@@ -109,9 +113,11 @@ export default function CreateAgent({
                     help={help}
                     description={
                         <>
-                            A management key for one agent. It can do only what its scopes allow,
-                            and the actions you choose wait for your approval — on your phone, or on
-                            the <Link href={urls.approvals}>Approvals page</Link>.
+                            {tc('console.a_management_key_for_one_agent_it_can_do_onl_0071f25b')}
+                            <Link href={urls.approvals}>
+                                {tc('console.approvals_page_e9d11be4')}
+                            </Link>
+                            .
                         </>
                     }
                 />
@@ -125,25 +131,29 @@ export default function CreateAgent({
                     form.post(urls.store, { preserveScroll: true });
                 }}
             >
-                <Panel title="The agent">
+                <Panel title={tc('console.the_agent_750a4ad2')}>
                     <div className="space-y-4">
-                        <Field label="Name" error={form.errors.name}>
+                        <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                             <Input
                                 name="name"
-                                placeholder="Claude Code"
+                                placeholder={tc('console.claude_code_246ef8c1')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
                         <Field
-                            label="What it is for"
-                            hint="Optional. Shown beside it on the Agents page."
+                            label={tc('console.what_it_is_for_1ad944c4')}
+                            hint={tc(
+                                'console.optional_shown_beside_it_on_the_agents_page_1ce8220d',
+                            )}
                             error={form.errors.description}
                         >
                             <Textarea
                                 name="description"
                                 rows={2}
-                                placeholder="Triage support tickets in the Acme workspace"
+                                placeholder={tc(
+                                    'console.triage_support_tickets_in_the_acme_workspace_535bad63',
+                                )}
                                 value={form.data.description}
                                 onChange={(event) =>
                                     form.setData('description', event.target.value)
@@ -154,12 +164,14 @@ export default function CreateAgent({
                 </Panel>
 
                 <Panel
-                    title="What it can do"
-                    description="Start from a preset, then adjust. Each scope is marked with the most harmful thing it allows."
+                    title={tc('console.what_it_can_do_55e8e93f')}
+                    description={tc(
+                        'console.start_from_a_preset_then_adjust_each_scope_i_60006824',
+                    )}
                 >
                     <div className="space-y-5">
                         <fieldset>
-                            <legend className="label">Preset</legend>
+                            <legend className="label">{tc('console.preset_7252e7ce')}</legend>
                             <div className="mt-2 grid gap-2 sm:grid-cols-3">
                                 {PRESETS.map((preset) => {
                                     const on = current === preset.id;
@@ -180,13 +192,13 @@ export default function CreateAgent({
                                         >
                                             <span className="flex items-center gap-1.5 text-sm font-semibold">
                                                 {on && <Icon name="check" className="w-4 h-4" />}
-                                                {preset.label}
+                                                {presetPresentation(preset.id, tc).label}
                                             </span>
                                             <span
                                                 className="mt-1 block text-xs"
                                                 style={{ color: 'var(--muted-foreground)' }}
                                             >
-                                                {preset.description}
+                                                {presetPresentation(preset.id, tc).description}
                                             </span>
                                         </button>
                                     );
@@ -197,14 +209,16 @@ export default function CreateAgent({
                         <p className="text-sm flex items-center gap-2 flex-wrap" aria-live="polite">
                             <span>
                                 {form.data.scopes.length}{' '}
-                                {form.data.scopes.length === 1 ? 'scope' : 'scopes'}
-                                {current === null ? ' · custom' : ''}
+                                {form.data.scopes.length === 1
+                                    ? tc('console.scope_5f161c91')
+                                    : tc('console.scopes_56b3669c')}
+                                {current === null ? tc('console.custom_488253ad') : ''}
                             </span>
                             <span aria-hidden="true" style={{ color: 'var(--faint)' }}>
                                 ·
                             </span>
-                            <span>Highest risk</span>
-                            <Badge tone={RISK_TONE[risk]}>{RISK_LABEL[risk]}</Badge>
+                            <span>{tc('console.highest_risk_249ac63f')}</span>
+                            <Badge tone={RISK_TONE[risk]}>{riskLabel(risk, tc)}</Badge>
                         </p>
 
                         <ScopePicker
@@ -222,19 +236,20 @@ export default function CreateAgent({
                 </Panel>
 
                 <Panel
-                    title="Approval"
+                    title={tc('console.approval_147fb813')}
                     description={
                         <>
-                            Which of its actions wait for a person. The agent gets a 202 with a
-                            short code, you approve on your phone or on the{' '}
-                            <Link href={urls.approvals}>Approvals page</Link>, and it repeats the
-                            request — once.
+                            {tc('console.which_of_its_actions_wait_for_a_person_the_a_1cb6cf78')}{' '}
+                            <Link href={urls.approvals}>
+                                {tc('console.approvals_page_e9d11be4')}
+                            </Link>
+                            {tc('console.and_it_repeats_the_request_once_56e33e2d')}
                         </>
                     }
                 >
                     <div className="space-y-5">
                         <RadioGroup
-                            label="Ask before"
+                            label={tc('console.ask_before_67dda6c4')}
                             name="approval"
                             value={form.data.approval}
                             onValueChange={(approval) => form.setData('approval', approval)}
@@ -265,9 +280,9 @@ export default function CreateAgent({
                                     color: 'var(--muted-foreground)',
                                 }}
                             >
-                                Approvals cover the management API's actions. These scopes are
-                                served by endpoints that are not actions yet, so they run without
-                                asking:{' '}
+                                {tc(
+                                    'console.approvals_cover_the_management_api_s_actions_65e224f1',
+                                )}{' '}
                                 <span className="mono">
                                     {unheld.map((scope) => scope.value).join(', ')}
                                 </span>
@@ -278,8 +293,10 @@ export default function CreateAgent({
                 </Panel>
 
                 <Panel
-                    title="Expiry"
-                    description="An agent is usually for a piece of work. Rotate the key, or create another, when it runs out."
+                    title={tc('console.expiry_6956d814')}
+                    description={tc(
+                        'console.an_agent_is_usually_for_a_piece_of_work_rota_bc3983fd',
+                    )}
                 >
                     <ExpiryField
                         lifetimes={lifetimes}
@@ -294,10 +311,10 @@ export default function CreateAgent({
 
                 <div className="flex items-center gap-3">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create agent key
+                        {tc('console.create_agent_key_fcab7a18')}
                     </Button>
                     <Button asChild variant="ghost">
-                        <Link href={urls.index}>Cancel</Link>
+                        <Link href={urls.index}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>
@@ -306,7 +323,9 @@ export default function CreateAgent({
 }
 
 function BackLink({ href }: { href: string }) {
-    return <Breadcrumb href={href} label="Agents" />;
+    const { t: tc } = useTranslator();
+
+    return <Breadcrumb href={href} label={tc('console.agents_279b44d2')} />;
 }
 
 /**
@@ -322,6 +341,7 @@ function ScopePicker({
     selected: string[];
     onChange: (next: string[]) => void;
 }) {
+    const { t: tc } = useTranslator();
     const groups = useMemo(() => groupScopes(scopes), [scopes]);
 
     const toggle = (value: string, on: boolean): void => {
@@ -378,7 +398,7 @@ function ScopePicker({
                                             </span>
                                             {scope.risk !== 'read' && (
                                                 <Badge tone={RISK_TONE[scope.risk]}>
-                                                    {RISK_LABEL[scope.risk]}
+                                                    {riskLabel(scope.risk, tc)}
                                                 </Badge>
                                             )}
                                         </span>
@@ -405,6 +425,8 @@ function ActionPicker({
     onChange: (next: string[]) => void;
     error?: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const [query, setQuery] = useState('');
     const needle = query.trim().toLowerCase();
     const shown = actions.filter(
@@ -417,31 +439,41 @@ function ActionPicker({
     return (
         <div>
             <Field
-                label="Also ask before these actions"
-                hint="Whatever their risk — for example the one action you want to watch."
+                label={tc('console.also_ask_before_these_actions_78d86299')}
+                hint={tc('console.whatever_their_risk_for_example_the_one_acti_af03fab8')}
                 error={error}
             >
                 <Input
                     type="search"
-                    placeholder="Search actions"
+                    placeholder={tc('console.search_actions_bf47a406')}
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                 />
             </Field>
 
             <output className="block mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {shown.length} of {actions.length} actions shown · {selected.length} chosen
+                {shown.length}
+                {tc('console.of_a4282e4b')}
+                {actions.length}
+                {tc('console.actions_shown_98dc4908')}
+                {selected.length}
+                {tc('console.chosen_ab91342d')}
             </output>
 
             {selected.length > 0 && (
-                <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Actions that always wait">
+                <ul
+                    className="mt-2 flex flex-wrap gap-1.5"
+                    aria-label={tc('console.actions_that_always_wait_f91ebe6b')}
+                >
                     {selected.map((name) => (
                         <li key={name}>
                             <button
                                 type="button"
                                 className="inline-flex"
                                 onClick={() => onChange(selected.filter((s) => s !== name))}
-                                aria-label={`Stop asking before ${name}`}
+                                aria-label={tc('console.stop_asking_before_value0_ac5f200f', {
+                                    value0: name,
+                                })}
                             >
                                 <Badge tone="info">
                                     <span className="mono">{name}</span> ×
@@ -458,7 +490,7 @@ function ActionPicker({
             >
                 {shown.length === 0 ? (
                     <p className="text-sm py-1" style={{ color: 'var(--muted-foreground)' }}>
-                        No action matches.
+                        {tc('console.no_action_matches_03ca7c19')}
                     </p>
                 ) : (
                     shown.map((action) => (
@@ -478,7 +510,7 @@ function ActionPicker({
                                     <span className="mono text-sm">{action.name}</span>
                                     {action.danger !== 'read' && (
                                         <Badge tone={RISK_TONE[action.danger]}>
-                                            {RISK_LABEL[action.danger]}
+                                            {riskLabel(action.danger, tc)}
                                         </Badge>
                                     )}
                                 </span>
@@ -506,6 +538,8 @@ function Created({
     mcpUrl: string | null;
     urls: { index: string; connect: string };
 }) {
+    const { t: tc } = useTranslator();
+
     const command = mcpUrl === null ? null : claudeCode(mcpUrl, value).code;
 
     return (
@@ -514,8 +548,10 @@ function Created({
 
             <div className="mt-2">
                 <PageHeader
-                    title={`${name} is ready`}
-                    description="Copy the key now and hand it to the agent. Only a hash is kept, so this is the only time it is shown."
+                    title={tc('console.value0_is_ready_753017c8', { value0: name })}
+                    description={tc(
+                        'console.copy_the_key_now_and_hand_it_to_the_agent_on_fb10c803',
+                    )}
                 />
             </div>
 
@@ -523,7 +559,7 @@ function Created({
                 <RevealedKey value={value}>
                     {command !== null && (
                         <div className="mt-5">
-                            <p className="label">Connect Claude Code</p>
+                            <p className="label">{tc('console.connect_claude_code_dad252a1')}</p>
                             <div className="mt-1.5 flex items-start gap-2">
                                 <code
                                     className="mono text-xs break-all flex-1 rounded-lg px-3 py-2.5"
@@ -531,7 +567,10 @@ function Created({
                                 >
                                     {command}
                                 </code>
-                                <CopyButton value={command} label="Copy command" />
+                                <CopyButton
+                                    value={command}
+                                    label={tc('console.copy_command_9a01feec')}
+                                />
                             </div>
                         </div>
                     )}
@@ -539,11 +578,11 @@ function Created({
 
                 <div className="flex items-center gap-3 flex-wrap">
                     <Button asChild variant="primary">
-                        <Link href={urls.index}>Done</Link>
+                        <Link href={urls.index}>{tc('console.done_11a6767d')}</Link>
                     </Button>
                     <Button asChild variant="secondary">
                         <Link href={urls.connect}>
-                            Other clients: Cursor, VS Code, Claude Desktop
+                            {tc('console.other_clients_cursor_vs_code_claude_desktop_5232478a')}
                         </Link>
                     </Button>
                 </div>

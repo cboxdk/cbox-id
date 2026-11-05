@@ -6,8 +6,8 @@
     "published": false
   },
   "laravel-signals-client": {
-    "revision": "88cc34663ab3043341b20193f35b7f7b34f1bd82",
-    "sha256": "e736e99aa1cc9c1acb4e9291090831f41cef49044e8d0fd62b8ece2babdcbb4b",
+    "revision": "87914a4b912bcd47982f75cebe1b676f17356c3d",
+    "sha256": "afae7eff4af20936667056fc5cfec670968ed5e478e4c8e6e20fa3b3020aaec3",
     "license": "MIT",
     "published": false
   }

@@ -32,7 +32,7 @@ final readonly class PlatformQueuesController extends ConsoleController
 
         $report = $health->inspect();
 
-        return $this->page('console/platform/queues', 'Queues', [
+        return $this->page('console/platform/queues', __('console.queues_be77db11'), [
             'help' => HelpProps::for(HelpTopic::PlatformQueues),
             'healthy' => $report->healthy(),
             'manager' => QueueManagerProps::from($report),

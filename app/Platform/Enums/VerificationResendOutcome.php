@@ -32,8 +32,8 @@ enum VerificationResendOutcome: string
     public function message(string $email): string
     {
         return match ($this) {
-            self::Sent => 'A new confirmation link is on its way to '.$email.'. It is valid for 24 hours and replaces any earlier link, so use the newest email.',
-            self::AlreadyProvisioned => 'Nothing to confirm — your environment is already up and running.',
+            self::Sent => __('console.a_new_confirmation_link_is_on_its_way_to_33cb7b3b').$email.__('console.it_is_valid_for_24_hours_and_replaces_any_ea_07d996d4'),
+            self::AlreadyProvisioned => __('console.nothing_to_confirm_your_environment_is_alrea_21ddd184'),
         };
     }
 }

@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import type { HelpContent } from '@/types';
 import { Icon } from './Icon';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
@@ -33,6 +34,8 @@ export interface HelpProps {
  * one place and travels as text.
  */
 export function Help({ help, label }: HelpProps) {
+    const { t: tc } = useUiTranslator();
+
     return (
         <Popover>
             {label !== undefined ? (
@@ -41,7 +44,7 @@ export function Help({ help, label }: HelpProps) {
                 <PopoverTrigger
                     className="cbx-help-btn"
                     aria-label={`What is ${help.title}?`}
-                    title="What is this?"
+                    title={tc('console.what_is_this_0b12ba39', 'What is this?')}
                 >
                     <Icon name="help" className="w-4 h-4" />
                 </PopoverTrigger>
@@ -53,8 +56,10 @@ export function Help({ help, label }: HelpProps) {
 
                 {help.href !== null && (
                     <a className="cbx-help-link" href={help.href} target="_blank" rel="noreferrer">
-                        Read the guide
-                        <span className="sr-only"> (opens in a new tab)</span>
+                        {tc('console.read_the_guide_83b3b277', 'Read the guide')}
+                        <span className="sr-only">
+                            {tc('console.opens_in_a_new_tab_708573ec', ' (opens in a new tab)')}
+                        </span>
                     </a>
                 )}
             </PopoverContent>

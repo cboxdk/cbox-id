@@ -554,3 +554,50 @@ it('shows the sign-in page for a hint that names no provider it offers', functio
 
     hintedAuthorize('myspace')->assertRedirect(route('login'));
 });
+
+it('completes the hosted OIDC form post with the protected flow cookie and no session', function (): void {
+    fakeGoogleDiscovery();
+    $connections = app(Connections::class);
+    $connection = $connections->create(null, ConnectionType::Oidc, 'Google', [
+        ...googleDiscovery(),
+        'client_id' => 'google-client-id',
+        'client_secret' => 'google-client-secret',
+    ]);
+    $connections->activate(null, $connection->id);
+
+    $started = $this->get('/sso/oidc/'.$connection->id.'/redirect')->assertRedirect();
+    parse_str((string) parse_url((string) $started->headers->get('Location'), PHP_URL_QUERY), $query);
+    $cookie = collect($started->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
+    expect($cookie)->not->toBeNull();
+
+    $signed = googleIdToken(['nonce' => $query['nonce'], 'email_verified' => true]);
+    Http::fake([
+        'oauth2.googleapis.com/token' => Http::response(['id_token' => $signed['id_token']]),
+        'www.googleapis.com/oauth2/v3/certs' => Http::response($signed['jwks']),
+    ]);
+
+    $this->flushSession()->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue())
+        ->post('/sso/oidc/'.$connection->id.'/callback', ['code' => 'fresh-code', 'state' => $query['state']])
+        ->assertRedirect(route('dashboard'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull()
+        ->and(app(Subjects::class)->findByEmail('newcomer@example.test'))->not->toBeNull();
+})->group('security');
+
+it('refuses the hosted OIDC callback when only a legacy session flow is supplied', function (): void {
+    fakeGoogleDiscovery();
+    $connections = app(Connections::class);
+    $connection = $connections->create(null, ConnectionType::Oidc, 'Google', [
+        ...googleDiscovery(),
+        'client_id' => 'google-client-id',
+        'client_secret' => 'google-client-secret',
+    ]);
+    $connections->activate(null, $connection->id);
+
+    $this->withSession(['oidc.'.$connection->id => ['state' => 'planted-state', 'nonce' => 'planted-nonce']])
+        ->post('/sso/oidc/'.$connection->id.'/callback', ['code' => 'attacker-code', 'state' => 'planted-state'])
+        ->assertRedirect(route('login'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'oauth2.googleapis.com/token'));
+})->group('security');

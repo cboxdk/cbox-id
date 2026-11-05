@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { Button, type ButtonProps } from './Button';
@@ -25,13 +26,22 @@ export interface CopyButtonProps extends Omit<ButtonProps, 'onClick' | 'children
  */
 export function CopyButton({
     value,
-    label = 'Copy',
-    copiedLabel = 'Copied',
-    failedLabel = 'Copy failed — select and copy manually',
+    label: suppliedLabel,
+    copiedLabel: suppliedCopiedlabel,
+    failedLabel: suppliedFailedlabel,
     size = 'sm',
     className,
     ...props
 }: CopyButtonProps) {
+    const { t: tc } = useUiTranslator();
+    const label = suppliedLabel ?? tc('console.copy_e21f935f', 'Copy');
+    const copiedLabel = suppliedCopiedlabel ?? tc('console.copied_8d525e5f', 'Copied');
+    const failedLabel =
+        suppliedFailedlabel ??
+        tc(
+            'console.copy_failed_select_and_copy_manually_19efd469',
+            'Copy failed \u2014 select and copy manually',
+        );
     const [state, setState] = useState<CopyState>('idle');
     const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 

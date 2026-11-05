@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -63,6 +64,10 @@ export default function OrganizationOverview({
     certificateWarnings,
     portalLinks,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     return (
         <div className="space-y-6">
             <CertificateWarnings warnings={certificateWarnings} />
@@ -70,21 +75,21 @@ export default function OrganizationOverview({
             <div className="grid gap-4 sm:grid-cols-2">
                 <Stat
                     icon="members"
-                    label="Members"
-                    value={counts.members.toLocaleString()}
+                    label={tc('console.members_1044a4c0')}
+                    value={counts.members.toLocaleString(locale)}
                     href={hrefs.members}
                 />
                 <Stat
                     icon="mail"
-                    label="Pending invitations"
-                    value={counts.invitations.toLocaleString()}
+                    label={tc('console.pending_invitations_76198e63')}
+                    value={counts.invitations.toLocaleString(locale)}
                     href={hrefs.invitations}
                 />
             </div>
 
             <Panel
-                title="Setup"
-                description="What this organization's sign-in is wired to, read from what is actually configured."
+                title={tc('console.setup_7013af4c')}
+                description={tc('console.what_this_organization_s_sign_in_is_wired_to_cde71601')}
                 action={<Help help={help} />}
             >
                 <ul className="space-y-3">
@@ -110,17 +115,21 @@ export default function OrganizationOverview({
                                         {step.label}
                                     </Link>
                                     {step.done ? (
-                                        <Pill tone="success">Done</Pill>
+                                        <Pill tone="success">{tc('console.done_11a6767d')}</Pill>
                                     ) : step.available ? (
-                                        <Pill>Not yet</Pill>
+                                        <Pill>{tc('console.not_yet_a9549d7d')}</Pill>
                                     ) : (
-                                        <Pill tone="warning">Not in plan</Pill>
+                                        <Pill tone="warning">
+                                            {tc('console.not_in_plan_0f69a710')}
+                                        </Pill>
                                     )}
                                 </div>
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                                     {step.available
                                         ? step.detail
-                                        : "This organization's plan does not include it."}
+                                        : tc(
+                                              'console.this_organization_s_plan_does_not_include_it_24125cc4',
+                                          )}
                                 </p>
                             </div>
                         </li>
@@ -131,17 +140,17 @@ export default function OrganizationOverview({
             <PortalLinks links={portalLinks} />
 
             <Panel
-                title="Recent activity"
-                description="The newest entries on this organization's audit log."
+                title={tc('console.recent_activity_6cb44b56')}
+                description={tc('console.the_newest_entries_on_this_organization_s_au_a1dd5ccc')}
                 action={
                     <Link href={hrefs.audit} className="text-sm">
-                        Audit log
+                        {tc('console.audit_log_e4d36f9a')}
                     </Link>
                 }
             >
                 {recent.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        Nothing has been recorded for this organization yet.
+                        {tc('console.nothing_has_been_recorded_for_this_organizat_0571948e')}
                     </p>
                 ) : (
                     <ul className="space-y-2">
@@ -166,7 +175,7 @@ export default function OrganizationOverview({
                                         className="text-xs"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        {new Date(entry.recordedAt).toLocaleString()}
+                                        {new Date(entry.recordedAt).toLocaleString(locale)}
                                     </time>
                                 )}
                             </li>
@@ -185,16 +194,20 @@ export default function OrganizationOverview({
  * withdrawn. Revoking one that is in use ends that session on its next click.
  */
 function PortalLinks({ links }: { links: OutstandingPortalLink[] }) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
     const [revoking, setRevoking] = useState<string | null>(null);
 
     return (
         <Panel
-            title="Admin Portal links"
-            description="Links handed to this organization's IT administrator that still open something. Revoke one and it stops working at once — what was already set up through it stays."
+            title={tc('console.admin_portal_links_e941273c')}
+            description={tc('console.links_handed_to_this_organization_s_it_admin_65719b81')}
         >
             {links.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                    No link is outstanding.
+                    {tc('console.no_link_is_outstanding_cdd62efb')}
                 </p>
             ) : (
                 <ul className="space-y-3">
@@ -207,34 +220,36 @@ function PortalLinks({ links }: { links: OutstandingPortalLink[] }) {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-medium">{link.intents.join(', ')}</span>
                                     {link.inUse ? (
-                                        <Pill tone="warning">In use</Pill>
+                                        <Pill tone="warning">{tc('console.in_use_750af77a')}</Pill>
                                     ) : (
-                                        <Pill>Not opened</Pill>
+                                        <Pill>{tc('console.not_opened_3c1918bf')}</Pill>
                                     )}
                                 </div>
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                                     {link.emailedTo !== null
-                                        ? `Mailed to ${link.emailedTo}`
-                                        : 'Copied by hand'}
+                                        ? tc('console.mailed_to_value0_2da6e216', {
+                                              value0: link.emailedTo,
+                                          })
+                                        : tc('console.copied_by_hand_3771c413')}
                                     {link.createdAt !== null && (
                                         <>
-                                            {' · created '}
+                                            {tc('console.created_d8cbb77e')}
                                             <time
                                                 dateTime={link.createdAt}
-                                                title={absoluteTime(link.createdAt)}
+                                                title={absoluteTime(link.createdAt, locale)}
                                             >
-                                                {relativeTime(link.createdAt)}
+                                                {relativeTime(link.createdAt, locale)}
                                             </time>
                                         </>
                                     )}
                                     {!link.inUse && (
                                         <>
-                                            {' · expires '}
+                                            {tc('console.expires_886eec4c')}
                                             <time
                                                 dateTime={link.expiresAt}
-                                                title={absoluteTime(link.expiresAt)}
+                                                title={absoluteTime(link.expiresAt, locale)}
                                             >
-                                                {relativeTime(link.expiresAt)}
+                                                {relativeTime(link.expiresAt, locale)}
                                             </time>
                                         </>
                                     )}
@@ -244,7 +259,9 @@ function PortalLinks({ links }: { links: OutstandingPortalLink[] }) {
                                 size="sm"
                                 variant="danger"
                                 loading={revoking === link.id}
-                                aria-label={`Revoke the ${link.intents.join(', ')} link`}
+                                aria-label={tc('console.revoke_the_value0_link_50b2d0ac', {
+                                    value0: link.intents.join(', '),
+                                })}
                                 onClick={() =>
                                     router.delete(link.revokeHref, {
                                         preserveScroll: true,
@@ -253,7 +270,7 @@ function PortalLinks({ links }: { links: OutstandingPortalLink[] }) {
                                     })
                                 }
                             >
-                                Revoke
+                                {tc('console.revoke_87e6d00b')}
                             </Button>
                         </li>
                     ))}

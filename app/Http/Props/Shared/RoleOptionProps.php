@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Shared;
 
 use App\Http\Props\Prop;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgRoles;
 use Cbox\Id\Organization\Enums\MembershipRole;
 
@@ -46,7 +47,7 @@ final readonly class RoleOptionProps implements Prop
             array_unshift($options, new self(
                 MembershipRole::Owner->value,
                 MembershipRole::Owner->label(),
-                'Moves only with "Transfer ownership".',
+                ConsoleStrings::message('console.moves_only_with_transfer_ownership_4d9a7054'),
                 disabled: true,
             ));
         }
@@ -64,10 +65,10 @@ final readonly class RoleOptionProps implements Prop
     {
         return array_map(
             static fn (MembershipRole $role): self => new self($role->value, $role->label(), match ($role) {
-                MembershipRole::Admin => 'Runs the workspace: team, projects, environments and billing.',
-                MembershipRole::Developer => 'Creates and runs environments; no access to people or billing.',
-                MembershipRole::Member => 'Works in the environments they are given; no administration.',
-                MembershipRole::Viewer => 'Read-only: environments, people and billing.',
+                MembershipRole::Admin => ConsoleStrings::message('console.runs_the_workspace_team_projects_environment_6c637b7b'),
+                MembershipRole::Developer => ConsoleStrings::message('console.creates_and_runs_environments_no_access_to_p_5b16a314'),
+                MembershipRole::Member => ConsoleStrings::message('console.works_in_the_environments_they_are_given_no__48df15b0'),
+                MembershipRole::Viewer => ConsoleStrings::message('console.read_only_environments_people_and_billing_1c31169a'),
                 MembershipRole::Owner => null,
             }),
             MembershipRole::assignable(),
@@ -81,7 +82,7 @@ final readonly class RoleOptionProps implements Prop
     {
         return [
             'value' => $this->value,
-            'label' => $this->label,
+            'label' => ConsoleStrings::text($this->label),
             'description' => $this->description,
             'disabled' => $this->disabled,
         ];

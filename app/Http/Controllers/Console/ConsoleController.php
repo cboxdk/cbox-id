@@ -236,11 +236,11 @@ abstract readonly class ConsoleController extends PageController
                 return null;
             }
 
-            throw ValidationException::withMessages([$field => 'Say which organization this is for.']);
+            throw ValidationException::withMessages([$field => __('console.say_which_organization_this_is_for_d5e96224')]);
         }
 
         if (! is_string($asked) || strlen($asked) > 64 || ! $this->scope->bindOrganization($asked)) {
-            throw ValidationException::withMessages([$field => 'That organization is not in this environment.']);
+            throw ValidationException::withMessages([$field => __('console.that_organization_is_not_in_this_environment_53d0de6c')]);
         }
 
         return $asked;

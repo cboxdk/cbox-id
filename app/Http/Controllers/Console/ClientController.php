@@ -25,6 +25,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\ScopeCatalog;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Manifest\ManifestSyncResult;
@@ -158,7 +159,7 @@ final readonly class ClientController extends ConsoleController
 
         $showsEveryOrganization = ! $filter->active();
 
-        return $this->page('console/clients/index', Vocabulary::APPLICATIONS, [
+        return $this->page('console/clients/index', ConsoleStrings::text(Vocabulary::APPLICATIONS), [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
                 ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))
@@ -200,7 +201,7 @@ final readonly class ClientController extends ConsoleController
             return to_route($sudo);
         }
 
-        return $this->page('console/clients/create', 'New application', [
+        return $this->page('console/clients/create', __('console.new_application_1a852572'), [
             'scopeGroups' => $catalog->grouped(),
             'appKinds' => array_map(
                 fn (AppKind $kind): array => [
@@ -238,7 +239,7 @@ final readonly class ClientController extends ConsoleController
          * lock the plane out of registering apps at all.
          */
         if ($this->scope->plane() === ConsolePlane::Organization) {
-            app(VerifiedEmailGate::class)->require('create an application');
+            app(VerifiedEmailGate::class)->require(__('console.create_an_application_655ee895'));
         }
 
         $kind = $request->kind();
@@ -248,7 +249,7 @@ final readonly class ClientController extends ConsoleController
             // Reported on the checkbox that would fix it, not on a field the form does
             // not have: an error keyed to nothing renders nowhere.
             return back()->withInput()->withErrors([
-                'grantAuthorizationCode' => 'Choose at least one way this app connects.',
+                'grantAuthorizationCode' => __('console.choose_at_least_one_way_this_app_connects_29c9edbe'),
             ]);
         }
 
@@ -256,7 +257,7 @@ final readonly class ClientController extends ConsoleController
 
         if (in_array('authorization_code', $grantTypes, true) && $redirects === []) {
             return back()->withInput()->withErrors([
-                'redirectUris' => 'A browser-login app needs at least one redirect URI to return people to.',
+                'redirectUris' => __('console.a_browser_login_app_needs_at_least_one_redir_f870e56d'),
             ]);
         }
 
@@ -427,7 +428,7 @@ final readonly class ClientController extends ConsoleController
             'post_logout_redirect_uris' => $request->postLogoutRedirectUris(),
         ], ['name' => 'name', 'redirect_uris' => 'redirectUris', 'post_logout_redirect_uris' => 'postLogoutRedirectUris'], 'redirectUris');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'App updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.app_updated_131df7f6'));
     }
 
     public function saveManifest(Request $request, string $client): RedirectResponse
@@ -447,7 +448,7 @@ final readonly class ClientController extends ConsoleController
         }
 
         if ($url === null) {
-            return back()->with('status', 'Manifest URL cleared.');
+            return back()->with('status', __('console.manifest_url_cleared_2c27ed76'));
         }
 
         // Pull immediately, so the app's roles appear without waiting for the sweep. A
@@ -455,13 +456,13 @@ final readonly class ClientController extends ConsoleController
         $synced = $this->attempt(SyncAppManifest::class, ['id' => $model->id]);
 
         if ($synced instanceof ActionRefused) {
-            return back()->withErrors(['manifestUrl' => 'Saved, but the sync failed: '.$synced->getMessage()]);
+            return back()->withErrors(['manifestUrl' => __('console.saved_but_the_sync_failed_4c459926').$synced->getMessage()]);
         }
 
         /** @var ManifestSyncResult $result */
         $result = $synced->value;
 
-        return back()->with('status', 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).');
+        return back()->with('status', __('console.manifest_synced_558c6980').$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).');
     }
 
     public function sync(string $client): RedirectResponse
@@ -475,7 +476,7 @@ final readonly class ClientController extends ConsoleController
         $synced = $this->attempt(SyncAppManifest::class, ['id' => $model->id]);
 
         if ($synced instanceof ActionRefused) {
-            return back()->with('error', 'Sync failed: '.$synced->getMessage());
+            return back()->with('error', __('console.sync_failed_1fbcf597').$synced->getMessage());
         }
 
         /** @var ManifestSyncResult $result */
@@ -483,7 +484,7 @@ final readonly class ClientController extends ConsoleController
 
         return back()->with('status', ! $result->unchanged
             ? 'Synced — '.$result->rolesDeclared.' role(s).'
-            : 'Already up to date.');
+            : __('console.already_up_to_date_21c23d93'));
     }
 
     /**
@@ -501,7 +502,7 @@ final readonly class ClientController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route($this->scope->routeName('clients'))->with('status', 'App deleted.');
+            : to_route($this->scope->routeName('clients'))->with('status', __('console.app_deleted_8d7eb06a'));
     }
 
     /**
@@ -531,7 +532,7 @@ final readonly class ClientController extends ConsoleController
             'owner' => $withOwner
                 ? ($client->organization_id !== null
                     ? ($owners[$client->organization_id] ?? $client->organization_id)
-                    : 'All organizations')
+                    : __('console.all_organizations_e3002b23'))
                 : null,
             'href' => $this->url('clients.show', $client->id),
         ];
@@ -551,7 +552,7 @@ final readonly class ClientController extends ConsoleController
             'clients.create',
             'environment.clients.create',
             [],
-            'Registering an app issues a client secret, shown once on the next screen — it signs in as this app until it is rotated.',
+            __('console.registering_an_app_issues_a_client_secret_sh_631bb9f1'),
         );
     }
 }

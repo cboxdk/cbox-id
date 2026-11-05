@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { Link } from '@inertiajs/react';
 import type { CertificateWarning } from '@/types';
 import { Icon } from './Icon';
@@ -12,13 +13,18 @@ import { Icon } from './Icon';
  * certificate renewal, for the customer's IT administrator to upload the new one.
  */
 export function CertificateWarnings({ warnings }: { warnings: CertificateWarning[] }) {
+    const { t: tc } = useUiTranslator();
+
     if (warnings.length === 0) {
         return null;
     }
 
     return (
         <section
-            aria-label="Expiring SAML certificates"
+            aria-label={tc(
+                'console.expiring_saml_certificates_f8d6cdf6',
+                'Expiring SAML certificates',
+            )}
             className="rounded-xl border p-4"
             style={{
                 borderColor: 'color-mix(in oklch, var(--warning) 45%, transparent)',
@@ -28,7 +34,10 @@ export function CertificateWarnings({ warnings }: { warnings: CertificateWarning
             <p className="flex items-center gap-2 text-sm font-semibold">
                 <Icon name="warning" className="w-4 h-4" style={{ color: 'var(--warning)' }} />
                 {warnings.length === 1
-                    ? 'A SAML certificate needs renewing'
+                    ? tc(
+                          'console.a_saml_certificate_needs_renewing_a8bb7261',
+                          'A SAML certificate needs renewing',
+                      )
                     : `${warnings.length} SAML certificates need renewing`}
             </p>
             <ul className="mt-2 space-y-1 text-sm">
@@ -44,14 +53,16 @@ export function CertificateWarnings({ warnings }: { warnings: CertificateWarning
                         {warning.expired
                             ? `stopped working on ${formatDate(warning.expires_at)}.`
                             : warning.days_remaining === 0
-                              ? 'stops working today.'
+                              ? tc('console.stops_working_today_3f4502eb', 'stops working today.')
                               : `stops working in ${warning.days_remaining} ${warning.days_remaining === 1 ? 'day' : 'days'} (${formatDate(warning.expires_at)}).`}
                     </li>
                 ))}
             </ul>
             <p className="mt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Send their IT administrator an Admin Portal link for SAML certificate renewal, or
-                stage the new certificate yourself through the API.
+                {tc(
+                    'console.send_their_it_administrator_an_admin_portal__59852a2e',
+                    'Send their IT administrator an Admin Portal link for SAML certificate renewal, or stage the new certificate yourself through the API.',
+                )}
             </p>
         </section>
     );

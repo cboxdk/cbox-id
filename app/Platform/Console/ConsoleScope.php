@@ -136,7 +136,7 @@ class ConsoleScope
             // independently and fenced their own reads, half did not. Refusing here makes
             // the idiom correct everywhere by construction rather than by vigilance.
             if ($organizationId === null) {
-                throw new AuthorizationException('Your account is not a member of an organization.');
+                throw new AuthorizationException(__('console.your_account_is_not_a_member_of_an_organizat_79d48ca3'));
             }
 
             return $organizationId;
@@ -176,7 +176,7 @@ class ConsoleScope
     public function bindOrganization(string $organizationId): bool
     {
         if ($this->plane() !== ConsolePlane::Environment) {
-            throw new AuthorizationException('Only an environment administrator acts on more than one organization.');
+            throw new AuthorizationException(__('console.only_an_environment_administrator_acts_on_mo_10fe8845'));
         }
 
         if (! $this->existsHere($organizationId)) {
@@ -845,7 +845,7 @@ class ConsoleScope
     public function assertPlatformOperator(): void
     {
         if (! $this->isPlatformOperator()) {
-            throw new AuthorizationException('You do not run this deployment.');
+            throw new AuthorizationException(__('console.you_do_not_run_this_deployment_a16652ca'));
         }
     }
 
@@ -869,7 +869,7 @@ class ConsoleScope
     public function assertMayAdminister(): void
     {
         if (! $this->mayAdminister()) {
-            throw new AuthorizationException('You do not have permission to change this.');
+            throw new AuthorizationException(__('console.you_do_not_have_permission_to_change_this_05d0ea6a'));
         }
     }
 
@@ -892,7 +892,7 @@ class ConsoleScope
     public function assertMayAdministerEnvironment(): void
     {
         if ($this->plane() !== ConsolePlane::Environment || ! $this->environmentAdmin->check()) {
-            throw new AuthorizationException('This belongs to the environment, and is administered from the environment console.');
+            throw new AuthorizationException(__('console.this_belongs_to_the_environment_and_is_admin_c17de890'));
         }
     }
 
@@ -940,7 +940,7 @@ class ConsoleScope
     public function assertAdministersEnvironment(): void
     {
         if (! $this->administersEnvironment()) {
-            throw new AuthorizationException('This belongs to the environment, and is administered from the environment console.');
+            throw new AuthorizationException(__('console.this_belongs_to_the_environment_and_is_admin_c17de890'));
         }
     }
 
@@ -966,7 +966,7 @@ class ConsoleScope
     public function assertEntitled(string $feature): void
     {
         if (! $this->entitled($feature)) {
-            throw new AuthorizationException('This organization does not have access to that feature.');
+            throw new AuthorizationException(__('console.this_organization_does_not_have_access_to_th_c472ad39'));
         }
     }
 
@@ -985,7 +985,7 @@ class ConsoleScope
         $organizationId = $this->organizationId();
 
         if ($organizationId === null) {
-            throw new AuthorizationException('This acts on one organization, and none is named here. Open it from the organization\'s own page.');
+            throw new AuthorizationException(__('console.this_acts_on_one_organization_and_none_is_na_3ad67fdd'));
         }
 
         return $organizationId;

@@ -11,6 +11,7 @@ use App\Http\Requests\Console\CreateOperatorRequest;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -53,7 +54,7 @@ final readonly class OperatorRosterController extends ConsoleController
 
         $currentId = $this->scope->operator()?->id;
 
-        return $this->page('console/platform/operators', Vocabulary::OPERATORS, [
+        return $this->page('console/platform/operators', ConsoleStrings::text(Vocabulary::OPERATORS), [
             'help' => HelpProps::for(HelpTopic::Operators),
             'operators' => $operators->map(fn (PlatformOperator $operator): array => [
                 'id' => $operator->id,
@@ -82,7 +83,7 @@ final readonly class OperatorRosterController extends ConsoleController
             'password' => $request->password(),
         ], ['name' => 'name', 'email' => 'email', 'password' => 'password'], 'email');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Operator created.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.operator_created_bb816a5f'));
     }
 
     /**
@@ -111,7 +112,7 @@ final readonly class OperatorRosterController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $model->isActive() ? 'Operator suspended.' : 'Operator reactivated.');
+        return back()->with('status', $model->isActive() ? __('console.operator_suspended_ca19b023') : __('console.operator_reactivated_b3baa474'));
     }
 
     /**

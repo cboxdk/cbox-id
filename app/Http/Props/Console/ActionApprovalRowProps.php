@@ -93,11 +93,11 @@ final readonly class ActionApprovalRowProps implements Prop
     public static function statusLabel(ActionApprovalStatus $status): string
     {
         return match ($status) {
-            ActionApprovalStatus::Pending => 'Waiting',
-            ActionApprovalStatus::Approved => 'Approved',
-            ActionApprovalStatus::Denied => 'Denied',
-            ActionApprovalStatus::Expired => 'Expired',
-            ActionApprovalStatus::Consumed => 'Approved and run',
+            ActionApprovalStatus::Pending => __('console.waiting_6e293a8c'),
+            ActionApprovalStatus::Approved => __('console.approved_87b42e40'),
+            ActionApprovalStatus::Denied => __('console.denied_da404deb'),
+            ActionApprovalStatus::Expired => __('console.expired_424a2551'),
+            ActionApprovalStatus::Consumed => __('console.approved_and_run_f4746d2f'),
         };
     }
 

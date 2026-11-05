@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -55,6 +56,8 @@ export default function ProjectDetail({
     remaining,
     indexHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [suspending, setSuspending] = useState(false);
 
     const environmentForm = useForm({ name: '', type: 'production' });
@@ -65,7 +68,7 @@ export default function ProjectDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Projects" />
+                <Breadcrumb href={indexHref} label={tc('console.projects_04e2a972')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     {/*
                         The h1 is the project's name rather than the word "Project", and
@@ -81,14 +84,15 @@ export default function ProjectDetail({
             </div>
 
             <Panel
-                title="Environments"
-                description={
-                    'Each is an isolated stage — production or sandbox — with its own users, keys and sign-in. Name one "Staging" for a pre-production stage.'
-                }
+                title={tc('console.environments_07437cd6')}
+                description={tc('console.each_is_an_isolated_stage_production_or_sand_c8b3283a')}
                 action={
                     scoped ? undefined : (
                         <span className="text-xs shrink-0" style={{ color: 'var(--faint)' }}>
-                            {environments.length} of {project.limit} used
+                            {environments.length}
+                            {tc('console.of_a4282e4b')}
+                            {project.limit}
+                            {tc('console.used_f194a918')}
                         </span>
                     )
                 }
@@ -97,8 +101,10 @@ export default function ProjectDetail({
                     {environments.length === 0 ? (
                         <EmptyState
                             icon="layers"
-                            title="No environments yet"
-                            description="Create an environment below to start issuing keys and sign-ins."
+                            title={tc('console.no_environments_yet_8c63cac4')}
+                            description={tc(
+                                'console.create_an_environment_below_to_start_issuing_008d04ea',
+                            )}
                         />
                     ) : (
                         environments.map((environment) => (
@@ -112,7 +118,11 @@ export default function ProjectDetail({
                                         <span className="font-medium truncate">
                                             {environment.name}
                                         </span>
-                                        {environment.sandbox && <Badge tone="warn">Sandbox</Badge>}
+                                        {environment.sandbox && (
+                                            <Badge tone="warn">
+                                                {tc('console.sandbox_67fc6249')}
+                                            </Badge>
+                                        )}
                                         <Badge>{environment.status}</Badge>
                                     </div>
                                     <a
@@ -129,7 +139,7 @@ export default function ProjectDetail({
                                 <Button asChild variant="primary" size="sm" className="shrink-0">
                                     {/* A signed handoff to another host — a navigation, not a page. */}
                                     <a href={environment.openHref}>
-                                        Open
+                                        {tc('console.open_ed077f3d')}
                                         <Icon name="external" className="w-3.5 h-3.5" />
                                     </a>
                                 </Button>
@@ -155,12 +165,16 @@ export default function ProjectDetail({
                         >
                             <div className="flex-1">
                                 <Field
-                                    label={<span className="sr-only">Environment name</span>}
+                                    label={
+                                        <span className="sr-only">
+                                            {tc('console.environment_name_03cb80d1')}
+                                        </span>
+                                    }
                                     error={environmentForm.errors.name}
                                 >
                                     <Input
                                         name="name"
-                                        placeholder="Staging"
+                                        placeholder={tc('console.staging_a8e7ac92')}
                                         disabled={full}
                                         value={environmentForm.data.name}
                                         onChange={(event) =>
@@ -171,7 +185,11 @@ export default function ProjectDetail({
                             </div>
 
                             <Field
-                                label={<span className="sr-only">Environment type</span>}
+                                label={
+                                    <span className="sr-only">
+                                        {tc('console.environment_type_7c9f3eba')}
+                                    </span>
+                                }
                                 error={environmentForm.errors.type}
                             >
                                 <Select
@@ -179,10 +197,13 @@ export default function ProjectDetail({
                                     onValueChange={(type) => environmentForm.setData('type', type)}
                                     disabled={full}
                                     options={[
-                                        { value: 'production', label: 'Production' },
-                                        { value: 'sandbox', label: 'Sandbox' },
+                                        {
+                                            value: 'production',
+                                            label: tc('console.production_13a7c655'),
+                                        },
+                                        { value: 'sandbox', label: tc('console.sandbox_67fc6249') },
                                     ]}
-                                    aria-label="Environment type"
+                                    aria-label={tc('console.environment_type_7c9f3eba')}
                                 />
                             </Field>
 
@@ -192,14 +213,19 @@ export default function ProjectDetail({
                                 disabled={full}
                                 loading={environmentForm.processing}
                             >
-                                Add environment
+                                {tc('console.add_environment_dcbe4c44')}
                             </Button>
                         </form>
 
                         <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
                             {full
-                                ? 'This project has used every environment its plan allows. Upgrade its plan to add more.'
-                                : `Sandbox environments allow localhost URLs and never send real email. ${remaining} remaining on this project's plan.`}
+                                ? tc(
+                                      'console.this_project_has_used_every_environment_its__b891ec0b',
+                                  )
+                                : tc(
+                                      'console.sandbox_environments_allow_localhost_urls_an_021f74f7',
+                                      { value0: remaining },
+                                  )}
                         </p>
                     </>
                 )}
@@ -209,28 +235,29 @@ export default function ProjectDetail({
                 The plan sits on the PROJECT, because the project is the billing anchor:
                 one account, separately-billed products.
             */}
-            <Panel title="Plan">
+            <Panel title={tc('console.plan_fa8ed0bd')}>
                 <div className="flex items-center justify-between gap-4">
                     <div>
                         <p className="text-sm font-medium">
-                            Early access{' '}
+                            {tc('console.early_access_321217e9')}{' '}
                             <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                — free
+                                {tc('console.free_c8345f98')}
                             </span>
                         </p>
                         <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            Up to {project.limit} environments. Billing per project arrives with
-                            general availability.
+                            {tc('console.up_to_08c05ead')}
+                            {project.limit}
+                            {tc('console.environments_billing_per_project_arrives_wit_463213a0')}
                         </p>
                     </div>
                     <Button size="sm" className="shrink-0" disabled style={{ opacity: 0.6 }}>
-                        Upgrade (soon)
+                        {tc('console.upgrade_soon_e12e55c5')}
                     </Button>
                 </div>
             </Panel>
 
             {canManage && (
-                <Panel title="Settings">
+                <Panel title={tc('console.settings_74a883a0')}>
                     <form
                         className="grid sm:grid-cols-[1fr_auto] gap-2 items-end"
                         onSubmit={(event) => {
@@ -240,7 +267,10 @@ export default function ProjectDetail({
                             });
                         }}
                     >
-                        <Field label="Project name" error={nameForm.errors.name}>
+                        <Field
+                            label={tc('console.project_name_25498193')}
+                            error={nameForm.errors.name}
+                        >
                             <Input
                                 name="name"
                                 value={nameForm.data.name}
@@ -253,7 +283,7 @@ export default function ProjectDetail({
                             className="shrink-0"
                             loading={nameForm.processing}
                         >
-                            Save
+                            {tc('console.save_1509f561')}
                         </Button>
                     </form>
 
@@ -263,12 +293,18 @@ export default function ProjectDetail({
                     >
                         <div>
                             <p className="text-sm font-medium">
-                                {project.suspended ? 'Reactivate project' : 'Suspend project'}
+                                {project.suspended
+                                    ? tc('console.reactivate_project_8c8f7a7b')
+                                    : tc('console.suspend_project_9e1e10fb')}
                             </p>
                             <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
                                 {project.suspended
-                                    ? 'Bring the project back — new environments can be added again.'
-                                    : 'Existing environments stay live, but no new ones can be added until reactivated.'}
+                                    ? tc(
+                                          'console.bring_the_project_back_new_environments_can__2b5117fe',
+                                      )
+                                    : tc(
+                                          'console.existing_environments_stay_live_but_no_new_o_0becaa18',
+                                      )}
                             </p>
                         </div>
 
@@ -284,7 +320,7 @@ export default function ProjectDetail({
                                     )
                                 }
                             >
-                                Reactivate
+                                {tc('console.reactivate_2dc7478f')}
                             </Button>
                         ) : (
                             <>
@@ -294,7 +330,7 @@ export default function ProjectDetail({
                                     style={{ color: 'var(--destructive)' }}
                                     onClick={() => setSuspending(true)}
                                 >
-                                    Suspend
+                                    {tc('console.suspend_4948e134')}
                                 </Button>
 
                                 <ConfirmDelete
@@ -302,7 +338,9 @@ export default function ProjectDetail({
                                     onOpenChange={setSuspending}
                                     name={project.name}
                                     verb="Suspend"
-                                    consequence="Existing environments stay live, but no new ones can be added until it is reactivated."
+                                    consequence={tc(
+                                        'console.existing_environments_stay_live_but_no_new_o_ed87b1df',
+                                    )}
                                     onConfirm={() => {
                                         setSuspending(false);
                                         router.post(

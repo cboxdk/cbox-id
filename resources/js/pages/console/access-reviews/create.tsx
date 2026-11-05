@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -35,6 +36,8 @@ export default function CreateAccessReview({
     indexHref,
     storeHref,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm<{ name: string; covers: Covers; organization: string }>({
         name: '',
         covers,
@@ -45,14 +48,14 @@ export default function CreateAccessReview({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Access reviews" />
+            <Breadcrumb href={indexHref} label={tc('console.access_reviews_f0cc91be')} />
 
             <div className="mt-2">
                 <PageHeader
                     description={
                         reviewingStaff
-                            ? 'Snapshots every admin & support role — each role held across the whole environment — as items to certify or revoke. A revoke takes the role back in every organization at once.'
-                            : 'Snapshots every current role assignment and membership in one organization as items to certify or revoke.'
+                            ? tc('console.snapshots_every_admin_support_role_each_role_351f6f6d')
+                            : tc('console.snapshots_every_current_role_assignment_and__f56eb372')
                     }
                 />
             </div>
@@ -68,20 +71,22 @@ export default function CreateAccessReview({
                 {canReviewStaff && (
                     <Panel>
                         <RadioGroup
-                            label="What to review"
+                            label={tc('console.what_to_review_b92221f0')}
                             name="covers"
                             value={form.data.covers}
                             onValueChange={(value) => form.setData('covers', value)}
                             options={[
                                 {
                                     value: 'organization',
-                                    label: 'One organization',
-                                    hint: "Its members' roles and memberships.",
+                                    label: tc('console.one_organization_d222d0f3'),
+                                    hint: tc('console.its_members_roles_and_memberships_19c68097'),
                                 },
                                 {
                                     value: 'staff',
-                                    label: 'Admin & support roles',
-                                    hint: 'Everyone holding a role across the whole environment. Organizations never see this review.',
+                                    label: tc('console.admin_support_roles_19f22d25'),
+                                    hint: tc(
+                                        'console.everyone_holding_a_role_across_the_whole_env_eb61bd2a',
+                                    ),
                                 },
                             ]}
                         />
@@ -100,21 +105,25 @@ export default function CreateAccessReview({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint="Whose roles and memberships the review snapshots."
+                                hint={tc(
+                                    'console.whose_roles_and_memberships_the_review_snaps_e7576353',
+                                )}
                             />
                         )}
 
                         <Field
-                            label="Review name"
-                            hint="What this round is called when somebody asks which review a decision came from — a quarter, an audit, a date."
+                            label={tc('console.review_name_f0e5d03b')}
+                            hint={tc(
+                                'console.what_this_round_is_called_when_somebody_asks_6e0713c0',
+                            )}
                             error={form.errors.name}
                         >
                             <Input
                                 name="name"
                                 placeholder={
                                     reviewingStaff
-                                        ? 'Q3 admin & support access'
-                                        : 'Q3 access review'
+                                        ? tc('console.q3_admin_support_access_59fc1624')
+                                        : tc('console.q3_access_review_df7a905b')
                                 }
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
@@ -125,10 +134,10 @@ export default function CreateAccessReview({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Open review
+                        {tc('console.open_review_8a6e0b28')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

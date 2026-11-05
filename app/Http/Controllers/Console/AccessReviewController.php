@@ -84,7 +84,7 @@ final readonly class AccessReviewController extends ConsoleController
 
         $owners = $this->scope->organizationNames($campaigns->pluck('organization_id'));
 
-        return $this->page('console/access-reviews/index', 'Access reviews', [
+        return $this->page('console/access-reviews/index', __('console.access_reviews_f0cc91be'), [
             'help' => HelpProps::for(HelpTopic::AccessReviews),
             'reviews' => $campaigns->map(fn (CertificationCampaign $campaign): array => [
                 'id' => $campaign->id,
@@ -119,7 +119,7 @@ final readonly class AccessReviewController extends ConsoleController
 
         $staff = $this->reviewsStaff();
 
-        return $this->page('console/access-reviews/create', 'New access review', [
+        return $this->page('console/access-reviews/create', __('console.new_access_review_0d5eee5e'), [
             // "For which organization?" — a review snapshots ONE organization's access, so the
             // environment console asks; prefilled and locked when opened from an organization.
             'organization' => $this->organizationPicker(),
@@ -169,7 +169,7 @@ final readonly class AccessReviewController extends ConsoleController
         $campaign = $result->value;
 
         return to_route($this->scope->routeName('governance.show'), $campaign->id)
-            ->with('status', 'Access review "'.$campaign->name.'" opened with '
+            ->with('status', __('console.access_review_d5d63066').$campaign->name.__('console.opened_with_4744e396')
                 .$reviews->countItemsFor($campaign->id).' item(s).');
     }
 
@@ -213,7 +213,7 @@ final readonly class AccessReviewController extends ConsoleController
                 'kind' => match ($item->access_type) {
                     AccessKind::Role => 'Role',
                     AccessKind::Membership => 'Membership',
-                    AccessKind::EnvironmentRole => 'Admin & support role',
+                    AccessKind::EnvironmentRole => __('console.admin_support_role_cd7f9f2d'),
                 },
                 'access' => $roles[$item->access_ref] ?? $item->access_ref,
                 'decision' => $item->decision->value,
@@ -258,7 +258,7 @@ final readonly class AccessReviewController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $request->certifies() ? 'Access certified.' : 'Access revoked.');
+        return back()->with('status', $request->certifies() ? __('console.access_certified_e8a66810') : __('console.access_revoked_b474f694'));
     }
 
     /**
@@ -286,7 +286,7 @@ final readonly class AccessReviewController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', 'Access review closed — revoked access was applied.');
+        return back()->with('status', __('console.access_review_closed_revoked_access_was_appl_e90697a3'));
     }
 
     /**

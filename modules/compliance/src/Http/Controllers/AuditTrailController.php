@@ -68,7 +68,7 @@ final readonly class AuditTrailController extends ConsoleController
             ? $log->verifyChain($organizationId)
             : $log->verifyChain($organizationId, fromSequence: max(1, $log->headSequence($organizationId) - self::WINDOW + 1));
 
-        return $this->page('compliance::audit', 'Audit trail', [
+        return $this->page('compliance::audit', __('console.audit_trail_c1ada08c'), [
             'entries' => array_map(static fn (AuditEntry $entry): array => [
                 'id' => $entry->id,
                 'sequence' => $entry->sequence,

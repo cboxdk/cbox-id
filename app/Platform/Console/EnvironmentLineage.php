@@ -61,7 +61,7 @@ final readonly class EnvironmentLineage
             return $accountName;
         }
 
-        return $this->isPlatformRoot ? 'Platform root' : 'Unattached';
+        return $this->isPlatformRoot ? __('console.platform_root_7ee14f2f') : 'Unattached';
     }
 
     /**
@@ -77,11 +77,11 @@ final readonly class EnvironmentLineage
     public function note(): ?string
     {
         if ($this->isPlatformRoot) {
-            return 'The environment this deployment itself runs in — operators and workspace teams sign in here. It belongs to no workspace.';
+            return __('console.the_environment_this_deployment_itself_runs__4ac40531');
         }
 
         if ($this->isUnattached()) {
-            return 'No project, so no workspace owns it, and nothing here is anybody\'s product.';
+            return __('console.no_project_so_no_workspace_owns_it_and_nothi_193af4a6');
         }
 
         return null;

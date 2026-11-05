@@ -1,3 +1,4 @@
+import { useUiTranslator } from '@/i18n/ui';
 import { usePage } from '@inertiajs/react';
 import { useId, useMemo, useState } from 'react';
 import {
@@ -100,15 +101,21 @@ export function ApiEquivalentBody({
     action: ApiAction;
     values?: SnippetValues;
 }) {
-    const snippets = useMemo(() => apiSnippets(action, values), [action, values]);
+    const { t: tc } = useUiTranslator();
+
+    const snippets = useMemo(() => apiSnippets(action, values, tc), [action, values, tc]);
 
     return (
         <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Pill tone={action.danger === 'read' ? 'neutral' : 'info'}>{action.method}</Pill>
-                <code className="mono break-all">/api/v1{action.path}</code>
+                <code className="mono break-all">
+                    {tc('console.api_v1_b969bf5c', '/api/v1')}
+                    {action.path}
+                </code>
                 <span style={{ color: 'var(--muted-foreground)' }}>
-                    needs <code className="mono">{action.scope}</code>
+                    {tc('console.needs_92e32416', 'needs ')}
+                    <code className="mono">{action.scope}</code>
                 </span>
                 {(action.danger === 'destructive' || action.danger === 'critical') && (
                     <Pill tone="warning">{action.danger}</Pill>
@@ -124,7 +131,11 @@ export function ApiEquivalentBody({
 }
 
 /** The four doors, as snippets. Exported for the tests. */
-export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnippet[] {
+export function apiSnippets(
+    action: ApiAction,
+    values?: SnippetValues,
+    tc: ReturnType<typeof useUiTranslator>['t'] = (_key, fallback) => fallback,
+): CodeSnippet[] {
     return [
         {
             id: 'curl',
@@ -132,8 +143,12 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
             code: curl(action, values),
             note: (
                 <>
-                    Reads the key from <code className="mono">${tokenEnv(action.plane)}</code>.
-                    Secrets are never copied from the form.
+                    {tc('console.reads_the_key_from_c6130ae6', 'Reads the key from ')}
+                    <code className="mono">${tokenEnv(action.plane)}</code>
+                    {tc(
+                        'console.secrets_are_never_copied_from_the_form_2d4b22b6',
+                        '. Secrets are never copied from the form.',
+                    )}
                 </>
             ),
         },
@@ -143,8 +158,14 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
             code: mcp(action, values),
             note: (
                 <>
-                    The <code className="mono">{action.tool}</code> tool on this environment's{' '}
-                    <code className="mono">/mcp</code> server.
+                    {tc('console.the_103c5169', 'The ')}
+                    <code className="mono">{action.tool}</code>
+                    {tc(
+                        'console.tool_on_this_environment_s_58691b7a',
+                        " tool on this environment's ",
+                    )}
+                    <code className="mono">/mcp</code>
+                    {tc('console.server_d0c93f65', ' server.')}
                 </>
             ),
         },
@@ -153,8 +174,14 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
             label: 'CLI',
             code: cli(action, values),
             note: action.cliShipped
-                ? 'The cbox CLI, signed in with `cbox login`.'
-                : 'Not in the cbox CLI yet — this is the command it will have.',
+                ? tc(
+                      'console.the_cbox_cli_signed_in_with_cbox_login_88433b30',
+                      'The cbox CLI, signed in with `cbox login`.',
+                  )
+                : tc(
+                      'console.not_in_the_cbox_cli_yet_this_is_the_command__48b39c79',
+                      'Not in the cbox CLI yet \u2014 this is the command it will have.',
+                  ),
         },
         {
             id: 'sdk',
@@ -163,8 +190,14 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
             install: 'npm i @cboxdk/id-js',
             docs: 'https://www.npmjs.com/package/@cboxdk/id-js',
             note: action.sdkPreview
-                ? 'Preview: this call is not in the published SDK yet. Use curl or MCP today.'
-                : 'Server code only — the client holds a management credential.',
+                ? tc(
+                      'console.preview_this_call_is_not_in_the_published_sd_15302df3',
+                      'Preview: this call is not in the published SDK yet. Use curl or MCP today.',
+                  )
+                : tc(
+                      'console.server_code_only_the_client_holds_a_manageme_d8e5b217',
+                      'Server code only \u2014 the client holds a management credential.',
+                  ),
         },
     ];
 }
@@ -175,6 +208,8 @@ export function apiSnippets(action: ApiAction, values?: SnippetValues): CodeSnip
  * this?", whatever its own header looks like.
  */
 export function PageApiEquivalents() {
+    const { t: tc } = useUiTranslator();
+
     const actions = usePageActions();
     const list = Object.values(actions);
     const [open, setOpen] = useState(false);
@@ -193,7 +228,10 @@ export function PageApiEquivalents() {
                 variant="ghost"
                 onClick={() => setOpen(true)}
                 data-page-api-equivalents={list.length}
-                aria-label="API: do this page's actions from code"
+                aria-label={tc(
+                    'console.api_do_this_page_s_actions_from_code_3cf98d0c',
+                    "API: do this page's actions from code",
+                )}
             >
                 <Icon name="code" className="w-4 h-4" />
                 <span className="hidden sm:inline">API</span>
@@ -203,13 +241,16 @@ export function PageApiEquivalents() {
                 open={open}
                 onOpenChange={setOpen}
                 size="lg"
-                title="Do this from code"
-                description="Everything on this page is also a REST endpoint, an MCP tool and a CLI command — the same rules, the same audit trail."
+                title={tc('console.do_this_from_code_d9ead9ce', 'Do this from code')}
+                description={tc(
+                    'console.everything_on_this_page_is_also_a_rest_endpo_28d51f03',
+                    'Everything on this page is also a REST endpoint, an MCP tool and a CLI command — the same rules, the same audit trail.',
+                )}
             >
                 {list.length > 1 && (
                     <div className="mb-4">
                         <Select
-                            aria-label="Action"
+                            aria-label={tc('console.action_64cff131', 'Action')}
                             value={current.name}
                             onValueChange={setChosen}
                             options={list.map((action) => ({

@@ -87,6 +87,6 @@ final readonly class ClientScopesController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Scopes saved. They apply from the next token this app asks for.');
+            : back()->with('status', __('console.scopes_saved_they_apply_from_the_next_token__db2304fa'));
     }
 }

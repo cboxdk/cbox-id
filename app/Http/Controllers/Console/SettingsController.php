@@ -92,7 +92,7 @@ final readonly class SettingsController extends ConsoleController
             $brandingTarget === null ? [] : $brandingTarget->settings,
         );
 
-        return $this->page('console/settings', 'Settings', [
+        return $this->page('console/settings', __('console.settings_74a883a0'), [
             'help' => HelpProps::for(HelpTopic::Settings),
             'organization' => $organization === null ? null : [
                 'id' => $organization->id,
@@ -174,7 +174,7 @@ final readonly class SettingsController extends ConsoleController
             return back()->withErrors(['name' => $refused->getMessage()]);
         }
 
-        return $after->land($request, $me->id(), $organizationId, $name.' has been deleted.');
+        return $after->land($request, $me->id(), $organizationId, $name.__('console.has_been_deleted_f09df52b'));
     }
 
     /**
@@ -194,7 +194,7 @@ final readonly class SettingsController extends ConsoleController
             'name' => $request->name(),
         ], ['name' => 'name'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Organization name updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_name_updated_90901aef'));
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Pipes\Models\Pipe;
 use Cbox\Id\Pipes\Models\PipeConnection;
@@ -60,7 +61,7 @@ final readonly class PipeController extends ConsoleController
             $counts[$connection->pipe_id] = ($counts[$connection->pipe_id] ?? 0) + 1;
         }
 
-        return $this->page('console/pipes/index', Vocabulary::PIPES, [
+        return $this->page('console/pipes/index', ConsoleStrings::text(Vocabulary::PIPES), [
             'help' => HelpProps::for(HelpTopic::Pipes),
             'providers' => array_map(function (PipeProvider $provider) use ($configured, $counts): array {
                 /** @var Pipe|null $pipe */
@@ -88,7 +89,7 @@ final readonly class PipeController extends ConsoleController
         $chosen = PipeProviderCatalog::find($request->string('provider')->toString()) ?? PipeProviderCatalog::all()[0];
         $taken = Pipe::query()->pluck('provider')->all();
 
-        return $this->page('console/pipes/create', 'New pipe', [
+        return $this->page('console/pipes/create', __('console.new_pipe_16b266b0'), [
             'providers' => array_values(array_map(fn (PipeProvider $p): array => $this->provider($p), array_filter(
                 PipeProviderCatalog::all(),
                 static fn (PipeProvider $p): bool => ! in_array($p->key, $taken, true),
@@ -119,7 +120,7 @@ final readonly class PipeController extends ConsoleController
         $pipe = $result->value;
 
         return to_route($this->routeName('pipes.show'), $pipe->id)
-            ->with('status', 'Pipe configured — the client secret is sealed and never shown again. Grant an app access to start leasing tokens.');
+            ->with('status', __('console.pipe_configured_the_client_secret_is_sealed__21a370a1'));
     }
 
     public function show(Request $request, string $pipe): Response
@@ -207,7 +208,7 @@ final readonly class PipeController extends ConsoleController
             ...($request->has('parameters') ? $this->parametersInput($request) : []),
         ], self::FIELDS, fallback: 'client_id');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Pipe updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.pipe_updated_b0de92f0'));
     }
 
     public function destroy(string $pipe): RedirectResponse
@@ -220,7 +221,7 @@ final readonly class PipeController extends ConsoleController
             return $result;
         }
 
-        return to_route($this->routeName('pipes'))->with('status', 'Pipe removed — every connection through it was revoked here.');
+        return to_route($this->routeName('pipes'))->with('status', __('console.pipe_removed_every_connection_through_it_was_ab1fa440'));
     }
 
     public function grant(Request $request, string $pipe): RedirectResponse
@@ -232,7 +233,7 @@ final readonly class PipeController extends ConsoleController
             'client_id' => $request->string('client_id')->toString(),
         ], ['client_id' => 'client_id'], fallback: 'client_id');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access granted — that app can now lease tokens through this pipe.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_granted_that_app_can_now_lease_tokens_3ea323c1'));
     }
 
     public function revokeGrant(string $pipe, string $client): RedirectResponse
@@ -241,7 +242,7 @@ final readonly class PipeController extends ConsoleController
 
         $result = $this->act(RevokePipeAccess::class, ['id' => $this->resolve($pipe)->id, 'client_id' => $client]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Access revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_revoked_b474f694'));
     }
 
     public function disconnect(string $pipe, string $connection): RedirectResponse
@@ -250,7 +251,7 @@ final readonly class PipeController extends ConsoleController
 
         $result = $this->act(DisconnectPipeConnection::class, ['id' => $this->resolve($pipe)->id, 'connection_id' => $connection]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Account disconnected.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.account_disconnected_4dcc7264'));
     }
 
     /** A pipe of THIS environment, or a 404 — re-resolved on every request. */

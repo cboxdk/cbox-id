@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -66,6 +67,8 @@ export default function RoleDetail({
     indexHref,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [confirming, setConfirming] = useState(false);
 
     const details = useForm({
@@ -76,7 +79,7 @@ export default function RoleDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label="Roles" />
+                <Breadcrumb href={indexHref} label={tc('console.roles_c2533705')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{role.name}</h1>
                     {/*
@@ -85,17 +88,20 @@ export default function RoleDetail({
                         or the environment does.
                     */}
                     {declaredByApp ? (
-                        <Badge>Managed by the app</Badge>
+                        <Badge>{tc('console.managed_by_the_app_d9ecd7dd')}</Badge>
                     ) : (
-                        readOnly && <Badge>Managed for the environment</Badge>
+                        readOnly && (
+                            <Badge>{tc('console.managed_for_the_environment_502c8ccb')}</Badge>
+                        )
                     )}
                     {role.app !== null ? (
                         <Badge>
                             <Icon name="clients" className="w-3 h-3" />
-                            {role.app} only
+                            {role.app}
+                            {tc('console.only_e850fc29')}
                         </Badge>
                     ) : (
-                        <Badge>All apps</Badge>
+                        <Badge>{tc('console.all_apps_01bed311')}</Badge>
                     )}
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -104,19 +110,21 @@ export default function RoleDetail({
             </div>
 
             <Panel
-                title="Details"
+                title={tc('console.details_45989de4')}
                 description={
                     readOnly
                         ? declaredByApp
-                            ? "This role is declared by an application, which is its source of truth — it can't be edited here."
-                            : 'This role belongs to the environment and applies across every organization in it — it applies here but is not yours to change.'
+                            ? tc('console.this_role_is_declared_by_an_application_whic_03e7843e')
+                            : tc('console.this_role_belongs_to_the_environment_and_app_0a2b2ed6')
                         : undefined
                 }
             >
                 {readOnly ? (
                     <KvList>
-                        <Kv label="Name">{role.name}</Kv>
-                        <Kv label="Description">{role.description ?? '—'}</Kv>
+                        <Kv label={tc('console.name_dcd1d522')}>{role.name}</Kv>
+                        <Kv label={tc('console.description_526e0087')}>
+                            {role.description ?? '—'}
+                        </Kv>
                     </KvList>
                 ) : (
                     <form
@@ -126,14 +134,18 @@ export default function RoleDetail({
                             details.patch(urls.update, { preserveScroll: true });
                         }}
                     >
-                        <Field label="Name" error={details.errors.name}>
+                        <Field label={tc('console.name_dcd1d522')} error={details.errors.name}>
                             <Input
                                 name="name"
                                 value={details.data.name}
                                 onChange={(event) => details.setData('name', event.target.value)}
                             />
                         </Field>
-                        <Field label="Description" optional error={details.errors.description}>
+                        <Field
+                            label={tc('console.description_526e0087')}
+                            optional
+                            error={details.errors.description}
+                        >
                             <Input
                                 name="description"
                                 value={details.data.description}
@@ -143,7 +155,7 @@ export default function RoleDetail({
                             />
                         </Field>
                         <Button type="submit" variant="primary" loading={details.processing}>
-                            Save changes
+                            {tc('console.save_changes_dd0ae7a5')}
                         </Button>
                     </form>
                 )}
@@ -166,18 +178,20 @@ export default function RoleDetail({
                 govern.
             */}
             <Panel
-                title="Who holds this"
+                title={tc('console.who_holds_this_75c8257c')}
                 description={
                     holders.length === 0
                         ? undefined
-                        : `${holders.length} ${holders.length === 1 ? 'grant' : 'grants'}. A grant made everywhere applies in every organization, including to people who belong to none.`
+                        : tc('console.value0_value1_a_grant_made_everywhere_applie_27923494', {
+                              value0: holders.length,
+                              value1: holders.length === 1 ? 'grant' : 'grants',
+                          })
                 }
                 flush={holders.length > 0}
             >
                 {holders.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Nobody yet. Grant it on a person's page — inside one organization, or
-                        everywhere in this environment.
+                        {tc('console.nobody_yet_grant_it_on_a_person_s_page_insid_851e1d0d')}
                     </p>
                 ) : (
                     <div>
@@ -203,7 +217,7 @@ export default function RoleDetail({
                                 {holder.scope === null ? (
                                     // What "Everywhere" means is in the panel description
                                     // above, not a tooltip on each row.
-                                    <Badge>Everywhere</Badge>
+                                    <Badge>{tc('console.everywhere_dcc10bfd')}</Badge>
                                 ) : (
                                     <Badge>{holder.scope}</Badge>
                                 )}
@@ -215,11 +229,13 @@ export default function RoleDetail({
 
             {!readOnly && (
                 <Panel
-                    title="Delete role"
-                    description="Everyone currently assigned this role loses the access it grants."
+                    title={tc('console.delete_role_ac18d11a')}
+                    description={tc(
+                        'console.everyone_currently_assigned_this_role_loses__f7fa28ec',
+                    )}
                 >
                     <Button size="sm" variant="danger" onClick={() => setConfirming(true)}>
-                        Delete role
+                        {tc('console.delete_role_ac18d11a')}
                     </Button>
                 </Panel>
             )}
@@ -228,7 +244,7 @@ export default function RoleDetail({
                 open={confirming}
                 onOpenChange={setConfirming}
                 name={role.name}
-                consequence="Everyone currently assigned this role loses the access it grants. This cannot be undone."
+                consequence={tc('console.everyone_currently_assigned_this_role_loses__5141955e')}
                 onConfirm={() => {
                     setConfirming(false);
                     router.delete(urls.destroy);
@@ -261,6 +277,8 @@ function Permissions({
     href: string;
     permissionsHref: string | null;
 }) {
+    const { t: tc } = useTranslator();
+
     const [pending, setPending] = useState<string | null>(null);
 
     const set = (permission: string, isGranted: boolean): void => {
@@ -275,24 +293,26 @@ function Permissions({
 
     return (
         <Panel
-            title="Permissions"
+            title={tc('console.permissions_abccc78c')}
             description={
                 readOnly
                     ? declaredByApp
-                        ? 'What this role is allowed to do. Set by the application.'
-                        : 'What this role is allowed to do. Set for the whole environment.'
-                    : 'What this role is allowed to do. Tick a permission to grant it; untick to revoke.'
+                        ? tc('console.what_this_role_is_allowed_to_do_set_by_the_a_9635e889')
+                        : tc('console.what_this_role_is_allowed_to_do_set_for_the__e0d3c3a0')
+                    : tc('console.what_this_role_is_allowed_to_do_tick_a_permi_518298cc')
             }
         >
             {readOnly ? (
                 catalog.length === 0 ? (
                     <EmptyState
                         icon="key"
-                        title="No permissions"
+                        title={tc('console.no_permissions_ef5bb514')}
                         description={
                             declaredByApp
-                                ? 'This role grants no permissions. The application that declares it controls what it can do.'
-                                : 'This role grants no permissions you can see.'
+                                ? tc(
+                                      'console.this_role_grants_no_permissions_the_applicat_59b043d0',
+                                  )
+                                : tc('console.this_role_grants_no_permissions_you_can_see_ff65b6fc')
                         }
                     />
                 ) : (
@@ -317,18 +337,22 @@ function Permissions({
                         {catalog.length === 0 ? (
                             <EmptyState
                                 icon="key"
-                                title="No permissions declared"
+                                title={tc('console.no_permissions_declared_7ed6ab7b')}
                                 description={
                                     permissionsHref === null
-                                        ? 'An app registers its catalog over the SDK; the keys it declares appear here.'
-                                        : 'An app registers its catalog over the SDK, or you write one by hand; either way it appears here.'
+                                        ? tc(
+                                              'console.an_app_registers_its_catalog_over_the_sdk_th_0b415765',
+                                          )
+                                        : tc(
+                                              'console.an_app_registers_its_catalog_over_the_sdk_or_7b5aa437',
+                                          )
                                 }
                                 actions={
                                     permissionsHref === null ? undefined : (
                                         <Button asChild>
                                             <Link href={permissionsHref}>
                                                 <Icon name="plus" className="w-4 h-4" />
-                                                Write a permission
+                                                {tc('console.write_a_permission_1c28e5e2')}
                                             </Link>
                                         </Button>
                                     )
@@ -347,7 +371,7 @@ function Permissions({
                                             {permission.app !== null ? (
                                                 <Badge tone="info">{permission.app}</Badge>
                                             ) : (
-                                                <Badge>All apps</Badge>
+                                                <Badge>{tc('console.all_apps_01bed311')}</Badge>
                                             )}
                                         </span>
                                     }
@@ -359,7 +383,10 @@ function Permissions({
 
                     {/* Each tick writes immediately; SC 4.1.3 needs that reported. */}
                     <output aria-live="polite" className="sr-only">
-                        {granted.length} of {catalog.length} permissions granted.
+                        {granted.length}
+                        {tc('console.of_a4282e4b')}
+                        {catalog.length}
+                        {tc('console.permissions_granted_96c57cb6')}
                     </output>
                 </>
             )}

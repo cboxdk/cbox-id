@@ -48,6 +48,91 @@ tags:
   - name: Organizations
     description: The organizations you are a member of — and leaving one.
 paths:
+  /me/apps:
+    get:
+      tags:
+        - 'App catalog'
+      summary: 'List the published apps visible to you in this environment. Optional organization context must be one you actively belong to.'
+      description: 'Requires scope `account:apps:read` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: read.'
+      operationId: account_apps_list
+      x-action: account.apps.list
+      x-scope: 'account:apps:read'
+      x-danger: read
+      parameters:
+        -
+          name: organization_id
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - 'null'
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - name
+                        - description
+                        - launch_url
+                        - icon_url
+                        - position
+                        - version
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - 'null'
+                        launch_url:
+                          type: string
+                          format: uri
+                        icon_url:
+                          type:
+                            - string
+                            - 'null'
+                        position:
+                          type: integer
+                        version:
+                          type: integer
+                  meta:
+                    type: object
+                    required:
+                      - revision
+                      - refresh_after
+                    properties:
+                      revision:
+                        type: string
+                      refresh_after:
+                        type: integer
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /me/action-approvals/{id}:
     get:
       tags: [Approvals]

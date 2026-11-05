@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Locale\HostedLocale;
 use Cbox\Id\Federation\Validators\SamlAssertionValidator;
 
 /*
@@ -35,7 +36,7 @@ it('names an email attribute the validator reads, in every language and every gu
         expect(collect($steps)->contains(fn (mixed $step): bool => is_string($step) && preg_match('/\bemail\b/', $step) === 1))
             ->toBeTrue("portal.guides.sso.{$provider} ({$locale}) never names the email attribute");
     }
-})->with(['en', 'da', 'de', 'fr', 'nb', 'sv']);
+})->with(HostedLocale::codes());
 
 it('tells the generic SAML reader the assertion must be signed, and the email is an attribute or an emailAddress NameID', function (): void {
     $steps = implode(' ', (array) __('portal.guides.sso.saml', [], 'en'));
@@ -61,4 +62,4 @@ it('says nowhere, in any language, that an emailAddress NameID is ignored', func
         ->not->toContain('n’est pas lu comme adresse e-mail')
         ->not->toContain('blir ikke lest som e-postadressen')
         ->not->toContain('läses inte som e-postadressen');
-})->with(['en', 'da', 'de', 'fr', 'nb', 'sv']);
+})->with(HostedLocale::codes());

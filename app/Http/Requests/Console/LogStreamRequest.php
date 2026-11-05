@@ -63,7 +63,7 @@ final class LogStreamRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return ['endpointUrl' => 'endpoint URL'];
+        return ['endpointUrl' => __('console.endpoint_url_1ff7cefb')];
     }
 
     public function name(): string

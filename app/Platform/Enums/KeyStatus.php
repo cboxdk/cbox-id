@@ -41,9 +41,9 @@ enum KeyStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Active => 'Active',
-            self::Expired => 'Expired',
-            self::Revoked => 'Revoked',
+            self::Active => __('console.active_92340695'),
+            self::Expired => __('console.expired_424a2551'),
+            self::Revoked => __('console.revoked_f6f738d0'),
         };
     }
 }

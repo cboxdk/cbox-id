@@ -90,7 +90,7 @@ final readonly class AccountController extends PageController
         $session = $me->session();
         $organization = $me->organization();
 
-        return $this->page('account/security', 'Security', [
+        return $this->page('account/security', __('console.security_8f6fb4eb'), [
             'help' => HelpProps::for(HelpTopic::AccountSecurity),
             'returnTo' => $this->validReturnTo($request),
             'profile' => [
@@ -175,7 +175,7 @@ final readonly class AccountController extends PageController
             app(CurrentUser::class)->refreshSubject($result->value);
         }
 
-        return back()->with('status', 'Name updated.');
+        return back()->with('status', __('console.name_updated_2c04e2d0'));
     }
 
     public function sendEmailConfirmation(): RedirectResponse
@@ -189,10 +189,10 @@ final readonly class AccountController extends PageController
         }
 
         $payload = $result->payload;
-        $email = is_string($payload['email'] ?? null) ? $payload['email'] : 'your address';
+        $email = is_string($payload['email'] ?? null) ? $payload['email'] : __('console.your_address_96f065af');
 
         return back()->with('status', ($payload['outcome'] ?? null) === 'already_confirmed'
-            ? 'Your email address is already confirmed.'
+            ? __('console.your_email_address_is_already_confirmed_285146dd')
             : "We sent a confirmation link to {$email}. Open it to finish — it works in this browser or any other.");
     }
 
@@ -209,16 +209,16 @@ final readonly class AccountController extends PageController
          * give them a second way in.
          */
         if ($this->hasPassword($me->id()) && ! $subjects->verifyPassword($me->id(), $request->currentPassword())) {
-            return back()->withErrors(['currentPassword' => 'That password is incorrect.']);
+            return back()->withErrors(['currentPassword' => __('console.that_password_is_incorrect_5dc5ee0d')]);
         }
 
         if ($request->newPassword() !== $request->newPasswordConfirmation()) {
-            return back()->withErrors(['newPasswordConfirmation' => 'The passwords do not match.']);
+            return back()->withErrors(['newPasswordConfirmation' => __('console.the_passwords_do_not_match_f694aaa8')]);
         }
 
         $subjects->setPassword($me->id(), $request->newPassword());
 
-        return back()->with('status', 'Password updated.');
+        return back()->with('status', __('console.password_updated_df01ff0d'));
     }
 
     /**
@@ -272,14 +272,14 @@ final readonly class AccountController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, self::ENROL_ATTEMPTS)) {
             return back()->withErrors([
-                'code' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+                'code' => __('console.too_many_attempts_try_again_in_021db289').RateLimiter::availableIn($key).' seconds.',
             ]);
         }
 
         if (! $mfa->confirmTotp($me->id(), $code)) {
             RateLimiter::hit($key, self::ENROL_DECAY);
 
-            return back()->withErrors(['code' => 'That code did not match. Try again.']);
+            return back()->withErrors(['code' => __('console.that_code_did_not_match_try_again_7cc622fa')]);
         }
 
         RateLimiter::clear($key);
@@ -288,7 +288,7 @@ final readonly class AccountController extends PageController
         // Shown exactly once, so they travel the same channel as the secret above.
         $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
 
-        return back()->with('status', 'Two-factor authentication is now enabled. Save your recovery codes below.');
+        return back()->with('status', __('console.two_factor_authentication_is_now_enabled_sav_bb6016c0'));
     }
 
     /** A successful enrolment proves possession; retain it in the replacement session. */
@@ -323,7 +323,7 @@ final readonly class AccountController extends PageController
 
         $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
 
-        return back()->with('status', 'New recovery codes generated. Your previous codes no longer work.');
+        return back()->with('status', __('console.new_recovery_codes_generated_your_previous_c_13ed5ff6'));
     }
 
     /**
@@ -358,11 +358,11 @@ final readonly class AccountController extends PageController
         } catch (SmsFactorRefused $refused) {
             return back()->withErrors(['phone' => $refused->getMessage()]);
         } catch (OtpRateLimitExceeded|SmsSendRefused) {
-            return back()->withErrors(['phone' => 'Too many codes have been sent. Wait a few minutes and try again.']);
+            return back()->withErrors(['phone' => __('console.too_many_codes_have_been_sent_wait_a_few_min_87e86ab7')]);
         } catch (SmsDeliveryFailed $failed) {
             report($failed);
 
-            return back()->withErrors(['phone' => 'We could not send the text message. Check the number and try again.']);
+            return back()->withErrors(['phone' => __('console.we_could_not_send_the_text_message_check_the_ad67f38a')]);
         }
 
         $this->inertia->flash('smsEnrolmentSentTo', $sent->maskedNumber);
@@ -388,14 +388,14 @@ final readonly class AccountController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, self::ENROL_ATTEMPTS)) {
             return back()->withErrors([
-                'smsCode' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
+                'smsCode' => __('console.too_many_attempts_try_again_in_021db289').RateLimiter::availableIn($key).' seconds.',
             ]);
         }
 
         if (! $sms->confirmEnrolment($me->id(), (string) $request->string('smsCode'), $request->ip())) {
             RateLimiter::hit($key, self::ENROL_DECAY);
 
-            return back()->withErrors(['smsCode' => 'That code did not match, or it has expired. Try again or send a new one.']);
+            return back()->withErrors(['smsCode' => __('console.that_code_did_not_match_or_it_has_expired_tr_b6366c59')]);
         }
 
         RateLimiter::clear($key);
@@ -404,10 +404,10 @@ final readonly class AccountController extends PageController
         if ($mfa->remainingRecoveryCodes($me->id()) === 0) {
             $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
 
-            return back()->with('status', 'Text-message codes are on. Save your recovery codes below.');
+            return back()->with('status', __('console.text_message_codes_are_on_save_your_recovery_6d9a5982'));
         }
 
-        return back()->with('status', 'Text-message codes are on.');
+        return back()->with('status', __('console.text_message_codes_are_on_90067dba'));
     }
 
     /**
@@ -418,7 +418,7 @@ final readonly class AccountController extends PageController
     {
         $result = $this->act(RemoveSmsFactor::class, []);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Phone number removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.phone_number_removed_7c1985b6'));
     }
 
     /**
@@ -429,7 +429,7 @@ final readonly class AccountController extends PageController
     {
         $result = $this->act(RemovePasskey::class, ['passkey_id' => $passkey]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Passkey removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.passkey_removed_089c63f3'));
     }
 
     /**
@@ -443,7 +443,7 @@ final readonly class AccountController extends PageController
             'name' => $request->string('name')->toString(),
         ], ['name' => 'passkeyName'], 'passkeyName');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Passkey renamed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.passkey_renamed_b8968b5f'));
     }
 
     /**
@@ -465,7 +465,7 @@ final readonly class AccountController extends PageController
     {
         $result = $this->act(DisconnectSignInMethod::class, ['identity_id' => $identity], ['identity_id' => 'signInMethods'], 'signInMethods');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Disconnected. You can no longer sign in with it.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.disconnected_you_can_no_longer_sign_in_with__6ac2b9d8'));
     }
 
     /**
@@ -516,7 +516,7 @@ final readonly class AccountController extends PageController
         $this->otherSessions($me->id(), $me->session()?->id)
             ->each(fn (string $id) => $sessions->revoke($id));
 
-        return back()->with('status', 'Signed out of all other sessions.');
+        return back()->with('status', __('console.signed_out_of_all_other_sessions_6b396037'));
     }
 
     /**

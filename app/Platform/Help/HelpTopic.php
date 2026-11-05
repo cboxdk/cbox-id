@@ -42,6 +42,7 @@ enum HelpTopic: string
     case Apis = 'apis';
     case Webhooks = 'webhooks';
     case InlineHooks = 'inline-hooks';
+    case AppCatalog = 'app-catalog';
     case FeatureFlags = 'feature-flags';
     case TokenVault = 'token-vault';
     case Pipes = 'pipes';
@@ -92,69 +93,70 @@ enum HelpTopic: string
     public function title(): string
     {
         return match ($this) {
-            self::Overview => 'Your organization at a glance',
-            self::Usage => 'What counts as usage',
-            self::AgentApprovals => 'Approving on someone else\'s screen',
-            self::TrustedDevices => 'Your phone as the key',
-            self::Members => 'Members and invitations',
-            self::Roles => 'What roles do',
-            self::Permissions => 'What a role is made of',
-            self::SingleSignOn => 'Signing in with your own identity provider',
-            self::Domains => 'Proving which email domains are yours',
-            self::SocialSignIn => 'Signing in with an account people already have',
-            self::SyncUsersIn => 'Keeping people up to date automatically',
-            self::SyncUsersOut => 'Pushing people out to your other apps',
-            self::AccessReviews => 'Certifying who still needs access',
-            self::RoleConflicts => 'Roles that must not be combined',
-            self::Apps => 'Connecting an app to Cbox ID',
-            self::Apis => 'Your APIs, and who may call them',
-            self::Webhooks => 'Getting told when something happens',
-            self::InlineHooks => 'Having a say while it happens',
-            self::FeatureFlags => 'Features on for some, not all',
-            self::TokenVault => 'Credentials your apps use elsewhere',
-            self::Pipes => 'Calling other services as your users',
-            self::ActivityLog => 'The record of what changed',
-            self::Settings => 'Organization settings',
-            self::Appearance => 'Your branded sign-in page',
-            self::AccountSecurity => 'Protecting your own sign-in',
-            self::SessionsAndActivity => 'Where you are signed in',
-            self::ApiKeys => 'Keys for the APIs of the apps you use',
-            self::MemberApiKeys => 'Keys your people hold for your apps',
-            self::WorkspaceSettings => 'Workspace settings',
-            self::Projects => 'Your products and their environments',
-            self::Team => 'The people who run this workspace',
-            self::Keys => 'Keys for your own code',
-            self::EnvironmentDomains => 'Sign-in on your own domain',
-            self::Billing => 'Plans and what they count',
-            self::EnvironmentOverview => 'This environment at a glance',
-            self::EnvironmentGetStarted => 'From nothing to a first sign-in',
-            self::ReviewAgentRequests => 'Approvals across the environment',
-            self::Agents => 'Software that acts on this environment',
-            self::ConnectAgent => 'Pointing an AI agent at this environment',
-            self::Organizations => 'The teams using your product',
-            self::Users => 'Everyone who can sign in here',
-            self::Staff => 'Roles for your own people',
-            self::SupportAccess => 'Signing in to an app as somebody else',
-            self::SignInRules => 'The rules every sign-in has to meet',
-            self::SignInMethods => 'Every way into this environment',
-            self::SamlApplications => 'Applications that trust this environment',
-            self::LegacyLogin => 'Signing in through your old system',
-            self::Connectors => 'Every integration, in one place',
-            self::LogStreaming => 'Sending the audit log to your own tools',
-            self::AuditLogs => 'What your app records about each organization',
-            self::FineGrainedAuthorization => 'Who may do what to which of your app\'s resources',
-            self::DataExports => 'Exports & retention',
-            self::RiskEvents => 'Sign-ins that looked suspicious',
-            self::Radar => 'Allowing, challenging and blocking sign-ins',
-            self::SignInActivity => 'Sign-ins over time',
-            self::Branding => 'Your brand, on the sign-in and in mail',
-            self::Workspaces => 'Every workspace on this install',
-            self::Environments => 'Every environment on this install',
-            self::PlatformOrganizations => 'Organizations in the target environment',
-            self::PlatformUsage => 'Usage across the install',
-            self::PlatformSearch => 'Finding someone in any environment',
-            self::PlatformQueues => 'The work that happens after the click',
-            self::Operators => 'The people who run this install',
+            self::Overview => __('console.your_organization_at_a_glance_5abc1baf'),
+            self::Usage => __('console.what_counts_as_usage_eb49e1ed'),
+            self::AgentApprovals => __('console.approving_on_someone_else_s_screen_1b86f9a5'),
+            self::TrustedDevices => __('console.your_phone_as_the_key_afb28fcb'),
+            self::Members => __('console.members_and_invitations_aff5e395'),
+            self::Roles => __('console.what_roles_do_585ede9d'),
+            self::Permissions => __('console.what_a_role_is_made_of_ab5b67f4'),
+            self::SingleSignOn => __('console.signing_in_with_your_own_identity_provider_57c0a4a2'),
+            self::Domains => __('console.proving_which_email_domains_are_yours_9c5e31e1'),
+            self::SocialSignIn => __('console.signing_in_with_an_account_people_already_ha_922d7973'),
+            self::SyncUsersIn => __('console.keeping_people_up_to_date_automatically_2cf0c98f'),
+            self::SyncUsersOut => __('console.pushing_people_out_to_your_other_apps_d57642fb'),
+            self::AccessReviews => __('console.certifying_who_still_needs_access_0c8f1d84'),
+            self::RoleConflicts => __('console.roles_that_must_not_be_combined_81a47d39'),
+            self::Apps => __('console.connecting_an_app_to_cbox_id_10b4e73f'),
+            self::Apis => __('console.your_apis_and_who_may_call_them_2052cd06'),
+            self::Webhooks => __('console.getting_told_when_something_happens_2816559c'),
+            self::InlineHooks => __('console.having_a_say_while_it_happens_15efcb5d'),
+            self::AppCatalog => 'Your shared app list',
+            self::FeatureFlags => __('console.features_on_for_some_not_all_57ba7057'),
+            self::TokenVault => __('console.credentials_your_apps_use_elsewhere_db36cae9'),
+            self::Pipes => __('console.calling_other_services_as_your_users_aed68939'),
+            self::ActivityLog => __('console.the_record_of_what_changed_faa475a1'),
+            self::Settings => __('console.organization_settings_4fd62541'),
+            self::Appearance => __('console.your_branded_sign_in_page_24194071'),
+            self::AccountSecurity => __('console.protecting_your_own_sign_in_2ee0bb08'),
+            self::SessionsAndActivity => __('console.where_you_are_signed_in_a07510ca'),
+            self::ApiKeys => __('console.keys_for_the_apis_of_the_apps_you_use_ec8ba965'),
+            self::MemberApiKeys => __('console.keys_your_people_hold_for_your_apps_a5db71a6'),
+            self::WorkspaceSettings => __('console.workspace_settings_5ebc5914'),
+            self::Projects => __('console.your_products_and_their_environments_c6945f5f'),
+            self::Team => __('console.the_people_who_run_this_workspace_b77b436b'),
+            self::Keys => __('console.keys_for_your_own_code_4e040a24'),
+            self::EnvironmentDomains => __('console.sign_in_on_your_own_domain_5fbbd0c6'),
+            self::Billing => __('console.plans_and_what_they_count_4637cc71'),
+            self::EnvironmentOverview => __('console.this_environment_at_a_glance_afe27efd'),
+            self::EnvironmentGetStarted => __('console.from_nothing_to_a_first_sign_in_d866f09f'),
+            self::ReviewAgentRequests => __('console.approvals_across_the_environment_c9852ac4'),
+            self::Agents => __('console.software_that_acts_on_this_environment_fe82778a'),
+            self::ConnectAgent => __('console.pointing_an_ai_agent_at_this_environment_9c4d17ac'),
+            self::Organizations => __('console.the_teams_using_your_product_1743113f'),
+            self::Users => __('console.everyone_who_can_sign_in_here_5536d8c6'),
+            self::Staff => __('console.roles_for_your_own_people_53386a8d'),
+            self::SupportAccess => __('console.signing_in_to_an_app_as_somebody_else_8574cde1'),
+            self::SignInRules => __('console.the_rules_every_sign_in_has_to_meet_6932e88e'),
+            self::SignInMethods => __('console.every_way_into_this_environment_ebacca65'),
+            self::SamlApplications => __('console.applications_that_trust_this_environment_ab46d3c0'),
+            self::LegacyLogin => __('console.signing_in_through_your_old_system_23b062d0'),
+            self::Connectors => __('console.every_integration_in_one_place_028e0c56'),
+            self::LogStreaming => __('console.sending_the_audit_log_to_your_own_tools_061b9609'),
+            self::AuditLogs => __('console.what_your_app_records_about_each_organizatio_3c1ad833'),
+            self::FineGrainedAuthorization => __('console.who_may_do_what_to_which_of_your_app_s_resou_a6227e5b'),
+            self::DataExports => __('console.exports_retention_6d540b79'),
+            self::RiskEvents => __('console.sign_ins_that_looked_suspicious_5d581685'),
+            self::Radar => __('console.allowing_challenging_and_blocking_sign_ins_1df777ec'),
+            self::SignInActivity => __('console.sign_ins_over_time_7418e68f'),
+            self::Branding => __('console.your_brand_on_the_sign_in_and_in_mail_459efaa4'),
+            self::Workspaces => __('console.every_workspace_on_this_install_397903d5'),
+            self::Environments => __('console.every_environment_on_this_install_8174d93f'),
+            self::PlatformOrganizations => __('console.organizations_in_the_target_environment_d859f568'),
+            self::PlatformUsage => __('console.usage_across_the_install_a13ed937'),
+            self::PlatformSearch => __('console.finding_someone_in_any_environment_f966bf7a'),
+            self::PlatformQueues => __('console.the_work_that_happens_after_the_click_09b33e7b'),
+            self::Operators => __('console.the_people_who_run_this_install_706d5e9a'),
         };
     }
 
@@ -162,123 +164,124 @@ enum HelpTopic: string
     public function summary(): string
     {
         return match ($this) {
-            self::Overview => 'Everything your organization has set up, and what is left to do. The setup checklist tracks real state — a step ticks itself off the moment it is genuinely done.',
+            self::Overview => __('console.everything_your_organization_has_set_up_and__2eaad20f'),
 
-            self::Usage => 'How many people signed in, and how often your apps called the API, over the last 30 days. This is here so you can see load and spot anomalies; it is not an invoice.',
+            self::Usage => __('console.how_many_people_signed_in_and_how_often_your_bc3b092f'),
 
-            self::TrustedDevices => 'A phone with the authenticator app installed becomes the thing that answers approval requests and tells you when someone signs in as you. Enrol it once by scanning the code; remove it here the moment you lose the handset, which stops it approving anything.',
-            self::AgentApprovals => 'When an app or an AI agent needs your go-ahead to act as you, it cannot always ask on the screen in front of you — so it asks here instead. Approve only requests you started yourself, and check that the code shown matches the one on the device that asked.',
+            self::TrustedDevices => __('console.a_phone_with_the_authenticator_app_installed_caef4b54'),
+            self::AgentApprovals => __('console.when_an_app_or_an_ai_agent_needs_your_go_ahe_51a99858'),
 
-            self::Members => 'Everyone who can sign in to this organization, and the invitations you have sent that nobody has accepted yet. Invite people by email; they set up their own sign-in, so you never handle anyone\'s password.',
+            self::Members => __('console.everyone_who_can_sign_in_to_this_organizatio_e278dd18'),
 
-            self::Roles => 'A role is a job title your apps understand — "Editor", "Support agent". You decide who holds which role here, and each app decides for itself what its roles are allowed to do. Roles travel with the person into every connected app, so you grant and revoke access in one place.',
+            self::Roles => __('console.a_role_is_a_job_title_your_apps_understand_e_73cd7eac'),
 
-            self::Permissions => 'A permission is one thing a role is allowed to do — "create invoices", "read reports". You can write your own here, without any code, and then compose them into roles. Apps can also register theirs automatically, so the list stays in step with what the app actually enforces. Permissions you write belong to you; the ones your environment shares are yours to use but not to change.',
+            self::Permissions => __('console.a_permission_is_one_thing_a_role_is_allowed__522b0034'),
 
-            self::SingleSignOn => 'Lets your people sign in with the company account they already have — Microsoft Entra ID, Okta, Google Workspace — instead of a separate password here. You connect your identity provider once and claim your email domains; everyone on those domains is then sent to your provider to sign in.',
+            self::SingleSignOn => __('console.lets_your_people_sign_in_with_the_company_ac_5186cda3'),
 
-            self::Domains => 'The email domains this organization owns, each proved with a DNS TXT record. Once a domain is verified you can turn on capture, which sends everyone with an address on it to your Enterprise SSO connection instead of a password — so verify every domain your people have addresses on before you rely on single sign-on.',
+            self::Domains => __('console.the_email_domains_this_organization_owns_eac_02a41e13'),
 
-            self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. Set a provider up once for the environment and every organization offers it; an organization can use its own credentials instead, or turn one off. You supply the credentials; everything else is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
+            self::SocialSignIn => __('console.offers_google_github_apple_and_others_as_but_82b5af03'),
 
-            self::SyncUsersIn => 'Your identity provider creates, updates and deactivates people here on its own, over a standard called SCIM. Someone joining or leaving in your HR system reaches your apps within seconds, with no ticket and no leftover accounts — which is the part that matters when someone leaves.',
+            self::SyncUsersIn => __('console.your_identity_provider_creates_updates_and_d_2d9dc172'),
 
-            self::SyncUsersOut => 'The mirror image: Cbox ID pushes your people into the other SaaS products your company uses, over their SCIM endpoints. One place to onboard and offboard, instead of one admin panel per vendor.',
+            self::SyncUsersOut => __('console.the_mirror_image_cbox_id_pushes_your_people__19c0ed40'),
 
-            self::AccessReviews => 'A round where you go through who holds which role and confirm they still need it. Access piles up quietly — people change teams and keep old permissions — and a review is how you clear it out. What you revoke is applied when you close the review, and the whole round is recorded for your auditor.',
+            self::AccessReviews => __('console.a_round_where_you_go_through_who_holds_which_617023b9'),
 
-            self::RoleConflicts => 'Some pairs of roles must never sit with the same person — whoever raises a payment should not also approve it. Declare those pairs here and Cbox ID both blocks new grants that would break the rule and shows you who already holds a conflicting pair.',
+            self::RoleConflicts => __('console.some_pairs_of_roles_must_never_sit_with_the__70e4454a'),
 
-            self::Apps => 'Every app that signs people in through Cbox ID, or calls its API, is registered here and gets its own credentials. Register one per app and per environment — never share credentials between them, so you can revoke one without taking the others down.',
+            self::Apps => __('console.every_app_that_signs_people_in_through_cbox__1e151c65'),
 
-            self::Apis => 'An API is a service of yours that receives access tokens, such as https://api.example.com. Register it with the scopes it understands, and those scopes become yours to hand out: you decide which of them apps registered by the organizations here may ask for, and a token for the API carries its address as the audience your service checks.',
+            self::Apis => __('console.an_api_is_a_service_of_yours_that_receives_a_2747c516'),
 
-            self::Webhooks => 'Cbox ID posts a signed message to your endpoint after something happens — a member joined, a role changed — so your systems can react without polling. Delivery is retried, and it is after the fact: your endpoint is told, it does not get a vote.',
+            self::Webhooks => __('console.cbox_id_posts_a_signed_message_to_your_endpo_8dadac57'),
 
-            self::InlineHooks => 'These run in the middle of an operation, not after it, and their answer changes the outcome: your endpoint can add information to a token, or refuse a sign-in outright. Powerful, and directly in the critical path — a slow or broken endpoint is felt by the person trying to sign in.',
+            self::InlineHooks => __('console.these_run_in_the_middle_of_an_operation_not__c325ec80'),
 
-            self::FeatureFlags => 'A feature flag is a switch your apps ask about for one person in one organization. Turn it on for named users, named organizations or a percentage of everyone, and every app reads the same answer — in the token\'s `feature_flags` claim, or from the evaluation endpoint — without a deploy. A user rule beats an organization rule, which beats the rollout, which beats the default.',
+            self::AppCatalog => 'The app catalog is the list your products show in their app switcher. Publish each app with a launch URL and icon, then choose who can see it. Each app still controls sign-in and access.',
+            self::FeatureFlags => __('console.a_feature_flag_is_a_switch_your_apps_ask_abo_9a43d208'),
 
-            self::Pipes => 'Each pipe lets people connect their own account at a service like GitHub, Google or Slack. Their tokens are stored encrypted and kept fresh here; the apps you grant ask for a working token whenever they call that service as the person, and never store one themselves.',
+            self::Pipes => __('console.each_pipe_lets_people_connect_their_own_acco_ec4853ae'),
 
-            self::TokenVault => 'API keys and tokens your apps and agents need for other services, kept encrypted here rather than in each app\'s config. You hand a secret in once, grant specific apps the right to use it, and it is never displayed again — rotate it if you lose it.',
+            self::TokenVault => __('console.api_keys_and_tokens_your_apps_and_agents_nee_f9b71876'),
 
-            self::ActivityLog => 'Every change made in this organization: who did what, to what, and when. Entries are hash-chained, so a removed or edited entry breaks the chain and shows up. Read-only, on purpose — this is the record you hand an auditor.',
+            self::ActivityLog => __('console.every_change_made_in_this_organization_who_d_1d80a907'),
 
-            self::Settings => 'Your organization\'s name, domains and defaults. Changes here apply to everyone who signs in through this organization.',
+            self::Settings => __('console.your_organization_s_name_domains_and_default_8e3220c0'),
 
-            self::Appearance => 'The sign-in page your people see is yours, not ours: logo, colours and wording. Changes preview live and apply to this organization\'s hosted sign-in.',
+            self::Appearance => __('console.the_sign_in_page_your_people_see_is_yours_no_7573e3bf'),
 
-            self::AccountSecurity => 'Your own sign-in methods and active sessions. A passkey is the strongest option and the quickest to use — your device unlocks it with a fingerprint or face, and there is no password left to phish.',
+            self::AccountSecurity => __('console.your_own_sign_in_methods_and_active_sessions_2bf79cbb'),
 
-            self::SessionsAndActivity => 'Every browser and device signed in as you, the apps you have allowed to act for you, and your recent sign-ins and security changes. If something here is not yours, sign it out or withdraw the app, then change your password.',
+            self::SessionsAndActivity => __('console.every_browser_and_device_signed_in_as_you_th_ee516093'),
 
-            self::ApiKeys => 'A key lets your own scripts and integrations call an app\'s API as you, without signing in. It can only do what you can do in that app, and never more: if your access is reduced, the key loses it too. The key is shown once, so copy it when you create it, and revoke it the moment it leaks or is no longer used.',
+            self::ApiKeys => __('console.a_key_lets_your_own_scripts_and_integrations_4edbc37d'),
 
-            self::MemberApiKeys => 'Every API key the people in this organization have created for its apps: who holds it, which app it is for, what it may do and when it was last used. A key can only do what its holder can, and stops working when they leave. Revoke one that leaked or is no longer used; each person creates their own keys under My account.',
+            self::MemberApiKeys => __('console.every_api_key_the_people_in_this_organizatio_fe7787a7'),
 
-            self::WorkspaceSettings => 'The name of your workspace, which your projects, environments and team sit under and which the console shows everywhere. Deleting a workspace takes down every environment people sign in through, so it is a request to support rather than a button.',
+            self::WorkspaceSettings => __('console.the_name_of_your_workspace_which_your_projec_3fa3245f'),
 
-            self::Projects => 'A project is one of your products, with its own plan, sign-in and environments such as production and staging. Open an environment from here to administer it, and create a new project when you launch a product that should be billed and run on its own.',
+            self::Projects => __('console.a_project_is_one_of_your_products_with_its_o_45d566d1'),
 
-            self::Team => 'Everyone who administers this workspace, the built-in role each one holds (Owner, Admin, Developer, Member or Viewer) and which environments they can reach. Invite people by email, and give each person only the environments their job needs.',
+            self::Team => __('console.everyone_who_administers_this_workspace_the__26825e5f'),
 
-            self::Keys => 'The keys your own code presents to Cbox ID, one tab per kind. A secret key (a management key) lets your backend run one environment\'s organizations, members, invitations, roles and apps, a workspace key calls the workspace API with a built-in role, and a publishable key goes into a browser app and works only from the origins you allow. Secret and workspace keys are shown once, so copy them when you create them, and revoke one the moment it leaks.',
+            self::Keys => __('console.the_keys_your_own_code_presents_to_cbox_id_o_42243556'),
 
-            self::EnvironmentDomains => 'Serves an environment\'s identity endpoints on a domain you own, such as login.example.com, instead of ours. You prove the domain is yours with a DNS TXT record; set one up when your people should only ever see your own address while they sign in.',
+            self::EnvironmentDomains => __('console.serves_an_environment_s_identity_endpoints_o_f6582d38'),
 
-            self::Billing => 'Each project in your workspace has its own plan and environment allowance, shown here beside this month\'s usage: organizations, billed single sign-on connections and sign-ins. Pricing counts monthly active users and enterprise connections such as single sign-on and SCIM, and sandbox environments carry no connection charge.',
+            self::Billing => __('console.each_project_in_your_workspace_has_its_own_p_c5ff35b1'),
 
-            self::EnvironmentOverview => 'How many organizations, users, single sign-on connections, apps and user syncs this environment holds, each linking to its own page. The shortcuts underneath start the things people most often come here to create: an organization, a user, a single sign-on connection or an app.',
+            self::EnvironmentOverview => __('console.how_many_organizations_users_single_sign_on__8e80258f'),
 
-            self::EnvironmentGetStarted => 'Pick the framework you are building with and an app is created for it, with a redirect to your local dev server, the environment block to paste and the code that signs a person in. The page waits until somebody actually signs in. Underneath, the steps that make it a product — branding, organizations, single sign-on, an agent, a teammate, production — each ticked by what this environment holds, never by hand.',
+            self::EnvironmentGetStarted => __('console.pick_the_framework_you_are_building_with_and_a82b6a71'),
 
-            self::ReviewAgentRequests => 'What agents in this environment are waiting for a person to allow. An agent whose key needs approval for an action stops and asks the person who created the key, who can answer on their phone or here; anyone running this environment can deny one that looks wrong. Below them are requests from apps asking to act as one of your users, which each user approves for themselves.',
+            self::ReviewAgentRequests => __('console.what_agents_in_this_environment_are_waiting__8f2ea5c0'),
 
-            self::Agents => 'An agent is any software that acts on this environment with a management key: an AI assistant such as Claude Code or Cursor, an internal bot, or your own backend. Give each its own key with only the scopes it needs, decide which of its actions wait for your approval, and revoke the key the moment the agent is done or anything looks wrong.',
+            self::Agents => __('console.an_agent_is_any_software_that_acts_on_this_e_05aebde2'),
 
-            self::ConnectAgent => 'This environment serves an MCP server, the standard way AI assistants call tools, next to its REST API. Paste the address and a management key into Claude Code, Cursor or any other MCP client, and the agent can do exactly what the key\'s scopes allow, with the same checks and the same audit log as the console.',
+            self::ConnectAgent => __('console.this_environment_serves_an_mcp_server_the_st_eb9faa22'),
 
-            self::Organizations => 'Each organization is a company or team using your product, with its own members, roles, domains and single sign-on. Create one for each company that signs up, and open it to manage its members, invitations and verified domains, or to suspend it.',
+            self::Organizations => __('console.each_organization_is_a_company_or_team_using_08cdcb7d'),
 
-            self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, change which organizations and roles they hold, or erase them for good on a right-to-erasure request.',
-            self::Staff => 'An admin & support role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
-            self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s audit log records who did it and why.',
+            self::Users => __('console.every_person_with_an_identity_in_this_enviro_f9f26f27'),
+            self::Staff => __('console.an_admin_support_role_is_a_role_you_grant_to_4b6ac4cb'),
+            self::SupportAccess => __('console.see_an_app_exactly_as_one_of_its_users_does__8eafae42'),
 
-            self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in — and, for the whole environment, whether passkeys and magic links are offered and how long a session lasts. The environment sets a baseline every organization inherits; an organization can make its password and two-factor rules stricter but never looser.',
+            self::SignInRules => __('console.the_password_rules_lockout_two_factor_requir_6d5c4102'),
 
-            self::SamlApplications => 'Registers applications that accept this environment as their SAML identity provider, so their users sign in with the accounts they already have here. Give each one the organization it belongs to, so only that organization\'s members are signed in to it; one without is open to everybody in the environment. This is the outbound direction; to let people arrive with a company account they hold elsewhere, use Enterprise SSO under Authentication.',
+            self::SamlApplications => __('console.registers_applications_that_accept_this_envi_d381d96e'),
 
-            self::LegacyLogin => 'While you move off another system, an app can ask for the email and password of anyone not yet in Cbox ID to be checked against its old login endpoint. Test the endpoint before you approve it: a person it accepts is created here and never sent there again, but while it is down, nobody who has not moved yet can sign in.',
+            self::LegacyLogin => __('console.while_you_move_off_another_system_an_app_can_c182528e'),
 
-            self::Connectors => 'Every link between Cbox ID and another system, in one place: single sign-on, social login, Directory Sync and HR systems, outbound provisioning, SAML apps, webhooks, hooks, log streams and pipes. The catalog starts any of them — each card opens the page where that kind is set up — and Connections lists every live one with whether it is working, failing first.',
+            self::Connectors => __('console.every_link_between_cbox_id_and_another_syste_0376dee4'),
 
-            self::LogStreaming => 'Mirrors every audit log entry into your security team\'s tools, such as a SIEM, as it is written. Set one up so an investigation starts in the tools your team already uses rather than with a request for an export; delivery is at least once, so expect the occasional duplicate.',
-            self::AuditLogs => 'The audit events your app sends about each organization it serves — who did what inside your product, and when — kept per organization in a hash chain and shown to that organization\'s own admins. Use it when an organization you serve asks for an audit log of its account; define schemas to keep the events consistent.',
-            self::FineGrainedAuthorization => 'Your app\'s own access model: resource types like documents and folders, relations like owner, editor and viewer, and how they inherit — a folder\'s viewers can read every document in it. Your app writes who relates to what, and asks "may this user edit this document?" on every request; the schema decides the answer.',
+            self::LogStreaming => __('console.mirrors_every_audit_log_entry_into_your_secu_b980f702'),
+            self::AuditLogs => __('console.the_audit_events_your_app_sends_about_each_o_a385fa1d'),
+            self::FineGrainedAuthorization => __('console.your_app_s_own_access_model_resource_types_l_24105154'),
 
-            self::DataExports => 'How the audit trail leaves Cbox ID: a scheduled export ships new entries to your SIEM or archive every five minutes, and a daily retention job checkpoints the trail without deleting anything. Come here to pull one person\'s audit history for a GDPR access request, or, in an environment console, to check the exports are running.',
+            self::DataExports => __('console.how_the_audit_trail_leaves_cbox_id_a_schedul_3da9deb4'),
 
-            self::RiskEvents => 'Sign-ins and requests that Cbox ID scored as risky enough to flag, newest first, with the score and the reasons behind it. Look here after a spike in failed sign-ins, or when someone reports a sign-in they did not make.',
-            self::SignInMethods => 'Every way a person can sign in here — password, passkeys, magic link, social login, enterprise SSO, a second factor — with whether it is on and where it is changed. Most are this environment\'s to decide; SSO connections are each organization\'s; and where the deployment switched a method off or limits it, the page says so and names the setting.',
-            self::Radar => 'Radar judges every sign-in and sign-up: credential stuffing, bot-like speed, impossible travel, new devices, anonymising networks and throwaway addresses, plus rules and allow and deny lists of your own. It records every verdict and, once you switch it to enforce, blocks or asks for a second factor. Read the decisions here before you enforce, and when someone says they cannot sign in.',
+            self::RiskEvents => __('console.sign_ins_and_requests_that_cbox_id_scored_as_b09e917e'),
+            self::SignInMethods => __('console.every_way_a_person_can_sign_in_here_password_1abc176e'),
+            self::Radar => __('console.radar_judges_every_sign_in_and_sign_up_crede_96651d15'),
 
-            self::SignInActivity => 'Sign-ins, tokens issued, new users and two-factor enrolments, day by day over the last 30 days unless the install sets another window. The page stays empty until whoever runs this install configures where analytics are stored.',
+            self::SignInActivity => __('console.sign_ins_tokens_issued_new_users_and_two_fac_e9040ee7'),
 
-            self::Branding => 'Everything your people see of your brand, on one page: the hosted sign-in\'s logo, favicon, colours, typeface and corners, previewed live — and the product name, email sender and welcome mail. Set it once for the whole environment and every organization inherits it, or give one organization its own look from its Branding tab.',
+            self::Branding => __('console.everything_your_people_see_of_your_brand_on__9d98e332'),
 
-            self::Workspaces => 'A workspace is one signed-up company\'s home on this install, holding its projects, environments and team. Open one to walk its products and environments, or suspend it, which signs its members out and stops every environment it owns from serving sign-ins.',
+            self::Workspaces => __('console.a_workspace_is_one_signed_up_company_s_home__3053f712'),
 
-            self::Environments => 'An environment is a fully isolated identity service with its own users, keys, sign-in and issuer, and every one on this install is listed here with the workspace that owns it. Create one, point the console at it, and give it its first organization and administrator.',
+            self::Environments => __('console.an_environment_is_a_fully_isolated_identity__fed9a3d8'),
 
-            self::PlatformOrganizations => 'Every organization in the environment the console is pointed at, laid out as a tree of resellers, the organizations they manage, and their sub-units. Create an organization here, suspend one, or move it under a different parent.',
+            self::PlatformOrganizations => __('console.every_organization_in_the_environment_the_co_0de4eff9'),
 
-            self::PlatformUsage => 'Organizations, users and active sessions for every environment on this install, and the organizations with the most members. It only reads, and it never changes which environment the console is pointed at.',
+            self::PlatformUsage => __('console.organizations_users_and_active_sessions_for__b7f36bfd'),
 
-            self::PlatformSearch => 'Looks up an organization by name or handle, or a user by name or email, across every environment on this install rather than only the one the console is pointed at. Use it when someone asks for help and you do not know which environment they are in.',
+            self::PlatformSearch => __('console.looks_up_an_organization_by_name_or_handle_o_d7460886'),
 
-            self::PlatformQueues => 'Webhooks, sign-out notices to connected apps, role updates pulled from those apps and queued email are sent in the background by queue workers, not while the person waits. If no worker is running, none of it is ever sent, and nothing else on the console looks wrong — this page is where you see it.',
-            self::Operators => 'Platform operators administer every workspace and environment on this install, from above any single one of them. Add an operator only for someone who runs the deployment itself, and suspend them the day that stops being their job.',
+            self::PlatformQueues => __('console.webhooks_sign_out_notices_to_connected_apps__776577f9'),
+            self::Operators => __('console.platform_operators_administer_every_workspac_fb24c050'),
         };
     }
 
@@ -301,6 +304,7 @@ enum HelpTopic: string
             self::Apis => 'guides/apis',
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
+            self::AppCatalog => 'guides/app-catalog',
             self::FeatureFlags => 'guides/feature-flags',
             self::TokenVault => 'guides/token-vault',
             self::Pipes => 'guides/pipes',

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -9,14 +10,20 @@ type Props = PageProps<{
 }>;
 
 export default function CreateFeatureFlag({ indexHref, storeHref }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ key: '', description: '', defaultValue: false });
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="Feature flags" />
+            <Breadcrumb href={indexHref} label={tc('console.feature_flags_20a2e59b')} />
 
             <div className="mt-2">
-                <PageHeader description="A switch your apps ask about. You choose who it is on for on the next page." />
+                <PageHeader
+                    description={tc(
+                        'console.a_switch_your_apps_ask_about_you_choose_who__feaf9a9e',
+                    )}
+                />
             </div>
 
             <form
@@ -30,8 +37,10 @@ export default function CreateFeatureFlag({ indexHref, storeHref }: Props) {
                 <Panel>
                     <div className="space-y-4">
                         <Field
-                            label="Key"
-                            hint="What your code asks for, and what the feature_flags claim carries. Lowercase letters and digits, with - _ or . between them. It cannot be changed later."
+                            label={tc('console.key_99a52df3')}
+                            hint={tc(
+                                'console.what_your_code_asks_for_and_what_the_feature_440d8ca1',
+                            )}
                             error={form.errors.key}
                         >
                             <Input
@@ -39,16 +48,20 @@ export default function CreateFeatureFlag({ indexHref, storeHref }: Props) {
                                 className="mono"
                                 spellCheck={false}
                                 autoCapitalize="off"
-                                placeholder="new-dashboard"
+                                placeholder={tc('console.new_dashboard_13332e4d')}
                                 value={form.data.key}
                                 onChange={(event) => form.setData('key', event.target.value)}
                             />
                         </Field>
 
-                        <Field label="Description" optional error={form.errors.description}>
+                        <Field
+                            label={tc('console.description_526e0087')}
+                            optional
+                            error={form.errors.description}
+                        >
                             <Input
                                 name="description"
-                                placeholder="The redesigned dashboard"
+                                placeholder={tc('console.the_redesigned_dashboard_3d00842e')}
                                 value={form.data.description}
                                 onChange={(event) =>
                                     form.setData('description', event.target.value)
@@ -59,18 +72,20 @@ export default function CreateFeatureFlag({ indexHref, storeHref }: Props) {
                         <Checkbox
                             checked={form.data.defaultValue}
                             onCheckedChange={(checked) => form.setData('defaultValue', checked)}
-                            label="On by default"
-                            hint="Who gets the flag when no rule names them. Leave it off to roll a feature out to named organizations or a percentage first."
+                            label={tc('console.on_by_default_e1589716')}
+                            hint={tc(
+                                'console.who_gets_the_flag_when_no_rule_names_them_le_b44a0c73',
+                            )}
                         />
                     </div>
                 </Panel>
 
                 <div className="flex flex-wrap gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create flag
+                        {tc('console.create_flag_f85a66d4')}
                     </Button>
                     <Button asChild variant="ghost">
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

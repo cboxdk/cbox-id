@@ -65,7 +65,7 @@ final readonly class ExportsController extends ConsoleController
             ? null
             : app(SubjectDataExport::class)->countFor($subjectId, $organizationId);
 
-        return $this->page('compliance::exports', 'Exports & retention', [
+        return $this->page('compliance::exports', __('console.exports_retention_6d540b79'), [
             'help' => HelpProps::for(HelpTopic::DataExports),
             'showsRuns' => $showsRuns,
             'runs' => $runs->map(static fn (AuditExportRun $run): array => [

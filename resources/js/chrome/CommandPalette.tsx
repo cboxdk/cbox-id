@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Command, defaultFilter } from 'cmdk';
 import { Dialog as Primitive } from 'radix-ui';
@@ -64,6 +65,8 @@ function browserStorage(): Storage | undefined {
  * is announced, arrows and Enter drive it. On a phone the button is an icon in the top bar.
  */
 export function CommandPalette({ areas }: CommandPaletteProps) {
+    const { t: tc } = useTranslator();
+
     const { shell } = usePage<SharedProps>().props;
     const endpoint = searchHref(shell?.altitude);
     const scope = typeof window === 'undefined' ? '' : window.location.host;
@@ -228,14 +231,16 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                 type="button"
                 className="cbx-search"
                 onClick={show}
-                aria-label="Search the console"
+                aria-label={tc('console.search_the_console_636f4f08')}
                 aria-keyshortcuts="Meta+K Control+K"
             >
                 <Icon name="search" className="w-3.5 h-3.5 shrink-0" />
-                <span className="label hidden md:inline">
-                    {endpoint === null ? 'Go to…' : 'Search…'}
+                <span className="cbx-search-label hidden md:inline">
+                    {endpoint === null
+                        ? tc('console.go_to_d3a27e80')
+                        : tc('console.search_7336265a')}
                 </span>
-                <kbd className="hidden md:inline">⌘K</kbd>
+                <kbd className="hidden md:inline">{tc('console.k_dfe870d9')}</kbd>
             </button>
 
             <Primitive.Root
@@ -252,12 +257,14 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                     <Primitive.Overlay className="cbx-overlay" />
                     <Primitive.Content className="cbx-palette" aria-describedby={undefined}>
                         <Primitive.Title className="sr-only">
-                            {endpoint === null ? 'Go to a page' : 'Search the console'}
+                            {endpoint === null
+                                ? tc('console.go_to_a_page_abe7ffc8')
+                                : tc('console.search_the_console_636f4f08')}
                         </Primitive.Title>
 
                         <Command
                             loop
-                            label="Search the console"
+                            label={tc('console.search_the_console_636f4f08')}
                             filter={(value, search, keywords) =>
                                 paletteScore(defaultFilter, value, search, keywords)
                             }
@@ -271,8 +278,10 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                     onValueChange={setQuery}
                                     placeholder={
                                         endpoint === null
-                                            ? 'Go to…'
-                                            : 'Search users, organizations, apps, keys or paste an id…'
+                                            ? tc('console.go_to_d3a27e80')
+                                            : tc(
+                                                  'console.search_users_organizations_apps_keys_or_past_bf3a0096',
+                                              )
                                     }
                                 />
                             </div>
@@ -280,16 +289,23 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                             <Command.List>
                                 {loading && searching && (
                                     <Command.Loading>
-                                        <span className="cbx-combobox-empty">Searching…</span>
+                                        <span className="cbx-combobox-empty">
+                                            {tc('console.searching_c31723ab')}
+                                        </span>
                                     </Command.Loading>
                                 )}
 
                                 <Command.Empty className="cbx-combobox-empty">
-                                    {searching ? 'Nothing matches that.' : 'No page matches that.'}
+                                    {searching
+                                        ? tc('console.nothing_matches_that_291c6b6d')
+                                        : tc('console.no_page_matches_that_7f7815b1')}
                                 </Command.Empty>
 
                                 {shown?.jump != null && (
-                                    <Command.Group forceMount heading="Jump to">
+                                    <Command.Group
+                                        forceMount
+                                        heading={tc('console.jump_to_da7b17bf')}
+                                    >
                                         <ResultItem
                                             item={shown.jump}
                                             prefix="Open"
@@ -302,7 +318,10 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                 )}
 
                                 {query === '' && recent.length > 0 && (
-                                    <Command.Group forceMount heading="Recent">
+                                    <Command.Group
+                                        forceMount
+                                        heading={tc('console.recent_690dbe9d')}
+                                    >
                                         {recent.map((item) => (
                                             <ResultItem
                                                 key={`recent-${item.href}`}
@@ -325,7 +344,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                     </Command.Group>
                                 ))}
 
-                                <Command.Group heading="Go to">
+                                <Command.Group heading={tc('console.go_to_a8aa078b')}>
                                     {pages.map((entry) => (
                                         <Command.Item
                                             key={entry.key}
@@ -345,7 +364,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                 </Command.Group>
 
                                 {environments.length > 0 && (
-                                    <Command.Group heading="Environments">
+                                    <Command.Group heading={tc('console.environments_07437cd6')}>
                                         {environments.map((entry) => (
                                             <Command.Item
                                                 key={entry.key}
@@ -365,7 +384,8 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                             >
                                                 <Icon name="layers" className="w-4 h-4 shrink-0" />
                                                 <span className="min-w-0 flex-1">
-                                                    Open {entry.label}
+                                                    {tc('console.open_b8039d1d')}
+                                                    {entry.label}
                                                 </span>
                                                 <Hint>{entry.project}</Hint>
                                             </Command.Item>
@@ -374,7 +394,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                 )}
 
                                 {actions.length > 0 && (
-                                    <Command.Group heading="Actions">
+                                    <Command.Group heading={tc('console.actions_ff8059dc')}>
                                         {actions.map((action) => (
                                             <Command.Item
                                                 key={action.name}
@@ -401,7 +421,9 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                                     }}
                                 >
                                     <Icon name="moon" className="w-4 h-4 shrink-0" />
-                                    <span className="min-w-0 flex-1">Toggle theme</span>
+                                    <span className="min-w-0 flex-1">
+                                        {tc('console.toggle_theme_6026719f')}
+                                    </span>
                                 </Command.Item>
                             </Command.List>
                         </Command>

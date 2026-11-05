@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\FrontendApi;
 
 use App\Platform\FrontendApi\LoginTickets;
+use App\Platform\Locale\HostedLocale;
 use App\Platform\PlatformAuth;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
@@ -51,7 +52,7 @@ class SmsChallengeController
         $this->auth->holdForMfa($request, $ticket->subject_id);
 
         try {
-            $sent = $this->auth->sendSmsChallenge($request, $request->getPreferredLanguage(['en', 'da', 'de', 'fr', 'nb', 'sv']));
+            $sent = $this->auth->sendSmsChallenge($request, $request->getPreferredLanguage(HostedLocale::codes()));
         } catch (OtpRateLimitExceeded $limited) {
             return $this->rateLimited($limited->retryAfterSeconds);
         } catch (SmsSendRefused $refused) {

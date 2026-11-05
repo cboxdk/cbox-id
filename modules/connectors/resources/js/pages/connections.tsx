@@ -1,3 +1,5 @@
+import type { Translator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { listHref } from '@/lib/listHref';
@@ -63,20 +65,27 @@ type Props = PageProps<{
     wholeEnvironment: boolean;
 }>;
 
-function statusPill(row: ConnectionRow): { tone: PillTone; label: string } {
+function statusPill(row: ConnectionRow, tc: Translator['t']): { tone: PillTone; label: string } {
     if (row.verdict === 'failing') {
-        return { tone: 'warning', label: 'Failing' };
+        return { tone: 'warning', label: tc('console.failing_3903780c') };
     }
 
     if (row.status !== 'active') {
-        const words = row.status.replace('_', ' ');
-
-        return { tone: 'neutral', label: words.charAt(0).toUpperCase() + words.slice(1) };
+        const labels = {
+            draft: tc('console.draft_ebf12ef4'),
+            paused: tc('console.paused_e159b061'),
+            disabled: tc('console.disabled_75081b59'),
+            suspended: tc('console.suspended_e392a389'),
+        };
+        return {
+            tone: 'neutral',
+            label: labels[row.status as keyof typeof labels] ?? row.status.replace('_', ' '),
+        };
     }
 
     return row.verdict === 'idle'
-        ? { tone: 'neutral', label: 'Active · no traffic yet' }
-        : { tone: 'success', label: 'Active' };
+        ? { tone: 'neutral', label: tc('console.active_no_traffic_yet_f5107c20') }
+        : { tone: 'success', label: tc('console.active_92340695') };
 }
 
 /**
@@ -98,28 +107,36 @@ export default function Connections({
     clearHref,
     wholeEnvironment,
 }: Props) {
-    const scope = wholeEnvironment ? 'in this environment' : 'for this organization';
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
+    const scope = wholeEnvironment
+        ? tc('console.in_this_environment_d3511377')
+        : tc('console.for_this_organization_a02ed7fb');
 
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description={`Every live connection ${scope} — single sign-on, directories, provisioning, webhooks, hooks, log streams and pipes — with whether it is working. Open one to change it.`}
+                description={tc('console.every_live_connection_value0_single_sign_on__867a6c7a', {
+                    value0: scope,
+                })}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={catalogHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            New connection
+                            {tc('console.new_connection_729bceee')}
                         </Link>
                     </Button>
                 }
             />
 
             <LinkTabs
-                label="Status"
+                label={tc('console.status_920e413c')}
                 tabs={statuses.map((option) => ({
                     key: option.key === '' ? 'all' : option.key,
-                    label: `${option.label} (${option.count.toLocaleString()})`,
+                    label: `${option.label} (${option.count.toLocaleString(locale)})`,
                     href: option.href,
                     current: option.selected,
                 }))}
@@ -128,7 +145,7 @@ export default function Connections({
             <div className="flex flex-wrap items-center gap-3">
                 <div style={{ minWidth: '16rem' }}>
                     <Select
-                        aria-label="Type"
+                        aria-label={tc('console.type_baaddf70')}
                         value={types.find((option) => option.selected)?.key || 'all'}
                         onValueChange={(key) => {
                             const chosen = types.find((option) => (option.key || 'all') === key);
@@ -139,7 +156,7 @@ export default function Connections({
                         }}
                         options={types.map((option) => ({
                             value: option.key || 'all',
-                            label: `${option.label} (${option.count.toLocaleString()})`,
+                            label: `${option.label} (${option.count.toLocaleString(locale)})`,
                         }))}
                     />
                 </div>
@@ -152,7 +169,11 @@ export default function Connections({
             </div>
 
             <output className="sr-only">
-                {pagination.total} {pagination.total === 1 ? 'connection' : 'connections'} shown.
+                {pagination.total}{' '}
+                {pagination.total === 1
+                    ? tc('console.connection_b38d9d16')
+                    : tc('console.connections_1e5fac86')}
+                {tc('console.shown_d2edca72')}
             </output>
 
             <div className="card overflow-hidden">
@@ -160,30 +181,37 @@ export default function Connections({
                     filtered ? (
                         <EmptyState
                             icon="filter"
-                            title="Nothing matches these filters"
-                            description="No connection of that type and status. Clear the filters to see every connection."
+                            title={tc('console.nothing_matches_these_filters_2999c712')}
+                            description={tc(
+                                'console.no_connection_of_that_type_and_status_clear__b3ef151a',
+                            )}
                             actions={
                                 <Button asChild>
-                                    <Link href={clearHref}>Clear filters</Link>
+                                    <Link href={clearHref}>
+                                        {tc('console.clear_filters_7179ea00')}
+                                    </Link>
                                 </Button>
                             }
                         />
                     ) : (
                         <EmptyState
                             icon="connections"
-                            title="No connections yet"
+                            title={tc('console.no_connections_yet_8697571e')}
                             help={help}
-                            description={`Nothing is connected ${scope} yet. The catalog lists every kind of integration and starts the one you need.`}
+                            description={tc(
+                                'console.nothing_is_connected_value0_yet_the_catalog__ca6154d3',
+                                { value0: scope },
+                            )}
                             steps={[
-                                'Pick a type in the catalog — single sign-on, Directory Sync, an HR system, a webhook, a log stream.',
-                                'Its setup form opens, with the provider already chosen where you picked one.',
-                                'Once it is saved it is listed here, with whether it is working.',
+                                tc('console.pick_a_type_in_the_catalog_single_sign_on_di_9a947bbb'),
+                                tc('console.its_setup_form_opens_with_the_provider_alrea_7b06e5df'),
+                                tc('console.once_it_is_saved_it_is_listed_here_with_whet_5ceb7c7c'),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={catalogHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New connection
+                                        {tc('console.new_connection_729bceee')}
                                     </Link>
                                 </Button>
                             }
@@ -209,7 +237,8 @@ export default function Connections({
 
             <Pagination
                 pagination={pagination}
-                noun="connection"
+                noun={tc('console.connection_b38d9d16')}
+                pluralNoun={tc('console.connections_1e5fac86')}
                 href={(page) => listHref('', page)}
             />
         </div>
@@ -217,7 +246,11 @@ export default function Connections({
 }
 
 function ConnectionLine({ row }: { row: ConnectionRow }) {
-    const pill = statusPill(row);
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+
+    const pill = statusPill(row, tc);
 
     const body = (
         <>
@@ -225,7 +258,7 @@ function ConnectionLine({ row }: { row: ConnectionRow }) {
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium [overflow-wrap:anywhere]">{row.name}</span>
                     <Badge>{row.type}</Badge>
-                    <Badge>{row.organization ?? 'Whole environment'}</Badge>
+                    <Badge>{row.organization ?? tc('console.whole_environment_fc5a0810')}</Badge>
                 </div>
                 {row.target !== null && row.target !== row.name && (
                     <p
@@ -250,13 +283,14 @@ function ConnectionLine({ row }: { row: ConnectionRow }) {
                 <Pill tone={pill.tone}>{pill.label}</Pill>
                 <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                     {row.lastActivityAt === null ? (
-                        'No activity recorded'
+                        tc('console.no_activity_recorded_fcfa3087')
                     ) : (
                         <time
                             dateTime={row.lastActivityAt}
-                            title={absoluteTime(row.lastActivityAt)}
+                            title={absoluteTime(row.lastActivityAt, locale)}
                         >
-                            Last activity {relativeTime(row.lastActivityAt)}
+                            {tc('console.last_activity_0c278ed1')}
+                            {relativeTime(row.lastActivityAt, locale)}
                         </time>
                     )}
                 </span>

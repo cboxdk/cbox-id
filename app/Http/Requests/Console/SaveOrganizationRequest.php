@@ -40,7 +40,7 @@ final class SaveOrganizationRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return ['slug' => 'URL handle'];
+        return ['slug' => __('console.url_handle_0b9f3241')];
     }
 
     public function name(): string

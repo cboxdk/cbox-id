@@ -21,6 +21,7 @@ use App\Platform\AuditLogs\AuditLogQuery;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,7 +84,7 @@ final readonly class AuditLogController extends ConsoleController
             ->limit(5)
             ->get();
 
-        return $this->page('console/audit-logs/index', Vocabulary::APP_AUDIT_LOGS, [
+        return $this->page('console/audit-logs/index', ConsoleStrings::text(Vocabulary::APP_AUDIT_LOGS), [
             'help' => HelpProps::for(HelpTopic::AuditLogs),
             'events' => array_map(fn (AuditLogEvent $event): array => $this->row($event, $names), $page['events']),
             'filters' => [
@@ -130,7 +131,7 @@ final readonly class AuditLogController extends ConsoleController
             $organizationId = $this->postedOrganization($request);
 
             if ($organizationId === null) {
-                return back()->withErrors(['export' => 'That organization is not in this environment.']);
+                return back()->withErrors(['export' => __('console.that_organization_is_not_in_this_environment_53d0de6c')]);
             }
         }
 
@@ -145,7 +146,7 @@ final readonly class AuditLogController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Export started — it appears below when it is ready to download.');
+            : back()->with('status', __('console.export_started_it_appears_below_when_it_is_r_4ba82014'));
     }
 
     /** The environment's schemas, the actions seen lately without one, and its settings. */
@@ -182,7 +183,7 @@ final readonly class AuditLogController extends ConsoleController
             ];
         }
 
-        return $this->page('console/audit-logs/schemas', 'Audit log schemas', [
+        return $this->page('console/audit-logs/schemas', __('console.audit_log_schemas_039a5101'), [
             'help' => HelpProps::for(HelpTopic::AuditLogs),
             'schemas' => $schemas->map(static fn (AuditLogSchema $schema): array => [
                 'action' => $schema->action,
@@ -223,7 +224,7 @@ final readonly class AuditLogController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.audit-logs.schemas.edit', $request->string('action')->toString())->with('status', 'Schema saved. Events of this action are checked against it from now on.');
+            : to_route('environment.audit-logs.schemas.edit', $request->string('action')->toString())->with('status', __('console.schema_saved_events_of_this_action_are_check_8215a899'));
     }
 
     public function edit(string $action): Response
@@ -251,7 +252,7 @@ final readonly class AuditLogController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Schema replaced with a new version.');
+            : back()->with('status', __('console.schema_replaced_with_a_new_version_c310e802'));
     }
 
     public function destroy(string $action): RedirectResponse
@@ -262,7 +263,7 @@ final readonly class AuditLogController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.audit-logs.schemas')->with('status', 'Schema deleted.');
+            : to_route('environment.audit-logs.schemas')->with('status', __('console.schema_deleted_6e3a8fcb'));
     }
 
     public function settings(Request $request): RedirectResponse
@@ -274,7 +275,7 @@ final readonly class AuditLogController extends ConsoleController
             'strict_schemas' => $request->boolean('strictSchemas'),
         ], ['retention_days' => 'retentionDays', 'strict_schemas' => 'strictSchemas'], 'retentionDays');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Audit log settings saved.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.audit_log_settings_saved_8eb7afcb'));
     }
 
     private function editor(?AuditLogSchema $schema, string $action): Response
@@ -289,7 +290,7 @@ final readonly class AuditLogController extends ConsoleController
         $names = $this->organizationNames($recent);
         $presented = $schema === null ? null : AuditLogSchemaFields::present($schema);
 
-        return $this->page('console/audit-logs/schema', $schema === null ? 'New audit log schema' : $schema->action, [
+        return $this->page('console/audit-logs/schema', $schema === null ? __('console.new_audit_log_schema_615358bc') : $schema->action, [
             'schema' => $schema === null ? null : [
                 'action' => $schema->action,
                 'version' => $schema->version,
@@ -328,7 +329,7 @@ final readonly class AuditLogController extends ConsoleController
             try {
                 $body[$input] = json_decode($text, true, 32, JSON_THROW_ON_ERROR);
             } catch (JsonException) {
-                return back()->withInput()->withErrors([$field => 'This is not valid JSON.']);
+                return back()->withInput()->withErrors([$field => __('console.this_is_not_valid_json_35feaa8c')]);
             }
         }
 

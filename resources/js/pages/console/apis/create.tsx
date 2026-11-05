@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -36,6 +37,8 @@ type Props = PageProps<{
 }>;
 
 export default function CreateApi({ owners, apps, organization, indexHref, storeHref }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         identifier: '',
@@ -50,10 +53,14 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
     return (
         <>
-            <Breadcrumb href={indexHref} label="APIs" />
+            <Breadcrumb href={indexHref} label={tc('console.apis_8d266d3e')} />
 
             <div className="mt-2">
-                <PageHeader description="A service of yours that receives access tokens. You add the scopes it owns on the next page." />
+                <PageHeader
+                    description={tc(
+                        'console.a_service_of_yours_that_receives_access_toke_d93c8407',
+                    )}
+                />
             </div>
 
             <form
@@ -66,18 +73,20 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
             >
                 <Panel>
                     <div className="space-y-4">
-                        <Field label="Name" error={form.errors.name}>
+                        <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                             <Input
                                 name="name"
-                                placeholder="Invoicing API"
+                                placeholder={tc('console.invoicing_api_6c18e057')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
 
                         <Field
-                            label="Identifier"
-                            hint="The address tokens for this API name as their audience, and what your API checks for. It cannot be changed later — every token already issued carries it."
+                            label={tc('console.identifier_9b10587f')}
+                            hint={tc(
+                                'console.the_address_tokens_for_this_api_name_as_thei_cdea85aa',
+                            )}
                             error={form.errors.identifier}
                         >
                             <Input
@@ -93,7 +102,7 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
                         <div>
                             <RadioGroup
-                                label="Owner"
+                                label={tc('console.owner_4b1b8aa3')}
                                 name="owner"
                                 value={form.data.owner}
                                 onValueChange={(owner) => {
@@ -104,8 +113,12 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                                     label: owner.label,
                                     hint:
                                         owner.value === 'environment'
-                                            ? 'Your own API. You choose, scope by scope, which of its scopes apps registered by organizations may request.'
-                                            : 'That organization’s API. Only its own apps may be given its scopes.',
+                                            ? tc(
+                                                  'console.your_own_api_you_choose_scope_by_scope_which_6f77f332',
+                                              )
+                                            : tc(
+                                                  'console.that_organization_s_api_only_its_own_apps_ma_9dd9b797',
+                                              ),
                                 }))}
                             />
                             {form.errors.owner !== undefined && (
@@ -117,9 +130,11 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                                 // The organization is named here, and the page reloads with it
                                 // so the apps it can be linked to are that organization's.
                                 <Field
-                                    label="For which organization?"
+                                    label={tc('console.for_which_organization_aaca2bbd')}
                                     className="mt-4"
-                                    hint="To register an API for one organization, find it here — it is then offered as an owner above."
+                                    hint={tc(
+                                        'console.to_register_an_api_for_one_organization_find_48b04329',
+                                    )}
                                 >
                                     <OrganizationField
                                         lookupHref={organization.lookupHref}
@@ -148,9 +163,11 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                         </div>
 
                         <Field
-                            label="Roles and permissions from"
+                            label={tc('console.roles_and_permissions_from_484a0cfa')}
                             optional
-                            hint="The app whose declared roles and permissions tokens for this API carry. Leave it empty and each token carries the roles of the app that asked for it."
+                            hint={tc(
+                                'console.the_app_whose_declared_roles_and_permissions_a1169778',
+                            )}
                             error={form.errors.clientId}
                         >
                             <Select
@@ -160,7 +177,10 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                                     form.setData('clientId', clientId === NOBODY ? '' : clientId)
                                 }
                                 options={[
-                                    { value: NOBODY, label: 'The app that asks' },
+                                    {
+                                        value: NOBODY,
+                                        label: tc('console.the_app_that_asks_4a500e90'),
+                                    },
                                     ...linkable.map((app) => ({
                                         value: app.value,
                                         label: app.label,
@@ -173,10 +193,10 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
                 <div className="flex flex-wrap gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Register API
+                        {tc('console.register_api_e3c6bc27')}
                     </Button>
                     <Button asChild variant="ghost">
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

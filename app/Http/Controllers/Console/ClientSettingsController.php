@@ -92,8 +92,8 @@ final readonly class ClientSettingsController extends ConsoleController
             ['id' => $model->id, 'access_token_ttl' => $request->seconds()],
             'minutes',
             $request->seconds() === null
-                ? 'Access tokens for this app now live for the default time.'
-                : 'Access tokens for this app now live for '.intdiv((int) $request->seconds(), 60).' minutes.',
+                ? __('console.access_tokens_for_this_app_now_live_for_the__29920738')
+                : __('console.access_tokens_for_this_app_now_live_for_c5b4321a').intdiv((int) $request->seconds(), 60).' minutes.',
         );
     }
 
@@ -104,14 +104,14 @@ final readonly class ClientSettingsController extends ConsoleController
         // Said before the action is asked, on the switch and without the form's input —
         // the action refuses the same app in the same words, which is the guard.
         if ($model->type !== ClientType::Confidential) {
-            return back()->withErrors(['enabled' => 'Only an app that holds a secret or its own keys can exchange tokens. A public app cannot prove who is asking.']);
+            return back()->withErrors(['enabled' => __('console.only_an_app_that_holds_a_secret_or_its_own_k_b8912c8c')]);
         }
 
         return $this->save(
             SetAppTokenExchange::class,
             ['id' => $model->id, 'enabled' => $request->enabled()],
             'enabled',
-            $request->enabled() ? 'Token exchange turned on.' : 'Token exchange turned off.',
+            $request->enabled() ? __('console.token_exchange_turned_on_e991b0e0') : __('console.token_exchange_turned_off_1cb60f42'),
         );
     }
 
@@ -124,8 +124,8 @@ final readonly class ClientSettingsController extends ConsoleController
             ['id' => $model->id, 'uri' => $request->logoutUri(), 'session_required' => $request->sessionRequired()],
             'uri',
             $request->logoutUri() === null
-                ? 'This app is no longer told when somebody signs out.'
-                : 'Saved. This app is told when somebody signs out.',
+                ? __('console.this_app_is_no_longer_told_when_somebody_sig_f18570ba')
+                : __('console.saved_this_app_is_told_when_somebody_signs_o_d0d7f618'),
         );
     }
 
@@ -141,7 +141,7 @@ final readonly class ClientSettingsController extends ConsoleController
             ['id' => $model->id, 'prefix' => $prefix],
             'prefix',
             $prefix === null
-                ? 'API keys turned off for this app. Keys already created keep working until they are revoked.'
+                ? __('console.api_keys_turned_off_for_this_app_keys_alread_d0c591df')
                 : "API keys turned on for this app. New keys start with {$prefix}_.",
         );
     }
@@ -169,15 +169,15 @@ final readonly class ClientSettingsController extends ConsoleController
     private static function plain(string $message): string
     {
         $message = strtr($message, [
-            'backchannel_logout_uri' => 'The logout URI',
-            'access_token_ttl' => 'The access token lifetime',
-            'api_key_prefix' => 'The key prefix',
+            'backchannel_logout_uri' => __('console.the_logout_uri_ec20fe60'),
+            'access_token_ttl' => __('console.the_access_token_lifetime_15671af5'),
+            'api_key_prefix' => __('console.the_key_prefix_29613943'),
         ]);
 
         // "…is already declared by another app in this environment; import with another
         // prefix (or none)" — an import is not what happened on this page.
-        if (str_contains($message, 'already declared by another app')) {
-            return 'Another app in this environment already uses this prefix. Choose another.';
+        if (str_contains($message, __('console.already_declared_by_another_app_35fc0ae9'))) {
+            return __('console.another_app_in_this_environment_already_uses_e8f83cff');
         }
 
         return ucfirst($message);

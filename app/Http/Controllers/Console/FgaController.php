@@ -15,6 +15,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Kernel\Authorization\Exceptions\InvalidTuple;
 use Cbox\Id\Kernel\Authorization\Schema\AuthorizationSchema;
 use Cbox\Id\Kernel\Authorization\Schema\RelationDefinition;
@@ -88,7 +89,7 @@ final readonly class FgaController extends ConsoleController
 
         $nextCursor = $tuples->meta['next_cursor'] ?? null;
 
-        return $this->page('console/fga/index', Vocabulary::FINE_GRAINED_AUTHORIZATION, [
+        return $this->page('console/fga/index', ConsoleStrings::text(Vocabulary::FINE_GRAINED_AUTHORIZATION), [
             'help' => HelpProps::for(HelpTopic::FineGrainedAuthorization),
             'schema' => [
                 'defined' => (bool) ($schema['defined'] ?? false),
@@ -123,7 +124,7 @@ final readonly class FgaController extends ConsoleController
         $draft = $request->string('draft')->toString();
         $validation = $draft === '' ? null : $this->runAction(ValidateFgaSchema::class, ['schema' => $draft])->payload;
 
-        return $this->page('console/fga/schema', 'Authorization schema', [
+        return $this->page('console/fga/schema', __('console.authorization_schema_16fefedd'), [
             'help' => HelpProps::for(HelpTopic::FineGrainedAuthorization),
             'source' => $defined && is_string($schema['schema'] ?? null) ? $schema['schema'] : self::STARTER_SCHEMA,
             'defined' => $defined,
@@ -143,17 +144,17 @@ final readonly class FgaController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.fga')->with('status', 'Schema saved. Every check is decided by it from now on.');
+            : to_route('environment.fga')->with('status', __('console.schema_saved_every_check_is_decided_by_it_fr_e54cf8c0'));
     }
 
     public function storeTuple(Request $request): RedirectResponse
     {
-        return $this->tuple($request, WriteFgaTuples::class, 'Tuple written.');
+        return $this->tuple($request, WriteFgaTuples::class, __('console.tuple_written_ecd2fbf9'));
     }
 
     public function destroyTuple(Request $request): RedirectResponse
     {
-        return $this->tuple($request, DeleteFgaTuples::class, 'Tuple deleted.');
+        return $this->tuple($request, DeleteFgaTuples::class, __('console.tuple_deleted_6fb420fe'));
     }
 
     /**
@@ -215,7 +216,7 @@ final readonly class FgaController extends ConsoleController
         }
 
         if ($type === '' || $id === '') {
-            return [...$check, 'error' => 'Write the resource as `type:id`, e.g. `document:readme`.'];
+            return [...$check, 'error' => __('console.write_the_resource_as_type_id_e_g_document_r_98ca2d29')];
         }
 
         try {

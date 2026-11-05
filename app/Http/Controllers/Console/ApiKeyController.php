@@ -14,6 +14,7 @@ use App\Platform\Console\KeyTabs;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
@@ -58,7 +59,7 @@ final readonly class ApiKeyController extends ConsoleController
         $organizationId = $this->scope->organizationId();
         $now = CarbonImmutable::now();
 
-        return $this->page('console/keys/workspace', Vocabulary::API_KEYS, [
+        return $this->page('console/keys/workspace', ConsoleStrings::text(Vocabulary::API_KEYS), [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::WORKSPACE),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
@@ -96,7 +97,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
         $challenge = $this->stepUp(
-            'A workspace key acts with its built-in role across your whole workspace, and its value is shown once.',
+            __('console.a_workspace_key_acts_with_its_built_in_role__4dec8eb1'),
         );
 
         if ($challenge !== null) {
@@ -125,7 +126,7 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', 'Workspace key created — copy it now, it will not be shown again.');
+        return back()->with('status', __('console.workspace_key_created_copy_it_now_it_will_no_146ccee1'));
     }
 
     public function destroy(string $key): RedirectResponse
@@ -135,7 +136,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        $challenge = $this->stepUp('Revoking a workspace key stops whatever is using it, immediately.');
+        $challenge = $this->stepUp(__('console.revoking_a_workspace_key_stops_whatever_is_u_8adf3587'));
 
         if ($challenge !== null) {
             return $challenge;
@@ -165,7 +166,7 @@ final readonly class ApiKeyController extends ConsoleController
             return back();
         }
 
-        return back()->with('status', 'Workspace key revoked.');
+        return back()->with('status', __('console.workspace_key_revoked_d031a10f'));
     }
 
     /**

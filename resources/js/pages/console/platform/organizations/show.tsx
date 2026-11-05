@@ -1,3 +1,5 @@
+import { useConsoleCount } from '@/i18n/count';
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Fragment, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -65,10 +67,6 @@ type Props = PageProps<{
     toggleHref: string;
 }>;
 
-function plural(count: number, noun: string): string {
-    return `${count} ${count === 1 ? noun : `${noun}s`}`;
-}
-
 function memberTone(status: string) {
     if (status === 'active') {
         return 'success' as const;
@@ -91,6 +89,11 @@ export default function Organization({
     indexHref,
     toggleHref,
 }: Props) {
+    const { locale } = useTranslator();
+
+    const { t: tc } = useTranslator();
+    const plural = useConsoleCount();
+
     const [confirming, setConfirming] = useState(false);
 
     return (
@@ -101,7 +104,8 @@ export default function Organization({
                     className="inline-flex items-center gap-1 text-sm"
                     style={{ color: 'var(--muted)' }}
                 >
-                    <span aria-hidden="true">&larr;</span> Back to the organization tree
+                    <span aria-hidden="true">{tc('console.larr_848fc0e7')}</span>
+                    {tc('console.back_to_the_organization_tree_b6570ade')}
                 </Link>
             </div>
 
@@ -115,13 +119,15 @@ export default function Organization({
             */}
             <PageHeader
                 eyebrow="Platform"
-                description="Organization detail in the target environment — members, SSO, domains, entitlements and recent activity. The only thing changed from this page is the organization's status."
+                description={tc('console.organization_detail_in_the_target_environmen_caef589f')}
                 actions={
                     <Button
                         variant={organization.active ? 'danger' : 'primary'}
                         onClick={() => setConfirming(true)}
                     >
-                        {organization.active ? 'Suspend' : 'Reactivate'}
+                        {organization.active
+                            ? tc('console.suspend_4948e134')
+                            : tc('console.reactivate_2dc7478f')}
                     </Button>
                 }
             />
@@ -129,7 +135,7 @@ export default function Organization({
             <Panel className="mb-5 mt-8">
                 {ancestors.length > 0 && (
                     <nav
-                        aria-label="Breadcrumb"
+                        aria-label={tc('console.breadcrumb_2bd873d6')}
                         className="mb-3 text-xs flex flex-wrap items-center gap-1"
                         style={{ color: 'var(--faint)' }}
                     >
@@ -148,57 +154,84 @@ export default function Organization({
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                     <h2 className="text-base font-semibold">{organization.name}</h2>
                     {organization.status === 'suspended' ? (
-                        <Pill tone="destructive">Suspended</Pill>
+                        <Pill tone="destructive">{tc('console.suspended_e392a389')}</Pill>
                     ) : organization.active ? (
-                        <Pill tone="success">Active</Pill>
+                        <Pill tone="success">{tc('console.active_92340695')}</Pill>
                     ) : (
                         <Pill className="capitalize">{organization.status}</Pill>
                     )}
                 </div>
 
                 <KvList>
-                    <Kv label="Slug">{organization.slug}</Kv>
-                    <Kv label="Type" prose>
+                    <Kv label={tc('console.slug_d15387ec')}>{organization.slug}</Kv>
+                    <Kv label={tc('console.type_baaddf70')} prose>
                         <span className="capitalize">{organization.type}</span>
                     </Kv>
-                    <Kv label="Members" prose>
+                    <Kv label={tc('console.members_1044a4c0')} prose>
                         {memberTotal}
                     </Kv>
-                    <Kv label="Sub-organizations" prose>
+                    <Kv label={tc('console.sub_organizations_df8a3f2e')} prose>
                         {childCount}
                     </Kv>
                     {organization.createdAt !== null && (
-                        <Kv label="Created">{organization.createdAt}</Kv>
+                        <Kv label={tc('console.created_d70b9e24')}>{organization.createdAt}</Kv>
                     )}
                 </KvList>
             </Panel>
 
             <section className="mb-5">
-                <h2 className="text-sm font-semibold mb-3">Usage</h2>
+                <h2 className="text-sm font-semibold mb-3">{tc('console.usage_8d59829c')}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Stat label="Members" value={usage.members.toLocaleString()} />
                     <Stat
-                        label={`MFA adoption — ${usage.mfaUsers} of ${usage.members} with MFA`}
+                        label={tc('console.members_1044a4c0')}
+                        value={usage.members.toLocaleString(locale)}
+                    />
+                    <Stat
+                        label={tc('console.mfa_adoption_value0_of_value1_with_mfa_52f65791', {
+                            value0: usage.mfaUsers,
+                            value1: usage.members,
+                        })}
                         value={`${usage.mfaAdoption}%`}
                     />
-                    <Stat label="Active sessions" value={usage.sessions.toLocaleString()} />
-                    <Stat label="Sign-ins (30d)" value={usage.signIns.toLocaleString()} />
-                    <Stat label="SSO connections" value={usage.connections.toLocaleString()} />
-                    <Stat label="Verified domains" value={usage.domains.toLocaleString()} />
-                    <Stat label="API clients" value={usage.clients.toLocaleString()} />
-                    <Stat label="Service accounts" value={usage.serviceAccounts.toLocaleString()} />
+                    <Stat
+                        label={tc('console.active_sessions_61ad9909')}
+                        value={usage.sessions.toLocaleString(locale)}
+                    />
+                    <Stat
+                        label={tc('console.sign_ins_30d_75b71c8d')}
+                        value={usage.signIns.toLocaleString(locale)}
+                    />
+                    <Stat
+                        label={tc('console.sso_connections_2e2e48f8')}
+                        value={usage.connections.toLocaleString(locale)}
+                    />
+                    <Stat
+                        label={tc('console.verified_domains_b01c494f')}
+                        value={usage.domains.toLocaleString(locale)}
+                    />
+                    <Stat
+                        label={tc('console.api_clients_35c69da7')}
+                        value={usage.clients.toLocaleString(locale)}
+                    />
+                    <Stat
+                        label={tc('console.service_accounts_1642d9e2')}
+                        value={usage.serviceAccounts.toLocaleString(locale)}
+                    />
                 </div>
             </section>
 
             <Panel
-                title="Members"
+                title={tc('console.members_1044a4c0')}
                 flush
                 className="mb-5"
                 action={
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
                         {members.length < memberTotal
-                            ? `Showing ${members.length} of ${memberTotal}`
-                            : `${memberTotal} total`}
+                            ? tc('console.showing_value0_of_value1_c760e5a8', {
+                                  value0: members.length,
+                                  value1: memberTotal,
+                              })
+                            : tc('console.value0_total_b1c1ad38', { value0: memberTotal })}
                     </span>
                 }
             >
@@ -207,18 +240,17 @@ export default function Organization({
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        No members in this organization yet — nobody can sign in to it until
-                        somebody is invited or provisioned in.
+                        {tc('console.no_members_in_this_organization_yet_nobody_c_d0c78702')}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <Table caption={`The people in ${organization.name}.`}>
                             <thead>
                                 <tr>
-                                    <Th>User</Th>
-                                    <Th>Built-in role</Th>
-                                    <Th>Status</Th>
-                                    <Th className="text-right">Support</Th>
+                                    <Th>{tc('console.user_b512d97e')}</Th>
+                                    <Th>{tc('console.built_in_role_9f680a16')}</Th>
+                                    <Th>{tc('console.status_920e413c')}</Th>
+                                    <Th className="text-right">{tc('console.support_be91940b')}</Th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -251,7 +283,7 @@ export default function Organization({
                                                     className="text-xs"
                                                     style={{ color: 'var(--faint)' }}
                                                 >
-                                                    Not impersonable
+                                                    {tc('console.not_impersonable_0e273ab2')}
                                                 </span>
                                             ) : (
                                                 <Impersonate member={member} />
@@ -267,10 +299,12 @@ export default function Organization({
 
             <div className="grid gap-5 lg:grid-cols-2 mb-5">
                 <Panel>
-                    <h2 className="text-sm font-semibold mb-3">SSO connection</h2>
+                    <h2 className="text-sm font-semibold mb-3">
+                        {tc('console.sso_connection_07f7aa11')}
+                    </h2>
                     {sso === null ? (
                         <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                            No SSO connection configured.
+                            {tc('console.no_sso_connection_configured_2034a4fa')}
                         </p>
                     ) : (
                         <>
@@ -284,7 +318,7 @@ export default function Organization({
                                 className="text-xs uppercase tracking-wide"
                                 style={{ color: 'var(--faint)' }}
                             >
-                                Protocol
+                                {tc('console.protocol_cf088334')}
                             </p>
                             <p className="text-sm uppercase">{sso.type}</p>
                         </>
@@ -292,10 +326,12 @@ export default function Organization({
                 </Panel>
 
                 <Panel>
-                    <h2 className="text-sm font-semibold mb-3">Verified domains</h2>
+                    <h2 className="text-sm font-semibold mb-3">
+                        {tc('console.verified_domains_b01c494f')}
+                    </h2>
                     {domains.length === 0 ? (
                         <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                            No domains registered.
+                            {tc('console.no_domains_registered_32acc545')}
                         </p>
                     ) : (
                         domains.map((domain) => (
@@ -306,11 +342,15 @@ export default function Organization({
                             >
                                 <span className="text-sm mono">{domain.domain}</span>
                                 <span className="flex items-center gap-2">
-                                    {domain.capture && <Pill dot={false}>Capture</Pill>}
+                                    {domain.capture && (
+                                        <Pill dot={false}>{tc('console.capture_1900b478')}</Pill>
+                                    )}
                                     {domain.verifiedAt === null ? (
-                                        <Pill tone="warning">Pending</Pill>
+                                        <Pill tone="warning">{tc('console.pending_331551b0')}</Pill>
                                     ) : (
-                                        <Pill tone="success">Verified</Pill>
+                                        <Pill tone="success">
+                                            {tc('console.verified_4f783840')}
+                                        </Pill>
                                     )}
                                 </span>
                             </div>
@@ -319,24 +359,23 @@ export default function Organization({
                 </Panel>
             </div>
 
-            <Panel title="Entitlements" flush className="mb-5">
+            <Panel title={tc('console.entitlements_2cc79c9e')} flush className="mb-5">
                 {entitlements.length === 0 ? (
                     <div
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        No entitlements set for this organization — it runs on the
-                        deployment&rsquo;s defaults.
+                        {tc('console.no_entitlements_set_for_this_organization_it_76313cb5')}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <Table caption={`Entitlements in force for ${organization.name}.`}>
                             <thead>
                                 <tr>
-                                    <Th>Key</Th>
-                                    <Th>Value</Th>
-                                    <Th>Enforcement</Th>
-                                    <Th>Source</Th>
+                                    <Th>{tc('console.key_99a52df3')}</Th>
+                                    <Th>{tc('console.value_8e37953d')}</Th>
+                                    <Th>{tc('console.enforcement_bda2e3e6')}</Th>
+                                    <Th>{tc('console.source_0e570ca6')}</Th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -361,23 +400,22 @@ export default function Organization({
                 )}
             </Panel>
 
-            <Panel title="Recent activity" flush>
+            <Panel title={tc('console.recent_activity_6cb44b56')} flush>
                 {recent.length === 0 ? (
                     <div
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        No recent activity recorded for this organization. Sign-ins, role changes
-                        and connection edits appear here as they happen.
+                        {tc('console.no_recent_activity_recorded_for_this_organiz_150edeb1')}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <Table caption={`The newest entries on ${organization.name}'s trail.`}>
                             <thead>
                                 <tr>
-                                    <Th>Action</Th>
-                                    <Th>Actor</Th>
-                                    <Th>Recorded</Th>
+                                    <Th>{tc('console.action_64cff131')}</Th>
+                                    <Th>{tc('console.actor_449995c4')}</Th>
+                                    <Th>{tc('console.recorded_c7175fa7')}</Th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -417,12 +455,16 @@ export default function Organization({
                 title={`${organization.active ? 'Suspend' : 'Reactivate'} ${organization.name}?`}
                 description={
                     organization.active
-                        ? `Its ${plural(memberTotal, 'member')} can no longer sign in to this organization, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.`
-                        : 'Its members can sign in again immediately.'
+                        ? tc('console.its_value0_can_no_longer_sign_in_to_this_org_b832d3fa', {
+                              value0: plural(memberTotal, 'member'),
+                          })
+                        : tc('console.its_members_can_sign_in_again_immediately_bd3004a5')
                 }
                 footer={
                     <>
-                        <Button onClick={() => setConfirming(false)}>Cancel</Button>
+                        <Button onClick={() => setConfirming(false)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant={organization.active ? 'danger' : 'primary'}
                             onClick={() => {
@@ -430,7 +472,9 @@ export default function Organization({
                                 router.post(toggleHref, {}, { preserveScroll: true });
                             }}
                         >
-                            {organization.active ? 'Suspend' : 'Reactivate'}
+                            {organization.active
+                                ? tc('console.suspend_4948e134')
+                                : tc('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -447,6 +491,8 @@ export default function Organization({
  * button rather than a prompt after it — and the session self-terminates after 30 minutes.
  */
 function Impersonate({ member }: { member: MemberRow }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ organization: member.organizationId, reason: '' });
     const who = member.email ?? member.userId;
 
@@ -467,15 +513,15 @@ function Impersonate({ member }: { member: MemberRow }) {
                 name="reason"
                 required
                 maxLength={200}
-                placeholder="Reason for access"
+                placeholder={tc('console.reason_for_access_888a7a48')}
                 className="text-xs"
                 style={{ maxWidth: '12rem' }}
-                aria-label={`Reason for impersonating ${who}`}
+                aria-label={tc('console.reason_for_impersonating_value0_b92309db', { value0: who })}
                 value={form.data.reason}
                 onChange={(event) => form.setData('reason', event.target.value)}
             />
             <Button type="submit" size="sm" loading={form.processing}>
-                Impersonate
+                {tc('console.impersonate_f78577dc')}
             </Button>
         </form>
     );

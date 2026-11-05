@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { type DomainClaim, DomainClaims, EmptyState, PageHeader } from '@/ui';
@@ -17,11 +18,13 @@ type Props = PageProps<{
  * page's own writes, gated on the same plan feature.
  */
 export default function Domains({ help, entitled, domains, addDomainHref }: Props) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description="Prove which email domains your organization owns. A verified domain can send everyone with an address on it straight to your Enterprise SSO connection."
+                description={tc('console.prove_which_email_domains_your_organization__a1717fad')}
             />
 
             {entitled ? (
@@ -30,9 +33,11 @@ export default function Domains({ help, entitled, domains, addDomainHref }: Prop
                 <div className="card">
                     <EmptyState
                         icon="shield"
-                        title="Domains come with Enterprise SSO"
+                        title={tc('console.domains_come_with_enterprise_sso_be43d549')}
                         help={help}
-                        description="Verified domains route people to your own identity provider, which is part of the Enterprise plan. Contact your account team to enable it for this organization."
+                        description={tc(
+                            'console.verified_domains_route_people_to_your_own_id_127a9e78',
+                        )}
                     />
                 </div>
             )}

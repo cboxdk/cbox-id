@@ -36,6 +36,8 @@ class AppManagementScopes extends EnumManagementScopes
             'label' => 'Manage management keys',
             'description' => 'Mint, rotate and revoke management keys, never wider than the key doing it.',
         ],
+        'app_catalog:read' => ['label' => 'Read app catalog', 'description' => 'Read app publication and visibility settings.'],
+        'app_catalog:write' => ['label' => 'Manage app catalog', 'description' => 'Publish, change and remove app catalog entries.'],
         'user_property_namespaces:read' => [
             'label' => 'Read user-property namespaces',
             'description' => 'Read the app and webhook grants for user-property namespaces.',

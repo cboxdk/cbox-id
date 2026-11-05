@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -119,6 +120,8 @@ export default function BrandingPage({
     saveHref,
     profile,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const { errors } = usePage().props;
 
     // The editor's draft, as it last reported it. A ref AND state: the ref is what Save
@@ -214,8 +217,7 @@ export default function BrandingPage({
                     editor is never seeded from one record and saved to another.
                 */
                 <p className="mb-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    The environment default, inherited by every organization that has not set its
-                    own. An organization's own brand is on its page, on the Branding tab.
+                    {tc('console.the_environment_default_inherited_by_every_o_19ddab20')}
                 </p>
             )}
 
@@ -242,13 +244,13 @@ export default function BrandingPage({
                     imagesAccepted={imagesAccepted}
                     imageErrors={{ logo: message('logo'), favicon: message('favicon') }}
                     help={help}
-                    title="Branding"
+                    title={tc('console.branding_d417aa16')}
                     scope={environmentDefault ? 'environment' : 'organization'}
                     error={message('theme') ?? null}
                     description={
                         environmentDefault
-                            ? "Your environment's default brand: the hosted sign-in's look, logo and favicon, and the name and sender your people see. Every organization inherits it unless it sets its own."
-                            : "This organization's brand — it overrides the environment default. Changes preview live and apply to its hosted sign-in."
+                            ? tc('console.your_environment_s_default_brand_the_hosted__aae9270b')
+                            : tc('console.this_organization_s_brand_it_overrides_the_e_ffdddbcc')
                     }
                     onChange={onThemeChange}
                 />
@@ -256,12 +258,16 @@ export default function BrandingPage({
                 <>
                     <PageHeader
                         help={help}
-                        description="The hosted sign-in's look, logo and favicon, and the name and sender your people see."
+                        description={tc(
+                            'console.the_hosted_sign_in_s_look_logo_and_favicon_a_39304e21',
+                        )}
                     />
                     <EmptyState
                         icon="settings"
-                        title="Nothing to theme yet"
-                        description="There is no organization or environment here to theme."
+                        title={tc('console.nothing_to_theme_yet_24b02640')}
+                        description={tc(
+                            'console.there_is_no_organization_or_environment_here_78caef51',
+                        )}
                     />
                 </>
             )}
@@ -293,13 +299,13 @@ export default function BrandingPage({
                     }
                 }}
                 size="sm"
-                title="Leave without saving?"
-                description="Your branding changes have not been saved. Leave this page and they are lost."
+                title={tc('console.leave_without_saving_2190d03a')}
+                description={tc('console.your_branding_changes_have_not_been_saved_le_1a8dbb2f')}
                 footer={
                     <>
-                        <Button onClick={guard.stay}>Keep editing</Button>
+                        <Button onClick={guard.stay}>{tc('console.keep_editing_e76fd2ad')}</Button>
                         <Button variant="danger" onClick={guard.leave}>
-                            Discard and leave
+                            {tc('console.discard_and_leave_07e5b915')}
                         </Button>
                     </>
                 }
@@ -330,6 +336,8 @@ function SaveBar({
     onDiscard: () => void;
     onSave: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     if (!dirty && !saving) {
         return null;
     }
@@ -337,7 +345,7 @@ function SaveBar({
     return (
         <section
             className="cbx-savebar"
-            aria-label="Unsaved changes"
+            aria-label={tc('console.unsaved_changes_a710c2b9')}
             data-testid="branding-save-bar"
         >
             <output className="cbx-savebar-status">
@@ -347,15 +355,17 @@ function SaveBar({
                     style={{ color: refused ? 'var(--destructive)' : 'var(--accent-strong)' }}
                 />
                 <span className="min-w-0">
-                    {refused ? 'Not saved — see the marked fields' : 'Unsaved changes'}
+                    {refused
+                        ? tc('console.not_saved_see_the_marked_fields_a29c28a1')
+                        : tc('console.unsaved_changes_a710c2b9')}
                 </span>
             </output>
             <div className="cbx-savebar-actions">
                 <Button size="sm" onClick={onDiscard} disabled={saving}>
-                    Discard
+                    {tc('console.discard_eb1a70e3')}
                 </Button>
                 <Button size="sm" variant="primary" icon="check" loading={saving} onClick={onSave}>
-                    Save changes
+                    {tc('console.save_changes_dd0ae7a5')}
                 </Button>
             </div>
         </section>
@@ -379,6 +389,8 @@ function ProfilePanel({
     errors: Record<string, string>;
     onChange: (next: ProfileDraft) => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const [paletteOpen, setPaletteOpen] = useState(
         Object.values(value.palette).some((colour) => colour !== '') ||
             Object.keys(errors).some((key) => key.startsWith('profile.palette.')),
@@ -389,29 +401,29 @@ function ProfilePanel({
     return (
         <Panel
             className="mt-6"
-            title="Name & email"
-            description="What your people see in place of Cbox ID, and who your mail comes from."
+            title={tc('console.name_email_fe6014fd')}
+            description={tc('console.what_your_people_see_in_place_of_cbox_id_and_32cb946d')}
         >
             <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                     <Field
                         id="brand-app-name"
-                        label="Product name"
+                        label={tc('console.product_name_bfa93eb4')}
                         error={errors['profile.appName']}
                     >
                         <Input
-                            placeholder="Acme ID"
+                            placeholder={tc('console.acme_id_b3b9b121')}
                             value={value.appName}
                             onChange={(event) => set('appName', event.target.value)}
                         />
                     </Field>
                     <Field
                         id="brand-email-from"
-                        label="Email sender name"
+                        label={tc('console.email_sender_name_77092ffe')}
                         error={errors['profile.emailFromName']}
                     >
                         <Input
-                            placeholder="Acme Security"
+                            placeholder={tc('console.acme_security_ab6e66b5')}
                             value={value.emailFromName}
                             onChange={(event) => set('emailFromName', event.target.value)}
                         />
@@ -420,13 +432,13 @@ function ProfilePanel({
 
                 <Field
                     id="brand-email-template"
-                    label="Welcome email"
-                    hint="Sent when someone's account is created. Leave it empty for the default."
+                    label={tc('console.welcome_email_339769e7')}
+                    hint={tc('console.sent_when_someone_s_account_is_created_leave_c7c58d7f')}
                     error={errors['profile.emailTemplate']}
                 >
                     <Textarea
                         rows={4}
-                        placeholder="Welcome to {app}. Your account is ready."
+                        placeholder={tc('console.welcome_to_app_your_account_is_ready_33ef53b0')}
                         value={value.emailTemplate}
                         onChange={(event) => set('emailTemplate', event.target.value)}
                     />
@@ -441,7 +453,8 @@ function ProfilePanel({
                         aria-controls="brand-console-palette"
                         onClick={() => setPaletteOpen((open) => !open)}
                     >
-                        {paletteOpen ? 'Hide' : 'Show'} console colours
+                        {paletteOpen ? tc('console.hide_ac20a57b') : tc('console.show_0df6f1ca')}
+                        {tc('console.console_colours_65a81ef6')}
                     </button>
                     {paletteOpen && (
                         <div id="brand-console-palette" className="mt-3">
@@ -449,8 +462,9 @@ function ProfilePanel({
                                 className="text-[12px] mb-3"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                The admin console's own palette, as hex (#0a2540) or oklch(…). The
-                                sign-in page takes its colours from the theme above.
+                                {tc(
+                                    'console.the_admin_console_s_own_palette_as_hex_0a254_71ec4917',
+                                )}
                             </p>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {tokens.map((token) => (
@@ -463,7 +477,7 @@ function ProfilePanel({
                                         <Input
                                             className="mono"
                                             spellCheck={false}
-                                            placeholder="#0a2540"
+                                            placeholder={tc('console.0a2540_7028d88f')}
                                             value={value.palette[token] ?? ''}
                                             onChange={(event) =>
                                                 set('palette', {

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -7,13 +8,15 @@ import { update } from '@actions/App/Http/Controllers/Console/AccountSettingsCon
 type Props = PageProps<{ name: string; help: HelpContent }>;
 
 export default function AccountSettings({ name, help }: Props) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ name });
 
     return (
         <>
             <PageHeader
                 help={help}
-                description="The name of the workspace these identity providers are billed and administered under."
+                description={tc('console.the_name_of_the_workspace_these_identity_pro_7bb1773d')}
             />
 
             <form
@@ -26,14 +29,14 @@ export default function AccountSettings({ name, help }: Props) {
                 <Panel>
                     <div className="flex items-start gap-2">
                         <Field
-                            label="Workspace name"
-                            hint="Shown across the console."
+                            label={tc('console.workspace_name_9619649d')}
+                            hint={tc('console.shown_across_the_console_fe4b6d94')}
                             error={form.errors.name}
                             className="flex-1 max-w-sm"
                         >
                             <Input
                                 name="name"
-                                placeholder="Acme Inc."
+                                placeholder={tc('console.acme_inc_ee60673d')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
@@ -45,7 +48,7 @@ export default function AccountSettings({ name, help }: Props) {
                             loading={form.processing}
                             style={{ marginTop: '1.9rem' }}
                         >
-                            Save
+                            {tc('console.save_1509f561')}
                         </Button>
                     </div>
                 </Panel>
@@ -58,11 +61,9 @@ export default function AccountSettings({ name, help }: Props) {
                 conversation, not a control somebody would then have to be talked out of.
             */}
             <div className="mt-4">
-                <Panel title="Delete workspace">
+                <Panel title={tc('console.delete_workspace_55f033db')}>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Deleting this workspace tears down every project and environment it owns. To
-                        protect live identity providers this isn't self-serve — contact support to
-                        proceed.
+                        {tc('console.deleting_this_workspace_tears_down_every_pro_f26b2e2f')}
                     </p>
                 </Panel>
             </div>

@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -129,6 +130,8 @@ export default function Security({
     otherSessions,
     urls,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     return (
         <div className="space-y-6">
             {returnTo !== null && (
@@ -147,13 +150,14 @@ export default function Security({
                         className="w-4 h-4"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    Return to {returnTo.host}
+                    {tc('console.return_to_353f0e89')}
+                    {returnTo.host}
                 </a>
             )}
 
             <PageHeader
                 help={help}
-                description="Your profile, how you sign in, and the sessions currently signed in as you."
+                description={tc('console.your_profile_how_you_sign_in_and_the_session_ab7a0592')}
             />
 
             <ProfilePanel profile={profile} href={urls.profile} />
@@ -180,10 +184,15 @@ export default function Security({
 }
 
 function ProfilePanel({ profile, href }: { profile: Props['profile']; href: string }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ displayName: profile.name });
 
     return (
-        <Panel title="Profile" description="How you appear across Cbox ID.">
+        <Panel
+            title={tc('console.profile_d696a35b')}
+            description={tc('console.how_you_appear_across_cbox_id_84b2789d')}
+        >
             <form
                 className="flex items-start gap-4"
                 onSubmit={(event) => {
@@ -200,7 +209,7 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
                 </span>
 
                 <div className="min-w-0 flex-1 space-y-4">
-                    <Field label="Name" error={form.errors.displayName}>
+                    <Field label={tc('console.name_dcd1d522')} error={form.errors.displayName}>
                         <Input
                             name="displayName"
                             maxLength={120}
@@ -217,9 +226,9 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
                             an account gets taken over — so it moves through a verification
                             flow, not a text field on this page.
                         */}
-                        <Kv label="Email">{profile.email ?? '—'}</Kv>
+                        <Kv label={tc('console.email_969ccbd3')}>{profile.email ?? '—'}</Kv>
                         {profile.organization !== null && (
-                            <Kv label="Organization" prose>
+                            <Kv label={tc('console.organization_d764d425')} prose>
                                 {profile.organization.name}{' '}
                                 <Pill dot={false}>{profile.organization.role}</Pill>
                             </Kv>
@@ -227,7 +236,7 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
                     </KvList>
 
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save name
+                        {tc('console.save_name_b7297226')}
                     </Button>
                 </div>
             </form>
@@ -244,6 +253,8 @@ function PasswordPanel({
     email: string | null;
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         currentPassword: '',
         newPassword: '',
@@ -253,11 +264,11 @@ function PasswordPanel({
     return (
         <Panel
             id="password"
-            title="Password"
+            title={tc('console.password_e7cf3ef4')}
             description={
                 hasPassword
-                    ? 'Change the password you use to sign in.'
-                    : 'Set a password to sign in without a social account or passkey.'
+                    ? tc('console.change_the_password_you_use_to_sign_in_b5425719')
+                    : tc('console.set_a_password_to_sign_in_without_a_social_a_fd2b9dae')
             }
         >
             <form
@@ -280,7 +291,7 @@ function PasswordPanel({
 
                 {hasPassword && (
                     <PasswordField
-                        label="Current password"
+                        label={tc('console.current_password_72ed2bd7')}
                         name="currentPassword"
                         autoComplete="current-password"
                         error={form.errors.currentPassword}
@@ -290,7 +301,7 @@ function PasswordPanel({
                 )}
 
                 <PasswordField
-                    label="New password"
+                    label={tc('console.new_password_3dd9df44')}
                     name="newPassword"
                     autoComplete="new-password"
                     policy
@@ -300,7 +311,7 @@ function PasswordPanel({
                 />
 
                 <PasswordField
-                    label="Confirm new password"
+                    label={tc('console.confirm_new_password_bf000421')}
                     name="newPasswordConfirmation"
                     autoComplete="new-password"
                     error={form.errors.newPasswordConfirmation}
@@ -312,7 +323,9 @@ function PasswordPanel({
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {hasPassword ? 'Update password' : 'Set password'}
+                        {hasPassword
+                            ? tc('console.update_password_fe45b401')
+                            : tc('console.set_password_4e411687')}
                     </Button>
                 </div>
             </form>
@@ -327,6 +340,8 @@ function TwoFactorPanel({
     twoFactor: Props['twoFactor'];
     urls: Props['urls'];
 }) {
+    const { t: tc } = useTranslator();
+
     /*
         THE SECRET AND THE RECOVERY CODES ARRIVE ON THE FLASH CHANNEL, which Inertia never
         writes into the history entry — so a back button, a restored tab or a shared session
@@ -342,23 +357,30 @@ function TwoFactorPanel({
 
     return (
         <Panel
-            title="Two-factor authentication"
-            description="An authenticator app adds a second step when you sign in."
-            action={twoFactor.enabled && <Pill tone="success">Enabled</Pill>}
+            title={tc('console.two_factor_authentication_b6824cc8')}
+            description={tc('console.an_authenticator_app_adds_a_second_step_when_4b5bfb5c')}
+            action={
+                twoFactor.enabled && <Pill tone="success">{tc('console.enabled_92c1cdfd')}</Pill>
+            }
         >
             {twoFactor.enabled ? (
                 <>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Your account is protected with an authenticator app.
+                        {tc('console.your_account_is_protected_with_an_authentica_a0cb0146')}
                     </p>
 
                     <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="font-medium text-sm">Recovery codes</h3>
-                            <Pill dot={false}>{twoFactor.recoveryRemaining} left</Pill>
+                            <h3 className="font-medium text-sm">
+                                {tc('console.recovery_codes_36880d15')}
+                            </h3>
+                            <Pill dot={false}>
+                                {twoFactor.recoveryRemaining}
+                                {tc('console.left_bce319cf')}
+                            </Pill>
                         </div>
                         <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                            Single-use codes to sign in if you lose your authenticator.
+                            {tc('console.single_use_codes_to_sign_in_if_you_lose_your_c578fbcf')}
                         </p>
 
                         {codes !== null && <RecoveryCodes codes={codes} />}
@@ -366,19 +388,23 @@ function TwoFactorPanel({
                         <Button className="mt-3" onClick={() => setRegenerating(true)}>
                             <Icon name="refresh" className="w-4 h-4" />
                             {twoFactor.recoveryRemaining > 0
-                                ? 'Regenerate codes'
-                                : 'Generate codes'}
+                                ? tc('console.regenerate_codes_67b3a892')
+                                : tc('console.generate_codes_b36ae7c7')}
                         </Button>
                     </div>
 
                     <Dialog
                         open={regenerating}
                         onOpenChange={setRegenerating}
-                        title="Generate new recovery codes?"
-                        description="Your existing codes stop working immediately. The new ones are shown once."
+                        title={tc('console.generate_new_recovery_codes_1b0cf5b6')}
+                        description={tc(
+                            'console.your_existing_codes_stop_working_immediately_c2dbcb02',
+                        )}
                         footer={
                             <>
-                                <Button onClick={() => setRegenerating(false)}>Cancel</Button>
+                                <Button onClick={() => setRegenerating(false)}>
+                                    {tc('console.cancel_19766ed6')}
+                                </Button>
                                 <Button
                                     variant="primary"
                                     onClick={() => {
@@ -390,7 +416,7 @@ function TwoFactorPanel({
                                         );
                                     }}
                                 >
-                                    Generate
+                                    {tc('console.generate_49e49bb4')}
                                 </Button>
                             </>
                         }
@@ -404,24 +430,23 @@ function TwoFactorPanel({
                     feature.
                 */
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    Your administrator has turned off two-factor authentication for this
-                    environment.
+                    {tc('console.your_administrator_has_turned_off_two_factor_e8143f3a')}
                 </p>
             ) : !enrolling ? (
                 <Button
                     variant="primary"
                     onClick={() => router.post(urls.enrolMfa, {}, { preserveScroll: true })}
                 >
-                    <Icon name="key" className="w-4 h-4" /> Enable 2FA
+                    <Icon name="key" className="w-4 h-4" />
+                    {tc('console.enable_2fa_a07197c7')}
                 </Button>
             ) : (
                 <div className="space-y-4">
                     <ol className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
                         <li>
-                            1. Scan the QR code with your authenticator app or password manager — or
-                            add the key manually.
+                            {tc('console.1_scan_the_qr_code_with_your_authenticator_a_3150598a')}
                         </li>
-                        <li>2. Enter the 6-digit code it shows.</li>
+                        <li>{tc('console.2_enter_the_6_digit_code_it_shows_3e5b7922')}</li>
                     </ol>
 
                     <div className="flex flex-col sm:flex-row gap-4 items-start">
@@ -439,14 +464,16 @@ function TwoFactorPanel({
                             */}
                             <img
                                 src={mfaQrCode}
-                                alt="Authenticator setup QR code"
+                                alt={tc('console.authenticator_setup_qr_code_f154e1f3')}
                                 width={220}
                                 height={220}
                             />
                         </div>
 
                         <div className="min-w-0 flex-1 w-full">
-                            <span className="label">Setup key (manual entry)</span>
+                            <span className="label">
+                                {tc('console.setup_key_manual_entry_39842f55')}
+                            </span>
                             <div className="flex items-stretch gap-2">
                                 <p
                                     className="mono text-sm p-3 rounded-lg select-all break-all flex-1 min-w-0"
@@ -460,7 +487,7 @@ function TwoFactorPanel({
                                 <CopyButton
                                     value={mfaSecret}
                                     className="shrink-0"
-                                    aria-label="Copy setup key"
+                                    aria-label={tc('console.copy_setup_key_44ea66fd')}
                                 />
                             </div>
                         </div>
@@ -477,7 +504,10 @@ function TwoFactorPanel({
                         }}
                     >
                         <div style={{ minWidth: '10rem' }}>
-                            <Field label="6-digit code" error={form.errors.code}>
+                            <Field
+                                label={tc('console.6_digit_code_0d1fa0df')}
+                                error={form.errors.code}
+                            >
                                 <Input
                                     name="code"
                                     inputMode="numeric"
@@ -491,7 +521,7 @@ function TwoFactorPanel({
                             </Field>
                         </div>
                         <Button type="submit" variant="primary" loading={form.processing}>
-                            Confirm
+                            {tc('console.confirm_eebdd24a')}
                         </Button>
                         {/*
                             A reload rather than local state: the secret lives on the flash
@@ -499,7 +529,7 @@ function TwoFactorPanel({
                             to drop it is to ask the server for the page again.
                         */}
                         <Button type="button" onClick={() => router.reload()}>
-                            Cancel
+                            {tc('console.cancel_19766ed6')}
                         </Button>
                     </form>
                 </div>
@@ -509,6 +539,8 @@ function TwoFactorPanel({
 }
 
 function RecoveryCodes({ codes }: { codes: string[] }) {
+    const { t: tc } = useTranslator();
+
     return (
         <>
             <div
@@ -522,11 +554,11 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
             <div className="mt-2 flex items-center gap-3 flex-wrap">
                 <CopyButton
                     value={codes.join('\n')}
-                    label="Copy all codes"
-                    aria-label="Copy all recovery codes"
+                    label={tc('console.copy_all_codes_17220f23')}
+                    aria-label={tc('console.copy_all_recovery_codes_71d3af0d')}
                 />
                 <p className="text-xs" style={{ color: 'var(--destructive-strong)' }}>
-                    Shown only once — save them now.
+                    {tc('console.shown_only_once_save_them_now_b44e87b6')}
                 </p>
             </div>
         </>
@@ -534,6 +566,8 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
 }
 
 function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: boolean }) {
+    const { t: tc } = useTranslator();
+
     /*
      * READ ONCE, LAZILY, rather than in an effect.
      *
@@ -560,7 +594,11 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
         setMessage(null);
 
         try {
-            const created = await registerPasskey(defaultPasskeyName());
+            const created = await registerPasskey(
+                defaultPasskeyName(),
+                undefined,
+                tc('console.continue_create_passkey_47944e9d'),
+            );
             router.reload({ only: ['passkeys'] });
 
             if (created !== null) {
@@ -575,12 +613,12 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
                     ? null
                     : error instanceof PasskeyError
                       ? error.message
-                      : 'That passkey could not be added.',
+                      : tc('console.that_passkey_could_not_be_added_c7c701dc'),
             );
         } finally {
             setBusy(false);
         }
-    }, []);
+    }, [tc]);
 
     /*
      * THE PANEL STAYS EVEN WHERE PASSKEYS DO NOT WORK — only the enrolment button goes.
@@ -594,13 +632,14 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
     return (
         <Panel
             id="passkeys"
-            title="Passkeys"
-            description="Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password."
+            title={tc('console.passkeys_c87ccdb4')}
+            description={tc('console.sign_in_with_face_id_touch_id_windows_hello__97a33786')}
             action={
                 supported &&
                 enabled && (
                     <Button variant="primary" className="shrink-0" loading={busy} onClick={add}>
-                        <Icon name="plus" className="w-4 h-4" /> Add passkey
+                        <Icon name="plus" className="w-4 h-4" />
+                        {tc('console.add_passkey_a323d84f')}
                     </Button>
                 )
             }
@@ -611,21 +650,19 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
 
             {!enabled && (
                 <p className="text-sm mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                    Passkeys are turned off here, so you cannot add one or sign in with one. Any you
-                    already have are listed below, and you can remove them.
+                    {tc('console.passkeys_are_turned_off_here_so_you_cannot_a_9b3b4401')}
                 </p>
             )}
 
             {enabled && !supported && (
                 <p className="text-sm mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                    This browser cannot create a passkey, so there is nothing to add here — but any
-                    you already have are listed below, and you can remove them.
+                    {tc('console.this_browser_cannot_create_a_passkey_so_ther_2fac1ac0')}
                 </p>
             )}
 
             {passkeys.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                    No passkeys registered yet.
+                    {tc('console.no_passkeys_registered_yet_8a414b8f')}
                 </p>
             ) : (
                 <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -649,9 +686,9 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
                                         {[
-                                            `Added ${passkey.added ?? 'on an unknown date'}`,
+                                            `Added ${passkey.added ?? tc('console.on_an_unknown_date_c30b1ac5')}`,
                                             passkey.lastUsed === null
-                                                ? 'not used to sign in yet'
+                                                ? tc('console.not_used_to_sign_in_yet_12293a9f')
                                                 : `last used ${passkey.lastUsed}`,
                                         ].join(' · ')}
                                     </p>
@@ -660,7 +697,9 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
                             <div className="flex items-center gap-2 shrink-0">
                                 <Button
                                     size="sm"
-                                    aria-label={`Rename ${passkey.name}`}
+                                    aria-label={tc('console.rename_value0_b709cc6f', {
+                                        value0: passkey.name,
+                                    })}
                                     onClick={() =>
                                         setNaming({
                                             name: passkey.name,
@@ -669,15 +708,17 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
                                         })
                                     }
                                 >
-                                    Rename
+                                    {tc('console.rename_3064d79a')}
                                 </Button>
                                 <Button
                                     size="sm"
                                     variant="danger"
-                                    aria-label={`Remove ${passkey.name}`}
+                                    aria-label={tc('console.remove_value0_b597e5fb', {
+                                        value0: passkey.name,
+                                    })}
                                     onClick={() => setRemoving(passkey)}
                                 >
-                                    Remove
+                                    {tc('console.remove_c3812fc4')}
                                 </Button>
                             </div>
                         </li>
@@ -703,11 +744,17 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
             <Dialog
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
-                title={removing === null ? '' : `Remove ${removing.name}?`}
-                description="That device stops being able to sign you in. You can add it again from this page."
+                title={
+                    removing === null
+                        ? ''
+                        : tc('console.remove_value0_b8b38a7a', { value0: removing.name })
+                }
+                description={tc('console.that_device_stops_being_able_to_sign_you_in__5e148d22')}
                 footer={
                     <>
-                        <Button onClick={() => setRemoving(null)}>Cancel</Button>
+                        <Button onClick={() => setRemoving(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -719,7 +766,7 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
                                 }
                             }}
                         >
-                            Remove
+                            {tc('console.remove_c3812fc4')}
                         </Button>
                     </>
                 }
@@ -738,6 +785,8 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
  * the audit entry are the same at every door.
  */
 function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () => void }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({ name: naming.name });
     const field = useRef<HTMLInputElement>(null);
     const { errors } = usePage().props;
@@ -748,7 +797,7 @@ function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () =>
         trimmed === ''
             ? null
             : [...trimmed].length > 64
-              ? 'Keep the name to 64 characters or fewer.'
+              ? tc('console.keep_the_name_to_64_characters_or_fewer_b186900e')
               : null;
 
     return (
@@ -757,15 +806,23 @@ function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () =>
             size="sm"
             initialFocus={field}
             onOpenChange={(open) => !open && onClose()}
-            title={naming.fresh ? 'Passkey added — name it' : 'Rename passkey'}
+            title={
+                naming.fresh
+                    ? tc('console.passkey_added_name_it_3793f072')
+                    : tc('console.rename_passkey_419f7ffe')
+            }
             description={
                 naming.fresh
-                    ? 'Give it a name you will recognise later, like the device or password manager it lives in. You can change it any time.'
-                    : 'A name you will recognise later, like the device or password manager it lives in.'
+                    ? tc('console.give_it_a_name_you_will_recognise_later_like_3cdadec6')
+                    : tc('console.a_name_you_will_recognise_later_like_the_dev_25a795c4')
             }
             footer={
                 <>
-                    <Button onClick={onClose}>{naming.fresh ? 'Keep this name' : 'Cancel'}</Button>
+                    <Button onClick={onClose}>
+                        {naming.fresh
+                            ? tc('console.keep_this_name_a2b5aba4')
+                            : tc('console.cancel_19766ed6')}
+                    </Button>
                     <Button
                         type="submit"
                         form="cbx-passkey-name"
@@ -773,7 +830,7 @@ function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () =>
                         loading={form.processing}
                         disabled={trimmed === '' || localError !== null}
                     >
-                        Save name
+                        {tc('console.save_name_b7297226')}
                     </Button>
                 </>
             }
@@ -801,8 +858,8 @@ function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () =>
                 }}
             >
                 <Field
-                    label="Name"
-                    hint="Up to 64 characters."
+                    label={tc('console.name_dcd1d522')}
+                    hint={tc('console.up_to_64_characters_9f115a96')}
                     error={localError ?? serverError ?? form.errors.name}
                 >
                     <Input
@@ -842,6 +899,8 @@ function SignInMethodsPanel({
     hasPassword: boolean;
     passkeys: number;
 }) {
+    const { t: tc } = useTranslator();
+
     const { errors } = usePage().props;
     const [disconnecting, setDisconnecting] = useState<SignInIdentityRow | null>(null);
     const error = typeof errors.signInMethods === 'string' ? errors.signInMethods : null;
@@ -849,18 +908,20 @@ function SignInMethodsPanel({
     return (
         <Panel
             id="sign-in-methods"
-            title="Sign-in methods"
-            description="Every way you can sign in. Linking is always deliberate — we never join two sign-ins because their email addresses match."
+            title={tc('console.sign_in_methods_477be867')}
+            description={tc('console.every_way_you_can_sign_in_linking_is_always__bcef066d')}
         >
             <ul className="divide-y divide-[color:var(--border)]">
                 <li className="flex items-center justify-between gap-4 py-3">
                     <div className="flex items-center gap-3 min-w-0">
                         <Icon name="key" className="w-4 h-4 shrink-0" />
-                        <span className="text-sm font-medium">Password</span>
+                        <span className="text-sm font-medium">
+                            {tc('console.password_e7cf3ef4')}
+                        </span>
                         {hasPassword ? (
-                            <Pill tone="success">Set</Pill>
+                            <Pill tone="success">{tc('console.set_b6f6f3ad')}</Pill>
                         ) : (
-                            <Pill tone="neutral">Not set</Pill>
+                            <Pill tone="neutral">{tc('console.not_set_4895f731')}</Pill>
                         )}
                     </div>
                     <a
@@ -868,20 +929,24 @@ function SignInMethodsPanel({
                         className="text-sm font-medium underline underline-offset-2 shrink-0"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        {hasPassword ? 'Change' : 'Set a password'}
+                        {hasPassword
+                            ? tc('console.change_c0bf75bd')
+                            : tc('console.set_a_password_1b10004d')}
                     </a>
                 </li>
 
                 <li className="flex items-center justify-between gap-4 py-3">
                     <div className="flex items-center gap-3 min-w-0">
                         <Icon name="shield" className="w-4 h-4 shrink-0" />
-                        <span className="text-sm font-medium">Passkeys</span>
+                        <span className="text-sm font-medium">
+                            {tc('console.passkeys_c87ccdb4')}
+                        </span>
                         <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                             {passkeys === 0
-                                ? 'None yet'
+                                ? tc('console.none_yet_adb85cf2')
                                 : passkeys === 1
-                                  ? '1 passkey'
-                                  : `${passkeys} passkeys`}
+                                  ? tc('console.1_passkey_02e9a8d3')
+                                  : tc('console.value0_passkeys_ab6cc0db', { value0: passkeys })}
                         </span>
                     </div>
                     <a
@@ -889,7 +954,7 @@ function SignInMethodsPanel({
                         className="text-sm font-medium underline underline-offset-2 shrink-0"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        Manage
+                        {tc('console.manage_5a234448')}
                     </a>
                 </li>
 
@@ -902,7 +967,8 @@ function SignInMethodsPanel({
                             <ProviderMark provider={identity.provider} />
                             <div className="min-w-0">
                                 <p className="text-sm font-medium">
-                                    {identity.label} <Pill tone="success">Linked</Pill>
+                                    {identity.label}{' '}
+                                    <Pill tone="success">{tc('console.linked_bfda026e')}</Pill>
                                 </p>
                                 <p
                                     className="text-xs break-all"
@@ -926,14 +992,17 @@ function SignInMethodsPanel({
                             <Button
                                 size="sm"
                                 variant="danger"
-                                aria-label={`Disconnect ${identity.label}${identity.email === null ? '' : ` (${identity.email})`}`}
+                                aria-label={tc('console.disconnect_value0_value1_28fdb90f', {
+                                    value0: identity.label,
+                                    value1: identity.email === null ? '' : ` (${identity.email})`,
+                                })}
                                 onClick={() => setDisconnecting(identity)}
                             >
-                                Disconnect
+                                {tc('console.disconnect_acfc5be7')}
                             </Button>
                         ) : (
                             <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                Managed by your organization
+                                {tc('console.managed_by_your_organization_54508019')}
                             </span>
                         )}
                     </li>
@@ -948,9 +1017,11 @@ function SignInMethodsPanel({
 
             {methods.connectable.length > 0 && (
                 <div className="mt-4">
-                    <h3 className="text-sm font-medium">Connect another way to sign in</h3>
+                    <h3 className="text-sm font-medium">
+                        {tc('console.connect_another_way_to_sign_in_81600aea')}
+                    </h3>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        You sign in to the provider, and it is linked to you when you come back.
+                        {tc('console.you_sign_in_to_the_provider_and_it_is_linked_59410359')}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2.5">
                         {methods.connectable.map((provider) => (
@@ -967,7 +1038,10 @@ function SignInMethodsPanel({
                                 className="btn btn-ghost"
                             >
                                 <ProviderMark provider={provider.provider} />
-                                <span>Connect {provider.label}</span>
+                                <span>
+                                    {tc('console.connect_3b887c98')}
+                                    {provider.label}
+                                </span>
                             </Link>
                         ))}
                     </div>
@@ -977,11 +1051,17 @@ function SignInMethodsPanel({
             <Dialog
                 open={disconnecting !== null}
                 onOpenChange={(open) => !open && setDisconnecting(null)}
-                title={disconnecting === null ? '' : `Disconnect ${disconnecting.label}?`}
-                description="You stop being able to sign in with it. If it is your only way in, the change is refused — set a password or add a passkey first."
+                title={
+                    disconnecting === null
+                        ? ''
+                        : tc('console.disconnect_value0_1d09db11', { value0: disconnecting.label })
+                }
+                description={tc('console.you_stop_being_able_to_sign_in_with_it_if_it_66b928b9')}
                 footer={
                     <>
-                        <Button onClick={() => setDisconnecting(null)}>Cancel</Button>
+                        <Button onClick={() => setDisconnecting(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -995,7 +1075,7 @@ function SignInMethodsPanel({
                                 }
                             }}
                         >
-                            Disconnect
+                            {tc('console.disconnect_acfc5be7')}
                         </Button>
                     </>
                 }
@@ -1013,17 +1093,22 @@ function SessionPanel({
     otherSessions: number;
     urls: Props['urls'];
 }) {
+    const { t: tc } = useTranslator();
+
     const [signingOut, setSigningOut] = useState(false);
 
     return (
-        <Panel title="Current session" description="The session you are signed in with right now.">
+        <Panel
+            title={tc('console.current_session_a32789d2')}
+            description={tc('console.the_session_you_are_signed_in_with_right_now_258bbe06')}
+        >
             {session === null ? (
                 <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                    No active session details are available.
+                    {tc('console.no_active_session_details_are_available_869756b3')}
                 </p>
             ) : (
                 <KvList>
-                    <Kv label="Authentication methods" prose>
+                    <Kv label={tc('console.authentication_methods_22dfd75d')} prose>
                         <span className="flex flex-wrap gap-1.5">
                             {session.methods.length === 0 ? (
                                 <span className="text-sm" style={{ color: 'var(--faint)' }}>
@@ -1038,8 +1123,8 @@ function SessionPanel({
                             )}
                         </span>
                     </Kv>
-                    <Kv label="Signed in">{session.signedIn ?? '—'}</Kv>
-                    <Kv label="Session ID">{session.id}</Kv>
+                    <Kv label={tc('console.signed_in_ca566c89')}>{session.signedIn ?? '—'}</Kv>
+                    <Kv label={tc('console.session_id_cb9ac5c5')}>{session.id}</Kv>
                 </KvList>
             )}
 
@@ -1049,13 +1134,15 @@ function SessionPanel({
             >
                 <form method="POST" action={urls.logout}>
                     <Button type="submit" variant="danger">
-                        <Icon name="logout" className="w-4 h-4" /> Sign out
+                        <Icon name="logout" className="w-4 h-4" />
+                        {tc('console.sign_out_b4ea0920')}
                     </Button>
                 </form>
 
                 {otherSessions > 0 && (
                     <Button onClick={() => setSigningOut(true)}>
-                        <Icon name="logout" className="w-4 h-4" /> Sign out other sessions (
+                        <Icon name="logout" className="w-4 h-4" />
+                        {tc('console.sign_out_other_sessions_9bacda8c')}
                         {otherSessions})
                     </Button>
                 )}
@@ -1070,18 +1157,23 @@ function SessionPanel({
                     className="text-sm underline"
                     style={{ color: 'var(--muted-foreground)' }}
                 >
-                    See where you are signed in
+                    {tc('console.see_where_you_are_signed_in_5fd7f027')}
                 </Link>
             </div>
 
             <Dialog
                 open={signingOut}
                 onOpenChange={setSigningOut}
-                title={`Sign out of your ${otherSessions} other ${otherSessions === 1 ? 'session' : 'sessions'}?`}
-                description="Every other device holding a session as you stops working on its next request. This one stays signed in."
+                title={tc('console.sign_out_of_your_value0_other_value1_999aea88', {
+                    value0: otherSessions,
+                    value1: otherSessions === 1 ? 'session' : 'sessions',
+                })}
+                description={tc('console.every_other_device_holding_a_session_as_you__a01280d4')}
                 footer={
                     <>
-                        <Button onClick={() => setSigningOut(false)}>Cancel</Button>
+                        <Button onClick={() => setSigningOut(false)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
@@ -1089,7 +1181,7 @@ function SessionPanel({
                                 router.post(urls.signOutOthers, {}, { preserveScroll: true });
                             }}
                         >
-                            Sign out
+                            {tc('console.sign_out_48f0d3d3')}
                         </Button>
                     </>
                 }
@@ -1119,6 +1211,8 @@ function SmsPanel({
     totpEnabled: boolean;
     urls: Props['urls'];
 }) {
+    const { t: tc } = useTranslator();
+
     const { smsEnrolmentSentTo, recoveryCodes } = usePage().flash;
     const enrol = useForm({ phone: '', country: sms.countries[0] ?? '' });
     const confirm = useForm({ smsCode: '' });
@@ -1130,38 +1224,41 @@ function SmsPanel({
 
     return (
         <Panel
-            title="Text-message codes"
-            description="A code sent to your phone by SMS, as a second step when you sign in."
-            action={sms.enrolled && <Pill tone="success">On</Pill>}
+            title={tc('console.text_message_codes_9f1561f0')}
+            description={tc('console.a_code_sent_to_your_phone_by_sms_as_a_second_074a279a')}
+            action={sms.enrolled && <Pill tone="success">{tc('console.on_13001175')}</Pill>}
         >
             {sms.needsStrongerFactor && (
                 <p className="mb-4 text-sm" style={{ color: 'var(--warning-strong)' }}>
-                    As an administrator, add an authenticator app or a passkey too. Text messages
-                    can be taken over with your phone number, so they cannot be your only second
-                    step.
+                    {tc('console.as_an_administrator_add_an_authenticator_app_935b1e4e')}
                 </p>
             )}
 
             {sms.enrolled ? (
                 <>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Codes are sent to <b className="mono">{sms.maskedNumber}</b>.
+                        {tc('console.codes_are_sent_to_fd74684d')}
+                        <b className="mono">{sms.maskedNumber}</b>.
                     </p>
 
                     {codes !== null && <RecoveryCodes codes={codes} />}
 
                     <Button className="mt-4" variant="danger" onClick={() => setRemoving(true)}>
-                        Remove phone number
+                        {tc('console.remove_phone_number_935b9204')}
                     </Button>
 
                     <Dialog
                         open={removing}
                         onOpenChange={setRemoving}
-                        title="Remove your phone number?"
-                        description="You will no longer be able to sign in with a texted code. Your authenticator app, passkeys and recovery codes are not affected."
+                        title={tc('console.remove_your_phone_number_06f081f0')}
+                        description={tc(
+                            'console.you_will_no_longer_be_able_to_sign_in_with_a_a575bedf',
+                        )}
                         footer={
                             <>
-                                <Button onClick={() => setRemoving(false)}>Cancel</Button>
+                                <Button onClick={() => setRemoving(false)}>
+                                    {tc('console.cancel_19766ed6')}
+                                </Button>
                                 <Button
                                     variant="danger"
                                     onClick={() => {
@@ -1169,7 +1266,7 @@ function SmsPanel({
                                         router.delete(urls.removeSms, { preserveScroll: true });
                                     }}
                                 >
-                                    Remove
+                                    {tc('console.remove_c3812fc4')}
                                 </Button>
                             </>
                         }
@@ -1177,20 +1274,16 @@ function SmsPanel({
                 </>
             ) : sms.blocked ? (
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    As an administrator, set up an authenticator app or a passkey first. A phone
-                    number can then be added as a backup.
+                    {tc('console.as_an_administrator_set_up_an_authenticator__17d31053')}
                 </p>
             ) : sms.countries.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    Text-message codes are no longer offered here. Use an authenticator app or a
-                    passkey instead.
+                    {tc('console.text_message_codes_are_no_longer_offered_her_1a9ddf89')}
                 </p>
             ) : (
                 <div className="space-y-4">
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Text messages are the weakest second step: someone who takes over your phone
-                        number receives your codes. Prefer an authenticator app or a passkey, and
-                        use this if you cannot.
+                        {tc('console.text_messages_are_the_weakest_second_step_so_fad83e4a')}
                     </p>
 
                     <form
@@ -1202,10 +1295,13 @@ function SmsPanel({
                     >
                         <div className="flex flex-col sm:flex-row gap-3">
                             {sms.countries.length > 1 && (
-                                <Field label="Country" error={enrol.errors.country}>
+                                <Field
+                                    label={tc('console.country_701d021d')}
+                                    error={enrol.errors.country}
+                                >
                                     <Select
                                         name="country"
-                                        aria-label="Country"
+                                        aria-label={tc('console.country_701d021d')}
                                         value={enrol.data.country}
                                         onValueChange={(code) => enrol.setData('country', code)}
                                         options={sms.countries.map((code) => ({
@@ -1216,8 +1312,10 @@ function SmsPanel({
                                 </Field>
                             )}
                             <Field
-                                label="Phone number"
-                                hint="International format works anywhere, e.g. +45 12 34 56 78."
+                                label={tc('console.phone_number_306f1bb2')}
+                                hint={tc(
+                                    'console.international_format_works_anywhere_e_g_45_1_e06a0cd1',
+                                )}
                                 error={enrol.errors.phone}
                                 className="flex-1"
                             >
@@ -1238,7 +1336,9 @@ function SmsPanel({
                             variant={awaitingCode ? 'secondary' : 'primary'}
                             loading={enrol.processing}
                         >
-                            {awaitingCode ? 'Send a new code' : 'Text me a code'}
+                            {awaitingCode
+                                ? tc('console.send_a_new_code_9200fc2f')
+                                : tc('console.text_me_a_code_54b10aea')}
                         </Button>
                     </form>
 
@@ -1254,18 +1354,21 @@ function SmsPanel({
                             <p className="text-sm" style={{ color: 'var(--muted)' }}>
                                 {smsEnrolmentSentTo !== undefined ? (
                                     <>
-                                        We sent a code to{' '}
+                                        {tc('console.we_sent_a_code_to_a2377ce0')}{' '}
                                         <b className="mono">{smsEnrolmentSentTo}</b>.
                                     </>
                                 ) : (
                                     <>
-                                        A code was sent to{' '}
+                                        {tc('console.a_code_was_sent_to_522746c2')}{' '}
                                         <b className="mono">{sms.maskedNumber}</b>.
                                     </>
                                 )}{' '}
-                                Enter it to turn on text-message codes.
+                                {tc('console.enter_it_to_turn_on_text_message_codes_1d7162aa')}
                             </p>
-                            <Field label="Code" error={confirm.errors.smsCode}>
+                            <Field
+                                label={tc('console.code_340f4630')}
+                                error={confirm.errors.smsCode}
+                            >
                                 <Input
                                     name="smsCode"
                                     className="mono"
@@ -1279,7 +1382,7 @@ function SmsPanel({
                                 />
                             </Field>
                             <Button type="submit" variant="primary" loading={confirm.processing}>
-                                Confirm phone number
+                                {tc('console.confirm_phone_number_3afac393')}
                             </Button>
                         </form>
                     )}

@@ -14,6 +14,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Integrations\LogStreamDestinations;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Enums\AuthScheme;
 use Cbox\LaravelSiem\Enums\DatadogSite;
@@ -117,12 +118,12 @@ final readonly class LogStreamController extends ConsoleController
 
         $streams = $query->get();
 
-        return $this->page('console/log-streams/index', Vocabulary::LOG_STREAMS, [
+        return $this->page('console/log-streams/index', ConsoleStrings::text(Vocabulary::LOG_STREAMS), [
             'help' => HelpProps::for(HelpTopic::LogStreaming),
             'streams' => $streams->map(fn (AuditStream $stream): array => [
                 'id' => $stream->id,
                 'name' => $stream->name,
-                'destination' => self::DESTINATIONS[$stream->destination->value],
+                'destination' => ConsoleStrings::text(self::DESTINATIONS[$stream->destination->value]),
                 'endpointUrl' => $stream->endpoint_url,
                 'enabled' => $stream->enabled,
                 'health' => $stream->health()->value,
@@ -137,7 +138,7 @@ final readonly class LogStreamController extends ConsoleController
     {
         $this->scope->assertMayAdminister();
 
-        return $this->page('console/log-streams/create', 'New log stream', [
+        return $this->page('console/log-streams/create', __('console.new_log_stream_ff3c64e7'), [
             ...$this->choices(),
             /*
              * WHAT THIS STREAM WILL CARRY, said before it is created rather than inferred
@@ -212,7 +213,7 @@ final readonly class LogStreamController extends ConsoleController
         }
 
         return to_route($this->scope->routeName('audit-streams.show'), $registered->stream->id)
-            ->with('status', 'Log stream created.');
+            ->with('status', __('console.log_stream_created_339447f1'));
     }
 
     public function show(string $stream): Response
@@ -226,10 +227,10 @@ final readonly class LogStreamController extends ConsoleController
             'stream' => [
                 'id' => $model->id,
                 'name' => $model->name,
-                'destination' => self::DESTINATIONS[$model->destination->value],
+                'destination' => ConsoleStrings::text(self::DESTINATIONS[$model->destination->value]),
                 'destinationValue' => $model->destination->value,
                 'endpointUrl' => $model->endpoint_url,
-                'scheme' => $cloud ? null : self::SCHEMES[$model->auth->value],
+                'scheme' => $cloud ? null : ConsoleStrings::text(self::SCHEMES[$model->auth->value]),
                 'options' => $this->optionRows($model),
                 'enabled' => $model->enabled,
                 'health' => $model->health()->value,
@@ -321,7 +322,7 @@ final readonly class LogStreamController extends ConsoleController
         }
 
         return to_route($this->scope->routeName('audit-streams.show'), $model->id)
-            ->with('status', 'Log stream saved. Delivery is tried again on the next run.');
+            ->with('status', __('console.log_stream_saved_delivery_is_tried_again_on__fb2e3c84'));
     }
 
     /**
@@ -370,8 +371,8 @@ final readonly class LogStreamController extends ConsoleController
         }
 
         return back()->with('status', $enable
-            ? 'Stream resumed.'
-            : 'Stream disabled — entries stop being delivered and are kept.');
+            ? __('console.stream_resumed_fceeb51a')
+            : __('console.stream_disabled_entries_stop_being_delivered_a58dd4dd'));
     }
 
     public function destroy(string $stream): RedirectResponse
@@ -383,7 +384,7 @@ final readonly class LogStreamController extends ConsoleController
         $result = $this->act(DeleteLogStream::class, ['id' => $model->id]);
 
         return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('audit-streams'))
-            ->with('status', 'Log stream deleted.');
+            ->with('status', __('console.log_stream_deleted_c111c748'));
     }
 
     /**
@@ -398,7 +399,7 @@ final readonly class LogStreamController extends ConsoleController
             'destinations' => array_map(
                 static fn (Destination $destination): array => [
                     'value' => $destination->value,
-                    'label' => self::DESTINATIONS[$destination->value],
+                    'label' => ConsoleStrings::text(self::DESTINATIONS[$destination->value]),
                     'defaultAuth' => $destination->defaultAuth()->value,
                 ],
                 Destination::cases(),
@@ -406,7 +407,7 @@ final readonly class LogStreamController extends ConsoleController
             'schemes' => array_map(
                 static fn (AuthScheme $scheme): array => [
                     'value' => $scheme->value,
-                    'label' => self::SCHEMES[$scheme->value],
+                    'label' => ConsoleStrings::text(self::SCHEMES[$scheme->value]),
                 ],
                 AuthScheme::cases(),
             ),
@@ -452,7 +453,7 @@ final readonly class LogStreamController extends ConsoleController
             }
 
             $rows[] = [
-                'label' => self::OPTION_LABELS[$key],
+                'label' => ConsoleStrings::text(self::OPTION_LABELS[$key]),
                 'value' => match (true) {
                     $key === 'gzip' => $value === true ? 'gzip' : 'None',
                     $key === 'site' && is_string($value) => LogStreamDestinations::SITE_LABELS[$value] ?? $value,

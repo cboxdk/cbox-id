@@ -20,6 +20,7 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Keys\ManagementKeys;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\OAuthServer\Enums\ActionApprovalStatus;
@@ -135,7 +136,7 @@ final readonly class AgentApprovalController extends ConsoleController
 
         $actions = $this->actionRows($inbox, $registry);
 
-        return $this->page('environment/approvals', Vocabulary::APPROVALS, [
+        return $this->page('environment/approvals', ConsoleStrings::text(Vocabulary::APPROVALS), [
             'help' => HelpProps::for(HelpTopic::ReviewAgentRequests),
             'waiting' => array_values(array_filter($actions, static fn (array $row): bool => $row['status'] === ActionApprovalStatus::Pending->value)),
             'decided' => array_slice(array_values(array_filter($actions, static fn (array $row): bool => $row['status'] !== ActionApprovalStatus::Pending->value)), 0, 20),
@@ -150,11 +151,11 @@ final readonly class AgentApprovalController extends ConsoleController
                     'app' => $names[$clientId] ?? $clientId,
                     // Named rather than left blank: a request whose subject has gone is a
                     // thing an operator should be able to see and deny, not a blank row.
-                    'subject' => $subjects[(string) $request->user_id] ?? 'a user who no longer exists',
+                    'subject' => $subjects[(string) $request->user_id] ?? __('console.a_user_who_no_longer_exists_6a32ebc1'),
                     'bindingMessage' => $request->binding_message,
                     'scopes' => array_map(static fn (string $scope): array => [
                         'value' => $scope,
-                        'label' => self::SCOPE_LABELS[$scope] ?? $scope,
+                        'label' => ConsoleStrings::text(self::SCOPE_LABELS[$scope] ?? $scope),
                     ], array_values(array_filter($request->scopes, 'is_string'))),
                     'denyHref' => route('environment.approvals.deny', $request->id),
                 ];
@@ -184,7 +185,7 @@ final readonly class AgentApprovalController extends ConsoleController
          * page two, which is now empty — and this page's empty state says "No pending
          * requests", so an operator working a backlog concludes they are done.
          */
-        return to_route('environment.approvals')->with('status', 'Request denied.');
+        return to_route('environment.approvals')->with('status', __('console.request_denied_8b558b83'));
     }
 
     /**
@@ -200,7 +201,7 @@ final readonly class AgentApprovalController extends ConsoleController
         abort_if($entry === null, 404);
 
         if (! $entry->pending()) {
-            return to_route('environment.approvals')->with('error', 'That request is no longer waiting — it was answered, used or expired.');
+            return to_route('environment.approvals')->with('error', __('console.that_request_is_no_longer_waiting_it_was_ans_80728be7'));
         }
 
         // The framework refuses anybody else as well; asked here first so the answer is a
@@ -216,7 +217,7 @@ final readonly class AgentApprovalController extends ConsoleController
                 'approvals',
                 'environment.approvals',
                 [],
-                'Approving lets an agent run a critical action: '.$entry->request->action.'.',
+                __('console.approving_lets_an_agent_run_a_critical_actio_14e5456d').$entry->request->action.'.',
             );
 
             if ($sudo !== null) {
@@ -225,12 +226,12 @@ final readonly class AgentApprovalController extends ConsoleController
         }
 
         if (! $inbox->approve($entry, $me)) {
-            return to_route('environment.approvals')->with('error', 'That request could not be approved — it may have just expired.');
+            return to_route('environment.approvals')->with('error', __('console.that_request_could_not_be_approved_it_may_ha_cf4bb0b4'));
         }
 
         $this->record('organization.action_approval_approved', $entry->request->id, $entry->request->action, $me);
 
-        return to_route('environment.approvals')->with('status', 'Approved. The agent can now repeat its request — once.');
+        return to_route('environment.approvals')->with('status', __('console.approved_the_agent_can_now_repeat_its_reques_75149c94'));
     }
 
     /**
@@ -246,13 +247,13 @@ final readonly class AgentApprovalController extends ConsoleController
         abort_if($entry === null, 404);
 
         if (! $entry->pending()) {
-            return to_route('environment.approvals')->with('error', 'That request is no longer waiting — it was answered, used or expired.');
+            return to_route('environment.approvals')->with('error', __('console.that_request_is_no_longer_waiting_it_was_ans_80728be7'));
         }
 
         $inbox->deny($entry);
         $this->record('organization.action_approval_denied', $entry->request->id, $entry->request->action, (string) $auth->subjectId());
 
-        return to_route('environment.approvals')->with('status', 'Denied. The agent is told so when it asks again.');
+        return to_route('environment.approvals')->with('status', __('console.denied_the_agent_is_told_so_when_it_asks_aga_3556058a'));
     }
 
     /**
@@ -302,12 +303,12 @@ final readonly class AgentApprovalController extends ConsoleController
 
             return (new ActionApprovalRowProps(
                 entry: $entry,
-                agent: $keyId === null ? 'A workspace key' : ($keys[$keyId] ?? 'A revoked key'),
+                agent: $keyId === null ? __('console.a_workspace_key_b3b36ed9') : ($keys[$keyId] ?? __('console.a_revoked_key_c42c275c')),
                 agentId: $keyId,
                 action: $definition,
                 target: self::target($entry->request->action, $input, $pathFields, $keys),
                 arguments: ActionApprovalRowProps::arguments($input, $pathFields),
-                approver: $mine ? 'You' : ($approvers[$entry->approverId] ?? 'A former member'),
+                approver: $mine ? 'You' : ($approvers[$entry->approverId] ?? __('console.a_former_member_4c91e0f9')),
                 mine: $mine,
                 needsSudo: $pending && $mine && $definition?->danger === Danger::Critical && ! $sudoOpen,
                 approveHref: $pending && $mine ? route('environment.approvals.actions.approve', $entry->request->id) : null,

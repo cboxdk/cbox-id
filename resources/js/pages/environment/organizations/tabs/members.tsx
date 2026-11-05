@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -100,6 +101,8 @@ function Members({
     addHref: string;
     invitationsHref: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const [managing, setManaging] = useState<string | null>(null);
     const [removing, setRemoving] = useState<Member | null>(null);
     const [transferring, setTransferring] = useState<Member | null>(null);
@@ -111,14 +114,14 @@ function Members({
 
     return (
         <Panel
-            title="Members"
-            description="Who belongs to this organization, and what they can do. Someone who has no account here yet is invited by email."
+            title={tc('console.members_1044a4c0')}
+            description={tc('console.who_belongs_to_this_organization_and_what_th_330bf97e')}
             // The way to bring in somebody NEW. "Add" below only takes people who already
             // have an account in this environment, and an administrator who came here to
             // invite a colleague found no invite on the page they expected it on.
             action={
                 <Button asChild size="sm" icon="mail">
-                    <Link href={invitationsHref}>Invite by email</Link>
+                    <Link href={invitationsHref}>{tc('console.invite_by_email_f728553b')}</Link>
                 </Button>
             }
         >
@@ -141,11 +144,15 @@ function Members({
                 {members.length === 0 ? (
                     <EmptyState
                         icon="members"
-                        title="Nobody yet"
-                        description="Add an existing user of this environment, or invite somebody by email."
+                        title={tc('console.nobody_yet_aca29464')}
+                        description={tc(
+                            'console.add_an_existing_user_of_this_environment_or__0eb3e414',
+                        )}
                         actions={
                             <Button asChild variant="primary">
-                                <Link href={invitationsHref}>Invite by email</Link>
+                                <Link href={invitationsHref}>
+                                    {tc('console.invite_by_email_f728553b')}
+                                </Link>
                             </Button>
                         }
                     />
@@ -188,7 +195,9 @@ function Members({
                                     */}
                                     <div className="flex flex-wrap items-center gap-1">
                                         <Pill>
-                                            <span className="sr-only">Built-in role: </span>
+                                            <span className="sr-only">
+                                                {tc('console.built_in_role_ad05edaa')}
+                                            </span>
                                             {rosterRoleOptions.find(
                                                 (option) => option.value === member.role,
                                             )?.label ?? member.role}
@@ -212,7 +221,9 @@ function Members({
                                             )
                                         }
                                     >
-                                        {managing === member.userId ? 'Done' : 'Edit roles'}
+                                        {managing === member.userId
+                                            ? tc('console.done_11a6767d')
+                                            : tc('console.edit_roles_3b3489d0')}
                                     </Button>
 
                                     <DropdownMenu>
@@ -220,7 +231,10 @@ function Members({
                                             <Button
                                                 size="sm"
                                                 className="shrink-0"
-                                                aria-label={`More actions for ${member.name}`}
+                                                aria-label={tc(
+                                                    'console.more_actions_for_value0_fab1edb9',
+                                                    { value0: member.name },
+                                                )}
                                             >
                                                 ⋯
                                             </Button>
@@ -230,14 +244,14 @@ function Members({
                                                 <DropdownMenuItem
                                                     onSelect={() => setTransferring(member)}
                                                 >
-                                                    Make owner
+                                                    {tc('console.make_owner_fdbbb37b')}
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuItem
                                                 destructive
                                                 onSelect={() => setRemoving(member)}
                                             >
-                                                Remove from organization
+                                                {tc('console.remove_from_organization_2416fd1f')}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -250,16 +264,22 @@ function Members({
                                     >
                                         <div className="pt-3 grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
                                             <div>
-                                                <p className="label mb-1">Built-in role</p>
+                                                <p className="label mb-1">
+                                                    {tc('console.built_in_role_9f680a16')}
+                                                </p>
                                                 <p
                                                     className="text-xs mb-2"
                                                     style={{ color: 'var(--muted-foreground)' }}
                                                 >
-                                                    Exactly one. It decides what they may administer
-                                                    in this organization.
+                                                    {tc(
+                                                        'console.exactly_one_it_decides_what_they_may_adminis_45ec2b16',
+                                                    )}
                                                 </p>
                                                 <Select
-                                                    aria-label={`Built-in role for ${member.name}`}
+                                                    aria-label={tc(
+                                                        'console.built_in_role_for_value0_1ecbad27',
+                                                        { value0: member.name },
+                                                    )}
                                                     value={member.role}
                                                     onValueChange={(role) =>
                                                         router.patch(
@@ -273,20 +293,25 @@ function Members({
                                             </div>
 
                                             <div>
-                                                <p className="label mb-1">App and custom roles</p>
+                                                <p className="label mb-1">
+                                                    {tc('console.app_and_custom_roles_ecb0207e')}
+                                                </p>
                                                 <p
                                                     className="text-xs mb-2"
                                                     style={{ color: 'var(--muted-foreground)' }}
                                                 >
-                                                    Any number. They ride in the app tokens.
+                                                    {tc(
+                                                        'console.any_number_they_ride_in_the_app_tokens_23cc6b17',
+                                                    )}
                                                 </p>
                                                 {accessRoles.length === 0 ? (
                                                     <p
                                                         className="text-sm"
                                                         style={{ color: 'var(--muted-foreground)' }}
                                                     >
-                                                        No roles are defined for this organization
-                                                        yet.
+                                                        {tc(
+                                                            'console.no_roles_are_defined_for_this_organization_y_a7f006b2',
+                                                        )}
                                                     </p>
                                                 ) : (
                                                     <div className="grid gap-2 sm:grid-cols-2">
@@ -322,7 +347,8 @@ function Members({
 
                 <Pagination
                     pagination={pagination}
-                    noun="member"
+                    noun={tc('console.member_e31ab643')}
+                    pluralNoun={tc('console.members_17373ca1')}
                     href={() => window.location.pathname}
                 />
             </div>
@@ -332,7 +358,7 @@ function Members({
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={removing?.name ?? ''}
                 verb="Remove"
-                consequence="They lose access to this organization and everything it grants. Their account itself is untouched."
+                consequence={tc('console.they_lose_access_to_this_organization_and_ev_984eedd8')}
                 onConfirm={() => {
                     const member = removing;
                     setRemoving(null);
@@ -352,9 +378,9 @@ function Members({
                 open={transferring !== null}
                 onOpenChange={(open) => !open && setTransferring(null)}
                 name={transferring?.email ?? transferring?.name ?? ''}
-                verb="Make owner:"
-                actionLabel="Make owner"
-                consequence="They become this organization's only owner. Whoever owns it now becomes an admin."
+                verb={tc('console.make_owner_350d86c6')}
+                actionLabel={tc('console.make_owner_fdbbb37b')}
+                consequence={tc('console.they_become_this_organization_s_only_owner_w_11374c6d')}
                 onConfirm={() => {
                     const member = transferring;
                     setTransferring(null);
@@ -377,6 +403,8 @@ function AddMember({
     roleOptions: RoleOption[];
     href: string;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         email: '',
         role: 'member',
@@ -395,12 +423,12 @@ function AddMember({
                 });
             }}
         >
-            <p className="text-sm font-medium">Add an existing user</p>
+            <p className="text-sm font-medium">{tc('console.add_an_existing_user_e7d56d1f')}</p>
 
             <div className="flex flex-wrap items-end gap-2">
                 <Field
-                    label="Email"
-                    hint="They must already exist in this environment."
+                    label={tc('console.email_969ccbd3')}
+                    hint={tc('console.they_must_already_exist_in_this_environment_67854676')}
                     className="flex-1"
                     error={form.errors.email}
                 >
@@ -412,7 +440,7 @@ function AddMember({
                     />
                 </Field>
 
-                <Field label="Built-in role" error={form.errors.role}>
+                <Field label={tc('console.built_in_role_9f680a16')} error={form.errors.role}>
                     <Select
                         name="role"
                         value={form.data.role}
@@ -427,7 +455,7 @@ function AddMember({
                     className="shrink-0"
                     loading={form.processing}
                 >
-                    Add
+                    {tc('console.add_9fd728c6')}
                 </Button>
             </div>
 
@@ -452,13 +480,15 @@ function AccessRolePicker({
     onChange: (roles: string[]) => void;
     hint?: string;
 }) {
+    const { t: tc } = useTranslator();
+
     if (roles.length === 0) {
         return null;
     }
 
     return (
         <fieldset>
-            <legend className="label">App and custom roles</legend>
+            <legend className="label">{tc('console.app_and_custom_roles_ecb0207e')}</legend>
             {hint !== undefined && (
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                     {hint}

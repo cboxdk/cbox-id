@@ -14,6 +14,7 @@ use App\Http\Requests\Console\StorePermissionRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
@@ -134,7 +135,7 @@ final readonly class PermissionController extends ConsoleController
 
         $usage = $this->usageFor($manual->merge($declared), $owner, $environmentId);
 
-        return $this->page('console/permissions', Vocabulary::PERMISSIONS, [
+        return $this->page('console/permissions', ConsoleStrings::text(Vocabulary::PERMISSIONS), [
             'help' => HelpProps::for(HelpTopic::Permissions),
             'mine' => $this->rows($mine, $appNames, $usage),
             'inherited' => $this->rows($inherited, $appNames, $usage),
@@ -194,7 +195,7 @@ final readonly class PermissionController extends ConsoleController
             'tenant_assignable' => $request->tenantAssignable(),
         ], ['description' => 'description', 'tenant_assignable' => 'tenantAssignable'], 'description');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.permission_updated_7983fe51'));
     }
 
     /**
@@ -207,7 +208,7 @@ final readonly class PermissionController extends ConsoleController
 
         $result = $this->act(DeletePermission::class, ['id' => $permission]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission deleted.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.permission_deleted_778410c0'));
     }
 
     /**

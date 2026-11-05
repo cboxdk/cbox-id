@@ -48,8 +48,8 @@ final readonly class EnvironmentScopeProps implements Prop
     private static function label(EnvironmentApiScope $scope): string
     {
         return match ($scope) {
-            EnvironmentApiScope::ApiKeysRead => 'Read member API keys',
-            EnvironmentApiScope::ApiKeysWrite => 'Revoke member API keys',
+            EnvironmentApiScope::ApiKeysRead => __('console.read_member_api_keys_746f4554'),
+            EnvironmentApiScope::ApiKeysWrite => __('console.revoke_member_api_keys_c542c1c3'),
             default => $scope->label(),
         };
     }

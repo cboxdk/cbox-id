@@ -1,3 +1,5 @@
+import { useConsoleCount } from '@/i18n/count';
+import { useTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -57,10 +59,6 @@ function listHref(search: string, page?: number): string {
     return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
 }
 
-function plural(count: number, noun: string): string {
-    return `${count} ${count === 1 ? noun : `${noun}s`}`;
-}
-
 export default function Customers({
     customers,
     pagination,
@@ -70,6 +68,9 @@ export default function Customers({
     environmentLimits,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+    const plural = useConsoleCount();
+
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
     const [confirming, setConfirming] = useState<CustomerRow | null>(null);
@@ -94,7 +95,7 @@ export default function Customers({
         <>
             <PageHeader
                 help={help}
-                description="Every workspace on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth."
+                description={tc('console.every_workspace_on_this_install_open_one_to__4abbea51')}
                 actions={
                     <Button
                         variant="primary"
@@ -102,7 +103,7 @@ export default function Customers({
                         onClick={() => setCreating((open) => !open)}
                     >
                         <Icon name="plus" className="w-4 h-4" />
-                        New workspace
+                        {tc('console.new_workspace_df0caf1b')}
                     </Button>
                 }
             />
@@ -129,13 +130,14 @@ export default function Customers({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name or slug"
-                    aria-label="Search workspaces"
+                    placeholder={tc('console.search_by_name_or_slug_bfd8464a')}
+                    aria-label={tc('console.search_workspaces_c0cd6bdf')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
                 <output className="sr-only">
-                    {plural(pagination.count, 'workspace')} on this page.
+                    {plural(pagination.count, 'workspace')}
+                    {tc('console.on_this_page_d8ae7c64')}
                 </output>
             </div>
 
@@ -149,18 +151,24 @@ export default function Customers({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No workspaces match “${search}”`}
-                            description="Try part of the organization name, or its slug."
+                            title={tc('console.no_workspaces_match_value0_be4602eb', {
+                                value0: search,
+                            })}
+                            description={tc(
+                                'console.try_part_of_the_organization_name_or_its_slu_51fd9569',
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="settings"
-                            title="No workspaces yet"
-                            description="A workspace appears here the moment somebody signs up — or use New workspace above to onboard one yourself."
+                            title={tc('console.no_workspaces_yet_97d0b117')}
+                            description={tc(
+                                'console.a_workspace_appears_here_the_moment_somebody_ce907423',
+                            )}
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
                                     <Icon name="plus" className="w-4 h-4" />
-                                    New workspace
+                                    {tc('console.new_workspace_df0caf1b')}
                                 </Button>
                             }
                         />
@@ -176,16 +184,28 @@ export default function Customers({
                     */}
                     <div className="cbx-panel overflow-hidden mt-8">
                         <div className="overflow-x-auto">
-                            <Table caption="Workspaces on this install, with the size of each estate.">
+                            <Table
+                                caption={tc(
+                                    'console.workspaces_on_this_install_with_the_size_of__23b98cfe',
+                                )}
+                            >
                                 <thead>
                                     <tr>
-                                        <Th>Workspace</Th>
-                                        <Th className="text-right">Members</Th>
-                                        <Th className="text-right">Projects</Th>
-                                        <Th className="text-right">Environments</Th>
-                                        <Th>Created</Th>
+                                        <Th>{tc('console.workspace_87bb59ba')}</Th>
+                                        <Th className="text-right">
+                                            {tc('console.members_1044a4c0')}
+                                        </Th>
+                                        <Th className="text-right">
+                                            {tc('console.projects_04e2a972')}
+                                        </Th>
+                                        <Th className="text-right">
+                                            {tc('console.environments_07437cd6')}
+                                        </Th>
+                                        <Th>{tc('console.created_d70b9e24')}</Th>
                                         <Th>
-                                            <span className="sr-only">Actions</span>
+                                            <span className="sr-only">
+                                                {tc('console.actions_ff8059dc')}
+                                            </span>
                                         </Th>
                                     </tr>
                                 </thead>
@@ -205,7 +225,7 @@ export default function Customers({
                                                             tone="destructive"
                                                             className="align-middle ml-1"
                                                         >
-                                                            Suspended
+                                                            {tc('console.suspended_e392a389')}
                                                         </Pill>
                                                     )}
                                                 </p>
@@ -228,17 +248,29 @@ export default function Customers({
                                             <CountCell
                                                 href={customer.href}
                                                 count={customer.members}
-                                                label={`${plural(customer.members, 'member')} on ${customer.name}`}
+                                                label={tc('console.value0_on_value1_37b189db', {
+                                                    value0: plural(customer.members, 'member'),
+                                                    value1: customer.name,
+                                                })}
                                             />
                                             <CountCell
                                                 href={customer.href}
                                                 count={customer.projects}
-                                                label={`${plural(customer.projects, 'project')} on ${customer.name}`}
+                                                label={tc('console.value0_on_value1_37b189db', {
+                                                    value0: plural(customer.projects, 'project'),
+                                                    value1: customer.name,
+                                                })}
                                             />
                                             <CountCell
                                                 href={customer.href}
                                                 count={customer.environments}
-                                                label={`${plural(customer.environments, 'environment')} on ${customer.name}`}
+                                                label={tc('console.value0_on_value1_37b189db', {
+                                                    value0: plural(
+                                                        customer.environments,
+                                                        'environment',
+                                                    ),
+                                                    value1: customer.name,
+                                                })}
                                             />
 
                                             <Td
@@ -252,9 +284,12 @@ export default function Customers({
                                                 <Button asChild size="sm">
                                                     <Link
                                                         href={customer.href}
-                                                        aria-label={`Open ${customer.name}`}
+                                                        aria-label={tc(
+                                                            'console.open_value0_f5734efb',
+                                                            { value0: customer.name },
+                                                        )}
                                                     >
-                                                        Open
+                                                        {tc('console.open_ed077f3d')}
                                                     </Link>
                                                 </Button>
                                                 <Button
@@ -266,7 +301,9 @@ export default function Customers({
                                                     aria-label={`${customer.active ? 'Suspend' : 'Reactivate'} ${customer.name}`}
                                                     onClick={() => setConfirming(customer)}
                                                 >
-                                                    {customer.active ? 'Suspend' : 'Reactivate'}
+                                                    {customer.active
+                                                        ? tc('console.suspend_4948e134')
+                                                        : tc('console.reactivate_2dc7478f')}
                                                 </Button>
                                             </Td>
                                         </tr>
@@ -279,7 +316,8 @@ export default function Customers({
                     <div className="mt-4">
                         <SimplePagination
                             pagination={pagination}
-                            noun="workspace"
+                            noun={tc('console.workspace_21a3230e')}
+                            pluralNoun={tc('console.workspaces_6e8d7998')}
                             href={(page) => listHref(search, page)}
                         />
                     </div>
@@ -287,12 +325,9 @@ export default function Customers({
             )}
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
-                Suspension is the only lever here, and it is reversible. Nothing on this screen
-                deletes or purges a workspace. An install also holds environments that no workspace
-                owns — the platform root, and any unattached leftover; both are named for what they
-                are on{' '}
+                {tc('console.suspension_is_the_only_lever_here_and_it_is__2acf8690')}{' '}
                 <Link href={environmentsHref} className="underline">
-                    Environments
+                    {tc('console.environments_07437cd6')}
                 </Link>
                 .
             </p>
@@ -314,12 +349,16 @@ export default function Customers({
                     confirming === null
                         ? ''
                         : confirming.active
-                          ? `Its members are signed out and all ${plural(confirming.environments, 'environment')} it owns stop serving auth on the next request. You can reactivate it here.`
-                          : 'Its members can sign in again and its environments resume serving auth.'
+                          ? tc('console.its_members_are_signed_out_and_all_value0_it_9e9957fc', {
+                                value0: plural(confirming.environments, 'environment'),
+                            })
+                          : tc('console.its_members_can_sign_in_again_and_its_enviro_d369bd33')
                 }
                 footer={
                     <>
-                        <Button onClick={() => setConfirming(null)}>Cancel</Button>
+                        <Button onClick={() => setConfirming(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             variant={confirming?.active === true ? 'danger' : 'primary'}
                             onClick={() => {
@@ -331,7 +370,9 @@ export default function Customers({
                                 }
                             }}
                         >
-                            {confirming?.active === true ? 'Suspend' : 'Reactivate'}
+                            {confirming?.active === true
+                                ? tc('console.suspend_4948e134')
+                                : tc('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -359,6 +400,8 @@ function CreateCustomer({
     limits: number[];
     onDone: () => void;
 }) {
+    const { t: tc } = useTranslator();
+
     const form = useForm({
         name: '',
         ownerName: '',
@@ -373,7 +416,7 @@ function CreateCustomer({
     }, []);
 
     return (
-        <Panel title="New workspace" className="mt-6">
+        <Panel title={tc('console.new_workspace_df0caf1b')} className="mt-6">
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -381,14 +424,15 @@ function CreateCustomer({
                 }}
             >
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    Creates the organization, its owner, its first product and that product&rsquo;s
-                    production environment. The owner is emailed a link to set their own password —
-                    you do not choose one for them.
+                    {tc('console.creates_the_organization_its_owner_its_first_79cca112')}
                 </p>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                        <Field label="Workspace name" error={form.errors.name}>
+                        <Field
+                            label={tc('console.workspace_name_9619649d')}
+                            error={form.errors.name}
+                        >
                             <Input
                                 ref={name}
                                 name="name"
@@ -399,7 +443,7 @@ function CreateCustomer({
                         </Field>
                     </div>
 
-                    <Field label="Owner name" error={form.errors.ownerName}>
+                    <Field label={tc('console.owner_name_0c19629c')} error={form.errors.ownerName}>
                         <Input
                             name="ownerName"
                             autoComplete="name"
@@ -409,8 +453,8 @@ function CreateCustomer({
                     </Field>
 
                     <Field
-                        label="Owner email"
-                        hint="If this address already holds a Cbox ID, it is reused — they will own both."
+                        label={tc('console.owner_email_cbc7ec6d')}
+                        hint={tc('console.if_this_address_already_holds_a_cbox_id_it_i_88a57e1d')}
                         error={form.errors.ownerEmail}
                     >
                         <Input
@@ -423,8 +467,8 @@ function CreateCustomer({
                     </Field>
 
                     <Field
-                        label="Environment allowance"
-                        hint="The plan allowance on their first product. Billing hangs off the product, not the workspace."
+                        label={tc('console.environment_allowance_f277ec0f')}
+                        hint={tc('console.the_plan_allowance_on_their_first_product_bi_982af408')}
                         error={form.errors.environmentLimit}
                     >
                         <Select
@@ -442,10 +486,10 @@ function CreateCustomer({
 
                 <div className="mt-6 flex items-center gap-3">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create workspace
+                        {tc('console.create_workspace_4b892277')}
                     </Button>
                     <Button type="button" onClick={onDone}>
-                        Cancel
+                        {tc('console.cancel_19766ed6')}
                     </Button>
                 </div>
             </form>

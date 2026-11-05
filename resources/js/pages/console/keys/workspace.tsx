@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -43,6 +44,8 @@ type Props = PageProps<{
 }>;
 
 export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Props) {
+    const { t: tc } = useTranslator();
+
     // On the flash channel: a full-authority credential in a history entry is readable by
     // pressing Back, long after the page that showed it has gone.
     const freshKey = usePage().flash.freshKey;
@@ -60,11 +63,11 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
         <>
             <PageHeader
                 help={help}
-                description="The workspace's own keys, for the workspace API — list projects and environments, create environments, list and invite your team. Each key carries a built-in role."
+                description={tc('console.the_workspace_s_own_keys_for_the_workspace_a_d42a9e3f')}
                 actions={
                     <Button asChild size="sm">
                         <a href="/api/v1/workspace/openapi.yaml" target="_blank" rel="noreferrer">
-                            API reference
+                            {tc('console.api_reference_484ee9bb')}
                             <Icon name="external" className="w-3.5 h-3.5" />
                         </a>
                     </Button>
@@ -72,7 +75,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
             />
 
             <div className="mt-4">
-                <LinkTabs tabs={tabs} label="Key types" />
+                <LinkTabs tabs={tabs} label={tc('console.key_types_0562e0e6')} />
             </div>
 
             {freshKey !== undefined && (
@@ -84,7 +87,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                     }}
                 >
                     <p className="text-sm font-medium" style={{ color: 'var(--success-strong)' }}>
-                        Copy your key now — you won't be able to see it again.
+                        {tc('console.copy_your_key_now_you_won_t_be_able_to_see_i_36d9f33f')}
                     </p>
                     <div className="mt-3 flex items-center gap-2">
                         <code
@@ -102,13 +105,15 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
             )}
 
             <div className="mt-6 space-y-6">
-                <Panel title="Keys" flush={keys.length > 0}>
+                <Panel title={tc('console.keys_f0d66a79')} flush={keys.length > 0}>
                     {keys.length === 0 ? (
                         <EmptyState
                             icon="key"
                             equivalent="keys.workspace.create"
-                            title="No workspace keys yet"
-                            description="Create a key to reach the workspace API from your own services."
+                            title={tc('console.no_workspace_keys_yet_92b8986e')}
+                            description={tc(
+                                'console.create_a_key_to_reach_the_workspace_api_from_0addbbd5',
+                            )}
                         />
                     ) : (
                         keys.map((key, index) => (
@@ -137,7 +142,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                                         className="shrink-0"
                                         onClick={() => setRevoking(key)}
                                     >
-                                        Revoke
+                                        {tc('console.revoke_87e6d00b')}
                                     </Button>
                                 )}
                             </div>
@@ -146,8 +151,10 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                 </Panel>
 
                 <Panel
-                    title="New key"
-                    description="The key holds the built-in role you choose and can do only what that role allows."
+                    title={tc('console.new_key_eda5496b')}
+                    description={tc(
+                        'console.the_key_holds_the_built_in_role_you_choose_a_b7c48a4b',
+                    )}
                 >
                     <form
                         className="space-y-4"
@@ -160,16 +167,19 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                         }}
                     >
                         <div className="grid gap-3 sm:grid-cols-2 items-start">
-                            <Field label="Name" error={form.errors.name}>
+                            <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
                                 <Input
                                     name="name"
-                                    placeholder="CI deploy"
+                                    placeholder={tc('console.ci_deploy_91ef66b5')}
                                     value={form.data.name}
                                     onChange={(event) => form.setData('name', event.target.value)}
                                 />
                             </Field>
 
-                            <Field label="Built-in role" error={form.errors.role}>
+                            <Field
+                                label={tc('console.built_in_role_9f680a16')}
+                                error={form.errors.role}
+                            >
                                 <Select
                                     value={form.data.role}
                                     onValueChange={(role) => form.setData('role', role)}
@@ -192,7 +202,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                         />
 
                         <Button type="submit" variant="primary" loading={form.processing}>
-                            Create key
+                            {tc('console.create_key_b6cde903')}
                         </Button>
                     </form>
                 </Panel>
@@ -203,7 +213,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                 onOpenChange={(open) => setRevoking(open ? revoking : null)}
                 name={revoking?.name ?? ''}
                 verb="Revoke"
-                consequence="Any integration still presenting this key stops working immediately. This cannot be undone."
+                consequence={tc('console.any_integration_still_presenting_this_key_st_2b1f7061')}
                 onConfirm={() => {
                     const key = revoking;
                     setRevoking(null);

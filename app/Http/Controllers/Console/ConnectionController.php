@@ -26,6 +26,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Sso\CertificateExpiryAlerts;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -103,7 +104,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $owners = $this->scope->organizationNames($connections->pluck('organization_id'));
 
-        return $this->page('console/connections/index', Vocabulary::ENTERPRISE_SSO, [
+        return $this->page('console/connections/index', ConsoleStrings::text(Vocabulary::ENTERPRISE_SSO), [
             'help' => HelpProps::for(HelpTopic::SingleSignOn),
             'connections' => $connections->getCollection()->map(fn (Connection $connection): array => [
                 'id' => $connection->id,
@@ -173,7 +174,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $organizationId = $this->scope->requireOrganizationId();
 
-        return $this->page('console/domains', Vocabulary::DOMAINS, [
+        return $this->page('console/domains', ConsoleStrings::text(Vocabulary::DOMAINS), [
             'help' => HelpProps::for(HelpTopic::Domains),
             'mayAdminister' => $this->scope->mayAdminister(),
             // The writes are Enterprise SSO's, gated on the same plan feature.
@@ -251,7 +252,7 @@ final readonly class ConnectionController extends ConsoleController
             // A real, dotted hostname — no scheme, no path, no '@'.
             'domain' => ['required', 'string', 'max:253', 'regex:/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/'],
         ], [
-            'domain.regex' => 'Enter a valid domain, e.g. acme.com.',
+            'domain.regex' => __('console.enter_a_valid_domain_e_g_acme_com_2049a561'),
         ]);
 
         $result = $this->act(AddSsoDomain::class, [
@@ -288,8 +289,8 @@ final readonly class ConnectionController extends ConsoleController
         }
 
         return ($result->payload['verified'] ?? false) === true
-            ? back()->with('status', 'Domain verified.')
-            : back()->with('error', "We couldn't find the TXT record yet — DNS can take a few minutes.");
+            ? back()->with('status', __('console.domain_verified_11272c96'))
+            : back()->with('error', __('console.we_couldn_t_find_the_txt_record_yet_dns_can__0f4e9bce'));
     }
 
     /** Toggle the capture gate on a VERIFIED domain this organization owns. */
@@ -314,8 +315,8 @@ final readonly class ConnectionController extends ConsoleController
         }
 
         return back()->with('status', $record->capture
-            ? 'Capture disabled.'
-            : 'Capture enabled — matching users must use SSO.');
+            ? __('console.capture_disabled_c3e9f59f')
+            : __('console.capture_enabled_matching_users_must_use_sso_2b2c171a'));
     }
 
     public function removeDomain(string $domain): RedirectResponse
@@ -325,14 +326,14 @@ final readonly class ConnectionController extends ConsoleController
 
         $result = $this->act(RemoveSsoDomain::class, ['id' => $domain, 'organization_id' => $this->scope->requireOrganizationId()]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Domain removed.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.domain_removed_2ccaa6d3'));
     }
 
     public function create(): Response
     {
         $this->scope->assertMayAdminister();
 
-        return $this->page('console/connections/create', 'New connection', [
+        return $this->page('console/connections/create', __('console.new_connection_729bceee'), [
             // "For which organization?" — on the environment console, where the form is not
             // already about one. Prefilled and locked when it was opened from one's page.
             'organization' => $this->organizationPicker(),
@@ -363,7 +364,7 @@ final readonly class ConnectionController extends ConsoleController
         $input = trim((string) $request->string('metadata'));
 
         if ($input === '') {
-            return back()->withErrors(['metadata' => 'Paste the IdP metadata XML, or a metadata URL.']);
+            return back()->withErrors(['metadata' => __('console.paste_the_idp_metadata_xml_or_a_metadata_url_568b4813')]);
         }
 
         $result = $this->act(ImportSamlMetadata::class, ['metadata' => $input], fallback: 'metadata');
@@ -374,7 +375,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $this->inertia->flash('metadata', $result->payload);
 
-        return back()->with('status', 'Metadata imported — review the fields and create the connection.');
+        return back()->with('status', __('console.metadata_imported_review_the_fields_and_crea_b6b3fc21'));
     }
 
     public function store(StoreConnectionRequest $request): RedirectResponse
@@ -415,7 +416,7 @@ final readonly class ConnectionController extends ConsoleController
              * this session at all, so asking the gate about them answers "unverified" for
              * everyone and would refuse every creation on that plane outright.
              */
-            app(VerifiedEmailGate::class)->require('create an identity connection');
+            app(VerifiedEmailGate::class)->require(__('console.create_an_identity_connection_f4d0b731'));
         }
 
         // The action discovers an OIDC issuer's endpoints — SSRF-guarded — so the connection
@@ -437,7 +438,7 @@ final readonly class ConnectionController extends ConsoleController
         $connection = $result->value;
 
         return to_route($this->scope->routeName('connections.show'), $connection->id)
-            ->with('status', 'Connection created as a draft.');
+            ->with('status', __('console.connection_created_as_a_draft_d0d90bbf'));
     }
 
     public function show(Request $request, string $connection, Connections $connections): Response
@@ -539,7 +540,7 @@ final readonly class ConnectionController extends ConsoleController
             'name' => $request->name(),
         ], self::formFields(), fallback: 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Connection updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.connection_updated_0205fc1d'));
     }
 
     /**
@@ -579,7 +580,7 @@ final readonly class ConnectionController extends ConsoleController
         return to_route(
             $this->scope->routeName('connections.show'),
             ['connection' => $model->id, 'activated' => '1'],
-        )->with('status', 'Connection activated.');
+        )->with('status', __('console.connection_activated_1a9bc342'));
     }
 
     /**
@@ -596,13 +597,13 @@ final readonly class ConnectionController extends ConsoleController
         // page — writing them from here would let a control labelled "require SSO for this
         // organization" quietly change the rule for every tenant too.
         if ($model->organization_id === null) {
-            return back()->with('error', 'This connection belongs to the environment, not to one organization. Set the requirement in the Authentication policy.');
+            return back()->with('error', __('console.this_connection_belongs_to_the_environment_n_5e9a5366'));
         }
 
         $result = $this->act(RequireSso::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
         return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections.show'), $model->id)
-            ->with('status', 'Single sign-on is now required.');
+            ->with('status', __('console.single_sign_on_is_now_required_5faae493'));
     }
 
     public function disable(string $connection): RedirectResponse
@@ -611,7 +612,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $result = $this->act(DisableSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Connection disabled.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.connection_disabled_80f39124'));
     }
 
     public function destroy(string $connection): RedirectResponse
@@ -620,7 +621,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $result = $this->act(DeleteSsoConnection::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);
 
-        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections'))->with('status', 'Connection deleted.');
+        return $result instanceof RedirectResponse ? $result : to_route($this->scope->routeName('connections'))->with('status', __('console.connection_deleted_6acced5e'));
     }
 
     /**
@@ -660,7 +661,7 @@ final readonly class ConnectionController extends ConsoleController
         $model = $this->connection($id);
 
         if (! $this->entitledFor($model)) {
-            throw new AuthorizationException('This organization does not have access to that feature.');
+            throw new AuthorizationException(__('console.this_organization_does_not_have_access_to_th_c472ad39'));
         }
 
         return $model;

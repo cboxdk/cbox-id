@@ -60,8 +60,8 @@ final class IssueEnvironmentKeyRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'scopes.required' => 'Choose at least one scope — a key with none can do nothing.',
-            'scopes.min' => 'Choose at least one scope — a key with none can do nothing.',
+            'scopes.required' => __('console.choose_at_least_one_scope_a_key_with_none_ca_59eacb6e'),
+            'scopes.min' => __('console.choose_at_least_one_scope_a_key_with_none_ca_59eacb6e'),
             ...KeyExpiry::messages(),
         ];
     }

@@ -23,6 +23,7 @@ use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
+use App\Http\Middleware\ResolveConsoleLocale;
 use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
@@ -259,6 +260,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
+        $middleware->appendToGroup('web', ResolveConsoleLocale::class);
 
         // An app's RP-initiated sign-out on a tenant's host ends the tenant's END USER and
         // nothing else: the environment console's administrator sharing the cookie is

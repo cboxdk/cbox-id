@@ -50,10 +50,10 @@ final class StoreClientRequest extends FormRequest
              * to be corrected.
              */
             'redirectUris' => ['nullable', 'string', 'max:2000', new SecureUriLines(
-                'Each redirect URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/callback.',
+                __('console.each_redirect_uri_must_use_https_http_is_all_5445c31e'),
             )],
             'postLogoutRedirectUris' => ['nullable', 'string', 'max:2000', new SecureUriLines(
-                'Each sign-out URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/signed-out.',
+                __('console.each_sign_out_uri_must_use_https_http_is_all_b9c71673'),
             )],
             'manifestUrl' => ['nullable', 'url', 'max:500'],
             'firstParty' => ['boolean'],

@@ -52,7 +52,7 @@ final class SaveServiceProviderRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['nameIdFormat' => 'Choose a supported NameID format.'];
+        return ['nameIdFormat' => __('console.choose_a_supported_nameid_format_6ca466ca')];
     }
 
     public function entityId(): string

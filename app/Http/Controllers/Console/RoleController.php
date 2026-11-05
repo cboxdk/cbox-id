@@ -17,6 +17,7 @@ use App\Http\Requests\Console\StoreRoleRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
@@ -123,7 +124,7 @@ final readonly class RoleController extends ConsoleController
             : [];
         $people = $this->scope->peopleRoute();
 
-        return $this->page('console/roles/index', Vocabulary::ROLES, [
+        return $this->page('console/roles/index', ConsoleStrings::text(Vocabulary::ROLES), [
             'help' => HelpProps::for(HelpTopic::Roles),
             'roles' => array_map(fn (Role $role): array => [
                 'id' => $role->id,
@@ -181,7 +182,7 @@ final readonly class RoleController extends ConsoleController
 
         $apps = $this->usableApps();
 
-        return $this->page('console/roles/create', 'New role', [
+        return $this->page('console/roles/create', __('console.new_role_500f2f9d'), [
             'catalog' => $this->catalogProps($this->assignable()->orderBy('name')->get(), $apps),
             'apps' => array_map(
                 static fn (string $id, string $name): array => ['id' => $id, 'name' => $name],
@@ -228,7 +229,7 @@ final readonly class RoleController extends ConsoleController
              */
             if ($this->scope->plane() !== ConsolePlane::Environment) {
                 return back()->withInput()->withErrors([
-                    'environmentWide' => 'Only an environment administrator may define a role for every organization.',
+                    'environmentWide' => __('console.only_an_environment_administrator_may_define_392ab459'),
                 ]);
             }
 
@@ -324,7 +325,7 @@ final readonly class RoleController extends ConsoleController
             'description' => $request->description(),
         ], ['name' => 'name', 'description' => 'description'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Role updated.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_updated_0c33aa24'));
     }
 
     /**
@@ -351,12 +352,12 @@ final readonly class RoleController extends ConsoleController
         if ($request->boolean('granted')) {
             $result = $this->act(GrantRolePermission::class, $input, ['permission_id' => 'permission'], 'permission');
 
-            return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission granted.');
+            return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.permission_granted_63895f3e'));
         }
 
         $result = $this->act(RevokeRolePermission::class, $input, ['permission_id' => 'permission'], 'permission');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Permission revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.permission_revoked_bc68d1f6'));
     }
 
     /**
@@ -371,7 +372,7 @@ final readonly class RoleController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route($this->scope->routeName('roles'))->with('status', 'Role deleted.');
+            : to_route($this->scope->routeName('roles'))->with('status', __('console.role_deleted_fb555aa3'));
     }
 
     /**

@@ -1832,7 +1832,7 @@ it('reveals a new app\'s secret exactly once, and never into the history entry',
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('revealedSecret', $secret));
 
-    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain('csec_');
+    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain($secret);
 
     // …and the next visit carries nothing. One-shot is what makes "copy it now" true.
     $this->get(route('environment.clients.show', $client->id))
@@ -1896,13 +1896,17 @@ it('never writes a rotated client secret into the page props', function (): void
         ->post(route('environment.clients.rotate', $client->id))
         ->assertInertiaFlash('revealedSecret');
 
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $secret = is_array($flash) ? ($flash['revealedSecret'] ?? null) : null;
+
     $revealed = $this->get(route('environment.clients.show', $client->id))->assertOk();
 
     // On the flash channel, which the client does not persist into history…
     $revealed->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('revealedSecret'));
 
-    // …and NOT in the props, which it does.
-    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain('csec_');
+    // …and NOT in the props, which it does. Catalogue examples may mention the public prefix.
+    expect($secret)->toBeString()->toStartWith('csec_');
+    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain($secret);
 })->group('security');
 
 /*

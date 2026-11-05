@@ -34,10 +34,10 @@ enum SecretGrace: int
     public function label(): string
     {
         return match ($this) {
-            self::Immediately => 'Immediately',
-            self::OneHour => 'After 1 hour',
-            self::OneDay => 'After 24 hours',
-            self::SevenDays => 'After 7 days',
+            self::Immediately => __('console.immediately_0fe556b2'),
+            self::OneHour => __('console.after_1_hour_57cc7b5e'),
+            self::OneDay => __('console.after_24_hours_f64edb0f'),
+            self::SevenDays => __('console.after_7_days_a166017f'),
         };
     }
 
@@ -45,10 +45,10 @@ enum SecretGrace: int
     public function overlap(): string
     {
         return match ($this) {
-            self::Immediately => 'not at all',
-            self::OneHour => 'for another hour',
-            self::OneDay => 'for another 24 hours',
-            self::SevenDays => 'for another 7 days',
+            self::Immediately => __('console.not_at_all_d440a63a'),
+            self::OneHour => __('console.for_another_hour_c9abb875'),
+            self::OneDay => __('console.for_another_24_hours_f260c777'),
+            self::SevenDays => __('console.for_another_7_days_48d6cee3'),
         };
     }
 

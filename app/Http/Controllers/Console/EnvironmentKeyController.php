@@ -21,6 +21,7 @@ use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyScopes;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -107,7 +108,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // Workspace › Keys — one line from My account › API keys, which is a person's OWN
         // keys and a different page; the same word twice in one rail would send people to
         // the wrong one. (The environment console's keys are its Agents page, above.)
-        return $this->page('console/keys/management', Vocabulary::API_KEYS, [
+        return $this->page('console/keys/management', ConsoleStrings::text(Vocabulary::API_KEYS), [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
             // Any environment of the workspace this person may reach.
@@ -174,7 +175,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
          * something you get past rather than something that means what it says.
          */
         $sudo = $this->stepUp(
-            'A management key reads and writes this environment\'s organizations and people over the API, and its value is shown once.',
+            __('console.a_management_key_reads_and_writes_this_envir_aba5f345'),
         );
 
         if ($sudo !== null) {
@@ -220,7 +221,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         $this->inertia->flash('freshKey', $minted->plaintext);
         $this->inertia->flash('freshKeyName', $minted->key->name);
 
-        return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
+        return back()->with('status', __('console.management_key_created_copy_it_now_it_will_n_9ec713ad'));
     }
 
     public function destroy(
@@ -239,7 +240,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         abort_unless(in_array($environmentId, $this->reachable($members), true), 403);
 
-        $sudo = $this->stepUp('Revoking a management key stops whatever is using it, immediately.');
+        $sudo = $this->stepUp(__('console.revoking_a_management_key_stops_whatever_is__07f06719'));
 
         if ($sudo !== null) {
             return to_route($sudo);
@@ -271,7 +272,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
             ? $this->act(RevokeKey::class, ['id' => $key])
             : $this->act(RevokeEnvironmentKey::class, ['environment_id' => $environmentId, 'id' => $key]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', 'Management key revoked.');
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.management_key_revoked_8872ad4e'));
     }
 
     /**
@@ -287,7 +288,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         $this->assertMayManageEnvironments();
         abort_unless($this->onEnvironmentPlane(), 404);
 
-        $sudo = $this->stepUp('Rotating a management key mints its successor, whose value is shown once.');
+        $sudo = $this->stepUp(__('console.rotating_a_management_key_mints_its_successo_3bb1cc71'));
 
         if ($sudo !== null) {
             return to_route($sudo);
@@ -304,7 +305,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         $this->inertia->flash('freshKey', $minted->plaintext);
         $this->inertia->flash('freshKeyName', $minted->key->name);
 
-        return back()->with('status', 'Key rotated — copy the new one now. The old key keeps working for 24 hours.');
+        return back()->with('status', __('console.key_rotated_copy_the_new_one_now_the_old_key_aedb1c3d'));
     }
 
     /**

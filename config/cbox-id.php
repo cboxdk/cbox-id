@@ -233,7 +233,7 @@ return [
      * whose end users are all in one country says so; see docs/guides/languages.md.
      *
      * `enabled` is a comma-separated list of the supported codes — en, da, de, sv, nb,
-     * fr. A code outside that list is ignored rather than trusted: there is no catalogue
+     * fr, fi, es, it, nl. A code outside that list is ignored rather than trusted: there is no catalogue
      * to show for it, and a page in a half-supported language is worse than English.
      */
     /*
@@ -251,7 +251,7 @@ return [
 
     'locales' => [
         'default' => env('CBOX_ID_DEFAULT_LOCALE', 'en'),
-        'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fr'),
+        'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fr,fi,es,it,nl'),
     ],
 
     /*

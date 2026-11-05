@@ -8,6 +8,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -69,7 +70,7 @@ final readonly class MyApprovalController extends ConsoleController
             $names[(string) $client->client_id] = (string) $client->name;
         }
 
-        return $this->page('console/approvals', Vocabulary::APPROVALS, [
+        return $this->page('console/approvals', ConsoleStrings::text(Vocabulary::APPROVALS), [
             'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names): array {
                 $clientId = (string) $request->client_id;
 
@@ -79,7 +80,7 @@ final readonly class MyApprovalController extends ConsoleController
                     'bindingMessage' => $request->binding_message,
                     'scopes' => array_map(static fn (string $scope): array => [
                         'value' => $scope,
-                        'label' => self::SCOPE_LABELS[$scope] ?? $scope,
+                        'label' => ConsoleStrings::text(self::SCOPE_LABELS[$scope] ?? $scope),
                     ], array_values(array_filter($request->scopes, 'is_string'))),
                     'urls' => [
                         'approve' => route('approvals.approve', $request->id),
@@ -99,13 +100,13 @@ final readonly class MyApprovalController extends ConsoleController
         // somebody else is refused by the service, which is where that rule belongs.
         $backchannel->approve($request, $me->id(), $me->organizationId());
 
-        return back()->with('status', 'Request approved.');
+        return back()->with('status', __('console.request_approved_cab80f7b'));
     }
 
     public function deny(string $request, BackchannelAuthentication $backchannel): RedirectResponse
     {
         $backchannel->deny($request, app(CurrentUser::class)->id());
 
-        return back()->with('status', 'Request denied.');
+        return back()->with('status', __('console.request_denied_8b558b83'));
     }
 }

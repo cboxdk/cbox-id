@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -52,6 +53,8 @@ export default function OrganizationsIndex({
     createHref,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -74,12 +77,12 @@ export default function OrganizationsIndex({
         <>
             <PageHeader
                 help={help}
-                description="The teams using your product. Each is a company or group with its own users, roles and single sign-on."
+                description={tc('console.the_teams_using_your_product_each_is_a_compa_91579359')}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            New organization
+                            {tc('console.new_organization_62e34b70')}
                         </Link>
                     </Button>
                 }
@@ -97,8 +100,8 @@ export default function OrganizationsIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by name or handle"
-                    aria-label="Search organizations"
+                    placeholder={tc('console.search_by_name_or_handle_e1341737')}
+                    aria-label={tc('console.search_organizations_c1b2693a')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -108,8 +111,11 @@ export default function OrganizationsIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total} {pagination.total === 1 ? 'organization' : 'organizations'}{' '}
-                    found.
+                    {pagination.total}{' '}
+                    {pagination.total === 1
+                        ? tc('console.organization_af3a1bb3')
+                        : tc('console.organizations_f8a665a9')}{' '}
+                    {tc('console.found_ddbb3871')}
                 </output>
             </div>
 
@@ -121,19 +127,24 @@ export default function OrganizationsIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title="No matches"
-                            description={`No organizations match “${search}”. Try a different name or handle.`}
+                            title={tc('console.no_matches_2df01a03')}
+                            description={tc(
+                                'console.no_organizations_match_value0_try_a_differen_57e45e0c',
+                                { value0: search },
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="layers"
-                            title="No organizations yet"
-                            description="Each organization is a company or team using your product, with its own users, roles and single sign-on. Create the first one to get started."
+                            title={tc('console.no_organizations_yet_5b7a7cbd')}
+                            description={tc(
+                                'console.each_organization_is_a_company_or_team_using_7719f059',
+                            )}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        New organization
+                                        {tc('console.new_organization_62e34b70')}
                                     </Link>
                                 </Button>
                             }
@@ -177,7 +188,8 @@ export default function OrganizationsIndex({
 
             <Pagination
                 pagination={pagination}
-                noun="organization"
+                noun={tc('console.organization_af3a1bb3')}
+                pluralNoun={tc('console.organizations_f8a665a9')}
                 href={(page) => listHref(search, page)}
             />
         </>

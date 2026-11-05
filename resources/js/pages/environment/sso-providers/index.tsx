@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -61,6 +62,8 @@ export default function ServiceProviders({
     connectionsHref,
     help,
 }: Props) {
+    const { t: tc } = useTranslator();
+
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -85,16 +88,18 @@ export default function ServiceProviders({
                 help={help}
                 description={
                     <>
-                        Applications that trust this environment as their SAML identity provider. To
-                        let people sign in with an account they already have elsewhere, use{' '}
-                        <Link href={connectionsHref}>Authentication → Enterprise SSO</Link>.
+                        {tc('console.applications_that_trust_this_environment_as__7133371a')}{' '}
+                        <Link href={connectionsHref}>
+                            {tc('console.authentication_enterprise_sso_9aedfbd3')}
+                        </Link>
+                        .
                     </>
                 }
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
                             <Icon name="plus" className="w-4 h-4" />
-                            Add application
+                            {tc('console.add_application_78a2823b')}
                         </Link>
                     </Button>
                 }
@@ -102,13 +107,21 @@ export default function ServiceProviders({
 
             <div className="mt-6">
                 <Panel
-                    title="Your identity provider"
-                    description="Give these to the application being registered, so it can trust assertions from this environment."
+                    title={tc('console.your_identity_provider_d8b76e60')}
+                    description={tc(
+                        'console.give_these_to_the_application_being_register_86b19524',
+                    )}
                 >
                     <div className="space-y-3">
-                        <Coordinate label="IdP entity ID" value={idp.entityId} />
-                        <Coordinate label="Metadata URL" value={idp.metadataUrl} />
-                        <Coordinate label="Sign-on URL" value={idp.ssoUrl} />
+                        <Coordinate
+                            label={tc('console.idp_entity_id_81723d4d')}
+                            value={idp.entityId}
+                        />
+                        <Coordinate
+                            label={tc('console.metadata_url_5ead7fa0')}
+                            value={idp.metadataUrl}
+                        />
+                        <Coordinate label={tc('console.sign_on_url_fe0b9e95')} value={idp.ssoUrl} />
                     </div>
                 </Panel>
             </div>
@@ -117,8 +130,8 @@ export default function ServiceProviders({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder="Search by entity ID"
-                    aria-label="Search SAML apps"
+                    placeholder={tc('console.search_by_entity_id_fec39e96')}
+                    aria-label={tc('console.search_saml_apps_479a6b15')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -128,8 +141,11 @@ export default function ServiceProviders({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total} {pagination.total === 1 ? 'application' : 'applications'}{' '}
-                    found.
+                    {pagination.total}{' '}
+                    {pagination.total === 1
+                        ? tc('console.application_1fe28920')
+                        : tc('console.applications_fd54e5a8')}{' '}
+                    {tc('console.found_ddbb3871')}
                 </output>
             </div>
 
@@ -141,20 +157,25 @@ export default function ServiceProviders({
                     search !== '' ? (
                         <EmptyState
                             icon="key"
-                            title="No matches"
-                            description={`No applications match “${search}”. Try a different entity ID.`}
+                            title={tc('console.no_matches_2df01a03')}
+                            description={tc(
+                                'console.no_applications_match_value0_try_a_different_438c7b0d',
+                                { value0: search },
+                            )}
                         />
                     ) : (
                         <EmptyState
                             icon="key"
                             equivalent="saml_apps.create"
-                            title="No SAML apps yet"
-                            description="Register one to let an application sign its users in with the accounts they already have in this environment."
+                            title={tc('console.no_saml_apps_yet_74d41853')}
+                            description={tc(
+                                'console.register_one_to_let_an_application_sign_its__e20e6b01',
+                            )}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
                                         <Icon name="plus" className="w-4 h-4" />
-                                        Add application
+                                        {tc('console.add_application_78a2823b')}
                                     </Link>
                                 </Button>
                             }
@@ -187,13 +208,17 @@ export default function ServiceProviders({
                             {provider.organization !== null ? (
                                 <Pill tone="neutral">{provider.organization}</Pill>
                             ) : (
-                                <Pill tone="warning">Environment-wide</Pill>
+                                <Pill tone="warning">
+                                    {tc('console.environment_wide_cd1204b6')}
+                                </Pill>
                             )}
 
-                            {provider.signedRequests && <Pill tone="info">Signed requests</Pill>}
+                            {provider.signedRequests && (
+                                <Pill tone="info">{tc('console.signed_requests_b6cc80d3')}</Pill>
+                            )}
 
                             <Pill tone={provider.active ? 'success' : 'neutral'}>
-                                {provider.active ? 'Active' : provider.status}
+                                {provider.active ? tc('console.active_92340695') : provider.status}
                             </Pill>
 
                             <Icon
@@ -208,7 +233,8 @@ export default function ServiceProviders({
 
             <Pagination
                 pagination={pagination}
-                noun="application"
+                noun={tc('console.application_1fe28920')}
+                pluralNoun={tc('console.applications_fd54e5a8')}
                 href={(page) => listHref(search, page)}
             />
         </>
@@ -217,6 +243,7 @@ export default function ServiceProviders({
 
 /** One value somebody is about to paste into another tab, with the button that copies it. */
 function Coordinate({ label, value }: { label: string; value: string }) {
+    const { t: tc } = useTranslator();
     return (
         <div>
             <p className="label">{label}</p>
@@ -227,7 +254,10 @@ function Coordinate({ label, value }: { label: string; value: string }) {
                 >
                     {value}
                 </p>
-                <CopyButton value={value} label={`Copy ${label}`} />
+                <CopyButton
+                    value={value}
+                    label={tc('console.copy_value0_bf3789b6', { value0: label })}
+                />
             </div>
         </div>
     );
