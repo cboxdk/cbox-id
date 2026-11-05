@@ -17,6 +17,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -406,6 +407,16 @@ it('serves the person\'s own account at /api/v1/me on their environment\'s host,
 });
 
 it('reads the personal catalog with a real account token and preserves its organization boundary', function (): void {
+    config(['cbox-id.oauth.protected_resources' => [
+        ['identifier' => 'https://studio.example.com/mcp', 'scopes' => ['account:apps:read']],
+        ['identifier' => 'https://work.example.com/mcp', 'scopes' => ['account:apps:read']],
+    ]]);
+    $ownAudience = rtrim(app(IssuerResolver::class)->issuer(), '/').'/mcp';
+    expect(mcpResource())->toBe($ownAudience);
+    $this->getJson('/.well-known/oauth-protected-resource/mcp')->assertOk()
+        ->assertJsonPath('resource', $ownAudience);
+    expect(app(ProtectedResources::class)->find('https://studio.example.com/mcp')?->identifier)
+        ->toBe('https://studio.example.com/mcp');
     [$subject, $organization] = delegatedPerson();
     $client = app(ClientRegistry::class)->register(new NewClient(
         name: 'App switcher', type: ClientType::Public,
@@ -421,6 +432,6 @@ it('reads the personal catalog with a real account token and preserves its organ
     $this->withToken($token)->getJson('/api/v1/me/apps')->assertOk()->assertJsonPath('data.0.key', 'billing');
     [$other, $another] = delegatedPerson(email: 'other@catalog.example');
     $this->withToken($token)->getJson('/api/v1/me/apps?organization_id='.$another)->assertForbidden();
-    $wrongAudience = delegatedToken($subject, $organization, ['account:apps:read'], resource: 'https://billing.example.com', client: $client);
+    $wrongAudience = delegatedToken($subject, $organization, ['account:apps:read'], resource: 'https://studio.example.com/mcp', client: $client);
     $this->withToken($wrongAudience)->getJson('/api/v1/me/apps')->assertUnauthorized();
 });

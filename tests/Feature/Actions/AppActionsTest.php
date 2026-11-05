@@ -136,6 +136,7 @@ it('needs apps:write for every write and apps:read for every read', function ():
         ['deleteJson', "/api/v1/apps/{$id}/secrets/s1"],
         ['putJson', "/api/v1/apps/{$id}/settings/token-lifetime"],
         ['putJson', "/api/v1/apps/{$id}/settings/token-exchange"],
+        ['putJson', "/api/v1/apps/{$id}/settings/client-credentials"],
         ['putJson', "/api/v1/apps/{$id}/settings/backchannel-logout"],
         ['putJson', "/api/v1/apps/{$id}/settings/api-key-prefix"],
         ['postJson', "/api/v1/apps/{$id}/copy"],
@@ -166,6 +167,7 @@ it('answers 404 for an app of another environment, on every endpoint', function 
         $this->withToken($key)->getJson("/api/v1/apps/{$id}/blueprint")->assertNotFound();
         $this->withToken($key)->getJson("/api/v1/apps/{$id}/secrets")->assertNotFound();
         $this->withToken($key)->patchJson("/api/v1/apps/{$id}", ['name' => 'Mine now'])->assertNotFound();
+        $this->withToken($key)->putJson("/api/v1/apps/{$id}/settings/client-credentials", ['enabled' => true])->assertNotFound();
         $this->withToken($key)->putJson("/api/v1/apps/{$id}/scopes", ['scopes' => []])->assertNotFound();
         $this->withToken($key)->postJson("/api/v1/apps/{$id}/secrets", ['grace_seconds' => 0])->assertNotFound();
         $this->withToken($key)->putJson("/api/v1/apps/{$id}/settings/token-lifetime", ['access_token_ttl' => 600])->assertNotFound();
@@ -413,4 +415,27 @@ it('refuses a key copying an app into another environment, and points at the blu
         ->assertJsonPath('error', 'environment_not_reachable');
 
     expect(app(EnvironmentContext::class)->runAs(GenericEnvironment::of('env_other'), fn (): int => Client::query()->count()))->toBe(0);
+})->group('security');
+
+it('enables and disables background authentication without changing a confidential app identity or scopes', function (): void {
+    [$key, $row] = appActionsKey();
+    $web = appActionsWebApp($key);
+    $before = Client::query()->findOrFail($web['id']);
+    $path = "/api/v1/apps/{$web['id']}/settings/client-credentials";
+    $this->withToken($key)->putJson($path, [])->assertUnprocessable();
+    $this->withToken($key)->putJson($path, ['enabled' => true])->assertOk();
+    $after = $before->fresh();
+    expect($after->grant_types)->toEqualCanonicalizing([...$before->grant_types, 'client_credentials'])
+        ->and($after->scopes)->toEqualCanonicalizing($before->scopes)
+        ->and($after->redirect_uris)->toBe($before->redirect_uris)
+        ->and($after->client_id)->toBe($before->client_id)
+        ->and(app(ClientRegistry::class)->verifySecret($after, $web['client_secret']))->toBeTrue()
+        ->and(appActionsAudit('app.updated')?->actor_id)->toBe($row->id);
+    $this->withToken($key)->putJson($path, ['enabled' => true])->assertOk();
+    expect($before->fresh()->grant_types)->toEqualCanonicalizing($after->grant_types);
+    $this->withToken($key)->putJson($path, ['enabled' => false])->assertOk();
+    expect($before->fresh()->grant_types)->toEqualCanonicalizing($before->grant_types);
+    $spa = appActionsWebApp($key, ['type' => 'spa']);
+    $this->withToken($key)->putJson("/api/v1/apps/{$spa['id']}/settings/client-credentials", ['enabled' => true])
+        ->assertUnprocessable()->assertJsonPath('error', 'public_client');
 })->group('security');
