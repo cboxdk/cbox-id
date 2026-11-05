@@ -239,7 +239,7 @@ Route::post('/first-run', [FirstRunController::class, 'claim'])->middleware(['lo
  * discloses nothing and changes nothing but the next render.
  */
 Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->name('locale.update');
-Route::post('/console/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('console.locale.update');
+Route::post('/console/locale', ConsoleLocaleController::class)->middleware(['platform.auth', 'throttle:30,1'])->name('console.locale.update');
 
 /*
  * The apex — one destination, because there is one console.
@@ -1322,6 +1322,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
     // (organizations, users, connections…). Gated by an env-admin session; a subject
     // session grants nothing here.
     Route::middleware('env.admin')->group(function (): void {
+        Route::post('/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('environment.locale.update');
         // `admin.login` is the name every "send them to the door" redirect uses — the
         // handoff's refusals, logout, the sudo screen. It is BEHIND the gate on purpose:
         // the gate IS the door now. Unauthenticated, `AuthenticateEnvironmentAdmin`

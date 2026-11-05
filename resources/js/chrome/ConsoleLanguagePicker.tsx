@@ -1,14 +1,16 @@
 import { update } from '@routes/console/locale';
+import { update as updateEnvironment } from '@routes/environment/locale';
 import type { SharedProps } from '@/types';
 import { usePage, router } from '@inertiajs/react';
 import { DropdownMenu } from 'radix-ui';
 import { useTranslator } from '@/i18n';
 import { Button, DropdownMenuContent, Icon } from '@/ui';
 
-/** A browser preference, independent of the customer's hosted-language policy. */
+/** Shared account preference, independent of the customer's hosted-language policy. */
 export function ConsoleLanguagePicker() {
     const { locale, t } = useTranslator();
-    const languages = usePage<SharedProps>().props.i18n?.locales ?? [];
+    const { i18n, auth, shell } = usePage<SharedProps>().props;
+    const languages = i18n?.locales ?? [];
 
     if (languages.length < 2) return null;
     const current = languages.find((language) => language.code === locale);
@@ -36,8 +38,8 @@ export function ConsoleLanguagePicker() {
                     aria-label={t('console.language')}
                     onValueChange={(value) =>
                         router.post(
-                            update.url(),
-                            { locale: value },
+                            shell?.altitude === 'environment' ? updateEnvironment.url() : update.url(),
+                            { locale: value, user_id: auth.user?.id },
                             { preserveScroll: true, preserveState: false },
                         )
                     }

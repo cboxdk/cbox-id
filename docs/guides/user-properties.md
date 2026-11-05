@@ -71,4 +71,26 @@ Changes enter the transactional outbox and wake the relay on the webhook queue a
 
 This change spans Cbox ID and `laravel-id`. The app requires `laravel-id ^1.27.1`. Run its additive migration before rolling out the new application image. No production grants are provisioned automatically.
 
-Before a package release, local integration tests can use a Composer path repository or temporary autoload overlay for the sibling package. Do not deploy a local path dependency. Consuming apps still need to apply the values to their UI; these APIs do not automatically replace Cbox ID's hosted language cookie or add settings screens to other apps.
+Before a package release, local integration tests can use a Composer path repository or temporary autoload overlay for the sibling package. Do not deploy a local path dependency. Consuming apps still need to apply the values to their UI.
+
+## Console language
+
+The signed-in console language picker changes `preferences.language` for the
+current person. It preserves every other preference, increments the document
+version only when the language changes, and emits `user.preferences.updated`
+through the same transactional outbox and webhook relay as API writes. The
+originating `client_id` is null because the person acts directly in Cbox ID.
+Existing namespace reader, writer and webhook grants are preserved.
+
+Console pages use that shared preference before any browser fallback. Regional
+tags normalize to a supported language; an unsupported saved language renders
+English without rewriting the document. With no saved choice, the browser's
+supported language is used, then English. Cookies from a previous account are not
+used as signed-in preferences, and reading a page never seeds a default.
+
+An environment administrator's preference belongs to their own identity in the
+platform root, not the environment they administer. Both console save endpoints
+run their normal session guard and require the displayed user's ID, so an old tab
+cannot change a different account after switching users. Support impersonation
+remains read-only. Anonymous and OAuth-hosted pages retain their separate locale
+policy and hosted cookie.
