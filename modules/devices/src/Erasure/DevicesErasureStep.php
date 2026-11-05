@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices\Erasure;
 
+use Cbox\Id\Devices\Models\ApprovalReport;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Models\EnrolmentCode;
 use Cbox\Id\Devices\Models\PushNotification;
@@ -39,8 +40,11 @@ final class DevicesErasureStep implements ErasureStep
         $deleted = $devices === [] ? 0 : Device::query()->whereKey($devices)->toBase()->delete();
         $codes = EnrolmentCode::query()->where('subject_id', $request->subjectId)->toBase()->delete();
 
+        $reports = ApprovalReport::query()->where('subject_id', $request->subjectId)->toBase()->delete();
+
         return ErasureStepResult::of($this->name(), [
             'devices' => $deleted,
+            'approval_reports' => $reports,
             'push_notifications' => $notifications,
             'enrolment_codes' => $codes,
         ]);

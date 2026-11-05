@@ -9,6 +9,8 @@ use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Support\EnrolmentCodeRejected;
 use Cbox\Id\Devices\Support\EnrolmentToken;
+use Cbox\Id\Devices\Support\RevokeAuthenticatorDevice;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -49,7 +51,7 @@ final class DeviceController
         $request->validate([
             'install_id' => ['required', 'string', 'size:26'],
             'platform' => ['required', Rule::enum(DevicePlatform::class)],
-            'push_token' => ['required', 'string', 'max:4096'],
+            'push_token' => ['nullable', 'string', 'max:4096'],
             // Rendered in an admin console, so control characters are stripped rather
             // than trusted — this is user-supplied text that ends up in someone else's UI.
             'name' => ['required', 'string', 'max:100'],
@@ -107,6 +109,10 @@ final class DeviceController
             ], 409);
         }
 
+        if ($existing !== null && ($existing->status === DeviceStatus::Revoked || $existing->dpop_jkt !== $token->confirmationThumbprint())) {
+            return new JsonResponse(['error' => 'device_revoked', 'message' => 'This phone is no longer trusted. Connect it again from Trusted devices.'], 403);
+        }
+
         $device = $existing ?? new Device;
         $isNew = $existing === null;
 
@@ -135,12 +141,13 @@ final class DeviceController
 
         $device->save();
 
-        $device->token_encrypted = $this->secretBox->seal(
-            $request->string('push_token')->toString(),
-            $device->secretContext(),
-        );
-        $device->token_rotated_at = Carbon::now();
-        $device->save();
+        if ($request->filled('push_token')) {
+            $device->token_encrypted = $this->secretBox->seal(
+                $request->string('push_token')->toString(), $device->secretContext(),
+            );
+            $device->token_rotated_at = Carbon::now();
+            $device->save();
+        }
 
         $this->audit->record(new AuditEvent(
             action: $isNew ? 'device.enrolled' : 'device.token_rotated',
@@ -155,10 +162,22 @@ final class DeviceController
         return new JsonResponse(['data' => $this->present($device)], $isNew ? 201 : 200);
     }
 
+    public function me(Request $request): JsonResponse
+    {
+        $id = $this->subject($this->token($request));
+        $subject = app(Subjects::class)->find($id);
+
+        return new JsonResponse(['data' => [
+            'subject' => $id,
+            'label' => $subject->email ?? $subject->name ?? $id,
+        ]]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $devices = Device::query()
             ->where('subject_id', $this->subject($this->token($request)))
+            ->where('status', '!=', DeviceStatus::Revoked->value)
             ->orderByDesc('last_seen_at')
             ->limit(50)
             ->get();
@@ -184,7 +203,7 @@ final class DeviceController
             return new JsonResponse(['error' => 'not_found', 'message' => 'No such device.'], 404);
         }
 
-        $device->delete();
+        app(RevokeAuthenticatorDevice::class)->revoke($device);
 
         $this->audit->record(new AuditEvent(
             action: 'device.removed',

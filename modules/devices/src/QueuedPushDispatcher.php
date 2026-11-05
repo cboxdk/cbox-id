@@ -61,7 +61,7 @@ class QueuedPushDispatcher implements PushDispatcher
                 'sequence' => $this->nextSequence($device),
                 'kind' => $kind,
                 'status' => NotificationStatus::Pending,
-                'payload' => $payload,
+                'payload' => $this->forDevice($payload, $device),
                 'attempt' => 0,
                 'expires_at' => $expiresAt === null ? null : Carbon::createFromInterface($expiresAt),
             ]);
@@ -75,6 +75,19 @@ class QueuedPushDispatcher implements PushDispatcher
         }
 
         return $written;
+    }
+
+    private function forDevice(PushPayload $payload, Device $device): PushPayload
+    {
+        $data = $payload->data;
+        $requestId = $data['request_id'] ?? null;
+        $data['v'] = '2';
+        $data['install_id'] = $device->install_id;
+        $data['url'] = is_string($requestId) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $requestId) === 1
+            ? 'com.cboxid.authenticator://request/'.$device->install_id.'/'.$requestId
+            : (($data['kind'] ?? '') === NotificationKind::Approval->value ? 'com.cboxid.authenticator://approvals' : 'com.cboxid.authenticator://security/'.$device->install_id);
+
+        return new PushPayload($payload->title, $payload->body, $data, $payload->collapseKey);
     }
 
     public function deliver(string $notificationId): void
@@ -266,7 +279,15 @@ class QueuedPushDispatcher implements PushDispatcher
         $notification->status = NotificationStatus::Failed;
         // Exponential, capped at an hour: beyond that the backoff is longer than most
         // notifications are worth, and an approval prompt has expired long since.
-        $notification->next_retry_at = Carbon::now()->addMinutes(min(60, 2 ** $notification->attempt));
+        $delay = $notification->kind === NotificationKind::Approval
+            ? min(30, 2 ** $notification->attempt)
+            : min(3600, 60 * (2 ** $notification->attempt));
+        $notification->next_retry_at = Carbon::now()->addSeconds($delay);
+        if ($notification->expires_at !== null && $notification->next_retry_at->gte($notification->expires_at)) {
+            $notification->settle(NotificationStatus::Expired, 'Deadline passed before next delivery attempt.');
+
+            return;
+        }
 
         if ($result->error !== null) {
             $notification->last_error = mb_substr($result->error, 0, 255);

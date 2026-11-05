@@ -23,11 +23,15 @@ enum DeviceStatus: string
      */
     case Retired = 'retired';
 
+    /** Explicit user revocation; this key can never enrol again. */
+    case Revoked = 'revoked';
+
     public function label(): string
     {
         return match ($this) {
             self::Active => 'Active',
             self::Retired => 'Retired',
+            self::Revoked => 'Removed',
         };
     }
 }

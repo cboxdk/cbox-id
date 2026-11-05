@@ -47,12 +47,13 @@ it('alerts enrolled devices about a configured event', function (): void {
     $transport = new FakePushTransport;
     app()->instance(PushTransport::class, $transport);
 
-    alertDevice();
+    $device = alertDevice();
 
     relay(new DomainEvent('user.login', ['user_id' => 'user_1']));
 
     expect($transport->count())->toBe(1)
         ->and($transport->latest()?->kind)->toBe(NotificationKind::SecurityAlert)
+        ->and($transport->latest()?->payload->data['url'])->toBe('com.cboxid.authenticator://security/'.$device->install_id)
         ->and($transport->latest()?->payload->body)->toBe('Your account was signed in to.');
 });
 

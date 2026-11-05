@@ -16,6 +16,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Support\RevokeAuthenticatorDevice;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -60,7 +61,7 @@ final readonly class RemoveMyDevice implements Action
             ->where('subject_id', $subjectId)
             ->first() ?? throw ActionRefused::notFound('device');
 
-        $device->delete();
+        app(RevokeAuthenticatorDevice::class)->revoke($device);
 
         $this->audit->record(new AuditEvent(
             action: 'device.removed',

@@ -209,7 +209,7 @@ it('removes an own device', function (): void {
 
     removeOwnDevice($device->id)->assertSessionHasNoErrors();
 
-    expect(Device::query()->whereKey($device->id)->exists())->toBeFalse();
+    expect(Device::query()->findOrFail($device->id)->status)->toBe(DeviceStatus::Revoked);
 });
 
 it('cannot remove another user device', function (): void {

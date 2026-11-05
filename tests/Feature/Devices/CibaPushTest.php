@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Cbox\Id\Devices\Contracts\PushTransport;
 use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
 use Cbox\Id\Devices\Enums\NotificationKind;
+use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Models\PushNotification;
 use Cbox\Id\Devices\Testing\FakePushTransport;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
@@ -66,7 +67,7 @@ it('carries a deep link to the specific approval', function (): void {
     $requestId = PushNotification::query()->firstOrFail()->payload->data['request_id'] ?? null;
 
     expect($requestId)->not->toBeNull()
-        ->and($transport->latest()?->payload->data['url'] ?? '')->toBe('com.cboxid.authenticator://approvals/'.$requestId);
+        ->and($transport->latest()?->payload->data['url'] ?? '')->toBe('com.cboxid.authenticator://request/'.Device::query()->firstOrFail()->install_id.'/'.$requestId);
 });
 
 it('omits the request id when the operator has turned it off', function (): void {
