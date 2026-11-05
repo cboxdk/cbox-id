@@ -26,8 +26,7 @@ export function DropdownMenuContent({
     );
 }
 
-export interface DropdownMenuItemProps
-    extends ComponentPropsWithoutRef<typeof Primitive.Item> {
+export interface DropdownMenuItemProps extends ComponentPropsWithoutRef<typeof Primitive.Item> {
     /** Styles the item as destructive. The label must still say what it destroys. */
     destructive?: boolean;
 }

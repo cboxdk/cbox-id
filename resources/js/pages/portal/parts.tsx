@@ -183,10 +183,10 @@ export function GuideValues({
     return (
         <div className="card p-4 mb-4">
             <p className="text-sm mb-1">{lead}</p>
-            {rows.map((row, index) =>
+            {rows.map((row) =>
                 row.literal ? (
                     <div
-                        key={`${index}-${row.field}`}
+                        key={row.field}
                         className="py-2.5 border-t flex flex-wrap items-baseline gap-x-2"
                         style={{ borderColor: 'var(--border)' }}
                     >
@@ -202,7 +202,7 @@ export function GuideValues({
                         <code className="mono text-xs break-all">{row.value}</code>
                     </div>
                 ) : (
-                    <ValueRow key={`${index}-${row.field}`} field={row.field} value={row.value} />
+                    <ValueRow key={row.field} field={row.field} value={row.value} />
                 ),
             )}
         </div>

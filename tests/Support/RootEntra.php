@@ -84,6 +84,7 @@ final class RootEntra
             $start = test()->get((string) $start->headers->get('Location'));
         }
 
+        FederationBrowser::carryFlowCookie($start);
         $authorize = (string) $start->headers->get('Location');
         parse_str((string) parse_url($authorize, PHP_URL_QUERY), $query);
 

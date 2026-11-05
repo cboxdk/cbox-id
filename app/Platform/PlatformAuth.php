@@ -7,6 +7,7 @@ namespace App\Platform;
 use App\Platform\AccountLinking\LinkHold;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Radar\Radar;
+use App\Platform\Signals\SignalsStepUpRequired;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
@@ -241,7 +242,14 @@ final class PlatformAuth
             return AttemptOutcome::Otp;
         }
 
-        $this->establish($request, $subject->id, [AuthMethod::Password->value]);
+        try {
+            $this->establish($request, $subject->id, [AuthMethod::Password->value]);
+        } catch (SignalsStepUpRequired) {
+            // Enrolled second factors already took the MFA branch above.
+            // Reuse the existing strong-authentication door. No email or factor
+            // enrolment bypass is created when this account has no usable factor.
+            return AttemptOutcome::Passkey;
+        }
 
         return AttemptOutcome::Ok;
     }

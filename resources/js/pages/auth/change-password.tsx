@@ -57,9 +57,7 @@ export default function ChangePassword({ email }: Props) {
                     hideLabel={t('auth.password_field.hide')}
                     error={form.errors.password_confirmation}
                     value={form.data.password_confirmation}
-                    onChange={(event) =>
-                        form.setData('password_confirmation', event.target.value)
-                    }
+                    onChange={(event) => form.setData('password_confirmation', event.target.value)}
                 />
 
                 <Button

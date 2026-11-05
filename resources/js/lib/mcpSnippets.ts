@@ -60,7 +60,10 @@ export const WORKSPACE_KEY_PLACEHOLDER = 'cbid_ws_…';
  * The platform root's `/mcp`, with a WORKSPACE key: one server for the whole workspace —
  * its projects, environments, team and keys — rather than one per environment.
  */
-export function claudeCodeWorkspace(url: string, key: string = WORKSPACE_KEY_PLACEHOLDER): ClientSnippet {
+export function claudeCodeWorkspace(
+    url: string,
+    key: string = WORKSPACE_KEY_PLACEHOLDER,
+): ClientSnippet {
     return {
         where: 'In a terminal',
         language: 'bash',

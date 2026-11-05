@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:48e6d885-6d9c-453c-969b-9ebf60ee4b8c",
+    "serialNumber": "urn:uuid:aef941aa-346d-44e4-b6dd-053136f08b29",
     "version": 1,
     "metadata": {
         "tools": [
@@ -181,11 +181,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.27.2",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@dev-sd/signals-auth-assessment",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v1.27.2",
-            "purl": "pkg:composer/cboxdk/laravel-id@v1.27.2",
+            "version": "dev-sd/signals-auth-assessment",
+            "purl": "pkg:composer/cboxdk/laravel-id@dev-sd/signals-auth-assessment",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -293,6 +293,22 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-signals-client@dev-sd/signals-implementation",
+            "group": "cboxdk",
+            "name": "laravel-signals-client",
+            "version": "dev-sd/signals-implementation",
+            "purl": "pkg:composer/cboxdk/laravel-signals-client@dev-sd/signals-implementation",
+            "description": "Typed transport for Cbox Signals",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/cboxdk/laravel-ssrf@v1.5.0",
             "group": "cboxdk",
             "name": "laravel-ssrf",
@@ -315,6 +331,22 @@
             "version": "v1.0.0",
             "purl": "pkg:composer/cboxdk/laravel-telemetry@v1.0.0",
             "description": "Collector-free telemetry for Laravel: Prometheus metrics, OTLP traces and events. No C extension, no protobuf, no sidecar \u2014 metrics that actually work under FPM.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-webhook-signature@v0.1.0",
+            "group": "cboxdk",
+            "name": "laravel-webhook-signature",
+            "version": "v0.1.0",
+            "purl": "pkg:composer/cboxdk/laravel-webhook-signature@v0.1.0",
+            "description": "Cbox Webhook Signature \u2014 verification-only webhook signature checking for Laravel, with drivers for GitHub, Stripe, Slack, Shopify, Standard Webhooks, Twilio, Mailgun and Postal. No migrations, no queue, no models. Secret rotation, replay protection and send-time outbound signing included.",
             "licenses": [
                 {
                     "license": {

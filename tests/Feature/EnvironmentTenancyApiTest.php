@@ -327,7 +327,7 @@ it('never reads or changes a member through another organization', function (): 
     $this->withToken($key)->patchJson("/api/v1/organizations/{$mine->id}/members/{$bob}", ['role' => 'member'])->assertNotFound();
     $this->withToken($key)->deleteJson("/api/v1/organizations/{$mine->id}/members/{$bob}")->assertNotFound();
     $this->withToken($key)->getJson("/api/v1/organizations/{$mine->id}/members/{$bob}/roles")->assertNotFound();
-    $this->withToken($key)->getJson("/api/v1/organizations/{$mine->id}/members")->assertOk()->assertJsonCount(0, 'data');
+    $this->withToken($key)->getJson("/api/v1/organizations/{$mine->id}/members")->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('meta.directory_revision', 0);
 
     expect(app(Memberships::class)->of($theirs->id, $bob)?->role)->toBe(MembershipRole::Admin);
 

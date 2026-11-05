@@ -17,3 +17,8 @@ docs
 docker-compose*.yml
 Dockerfile
 .dockerignore
+
+# Runtime caches contain host-only development providers and absolute paths.
+bootstrap/cache/*.php
+database/*.sqlite
+database/*.sqlite-*

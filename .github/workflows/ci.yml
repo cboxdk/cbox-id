@@ -47,7 +47,9 @@ jobs:
         run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
 
       # Larastan boots the application, which wants an encryption key.
       - name: Prepare environment
@@ -97,7 +99,9 @@ jobs:
         run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite manifest.
       - name: Install Node dependencies
@@ -143,7 +147,9 @@ jobs:
         run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
 
       - name: Install Node dependencies
         run: npm ci
@@ -211,7 +217,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
         run: composer license-check
@@ -312,7 +320,9 @@ jobs:
         run: cp .github/php/ci.ini /usr/local/etc/php/conf.d/zz-ci.ini && php --ini | grep zz-ci
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite
       # manifest — without built assets those tests fail on a missing manifest

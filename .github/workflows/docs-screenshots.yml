@@ -57,7 +57,9 @@ jobs:
       - name: Trust the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
       # The browser loads whatever is in public/build: the pictures are of THIS checkout's
       # frontend only if it is built from this checkout.

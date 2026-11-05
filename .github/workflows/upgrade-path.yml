@@ -84,7 +84,9 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          php bin/unpack-signals-packages.php ../laravel-id ../../laravel-signals-client
+          composer install --no-interaction --prefer-dist --no-progress
 
       # The HTTP smoke test renders /login, which resolves the Vite manifest.
       - name: Install Node dependencies
