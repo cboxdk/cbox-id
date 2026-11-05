@@ -131,6 +131,7 @@ final class CrossTenantSweep
             'applications:client_id' => 'application',
             'devices:device_id' => 'device',
             'passkeys:passkey_id' => 'passkey',
+            'apps:factor_id' => 'totp',
             'sessions:session_id' => 'session',
             'social:provider' => 'social_provider',
             'sign-in-methods:identity_id' => 'identity',

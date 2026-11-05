@@ -7,7 +7,9 @@ namespace App\Http\Controllers;
 use App\Actions\Account\DisconnectSignInMethod;
 use App\Actions\Account\RemovePasskey;
 use App\Actions\Account\RemoveSmsFactor;
+use App\Actions\Account\RemoveTotpDevice;
 use App\Actions\Account\RenamePasskey;
+use App\Actions\Account\RenameTotpDevice;
 use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
@@ -21,6 +23,7 @@ use App\Platform\AccountLinking\SignInIdentity;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Mfa\AuthenticatorEnrollment;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlatformAuth;
@@ -38,10 +41,13 @@ use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
 use Cbox\Id\Identity\Contracts\SmsFactors;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Contracts\TotpDevices;
 use Cbox\Id\Identity\Exceptions\SmsFactorRefused;
+use Cbox\Id\Identity\Exceptions\TotpDeviceRefused;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\Subject;
+use Cbox\Id\Identity\ValueObjects\TotpDevice;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
@@ -115,6 +121,13 @@ final readonly class AccountController extends PageController
                  */
                 'offered' => $mandate->offersEnrolment($subjectId),
                 'recoveryRemaining' => $mfa->remainingRecoveryCodes($subjectId),
+                'devices' => array_map(static fn (TotpDevice $device): array => [
+                    'id' => $device->id,
+                    'name' => $device->name !== '' ? $device->name : __('console.totp_app'),
+                    'added' => $device->addedAt?->format('Y-m-d'),
+                    'renameHref' => route('account.mfa.totp.update', $device->id),
+                    'removeHref' => route('account.mfa.totp.destroy', $device->id),
+                ], app(TotpDevices::class)->devices($subjectId)),
             ],
             'smsFactor' => $this->smsFactorProps($subjectId, $mfa, $mandate, $sms),
             'passkeys' => WebAuthnCredential::query()
@@ -228,7 +241,7 @@ final readonly class AccountController extends PageController
      * shown once, and Inertia's flash is not written into the history entry — so a back
      * button, a restored tab or a shared session snapshot cannot resurrect it.
      */
-    public function enrolMfa(Mfa $mfa, MfaMandate $mandate): RedirectResponse
+    public function enrolMfa(Request $request, TotpDevices $devices, MfaMandate $mandate): RedirectResponse
     {
         $me = app(CurrentUser::class);
 
@@ -241,23 +254,33 @@ final readonly class AccountController extends PageController
          */
         abort_unless($mandate->offersEnrolment($me->id()), 403);
 
-        $enrolment = $mfa->enrollTotp($me->id(), $me->email() ?? $me->name(), 'Cbox ID');
+        $request->validate(['name' => ['sometimes', 'required', 'string', 'max:120']]);
+        $name = $request->string('name', __('console.totp_app'))->toString();
+        try {
+            $enrolment = $devices->enrollDevice($me->id(), $me->email() ?? $me->name(), $name);
+        } catch (TotpDeviceRefused $refused) {
+            return back()->withErrors(['name' => __('console.totp_'.$refused->reason)]);
+        }
+        $request->session()->put('mfa_pending_factor_id', $enrolment->id);
 
         $this->inertia->flash([
             'mfaSecret' => $enrolment->secret,
+            'mfaFactorId' => $enrolment->id,
+            'mfaDeviceName' => trim($name),
+            'mfaCancelHref' => route('account.mfa.totp.destroy', $enrolment->id),
             'mfaQrCode' => $this->qrCode($enrolment->provisioningUri),
         ]);
 
         return back();
     }
 
-    public function confirmMfa(Request $request, Mfa $mfa): RedirectResponse
+    public function confirmMfa(Request $request, AuthenticatorEnrollment $enrollment): RedirectResponse
     {
         $me = app(CurrentUser::class);
 
         abort_unless($me->check(), 403);
 
-        $request->validate(['code' => ['required', 'digits:6']]);
+        $request->validate(['code' => ['required', 'digits:6'], 'factor_id' => ['nullable', 'string', 'size:26']]);
 
         $code = (string) $request->string('code');
 
@@ -276,7 +299,10 @@ final readonly class AccountController extends PageController
             ]);
         }
 
-        if (! $mfa->confirmTotp($me->id(), $code)) {
+        $pending = $request->session()->get('mfa_pending_factor_id');
+        $factorId = $request->string('factor_id', is_string($pending) ? $pending : '')->toString();
+        $confirmed = $enrollment->confirm($me->id(), $factorId, $code);
+        if ($confirmed === null) {
             RateLimiter::hit($key, self::ENROL_DECAY);
 
             return back()->withErrors(['code' => __('console.that_code_did_not_match_try_again_7cc622fa')]);
@@ -286,9 +312,38 @@ final readonly class AccountController extends PageController
         $this->recordEnrolledFactor($request, 'otp');
 
         // Shown exactly once, so they travel the same channel as the secret above.
-        $this->inertia->flash('recoveryCodes', $mfa->generateRecoveryCodes($me->id()));
+        if ($confirmed->recoveryCodes !== []) {
+            $this->inertia->flash('recoveryCodes', $confirmed->recoveryCodes);
+        }
+        if ($pending === $factorId) {
+            $request->session()->forget('mfa_pending_factor_id');
+        }
 
-        return back()->with('status', __('console.two_factor_authentication_is_now_enabled_sav_bb6016c0'));
+        return back()->with('status', __('console.totp_added'));
+    }
+
+    public function renameTotpDevice(Request $request, string $factor): RedirectResponse
+    {
+        $result = $this->act(RenameTotpDevice::class, [
+            'factor_id' => $factor, 'name' => $request->string('name')->toString(),
+        ], ['name' => 'name'], 'name', ['invalid_name' => __('console.totp_invalid_name')]);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.totp_renamed'));
+    }
+
+    public function removeTotpDevice(Request $request, string $factor): RedirectResponse
+    {
+        $result = $this->act(RemoveTotpDevice::class, ['factor_id' => $factor], [], 'form', [
+            'last_device' => __('console.totp_last_device'),
+        ]);
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+        if ($request->session()->get('mfa_pending_factor_id') === $factor) {
+            $request->session()->forget('mfa_pending_factor_id');
+        }
+
+        return back()->with('status', __('console.totp_removed'));
     }
 
     /** A successful enrolment proves possession; retain it in the replacement session. */

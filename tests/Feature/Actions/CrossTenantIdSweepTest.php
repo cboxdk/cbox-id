@@ -25,9 +25,11 @@ use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Contracts\TotpDevices;
 use Cbox\Id\Identity\Models\IdentityLink;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -544,8 +546,16 @@ function sweepAccount(string $subjectId, array $fixture, string $organizationId)
     $device->save();
     app(Subjects::class)->link($subjectId, new FederatedPrincipal('social:github', 'github|'.$subjectId));
 
+    $apps = app(TotpDevices::class);
+    $totp = $apps->enrollDevice($subjectId, $subjectId.'@example.test', 'Sweep app');
+    $backup = $apps->enrollDevice($subjectId, $subjectId.'@example.test', 'Backup app');
+    foreach ([$totp, $backup] as $setup) {
+        $apps->confirmDevice($subjectId, $setup->id, app(TotpAuthenticator::class)->codeAt($setup->secret, time() - 30));
+    }
+
     return [
         'organization' => $organizationId,
+        'totp' => $totp->id,
         'session' => app(SessionManager::class)->start($subjectId, null, ['pwd'])->id,
         'passkey' => (string) WebAuthnCredential::query()->create(['user_id' => $subjectId, 'credential_id' => 'cred-'.$subjectId, 'public_key' => 'pk', 'name' => 'Sweep key', 'sign_count' => 0])->id,
         'device' => (string) $device->id,

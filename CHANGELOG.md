@@ -8,6 +8,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- Separate named authenticator apps in account security: add, confirm, rename and
+  remove individual TOTP credentials, with setup cancellation and ten-minute expiry.
+  Existing apps and recovery codes remain valid when another app is added. The last
+  confirmed app cannot be removed before another is ready. All ten console languages
+  cover the flow; management API and MCP use the same owner-scoped actions.
+
 ### Fixed
 
 - Record browser and IP details for email-link and SSO sessions, and store Cloudflare country/city headers from trusted proxies. Sessions & activity now shows location, IP, sign-in method and activity in readable fields; returning devices can fill only their own missing metadata.

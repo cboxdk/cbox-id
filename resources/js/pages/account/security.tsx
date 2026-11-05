@@ -67,6 +67,16 @@ interface ConnectableProvider {
     connectHref: string;
 }
 
+interface TotpRow {
+    id: string;
+    name: string;
+    added: string | null;
+    renameHref: string;
+    removeHref: string;
+}
+
+type TotpSetup = { id: string; name: string; secret: string; qr: string; cancelHref: string };
+
 type Props = PageProps<{
     help: HelpContent;
     returnTo: { url: string; host: string } | null;
@@ -81,6 +91,7 @@ type Props = PageProps<{
         enabled: boolean;
         offered: boolean;
         recoveryRemaining: number;
+        devices: TotpRow[];
     };
     /** Null when this environment does not offer text-message codes and none is on file. */
     smsFactor: {
@@ -333,6 +344,19 @@ function PasswordPanel({
     );
 }
 
+function setupFromFlash(flash: ReturnType<typeof usePage>['flash']): TotpSetup | null {
+    const { mfaSecret, mfaQrCode, mfaFactorId, mfaDeviceName, mfaCancelHref } = flash;
+    return mfaSecret && mfaQrCode && mfaFactorId && mfaCancelHref
+        ? {
+              id: mfaFactorId,
+              name: mfaDeviceName ?? '',
+              secret: mfaSecret,
+              qr: mfaQrCode,
+              cancelHref: mfaCancelHref,
+          }
+        : null;
+}
+
 function TwoFactorPanel({
     twoFactor,
     urls,
@@ -341,34 +365,280 @@ function TwoFactorPanel({
     urls: Props['urls'];
 }) {
     const { t: tc } = useTranslator();
-
-    /*
-        THE SECRET AND THE RECOVERY CODES ARRIVE ON THE FLASH CHANNEL, which Inertia never
-        writes into the history entry — so a back button, a restored tab or a shared session
-        snapshot cannot resurrect a credential that was meant to be shown once.
-    */
-    const { mfaSecret, mfaQrCode, recoveryCodes } = usePage().flash;
-
-    const form = useForm({ code: '' });
+    const flash = usePage().flash;
+    const { recoveryCodes } = flash;
+    const [setup, setSetup] = useState<TotpSetup | null>(() => setupFromFlash(flash));
+    const [adding, setAdding] = useState(false);
+    const [renaming, setRenaming] = useState<TotpRow | null>(null);
+    const [removing, setRemoving] = useState<TotpRow | null>(null);
     const [regenerating, setRegenerating] = useState(false);
-
-    const enrolling = typeof mfaSecret === 'string' && typeof mfaQrCode === 'string';
+    const add = useForm({ name: '' });
+    const form = useForm({ code: '' });
+    const rename = useForm({ name: '' });
+    const remove = useForm({ form: '' });
+    const cancel = useForm({ form: '' });
     const codes = Array.isArray(recoveryCodes) ? (recoveryCodes as string[]) : null;
+
+    // Keep a pending QR in component memory after a mistyped code. It is never remembered
+    // in Inertia history, local storage or page props; leaving this page discards it.
 
     return (
         <Panel
-            title={tc('console.two_factor_authentication_b6824cc8')}
-            description={tc('console.an_authenticator_app_adds_a_second_step_when_4b5bfb5c')}
+            title={tc('console.totp_apps')}
+            description={tc('console.totp_description')}
             action={
                 twoFactor.enabled && <Pill tone="success">{tc('console.enabled_92c1cdfd')}</Pill>
             }
         >
-            {twoFactor.enabled ? (
-                <>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        {tc('console.your_account_is_protected_with_an_authentica_a0cb0146')}
-                    </p>
+            {twoFactor.devices.length > 0 && (
+                <ul className="mb-5 divide-y divide-[var(--border)]">
+                    {twoFactor.devices.map((device) => (
+                        <li
+                            key={device.id}
+                            className="flex flex-col items-stretch justify-between gap-3 py-3 first:pt-0 sm:flex-row sm:items-center"
+                        >
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <Icon name="key" className="w-5 h-5 shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium break-words">{device.name}</p>
+                                    {device.added && (
+                                        <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                                            {tc('console.totp_added_on', { date: device.added })}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0 self-end sm:self-auto">
+                                <Button
+                                    size="sm"
+                                    aria-label={tc('console.totp_rename_named', {
+                                        name: device.name,
+                                    })}
+                                    onClick={() => {
+                                        rename.setData('name', device.name);
+                                        rename.clearErrors();
+                                        setRenaming(device);
+                                    }}
+                                >
+                                    {tc('console.totp_rename')}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    disabled={twoFactor.devices.length === 1}
+                                    aria-label={tc('console.totp_remove_named', {
+                                        name: device.name,
+                                    })}
+                                    onClick={() => {
+                                        remove.clearErrors();
+                                        setRemoving(device);
+                                    }}
+                                >
+                                    {tc('console.totp_remove')}
+                                </Button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {twoFactor.devices.length === 1 && (
+                <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
+                    {tc('console.totp_last_device')}
+                </p>
+            )}
 
+            {setup !== null ? (
+                <div
+                    className="space-y-4 rounded-xl p-4 sm:p-5"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+                >
+                    <h3 className="font-medium break-words">
+                        {tc('console.totp_setup_named', { name: setup.name })}
+                    </h3>
+                    <ol className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
+                        <li>
+                            {tc('console.1_scan_the_qr_code_with_your_authenticator_a_3150598a')}
+                        </li>
+                        <li>{tc('console.2_enter_the_6_digit_code_it_shows_3e5b7922')}</li>
+                    </ol>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                        <div
+                            className="shrink-0 rounded-xl p-3"
+                            style={{ background: '#fff', lineHeight: 0 }}
+                        >
+                            {/*
+                                An <img> over a data: URI, not injected SVG markup. The
+                                server generates it from the provisioning URI, so nothing
+                                untrusted is involved either way — but an <img> cannot
+                                execute what it is handed, and that stays true if the code
+                                ever moves. On a white plate because a QR must be
+                                dark-on-light to scan.
+                            */}
+                            <img
+                                src={setup.qr}
+                                alt={tc('console.authenticator_setup_qr_code_f154e1f3')}
+                                width={220}
+                                height={220}
+                            />
+                        </div>
+
+                        <div className="min-w-0 flex-1 w-full">
+                            <span className="label">
+                                {tc('console.setup_key_manual_entry_39842f55')}
+                            </span>
+                            <div className="flex items-stretch gap-2">
+                                <p
+                                    className="mono text-sm p-3 rounded-lg select-all break-all flex-1 min-w-0"
+                                    style={{
+                                        background: 'var(--surface-2)',
+                                        border: '1px solid var(--border)',
+                                    }}
+                                >
+                                    {setup.secret}
+                                </p>
+                                <CopyButton
+                                    value={setup.secret}
+                                    className="shrink-0"
+                                    aria-label={tc('console.copy_setup_key_44ea66fd')}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <form
+                        className="flex flex-wrap items-end gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            form.transform((data) => ({ ...data, factor_id: setup.id }));
+                            form.post(urls.confirmMfa, {
+                                preserveScroll: true,
+                                onSuccess: () => {
+                                    setSetup(null);
+                                    form.reset();
+                                    add.reset();
+                                },
+                            });
+                        }}
+                    >
+                        <div className="w-full sm:w-44">
+                            <Field
+                                label={tc('console.6_digit_code_0d1fa0df')}
+                                error={form.errors.code}
+                            >
+                                <Input
+                                    name="code"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    maxLength={6}
+                                    className="mono"
+                                    placeholder="000000"
+                                    value={form.data.code}
+                                    required
+                                    onChange={(event) => form.setData('code', event.target.value)}
+                                />
+                            </Field>
+                        </div>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            loading={form.processing}
+                            disabled={cancel.processing}
+                        >
+                            {tc('console.confirm_eebdd24a')}
+                        </Button>
+                        <Button
+                            type="button"
+                            loading={cancel.processing}
+                            disabled={form.processing}
+                            onClick={() =>
+                                cancel.delete(setup.cancelHref, {
+                                    preserveScroll: true,
+                                    onSuccess: () => {
+                                        setSetup(null);
+                                        form.reset();
+                                        add.reset();
+                                    },
+                                })
+                            }
+                        >
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        {cancel.errors.form && (
+                            <p className="field-error w-full" role="alert">
+                                {cancel.errors.form}
+                            </p>
+                        )}
+                    </form>
+                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                        {tc('console.totp_setup_expires')}
+                    </p>
+                </div>
+            ) : !twoFactor.offered ? (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                    {tc('console.your_administrator_has_turned_off_two_factor_e8143f3a')}
+                </p>
+            ) : twoFactor.devices.length >= 10 ? (
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                    {tc('console.totp_limit_reached')}
+                </p>
+            ) : adding ? (
+                <form
+                    className="space-y-3"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        form.clearErrors();
+                        cancel.clearErrors();
+                        add.post(urls.enrolMfa, {
+                            preserveScroll: true,
+                            onSuccess: (page) => {
+                                setSetup(setupFromFlash(page.flash));
+                                setAdding(false);
+                            },
+                        });
+                    }}
+                >
+                    <Field label={tc('console.totp_name')} error={add.errors.name}>
+                        <Input
+                            name="name"
+                            required
+                            maxLength={120}
+                            autoComplete="off"
+                            placeholder={tc('console.totp_name_example')}
+                            value={add.data.name}
+                            onChange={(event) => add.setData('name', event.target.value)}
+                        />
+                    </Field>
+                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                        {tc('console.totp_name_hint')}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        <Button type="submit" variant="primary" loading={add.processing}>
+                            {tc('console.totp_show_qr')}
+                        </Button>
+                        <Button
+                            type="button"
+                            disabled={add.processing}
+                            onClick={() => setAdding(false)}
+                        >
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                    </div>
+                </form>
+            ) : (
+                <Button
+                    variant="primary"
+                    onClick={() => {
+                        add.clearErrors();
+                        setAdding(true);
+                    }}
+                >
+                    <Icon name="plus" className="w-4 h-4" />
+                    {tc('console.totp_add')}
+                </Button>
+            )}
+
+            {twoFactor.enabled && (
+                <>
                     <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="font-medium text-sm">
@@ -422,118 +692,82 @@ function TwoFactorPanel({
                         }
                     />
                 </>
-            ) : !twoFactor.offered ? (
-                /*
-                    The administrator has turned second factors off for this deployment.
-                    Said out loud rather than by an absent button, because somebody looking
-                    for this panel deserves to know it was a decision and not a missing
-                    feature.
-                */
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {tc('console.your_administrator_has_turned_off_two_factor_e8143f3a')}
-                </p>
-            ) : !enrolling ? (
-                <Button
-                    variant="primary"
-                    onClick={() => router.post(urls.enrolMfa, {}, { preserveScroll: true })}
-                >
-                    <Icon name="key" className="w-4 h-4" />
-                    {tc('console.enable_2fa_a07197c7')}
-                </Button>
-            ) : (
-                <div className="space-y-4">
-                    <ol className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
-                        <li>
-                            {tc('console.1_scan_the_qr_code_with_your_authenticator_a_3150598a')}
-                        </li>
-                        <li>{tc('console.2_enter_the_6_digit_code_it_shows_3e5b7922')}</li>
-                    </ol>
+            )}
 
-                    <div className="flex flex-col sm:flex-row gap-4 items-start">
-                        <div
-                            className="shrink-0 rounded-xl p-3"
-                            style={{ background: '#fff', lineHeight: 0 }}
-                        >
-                            {/*
-                                An <img> over a data: URI, not injected SVG markup. The
-                                server generates it from the provisioning URI, so nothing
-                                untrusted is involved either way — but an <img> cannot
-                                execute what it is handed, and that stays true if the code
-                                ever moves. On a white plate because a QR must be
-                                dark-on-light to scan.
-                            */}
-                            <img
-                                src={mfaQrCode}
-                                alt={tc('console.authenticator_setup_qr_code_f154e1f3')}
-                                width={220}
-                                height={220}
-                            />
-                        </div>
-
-                        <div className="min-w-0 flex-1 w-full">
-                            <span className="label">
-                                {tc('console.setup_key_manual_entry_39842f55')}
-                            </span>
-                            <div className="flex items-stretch gap-2">
-                                <p
-                                    className="mono text-sm p-3 rounded-lg select-all break-all flex-1 min-w-0"
-                                    style={{
-                                        background: 'var(--surface-2)',
-                                        border: '1px solid var(--border)',
-                                    }}
-                                >
-                                    {mfaSecret}
-                                </p>
-                                <CopyButton
-                                    value={mfaSecret}
-                                    className="shrink-0"
-                                    aria-label={tc('console.copy_setup_key_44ea66fd')}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <form
-                        className="flex flex-wrap items-end gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            form.post(urls.confirmMfa, {
+            <Dialog
+                open={renaming !== null}
+                onOpenChange={(open) => {
+                    if (!open && !rename.processing) setRenaming(null);
+                }}
+                title={tc('console.totp_rename')}
+            >
+                <form
+                    className="space-y-4"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (renaming)
+                            rename.patch(renaming.renameHref, {
                                 preserveScroll: true,
-                                onSuccess: () => form.reset(),
+                                onSuccess: () => setRenaming(null),
                             });
-                        }}
-                    >
-                        <div style={{ minWidth: '10rem' }}>
-                            <Field
-                                label={tc('console.6_digit_code_0d1fa0df')}
-                                error={form.errors.code}
-                            >
-                                <Input
-                                    name="code"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    maxLength={6}
-                                    className="mono"
-                                    placeholder="000000"
-                                    value={form.data.code}
-                                    onChange={(event) => form.setData('code', event.target.value)}
-                                />
-                            </Field>
-                        </div>
-                        <Button type="submit" variant="primary" loading={form.processing}>
-                            {tc('console.confirm_eebdd24a')}
-                        </Button>
-                        {/*
-                            A reload rather than local state: the secret lives on the flash
-                            channel, so leaving the flow means dropping it, and the honest way
-                            to drop it is to ask the server for the page again.
-                        */}
-                        <Button type="button" onClick={() => router.reload()}>
+                    }}
+                >
+                    <Field label={tc('console.totp_name')} error={rename.errors.name}>
+                        <Input
+                            required
+                            maxLength={120}
+                            value={rename.data.name}
+                            onChange={(event) => rename.setData('name', event.target.value)}
+                        />
+                    </Field>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            disabled={rename.processing}
+                            onClick={() => setRenaming(null)}
+                        >
                             {tc('console.cancel_19766ed6')}
                         </Button>
-                    </form>
-                </div>
-            )}
+                        <Button type="submit" variant="primary" loading={rename.processing}>
+                            {tc('console.totp_save')}
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+            <Dialog
+                open={removing !== null}
+                onOpenChange={(open) => {
+                    if (!open && !remove.processing) setRemoving(null);
+                }}
+                title={tc('console.totp_remove_named', { name: removing?.name ?? '' })}
+                description={tc('console.totp_remove_explanation')}
+                footer={
+                    <>
+                        <Button disabled={remove.processing} onClick={() => setRemoving(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        <Button
+                            variant="danger"
+                            loading={remove.processing}
+                            onClick={() => {
+                                if (removing)
+                                    remove.delete(removing.removeHref, {
+                                        preserveScroll: true,
+                                        onSuccess: () => setRemoving(null),
+                                    });
+                            }}
+                        >
+                            {tc('console.totp_remove')}
+                        </Button>
+                    </>
+                }
+            >
+                {remove.errors.form && (
+                    <p className="field-error" role="alert">
+                        {remove.errors.form}
+                    </p>
+                )}
+            </Dialog>
         </Panel>
     );
 }
