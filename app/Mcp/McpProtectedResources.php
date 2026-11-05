@@ -73,6 +73,13 @@ final readonly class McpProtectedResources implements ProtectedResources
     {
         $path = '/'.trim($path, '/');
 
+        // Other services can have the same path on a different origin. This
+        // deployment's metadata and delegated API must use its own audience.
+        $mcp = $this->mcp();
+        if ($path === $mcp->metadataPath()) {
+            return $mcp;
+        }
+
         foreach ($this->all() as $resource) {
             if ($resource->metadataPath() === $path) {
                 return $resource;
