@@ -2490,9 +2490,6 @@
         width: var(--radix-popover-trigger-width);
         padding: 0;
         min-width: 14rem;
-        /* Scaling this measured popup feeds changing dimensions back into Floating UI
-           and cmdk's ResizeObservers during opening. Fade without changing geometry. */
-        animation-name: cbx-fade-in;
     }
     .cbx-combobox [cmdk-list] {
         max-height: 16rem;

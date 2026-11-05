@@ -407,7 +407,8 @@ it('has no accessibility issues on sessions and activity', function (): void {
         ->assertSee('Acme CLI')
         ->assertSee('Signed in')
         ->assertNoAccessibilityIssues()
-        ->assertNoJavaScriptErrors();
+        ->assertNoJavaScriptErrors()
+        ->screenshot(filename: 'account-activity-device-details');
 })->group('a11y');
 
 it('has no accessibility issues on sessions and activity in the dark', function (): void {
@@ -417,7 +418,8 @@ it('has no accessibility issues on sessions and activity in the dark', function 
         ->inDarkMode()
         ->assertSee('Acme CLI')
         ->assertNoAccessibilityIssues()
-        ->assertNoJavaScriptErrors();
+        ->assertNoJavaScriptErrors()
+        ->screenshot(filename: 'account-activity-device-details-dark');
 })->group('a11y');
 
 it('keeps sessions and activity usable at a phone width', function (): void {
@@ -430,7 +432,8 @@ it('keeps sessions and activity usable at a phone width', function (): void {
         ->assertSee('198.51.100.7')
         ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true)
         ->assertNoAccessibilityIssues()
-        ->assertNoJavaScriptErrors();
+        ->assertNoJavaScriptErrors()
+        ->screenshot(filename: 'account-activity-device-details-phone');
 })->group('a11y');
 
 /**
