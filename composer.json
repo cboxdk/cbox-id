@@ -18,12 +18,13 @@
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^1.0",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^1.27.3",
+        "cboxdk/laravel-id": "dev-sd/totp-authenticator-devices",
         "cboxdk/laravel-postal": "^0.1.1",
         "cboxdk/laravel-queue-autoscale": "^4.3",
         "cboxdk/laravel-queue-metrics": "^3.4",
         "cboxdk/laravel-queue-monitor": "^1.11",
         "cboxdk/laravel-risk": "^1.1",
+        "cboxdk/laravel-signals-client": "dev-sd/signals-implementation as 0.1.0",
         "cboxdk/laravel-ssrf": "^1.1.1",
         "cboxdk/laravel-telemetry": "^1.0",
         "firebase/php-jwt": "^7.0",
@@ -34,8 +35,7 @@
         "laravel/wayfinder": "^0.1",
         "league/flysystem-aws-s3-v3": "^3.35",
         "maxmind-db/reader": "^1.12",
-        "resend/resend-php": "^1.16",
-        "cboxdk/laravel-signals-client": "dev-sd/signals-implementation as 0.1.0"
+        "resend/resend-php": "^1.16"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

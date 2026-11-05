@@ -39,6 +39,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 - [Authentication policy and sign-in methods](authentication-policy.md) — password, two-factor and SSO rules, which ways in the environment offers, how long sessions last, and what the deployment decides.
 - [Social login](social-sign-in.md) — Google, GitHub, Apple and the rest for the whole environment, an organization's own, and how connecting one to an existing account works.
 - [Radar](radar.md) — allow, challenge or block each sign-in and sign-up: credential stuffing, impossible travel, new devices, throwaway addresses, your own rules and lists, monitor before you enforce.
+- [Authenticator apps](authenticator-apps.md) — independent named TOTP apps and recovery codes.
 - [SMS as a second factor](sms-mfa.md) — text-message codes: when to turn them on, which countries, and what they do not protect against.
 - [Outbound provisioning](sync-users-out.md) — push your people into your other SaaS products.
 - [Custom domains](custom-domains.md) — serve an environment's sign-in on your own address, such as `login.example.com`.
