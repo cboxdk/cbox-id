@@ -126,3 +126,17 @@ it('reads a populated catalog without per-organization membership queries', func
     }
     expect($counts[1])->toBe($counts[0]);
 });
+
+it('carries the selected organization to the published service entry without changing the catalog', function (): void {
+    $ada = app(Subjects::class)->create('ada@launch.example', 'Ada')->id;
+    $org = app(Organizations::class)->create(new NewOrganization('Launch team', 'launch-team'));
+    app(Memberships::class)->add($org->id, $ada, MembershipRole::Member);
+    $catalog = app(AppCatalog::class);
+    $url = 'https://billing.example.com/login/launch?view=home&organization=old';
+    $entry = $catalog->save('billing', CatalogEntryData::fromArray(catalogInput(['launch_url' => $url])));
+    $apps = $catalog->forUser($ada, $org->id);
+    parse_str((string) parse_url($apps[0]['launch_url'], PHP_URL_QUERY), $query);
+    expect($query)->toBe(['view' => 'home', 'organization' => $org->id]);
+    expect($catalog->present($entry)['launch_url'])->toBe($url);
+    expect($catalog->forUser($ada)[0]['launch_url'])->toBe($url);
+});
