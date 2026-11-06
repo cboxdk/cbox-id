@@ -13,6 +13,13 @@ return [
      */
     'enabled' => (bool) env('CBOX_ID_DEVICES_ENABLED', false),
 
+    // Disabled unless all three IDs identify a dedicated, unprivileged review account.
+    'app_review' => [
+        'environment_id' => env('CBOX_ID_APP_REVIEW_ENVIRONMENT_ID'),
+        'subject_id' => env('CBOX_ID_APP_REVIEW_SUBJECT_ID'),
+        'client_id' => env('CBOX_ID_APP_REVIEW_CLIENT_ID'),
+    ],
+
     /*
      * How a push actually leaves the building.
      *

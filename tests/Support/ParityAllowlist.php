@@ -57,6 +57,11 @@ final class ParityAllowlist
             // on their device or this page. An administrator's denial is `approvals.deny`.
             'approvals.approve',
             'approvals.deny',
+            // The reviewer's own phone-verification ceremony: fixed subject/client, no
+            // caller-supplied authority, and the polling secret is discarded. Machine
+            // clients already initiate real CIBA through the OAuth backchannel endpoint;
+            // this browser exercise deliberately cannot obtain an access token.
+            'account.authenticator.review.send',
             // Signing out of the environment console: ends the browser's session.
             'admin.logout',
             // The device-authorization flow (RFC 8628): the person types the code they were shown.

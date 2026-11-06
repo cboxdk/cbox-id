@@ -202,3 +202,27 @@ the environment-variable reference.
 - [Approvals](agent-approvals.md) — what the person sees and decides on the phone.
 - [Step-up approvals](step-up-approvals.md) — the agent's side of a held call, and how it retries.
 - [Agents and MCP](agents-and-mcp.md) — the agents whose calls end up on the phone.
+
+## App Store review access
+
+`/authenticator/review` provides a repeatable test of the normal approval flow for
+one dedicated reviewer account. It is off unless `CBOX_ID_DEVICES_ENABLED` is on
+and all three values below are configured:
+
+- `CBOX_ID_APP_REVIEW_ENVIRONMENT_ID`: the review account's environment.
+- `CBOX_ID_APP_REVIEW_SUBJECT_ID`: an ordinary account with no organization
+  memberships, administrative roles or customer data.
+- `CBOX_ID_APP_REVIEW_CLIENT_ID`: a dedicated confidential OAuth client with only
+  the CIBA grant and `openid` scope. Do not give its secret to the reviewer.
+
+The reviewer signs in normally, opens their Trusted devices page, connects their
+phone, and sends an approval from the review page. The page shows the result and
+allows another attempt after approval, denial or expiry. It reuses a pending
+request and limits new requests to three per minute. Requests expire after five
+minutes and can only target the signed-in review account. The page discards the
+polling secret, so the exercise never exchanges an approval for access tokens.
+
+Provision the account through the identity service and verify that it has no
+memberships, role assignments or operator record before sharing its login with
+Apple. Keep the credentials in the operator's secret store and Apple's App Review
+fields. Removing any of these three configuration values disables the page.
