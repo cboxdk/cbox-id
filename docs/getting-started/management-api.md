@@ -344,12 +344,13 @@ further. A key with no scopes is bounded by its role alone.
 | `team:write` | invite, re-role, scope and remove members | manage members |
 | `keys:write` | mint and revoke environment keys and workspace keys | manage environments (and manage members, for workspace keys) |
 | `settings:write` | rename the workspace | manage members |
+| `billing:write` | update invoice details and manage stored cards | manage billing |
 
 This is enough for an agent holding one workspace key to stand a product up end to end:
 
 ```http
 POST /api/v1/workspace/projects
-{ "name": "Billing", "environment_limit": 2 }
+{ "name": "Billing" }
 
 POST /api/v1/workspace/environments
 {

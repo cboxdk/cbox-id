@@ -230,7 +230,7 @@ enum HelpTopic: string
 
             self::EnvironmentDomains => __('console.serves_an_environment_s_identity_endpoints_o_f6582d38'),
 
-            self::Billing => __('console.each_project_in_your_workspace_has_its_own_p_c5ff35b1'),
+            self::Billing => __('billing.explanation'),
 
             self::EnvironmentOverview => __('console.how_many_organizations_users_single_sign_on__8e80258f'),
 

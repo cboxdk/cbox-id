@@ -1,10 +1,11 @@
+import Payments, { type PaymentsConfig, type PaymentProject } from '../components/Payments';
 import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Panel, Stat } from '@/ui';
 
-interface ProjectRow {
+interface ProjectRow extends PaymentProject {
     id: string;
     name: string;
     used: number;
@@ -20,9 +21,10 @@ type Props = PageProps<{
         signIns: number;
     };
     help: HelpContent;
+    payments: PaymentsConfig;
 }>;
 
-export default function Billing({ projects, usage, help }: Props) {
+export default function Billing({ projects, usage, help, payments }: Props) {
     const { locale } = useTranslator();
 
     const { t: tc } = useTranslator();
@@ -59,7 +61,7 @@ export default function Billing({ projects, usage, help }: Props) {
                             <div className="min-w-0">
                                 <p className="font-medium truncate">{project.name}</p>
                                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                    {tc('console.early_access_free_eaed27bb')}
+                                    {project.subscription?.plan ?? payments.labels.no_subscription}
                                 </p>
                             </div>
                             <span
@@ -78,6 +80,13 @@ export default function Billing({ projects, usage, help }: Props) {
                 )}
             </Panel>
 
+            <Payments
+                key={payments.organizationId}
+                config={payments}
+                projects={projects}
+                locale={locale}
+            />
+
             {/* Live usage — the figures enterprise billing is based on, across all projects. */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Stat
@@ -85,7 +94,7 @@ export default function Billing({ projects, usage, help }: Props) {
                     value={usage.organizations.toLocaleString(locale)}
                 />
                 <Stat
-                    label={tc('console.sso_connections_billed_cf94ded5')}
+                    label={payments.labels.connections}
                     value={usage.connections.toLocaleString(locale)}
                 />
                 <Stat
@@ -96,7 +105,7 @@ export default function Billing({ projects, usage, help }: Props) {
 
             <Panel title={tc('console.how_pricing_works_3090dcf5')} className="mt-4">
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {tc('console.each_project_is_billed_on_its_own_plan_usage_491e1817')}
+                    {payments.labels.explanation}
                 </p>
             </Panel>
         </>

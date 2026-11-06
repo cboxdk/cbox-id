@@ -137,3 +137,22 @@ it('refuses a type the enum does not have', function (): void {
 
     expect(Organization::query()->where('name', 'Acme Inc')->exists())->toBeFalse();
 });
+
+it('shows the newest events beyond the first audit page and counts the whole login window', function (): void {
+    detailOperatorSignIn();
+    $org = app(Organizations::class)->create(new NewOrganization('Busy', 'busy'));
+    $audit = app(AuditLog::class);
+    $this->travel(-40)->days();
+    for ($i = 0; $i < 505; $i++) {
+        $audit->record(AuditEvent::forUser('user.login', 'busy-user', $org->id));
+    }
+    $this->travelBack();
+    for ($i = 0; $i < 3; $i++) {
+        $audit->record(AuditEvent::forUser('user.login', 'busy-user', $org->id));
+    }
+    $audit->record(AuditEvent::forUser('user.password_changed', 'busy-user', $org->id));
+    $props = platformOrganization($org->id);
+    expect($props['usage']['signIns'])->toBe(3)
+        ->and($props['recent'][0]['action'])->toBe('user.password_changed')
+        ->and($props['recent'])->toHaveCount(20);
+});

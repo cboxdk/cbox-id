@@ -36,6 +36,15 @@ require __DIR__.'/../vendor/autoload.php';
 $suiteOwned = [
     // Framework infrastructure. The suite runs against nothing it did not start.
     'APP_ENV' => 'testing',
+    'APP_URL' => 'http://localhost',
+    // Billing tests explicitly inject test transports; never inherit a developer's account.
+    'BILLING_CLIENT_BASE_URL' => '',
+    'BILLING_CLIENT_API_TOKEN' => '',
+    'CBOX_BILLING_ENABLED' => 'true',
+    'CBOX_BILLING_PRODUCT' => 'cbox-id',
+    'CBOX_BILLING_CURRENCY' => 'DKK',
+    'CBOX_BILLING_ENVIRONMENT_FEATURE' => 'cbox-id.environments',
+    'CBOX_BILLING_WEBHOOK_SECRET' => '',
     'APP_MAINTENANCE_DRIVER' => 'file',
     'BCRYPT_ROUNDS' => '4',
     'BROADCAST_CONNECTION' => 'null',

@@ -7,6 +7,7 @@ namespace Cbox\Id\Billing\Http\Controllers;
 use App\Http\Controllers\Console\ConsoleController;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Help\HelpTopic;
+use Cbox\Id\Billing\Models\ProjectSubscription;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -16,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Response;
+use Symfony\Component\Intl\Countries;
 
 /**
  * IDENTITY PLATFORM › BILLING — the organization's usage rollup and its per-project plans.
@@ -46,6 +48,7 @@ final readonly class BillingController extends ConsoleController
         }
 
         $organizationId = $this->scope->organizationId();
+        $paymentsConfigured = (bool) config('billing-client.api_token') && (bool) config('billing-client.base_url');
 
         /** @var Collection<int, Project> $organizationProjects */
         $organizationProjects = $organizationId === null
@@ -67,12 +70,17 @@ final readonly class BillingController extends ConsoleController
                 ->selectRaw('project_id, count(*) as aggregate')
                 ->pluck('aggregate', 'project_id');
 
+        $subscriptions = ProjectSubscription::query()->whereIn('project_id', $organizationProjects->pluck('id'))->get()->keyBy('project_id');
+
         $projectRows = $organizationProjects->map(fn (Project $project): array => [
             'id' => $project->id,
             'name' => $project->name,
             'used' => (int) ($environmentCounts[$project->id] ?? 0),
             'limit' => $project->environment_limit,
             'href' => route('projects.show', $project->id),
+            'previewHref' => route('billing.preview', $project->id),
+            'confirmHref' => route('billing.confirm', $project->id),
+            'subscription' => $subscriptions->get($project->id)?->only(['plan', 'status', 'data']),
         ])->values()->all();
 
         /*
@@ -89,6 +97,18 @@ final readonly class BillingController extends ConsoleController
         return $this->page('billing::billing', __('console.billing_3ac8bbca'), [
             'help' => HelpProps::for(HelpTopic::Billing),
             'projects' => $projectRows,
+            'payments' => [
+                'organizationId' => $organizationId,
+                'currency' => config('billing.currency'),
+                'configured' => $paymentsConfigured,
+                'canManage' => $this->scope->capabilities()->canManageBilling() === true && $this->scope->actorEmailVerified(),
+                'environmentFeature' => config('billing.environment_feature'),
+                'invoiceHref' => $paymentsConfigured ? route('billing.invoice', ['billingOrganization' => $organizationId]) : '',
+                'accountHref' => $paymentsConfigured ? route('billing.account', ['billingOrganization' => $organizationId]) : '', 'detailsHref' => route('billing.details', ['billingOrganization' => $organizationId]), 'cardUpdateHref' => route('billing.updateCard', ['billingOrganization' => $organizationId]),
+                'cardHref' => route('billing.card', ['billingOrganization' => $organizationId]),
+                'countries' => Countries::getNames(app()->getLocale()),
+                'labels' => __('billing'),
+            ],
             'usage' => [
                 'organizations' => $environmentIds->isEmpty() ? 0 : DB::table('organizations')
                     ->whereIn('environment_id', $environmentIds)->count(),

@@ -62,6 +62,11 @@ final class WorkspaceScopes
             'description' => 'Mint and revoke management keys for the workspace\'s environments, and workspace keys never wider than this one.',
             'capability' => 'manage-environments',
         ],
+        'billing:write' => [
+            'label' => 'Manage billing details and cards',
+            'description' => 'Update invoice details and manage existing payment methods. Paid plan consent remains in the browser.',
+            'capability' => 'manage-billing',
+        ],
         'settings:write' => [
             'label' => 'Change workspace settings',
             'description' => 'Rename the workspace.',

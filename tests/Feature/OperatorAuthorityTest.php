@@ -146,7 +146,7 @@ it('gives the platform pages to an operator, as an area of the same console', fu
     // for that address rather than minting a second one.
     app(PlatformOperators::class)->create('staff@cbox.test', 'a-strong-unbreached-passphrase', 'Staff');
 
-    signInAsMember($member->id);
+    signInAsStrongOperator($member->id);
 
     // ONE REGISTRY, ONE SHELL: the Platform area is an area of the one console, offered
     // to an operator and to nobody else.
@@ -209,10 +209,11 @@ it('does not make an environment administrator an operator', function (): void {
     // have been asserting against a state no browser is ever in.
     $environment = serveOnTestHost(app(PlatformRoot::class)->run(fn () => Organization::query()->findOrFail(ownerOrgOf($member->id))->environments()->firstOrFail()));
 
+    signInAsStrongOperator($member->id);
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($environment->id));
 
-    actAsEnvironmentAdmin($member->id, $environment->id);
+    actAsEnvironmentAdmin($member->id, $environment->id, true, ['pwd', 'otp']);
 
     // CurrentUser, populated with the admin's OWN subject. This is the fixture that makes
     // the test about the refusal, and it took a falsification to find out: on a tenant
@@ -250,7 +251,7 @@ it('takes the platform pages away from a suspended operator mid-session', functi
     // Two, because the platform refuses to suspend its last remaining operator.
     $other = $operators->create('other@cbox.test', 'a-strong-unbreached-passphrase', 'Other');
 
-    signInAsMember($member->id);
+    signInAsStrongOperator($member->id);
 
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue();
 
@@ -291,7 +292,7 @@ it('lets an operator through the door it sent them to', function (): void {
 
     expect($outcome->name)->toBe('Ok', 'the account door refused an operator its own gate points at');
 
-    signInAsMember($member->id);
+    signInAsStrongOperator($member->id);
     $this->get('https://cboxid.com/admin/platform/workspaces')
         ->assertSuccessful();
 })->group('security');
@@ -359,7 +360,7 @@ it('signs in an operator who has no account at all', function (): void {
     // a request, so asking it here would report nobody no matter what the door did — and
     // would have blamed the door for it.
     $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
-    signInAsSubject($subjectId);
+    signInAsStrongOperator($subjectId);
 
     $this->get('https://cboxid.com/admin/platform/workspaces')->assertSuccessful();
 })->group('security');
@@ -474,7 +475,7 @@ it('lands an account-less operator on the console they actually have', function 
     // asserts the page that finally answers, which is the assertion that cannot be
     // satisfied by a loop however many hops it has.
     $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
-    signInAsSubject($subjectId);
+    signInAsStrongOperator($subjectId);
 
     // On the ACCOUNT HOST this deployment names, because `plane:console` is a host
     // question by design (an unmapped name resolves to the root, so the context cannot

@@ -46,6 +46,7 @@ type Props = PageProps<{
     types: { value: string; label: string }[];
     storeHref: string;
     help: HelpContent;
+    limitNotice: string | null;
 }>;
 
 /*
@@ -68,6 +69,7 @@ export default function Organizations({
     types,
     storeHref,
     help,
+    limitNotice,
 }: Props) {
     const { t: tc } = useTranslator();
     const plural = useConsoleCount();
@@ -94,6 +96,11 @@ export default function Organizations({
 
     return (
         <>
+            {limitNotice && (
+                <output className="block mb-4 rounded border border-[var(--border)] p-3 text-sm">
+                    {limitNotice}
+                </output>
+            )}
             <PageHeader
                 help={help}
                 description={tc('console.every_organization_in_the_target_environment_9b4126ae')}

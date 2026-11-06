@@ -86,10 +86,6 @@ final readonly class OrganizationCapabilities
     /** Change the plan. */
     public function canManageBilling(): bool
     {
-        // Not representable on the organization plane, and nothing asks for it — no page,
-        // no route. Answered as the manage-the-organization question rather than invented,
-        // so the one caller left (the machine plane's capability map) keeps a defensible
-        // answer until it folds too.
         return $this->role->canManageOrganization();
     }
 

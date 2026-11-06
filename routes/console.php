@@ -86,3 +86,6 @@ Schedule::call(static fn () => SchedulerHeartbeat::beat())
 Schedule::command('cbox-id:sso:certificate-expiry')
     ->dailyAt('06:00')
     ->onOneServer();
+
+Schedule::command('billing:sync-catalog --subscriptions')->everyFiveMinutes()->withoutOverlapping()->onOneServer()
+    ->when(fn (): bool => config('billing.enabled') === true && (bool) config('billing-client.api_token'));

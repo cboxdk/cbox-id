@@ -122,14 +122,10 @@ it('creates and freely targets environments — no identity guard', function ():
     $staging = Environment::query()->where('slug', 'staging')->first();
     expect($staging)->not->toBeNull();
 
-    // Operators stand above every plane — switching just repoints the target, under the
-    // operator-only environment key (never the end-user environment resolution).
-    targetPlatformEnvironment($staging->id);
-    expect(session(OperatorEnvironment::SESSION_KEY))->toBe('staging');
-
-    // And the list SAYS which plane it is aimed at, from the same key. Without this the
-    // switch above is a session write nothing on the page reflects.
-    expect(platformEnvironments()['activeId'])->toBe($staging->id);
+    targetPlatformEnvironment($staging->id)
+        ->assertRedirect(route('platform.organizations', ['targetEnvironment' => 'staging']))
+        ->assertSessionMissing(OperatorEnvironment::SESSION_KEY);
+    $this->get(route('platform.organizations', ['targetEnvironment' => 'staging']))->assertOk();
 });
 
 /**
@@ -298,7 +294,7 @@ it('re-points the platform pages from the Environments page, not from the topbar
 
     // …and re-pointing still works, driven rather than matched: the operator-only target
     // key moves to the chosen plane.
-    targetPlatformEnvironment($other->id);
-
-    expect(session(OperatorEnvironment::SESSION_KEY))->toBe('a-tenant-env');
+    targetPlatformEnvironment($other->id)
+        ->assertRedirect(route('platform.organizations', ['targetEnvironment' => 'a-tenant-env']))
+        ->assertSessionMissing(OperatorEnvironment::SESSION_KEY);
 })->group('ux');

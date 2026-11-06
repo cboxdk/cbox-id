@@ -25,7 +25,7 @@ use App\Platform\Locale\HostedTranslations;
  */
 const LANG_ROOT = __DIR__.'/../../lang';
 
-const PARITY_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'mail', 'errors', 'console'];
+const PARITY_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'mail', 'errors', 'console', 'billing'];
 
 /** @return array<string, string> */
 function catalogue(string $locale, string $namespace): array

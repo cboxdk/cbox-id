@@ -22,11 +22,13 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\JwtTokenIssuer;
 use Cbox\Id\OAuthServer\Models\Api;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Models\DeviceCode;
 use Cbox\Id\OAuthServer\Testing\InteractsWithOAuth;
+use Cbox\Id\OAuthServer\ValueObjects\AuthenticationEvent;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
@@ -88,12 +90,20 @@ function rootCliClient(): Client
  *
  * @param  list<string>|null  $scopes  null for every scope the root's `/mcp` accepts
  */
-function rootToken(string $subjectId, ?array $scopes = null, ?string $workspaceId = null, ?string $dpopJkt = null): string
+function rootToken(string $subjectId, ?array $scopes = null, ?string $workspaceId = null, ?string $dpopJkt = null, bool $strong = false): string
 {
     $client = rootCliClient();
 
-    return app(PlatformRoot::class)->run(function () use ($client, $subjectId, $scopes, $workspaceId, $dpopJkt): string {
+    return app(PlatformRoot::class)->run(function () use ($client, $subjectId, $scopes, $workspaceId, $dpopJkt, $strong): string {
         $resource = app(ProtectedResources::class)->forMetadataPath('/.well-known/oauth-protected-resource/mcp');
+
+        if ($strong) {
+            return app(JwtTokenIssuer::class)->issueForAuthenticatedUser(
+                $client, $subjectId, $workspaceId, ['openid', ...($scopes ?? $resource->scopes ?? [])],
+                new AuthenticationEvent(time(), ['pwd', 'otp']),
+                $resource?->identifier, $dpopJkt,
+            )->token;
+        }
 
         return app(TokenIssuer::class)->issueForUser(
             $client,
@@ -224,7 +234,7 @@ it('lists the deployment\'s tools to an operator, and nobody else', function ():
     $operator = actAsOperator('ops@platform.test');
     forgetSubjectSession();
 
-    $token = rootToken((string) $operator->subject_id);
+    $token = rootToken((string) $operator->subject_id, strong: true);
 
     expect(array_keys(mcpTools($token)))->toContain('platform_workspaces_create', 'platform_operators_create')
         ->and(mcpCall($token, 'whoami')['structuredContent']['operator'])->toBeTrue();
@@ -511,7 +521,7 @@ it('serves the member\'s own root account at /api/v1/me on the root', function (
 it('opens the operator API to an operator\'s root token, holding every call for their approval', function (): void {
     $operator = actAsOperator('ops@platform.test');
     forgetSubjectSession();
-    $token = rootToken((string) $operator->subject_id);
+    $token = rootToken((string) $operator->subject_id, strong: true);
 
     $held = $this->withToken($token)
         ->postJson('/api/v1/platform/operators', ['name' => 'X', 'email' => 'x@platform.test', 'password' => 'a-long-unbreached-pass'])
@@ -585,3 +595,10 @@ it('admits only the platform\'s own client to the device grant at the root', fun
 
     $this->post('/oauth/device_authorization', ['client_id' => $theirs?->client_id, 'scope' => 'openid'])->assertNotFound();
 })->group('security');
+
+it('refuses legacy operator tokens that do not attest to strong authentication', function (): void {
+    $operator = actAsOperator('weak-token@platform.test');
+    forgetSubjectSession();
+    $token = rootToken($operator->subject_id);
+    $this->withToken($token)->postJson('/api/v1/platform/operators', [])->assertUnauthorized();
+});

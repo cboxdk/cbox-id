@@ -39,6 +39,9 @@ enum ConsoleGate
     /** Invite, re-role and remove members; mint workspace keys; change workspace settings. */
     case ManageMembers;
 
+    /** Invoice details and stored payment methods. */
+    case ManageBilling;
+
     /**
      * A platform operator — Cbox staff running the deployment. The one gate of the platform
      * plane: the console asks {@see ConsoleScope::isPlatformOperator()}, a delegated token
@@ -71,6 +74,7 @@ enum ConsoleGate
             self::ManageEnvironments => 'manage-environments',
             self::ReadMembers => 'read-members',
             self::ManageMembers => 'manage-members',
+            self::ManageBilling => 'manage-billing',
         };
     }
 }

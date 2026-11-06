@@ -21,5 +21,9 @@ return [
      * That is `canReadBilling()` on their membership role, and both are asked.
      */
     'enabled' => env('CBOX_BILLING_ENABLED', true),
+    'product' => env('CBOX_BILLING_PRODUCT', 'cbox-id'),
+    'currency' => env('CBOX_BILLING_CURRENCY', 'DKK'),
+    'environment_feature' => env('CBOX_BILLING_ENVIRONMENT_FEATURE', 'cbox-id.environments'),
+    'webhook_secret' => env('CBOX_BILLING_WEBHOOK_SECRET'),
 
 ];

@@ -139,7 +139,7 @@ it('sends an operator from the root\'s organization pages to the platform enviro
     aWorkspace();
 
     $operator = app(PlatformOperators::class)->create('op@platform.test', 'a-strong-operator-pass', 'Operator');
-    signInAsSubject((string) $operator->subject_id);
+    signInAsStrongOperator((string) $operator->subject_id);
 
     // What an operator means by "Social login on cboxid.com" is the platform's sign-in:
     // the root environment's console, at the same page, with the same query.

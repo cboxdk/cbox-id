@@ -11,9 +11,10 @@ use App\Platform\OAuth\RootDelegatedAccess;
 use App\Support\CliClient;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
-use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
+use Cbox\Id\OAuthServer\JwtTokenIssuer;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Testing\InteractsWithOAuth;
+use Cbox\Id\OAuthServer\ValueObjects\AuthenticationEvent;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
@@ -61,7 +62,7 @@ function parityToken(string $subjectId): string
     return app(PlatformRoot::class)->run(function () use ($client, $subjectId): string {
         $resource = app(ProtectedResources::class)->forMetadataPath('/.well-known/oauth-protected-resource/mcp');
 
-        return app(TokenIssuer::class)->issueForUser($client, $subjectId, null, ['openid', ...($resource->scopes ?? [])], $resource?->identifier)->token;
+        return app(JwtTokenIssuer::class)->issueForAuthenticatedUser($client, $subjectId, null, ['openid', ...($resource->scopes ?? [])], new AuthenticationEvent(time(), ['pwd', 'otp']), $resource?->identifier)->token;
     }) ?? throw new LogicException('no platform root');
 }
 

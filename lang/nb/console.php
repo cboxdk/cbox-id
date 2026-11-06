@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'organization_results_limited' => 'Viser de første 500 treffene. Hierarkiet er ufullstendig. Avgrens søket for å finne flere organisasjoner.',
     'ux_no_users_status' => 'Ingen brukere med denne statusen. Velg en annen status eller opprett en bruker.',
     'ux_open_profile' => 'Åpne hele profilen',
     'ux_discard_changes' => 'Forkaste ulagrede endringer?',

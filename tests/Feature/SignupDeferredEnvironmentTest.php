@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -132,4 +133,24 @@ it('still homes the account in the platform root while the environment is deferr
     expect($member?->id)->not->toBeNull()
         ->and(ownerOrganizationId($member->id))->not->toBe('')
         ->and($root->is_default)->toBeTrue();
+});
+
+it('verifies a metered signup without granting an unpurchased environment', function (): void {
+    rootForDeferredSignup();
+    config(['cbox-id.entitlements.mode' => 'metered']);
+    signUpForWorkspace('metered-signup@example.test');
+    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('metered-signup@example.test'));
+    $org = ownerOrganizationId($member->id);
+    $project = Project::query()->where('organization_id', $org)->sole();
+    expect($project->environment_limit)->toBe(0);
+    $url = null;
+    Mail::assertSent(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
+        $url = $mail->url;
+
+        return true;
+    });
+    $this->post($url)->assertRedirect();
+    expect(environmentsOwnedBy($org)->count())->toBe(0);
+    $this->get(route('projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('awaitingVerification', false)->where('billingHref', route('billing')));
 });

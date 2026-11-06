@@ -45,6 +45,8 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
+| `cboxdk/laravel-billing-client` | `^0.4.13` | Billing catalog, account and subscription management. |
+| `symfony/intl` | `^8.0` | Country validation and localized country names for invoice addresses. |
 | `cboxdk/laravel-id` | `^1.28.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-signals-client` | `dev-sd/signals-implementation as 0.1.0` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
@@ -54,7 +56,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
 | `cboxdk/laravel-telemetry` | `^1.0` | Tracing / telemetry (trace IDs on error screens). |
 | `cboxdk/laravel-console-kit` | `^0.2` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend. |
-| `cboxdk/laravel-dns` | `^0.1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
+| `cboxdk/laravel-dns` | `^1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
 | `cboxdk/dns` | `^0.1` | The framework-agnostic DNS resolver beneath laravel-dns. |
 | `bacon/bacon-qr-code` | `^3.1` | TOTP enrolment QR codes. |
 | `cboxdk/laravel-queue-metrics` | `^3.4` | Queue depth/throughput metrics the autoscaler scales on. |

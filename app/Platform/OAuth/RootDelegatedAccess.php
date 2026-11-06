@@ -18,6 +18,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
+use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
 use Cbox\Id\OAuthServer\Exceptions\InvalidDpopProof;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -122,6 +123,12 @@ final readonly class RootDelegatedAccess
 
         $workspace = $this->workspaceOf($signIn->subjectId, $signIn->organizationId);
         $operatorId = $this->operatorIdOf($signIn->subjectId);
+
+        // Existing password-only tokens must not acquire platform authority, including
+        // when their subject is promoted after the token was issued.
+        if ($operatorId !== null && $signIn->token?->acr() !== AuthenticationContextClass::Aal2->value) {
+            return null;
+        }
 
         return $operatorId !== null
             ? new RootOperatorPrincipal($signIn, $workspace, $operatorId)

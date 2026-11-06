@@ -57,6 +57,7 @@ use App\Http\Controllers\Console\FrontendKeyController;
 use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
 use App\Http\Controllers\Console\LegacyLoginController;
+use App\Http\Controllers\Console\LegacyPlatformOrganizationController;
 use App\Http\Controllers\Console\LogStreamController;
 use App\Http\Controllers\Console\MemberApiKeyController;
 use App\Http\Controllers\Console\MemberController;
@@ -1952,7 +1953,7 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
     //
     // TargetEnvironment comes last: the console's chosen plane must not be ambient while
     // the operator's own (platform-root) session is being looked up.
-    Route::middleware(['platform.auth:optional', AuthenticateOperator::class, TargetEnvironment::class])->group(function (): void {
+    Route::middleware(['platform.auth:optional', AuthenticateOperator::class])->group(function (): void {
         // The area's own address lands on its first page, the way the rail's icon does.
         // Inside the gate, so a non-operator gets the same 404 here as on every page behind
         // it; a redirect controller rather than a closure, like every console route.
@@ -1983,11 +1984,18 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
         Route::post('/environments/{environment}/provision', [PlatformEnvironmentController::class, 'provision'])->name('platform.environments.provision');
         Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
 
-        Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
-        Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('platform.organizations.store');
-        Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('platform.organization');
-        Route::post('/organizations/{organization}/status', [PlatformOrganizationController::class, 'toggle'])->name('platform.organizations.toggle');
-        Route::post('/organizations/{organization}/parent', [PlatformOrganizationController::class, 'reparent'])->name('platform.organizations.reparent');
+        Route::prefix('/environments/{targetEnvironment}')->middleware(TargetEnvironment::class)->group(function (): void {
+            Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
+            Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('platform.organizations.store');
+            Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('platform.organization');
+            Route::post('/organizations/{organization}/status', [PlatformOrganizationController::class, 'toggle'])->name('platform.organizations.toggle');
+            Route::post('/organizations/{organization}/parent', [PlatformOrganizationController::class, 'reparent'])->name('platform.organizations.reparent');
+
+            Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('platform.impersonate');
+        });
+
+        Route::get('/organizations', LegacyPlatformOrganizationController::class);
+        Route::get('/organizations/{organization}', LegacyPlatformOrganizationController::class);
 
         Route::get('/operators', [OperatorRosterController::class, 'index'])->name('platform.operators');
         Route::post('/operators', [OperatorRosterController::class, 'store'])->name('platform.operators.store');
@@ -1995,7 +2003,6 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
 
         // Support impersonation — step into a tenant member's session. Authorized by
         // membership in the operator's currently-pinned plane (see the controller).
-        Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('platform.impersonate');
 
         Route::get('/usage', PlatformUsageController::class)->name('platform.usage');
         // The queue workers' state. The job-by-job monitor it links to is registered by
@@ -2146,8 +2153,8 @@ foreach ([
     '/platform' => '/admin/platform/environments',
     '/platform/workspaces' => '/admin/platform/workspaces',
     '/platform/workspaces/{organization}' => '/admin/platform/workspaces/{organization}',
-    '/platform/organizations' => '/admin/platform/organizations',
-    '/platform/organizations/{organization}' => '/admin/platform/organizations/{organization}',
+    '/platform/organizations' => '/admin/platform/environments/root/organizations',
+    '/platform/organizations/{organization}' => '/admin/platform/environments/root/organizations/{organization}',
     '/platform/operators' => '/admin/platform/operators',
     '/platform/usage' => '/admin/platform/usage',
     '/platform/queues' => '/admin/platform/queues',

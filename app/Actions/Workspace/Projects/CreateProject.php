@@ -21,6 +21,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Stand up another independently-billed IdP product. This is what lets a customer run
@@ -55,7 +56,6 @@ final readonly class CreateProject implements Action
     {
         return InputSchema::of([
             Field::string('name')->required()->max(120),
-            Field::integer('environment_limit')->min(1)->max(100)->describe('This project\'s plan environment allowance (default 2).'),
         ]);
     }
 
@@ -68,11 +68,18 @@ final readonly class CreateProject implements Action
         $organization = $this->platformRoot->run(fn (): ?Organization => $this->organizations->find($workspaceId))
             ?? throw ActionRefused::notFound('organization');
 
-        $limit = $context->has('environment_limit') && is_numeric($context->input['environment_limit'])
-            ? (int) $context->input['environment_limit']
-            : null;
+        // Quotas are server-owned. Extra legacy input cannot buy an allowance.
+        $limit = config('cbox-id.entitlements.mode') === 'metered' ? 0 : 2;
+        $project = DB::transaction(function () use ($organization, $context, $limit) {
+            $project = $this->provisioner->addProject($organization, trim($context->string('name')), $limit);
+            // The framework factory clamps to one; hosted admission permits zero until billed.
+            if ($limit === 0) {
+                $project->environment_limit = 0;
+                $project->save();
+            }
 
-        $project = $this->provisioner->addProject($organization, trim($context->string('name')), $limit);
+            return $project;
+        });
 
         // On the workspace's log, like the environments created under it: a project is a
         // billing anchor, and adding one recorded nothing at all.

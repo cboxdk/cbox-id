@@ -19,7 +19,8 @@ to approve. It uses the released clients, not test doubles:
 | Python SDK | `cbox-id-client==0.10.0` | The same, plus one root token driving an environment with `environment=` |
 
 It was first run on 2026-10-08 against v2.0.0 on a laptop (section 1). Every step below
-shows the command and what came back. Against staging, skip section 1 and set the
+records that historical run. Re-run it against the candidate commit and record the
+current CLI/SDK versions; the old result does not certify a newer release. Against staging, skip section 1 and set the
 variables in section 2 to staging's hosts.
 
 ## 1. A production-shaped deployment on one machine
@@ -30,7 +31,7 @@ What runs, and why each piece:
 |---|---|---|
 | App | `php artisan serve` on `:8000`, `PHP_CLI_SERVER_WORKERS=8` | The CLI polls while the browser approves, so it needs more than one worker |
 | TLS | Caddy (`tls internal`) on `:443` for `id.localhost` and `*.id.localhost` | Environment issuers are always `https://{slug}.{base}` with no port, and the CLI refuses `http` for anything but loopback. Real TLS is the only way the issuers match |
-| Database | Postgres 17 (Docker) | What production runs (`cbox.yaml`) |
+| Database | Postgres 18 (Docker) | What production runs (`cbox.yaml`) |
 | Cache, sessions, queue | Valkey 8 with `noeviction` (Docker) | As production |
 | Mail | Mailpit (Docker) | Real SMTP; invitations and portal links are readable at `http://127.0.0.1:8025` |
 | Queue | `php artisan queue:autoscale` | Without it webhooks and mail never leave |
@@ -45,7 +46,7 @@ What runs, and why each piece:
 name: cboxid-live
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment: { POSTGRES_DB: cbox_id, POSTGRES_USER: cbox_id, POSTGRES_PASSWORD: secret }
     ports: ["127.0.0.1:55433:5432"]
   valkey:

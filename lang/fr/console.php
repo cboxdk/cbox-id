@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'organization_results_limited' => 'Affichage des 500 premiers résultats. Cette hiérarchie est partielle. Affinez la recherche pour trouver d’autres organisations.',
     'ux_no_users_status' => 'Aucun utilisateur avec ce statut. Choisissez un autre statut ou créez un utilisateur.',
     'ux_open_profile' => 'Ouvrir le profil complet',
     'ux_discard_changes' => 'Abandonner les modifications non enregistrées ?',

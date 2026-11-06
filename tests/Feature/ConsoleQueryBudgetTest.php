@@ -229,7 +229,8 @@ it('keeps the most-loaded console pages within budget', function (string $route,
     // Repeated statements and per-organization growth remain checked below.
     // One bounded existence read for the shared app catalog; no per-organization reads.
     // One bounded read of the signed-in person's shared language preference.
-    'settings' => ['settings', 35],
+    // One request-memoized lookup enforces mandatory operator MFA.
+    'settings' => ['settings', 36],
 ]);
 
 /**

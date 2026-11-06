@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:06bd2a62-3cf6-470f-91c8-41b1b1317939",
+    "serialNumber": "urn:uuid:d6009cc3-8624-43f3-9052-b0d075de9c09",
     "version": 1,
     "metadata": {
         "tools": [
@@ -123,6 +123,22 @@
             "version": "v0.1.0",
             "purl": "pkg:composer/cboxdk/laravel-audit-chain@v0.1.0",
             "description": "Cbox Audit Chain: a tamper-evident, hash-chained audit trail for Laravel, with signed checkpoints and external anchoring.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-billing-client@v0.4.13",
+            "group": "cboxdk",
+            "name": "laravel-billing-client",
+            "version": "v0.4.13",
+            "purl": "pkg:composer/cboxdk/laravel-billing-client@v0.4.13",
+            "description": "Cbox Billing \u2014 app-local enforcement SDK: leases allowance from a remote Cbox Billing service and enforces hard limits locally on the hot path, buffering and reporting usage in the background.",
             "licenses": [
                 {
                     "license": {
@@ -1447,6 +1463,22 @@
             "version": "v8.1.11",
             "purl": "pkg:composer/symfony/http-kernel@v8.1.11",
             "description": "Provides a structured process for converting a Request into a Response",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/symfony/intl@v8.1.10",
+            "group": "symfony",
+            "name": "intl",
+            "version": "v8.1.10",
+            "purl": "pkg:composer/symfony/intl@v8.1.10",
+            "description": "Provides access to the localization data of the ICU library",
             "licenses": [
                 {
                     "license": {

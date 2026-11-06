@@ -7,7 +7,9 @@ namespace Cbox\Id\Billing;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Billing\Console\SyncBilling;
 use Cbox\Id\Billing\Http\Controllers\BillingController;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -47,17 +49,16 @@ class BillingServiceProvider extends ServiceProvider
      */
     private const NAV_ORDER = 70;
 
-    /**
-     * No `register()` and no `mergeConfigFrom()`. The switch lives at `config/billing.php`
-     * in the host, which is where every other module under `modules/` keeps its config —
-     * `id-devices.php`, `whitelabel.php`, `compliance.php`, `connectors.php`,
-     * `risk-plus.php`, `id-analytics.php`. A config file the deployment can see and edit
-     * is the point of a switch; one buried in the module would also put `env()` outside
-     * `config/`, which returns null the moment config is cached.
-     */
+    public function register(): void
+    {
+        $this->app->bind(Contracts\ProjectPayments::class, HttpProjectPayments::class);
+    }
+
     public function boot(): void
     {
 
+        $this->commands([SyncBilling::class]);
+        Route::post('/api/billing/webhook', Http\Controllers\BillingWebhookController::class)->middleware('throttle:60,1')->name('billing.webhook');
         $this->registerFeature();
         $this->registerNav();
         $this->registerRoutes();
@@ -124,6 +125,17 @@ class BillingServiceProvider extends ServiceProvider
         // owes for the products they own — and an environment administrator is a
         // control-plane identity acting inside one tenant, with no bill of their own to
         // read. Serving it on that plane would render a permanently empty page.
+        foreach (['account', 'details', 'card', 'updateCard', 'preview', 'confirm', 'invoice'] as $action) {
+            $uri = in_array($action, ['preview', 'confirm'], true) ? "/billing/projects/{project}/{$action}" : "/billing/accounts/{billingOrganization}/{$action}";
+            Route::middleware('throttle:30,1')->group(static function () use ($uri, $action): void {
+                if (in_array($action, ['account', 'invoice'], true)) {
+                    ConsoleRoutes::organizationPage('billing', $uri, [Http\Controllers\PaymentController::class, $action], 'billing.'.$action);
+                } else {
+                    ConsoleRoutes::organizationAction('billing', 'post', $uri, [Http\Controllers\PaymentController::class, $action], 'billing.'.$action);
+                }
+            });
+        }
+
         ConsoleRoutes::organizationPage(
             feature: 'billing',
             uri: '/billing',

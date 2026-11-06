@@ -2498,6 +2498,7 @@ export type MessageKey =
     | 'console.organization_name_9a807d52'
     | 'console.organization_name_updated_90901aef'
     | 'console.organization_reactivated_cdae875e'
+    | 'console.organization_results_limited'
     | 'console.organization_settings_4fd62541'
     | 'console.organization_suspended_b3cca290'
     | 'console.organization_tree_f3271d53'

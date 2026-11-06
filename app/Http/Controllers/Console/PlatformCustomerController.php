@@ -403,7 +403,7 @@ final readonly class PlatformCustomerController extends ConsoleController
 
         $environments->pointAt($this->ownedEnvironment($organization, $environment)->slug);
 
-        return redirect()->route('platform.workspaces.show', $organization);
+        return redirect()->route('platform.organizations');
     }
 
     /**
