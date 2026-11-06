@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'services_604dce44' => 'Servizi',
     'ux_no_users_status' => 'Nessun utente con questo stato. Scegli un altro stato o crea un utente.',
     'ux_open_profile' => 'Apri il profilo completo',
     'ux_discard_changes' => 'Scartare le modifiche non salvate?',

@@ -126,6 +126,7 @@ final class CrossTenantSweep
             'invitations:id' => 'team_invitation',
         ],
         'account' => [
+            'services:program' => 'billing_program',
             'organizations:organization_id' => 'organization',
             'api-keys:key_id' => 'customer_api_key',
             'applications:client_id' => 'application',

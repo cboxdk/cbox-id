@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'services_604dce44' => 'Tjänster',
     'ux_no_users_status' => 'Inga användare med denna status. Välj en annan status eller skapa en användare.',
     'ux_open_profile' => 'Öppna hela profilen',
     'ux_discard_changes' => 'Kasta osparade ändringar?',

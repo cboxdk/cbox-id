@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'services_604dce44' => 'Palvelut',
     'ux_no_users_status' => 'Ei käyttäjiä tässä tilassa. Valitse toinen tila tai luo käyttäjä.',
     'ux_open_profile' => 'Avaa koko profiili',
     'ux_discard_changes' => 'Hylätäänkö tallentamattomat muutokset?',

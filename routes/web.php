@@ -120,6 +120,7 @@ use App\Http\Controllers\Portal\PortalLogStreamController;
 use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalAuditLogController;
 use App\Http\Controllers\PortalSetupController;
+use App\Http\Controllers\ServiceAccessController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\Sso\OAuth2CallbackController;
@@ -747,6 +748,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
     Route::get('/account', [AccountController::class, 'show'])->name('account');
+    Route::get('/account/services', [ServiceAccessController::class, 'index'])->name('account.services');
+    Route::post('/account/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.join');
 
     /*
      * EVERY WRITE ON THAT PAGE EXCEPT THE NAME IS BEHIND `sudo`, ON THE ROUTE.

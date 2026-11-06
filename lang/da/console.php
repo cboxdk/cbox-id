@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'services_604dce44' => 'Tjenester',
     'ux_no_users_status' => 'Ingen brugere med denne status. Vælg en anden status, eller opret en bruger.',
     'ux_open_profile' => 'Åbn hele profilen',
     'ux_discard_changes' => 'Kassér dine ændringer, der ikke er gemt?',
