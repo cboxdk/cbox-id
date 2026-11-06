@@ -291,7 +291,8 @@ it('publishes invalid magic link and expired passkey proof failures without bear
     $events = collect($response->json('data'))->where('name', 'identity.authentication');
     expect($events->where('data.outcome', 'failed'))->toHaveCount(2)
         ->and($events->where('data.outcome', 'succeeded'))->toHaveCount(0)
-        ->and($response->getContent())->not->toContain('never-export-this-bearer', 'secret-credential-handle');
+        ->and($response->getContent())->not->toContain('never-export-this-bearer')
+        ->and($response->getContent())->not->toContain('secret-credential-handle');
     foreach ($events as $event) {
         assertSourceEventContract($event);
     }
