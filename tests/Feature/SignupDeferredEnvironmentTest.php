@@ -84,3 +84,16 @@ it('keeps replayed identity confirmation from provisioning a product', function 
     expect(Project::query()->count())->toBe(0)
         ->and(Environment::query()->where('is_default', false)->count())->toBe(0);
 });
+
+it('lets a person without a team resend confirmation from their account page', function (): void {
+    rootForDeferredSignup();
+    signUpForWorkspace();
+    config(['cbox-id.tenancy.account_host' => 'localhost']);
+    $this->get(route('account'))->assertOk()->assertInertia(fn ($page) => $page
+        ->where('auth.user.confirmUrl', '/account/email/confirmation'));
+    $this->from(route('account'))->post(route('account.email.confirmation'), ['email' => 'someone-else@example.test'])
+        ->assertRedirect(route('account'))->assertSessionHasNoErrors()->assertSessionHas('status');
+    Mail::assertSent(EmailVerificationMail::class, 2);
+    Mail::assertNotSent(EmailVerificationMail::class, fn ($mail): bool => $mail->hasTo('someone-else@example.test'));
+    expect(Project::query()->count())->toBe(0);
+});

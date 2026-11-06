@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Account\JoinServiceWaitlist;
+use App\Http\Controllers\Console\RunsActions;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\IntendedUrl;
@@ -30,6 +32,8 @@ use Illuminate\Validation\ValidationException;
 /** The ID product has its own front door; /signup only creates an identity. */
 final readonly class ProductSignupController
 {
+    use RunsActions;
+
     public function __construct(private CurrentUser $me, private BillingWaitlists $billing, private WaitlistTeams $teams, private ProductAdmission $admission) {}
 
     public function show(Request $request, ServiceAccessSettings $settings): Response|RedirectResponse
@@ -129,14 +133,21 @@ final readonly class ProductSignupController
             }
             $email = $this->me->check() ? ($this->me->email() ?? '') : $request->string('email')->toString();
             $country = $request->filled('country') ? $request->string('country')->toString() : null;
-            $reference = hash('sha256', json_encode([$request->session()->getId(), $this->me->id(), $email, $country, $answers], JSON_THROW_ON_ERROR));
+            $attempt = 'product-signup.join.'.hash('sha256', json_encode([$this->me->id(), $email, $country, $answers], JSON_THROW_ON_ERROR));
+            $reference = $request->session()->get($attempt);
+            if (! is_string($reference)) {
+                $reference = (string) Str::uuid();
+                $request->session()->put($attempt, $reference);
+            }
             if ($this->me->check()) {
-                $this->billing->join($policy->id, $this->me->id(), $email, $country, $answers, $reference);
+                $this->runAction(JoinServiceWaitlist::class, ['program' => $policy->id, 'country' => $country, 'answers' => $answers, 'reference' => $reference]);
             } else {
                 $this->billing->joinProductGuest($email, $country, $answers, $reference);
             }
 
             return to_route('product-signup.show')->with('service-registration.joined', $this->me->check() ? 'person' : 'guest');
+        } catch (ActionRefused $error) {
+            return to_route('product-signup.show')->withErrors(['registration' => $error->getMessage()]);
         } catch (ValidationException $error) {
             return to_route('product-signup.show')->withErrors($error->errors())->withInput($request->except(['code', 'invitation']));
         } catch (ServiceAccessUnavailable) {

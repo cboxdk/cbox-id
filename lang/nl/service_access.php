@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'Ik heb een uitnodiging',
     'feature_closed' => 'Deze functie accepteert momenteel geen aanmeldingen.',
     'feature_released' => 'Beschikbaar voor klanten met deze functie in hun abonnement.',
     'revoked' => 'Toegang ingetrokken',

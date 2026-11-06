@@ -195,7 +195,7 @@ it('keeps Cbox\'s own panel on the platform root\'s sign-up', function (): void 
     $root = test()->get('https://cboxid.com/signup')->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('auth/signup')
-            ->where('createsIdp', true)
+            ->where('createsIdp', false)
             ->where('brand', null));
 
     expect((string) $root->getContent())->toMatch('#<title>[^<]*· Cbox ID</title>#');

@@ -137,6 +137,10 @@ final class ParityAllowlist
             'settings.organization.destroy',
             // Creating an account for yourself.
             'signup.register',
+            // The product's signup ceremony: found/select your own team in this browser
+            // and redeem the invitation kept in its session. No management of another person.
+            'product-signup.team',
+            'product-signup.admit',
             // Proving an email address is yours, with the link sent to it.
             'verification.verify.store',
         ];

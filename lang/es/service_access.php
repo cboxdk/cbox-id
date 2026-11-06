@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'Tengo una invitación',
     'feature_closed' => 'Esta función no acepta solicitudes en este momento.',
     'feature_released' => 'Disponible para clientes cuyo plan incluye esta función.',
     'revoked' => 'Acceso revocado',

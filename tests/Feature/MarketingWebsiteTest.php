@@ -25,7 +25,7 @@ it('serves a public website without a login session and links to the application
     $response = $this->get('https://cboxid.com/')->assertOk()
         ->assertSee('One identity layer.')
         ->assertSee('https://app.cboxid.com/login')
-        ->assertSee('https://app.cboxid.com/signup')
+        ->assertSee('https://app.cboxid.com/start')
         ->assertHeader('X-Frame-Options', 'DENY');
 
     expect($response->headers->getCookies())->toBeEmpty();

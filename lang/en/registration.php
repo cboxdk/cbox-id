@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'new_team_name' => 'Or create a team: name',
-    'access_required' => 'Get access to Cbox ID at /get-started before creating a project or environment.',
+    'access_required' => 'Get access to Cbox ID at /start before creating a project or environment.',
     'page_title' => 'Get started',
     'skip' => 'Skip to registration',
     'sign_in' => 'Sign in',
@@ -52,7 +52,7 @@ return [
     'headline' => 'Identity, ready for your product.',
     'lead' => 'Give your users one secure place to sign in, and your team the controls to run it.',
     'feature1_title' => 'Authenticate',
-    'feature1_description' => 'Authenticate sales tax with your customer and transaction in context.',
+    'feature1_description' => 'Give your users secure sign-in with the methods they prefer.',
     'feature2_title' => 'Manage',
     'feature2_description' => 'Manage organizations, members and access in one place.',
     'feature3_title' => 'Connect',

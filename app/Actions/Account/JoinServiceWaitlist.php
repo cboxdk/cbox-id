@@ -29,7 +29,7 @@ use Illuminate\Validation\Rule;
     danger: Danger::Write,
     plane: ActionPlane::Account,
     rest: ['POST', '/services/{program}/waitlist'],
-    consoleRoutes: ['account.services.join'],
+    consoleRoutes: ['account.services.join', 'product-signup.join'],
     consoleGate: ConsoleGate::Person,
     tag: 'Service waitlists',
 )]

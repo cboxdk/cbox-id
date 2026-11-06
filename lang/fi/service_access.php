@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'Minulla on kutsu',
     'feature_closed' => 'Tämä ominaisuus ei ota vastaan hakemuksia juuri nyt.',
     'feature_released' => 'Saatavilla asiakkaille, joiden tilaus sisältää tämän ominaisuuden.',
     'revoked' => 'Käyttöoikeus peruttu',

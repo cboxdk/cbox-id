@@ -382,7 +382,7 @@ Route::middleware(['plane:signup', 'platform.auth:optional', 'locale', 'throttle
     Route::get('/identity', [ProductSignupController::class, 'identity'])->name('product-signup.identity');
     Route::get('/signin', [ProductSignupController::class, 'signin'])->name('product-signup.signin');
     Route::get('/switch', [ProductSignupController::class, 'switch'])->name('product-signup.switch');
-    Route::post('/team', [ProductSignupController::class, 'team'])->middleware('platform.auth')->name('product-signup.team');
+    Route::post('/team', [ProductSignupController::class, 'team'])->name('product-signup.team');
     Route::post('/waitlist', [ProductSignupController::class, 'join'])->name('product-signup.join');
     Route::post('/invitation', [ProductSignupController::class, 'admit'])->name('product-signup.admit');
 });

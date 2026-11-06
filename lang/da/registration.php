@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'new_team_name' => 'Eller opret et team: navn',
-    'access_required' => 'Få adgang til Cbox ID på /get-started, før du opretter et projekt eller miljø.',
+    'access_required' => 'Få adgang til Cbox ID på /start, før du opretter et projekt eller miljø.',
     'page_title' => 'Kom i gang',
     'skip' => 'Gå til tilmelding',
     'sign_in' => 'Log ind',
@@ -52,7 +52,7 @@ return [
     'headline' => 'Identitet, klar til dit produkt.',
     'lead' => 'Giv dine brugere ét sikkert sted at logge ind og dit team værktøjerne til at drive det.',
     'feature1_title' => 'Log ind',
-    'feature1_description' => 'Log ind salgsskat ud fra kunden og transaktionen.',
+    'feature1_description' => 'Giv dine brugere sikkert login med de metoder, de foretrækker.',
     'feature2_title' => 'Administrér',
     'feature2_description' => 'Administrér organisationer, medlemmer og adgang ét sted.',
     'feature3_title' => 'Forbind',
