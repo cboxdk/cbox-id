@@ -61,3 +61,10 @@ Qualification includes a real hosted magic-link → refused TOTP → accepted TO
 flow, paused erasure/retention, and independent PostgreSQL connections proving
 that deletion cannot overtake an uncommitted source write. Live qualification
 and remaining identity flow/relationship coverage are still open.
+
+Retention removes expired positions even when a delayed transaction published
+an old fact behind newer retained positions. The replay floor advances only to
+the first remaining position, so a hole never hides a valid earlier row.
+Maintenance also visits paused environments with only unpublished outbox data.
+It expires raw facts and their subject index in bounded passes, preserves the
+independent erasure journal, and never marks paused capture as healthy.

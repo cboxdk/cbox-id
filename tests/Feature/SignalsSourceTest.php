@@ -328,3 +328,40 @@ it('allows erasure-first polling before the first ordinary publication', functio
     $cursor = app(SourceCursor::class)->encode('env_test', $head->generation, 20);
     $this->withToken($key)->getJson('/api/v1/signals/source/erasures?after='.urlencode($cursor))->assertUnprocessable();
 });
+
+it('expires delayed facts behind retained rows without skipping those rows', function (): void {
+    $this->freezeTime();
+    foreach (range(1, 3) as $number) {
+        app(Subjects::class)->create("retention-hole-{$number}@example.test", 'Retention');
+    }
+    $key = signalsSourceKey();
+    $before = $this->withToken($key)->getJson('/api/v1/signals/source')->assertOk()->json('data');
+    $middle = $before[1]['position']['sequence'];
+    DB::table('signals_source_records')->where('sequence', $middle)->update(['recorded_at' => now()->subDays(8)]);
+    $this->artisan('signals:source-maintain')->assertSuccessful();
+    expect(DB::table('signals_source_records')->count())->toBe(2)
+        ->and(DB::table('signals_source_subjects')->where('sequence', $middle)->count())->toBe(0)
+        ->and(DB::table('signals_source_heads')->value('retained_after'))->toBe(0);
+    $after = $this->withToken($key)->getJson('/api/v1/signals/source')->assertOk()->json('data');
+    expect(array_column($after, 'id'))->toBe([$before[0]['id'], $before[2]['id']]);
+    $heartbeat = DB::table('signals_source_heads')->value('heartbeat_at');
+    config(['signals-data.environments' => []]);
+    $this->travel(8)->days();
+    $this->artisan('signals:source-maintain')->assertSuccessful();
+    expect(DB::table('signals_source_records')->count())->toBe(0)
+        ->and(DB::table('signals_source_subjects')->count())->toBe(0)
+        ->and(DB::table('signals_source_heads')->value('retained_after'))->toBe(3)
+        ->and(DB::table('signals_source_heads')->value('heartbeat_at'))->toBe($heartbeat);
+});
+
+it('expires a paused outbox that has never published a head', function (): void {
+    app(Subjects::class)->create('never-published@example.test', 'Pending');
+    expect(DB::table('signals_source_pending')->count())->toBe(1)
+        ->and(DB::table('signals_source_heads')->count())->toBe(0);
+    config(['signals-data.environments' => []]);
+    $this->travel(8)->days();
+    $this->artisan('signals:source-maintain')->assertSuccessful();
+    expect(DB::table('signals_source_pending')->count())->toBe(0)
+        ->and(DB::table('signals_source_records')->count())->toBe(0)
+        ->and(DB::table('signals_source_heads')->value('heartbeat_at'))->toBeNull();
+});
