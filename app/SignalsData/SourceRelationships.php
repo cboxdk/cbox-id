@@ -33,8 +33,8 @@ final readonly class SourceRelationships
             return;
         }
         if (! $added && $state === null) {
-            // A pre-capture deletion has no supported assertion to retract. This is
-            // one reason coverage remains partial until the initial snapshot is qualified.
+            // A deletion before this membership's first observation has no supported
+            // assertion to retract. The snapshot never invents pre-observation history.
             return;
         }
         $at = CarbonImmutable::now();

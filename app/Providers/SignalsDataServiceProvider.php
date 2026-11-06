@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\SignalsData\IdentityCapture;
 use App\SignalsData\MaintainSource;
+use App\SignalsData\SnapshotMemberships;
 use App\SignalsData\SourceEvents;
 use App\SignalsData\SourceLedger;
 use App\SignalsData\SourceRefreshTokens;
@@ -25,7 +26,7 @@ final class SignalsDataServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        $this->commands([MaintainSource::class]);
+        $this->commands([MaintainSource::class, SnapshotMemberships::class]);
     }
 
     public function register(): void

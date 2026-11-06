@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
+use App\SignalsData\MembershipSnapshot;
 use App\SignalsData\SourceFact;
 use App\SignalsData\SourceLedger;
 use Carbon\CarbonImmutable;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
@@ -101,4 +107,41 @@ it('serializes erasure with committed owner facts and suppresses later replays',
     }
     $ledger->append($fact);
     expect(DB::table('signals_source_pending')->where('id', 'race-fact')->exists())->toBeFalse();
+});
+
+it('serializes a membership snapshot with owner deletion and preserves its retraction', function (): void {
+    config(['signals-data.environments' => []]);
+    $person = app(Subjects::class)->create('locked-snapshot@example.test', 'Locked snapshot');
+    $team = app(Organizations::class)->create(new NewOrganization('Locked team', 'locked-team'));
+    $membership = app(Memberships::class)->add($team->id, $person->id, MembershipRole::Member);
+    config(['signals-data.environments' => ['env_test']]);
+    $other = sourceWriter();
+    $other->exec("SET lock_timeout='80ms'");
+    DB::beginTransaction();
+    try {
+        app(MembershipSnapshot::class)->page(null);
+        $delete = $other->prepare('DELETE FROM memberships WHERE environment_id=? AND id=?');
+        try {
+            $delete->execute(['env_test', $membership->id]);
+            $this->fail('Owner deletion must wait for the observed membership assertion.');
+        } catch (PDOException $exception) {
+            expect($exception->getCode())->toBe('55P03');
+        }
+        DB::commit();
+    } finally {
+        if (DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
+    }
+    app(Memberships::class)->remove($team->id, $person->id);
+    app(MembershipSnapshot::class)->page(null);
+    $key = app(EnvironmentApiKeys::class)->issue('env_test', 'Membership race qualification', ['signals_source:read'])->plaintext;
+    $records = collect($this->withToken($key)->getJson('/api/v1/signals/source')->assertOk()->json('data'));
+    expect($records)->toHaveCount(2)
+        ->and($records->where('operation', 'assert'))->toHaveCount(1)
+        ->and($records->where('operation', 'retract'))->toHaveCount(1);
+    $assertion = $records->where('operation', 'assert')->sole();
+    $retraction = $records->where('operation', 'retract')->sole();
+    expect($retraction['supersedes_id'])->toBe($assertion['id'])
+        ->and($retraction['valid_from'])->toBe($assertion['valid_from']);
 });
