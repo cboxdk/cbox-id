@@ -54,7 +54,7 @@ Pulled in automatically by `composer install`:
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
 | `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
-| `cboxdk/laravel-telemetry` | `^3.9.2` | Tracing, metrics and scheduled OTLP export (trace IDs on error screens). |
+| `cboxdk/laravel-telemetry` | `^3.9.3` | Tracing, metrics and scheduled OTLP export (trace IDs on error screens). |
 | `cboxdk/laravel-console-kit` | `^0.2` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend. |
 | `cboxdk/laravel-dns` | `^1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
 | `cboxdk/dns` | `^0.1` | The framework-agnostic DNS resolver beneath laravel-dns. |
