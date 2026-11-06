@@ -40,26 +40,26 @@ final class AppReviewController
         $subject = app(CurrentUser::class)->id();
 
         if (! $this->hasDevice($subject)) {
-            return to_route('authenticator.review.show')->withErrors(['review' => 'Connect your iPhone first, then return here.']);
+            return to_route('account.authenticator.review.show')->withErrors(['review' => 'Connect your iPhone first, then return here.']);
         }
 
         // Refreshes and ordinary double taps keep the same pending exercise.
         if (BackchannelAuthRequest::query()
             ->where('client_id', $client->client_id)->where('user_id', $subject)
             ->where('status', GrantPollStatus::Pending)->where('expires_at', '>', now())->exists()) {
-            return to_route('authenticator.review.show');
+            return to_route('account.authenticator.review.show');
         }
 
         $key = 'authenticator-review:'.$client->environment_id.':'.$subject;
         if (RateLimiter::increment($key, 60) > 3) {
-            return to_route('authenticator.review.show')->withErrors(['review' => 'Please wait a minute before starting another test.']);
+            return to_route('account.authenticator.review.show')->withErrors(['review' => 'Please wait a minute before starting another test.']);
         }
 
         // Never accept a subject, client, message or scope from the browser. The polling
         // secret is deliberately discarded: this page cannot exchange an approval for tokens.
         $backchannel->request($client, ['openid'], $subject, 'REVIEW '.random_int(1000, 9999), null, 300);
 
-        return to_route('authenticator.review.show');
+        return to_route('account.authenticator.review.show');
     }
 
     private function reviewClient(): Client

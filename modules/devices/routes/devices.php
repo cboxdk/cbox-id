@@ -140,7 +140,7 @@ Route::get('/authenticator/privacy', PrivacyController::class)->middleware('thro
 // A real approval exercise, available only to the explicitly configured review subject.
 Route::middleware(['web', 'plane:console', 'platform.auth', 'console.customer', 'console.root', BlockDuringImpersonation::class])
     ->prefix('authenticator/review')
-    ->name('authenticator.review')
+    ->name('account.authenticator.review')
     ->group(function (): void {
         Route::get('/', [AppReviewController::class, 'show'])->name('.show');
         Route::post('/', [AppReviewController::class, 'send'])->name('.send');

@@ -61,7 +61,7 @@ final class ParityAllowlist
             // caller-supplied authority, and the polling secret is discarded. Machine
             // clients already initiate real CIBA through the OAuth backchannel endpoint;
             // this browser exercise deliberately cannot obtain an access token.
-            'authenticator.review.send',
+            'account.authenticator.review.send',
             // Signing out of the environment console: ends the browser's session.
             'admin.logout',
             // The device-authorization flow (RFC 8628): the person types the code they were shown.

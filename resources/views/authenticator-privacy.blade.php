@@ -12,12 +12,12 @@
         h1 { font-size: clamp(2rem, 5vw, 2.75rem); line-height: 1.15; font-weight: 650; margin: 1rem 0 1.5rem; }
         h2 { font-size: 1.25rem; font-weight: 600; margin: 2.5rem 0 .75rem; }
         p + p { margin-top: 1rem; }
-        a { color: var(--accent); text-decoration: underline; text-underline-offset: .2em; }
+        a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: .2em; }
     </style>
 </head>
 <body>
 <main>
-    <p style="color:var(--accent);font-weight:600">Cbox ID for iPhone</p>
+    <p style="color:var(--accent-strong);font-weight:600">Cbox ID for iPhone</p>
     <h1>Privacy and support</h1>
     <p>Cbox ID connects an existing Cbox ID account to an iPhone so you can review, approve, deny and report sign-in and action requests. You can also keep verification codes for other services, without a Cbox account.</p>
     <h2>Data on your phone</h2>
