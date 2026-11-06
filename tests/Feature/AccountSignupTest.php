@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\PointAtFirstRun;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 
@@ -22,7 +23,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
  */
 function seedRootEnvironment(): Environment
 {
-    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+    config(['cbox-id.environments.base_domains' => ['cboxid.com'], 'cbox-id.tenancy.multi_tenant' => true]);
 
     $root = Environment::query()->create([
         'name' => 'Production',
@@ -36,61 +37,33 @@ function seedRootEnvironment(): Environment
     return $root;
 }
 
-it('provisions an account and member on a Tier 2 signup, holding the environment back', function (): void {
+it('creates only a person on root signup, with no organization or product resources', function (): void {
     seedRootEnvironment();
+    $this->post(route('signup.register'), ['name' => 'Dana Reeves', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertSessionHasNoErrors()->assertRedirect(route('account'));
 
-    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Dana Reeves', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase'])
-        ->assertRedirect(route('projects'));
-
-    // The owner is a SUBJECT in the platform root, and their organization is reached
-    // through the membership — there is no account row between the two any more.
-    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
-    expect($member)->not->toBeNull();
-
-    $account = app(PlatformRoot::class)->run(function () use ($member) {
-        $membership = app(Memberships::class)->forUser($member->id)->first();
-
-        return $membership === null ? null : app(Organizations::class)->find($membership->organization_id);
-    });
-
-    expect($account)->not->toBeNull()
-        ->and($account->name)->toBe('Acme');
-
-    // …but NOT an environment: the IdP itself is deferred until the owner proves the
-    // address (see SignupDeferredEnvironmentTest). A signup that never verifies
-    // therefore costs a routable environment nothing.
-    expect(environmentsOwnedBy($account->id)->get())->toHaveCount(0);
-
-    // The owner is signed in immediately — on the ONE session, whose subject is theirs.
-    // There is no second store to resolve them back out of, which is the whole of what
-    // the fold bought here.
-    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull()
-        ->and(app(PlatformRoot::class)->run(
-            fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id,
-        ))->toBe($account->id);
+    $person = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
+    expect($person)->not->toBeNull()
+        ->and(session(PlatformAuth::SESSION_KEY))->not->toBeNull()
+        ->and(app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($person->id)->count()))->toBe(0)
+        ->and(app(PlatformRoot::class)->run(fn () => Organization::query()->count()))->toBe(0)
+        ->and(Project::query()->count())->toBe(0)
+        ->and(Environment::query()->where('is_default', false)->count())->toBe(0);
 });
 
-it('refuses a second workspace for an email that already has one', function (): void {
+it('refuses duplicate identity registration without creating a workspace', function (): void {
     seedRootEnvironment();
-
-    $register = fn () => test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Dana', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase']);
-
-    $register()->assertRedirect(route('projects'));
-
-    /*
-     * SIGNED OUT FIRST, because registering established a session and the guest-only gate
-     * on `/signup` would otherwise turn the second attempt away before the address is
-     * looked at — a refusal, but not this one. The claim here is about the ADDRESS, so the
-     * request has to reach the check that reads it.
-     *
-     * It did not matter while this drove the component directly, where no route middleware
-     * ran at all.
-     */
-    test()->post(route('logout'));
-
+    $register = fn () => $this->from(route('signup'))->post(route('signup.register'), ['name' => 'Dana', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase']);
+    $register()->assertRedirect(route('account'));
+    $this->post(route('logout'));
     $register()->assertSessionHasErrors('email');
+    expect(app(PlatformRoot::class)->run(fn () => Organization::query()->count()))->toBe(0);
+});
 
-    // Only one customer ever created for the email. Counted in the ROOT, where customers
-    // live: the ambient scope would answer zero and the assertion would pass on nothing.
-    expect(app(PlatformRoot::class)->run(fn (): int => Organization::query()->count()))->toBe(1);
+it('allows identity signup when product signup is invite only', function (): void {
+    seedRootEnvironment();
+    config(['cbox-id.signup.mode' => 'invite_only']);
+    $this->withoutMiddleware(PointAtFirstRun::class)->get(route('signup'))->assertOk();
+    $this->post(route('signup.register'), ['name' => 'Dana', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertSessionHasNoErrors()->assertRedirect(route('account'));
 });

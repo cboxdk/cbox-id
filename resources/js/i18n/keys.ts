@@ -4946,6 +4946,7 @@ export type MessageKey =
     | 'service_access.features'
     | 'service_access.following'
     | 'service_access.interest'
+    | 'service_access.invitation'
     | 'service_access.invited'
     | 'service_access.join'
     | 'service_access.joined'

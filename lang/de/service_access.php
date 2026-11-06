@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'Ich habe eine Einladung',
     'feature_closed' => 'Diese Funktion nimmt derzeit keine Anmeldungen an.',
     'feature_released' => 'Für Kunden freigegeben, deren Tarif diese Funktion enthält.',
     'revoked' => 'Zugang widerrufen',

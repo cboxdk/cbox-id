@@ -6,12 +6,14 @@ use App\Http\Controllers\Console\ProjectController;
 use App\Http\WebRateLimiters;
 use App\Mail\EmailVerificationMail;
 use App\Platform\MemberEmailVerification;
+use App\Platform\SignupProvisioner;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Http;
@@ -56,30 +58,18 @@ function rootForResend(): Environment
 /** Sign up a workspace and stay signed in as its owner (signup establishes the session). */
 function signUpForResend(string $email = 'dana@acme.example', string $organization = 'Acme'): Subject
 {
-    /*
-     * A GUEST signs up. `platform.guest` guards the route, so a second call in one test —
-     * "somebody else's workspace, so 'the signed-in member' is a real distinction" —
-     * would otherwise be bounced without registering anybody, and the failure would land
-     * later, on a lookup for an account that was never created.
-     */
+    // These are legacy pending product accounts. Current /signup creates only a person;
+    // its confirmation path is exercised separately on /account.
     test()->flushSession();
+    $pending = app(SignupProvisioner::class)->provisionPending(new TenantBlueprint(
+        organizationName: $organization,
+        ownerEmail: $email,
+        ownerName: 'Dana Reeves',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+    $member = $pending->owner;
+    app(MemberEmailVerification::class)->sendConfirmation($member);
 
-    test()->post(route('signup.register'), [
-        'organization' => $organization,
-        'name' => 'Dana Reeves',
-        'email' => $email,
-        'password' => 'a-strong-unbreached-passphrase',
-    ])->assertSessionHasNoErrors();
-
-    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail($email));
-    expect($member)->not->toBeNull();
-
-    /** @var Subject $member */
-    // Re-establish through the fixture, so the ACTING ORGANIZATION is resolved. Signing up
-    // mints the session and hands the browser straight to a redirect; the middleware on
-    // the next request is what resolves which organization the person is acting on, and
-    // the Identity platform pages will not render for a request that has none. Driving a
-    // component directly skips that request, so the fixture stands in for it.
     signInAsMember($member->id);
 
     return $member;

@@ -19,10 +19,10 @@ final readonly class ServiceAccessSettings
     }
 
     /** @return array{url: string, token: string} */
-    public function connection(): array
+    public function connection(bool $product = false): array
     {
         $url = config('service-access.billing_url');
-        $token = config('service-access.billing_token');
+        $token = config($product ? 'service-access.product_billing_token' : 'service-access.billing_token');
         if (! $this->enabled() || ! is_string($url) || ! is_string($token) || trim($token) === '') {
             throw new ServiceAccessUnavailable('Service directory connection is not configured.');
         }

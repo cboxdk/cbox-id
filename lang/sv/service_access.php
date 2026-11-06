@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'Jag har en inbjudan',
     'feature_closed' => 'Den här funktionen tar inte emot ansökningar just nu.',
     'feature_released' => 'Tillgänglig för kunder som har funktionen i sitt abonnemang.',
     'revoked' => 'Åtkomst återkallad',

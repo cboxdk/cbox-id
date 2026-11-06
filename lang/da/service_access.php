@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'Jeg har en invitation',
     'feature_closed' => 'Denne funktion modtager ikke ansøgninger lige nu.',
     'feature_released' => 'Frigivet til kunder med funktionen i deres plan.',
     'revoked' => 'Adgang tilbagekaldt',
@@ -18,7 +19,7 @@ return [
     'unavailable' => 'Vi kan ikke hente ventelisterne lige nu. Prøv igen om lidt.',
     'verify_email' => 'Bekræft din email, før du tilmelder dig en venteliste fra din konto.',
     'verify_action' => 'Bekræft email',
-    'country' => 'Landekode (valgfrit)',
+    'country' => 'Land',
     'public_page' => 'Offentlig tilmeldingsside',
     'request_failed' => 'Vi kunne ikke tilmelde dig ventelisten. Prøv igen.',
     'all' => 'Alle tjenester',

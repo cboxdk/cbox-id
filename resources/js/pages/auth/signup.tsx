@@ -10,6 +10,7 @@ import { register } from '@routes/signup';
 type Props = PageProps<{
     /** On the platform root this mints the signer's OWN identity platform. */
     createsIdp: boolean;
+    identityOnly: boolean;
     /** The app an authorization is waiting to return to, when signing up for one. */
     forApp: string | null;
     /** Empty when Turnstile is not configured, and then nothing is ever fetched from it. */
@@ -18,7 +19,7 @@ type Props = PageProps<{
     renderedAt: number;
 }>;
 
-export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedAt }: Props) {
+export default function Signup({ identityOnly, createsIdp, forApp, turnstileSiteKey, renderedAt }: Props) {
     // Set once the risk scorer has asked THIS submission to be challenged, and gone
     // again on the next page. The overwhelming majority never see a CAPTCHA at all.
     const challenged = usePage().flash.challenged === true;
@@ -83,6 +84,7 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
                     />
                 </div>
 
+                {!identityOnly && (
                 <Field
                     label={
                         createsIdp
@@ -102,6 +104,7 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
                         onChange={(event) => form.setData('organization', event.target.value)}
                     />
                 </Field>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-4">
                     <Field label={t('auth.signup.name_label')} error={form.errors.name}>

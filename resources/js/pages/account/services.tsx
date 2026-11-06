@@ -14,7 +14,19 @@ type Service = {
     name: string;
     description: string | null;
     mode: 'waitlist' | 'paused' | 'invite_only' | 'open';
-    questions: { key: string; label: string; required: boolean }[];
+    questions: {
+        key: string;
+        label: string;
+        required: boolean;
+        type: 'string' | 'textarea' | 'select' | 'multiselect';
+        options: string[];
+        validation: 'none' | 'email' | 'url';
+        min_length: number;
+        max_length: number;
+    }[];
+    countryCollection: 'hidden' | 'optional' | 'required';
+    countries: Record<string, string>;
+    acceptanceUrl: string | null;
     publicUrl: string | null;
     status: 'waiting' | 'invited' | 'accepted' | 'following' | 'revoked' | null;
     joinHref: string;
@@ -184,7 +196,7 @@ function ServiceCard({
         organization,
         interest: 'notify' as 'notify' | 'test',
         country: '',
-        answers: {} as Record<string, string>,
+        answers: {} as Record<string, string | string[]>,
         reference: service.reference,
     });
     const withdrawal = useForm({ organization, reference: crypto.randomUUID() });
@@ -209,6 +221,17 @@ function ServiceCard({
                     )}
                 </p>
             )}
+            {service.kind === 'service' &&
+                service.acceptanceUrl !== null &&
+                service.mode !== 'paused' && (
+                    <Button asChild variant="secondary" className="mb-4">
+                        <a
+                            href={`${service.acceptanceUrl}${service.acceptanceUrl.includes('?') ? '&' : '?'}invite=1`}
+                        >
+                            {t('service_access.invitation')}
+                        </a>
+                    </Button>
+                )}
             {service.status !== null ? (
                 <div className="space-y-3">
                     <Pill tone={service.status === 'accepted' ? 'success' : 'neutral'}>
@@ -291,39 +314,113 @@ function ServiceCard({
                             ))}
                         </fieldset>
                     )}
-                    <Field label={t('service_access.country')} error={errors.country}>
-                        <Input
-                            value={form.data.country}
-                            onChange={(event) =>
-                                form.setData('country', event.target.value.toUpperCase())
-                            }
-                            maxLength={2}
-                            pattern="[A-Za-z]{2}"
-                            autoComplete="country"
-                            disabled={!canJoin}
-                        />
-                    </Field>
-                    {service.questions.map((question) => (
-                        <Field
-                            key={question.key}
-                            label={question.label}
-                            required={question.required}
-                            error={errors[`answers.${question.key}`]}
-                        >
-                            <Textarea
-                                value={form.data.answers[question.key] ?? ''}
-                                onChange={(event) =>
-                                    form.setData('answers', {
-                                        ...form.data.answers,
-                                        [question.key]: event.target.value,
-                                    })
-                                }
-                                maxLength={2000}
-                                rows={3}
-                                disabled={!canJoin}
-                            />
-                        </Field>
-                    ))}
+                    {service.countryCollection !== 'hidden' &&
+                        Object.keys(service.countries).length > 0 && (
+                            <Field
+                                label={t('service_access.country')}
+                                required={service.countryCollection === 'required'}
+                                error={errors.country}
+                            >
+                                <Combobox
+                                    value={form.data.country || undefined}
+                                    options={Object.entries(service.countries).map(
+                                        ([value, label]) => ({ value, label }),
+                                    )}
+                                    onValueChange={(value) => form.setData('country', value ?? '')}
+                                    disabled={!canJoin}
+                                />
+                            </Field>
+                        )}
+                    {service.questions.map((question) => {
+                        const answer = form.data.answers[question.key];
+                        const setAnswer = (value: string | string[]) =>
+                            form.setData('answers', {
+                                ...form.data.answers,
+                                [question.key]: value,
+                            });
+                        const value = typeof answer === 'string' ? answer : '';
+                        const textProps = {
+                            value,
+                            onChange: (
+                                event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+                            ) => setAnswer(event.target.value),
+                            minLength: question.min_length,
+                            maxLength: question.max_length,
+                            required: question.required,
+                            disabled: !canJoin,
+                        };
+                        return (
+                            <Field
+                                key={question.key}
+                                label={question.label}
+                                required={question.required}
+                                error={errors[`answers.${question.key}`]}
+                            >
+                                {question.type === 'multiselect' ? (
+                                    <fieldset
+                                        aria-label={question.label}
+                                        disabled={!canJoin}
+                                        className="space-y-2"
+                                    >
+                                        {question.options.map((option) => (
+                                            <label
+                                                key={option}
+                                                className="flex items-center gap-2 text-sm"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={
+                                                        Array.isArray(answer) &&
+                                                        answer.includes(option)
+                                                    }
+                                                    onChange={(event) =>
+                                                        setAnswer(
+                                                            event.target.checked
+                                                                ? [
+                                                                      ...(Array.isArray(answer)
+                                                                          ? answer
+                                                                          : []),
+                                                                      option,
+                                                                  ]
+                                                                : (Array.isArray(answer)
+                                                                      ? answer
+                                                                      : []
+                                                                  ).filter(
+                                                                      (selected) =>
+                                                                          selected !== option,
+                                                                  ),
+                                                        )
+                                                    }
+                                                />
+                                                {option}
+                                            </label>
+                                        ))}
+                                    </fieldset>
+                                ) : question.type === 'select' ? (
+                                    <Combobox
+                                        value={value || undefined}
+                                        options={question.options.map((option) => ({
+                                            value: option,
+                                            label: option,
+                                        }))}
+                                        onValueChange={(value) => setAnswer(value ?? '')}
+                                        disabled={!canJoin}
+                                    />
+                                ) : question.type === 'string' ? (
+                                    <Input
+                                        {...textProps}
+                                        type={
+                                            question.validation === 'none'
+                                                ? 'text'
+                                                : question.validation
+                                        }
+                                    />
+                                ) : (
+                                    <Textarea {...textProps} rows={3} />
+                                )}
+                            </Field>
+                        );
+                    })}
                     {(errors.waitlist ?? errors.answers) && (
                         <p role="alert" className="field-error">
                             {errors.waitlist ?? errors.answers}
