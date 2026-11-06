@@ -138,7 +138,7 @@ Route::middleware(['api', ResolveEnvironment::class, 'throttle:api-devices'])
 Route::get('/authenticator/privacy', PrivacyController::class)->middleware('throttle:60,1')->name('authenticator.privacy');
 
 // A real approval exercise, available only to the explicitly configured review subject.
-Route::middleware(['web', 'plane:console', 'platform.auth', BlockDuringImpersonation::class])
+Route::middleware(['web', 'plane:console', 'platform.auth', 'console.customer', 'console.root', BlockDuringImpersonation::class])
     ->prefix('authenticator/review')
     ->name('authenticator.review')
     ->group(function (): void {
