@@ -44,6 +44,7 @@ final class MaxMindIpIntelligence implements IpIntelligence
 
         return IpProfile::fromArray([
             'country' => self::path($city, 'country', 'iso_code') ?? self::path($city, 'registered_country', 'iso_code'),
+            'accuracy_km' => self::path($city, 'location', 'accuracy_radius'),
             'latitude' => self::path($city, 'location', 'latitude'),
             'longitude' => self::path($city, 'location', 'longitude'),
             'asn' => $asn['autonomous_system_number'] ?? null,

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ConnectionEventsController;
 use App\Http\Controllers\Api\Environment\ActionApprovalController;
 use App\Http\Controllers\Api\PipeTokenController;
 use App\Http\Controllers\Api\ServiceConnectionController;
+use App\Http\Controllers\Api\SignalsSourceController;
 use App\Http\Controllers\Api\VaultController;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\Actions\ActionRoutes;
@@ -148,6 +149,10 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
         // ActionController, the same way the console and MCP run it: organizations, users,
         // members, invitations, roles, apps, APIs, keys and the rest.
         ActionRoutes::environment();
+        Route::get('signals/source', SignalsSourceController::class)
+            ->middleware('env.api:signals_source:read');
+        Route::get('signals/source/erasures', [SignalsSourceController::class, 'erasures'])
+            ->middleware('env.api:signals_source:read');
 
         // Where an action approval this key asked for stands (see ActionApprovalGate).
         // A person's token polls the approvals IT raised, too: no scope, its own only.

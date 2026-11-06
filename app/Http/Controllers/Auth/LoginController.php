@@ -25,6 +25,7 @@ use App\Platform\SsoMandates;
 use App\Platform\SsoRefusal;
 use App\Platform\SsoStart;
 use App\Platform\ThrottleScope;
+use App\SignalsData\IdentityCapture;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -137,6 +138,8 @@ final readonly class LoginController extends PageController
         SsoMandates $mandates,
         Subjects $subjects,
     ): RedirectResponse {
+        $sourceCapture = app(IdentityCapture::class);
+        $sourceCapture->begin($request, email: $request->email());
         /*
          * Home-realm discovery gates the password path too. A verified domain with an
          * active connection under `Require SSO` is always routed to the identity
@@ -145,12 +148,16 @@ final readonly class LoginController extends PageController
         $offer = $this->homeRealm($request->email());
 
         if ($offer instanceof RedirectResponse) {
+            $sourceCapture->failed($request, reason: 'policy');
+
             return $offer;
         }
 
         $key = $this->throttleKey('login', $request);
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
+            $sourceCapture->failed($request, reason: 'rate_limited');
+
             return $this->refuse($request,
                 trans_choice('auth.common.too_many_attempts', RateLimiter::availableIn($key)));
         }
@@ -163,6 +170,8 @@ final readonly class LoginController extends PageController
         $assessment = $risk->assess($request, 'login', $request->email());
 
         if ($risk->shouldBlock($assessment)) {
+            $sourceCapture->failed($request, reason: 'policy');
+
             return $this->refuse($request, __('auth.common.could_not_process'));
         }
 
