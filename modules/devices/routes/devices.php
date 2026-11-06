@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\BlockDuringImpersonation;
 use App\Platform\Console\ConsoleRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
+use Cbox\Id\Devices\Http\Controllers\AppReviewController;
 use Cbox\Id\Devices\Http\Controllers\ApprovalController;
 use Cbox\Id\Devices\Http\Controllers\BootstrapController;
 use Cbox\Id\Devices\Http\Controllers\DeviceController;
@@ -134,3 +136,12 @@ Route::middleware(['api', ResolveEnvironment::class, 'throttle:api-devices'])
 
 // Public policy/support page for the App Store listing; no account or session required.
 Route::get('/authenticator/privacy', PrivacyController::class)->middleware('throttle:60,1')->name('authenticator.privacy');
+
+// A real approval exercise, available only to the explicitly configured review subject.
+Route::middleware(['web', 'plane:console', 'platform.auth', BlockDuringImpersonation::class])
+    ->prefix('authenticator/review')
+    ->name('authenticator.review')
+    ->group(function (): void {
+        Route::get('/', [AppReviewController::class, 'show'])->name('.show');
+        Route::post('/', [AppReviewController::class, 'send'])->name('.send');
+    });
