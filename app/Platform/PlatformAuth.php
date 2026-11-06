@@ -333,6 +333,8 @@ final class PlatformAuth
         $pending = $this->pendingOtpStepUp($request);
 
         if ($pending === null) {
+            app(IdentityCapture::class)->proofFailed($request, null, 'challenge');
+
             return false;
         }
 
@@ -341,11 +343,15 @@ final class PlatformAuth
         // the per-ACCOUNT one, which is what stops somebody requesting a fresh code for
         // every handful of guesses.
         if ($this->loginAttempts->isLockedOut($pending['subject'])) {
+            app(IdentityCapture::class)->proofFailed($request, $pending['subject'], 'challenge');
+
             return false;
         }
 
         if (! $this->otp->verifyLatest(self::OTP_PURPOSE, $pending['email'], $code, $request->ip())->verified) {
             $this->loginAttempts->recordFailure($pending['subject']);
+
+            app(IdentityCapture::class)->proofFailed($request, $pending['subject'], 'challenge');
 
             return false;
         }
@@ -465,11 +471,15 @@ final class PlatformAuth
         $subjectId = $this->pendingMfaSubject($request);
 
         if ($subjectId === null || $this->loginAttempts->isLockedOut($subjectId)) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
         if (! $this->sms->verifyChallenge($subjectId, $code, $request->ip())) {
             $this->loginAttempts->recordFailure($subjectId);
+
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
 
             return false;
         }
@@ -555,6 +565,8 @@ final class PlatformAuth
         $subjectId = $this->pendingMfaSubject($request);
 
         if ($subjectId === null) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
@@ -567,11 +579,15 @@ final class PlatformAuth
         // Checked BEFORE the code, or a locked account still tells an attacker which guess
         // was right — the same reason the password path checks it first.
         if ($this->loginAttempts->isLockedOut($subjectId)) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
         if (! $this->mfa->verifyTotp($subjectId, $code)) {
             $this->loginAttempts->recordFailure($subjectId);
+
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
 
             return false;
         }
@@ -589,6 +605,8 @@ final class PlatformAuth
         $subjectId = $this->pendingMfaSubject($request);
 
         if ($subjectId === null) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
@@ -596,11 +614,15 @@ final class PlatformAuth
         // grinding it is not the threat — but it is the same account under attack, and a
         // path that does not count is a path an attacker moves to.
         if ($this->loginAttempts->isLockedOut($subjectId)) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
         if (! $this->mfa->verifyRecoveryCode($subjectId, $code)) {
             $this->loginAttempts->recordFailure($subjectId);
+
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
 
             return false;
         }
@@ -663,6 +685,7 @@ final class PlatformAuth
         $this->recordOrganizationSignIn($subjectId);
 
         // "Last used" on this device's sign-in page — the method, never the person.
+        app(IdentityCapture::class)->confirmed($session, $request);
         LastSignInMethod::remember($amr);
     }
 
@@ -690,6 +713,8 @@ final class PlatformAuth
         app(Radar::class)->succeeded($request, $subjectId);
 
         $this->recordOrganizationSignIn($subjectId);
+
+        app(IdentityCapture::class)->confirmed($session, $request);
 
         return $session;
     }
@@ -726,6 +751,7 @@ final class PlatformAuth
         $this->recordOrganizationSignIn($session->user_id);
         app(Radar::class)->succeeded($request, $session->user_id);
 
+        app(IdentityCapture::class)->confirmed($session, $request);
         LastSignInMethod::remember(array_values(array_filter((array) $session->amr, 'is_string')));
     }
 

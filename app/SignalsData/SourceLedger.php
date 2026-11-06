@@ -39,6 +39,16 @@ final readonly class SourceLedger
         if ($environment === null) {
             return;
         }
+        $this->stage($environment, $fact);
+    }
+
+    private function stage(string $environment, SourceFact $fact): void
+    {
+        if (DB::transactionLevel() === 0) {
+            DB::transaction(fn () => $this->stage($environment, $fact));
+
+            return;
+        }
         $encoded = json_encode($fact->data, JSON_THROW_ON_ERROR);
         if (! in_array($fact->name, self::FAMILIES, true) || strlen($encoded) > 60 * 1024) {
             throw new RuntimeException('Invalid source fact.');
@@ -47,6 +57,7 @@ final readonly class SourceLedger
         // global publication lock between business/audit locks. Publication happens
         // later and scans unassigned committed facts, never a timestamp/ULID cursor.
         $hashes = array_map(self::subjectHash(...), array_unique($fact->subjects));
+        SourcePrivacyLock::acquire($environment, array_values($hashes), false);
         if (DB::table('signals_source_erasures')->where('environment_id', $environment)->whereIn('subject_hash', $hashes)->exists()) {
             return;
         }
@@ -173,10 +184,13 @@ final readonly class SourceLedger
     /** @return array<string, mixed> */
     public function erasuresPage(?string $after, int $limit): array
     {
-        $environment = $this->environment();
-        abort_if($environment === null, 503, 'Source capture is not enabled for this environment.');
+        $environment = $this->environments()->current()?->environmentKey();
+        abort_if($environment === null || ($this->environment() === null && ! SourceHead::query()->where('environment_id', $environment)->exists()), 503, 'Source history is unavailable.');
         $head = $this->publish($environment, erasuresOnly: true);
         $position = $this->cursors->decode($after, $environment, $head->generation);
+        if ($position > $head->sequence) {
+            throw ValidationException::withMessages(['after' => 'Source history has reset. Restart the import explicitly.']);
+        }
         $rows = SourceErasurePosition::query()->where('environment_id', $environment)
             ->where('sequence', '>', $position)->where('sequence', '<=', $head->sequence)->orderBy('sequence')->limit($limit + 1)->get();
         $records = [];
@@ -211,8 +225,9 @@ final readonly class SourceLedger
         }
 
         return DB::transaction(function () use ($environment, $subjects, $subjectReference): int {
-            $head = $this->head($environment, true);
             $hashes = array_map(self::subjectHash(...), $subjects);
+            SourcePrivacyLock::acquire($environment, $hashes, true);
+            $head = $this->head($environment, true);
             foreach ($hashes as $hash) {
                 DB::table('signals_source_erasures')->insertOrIgnore(['environment_id' => $environment, 'subject_hash' => $hash, 'erased_at' => CarbonImmutable::now()]);
             }
@@ -229,7 +244,7 @@ final readonly class SourceLedger
             DB::table('signals_source_heads')->where('environment_id', $environment)->update(['record_count' => max(0, $head->record_count - $deleted)]);
 
             if ($subjectReference !== null) {
-                $this->append(new SourceFact('erasure:'.hash('sha256', $subjectReference), 'identity.account', [
+                $this->stage($environment, new SourceFact('erasure:'.hash('sha256', $subjectReference), 'identity.account', [
                     'subject' => ['namespace' => 'cbox-id:'.$environment, 'type' => 'user', 'id' => $subjectReference],
                     'action' => 'erased', 'attempt_id' => null, 'context' => IdentityContext::unknown(), 'actor' => null,
                 ], CarbonImmutable::now()));
@@ -242,7 +257,7 @@ final readonly class SourceLedger
     /** One bounded retention pass; a failed pass never publishes a healthy heartbeat. */
     public function maintain(): void
     {
-        $environment = $this->environment();
+        $environment = $this->environments()->current()?->environmentKey();
         if ($environment === null) {
             return;
         }
@@ -260,8 +275,17 @@ final readonly class SourceLedger
                 ]);
             }
         });
-        $this->publish($environment);
-        DB::table('signals_source_heads')->where('environment_id', $environment)->update(['heartbeat_at' => CarbonImmutable::now()->utc()->format('Y-m-d H:i:s.u')]);
+        $enabled = $this->environment() !== null;
+        $this->publish($environment, erasuresOnly: ! $enabled);
+        if ($enabled) {
+            DB::table('signals_source_heads')->where('environment_id', $environment)->update(['heartbeat_at' => CarbonImmutable::now()->utc()->format('Y-m-d H:i:s.u')]);
+        }
+        // Pending raw facts also expire when capture is paused.
+        $expired = DB::table('signals_source_pending')->where('environment_id', $environment)
+            ->where('recorded_at', '<', CarbonImmutable::now()->subDays($this->retentionDays()))
+            ->whereNot(fn (Builder $query) => $query->where('name', 'identity.account')->where('data->action', 'erased'))
+            ->orderBy('id')->limit(1000)->pluck('id');
+        DB::table('signals_source_pending')->where('environment_id', $environment)->whereIn('id', $expired)->delete();
     }
 
     private function retentionDays(): int

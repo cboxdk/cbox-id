@@ -12,6 +12,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use App\Platform\SsoRefusal;
+use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
@@ -122,9 +123,12 @@ final class PasskeyController extends Controller
 
     public function login(Request $request, Passkeys $passkeys, PlatformAuth $auth, RiskGuard $risk): JsonResponse
     {
+        app(IdentityCapture::class)->begin($request);
         // Hard-block a Reject before establishing the session. (A passkey is
         // phishing-resistant, so an elevated-but-not-reject outcome needs no step-up.)
         if ($risk->shouldBlock($risk->assess($request, 'login', method: RadarMethod::Passkey))) {
+            app(IdentityCapture::class)->failed($request, reason: 'policy');
+
             return $this->error(__('auth.common.could_not_process'));
         }
 
@@ -132,18 +136,28 @@ final class PasskeyController extends Controller
         $credentialId = $request->string('id')->toString();
 
         if ($challenge === null || $credentialId === '') {
+            app(IdentityCapture::class)->failed($request, reason: 'challenge');
+
             return $this->error(__('auth.login.passkey_errors.challenge_expired'));
         }
 
         try {
             $subjectId = $passkeys->authenticate($credentialId, $challenge, $request->getContent());
         } catch (UnknownCredential) {
+            app(IdentityCapture::class)->failed($request, reason: 'invalid_credentials');
+
             return $this->error(__('auth.login.passkey_errors.not_registered'));
         } catch (ClonedAuthenticator) {
+            app(IdentityCapture::class)->failed($request, reason: 'policy');
+
             return $this->error(__('auth.login.passkey_errors.cloned'), 409);
         } catch (InvalidAssertionResponse) {
+            app(IdentityCapture::class)->failed($request, reason: 'invalid_credentials');
+
             return $this->error(__('auth.login.passkey_errors.unverified'));
         } catch (Throwable) {
+            app(IdentityCapture::class)->failed($request, reason: 'upstream');
+
             return $this->error(__('auth.login.passkey_errors.failed'));
         }
 
@@ -161,6 +175,7 @@ final class PasskeyController extends Controller
         // After the assertion verifies, like every other door: the refusal must never be
         // reachable by anyone who has not already proved they hold the credential.
         if (! $auth->localSignInAllowedFor($subjectId)) {
+            app(IdentityCapture::class)->failed($request, $subjectId, 'policy');
             SsoRefusal::hold($subjectId, RefusedFactor::Passkey);
 
             // A redirect rather than an error string: the explanation needs an

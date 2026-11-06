@@ -46,10 +46,47 @@ final readonly class IdentityCapture
         $this->clear($request);
     }
 
+    /** A refused factor submission must not discard the still-pending sign-in. */
+    public function proofFailed(Request $request, ?string $subject, string $reason): void
+    {
+        $environment = $this->ledger->environment();
+        if ($environment === null) {
+            return;
+        }
+        $attempt = ['id' => (string) Str::uuid(), 'target' => null, 'environment' => $environment,
+            'issued_at' => CarbonImmutable::now()->getTimestamp(), 'subject' => $subject];
+        $this->authentication($request, $attempt, 'pending', $subject);
+        $this->authentication($request, $attempt, 'failed', $subject, reason: $reason);
+    }
+
     public function started(Session $session, Request $request): void
     {
         if ($this->ledger->environment() === null) {
             return;
+        }
+        $attempt = $this->boundAttempt($session, $request);
+        // Framework sessions also exist temporarily during magic-link/SSO
+        // verification. Creation alone does not prove the sign-in policy passed.
+        $this->session($session, 'started', $request, $attempt['id'] ?? null);
+    }
+
+    public function confirmed(Session $session, Request $request): void
+    {
+        if ($this->ledger->environment() === null) {
+            return;
+        }
+        $attempt = $this->boundAttempt($session, $request);
+        if ($attempt !== null) {
+            $this->authentication($request, $attempt, 'succeeded', $session->user_id, $session);
+        }
+        $this->clear($request);
+    }
+
+    /** @return array{id: string, target: string|null, environment: string, issued_at: int, subject: string|null}|null */
+    private function boundAttempt(Session $session, Request $request): ?array
+    {
+        if ($this->ledger->environment() === null) {
+            return null;
         }
         $pending = $this->attempt($request);
         $email = $pending !== null && $pending['target'] !== null ? app(Subjects::class)->find($session->user_id)?->email : null;
@@ -58,12 +95,8 @@ final readonly class IdentityCapture
             $this->clear($request);
             $this->begin($request, $session->user_id);
         }
-        $attempt = $this->attempt($request);
-        if ($attempt !== null) {
-            $this->authentication($request, $attempt, 'succeeded', $session->user_id, $session);
-        }
-        $this->session($session, 'started', $request, $attempt['id'] ?? null);
-        $this->clear($request);
+
+        return $this->attempt($request);
     }
 
     public function session(Session $session, string $action, Request $request, ?string $attempt = null): void

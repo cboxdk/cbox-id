@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\SignalsData\SourceFact;
+use App\SignalsData\SourceLedger;
+use Carbon\CarbonImmutable;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
@@ -53,4 +56,49 @@ it('never advances its public cursor past an uncommitted fact', function (): voi
     $retry = $this->withToken($key)->getJson('/api/v1/signals/source?limit=1&after='.$after)->assertOk();
     expect($retry->json('data'))->toBe($second->json('data'));
     $this->withToken($key)->getJson('/api/v1/signals/source?after='.urlencode($second->json('meta.next_cursor')))->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('serializes erasure with committed owner facts and suppresses later replays', function (): void {
+    $ledger = app(SourceLedger::class);
+    $other = sourceWriter();
+    $lock = $other->prepare('SELECT pg_try_advisory_xact_lock(hashtextextended(?, 0))');
+    $identity = 'privacy-race-subject';
+    $fact = new SourceFact('race-fact', 'identity.account', ['action' => 'created'], CarbonImmutable::now(), [$identity]);
+    DB::beginTransaction();
+    try {
+        $ledger->append($fact);
+        $other->beginTransaction();
+        $lock->execute(['id-source/env_test/'.hash('sha256', $identity)]);
+        expect($lock->fetchColumn())->toBeFalse();
+        $lock->execute(['id-source/env_test/'.hash('sha256', 'unrelated-subject')]);
+        expect($lock->fetchColumn())->toBeTrue();
+        $other->rollBack();
+        DB::commit();
+    } finally {
+        if (DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
+        if ($other->inTransaction()) {
+            $other->rollBack();
+        }
+    }
+    DB::beginTransaction();
+    try {
+        $ledger->erase([$identity]);
+        $other->beginTransaction();
+        $shared = $other->prepare('SELECT pg_try_advisory_xact_lock_shared(hashtextextended(?, 0))');
+        $shared->execute(['id-source/env_test/'.hash('sha256', $identity)]);
+        expect($shared->fetchColumn())->toBeFalse();
+        $other->rollBack();
+        DB::commit();
+    } finally {
+        if (DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
+        if ($other->inTransaction()) {
+            $other->rollBack();
+        }
+    }
+    $ledger->append($fact);
+    expect(DB::table('signals_source_pending')->where('id', 'race-fact')->exists())->toBeFalse();
 });
