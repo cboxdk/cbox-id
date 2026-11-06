@@ -157,7 +157,7 @@ it('records every project write on the workspace\'s log, as whoever made it', fu
     $this->withToken($key)->postJson("/api/v1/workspace/projects/{$project}/reactivate")->assertOk();
 
     $expected = [
-        'organization.project_created' => ['name' => 'Product', 'environment_limit' => 3],
+        'organization.project_created' => ['name' => 'Product', 'environment_limit' => 2],
         'organization.project_renamed' => ['from' => 'Product', 'name' => 'Product Two'],
         'organization.project_suspended' => ['name' => 'Product Two'],
         'organization.project_reactivated' => ['name' => 'Product Two'],

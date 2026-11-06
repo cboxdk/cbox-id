@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'organization_results_limited' => 'Viser de første 500 resultater. Hierarkiet er ufuldstændigt. Afgræns søgningen for at finde flere organisationer.',
     'services_604dce44' => 'Tjenester',
     'ux_no_users_status' => 'Ingen brugere med denne status. Vælg en anden status, eller opret en bruger.',
     'ux_open_profile' => 'Åbn hele profilen',

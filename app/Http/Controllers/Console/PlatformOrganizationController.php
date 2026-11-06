@@ -15,8 +15,6 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleStrings;
 use Carbon\CarbonInterface;
-use Cbox\Id\AuditQuery\Contracts\AuditReader;
-use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\VerifiedDomain;
@@ -70,15 +68,9 @@ final readonly class PlatformOrganizationController extends ConsoleController
 
         $term = trim($request->string('q')->toString());
 
-        /*
-         * SEARCH, AND DELIBERATELY NO PAGING.
-         *
-         * This list is a management TREE, flattened depth-first so the table reads as the
-         * hierarchy. Paging the flattened rows would cut the tree at an arbitrary depth — a
-         * child on page two with its parent on page one reads as a root, which is worse
-         * than a long page. If the estate ever outgrows one page, the answer is paging the
-         * ROOTS and rendering each subtree whole, not paging these rows.
-         */
+        // Bound the tree and both parent pickers together. Large estates must narrow
+        // the search; a partial hierarchy is labelled explicitly instead of silently
+        // exhausting PHP or the browser on every visit.
         $organizations = Organization::query()->orderBy('name')
             ->when($term !== '', function (Builder $query) use ($term): void {
                 // Grouped, so the environment scope's own predicate is not stranded behind
@@ -90,7 +82,10 @@ final readonly class PlatformOrganizationController extends ConsoleController
                         ->orWhereRaw($like->sqlFor('slug'), [$like->pattern]);
                 });
             })
+            ->limit(501)
             ->get(['id', 'name', 'slug', 'type', 'status', 'parent_id']);
+        $limited = $organizations->count() > 500;
+        $organizations = $organizations->take(500);
 
         /*
          * COUNTED FOR THE ROWS ON SCREEN, not for the environment. Ungated, this is a full
@@ -110,6 +105,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
         return $this->page('console/platform/organizations', ConsoleStrings::text(Vocabulary::ORGANIZATION_TREE), [
             'help' => HelpProps::for(HelpTopic::PlatformOrganizations),
             'organizations' => $this->tree($organizations, $memberCounts),
+            'limitNotice' => $limited ? __('console.organization_results_limited') : null,
             // The flat list the two parent selectors are built from.
             'all' => $organizations->map(static fn (Organization $o): array => [
                 'id' => $o->id,
@@ -156,7 +152,6 @@ final readonly class PlatformOrganizationController extends ConsoleController
         Connections $connections,
         DomainVerification $domains,
         EntitlementReader $entitlements,
-        AuditReader $audit,
     ): Response {
         $this->assertOperator();
 
@@ -266,7 +261,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 'domains' => count($domainList),
                 'clients' => Client::query()->where('organization_id', $tenant->id)->count(),
                 'serviceAccounts' => ServiceAccount::query()->where('organization_id', $tenant->id)->count(),
-                'signIns' => $this->recentSignIns($tenant->id, $audit),
+                'signIns' => $this->recentSignIns($tenant->id),
             ],
             'childCount' => count($hierarchy->descendants($tenant->id)),
             'sso' => $connection === null ? null : [
@@ -276,7 +271,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
             ],
             'domains' => $domainList,
             'entitlements' => $entitlementList,
-            'recent' => $this->recentActivity($tenant->id, $audit),
+            'recent' => $this->recentActivity($tenant->id),
             'ancestors' => $ancestors,
             'indexHref' => route('platform.organizations'),
             'toggleHref' => route('platform.organizations.toggle', $tenant->id),
@@ -402,54 +397,30 @@ final readonly class PlatformOrganizationController extends ConsoleController
         return $rows;
     }
 
-    /**
-     * Sign-ins on the tenant's trail in the last 30 days.
-     *
-     * The reader paginates oldest-first with a 500-row cap and no time predicate, so this
-     * reads the login-filtered window and counts what falls inside the boundary. A
-     * per-tenant drill-down never approaches the cap; the tile is a recent-activity signal,
-     * not a billing figure.
-     */
-    private function recentSignIns(string $organizationId, AuditReader $audit): int
+    /** Count the full time window in the database, without truncating the audit trail. */
+    private function recentSignIns(string $organizationId): int
     {
-        $since = now()->subDays(self::SIGN_IN_DAYS);
-
-        $page = $audit->query(new AuditQueryFilter(
-            organizationId: $organizationId,
-            action: 'user.login',
-            limit: 500,
-        ));
-
-        $count = 0;
-
-        foreach ($page->items as $entry) {
-            if ($entry->recorded_at !== null && $entry->recorded_at->greaterThanOrEqualTo($since)) {
-                $count++;
-            }
-        }
-
-        return $count;
+        return AuditEntry::query()
+            ->where('organization_id', $organizationId)
+            ->where('action', 'user.login')
+            ->where('recorded_at', '>=', now()->subDays(self::SIGN_IN_DAYS))
+            ->count();
     }
 
-    /**
-     * The newest twenty entries on the tenant's trail.
-     *
-     * The reader paginates oldest-first with no descending primitive, so this reads a
-     * capped window and takes its newest tail — comfortably covering a per-tenant
-     * drill-down's recent activity.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function recentActivity(string $organizationId, AuditReader $audit): array
+    /** @return list<array<string, mixed>> */
+    private function recentActivity(string $organizationId): array
     {
-        $page = $audit->query(new AuditQueryFilter(organizationId: $organizationId, limit: 200));
-
-        return array_map(static fn (AuditEntry $entry): array => [
-            'action' => $entry->action,
-            'actorType' => $entry->actor_type->value,
-            'actorId' => $entry->actor_id,
-            'recordedAt' => $entry->recorded_at?->toDayDateTimeString(),
-        ], array_slice(array_reverse($page->items), 0, 20));
+        return array_values(AuditEntry::query()
+            ->where('organization_id', $organizationId)
+            ->orderByDesc('sequence')
+            ->limit(20)
+            ->get()
+            ->map(static fn (AuditEntry $entry): array => [
+                'action' => $entry->action,
+                'actorType' => $entry->actor_type->value,
+                'actorId' => $entry->actor_id,
+                'recordedAt' => $entry->recorded_at?->toDayDateTimeString(),
+            ])->all());
     }
 
     /**

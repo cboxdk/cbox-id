@@ -168,13 +168,13 @@ it('makes every count on the accounts list a link to the account it counts', fun
         ->and($row['environments'])->toBe(3);
 });
 
-it('points the console at an environment from the account page and stays on the account', function (): void {
+it('opens the environment named by the account page in an explicit URL', function (): void {
     $estate = acmeEstate();
 
     targetCustomerEnvironment($estate['organization']->id, $estate['portal']->id)
-        ->assertRedirect(route('platform.workspaces.show', $estate['organization']->id));
+        ->assertRedirect(route('platform.organizations', ['targetEnvironment' => $estate['portal']->slug]));
 
-    expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBe($estate['portal']->slug);
+    expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBeNull();
 });
 
 it('opens an environment straight onto the tenants inside it', function (): void {
@@ -183,9 +183,9 @@ it('opens an environment straight onto the tenants inside it', function (): void
     // Two steps that were only ever available as two pages: switch on the flat list, then
     // find Organizations in the rail.
     openCustomerEnvironment($estate['organization']->id, $estate['staging']->id)
-        ->assertRedirect(route('platform.organizations'));
+        ->assertRedirect(route('platform.organizations', ['targetEnvironment' => $estate['staging']->slug]));
 
-    expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBe($estate['staging']->slug);
+    expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBeNull();
 });
 
 /**
@@ -323,9 +323,8 @@ it('names the owner beside every environment the operator can point the console 
     $rows = collect($props['environments']);
 
     expect($rows->pluck('qualifiedName'))->toContain('Acme / Production')
-        // And the CURRENT one is the one just targeted, or the label above could belong to
-        // any row in the list.
-        ->and($rows->firstWhere('id', $props['activeId'])['qualifiedName'] ?? null)->toBe('Acme / Production');
+        // This unscoped list is always the root; another tab cannot change its active plane.
+        ->and($rows->firstWhere('id', $props['activeId'])['qualifiedName'] ?? null)->toBe('Platform root / Platform');
 });
 
 it('answers lineage for the platform root and for an orphan without inventing an owner', function (): void {

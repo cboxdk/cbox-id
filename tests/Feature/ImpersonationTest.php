@@ -231,7 +231,7 @@ it('suspends the session an operator signed in with, and puts it back', function
     expect($account->user_id)->toBe($op->subject_id, 'fixture: the operator and the member must be one person');
 
     // Signed in the way the account door does it.
-    signInAsMember($account->user_id);
+    signInAsSubject($account->user_id, ['pwd', 'otp']);
 
     $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
@@ -271,13 +271,13 @@ it('restores the operator and the plane they had targeted, on exit', function ()
 
     expect(session(OperatorEnvironment::SESSION_KEY))->toBeNull();
 
-    $this->post(route('impersonation.exit'))->assertRedirect(route('platform.organizations'));
+    $this->post(route('impersonation.exit'))->assertRedirect(route('platform.organizations', ['targetEnvironment' => $root->slug]));
 
-    expect(session(OperatorEnvironment::SESSION_KEY))->toBe($root->slug)
+    expect(session(OperatorEnvironment::SESSION_KEY))->toBeNull()
         ->and(session(PlatformAuth::ACTIVE_KEY))->toBe($op->subject_id);
 
     nextRequest();
-    $this->get(route('platform.organizations'))->assertOk();
+    $this->get(route('platform.organizations', ['targetEnvironment' => $root->slug]))->assertOk();
 });
 
 it('auto-exits once the 30-minute window has lapsed', function (): void {

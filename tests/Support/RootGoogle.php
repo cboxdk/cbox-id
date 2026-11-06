@@ -65,7 +65,7 @@ final class RootGoogle
         $existing = PlatformOperator::query()->where('email', 'ops@platform.test')->first();
 
         if ($existing !== null) {
-            signInAsSubject((string) $existing->subject_id);
+            signInAsStrongOperator((string) $existing->subject_id);
 
             return (string) $existing->subject_id;
         }

@@ -30,6 +30,7 @@ use App\Platform\Locale\HostedTranslations;
 use App\Platform\OAuth\AuthorizationOrganizationService;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OpenEntitlements;
+use App\Platform\OperatorMfa;
 use App\Platform\PlatformSignedInSession;
 use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
@@ -41,6 +42,8 @@ use App\Platform\TrustedHosts;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\SignedInSession;
 use Cbox\Id\Identity\Contracts\SignedInSubject;
@@ -53,6 +56,7 @@ use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Routing\UrlGenerator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -62,6 +66,10 @@ final class PlatformServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->afterResolving('url', static fn (UrlGenerator $url) => $url->defaults(['targetEnvironment' => 'root']));
+        $this->app->singleton(MfaMandate::class, OperatorMfa::class);
+        $this->app->singleton(MfaVerification::class, OperatorMfa::class);
+
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
 

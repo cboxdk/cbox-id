@@ -194,9 +194,9 @@ function platformMoves(string $workspace, string $organization): array
         '/platform/workspaces/'.$workspace.'?utm_source=email' => '/admin/platform/workspaces/'.$workspace.'?utm_source=email',
         '/platform/customers' => '/admin/platform/workspaces',
         '/platform/customers/'.$workspace.'?ref=ticket-4271' => '/admin/platform/workspaces/'.$workspace.'?ref=ticket-4271',
-        '/platform/organizations' => '/admin/platform/organizations',
-        '/platform/organizations?q=acme' => '/admin/platform/organizations?q=acme',
-        '/platform/organizations/'.$organization => '/admin/platform/organizations/'.$organization,
+        '/platform/organizations' => '/admin/platform/environments/root/organizations',
+        '/platform/organizations?q=acme' => '/admin/platform/environments/root/organizations?q=acme',
+        '/platform/organizations/'.$organization => '/admin/platform/environments/root/organizations/'.$organization,
         '/platform/operators' => '/admin/platform/operators',
         '/platform/usage' => '/admin/platform/usage',
         '/platform/queues' => '/admin/platform/queues',
@@ -251,7 +251,7 @@ it('names every platform-admin page in the moved-pages table', function (): void
         ->filter(static fn (Route $route): bool => str_starts_with((string) $route->getName(), 'platform.')
             && in_array('GET', $route->methods(), true)
             && str_starts_with($route->uri(), 'admin/platform/'))
-        ->map(static fn (Route $route): string => '/'.preg_replace('/\{[^}]+\}/', '{}', $route->uri()));
+        ->map(static fn (Route $route): string => str_replace('/environments/{}/organizations', '/environments/root/organizations', '/'.preg_replace('/\{[^}]+\}/', '{}', $route->uri())));
 
     expect($pages->count())->toBeGreaterThanOrEqual(9)
         ->and($pages->diff($moved)->values()->all())->toBe([], 'a platform-admin page with no old address pointing at it');

@@ -105,12 +105,12 @@ it('jumps to a result in another plane by first re-pointing the console at its e
 
     // The jump switches the operator's target plane, then redirects to the detail.
     $this->get(route('platform.search.jump', $orgId))
-        ->assertRedirect(route('platform.organization', $orgId))
-        ->assertSessionHas(OperatorEnvironment::SESSION_KEY, 'plane-b');
+        ->assertRedirect(route('platform.organization', ['organization' => $orgId, 'targetEnvironment' => 'plane-b']))
+        ->assertSessionMissing(OperatorEnvironment::SESSION_KEY);
 
     // With the console now pinned to plane B, the plane-scoped detail page resolves
     // (it would have 404'd from the previous plane) and shows the tenant.
-    $this->get(route('platform.organization', $orgId))
+    $this->get(route('platform.organization', ['organization' => $orgId, 'targetEnvironment' => 'plane-b']))
         ->assertOk()
         ->assertSee('Beta Org');
 });
@@ -136,8 +136,8 @@ it('jumps from a user result to that user\'s organization in its plane', functio
         ->and($user['href'])->toBe(route('platform.search.jump', $orgId));
 
     $this->get(route('platform.search.jump', $orgId))
-        ->assertRedirect(route('platform.organization', $orgId))
-        ->assertSessionHas(OperatorEnvironment::SESSION_KEY, 'plane-b');
+        ->assertRedirect(route('platform.organization', ['organization' => $orgId, 'targetEnvironment' => 'plane-b']))
+        ->assertSessionMissing(OperatorEnvironment::SESSION_KEY);
 });
 
 it('404s a jump to an organization that does not exist in any plane', function (): void {

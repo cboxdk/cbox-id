@@ -81,5 +81,8 @@ it('opens the platform environment\'s console to the person it was granted to', 
     $this->artisan('cbox-id:operator:grant', ['email' => 'owner@acme.example'])->assertSuccessful();
 
     app()->forgetScopedInstances();
+    // Promotion cannot turn an existing password-only session into operator access.
+    $this->get('https://cboxid.com/admin')->assertRedirect(route('login'));
+    signInAsStrongOperator($this->account['subjectId']);
     $this->get('https://cboxid.com/admin')->assertOk();
 });

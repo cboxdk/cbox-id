@@ -1,5 +1,5 @@
 import { useTranslator } from '@/i18n';
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
@@ -46,6 +46,8 @@ type Props = PageProps<{
     scoped: boolean;
     remaining: number;
     indexHref: string;
+    billingHref: string | null;
+    manageBillingLabel: string;
 }>;
 
 export default function ProjectDetail({
@@ -55,6 +57,8 @@ export default function ProjectDetail({
     scoped,
     remaining,
     indexHref,
+    billingHref,
+    manageBillingLabel,
 }: Props) {
     const { t: tc } = useTranslator();
 
@@ -75,10 +79,13 @@ export default function ProjectDetail({
                         the controller states the same string as the page title — so the
                         tab and the heading say which product this is.
                     */}
-                    <h1 className="cbx-page-title">{project.name}</h1>
+                    <h1 className="cbx-page-title break-all">{project.name}</h1>
                     <Badge tone={project.suspended ? 'warn' : 'neutral'}>{project.status}</Badge>
                 </div>
-                <p className="mt-1 text-xs mono select-all" style={{ color: 'var(--faint)' }}>
+                <p
+                    className="mt-1 text-xs mono select-all break-all"
+                    style={{ color: 'var(--faint)' }}
+                >
                     {project.slug} · {project.id}
                 </p>
             </div>
@@ -103,7 +110,11 @@ export default function ProjectDetail({
                             icon="layers"
                             title={tc('console.no_environments_yet_8c63cac4')}
                             description={tc(
-                                'console.create_an_environment_below_to_start_issuing_008d04ea',
+                                project.suspended
+                                    ? 'console.existing_environments_stay_live_but_no_new_o_0becaa18'
+                                    : full
+                                      ? 'console.this_project_has_used_every_environment_its__b891ec0b'
+                                      : 'console.create_an_environment_below_to_start_issuing_008d04ea',
                             )}
                         />
                     ) : (
@@ -114,7 +125,7 @@ export default function ProjectDetail({
                                 style={{ borderColor: 'var(--border)' }}
                             >
                                 <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium truncate">
                                             {environment.name}
                                         </span>
@@ -151,7 +162,7 @@ export default function ProjectDetail({
                 {canManage && (
                     <>
                         <form
-                            className="mt-4 flex items-start gap-2"
+                            className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end"
                             onSubmit={(event) => {
                                 event.preventDefault();
                                 environmentForm.post(
@@ -163,19 +174,15 @@ export default function ProjectDetail({
                                 );
                             }}
                         >
-                            <div className="flex-1">
+                            <div className="min-w-0">
                                 <Field
-                                    label={
-                                        <span className="sr-only">
-                                            {tc('console.environment_name_03cb80d1')}
-                                        </span>
-                                    }
+                                    label={<span>{tc('console.environment_name_03cb80d1')}</span>}
                                     error={environmentForm.errors.name}
                                 >
                                     <Input
                                         name="name"
                                         placeholder={tc('console.staging_a8e7ac92')}
-                                        disabled={full}
+                                        disabled={full || project.suspended}
                                         value={environmentForm.data.name}
                                         onChange={(event) =>
                                             environmentForm.setData('name', event.target.value)
@@ -185,17 +192,13 @@ export default function ProjectDetail({
                             </div>
 
                             <Field
-                                label={
-                                    <span className="sr-only">
-                                        {tc('console.environment_type_7c9f3eba')}
-                                    </span>
-                                }
+                                label={<span>{tc('console.environment_type_7c9f3eba')}</span>}
                                 error={environmentForm.errors.type}
                             >
                                 <Select
                                     value={environmentForm.data.type}
                                     onValueChange={(type) => environmentForm.setData('type', type)}
-                                    disabled={full}
+                                    disabled={full || project.suspended}
                                     options={[
                                         {
                                             value: 'production',
@@ -210,7 +213,7 @@ export default function ProjectDetail({
                             <Button
                                 type="submit"
                                 variant="primary"
-                                disabled={full}
+                                disabled={full || project.suspended}
                                 loading={environmentForm.processing}
                             >
                                 {tc('console.add_environment_dcbe4c44')}
@@ -218,14 +221,18 @@ export default function ProjectDetail({
                         </form>
 
                         <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                            {full
+                            {project.suspended
                                 ? tc(
-                                      'console.this_project_has_used_every_environment_its__b891ec0b',
+                                      'console.existing_environments_stay_live_but_no_new_o_0becaa18',
                                   )
-                                : tc(
-                                      'console.sandbox_environments_allow_localhost_urls_an_021f74f7',
-                                      { value0: remaining },
-                                  )}
+                                : full
+                                  ? tc(
+                                        'console.this_project_has_used_every_environment_its__b891ec0b',
+                                    )
+                                  : tc(
+                                        'console.sandbox_environments_allow_localhost_urls_an_021f74f7',
+                                        { value0: remaining },
+                                    )}
                         </p>
                     </>
                 )}
@@ -238,21 +245,15 @@ export default function ProjectDetail({
             <Panel title={tc('console.plan_fa8ed0bd')}>
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <p className="text-sm font-medium">
-                            {tc('console.early_access_321217e9')}{' '}
-                            <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {tc('console.free_c8345f98')}
-                            </span>
-                        </p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.up_to_08c05ead')}
-                            {project.limit}
-                            {tc('console.environments_billing_per_project_arrives_wit_463213a0')}
+                        <p className="text-sm">
+                            {project.limit} {tc('console.environments_d5f6d542')}
                         </p>
                     </div>
-                    <Button size="sm" className="shrink-0" disabled style={{ opacity: 0.6 }}>
-                        {tc('console.upgrade_soon_e12e55c5')}
-                    </Button>
+                    {billingHref && (
+                        <Button asChild size="sm" className="shrink-0">
+                            <Link href={billingHref}>{manageBillingLabel}</Link>
+                        </Button>
+                    )}
                 </div>
             </Panel>
 

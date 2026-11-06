@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'organization_results_limited' => 'Näytetään ensimmäiset 500 osumaa. Hierarkia on osittainen. Rajaa hakua löytääksesi lisää organisaatioita.',
     'services_604dce44' => 'Palvelut',
     'ux_no_users_status' => 'Ei käyttäjiä tässä tilassa. Valitse toinen tila tai luo käyttäjä.',
     'ux_open_profile' => 'Avaa koko profiili',

@@ -95,7 +95,7 @@ it('lists and creates projects (IdP products) through the API', function (): voi
         ->assertCreated()
         ->assertJsonPath('data.name', 'Product Two')
         ->assertJsonPath('data.slug', 'product-two')
-        ->assertJsonPath('data.environment_limit', 1);
+        ->assertJsonPath('data.environment_limit', 2);
 
     // A read-only viewer can't create one.
     $this->withToken($viewer)->postJson('/api/v1/workspace/projects', ['name' => 'Nope'])->assertForbidden();

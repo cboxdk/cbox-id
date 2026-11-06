@@ -104,8 +104,13 @@ final class SignupProvisioner
             $project = $this->projectWriter->createForOrganization(
                 $organization->id,
                 $blueprint->organizationName,
-                $blueprint->environmentLimit,
+                config('cbox-id.entitlements.mode') === 'metered' ? 0 : $blueprint->environmentLimit,
             );
+
+            if (config('cbox-id.entitlements.mode') === 'metered') {
+                $project->environment_limit = 0;
+                $project->save();
+            }
 
             return new PendingOrganization($organization, $owner, $membership, $project);
         });
@@ -126,7 +131,9 @@ final class SignupProvisioner
             fn (): ?Project => $this->projects->forOrganization($organizationId)->first(),
         );
 
-        if ($project === null) {
+        // A metered signup waits for a plan after email verification. That is normal
+        // admission, not a provisioning failure to warn about for every new customer.
+        if ($project === null || $project->environment_limit === 0) {
             return null;
         }
 

@@ -223,3 +223,8 @@ it('passes a mail server that resolves', function (): void {
 
     expect($verdicts)->toHaveKey('Mail', 'ok');
 });
+
+it('fails metered production without a working billing configuration', function (): void {
+    expect(productionVerdicts([...soundProductionConfig(), 'cbox-id.entitlements.mode' => 'metered', 'billing-client.api_token' => null]))
+        ->toHaveKey('Billing admission', 'fail');
+});

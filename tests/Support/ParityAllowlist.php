@@ -37,6 +37,12 @@ final class ParityAllowlist
     public static function ceremonies(): array
     {
         return [
+            // Provider-hosted card setup/3DS and the person's consent to a priced,
+            // short-lived quote bound to this browser. Address/card management has
+            // separate public actions; an agent cannot confirm its own purchase.
+            'billing.card',
+            'billing.preview',
+            'billing.confirm',
             // Connecting a third-party account (Pipes): the person consents at the provider
             // in THIS browser, which carries the flow's state and PKCE verifier. A REST call
             // has no browser to send to GitHub.

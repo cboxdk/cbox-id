@@ -316,7 +316,7 @@ function addMember(string $organizationId, MembershipRole $role, string $email, 
  * a membership carries authority and not identity, so the subject is what the caller has
  * and what this needs. `ProvisionedTenant::$owner` is that subject.
  */
-function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $emailVerified = true): void
+function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $emailVerified = true, array $amr = ['handoff']): void
 {
     /*
      * VERIFIED BY DEFAULT, for the same reason {@see actingAsRole()} states: an established
@@ -339,7 +339,7 @@ function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $e
         });
     }
 
-    app(EnvironmentAdminAuth::class)->establish($subjectId, $environmentId);
+    app(EnvironmentAdminAuth::class)->establish($subjectId, $environmentId, $amr);
 }
 
 /**
@@ -1609,7 +1609,11 @@ function actAsOperator(string $email = 'op@platform.test'): PlatformOperator
 
     $operator = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Operator');
 
-    signInAsSubject((string) $operator->subject_id);
+    app(PlatformRoot::class)->run(function () use ($operator): void {
+        $enrollment = app(Mfa::class)->enrollTotp($operator->subject_id, $operator->email);
+        confirmTotpForTest($operator->subject_id, $enrollment->secret);
+    });
+    signInAsSubject((string) $operator->subject_id, ['pwd', 'otp']);
 
     return $operator;
 }
@@ -1621,10 +1625,10 @@ function actAsOperator(string $email = 'op@platform.test'): PlatformOperator
  * has, and a test cannot accidentally prove something about a session shape that only
  * exists in tests.
  */
-function signInAsSubject(string $subjectId): void
+function signInAsSubject(string $subjectId, array $amr = ['pwd']): void
 {
-    app(PlatformRoot::class)->run(function () use ($subjectId): void {
-        app(PlatformAuth::class)->establish(request(), $subjectId, ['pwd']);
+    app(PlatformRoot::class)->run(function () use ($subjectId, $amr): void {
+        app(PlatformAuth::class)->establish(request(), $subjectId, $amr);
 
         // …and populate CurrentUser as the Authenticate middleware would, so a test that
         // drives a console component DIRECTLY (Volt::test, no middleware) asks the same
@@ -2250,4 +2254,17 @@ function confirmTotpForTest(string $subjectId, string $secret): void
         $subjectId,
         app(TotpAuthenticator::class)->codeAt($secret, time() - 30),
     ))->toBeTrue('the TOTP factor this test depends on was not confirmed');
+}
+
+/** Explicitly complete an existing operator's strong-authentication fixture. */
+function signInAsStrongOperator(string $subjectId): void
+{
+    app(PlatformRoot::class)->run(function () use ($subjectId): void {
+        $mfa = app(Mfa::class);
+        if (! $mfa->hasConfirmedTotp($subjectId)) {
+            $enrollment = $mfa->enrollTotp($subjectId, (string) app(Subjects::class)->find($subjectId)->email);
+            confirmTotpForTest($subjectId, $enrollment->secret);
+        }
+    });
+    signInAsSubject($subjectId, ['pwd', 'otp']);
 }

@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Platform\Health;
 
+use Carbon\CarbonImmutable;
+use Cbox\Id\Billing\Models\BillingPlan;
+use Cbox\Id\Billing\PlanCatalog;
 use Cbox\Id\Console\Contracts\HealthCheck;
 use Cbox\Id\Console\ValueObjects\HealthResult;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * `cbox-id:doctor`: the production settings whose defaults are wrong for production.
@@ -60,7 +65,37 @@ class ProductionConfigDoctorCheck implements HealthCheck
             $this->healthToken(),
             $this->files(),
             $this->brandAssetLinks(),
+            $this->billing(),
         ];
+    }
+
+    private function billing(): HealthResult
+    {
+        if (config('cbox-id.entitlements.mode') !== 'metered') {
+            return HealthResult::ok('Billing admission', 'Open self-hosted access; commercial plan enforcement is disabled.');
+        }
+        if (config('billing.enabled') !== true || ! $this->string('billing-client.base_url') || ! $this->string('billing-client.api_token') || ! $this->string('billing.webhook_secret')) {
+            return HealthResult::fail('Billing admission', 'Metered access requires Billing, a management URL/token and a webhook signing secret.');
+        }
+        if (! Schema::hasTable('id_billing_plans') || ! BillingPlan::query()->where('sold', true)->exists()) {
+            return HealthResult::fail('Billing admission', 'No sellable catalog. Run migrations and billing:sync-catalog --subscriptions.');
+        }
+        foreach (BillingPlan::query()->where('sold', true)->pluck('key') as $key) {
+            if (! is_string($key)) {
+                continue;
+            }
+            try {
+                app(PlanCatalog::class)->environmentLimit($key);
+            } catch (\Throwable) {
+                return HealthResult::fail('Billing admission', 'A sellable plan has no valid environment allowance. Fix the remote catalog and synchronize it.');
+            }
+        }
+        $watermark = DB::table('id_billing_sync')->where('key', 'subscriptions')->value('watermark');
+        if (! is_string($watermark) || CarbonImmutable::parse($watermark)->lt(now()->subMinutes(15))) {
+            return HealthResult::fail('Billing admission', 'Subscription reconciliation is missing or over 15 minutes old. Check scheduler and billing:sync-catalog --subscriptions.');
+        }
+
+        return HealthResult::ok('Billing admission', 'Catalog allowances are valid and subscriptions were reconciled within 15 minutes.');
     }
 
     /**

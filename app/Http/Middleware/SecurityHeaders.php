@@ -47,6 +47,9 @@ final class SecurityHeaders
         // is actually configured: its script, and the iframe that script creates.
         // A deployment without Turnstile keys keeps the tighter same-origin policy —
         // no directive here changes shape unless the feature is switched on.
+        // Stripe.js is loaded only on the billing document, on demand for card setup.
+        // https://docs.stripe.com/security/guide#content-security-policy
+        $billing = $request->routeIs('billing') && (bool) config('billing-client.api_token');
         $turnstile = $this->turnstile->configured();
 
         // The Vite dev server, and ONLY on a local install that is actually running it.
@@ -85,7 +88,7 @@ final class SecurityHeaders
                 // failing. The alternative is `'unsafe-inline'`, which would permit every
                 // inline script on every page in order to permit one, and pinning the
                 // hash instead breaks the day Cloudflare ships a new build of it.
-                "script-src 'self' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : '').$dev,
+                "script-src 'self' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com' : '').$dev,
                 "style-src 'self' 'unsafe-inline'".$dev,
                 /*
                  * NO `https:`. It was here so a customer-hosted logo URL could be drawn on
@@ -102,10 +105,10 @@ final class SecurityHeaders
                 "font-src 'self' data:",
                 // …plus the dev server's websocket, which is how Fast Refresh reaches the
                 // page. Empty in every environment that is not a local install.
-                "connect-src 'self'".$dev.$devSocket,
+                "connect-src 'self'".$dev.$devSocket.($billing ? ' https://api.stripe.com' : ''),
                 // Turnstile renders its challenge in an iframe from its own origin.
                 // Omitted entirely when Turnstile is off, so default-src 'self' governs.
-                $turnstile ? "frame-src 'self' ".Turnstile::ORIGIN : null,
+                ($turnstile || $billing) ? "frame-src 'self'".($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com' : '') : null,
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
                 // `'self'` alone is wrong for this app, and logout is where it showed.

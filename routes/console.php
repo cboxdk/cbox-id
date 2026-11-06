@@ -88,6 +88,8 @@ Schedule::command('cbox-id:sso:certificate-expiry')
     ->dailyAt('06:00')
     ->onOneServer();
 
+Schedule::command('billing:sync-catalog --subscriptions')->everyFiveMinutes()->withoutOverlapping()->onOneServer()
+    ->when(fn (): bool => config('billing.enabled') === true && (bool) config('billing-client.api_token'));
 Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping()->onOneServer()
     ->when(static fn (): bool => config()->array('signals-data.environments') !== [] || SourceHead::query()->exists());
 

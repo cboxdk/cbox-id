@@ -93,7 +93,7 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
     foreach ([
         '/admin/platform/workspaces/'.$workspace->id => 'Workspaces',
         '/admin/platform/environments' => 'Environments',
-        '/admin/platform/organizations' => 'Organization tree',
+        '/admin/platform/environments/root/organizations' => 'Organization tree',
         '/admin/platform/operators' => 'Operators',
         '/admin/platform/usage' => 'Usage',
         '/admin/platform/queues' => 'Queues',
@@ -183,11 +183,11 @@ it('runs a support session from the organization tree end to end, on the root ho
     [$organization, $member] = impersonationMember();
 
     // The organization tree's detail page offers the way in…
-    $members = (array) $this->get('https://cboxid.com/admin/platform/organizations/'.$organization->id)
+    $members = (array) $this->get('https://cboxid.com/admin/platform/environments/root/organizations/'.$organization->id)
         ->assertOk()->inertiaProps('members');
     $href = collect($members)->firstWhere('userId', $member->id)['impersonateHref'] ?? null;
 
-    expect($href)->toBe('https://cboxid.com/admin/platform/impersonate/'.$member->id);
+    expect($href)->toBe('https://cboxid.com/admin/platform/environments/root/impersonate/'.$member->id);
 
     // …which lands on the member's own console, where the banner and its Exit render —
     // not on platform admin, which would answer the member's session with a 404 and no
@@ -202,14 +202,14 @@ it('runs a support session from the organization tree end to end, on the root ho
         ->and($page->inertiaProps('shell'))->not->toBeNull();
 
     // While it lasts, nothing of platform admin or the platform environment answers.
-    $this->get('https://cboxid.com/admin/platform/organizations')->assertNotFound();
+    $this->get('https://cboxid.com/admin/platform/environments/root/organizations')->assertNotFound();
     $this->get('https://cboxid.com/admin')->assertNotFound();
 
     // Exit returns the operator to where they started — inside the one console.
     $this->post('https://cboxid.com/impersonation/exit')->assertRedirect(route('platform.organizations'));
     nextRequest();
 
-    $shell = (array) $this->get('https://cboxid.com/admin/platform/organizations')->assertOk()->inertiaProps('shell');
+    $shell = (array) $this->get('https://cboxid.com/admin/platform/environments/root/organizations')->assertOk()->inertiaProps('shell');
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull()
         ->and($shell['altitude'])->toBe('environment')
@@ -220,7 +220,7 @@ it('ends a support session that outlives its window back in platform admin', fun
     rootPlatformWorld();
     [$organization, $member] = impersonationMember();
 
-    $this->post('https://cboxid.com/admin/platform/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post('https://cboxid.com/admin/platform/environments/root/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON]);
     nextRequest();
 
     $this->travel(Impersonation::MAX_MINUTES + 1)->minutes();
@@ -229,7 +229,7 @@ it('ends a support session that outlives its window back in platform admin', fun
     // (Whether the operator's own session is still fresh after half an hour away is the
     // session policy's question, held in ImpersonationTest; this is about where it lands.)
     $this->get('https://cboxid.com/dashboard')
-        ->assertRedirect('https://cboxid.com/admin/platform/organizations')
+        ->assertRedirect('https://cboxid.com/admin/platform/environments/root/organizations')
         ->assertSessionHas('status', 'Impersonation session expired.');
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();

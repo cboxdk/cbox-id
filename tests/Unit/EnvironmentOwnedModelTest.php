@@ -23,6 +23,8 @@ it('gives every app model a tenancy decision, not a default', function (): void 
      * @var array<string, string>
      */
     $exempt = [
+        'BillingPlan' => 'deployment-wide public product catalog, not owned by any tenant',
+        'ProjectSubscription' => 'workspace/project billing above environments; reads explicitly scope project ownership and writes verify the remote organization',
         // Carries its own environment_id from the EVENT, not from ambient context. The
         // trait would stamp whichever environment the relay happens to be running in,
         // which is not the one the event belongs to. Reasoned in the model's docblock.

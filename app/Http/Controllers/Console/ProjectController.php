@@ -141,6 +141,8 @@ final readonly class ProjectController extends ConsoleController
             'projects' => $rows,
             'canManage' => $this->mayManage($members),
             'createHref' => route('projects.create'),
+            'billingHref' => config('billing.enabled') && $this->scope->capabilities()?->canReadBilling() ? route('billing') : null,
+            'choosePlanLabel' => __('billing.plans'),
             // The first environment is held back until the owner confirms their address,
             // so the page has to say so — otherwise it shows a project with no
             // environments and no explanation.
@@ -243,6 +245,8 @@ final readonly class ProjectController extends ConsoleController
             'scoped' => $scoped,
             'remaining' => $projects->remainingEnvironments($model),
             'indexHref' => route('projects'),
+            'billingHref' => config('billing.enabled') && $this->scope->capabilities()?->canReadBilling() ? route('billing') : null,
+            'manageBillingLabel' => __('billing.manage'),
         ]);
     }
 

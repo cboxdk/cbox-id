@@ -444,3 +444,13 @@ it('revokes, with a workspace key, every environment key it minted and their own
         ->filter(static fn (AuditEntry $entry): bool => ($entry->context['because_parent_revoked'] ?? false) === true))
         ->toHaveCount(2);
 });
+
+it('does not let a workspace key choose its environment allowance', function (): void {
+    $workspace = provisionAccount()['organization'];
+    $agent = workspaceKey($workspace);
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Untrusted limit', 'environment_limit' => 100])
+        ->assertCreated()->assertJsonPath('data.environment_limit', 2);
+    config(['cbox-id.entitlements.mode' => 'metered']);
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Needs a plan', 'environment_limit' => 100])
+        ->assertCreated()->assertJsonPath('data.environment_limit', 0);
+});

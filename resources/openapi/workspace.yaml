@@ -12,7 +12,7 @@ info:
     **Scopes.** A workspace key carries a ROLE and, optionally, SCOPES. The role bounds
     everything the key may do — the same capabilities a person holding that role has in
     the console — and scopes narrow it further: `workspace:read`, `projects:write`,
-    `environments:write`, `team:read`, `team:write`, `keys:write`, `settings:write`. A key
+    `environments:write`, `team:read`, `team:write`, `keys:write`, `settings:write`, `billing:write`. A key
     minted with no scopes is bounded by its role alone. Each operation names the scope and
     the capability it needs; a key missing either gets `403`.
 
@@ -73,6 +73,9 @@ tags:
   -
     name: Keys
     description: "Workspace keys, and the management keys of the workspace's environments."
+  -
+    name: Billing
+    description: 'Workspace invoice details and stored payment methods.'
   -
     name: Approvals
     description: "Actions a key's policy holds for a person's approval."
@@ -207,6 +210,173 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /workspace/billing/details:
+    put:
+      tags:
+        - Billing
+      summary: 'Update invoice details for this workspace'
+      operationId: billing_details_update
+      x-action: billing.details.update
+      parameters:
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - invoice_name
+                - billing_email
+                - address_line_1
+                - postal_code
+                - city
+                - country
+              properties:
+                invoice_name:
+                  type: string
+                  maxLength: 255
+                billing_email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                address_line_1:
+                  type: string
+                  maxLength: 255
+                address_line_2:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 255
+                postal_code:
+                  type: string
+                  maxLength: 32
+                city:
+                  type: string
+                  maxLength: 128
+                country:
+                  type: string
+                  pattern: '^[A-Z]{2}$'
+                  description: 'ISO 3166-1 country code'
+                subdivision:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 64
+                  description: 'Required for US and CA'
+                tax_id:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 64
+      responses:
+        200:
+          description: 'Saved invoice profile'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Billing is unavailable; retry later'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-scope: 'billing:write'
+      x-danger: write
+  /workspace/billing/payment-methods:
+    post:
+      tags:
+        - Billing
+      summary: 'Set a default card or remove a non-default card'
+      operationId: billing_payment_methods_update
+      x-action: billing.payment_methods.update
+      parameters:
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - operation
+                - card
+              properties:
+                operation:
+                  type: string
+                  enum:
+                    - default
+                    - remove
+                card:
+                  type: string
+                  maxLength: 128
+                  description: 'Card belonging to this workspace'
+      responses:
+        200:
+          description: 'Card updated'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - ok
+                    properties:
+                      ok:
+                        type: boolean
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Billing is unavailable; retry later'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-scope: 'billing:write'
+      x-danger: write
   /workspace/environments:
     get:
       tags:
@@ -790,6 +960,7 @@ paths:
                       - 'team:read'
                       - 'team:write'
                       - 'keys:write'
+                      - 'billing:write'
                       - 'settings:write'
                 expires_at:
                   type:
@@ -1285,7 +1456,7 @@ paths:
       tags:
         - Projects
       summary: 'Create a project'
-      description: 'Stand up another independently-billed IdP product. Requires scope `projects:write` and the `manage-environments` capability (owner/admin/developer).'
+      description: 'Stand up another independently-billed IdP product. Environment allowance is assigned by the server, never by request input. Requires scope `projects:write` and the `manage-environments` capability (owner/admin/developer).'
       operationId: projects_create
       x-action: projects.create
       parameters:
@@ -1305,11 +1476,6 @@ paths:
                 name:
                   type: string
                   maxLength: 120
-                environment_limit:
-                  type: integer
-                  minimum: 1
-                  maximum: 100
-                  description: "This project's plan environment allowance (default 2)."
       responses:
         201:
           description: Created
@@ -1841,6 +2007,7 @@ components:
               - 'team:write'
               - 'keys:write'
               - 'settings:write'
+              - 'billing:write'
           description: 'Null when the role alone bounds the key.'
         parent_key_id:
           type:

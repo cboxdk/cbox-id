@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "aa60024a40f1716820b2984e874db9b6",
+    "content-hash": "d58fa575524bd32734cb17cdd47dc736",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -499,6 +499,66 @@
                 "source": "https://github.com/cboxdk/laravel-audit-chain/tree/v0.1.0"
             },
             "time": "2026-09-25T06:32:55+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-billing-client",
+            "version": "v0.4.13",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-billing-client.git",
+                "reference": "be2153272bde602f57d29039d53430d37f1e9d2a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-billing-client/zipball/be2153272bde602f57d29039d53430d37f1e9d2a",
+                "reference": "be2153272bde602f57d29039d53430d37f1e9d2a",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/database": "^12.0 || ^13.0",
+                "illuminate/http": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^3.5 || ^4.0 || ^5.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Cbox\\Billing\\Client\\ClientServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\Billing\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Cbox Billing — app-local enforcement SDK: leases allowance from a remote Cbox Billing service and enforces hard limits locally on the hot path, buffering and reporting usage in the background.",
+            "keywords": [
+                "Enforcement",
+                "billing",
+                "cbox",
+                "client",
+                "laravel",
+                "metering",
+                "sdk"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-billing-client/issues",
+                "source": "https://github.com/cboxdk/laravel-billing-client/tree/v0.4.13"
+            },
+            "time": "2026-11-06T10:59:31+00:00"
         },
         {
             "name": "cboxdk/laravel-console-kit",
@@ -6805,6 +6865,95 @@
                 }
             ],
             "time": "2026-11-04T11:29:46+00:00"
+        },
+        {
+            "name": "symfony/intl",
+            "version": "v8.1.10",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/intl.git",
+                "reference": "19c82580068e56d126b3ef4e26c0fe9aa5b71ff7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/intl/zipball/19c82580068e56d126b3ef4e26c0fe9aa5b71ff7",
+                "reference": "19c82580068e56d126b3ef4e26c0fe9aa5b71ff7",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4.1"
+            },
+            "conflict": {
+                "symfony/string": "<7.4"
+            },
+            "require-dev": {
+                "symfony/filesystem": "^7.4|^8.0",
+                "symfony/var-exporter": "^7.4|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Intl\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/",
+                    "/Resources/data/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Bernhard Schussek",
+                    "email": "bschussek@gmail.com"
+                },
+                {
+                    "name": "Eriksen Costa",
+                    "email": "eriksen.costa@infranology.com.br"
+                },
+                {
+                    "name": "Igor Wiedler",
+                    "email": "igor@wiedler.ch"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Provides access to the localization data of the ICU library",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "i18n",
+                "icu",
+                "internationalization",
+                "intl",
+                "l10n",
+                "localization"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/intl/tree/v8.1.10"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-10-27T13:53:09+00:00"
         },
         {
             "name": "symfony/mailer",
@@ -14246,7 +14395,7 @@
     "platform": {
         "php": "^8.5"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "platform-overrides": {
         "php": "8.5.0"
     },

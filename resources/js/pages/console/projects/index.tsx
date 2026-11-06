@@ -36,6 +36,8 @@ type Props = PageProps<{
     verificationEmail: string;
     verificationSender: string;
     help: HelpContent;
+    billingHref: string | null;
+    choosePlanLabel: string;
 }>;
 
 export default function Projects({
@@ -46,6 +48,8 @@ export default function Projects({
     verificationEmail,
     verificationSender,
     help,
+    billingHref,
+    choosePlanLabel,
 }: Props) {
     const { t: tc } = useTranslator();
 
@@ -141,6 +145,13 @@ export default function Projects({
                 {resendNotice ?? ''}
             </output>
 
+            {!awaitingVerification && billingHref && projects.some((p) => p.limit === 0) && (
+                <div className="mt-4">
+                    <Button asChild>
+                        <Link href={billingHref}>{choosePlanLabel}</Link>
+                    </Button>
+                </div>
+            )}
             <div className="mt-6 space-y-4">
                 {projects.length === 0 ? (
                     <div
@@ -282,7 +293,11 @@ function ProjectCard({
 
             {canManage && (
                 <div className="border-t px-5 py-3" style={{ borderColor: 'var(--border)' }}>
-                    {creating ? (
+                    {project.status !== 'active' ? (
+                        <p className="text-xs" style={{ color: 'var(--faint)' }}>
+                            {tc('console.existing_environments_stay_live_but_no_new_o_0becaa18')}
+                        </p>
+                    ) : creating ? (
                         <NewEnvironmentForm project={project} onCancel={onCancelCreate} />
                     ) : project.atLimit ? (
                         <p className="text-xs" style={{ color: 'var(--faint)' }}>
