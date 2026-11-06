@@ -49,7 +49,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # Larastan boots the application, which wants an encryption key.
       - name: Prepare environment
@@ -101,7 +101,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite manifest.
       - name: Install Node dependencies
@@ -149,7 +149,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       - name: Install Node dependencies
         run: npm ci
@@ -219,7 +219,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
         run: composer license-check
@@ -322,7 +322,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite
       # manifest — without built assets those tests fail on a missing manifest
@@ -395,7 +395,7 @@ jobs:
       - name: Install exact dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
       - name: Prepare isolated test environment
         run: |
           cp .env.example .env
