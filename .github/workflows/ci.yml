@@ -154,6 +154,10 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      # The base image can ship a newer browser than our locked Playwright expects.
+      - name: Install the locked Chromium browser
+        run: npx playwright install chromium
+
       - name: Build assets
         run: npm run build
 
