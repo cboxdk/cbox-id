@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:b23156e1-b9f0-41b3-9fd8-84bb45db750c",
+    "serialNumber": "urn:uuid:0a39dfa1-58d6-4d45-8257-39f16a3cda0f",
     "version": 1,
     "metadata": {
         "tools": [
@@ -325,11 +325,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-telemetry@v3.9.2",
+            "bom-ref": "pkg:composer/cboxdk/laravel-telemetry@v3.9.3",
             "group": "cboxdk",
             "name": "laravel-telemetry",
-            "version": "v3.9.2",
-            "purl": "pkg:composer/cboxdk/laravel-telemetry@v3.9.2",
+            "version": "v3.9.3",
+            "purl": "pkg:composer/cboxdk/laravel-telemetry@v3.9.3",
             "description": "Collector-free telemetry for Laravel: Prometheus metrics, OTLP traces and events. No C extension, no protobuf, no sidecar \u2014 metrics that actually work under FPM.",
             "licenses": [
                 {

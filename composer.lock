@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ca60762801804419987dfbb8e537a9fd",
+    "content-hash": "aa60024a40f1716820b2984e874db9b6",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1460,16 +1460,16 @@
         },
         {
             "name": "cboxdk/laravel-telemetry",
-            "version": "v3.9.2",
+            "version": "v3.9.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-telemetry.git",
-                "reference": "5894f69c9db8b5b6fc9eda172ee20c9a810323b7"
+                "reference": "f291f7f5c3596f1ea230e9b19bdec514ffcfe9c0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/5894f69c9db8b5b6fc9eda172ee20c9a810323b7",
-                "reference": "5894f69c9db8b5b6fc9eda172ee20c9a810323b7",
+                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/f291f7f5c3596f1ea230e9b19bdec514ffcfe9c0",
+                "reference": "f291f7f5c3596f1ea230e9b19bdec514ffcfe9c0",
                 "shasum": ""
             },
             "require": {
@@ -1558,7 +1558,7 @@
                 "issues": "https://github.com/cboxdk/laravel-telemetry/issues",
                 "source": "https://github.com/cboxdk/laravel-telemetry"
             },
-            "time": "2026-11-06T17:50:35+00:00"
+            "time": "2026-11-06T19:15:15+00:00"
         },
         {
             "name": "cboxdk/laravel-webhook-signature",
