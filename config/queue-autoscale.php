@@ -69,6 +69,19 @@ $workerBounds = WorkerBounds::fromEnvironment(
     totalCap: $maxTotalWorkers,
 );
 
+$groups = $dispatched->autoscaleGroups(WorkerProfile::class, $workerBounds->overrides());
+
+// Redis blocks until a job arrives. An additional worker sleep delays preference
+// webhooks; keep polling sleeps for drivers that do not provide a blocking pop.
+foreach ($groups as &$group) {
+    if ($group['connection'] === 'redis') {
+        $group['overrides'] = array_replace_recursive($group['overrides'] ?? [], [
+            'workers' => ['sleep_seconds' => 0],
+        ]);
+    }
+}
+unset($group);
+
 return [
     'enabled' => env('QUEUE_AUTOSCALE_ENABLED', true),
     'manager_id' => env('QUEUE_AUTOSCALE_MANAGER_ID'),
@@ -95,7 +108,7 @@ return [
      * dispatches to on it, the default queue first. Derived — see {@see DispatchedQueues}
      * — so moving webhooks to their own queue moves their worker with them.
      */
-    'groups' => $dispatched->autoscaleGroups(WorkerProfile::class, $workerBounds->overrides()),
+    'groups' => $groups,
 
     // Single host: no Redis-backed pickup store needed. `auto` switches to Redis only
     // when cluster mode is turned on.
