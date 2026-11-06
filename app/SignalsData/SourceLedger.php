@@ -264,14 +264,18 @@ final readonly class SourceLedger
         DB::transaction(function () use ($environment): void {
             $head = $this->head($environment, true);
             $cutoff = CarbonImmutable::now()->subDays($this->retentionDays());
-            $expired = SourceRecord::query()->where('environment_id', $environment)->orderBy('sequence')->limit(1000)->get()->takeWhile(static fn (SourceRecord $record): bool => $record->recorded_at->lt($cutoff));
+            // A delayed transaction can publish an older fact after newer rows.
+            $expired = SourceRecord::query()->where('environment_id', $environment)
+                ->where('recorded_at', '<', $cutoff)->orderBy('sequence')->limit(1000)->get();
             $ids = $expired->pluck('sequence')->all();
             if ($ids !== []) {
                 DB::table('signals_source_records')->where('environment_id', $environment)->whereIn('sequence', $ids)->delete();
                 DB::table('signals_source_subjects')->where('environment_id', $environment)->whereIn('sequence', $ids)->delete();
-                $last = $expired->last();
+                $first = SourceRecord::query()->where('environment_id', $environment)->orderBy('sequence')->first();
                 DB::table('signals_source_heads')->where('environment_id', $environment)->update([
-                    'retained_after' => max($head->retained_after, $last->sequence ?? 0), 'record_count' => max(0, $head->record_count - count($ids)),
+                    // Removing a later position cannot hide an earlier retained row.
+                    'retained_after' => max($head->retained_after, $first === null ? $head->sequence : $first->sequence - 1),
+                    'record_count' => max(0, $head->record_count - count($ids)),
                 ]);
             }
         });
