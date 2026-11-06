@@ -5,6 +5,7 @@ use App\Models\RiskDecision;
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\FrontendApi\LoginTicket;
 use App\Platform\Health\SchedulerHeartbeat;
+use App\SignalsData\Models\SourceHead;
 use Cbox\Id\Analytics\Models\AnalyticsEvent;
 use Cbox\Id\Devices\Models\EnrolmentCode;
 use Illuminate\Foundation\Inspiring;
@@ -88,4 +89,4 @@ Schedule::command('cbox-id:sso:certificate-expiry')
     ->onOneServer();
 
 Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping()->onOneServer()
-    ->when(static fn (): bool => config()->array('signals-data.environments') !== []);
+    ->when(static fn (): bool => config()->array('signals-data.environments') !== [] || SourceHead::query()->exists());

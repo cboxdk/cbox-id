@@ -6,8 +6,12 @@ use App\Platform\Radar\RadarPseudonyms;
 use App\SignalsData\IdentityCapture;
 use App\SignalsData\SourceCursor;
 use App\SignalsData\SourceLedger;
+use App\SignalsData\SourceRelationships;
+use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\OAuthServer\Exceptions\InvalidGrant;
@@ -226,10 +230,12 @@ it('never attaches another person or an expired attempt to a successful session'
     $two = app(Subjects::class)->create('pending-two@example.test', 'Two');
     $request = app('request');
     app(IdentityCapture::class)->begin($request, email: 'pending-one@example.test');
-    app(SessionManager::class)->start($two->id, null, ['pwd'], '192.0.2.44', 'Firefox/140.0');
+    $second = app(SessionManager::class)->start($two->id, null, ['pwd'], '192.0.2.44', 'Firefox/140.0');
+    app(IdentityCapture::class)->confirmed($second, $request);
     app(IdentityCapture::class)->begin($request, $one->id, 'pending-one@example.test');
     $this->travel(16)->minutes();
-    app(SessionManager::class)->start($one->id, null, ['pwd'], '192.0.2.44', 'Firefox/140.0');
+    $first = app(SessionManager::class)->start($one->id, null, ['pwd'], '192.0.2.44', 'Firefox/140.0');
+    app(IdentityCapture::class)->confirmed($first, $request);
     $events = collect($this->withToken(signalsSourceKey())->getJson('/api/v1/signals/source')->assertOk()->json('data'))->where('name', 'identity.authentication');
     expect($events->where('data.stage', 'attempted'))->toHaveCount(4)
         ->and($events->where('data.outcome', 'succeeded'))->toHaveCount(2);
@@ -237,4 +243,88 @@ it('never attaches another person or an expired attempt to a successful session'
         $start = $events->where('data.attempt_id', $success['data']['attempt_id'])->where('data.stage', 'attempted')->first();
         expect($start['data']['subject'])->toBe($success['data']['subject']);
     }
+});
+
+it('does not report a temporary framework session as a completed sign-in', function (): void {
+    $person = app(Subjects::class)->create('temporary-source@example.test', 'Temporary');
+    $session = app(SessionManager::class)->start($person->id, null, ['magic_link']);
+    app(SessionManager::class)->revoke($session->id);
+    $events = collect($this->withToken(signalsSourceKey())->getJson('/api/v1/signals/source')->assertOk()->json('data'));
+    expect($events->where('name', 'identity.authentication')->where('data.outcome', 'succeeded'))->toHaveCount(0)
+        ->and($events->where('name', 'identity.session')->where('data.action', 'started'))->toHaveCount(1)
+        ->and($events->where('name', 'identity.session')->where('data.action', 'revoked'))->toHaveCount(1);
+});
+
+it('keeps a magic-link attempt pending through a refused second factor', function (): void {
+    $subject = app(Subjects::class)->create('source-magic@example.test', 'Source magic');
+    $factor = app(Mfa::class)->enrollTotp($subject->id, $subject->email);
+    confirmTotpForTest($subject->id, $factor->secret);
+    $link = app(MagicLink::class)->request($subject->email);
+    $key = signalsSourceKey();
+    $this->post(route('magic.redeem.store', $link))->assertRedirect(route('mfa'));
+    $before = collect($this->withToken($key)->getJson('/api/v1/signals/source')->assertOk()->json('data'))->where('name', 'identity.authentication');
+    expect($before->where('data.outcome', 'succeeded'))->toHaveCount(0)
+        ->and($before->where('data.stage', 'attempted'))->toHaveCount(1);
+    $attempt = $before->first()['data']['attempt_id'];
+    $good = (new TotpAuthenticator)->codeAt($factor->secret, time());
+    $bad = $good === '000000' ? '111111' : '000000';
+    $this->post(route('mfa.verify'), ['code' => $bad])->assertSessionHasErrors('code');
+    $this->post(route('mfa.verify'), ['code' => $good])->assertRedirect();
+    $response = $this->withToken($key)->getJson('/api/v1/signals/source')->assertOk();
+    $events = collect($response->json('data'))->where('name', 'identity.authentication');
+    expect($events->where('data.outcome', 'succeeded'))->toHaveCount(1)
+        ->and($events->where('data.outcome', 'succeeded')->first()['data']['attempt_id'])->toBe($attempt)
+        ->and($events->where('data.outcome', 'failed'))->toHaveCount(1)
+        ->and($events->where('data.outcome', 'failed')->first()['data']['attempt_id'])->not->toBe($attempt);
+    foreach ([$link, $factor->secret, $subject->email] as $secret) {
+        expect($response->getContent())->not->toContain($secret);
+    }
+    foreach ($events as $event) {
+        assertSourceEventContract($event);
+    }
+});
+
+it('publishes invalid magic link and expired passkey proof failures without bearer material', function (): void {
+    $this->post(route('magic.redeem.store', 'never-export-this-bearer'))->assertRedirect();
+    $this->postJson('/passkeys/login', ['id' => 'secret-credential-handle', 'response' => []])->assertStatus(422);
+    $response = $this->withToken(signalsSourceKey())->getJson('/api/v1/signals/source')->assertOk();
+    $events = collect($response->json('data'))->where('name', 'identity.authentication');
+    expect($events->where('data.outcome', 'failed'))->toHaveCount(2)
+        ->and($events->where('data.outcome', 'succeeded'))->toHaveCount(0)
+        ->and($response->getContent())->not->toContain('never-export-this-bearer')
+        ->and($response->getContent())->not->toContain('secret-credential-handle');
+    foreach ($events as $event) {
+        assertSourceEventContract($event);
+    }
+});
+
+it('keeps erasure and raw retention working after capture is paused', function (): void {
+    $person = app(Subjects::class)->create('paused-erase@example.test', 'Paused erase');
+    $other = app(Subjects::class)->create('paused-keep@example.test', 'Paused keep');
+    $key = signalsSourceKey(scopes: ['signals_source:read', 'users:erase']);
+    $this->withToken($key)->getJson('/api/v1/signals/source')->assertOk();
+    config(['signals-data.environments' => []]);
+    $this->withToken($key)->postJson('/api/v1/users/'.$person->id.'/erase')->assertOk();
+    $receipt = $this->withToken($key)->getJson('/api/v1/signals/source/erasures')->assertOk()->assertJsonCount(1, 'data');
+    expect($receipt->json('data.0.data.subject.id'))->toBe($person->id);
+    $this->withToken($key)->getJson('/api/v1/signals/source')->assertStatus(503);
+    $this->travel(8)->days();
+    $this->artisan('signals:source-maintain')->assertSuccessful();
+    expect(DB::table('signals_source_records')->count())->toBe(0);
+    $this->withToken($key)->getJson('/api/v1/signals/source/erasures')->assertOk()->assertJsonPath('data', $receipt->json('data'));
+    config(['signals-data.environments' => ['env_test']]);
+    app(SourceRelationships::class)->membership('old-membership', $person->id, 'old-org', true);
+    expect(DB::table('signals_source_memberships')->count())->toBe(0);
+    app(IdentityCapture::class)->account($person->id, 'created', request());
+    app(IdentityCapture::class)->account($other->id, 'created', request());
+    $visible = $this->withToken($key)->getJson('/api/v1/signals/source')->assertOk()->getContent();
+    expect($visible)->not->toContain($person->id)->toContain($other->id);
+});
+
+it('allows erasure-first polling before the first ordinary publication', function (): void {
+    $key = signalsSourceKey();
+    $this->withToken($key)->getJson('/api/v1/signals/source/erasures')->assertOk()->assertJsonCount(0, 'data');
+    $head = DB::table('signals_source_heads')->where('environment_id', 'env_test')->first();
+    $cursor = app(SourceCursor::class)->encode('env_test', $head->generation, 20);
+    $this->withToken($key)->getJson('/api/v1/signals/source/erasures?after='.urlencode($cursor))->assertUnprocessable();
 });

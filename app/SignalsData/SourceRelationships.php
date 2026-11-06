@@ -19,6 +19,15 @@ final readonly class SourceRelationships
         if ($environment === null) {
             return;
         }
+        if (DB::transactionLevel() === 0) {
+            DB::transaction(fn () => $this->membership($id, $subject, $organization, $added, $knownStart));
+
+            return;
+        }
+        SourcePrivacyLock::acquire($environment, [hash('sha256', $subject)], false);
+        if (DB::table('signals_source_erasures')->where('environment_id', $environment)->where('subject_hash', hash('sha256', $subject))->exists()) {
+            return;
+        }
         $state = SourceMembership::query()->where('environment_id', $environment)->where('membership_id', $id)->lockForUpdate()->first();
         if (($added && $state !== null) || (! $added && $state?->valid_until !== null)) {
             return;

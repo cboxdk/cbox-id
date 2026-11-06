@@ -11,6 +11,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
 use App\Platform\SsoRefusal;
+use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\MfaVerification;
@@ -52,15 +53,20 @@ final readonly class MagicLinkController extends PageController
 
     public function redeem(Request $request, string $token, MagicLink $magicLink, PlatformAuth $auth, RiskGuard $risk, SessionManager $sessions): RedirectResponse
     {
+        app(IdentityCapture::class)->begin($request);
         // Risk rejection precedes consumption. A magic link proves mailbox access;
         // it does not satisfy an enrolled second factor.
         if ($risk->shouldBlock($risk->assess($request, 'login', method: RadarMethod::MagicLink))) {
+            app(IdentityCapture::class)->failed($request, reason: 'policy');
+
             return redirect()->route('login')->with('error', __('auth.common.could_not_process'));
         }
 
         try {
             $session = $magicLink->redeem($token);
         } catch (InvalidMagicLink) {
+            app(IdentityCapture::class)->failed($request, reason: 'invalid_credentials');
+
             return redirect()->route('login')->with('error', __('auth.confirm_sign_in.invalid'));
         }
 
@@ -69,6 +75,7 @@ final readonly class MagicLinkController extends PageController
         // browser. Left alive it is an unadopted session nobody holds, and the subject's
         // own device list would show a sign-in they were told did not happen.
         if (! $auth->localSignInAllowedFor($session->user_id)) {
+            app(IdentityCapture::class)->failed($request, $session->user_id, 'policy');
             $sessions->revoke($session->id);
             SsoRefusal::hold($session->user_id, RefusedFactor::MagicLink);
 

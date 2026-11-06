@@ -39,3 +39,25 @@ issue/rotation/reuse, scope denial, cursor integrity, rollback, erasure and rete
 This is not a declaration that every identity flow, historical relationship, forwarding
 connector, deletion propagation or production gate is qualified. No learned detector is
 introduced by this change.
+
+## Authentication completion and paused capture
+
+A framework session may be temporary during magic-link or SSO verification.
+`identity.session.started` records that lifecycle fact; only PlatformAuth accepting
+the final session publishes `identity.authentication` with `outcome=succeeded`.
+A refused second-factor submission has its own failed attempt and leaves the
+original sign-in pending, so a later correct proof completes the original attempt.
+Hosted magic-link and passkey failures use the frozen coarse failure classes.
+No factor code, credential handle, link bearer or raw verifier error is exported.
+
+Subject-scoped PostgreSQL transaction locks serialize source writes and erasure.
+Unrelated identities keep writing concurrently. Membership state also checks the
+permanent tombstone before it can be recreated. The independent erasure endpoint
+and bounded raw retention remain available after capture is paused; pausing never
+publishes a fresh healthy heartbeat. The maintenance command includes existing
+source heads as well as enabled environments.
+
+Qualification includes a real hosted magic-link → refused TOTP → accepted TOTP
+flow, paused erasure/retention, and independent PostgreSQL connections proving
+that deletion cannot overtake an uncommitted source write. Live qualification
+and remaining identity flow/relationship coverage are still open.
