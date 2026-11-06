@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Translation provenance and review scope: docs/guides/languages.md.
 return [
     'organization_results_limited' => 'Visar de första 500 träffarna. Hierarkin är ofullständig. Begränsa sökningen för att hitta fler organisationer.',
+    'services_604dce44' => 'Tjänster',
     'ux_no_users_status' => 'Inga användare med denna status. Välj en annan status eller skapa en användare.',
     'ux_open_profile' => 'Öppna hela profilen',
     'ux_discard_changes' => 'Kasta osparade ändringar?',

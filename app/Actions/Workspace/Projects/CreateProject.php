@@ -17,6 +17,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
@@ -62,6 +63,7 @@ final readonly class CreateProject implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $workspaceId = InWorkspace::id($context->principal);
+        app(ProductAdmission::class)->assertGranted($context->principal->id(), $workspaceId);
 
         // IN THE PLATFORM ROOT: `organizations` is environment-owned and this plane pins no
         // environment, so an unscoped read finds nothing.

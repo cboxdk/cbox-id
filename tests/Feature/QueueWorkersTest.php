@@ -116,6 +116,18 @@ it('gives every queue the app dispatches to a floor of one worker in production'
         ->and(AutoscaleConfiguration::configuredQueues())->toBe([]);
 });
 
+it('wakes Redis workers on delivery without removing the database polling sleep', function (): void {
+    config(['queue-autoscale' => productionAutoscaleConfig([
+        'CBOX_ID_WEBHOOKS_QUEUE_CONNECTION' => 'database',
+    ])]);
+
+    $groups = GroupConfiguration::allFromConfig();
+
+    expect($groups['cbox-id-redis']->workers->sleepSeconds)->toBe(0)
+        ->and(config('queue.connections.redis.block_for'))->toBe(1)
+        ->and($groups['cbox-id-database']->workers->sleepSeconds)->toBe(3);
+});
+
 it('cannot outgrow a 512 MB instance or hand a running job to a second worker', function (): void {
     config(['queue-autoscale' => productionAutoscaleConfig()]);
 

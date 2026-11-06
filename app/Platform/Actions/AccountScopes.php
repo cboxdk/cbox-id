@@ -23,6 +23,7 @@ final class AccountScopes
      * @var array<string, array{label: string, description: string}>
      */
     public const array SCOPES = [
+        'account:waitlists:write' => ['label' => 'Join service waitlists', 'description' => 'Join published early-access waitlists using your verified email. Does not purchase a plan or grant access.'],
         'account:apps:read' => ['label' => 'Read your app catalog', 'description' => 'List the published apps visible to you.'],
         'account:profile:write' => [
             'label' => 'Change your profile',

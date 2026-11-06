@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Actions\ActionRefused;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -27,32 +29,12 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Self-serve signup provisioning, split in two around email verification.
+ * Compatibility provisioning for older pending customer signups and operator flows.
+ * New Cbox identity signup creates only a person. The native product flow admits
+ * their chosen identity team before creating a project or environment.
  *
- * WHY THE SPLIT. {@see TenantProvisioner::provision()} stands up the customer, the owner
- * and a live environment in one go. That is right for an operator or an API caller —
- * someone already vouched for — but on the open signup form it means an unverified stranger
- * mints a routable IdP with a signing key. In production five of eight signups were exactly
- * that: bots, each with its own empty environment, none of which ever verified an address.
- * Deferring the environment does not make the abuse harder, it makes it WORTHLESS: what the
- * bot walks away with is a row nobody routes to.
- *
- * The organization, the owner's subject, their membership and the first project are still
- * created up front, because they are what the verification email is addressed to — the
- * token binds to the owner's platform-root SUBJECT, which has to exist — and because they
- * cost nothing: no key material, no subdomain, no discovery document.
- *
- * The environment is released by {@see releaseEnvironment()} through the package's own
- * {@see TenantProvisioner::addEnvironment()}, so the first environment is created by exactly
- * the code path that always creates one — same slug seeding off the project name, same
- * plan-limit and suspension checks, same warmed signing key.
- *
- * IT MIRRORS `TenantProvisioner::provision()` STEP FOR STEP, minus the last one, and that
- * duplication is deliberate rather than an oversight: the package's method is atomic and
- * ends with an environment, which is the one thing this path must not do. What it must not
- * diverge on is the ORDER and the SCOPE — organization, subject and membership all written
- * inside the platform root — because a customer half-created in the wrong environment is
- * the failure this whole class exists to make impossible.
+ * Legacy pending environments are released only after email verification and a
+ * current product-admission check, through TenantProvisioner::addEnvironment().
  */
 final class SignupProvisioner
 {
@@ -163,11 +145,13 @@ final class SignupProvisioner
         }
 
         try {
+            app(ProductAdmission::class)->assertGranted('email-verification', $organizationId);
+
             // The organization's own status is checked INSIDE addEnvironment(), which is
             // where it belongs — an operator who suspended a signup while it was still
             // unverified must not have that decision undone by a link click.
             return $this->provisioner->addEnvironment($project, 'Production', type: EnvironmentType::Production);
-        } catch (EnvironmentLimitReached|OrganizationSuspended $e) {
+        } catch (EnvironmentLimitReached|OrganizationSuspended|ActionRefused $e) {
             // A refusal on a link click is not an error page. Both of these are decisions
             // somebody made — a plan limit, or an operator's suspension — and the caller
             // renders "nothing to release" for either.

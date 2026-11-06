@@ -530,6 +530,8 @@ paths:
                 message: 'Project [01J…] has reached its plan limit of 2 environment(s).'
         429:
           $ref: '#/components/responses/TooManyRequests'
+        503:
+          $ref: '#/components/responses/AdmissionUnavailable'
       x-scope: 'environments:write'
       x-danger: critical
   '/workspace/environments/{environment_id}/domain':
@@ -1496,6 +1498,8 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+        503:
+          $ref: '#/components/responses/AdmissionUnavailable'
       x-scope: 'projects:write'
       x-danger: write
   /workspace/projects/verification/resend:
@@ -1721,6 +1725,12 @@ components:
         type: string
         maxLength: 255
   responses:
+    AdmissionUnavailable:
+      description: 'Billing admission is unavailable. No project or environment is created; retry later.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     ApprovalRequired:
       description: |
         Held for a person's approval: this key's policy requires the person who minted it to

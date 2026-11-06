@@ -8,6 +8,8 @@ use App\Platform\AccountLinking\LinkHold;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Radar\Radar;
 use App\Platform\Signals\SignalsStepUpRequired;
+use App\SignalsData\IdentityCapture;
+use App\SignalsData\SourceLedger;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
@@ -159,6 +161,21 @@ final class PlatformAuth
      * a risky sign-in through — and rather than locking the account out.
      */
     public function attemptPassword(Request $request, string $email, string $password, bool $requireStepUp = false): AttemptOutcome
+    {
+        if (app(SourceLedger::class)->environment() === null) {
+            return $this->attemptPasswordCredential($request, $email, $password, $requireStepUp);
+        }
+        $capture = app(IdentityCapture::class);
+        $capture->begin($request, $this->subjects->findByEmail($email)?->id, $email);
+        $outcome = $this->attemptPasswordCredential($request, $email, $password, $requireStepUp);
+        if ($outcome === AttemptOutcome::Invalid || $outcome === AttemptOutcome::SsoRequired) {
+            $capture->failed($request, $this->subjects->findByEmail($email)?->id, $outcome === AttemptOutcome::SsoRequired ? 'policy' : 'invalid_credentials');
+        }
+
+        return $outcome;
+    }
+
+    private function attemptPasswordCredential(Request $request, string $email, string $password, bool $requireStepUp): AttemptOutcome
     {
         $subject = $this->subjects->findByEmail($email);
 
@@ -316,6 +333,8 @@ final class PlatformAuth
         $pending = $this->pendingOtpStepUp($request);
 
         if ($pending === null) {
+            app(IdentityCapture::class)->proofFailed($request, null, 'challenge');
+
             return false;
         }
 
@@ -324,11 +343,15 @@ final class PlatformAuth
         // the per-ACCOUNT one, which is what stops somebody requesting a fresh code for
         // every handful of guesses.
         if ($this->loginAttempts->isLockedOut($pending['subject'])) {
+            app(IdentityCapture::class)->proofFailed($request, $pending['subject'], 'challenge');
+
             return false;
         }
 
         if (! $this->otp->verifyLatest(self::OTP_PURPOSE, $pending['email'], $code, $request->ip())->verified) {
             $this->loginAttempts->recordFailure($pending['subject']);
+
+            app(IdentityCapture::class)->proofFailed($request, $pending['subject'], 'challenge');
 
             return false;
         }
@@ -448,11 +471,15 @@ final class PlatformAuth
         $subjectId = $this->pendingMfaSubject($request);
 
         if ($subjectId === null || $this->loginAttempts->isLockedOut($subjectId)) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
         if (! $this->sms->verifyChallenge($subjectId, $code, $request->ip())) {
             $this->loginAttempts->recordFailure($subjectId);
+
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
 
             return false;
         }
@@ -538,6 +565,8 @@ final class PlatformAuth
         $subjectId = $this->pendingMfaSubject($request);
 
         if ($subjectId === null) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
@@ -550,11 +579,15 @@ final class PlatformAuth
         // Checked BEFORE the code, or a locked account still tells an attacker which guess
         // was right — the same reason the password path checks it first.
         if ($this->loginAttempts->isLockedOut($subjectId)) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
         if (! $this->mfa->verifyTotp($subjectId, $code)) {
             $this->loginAttempts->recordFailure($subjectId);
+
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
 
             return false;
         }
@@ -572,6 +605,8 @@ final class PlatformAuth
         $subjectId = $this->pendingMfaSubject($request);
 
         if ($subjectId === null) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
@@ -579,11 +614,15 @@ final class PlatformAuth
         // grinding it is not the threat — but it is the same account under attack, and a
         // path that does not count is a path an attacker moves to.
         if ($this->loginAttempts->isLockedOut($subjectId)) {
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
+
             return false;
         }
 
         if (! $this->mfa->verifyRecoveryCode($subjectId, $code)) {
             $this->loginAttempts->recordFailure($subjectId);
+
+            app(IdentityCapture::class)->proofFailed($request, $subjectId, 'challenge');
 
             return false;
         }
@@ -646,6 +685,7 @@ final class PlatformAuth
         $this->recordOrganizationSignIn($subjectId);
 
         // "Last used" on this device's sign-in page — the method, never the person.
+        app(IdentityCapture::class)->confirmed($session, $request);
         LastSignInMethod::remember($amr);
     }
 
@@ -673,6 +713,8 @@ final class PlatformAuth
         app(Radar::class)->succeeded($request, $subjectId);
 
         $this->recordOrganizationSignIn($subjectId);
+
+        app(IdentityCapture::class)->confirmed($session, $request);
 
         return $session;
     }
@@ -709,6 +751,7 @@ final class PlatformAuth
         $this->recordOrganizationSignIn($session->user_id);
         app(Radar::class)->succeeded($request, $session->user_id);
 
+        app(IdentityCapture::class)->confirmed($session, $request);
         LastSignInMethod::remember(array_values(array_filter((array) $session->amr, 'is_string')));
     }
 
@@ -840,6 +883,7 @@ final class PlatformAuth
      */
     public function logout(Request $request): void
     {
+        $request->attributes->set('signals.source.logout', true);
         $accounts = $this->accountsMap();
         $active = session()->get(self::ACTIVE_KEY);
 
@@ -890,6 +934,7 @@ final class PlatformAuth
      */
     public function logoutAll(Request $request): void
     {
+        $request->attributes->set('signals.source.logout', true);
         $lineage = app(SignInLineage::class);
 
         if ($this->onPlatformRoot()) {

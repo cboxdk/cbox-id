@@ -121,6 +121,8 @@ use App\Http\Controllers\Portal\PortalLogStreamController;
 use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalAuditLogController;
 use App\Http\Controllers\PortalSetupController;
+use App\Http\Controllers\ProductSignupController;
+use App\Http\Controllers\ServiceAccessController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\Sso\OAuth2CallbackController;
@@ -376,6 +378,16 @@ Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
  * `plane:signup` rather than `plane:account`, which is what made every tenant's sign-in
  * page link to a 404.
  */
+Route::middleware(['plane:signup', 'platform.auth:optional', 'locale', 'throttle:20,1'])->prefix('start')->group(function (): void {
+    Route::get('/', [ProductSignupController::class, 'show'])->name('product-signup.show');
+    Route::get('/identity', [ProductSignupController::class, 'identity'])->name('product-signup.identity');
+    Route::get('/signin', [ProductSignupController::class, 'signin'])->name('product-signup.signin');
+    Route::get('/switch', [ProductSignupController::class, 'switch'])->name('product-signup.switch');
+    Route::post('/team', [ProductSignupController::class, 'team'])->name('product-signup.team');
+    Route::post('/waitlist', [ProductSignupController::class, 'join'])->name('product-signup.join');
+    Route::post('/invitation', [ProductSignupController::class, 'admit'])->name('product-signup.admit');
+});
+
 Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
     Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');
@@ -748,6 +760,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
     Route::get('/account', [AccountController::class, 'show'])->name('account');
+    Route::get('/account/services', [ServiceAccessController::class, 'index'])->name('account.services');
+    Route::post('/account/services/{program}/waitlist/leave', [ServiceAccessController::class, 'leave'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.leave');
+    Route::post('/account/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.join');
 
     /*
      * EVERY WRITE ON THAT PAGE EXCEPT THE NAME IS BEHIND `sudo`, ON THE ROUTE.

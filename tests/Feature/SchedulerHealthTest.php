@@ -65,6 +65,7 @@ it('schedules every background duty the platform depends on, and its own heartbe
         ->and($commands)->toContain('cbox-id:provisioning:drain')
         ->and($commands)->toContain('cbox-id:audit-streams:pump')
         ->and($commands)->toContain('model:prune')
+        ->and($commands)->toContain('telemetry:flush')
         ->and($names)->toContain('health:scheduler-heartbeat');
 });
 
@@ -93,6 +94,7 @@ it('reads a fresh beat as a running scheduler', function (): void {
 });
 
 it('writes the beat when the scheduled heartbeat runs', function (): void {
+    $this->freezeTime();
     expect(SchedulerHeartbeat::ageSeconds())->toBeNull();
 
     $this->artisan('schedule:run')->assertSuccessful();

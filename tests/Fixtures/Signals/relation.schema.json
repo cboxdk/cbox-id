@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cboxsignals.com/v2/relation.schema.json",
+  "title": "Signals v2 relation",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "2.0.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "position": {
+      "$ref": "#/$defs/position"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "kind": {
+      "const": "relation"
+    },
+    "relation": {
+      "enum": [
+        "member_of",
+        "owns",
+        "acts_as",
+        "uses",
+        "billed_to",
+        "alias_of"
+      ]
+    },
+    "from": {
+      "$ref": "#/$defs/entity"
+    },
+    "to": {
+      "$ref": "#/$defs/entity"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "valid_until": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "operation": {
+      "enum": [
+        "assert",
+        "retract"
+      ]
+    },
+    "supersedes_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "contract_version",
+    "id",
+    "scope",
+    "position",
+    "occurred_at",
+    "recorded_at",
+    "kind",
+    "relation",
+    "from",
+    "to",
+    "valid_from",
+    "valid_until",
+    "operation",
+    "supersedes_id"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "entity": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "type": {
+          "enum": [
+            "user",
+            "organization",
+            "team",
+            "session",
+            "token",
+            "device",
+            "ip",
+            "service",
+            "instance",
+            "resource",
+            "customer",
+            "payment",
+            "checkout",
+            "application"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "namespace",
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "environment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "audience": {
+          "enum": [
+            "tenant",
+            "environment"
+          ]
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "project_id",
+        "environment_id",
+        "audience"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "audience": {
+                "const": "tenant"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tenant_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "tenant_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "partition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "generation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "sequence": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        }
+      },
+      "required": [
+        "source_id",
+        "partition",
+        "generation",
+        "sequence"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

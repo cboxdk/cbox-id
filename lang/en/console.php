@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'organization_results_limited' => 'Showing the first 500 matches. This hierarchy is partial. Narrow your search to find more organizations.',
+    'services_604dce44' => 'Services',
     'ux_no_users_status' => 'No users with this status. Choose another status or create a user.',
     'ux_open_profile' => 'Open full profile',
     'ux_discard_changes' => 'Discard your unsaved changes?',

@@ -14,6 +14,7 @@ use App\Platform\Console\Vocabulary;
 use App\Platform\ConsoleCurrentContext;
 use App\Platform\CurrentUser;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\ServiceAccess\ServiceAccessSettings;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Contracts\NavRegistry;
 use Cbox\Console\Kit\Facades\Console;
@@ -226,7 +227,8 @@ final class ConsoleServiceProvider extends ServiceProvider
             // The third-party accounts (GitHub, Google…) the person connected so an app here
             // may act through them — present only where the environment offers a pipe or the
             // person still holds a connection.
-            ->page('account.pipes', Vocabulary::CONNECTED_SERVICES, feature: 'account.pipes', order: 40);
+            ->page('account.pipes', Vocabulary::CONNECTED_SERVICES, feature: 'account.pipes', order: 40)
+            ->page('account.services', 'Services', feature: 'account.services', order: 50);
 
         $this->platformAreas($nav);
     }
@@ -351,6 +353,7 @@ final class ConsoleServiceProvider extends ServiceProvider
                 ->unionAll(PipeConnection::query()->where('user_id', $me->id())->select('id')->toBase())
                 ->exists();
         });
+        $features->register('account.services', static fn (): bool => app(CurrentUser::class)->check() && app(ServiceAccessSettings::class)->enabled());
         $features->register('organization.api-keys', static function (): bool {
             $me = app(CurrentUser::class);
             $organizationId = $me->check() ? $me->organizationId() : null;

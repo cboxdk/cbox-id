@@ -27,7 +27,7 @@
         "cboxdk/laravel-risk": "^1.1",
         "cboxdk/laravel-signals-client": "dev-sd/signals-implementation as 0.1.0",
         "cboxdk/laravel-ssrf": "^1.1.1",
-        "cboxdk/laravel-telemetry": "^1.0",
+        "cboxdk/laravel-telemetry": "^3.9.2",
         "firebase/php-jwt": "^7.0",
         "inertiajs/inertia-laravel": "^3.3",
         "laravel/framework": "^13.0",

@@ -11,6 +11,7 @@ use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
+use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\MfaVerification;
@@ -164,6 +165,8 @@ final class Authenticate
         }
 
         if ($this->exemptFromHolds($request)) {
+            app(IdentityCapture::class)->activity($session, $request);
+
             return SignedInPage::serve($request, $next);
         }
 
@@ -187,6 +190,8 @@ final class Authenticate
             return redirect()->route('account')
                 ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
         }
+
+        app(IdentityCapture::class)->activity($session, $request);
 
         return SignedInPage::serve($request, $next);
     }

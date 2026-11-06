@@ -49,7 +49,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # Larastan boots the application, which wants an encryption key.
       - name: Prepare environment
@@ -101,7 +101,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite manifest.
       - name: Install Node dependencies
@@ -149,10 +149,14 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       - name: Install Node dependencies
         run: npm ci
+
+      # The base image can ship a newer browser than our locked Playwright expects.
+      - name: Install the locked Chromium browser
+        run: npx playwright install chromium
 
       - name: Build assets
         run: npm run build
@@ -219,7 +223,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
         run: composer license-check
@@ -322,7 +326,7 @@ jobs:
       - name: Install PHP dependencies
         run: |
           php bin/unpack-signals-packages.php ../../laravel-signals-client
-          composer install --no-interaction --prefer-dist --no-progress
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite
       # manifest — without built assets those tests fail on a missing manifest
@@ -368,3 +372,37 @@ jobs:
       # rendering, not persistence. This job is about the engine.
       - name: Tests (Unit + Feature, parallel, half ${{ matrix.shard }} of 2) on ${{ matrix.image }}
         run: vendor/bin/pest --testsuite=Unit,Feature --parallel --shard=${{ matrix.shard }}/2
+
+  source-data-postgres:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: source_test
+          POSTGRES_PASSWORD: source_test
+          POSTGRES_DB: source_test
+        options: >-
+          --health-cmd "pg_isready -U source_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: source_test
+      DB_USERNAME: source_test
+      DB_PASSWORD: source_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact dependencies
+        run: |
+          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
+      - name: Prepare isolated test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Qualify source transactions and public feed on PostgreSQL
+        run: vendor/bin/pest tests/Integration/SourceCommitOrderTest.php tests/Feature/SignalsSourceTest.php

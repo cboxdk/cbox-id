@@ -17,6 +17,7 @@ use App\Http\Requests\Console\StoreProjectRequest;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
@@ -72,6 +73,13 @@ final readonly class ProjectController extends ConsoleController
 
         $organizationId = $this->scope->organizationId();
         $actorId = $this->scope->actorId();
+        if ($organizationId !== null) {
+            try {
+                app(ProductAdmission::class)->assertGranted($actorId, $organizationId);
+            } catch (ActionRefused $error) {
+                return to_route('product-signup.show')->withErrors(['registration' => $error->getMessage()]);
+            }
+        }
         $allAccess = $this->hasFullAccess($members);
         $accessible = $this->reachable($members);
 

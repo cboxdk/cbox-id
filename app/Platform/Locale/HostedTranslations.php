@@ -22,7 +22,7 @@ final class HostedTranslations
      *
      * @var list<string>
      */
-    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console'];
+    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console', 'service_access'];
 
     /** @var list<string>|null */
     private ?array $namespaces = null;
@@ -44,6 +44,7 @@ final class HostedTranslations
     public static function namespacesFor(string $component): array
     {
         return match (true) {
+            $component === 'account/services' => ['console', 'service_access'],
             $component === 'auth/sudo' => ['console', 'auth'],
             str_starts_with($component, 'auth/') => ['hosted', 'auth'],
             str_starts_with($component, 'oauth/') => ['hosted', 'oauth'],

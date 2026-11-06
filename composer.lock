@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d3dca67a04cff3f9cd08f647fa4dc343",
+    "content-hash": "016991d273fa0dac8219481c03ac2895",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1520,16 +1520,16 @@
         },
         {
             "name": "cboxdk/laravel-telemetry",
-            "version": "v1.0.0",
+            "version": "v3.9.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-telemetry.git",
-                "reference": "dabfd740b5e491988221b9f3784310532f717a69"
+                "reference": "5894f69c9db8b5b6fc9eda172ee20c9a810323b7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/dabfd740b5e491988221b9f3784310532f717a69",
-                "reference": "dabfd740b5e491988221b9f3784310532f717a69",
+                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/5894f69c9db8b5b6fc9eda172ee20c9a810323b7",
+                "reference": "5894f69c9db8b5b6fc9eda172ee20c9a810323b7",
                 "shasum": ""
             },
             "require": {
@@ -1540,6 +1540,7 @@
             "require-dev": {
                 "cboxdk/system-metrics": "^3.0",
                 "larastan/larastan": "^3.0",
+                "laravel/ai": "^1.2",
                 "laravel/horizon": "^5.47",
                 "laravel/pennant": "^1.24",
                 "laravel/pint": "^1.14",
@@ -1552,18 +1553,23 @@
                 "pestphp/pest-plugin-laravel": "^4.0",
                 "phpstan/extension-installer": "^1.4",
                 "phpstan/phpstan-deprecation-rules": "^2.0",
-                "phpstan/phpstan-phpunit": "^2.0"
+                "phpstan/phpstan-phpunit": "^2.0",
+                "predis/predis": "^2.3 || ^3.0"
             },
             "suggest": {
                 "cboxdk/system-metrics": "Host CPU/memory/load metrics via the built-in provider AND real per-request/per-job process footprint (peak RSS, CPU utilization) on spans.",
                 "ext-apcu": "Required when using the apcu metric store.",
-                "ext-excimer": "CPU profiling for slow requests/jobs (telemetry.instrument.profiling) — a 'top functions by sample count' event, not a full pprof export.",
+                "ext-cbox_telemetry": "Native runtime depth via cboxdk/telemetry-native (pie install cboxdk/telemetry-native): CPU profiles with a confidence figure, exact pdo.connect/curl.exec timing, GC counters, and crash records correlated to the trace the process died in.",
+                "ext-excimer": "CPU profiling for slow requests/jobs (telemetry.instrument.profiling) — a 'top functions by sample count' event, not a full pprof export. The fallback profiler: cbox_telemetry is used instead where both are installed.",
+                "ext-pdo_sqlite": "Required when using the sqlite metric store or spool (NativePHP mobile/desktop).",
                 "ext-redis": "Recommended when using the redis metric store (phpredis).",
-                "geoip2/geoip2": "Resolve client.geo.* from the IP for analytics (telemetry.analytics.geo) with a MaxMind GeoLite2 database, so the raw IP can be dropped.",
+                "geoip2/geoip2": "Resolve geo.* from the IP for analytics (telemetry.analytics.geo) with a MaxMind GeoLite2 database, so the raw IP can be dropped.",
+                "laravel/ai": "OpenTelemetry GenAI spans and token/duration metrics for agent runs, model calls, tool calls and embeddings (^1.0).",
                 "laravel/horizon": "Supervisor/master state, long-wait detection, process restarts and OOM metrics when Horizon runs your queues.",
                 "laravel/pennant": "Feature flag check counters (feature.checks, feature.unknown).",
                 "laravel/reverb": "WebSocket message/channel/connection metrics when Reverb is your broadcasting server.",
-                "livewire/livewire": "Component lifecycle: mount/hydrate counters + render/update/call detail spans."
+                "livewire/livewire": "Component lifecycle: mount/hydrate counters + render/update/call detail spans.",
+                "nativephp/mobile": "Screen views, time-on-screen and interaction spans for a NativePHP mobile app (^4.1 for the automatic half — earlier versions dispatch no screen lifecycle events)."
             },
             "type": "library",
             "extra": {
@@ -1576,7 +1582,7 @@
                     ]
                 },
                 "branch-alias": {
-                    "dev-main": "1.0.x-dev"
+                    "dev-main": "2.3.x-dev"
                 }
             },
             "autoload": {
@@ -1612,7 +1618,7 @@
                 "issues": "https://github.com/cboxdk/laravel-telemetry/issues",
                 "source": "https://github.com/cboxdk/laravel-telemetry"
             },
-            "time": "2026-07-15T19:45:14+00:00"
+            "time": "2026-11-06T17:50:35+00:00"
         },
         {
             "name": "cboxdk/laravel-webhook-signature",

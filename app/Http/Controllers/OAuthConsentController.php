@@ -406,6 +406,15 @@ final readonly class OAuthConsentController extends PageController
             return $this->interrupt($request, $authorization, $hinted ?? route('login'));
         }
 
+        // Account choice belongs to ID, before applying one person's MFA or team rules.
+        // A completed interaction or an explicit new login already chose the identity;
+        // silent renewal must never unexpectedly turn into an interactive picker.
+        if (! $reauthed && ! $silent && ! $authorization->asks(AuthorizationPrompt::Login)
+            && ! (is_string($ticket) && $ticket !== '')
+            && ($authorization->asks(AuthorizationPrompt::SelectAccount) || count(app(PlatformAuth::class)->accounts()) > 1)) {
+            return $this->interrupt($request, $authorization, route('accounts'));
+        }
+
         /*
          * THE ORGANIZATION'S OWN SIGN-IN RULES. A forced password change and an MFA mandate
          * hold every console page; they must hold this one too, or the endpoint that mints
@@ -449,10 +458,6 @@ final readonly class OAuthConsentController extends PageController
             }
 
             return $this->failure(__('oauth.failure.no_workspace'));
-        }
-
-        if (! $reauthed && $authorization->asks(AuthorizationPrompt::SelectAccount)) {
-            return $this->interrupt($request, $authorization, route('accounts'));
         }
 
         if (! $reauthed && $authorization->asks(AuthorizationPrompt::Login)) {
