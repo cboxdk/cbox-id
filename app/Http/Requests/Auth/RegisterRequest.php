@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -32,7 +33,7 @@ final class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'organization' => ['required', 'string', 'max:120'],
+            'organization' => [app(SignupPolicy::class)->identityOnly() ? 'nullable' : 'required', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190'],
             'password' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for()],

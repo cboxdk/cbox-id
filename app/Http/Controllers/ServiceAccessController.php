@@ -48,6 +48,7 @@ final readonly class ServiceAccessController extends PageController
                     'kind' => $service->kind, 'scope' => $service->scope, 'serviceName' => $service->serviceName,
                     'id' => $service->id, 'key' => $service->key, 'name' => $service->name,
                     'description' => $service->description, 'mode' => $service->mode, 'questions' => $service->questions,
+                    'countryCollection' => $service->countryCollection, 'countries' => $service->countries, 'loginRequired' => $service->loginRequired, 'acceptanceUrl' => $service->acceptanceUrl,
                     'publicUrl' => $service->publicUrl, 'status' => $registrations[$service->id] ?? null,
                     'joinHref' => route('account.services.join', ['program' => $service->id] + $query + ['service' => $filter]),
                     'leaveHref' => route('account.services.leave', ['program' => $service->id]),
@@ -86,7 +87,7 @@ final readonly class ServiceAccessController extends PageController
             return back()->withErrors(['waitlist' => $refused->getMessage()]);
         }
 
-        return to_route('account.services', $request->string('kind')->toString() === 'feature' ? ['kind' => 'feature', 'organization' => $request->input('organization'), 'service' => $request->input('service')] : [])->with('status', __($request->string('kind')->toString() === 'feature' ? 'service_access.feature_joined' : 'service_access.joined'));
+        return to_route('account.services', $request->string('kind')->toString() === 'feature' ? ['kind' => 'feature', 'organization' => $request->input('organization'), 'service' => $request->input('service')] : ['service' => $request->input('service')])->with('status', __($request->string('kind')->toString() === 'feature' ? 'service_access.feature_joined' : 'service_access.joined'));
     }
 
     public function leave(Request $request, int $program, ServiceAccessSettings $settings): RedirectResponse

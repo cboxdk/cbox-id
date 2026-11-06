@@ -772,3 +772,51 @@ it('refuses a code_challenge that is not an S256 digest, at the authorize endpoi
     expect((string) $location)->toStartWith('https://app.test/cb?')
         ->and((string) $location)->toContain('error=invalid_request');
 });
+
+it('asks which account to use on ordinary authorization with several live identities', function () {
+    [$first, $org] = actingAsConsentUser();
+    $second = app(Subjects::class)->create('other-account@example.test', 'Other account', 'supersecret123');
+    app(Memberships::class)->add($org->id, $second->id, MembershipRole::Member);
+    app(PlatformAuth::class)->establish(request(), $first, ['pwd']);
+    app(PlatformAuth::class)->establish(request(), $second->id, ['pwd']);
+    $clientId = registerConsentClient($org->id);
+
+    authorizeRequest([
+        'client_id' => $clientId, 'redirect_uri' => 'https://app.test/cb',
+        'scope' => 'openid email', 'state' => 'multi-account', 'code_challenge' => pkceChallenge(),
+    ])->assertRedirect(route('accounts'));
+});
+
+it('keeps single-account SSO automatic and ignores expired held accounts', function () {
+    [$first, $org] = actingAsConsentUser();
+    $second = app(Subjects::class)->create('expired-account@example.test', 'Expired account', 'supersecret123');
+    app(Memberships::class)->add($org->id, $second->id, MembershipRole::Member);
+    app(PlatformAuth::class)->establish(request(), $second->id, ['pwd']);
+    $expiredSession = session()->get(PlatformAuth::SESSION_KEY);
+    app(PlatformAuth::class)->establish(request(), $first, ['pwd']);
+    app(SessionManager::class)->revoke($expiredSession);
+    $clientId = registerConsentClient($org->id);
+
+    authorizeRequest([
+        'client_id' => $clientId, 'redirect_uri' => 'https://app.test/cb',
+        'scope' => 'openid email', 'state' => 'single-account', 'code_challenge' => pkceChallenge(),
+    ])->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('client')->missing('error'));
+});
+
+it('does not show a multi-account picker during silent authorization or an explicit new login', function (string $prompt) {
+    [$first, $org] = actingAsConsentUser();
+    $second = app(Subjects::class)->create('another-account@example.test', 'Another account', 'supersecret123');
+    app(Memberships::class)->add($org->id, $second->id, MembershipRole::Member);
+    app(PlatformAuth::class)->establish(request(), $first, ['pwd']);
+    app(PlatformAuth::class)->establish(request(), $second->id, ['pwd']);
+    $clientId = registerConsentClient($org->id);
+    $response = authorizeRequest([
+        'client_id' => $clientId, 'redirect_uri' => 'https://app.test/cb', 'prompt' => $prompt,
+        'scope' => 'openid email', 'state' => 'intent', 'code_challenge' => pkceChallenge(),
+    ]);
+    if ($prompt === 'login') {
+        $response->assertRedirect(route('accounts.add'));
+    } else {
+        $response->assertRedirectContains('https://app.test/cb?')->assertRedirectContains('error=interaction_required');
+    }
+})->with(['none', 'login']);

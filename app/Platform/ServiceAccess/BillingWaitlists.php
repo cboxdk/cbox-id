@@ -65,7 +65,7 @@ final readonly class BillingWaitlists
         return $registrations;
     }
 
-    /** @param array<string, string> $answers */
+    /** @param array<string, string|list<string>> $answers */
     public function join(int $program, string $subject, string $email, ?string $country, array $answers, string $reference, ?string $organization = null, string $interest = 'test'): void
     {
         $response = $this->request('POST', '/api/v1/access/directory/'.$program.'/join', [
@@ -87,10 +87,44 @@ final readonly class BillingWaitlists
         }
     }
 
+    public function productPolicy(): RegistrationPolicy
+    {
+        return RegistrationPolicy::from($this->request('GET', '/api/v1/access/services/cbox-id/policy', [])->json('program'));
+    }
+
+    public function productAllowed(string $subject, string $organization): bool
+    {
+        $allowed = $this->request('POST', '/api/v1/access/services/cbox-id/check', ['subject' => $subject, 'organization' => $organization])->json('allowed');
+        if (! is_bool($allowed)) {
+            throw new ServiceAccessUnavailable('Malformed admission decision.');
+        }
+
+        return $allowed;
+    }
+
+    public function admitProduct(string $subject, string $email, string $organization, string $name, ?string $code, string $reference): void
+    {
+        $response = $this->request('POST', '/api/v1/access/services/cbox-id/admit', [
+            'subject' => $subject, 'email' => $email, 'organization' => $organization, 'organization_name' => $name, 'code' => $code, 'reference' => $reference,
+        ], $reference);
+        if ($response->json('allowed') !== true) {
+            throw new ServiceAccessUnavailable('Admission was not acknowledged.');
+        }
+    }
+
+    /** @param array<string, string|list<string>> $answers */
+    public function joinProductGuest(string $email, ?string $country, array $answers, string $reference): void
+    {
+        $response = $this->request('POST', '/api/v1/access/services/cbox-id/join-guest', ['email' => $email, 'country' => $country, 'answers' => $answers, 'reference' => $reference], $reference);
+        if ($response->json('status') !== 'confirmation_required') {
+            throw new ServiceAccessUnavailable('Enrollment was not acknowledged.');
+        }
+    }
+
     /** @param array<string, mixed> $payload */
     private function request(string $method, string $path, array $payload, ?string $reference = null): Response
     {
-        $connection = $this->settings->connection();
+        $connection = $this->settings->connection(str_starts_with($path, '/api/v1/access/services/cbox-id/'));
         try {
             $client = Http::acceptJson()->withToken($connection['token'])->connectTimeout(3)->timeout(8)->withoutRedirecting();
             if ($reference !== null) {
@@ -104,7 +138,7 @@ final readonly class BillingWaitlists
             $errors = [];
             $body = $response->json('errors');
             foreach (is_array($body) ? $body : [] as $field => $messages) {
-                if (is_string($field) && ($field === 'country' || $field === 'answers' || str_starts_with($field, 'answers.')) && is_array($messages)) {
+                if (is_string($field) && (in_array($field, ['country', 'answers', 'code', 'email', 'organization'], true) || str_starts_with($field, 'answers.')) && is_array($messages)) {
                     foreach ($messages as $message) {
                         if (is_string($message)) {
                             $errors[$field][] = $message;

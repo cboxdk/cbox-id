@@ -28,11 +28,11 @@ The explicit identity environment prevents hosted customer IdP environments from
 
 ## Link from a service
 
-Use `/account/services` for the shared directory, or `/account/services?service=telemetry` for one product key. Authentication preserves the intended page. Published programmes are read dynamically, 50 per page, so adding a service in Billing requires no ID release. ID renders the configured questions and displays waiting, invited or accepted status.
+Build the primary signup/waitlist experience in the service using Billing’s native service registration API. Authentication always redirects to ID and returns to that native page. Use `/account/services` for the shared fallback directory, or `/account/services?service=telemetry` for one product key. Authentication preserves the intended page. Published programmes are read dynamically, 50 per page, so adding a service in Billing requires no ID release. ID renders the configured questions and displays waiting, invited or accepted status.
 
-Every service card also links to Billing’s public `/billing/waitlists/{public_id}` page. Apps can link there directly for people without an ID account. The public page emails a confirmation link; the person must explicitly confirm before an entry is created. No account is created by this flow. Billing applies request limits, retries delivery and expires confirmation links after 24 hours.
+Every service card also links to Billing’s public `/billing/waitlists/{public_id}` page. Apps can link there directly for people without an ID account. For guest programmes the public page emails a confirmation link; the person must explicitly confirm before an entry is created. No account is created by this flow. Billing applies request limits, retries delivery and expires confirmation links after 24 hours.
 
-Both entry points write to the same waitlist. Duplicate normalized emails retain their FIFO position and original answers. The ID backend always supplies the subject and verified email from its authenticated session, ignoring any browser-supplied identity. The directory API token cannot issue invitations or modify grants. Personal registration lookups are sent in a POST body rather than a URL.
+Native pages and both fallback entry points write to the same waitlist. Programmes choose guest versus login-required enrollment, hidden/optional/required country, and string/textarea/select/multiselect questions with validation. Country controls use the complete country/territory list and display searchable names. Duplicate normalized emails retain their FIFO position and original answers. The ID backend always supplies the subject and verified email from its authenticated session, ignoring any browser-supplied identity. The directory API token cannot issue invitations or modify grants. Personal registration lookups are sent in a POST body rather than a URL.
 
 ## Personal API and MCP
 
@@ -42,7 +42,7 @@ The same signup action is available as `account.waitlists.join` over MCP and `PO
 
 A team invitation is still an ID membership operation. A service invitation is a Billing operation and grants access in the recipient’s own chosen organization after acceptance. Billing retains inviter-to-recipient attribution for a later referral reward. Apps or Engage decide when to award invitation allowances; the directory does not implement a separate automation engine.
 
-The app’s acceptance backend must verify the recipient’s identity, email and organization membership before calling Billing’s redemption API with its separately authorized management token. The narrow directory token cannot redeem or grant access.
+The app’s acceptance backend must verify the recipient’s identity, email and organization membership before calling Billing’s redemption API with its separately authorized management token. The narrow directory token cannot redeem or grant access. A service uses a separate product-bound operator token with `access:enroll` and `access:admit` for the service admission API.
 
 ## Feature waitlists
 
@@ -55,3 +55,23 @@ A verified existing customer chooses an active team and **Notify me** or **Join 
 Billing excludes notification-only signups from beta cohorts, counts each team once for team programmes, and activates existing customers without an acceptance URL. The customer's plan must include the feature. A beta can restrict commercial access, never expand it. For a personal beta, the app uses Billing's single-feature endpoint with the authenticated `actor`; organization-only flags cannot express personal admission. App permissions and membership still apply. See Billing's Product access guide for the enforcement and cache contract.
 
 This feature choice concerns that feature's updates or test group. It does not imply general marketing consent. Engage handles contact synchronization and topic communication independently.
+
+## ID accounts versus the ID product
+
+`/signup` creates a person in Cbox ID; it does not create a project, environment or
+subscription. Plain identity teams are also independent of product admission.
+`/start` is the branded signup/waitlist page for customers of the ID product. Its
+invitation flow admits the verified person's chosen team before product provisioning.
+Project and environment writers enforce admission through both the browser and API.
+
+Set `CBOX_ID_PRODUCT_ACCESS_ENABLED=true` and `CBOX_ID_PRODUCT_BILLING_TOKEN` to a
+server-only Billing token bound to the `cbox-id` product, with `access:enroll` and
+`access:admit`. The connection uses `CBOX_WAITLISTS_BILLING_URL` and the configured
+identity environment above. Keep `CBOX_WAITLISTS_BILLING_TOKEN` restricted to enroll:
+the cross-service directory never receives admission authority. Set the programme's
+acceptance URL to ID's `/start` page.
+
+When several live identity accounts are signed in, ID asks which one to use. One
+live account continues SSO; explicit account switching always opens the chooser.
+Expired and revoked sessions cannot be selected. This identity choice is separate
+from selecting a team within an account.

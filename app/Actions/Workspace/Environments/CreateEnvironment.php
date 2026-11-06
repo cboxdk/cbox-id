@@ -18,6 +18,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
@@ -82,6 +83,7 @@ final readonly class CreateEnvironment implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $workspaceId = InWorkspace::id($context->principal);
+        app(ProductAdmission::class)->assertGranted($context->principal->id(), $workspaceId);
         $project = $this->project($workspaceId, $context->nullableString('project_id'));
 
         InWorkspace::assertUnscoped($context->principal, $workspaceId);

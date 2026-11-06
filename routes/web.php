@@ -120,6 +120,7 @@ use App\Http\Controllers\Portal\PortalLogStreamController;
 use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalAuditLogController;
 use App\Http\Controllers\PortalSetupController;
+use App\Http\Controllers\ProductSignupController;
 use App\Http\Controllers\ServiceAccessController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
@@ -376,6 +377,16 @@ Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
  * `plane:signup` rather than `plane:account`, which is what made every tenant's sign-in
  * page link to a 404.
  */
+Route::middleware(['plane:signup', 'platform.auth:optional', 'locale', 'throttle:20,1'])->prefix('start')->group(function (): void {
+    Route::get('/', [ProductSignupController::class, 'show'])->name('product-signup.show');
+    Route::get('/identity', [ProductSignupController::class, 'identity'])->name('product-signup.identity');
+    Route::get('/signin', [ProductSignupController::class, 'signin'])->name('product-signup.signin');
+    Route::get('/switch', [ProductSignupController::class, 'switch'])->name('product-signup.switch');
+    Route::post('/team', [ProductSignupController::class, 'team'])->middleware('platform.auth')->name('product-signup.team');
+    Route::post('/waitlist', [ProductSignupController::class, 'join'])->name('product-signup.join');
+    Route::post('/invitation', [ProductSignupController::class, 'admit'])->name('product-signup.admit');
+});
+
 Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
     Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');

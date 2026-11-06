@@ -20,6 +20,7 @@ use App\Platform\ServiceAccess\ServiceAccessUnavailable;
 use App\Platform\ServiceAccess\WaitlistTeams;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 #[AsAction(
     name: 'account.waitlists.join',
@@ -57,11 +58,22 @@ final readonly class JoinServiceWaitlist implements Action
         if (! $subject->emailVerified || $subject->email === null) {
             throw ActionRefused::because('email_unverified', __('service_access.verify_email'), 'waitlist');
         }
-        Validator::make($context->input, ['country' => ['nullable', 'regex:/^[A-Za-z]{2}$/'], 'answers.*' => ['nullable', 'string', 'max:2000'], 'reference' => ['uuid']])->validate();
+        Validator::make($context->input, ['country' => ['nullable', 'regex:/^[A-Za-z]{2}$/'], 'answers.*' => ['nullable', Rule::anyOf([['string', 'max:2000'], ['array', 'list', 'max:50']])], 'answers.*.*' => ['string', 'max:200'], 'reference' => ['uuid']])->validate();
         $answers = [];
         foreach ($context->array('answers') as $key => $value) {
-            if (is_string($key) && is_string($value)) {
+            if (! is_string($key)) {
+                continue;
+            }
+            if (is_string($value)) {
                 $answers[$key] = $value;
+            } elseif (is_array($value)) {
+                $choices = [];
+                foreach ($value as $choice) {
+                    if (is_string($choice)) {
+                        $choices[] = $choice;
+                    }
+                }
+                $answers[$key] = $choices;
             }
         }
         $organization = $context->nullableString('organization');

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'invitation' => 'I have an invitation',
     'feature_closed' => 'This feature is not accepting applications right now.',
     'feature_released' => 'Released to customers whose plan includes this feature.',
     'revoked' => 'Access revoked',
@@ -18,7 +19,7 @@ return [
     'unavailable' => 'We cannot reach the waitlists right now. Please try again shortly.',
     'verify_email' => 'Verify your email before joining a waitlist from your account.',
     'verify_action' => 'Verify email',
-    'country' => 'Country code (optional)',
+    'country' => 'Country',
     'public_page' => 'Public signup page',
     'request_failed' => 'We could not add you to this waitlist. Please try again.',
     'all' => 'All services',
