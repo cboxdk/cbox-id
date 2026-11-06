@@ -329,10 +329,12 @@ return [
      *                        self-hosted deployment gets every feature. An explicit
      *                        row still wins, so per-org differentiation by hand
      *                        (including revoking with `enabled: false`) keeps working.
+     *   inclusive          — SSO, SCIM and audit access are included on every plan.
+     *                        Other absent keys are denied; explicit rows still win.
+     *                        Project admission is controlled separately by
+     *                        CBOX_ID_REQUIRE_SUBSCRIPTION.
      *   metered            — unset means denied, and the billing projection is the
-     *                        only thing that grants. Set this where a billing
-     *                        transport is actually wired; it is what the hosted
-     *                        plane runs so plan tiers mean something there.
+     *                        only thing that grants (legacy deployment policy).
      *
      * See App\Platform\OpenEntitlements for why widening this is not an isolation
      * concern: authorization resolves from the relationship store, not from here.

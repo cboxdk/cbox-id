@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Entitlements;
 use Cbox\Billing\Client\BillingManagement;
 use Cbox\Billing\Client\Enums\TaxBasis;
 use Cbox\Billing\Client\Enums\TaxStatus;
@@ -45,6 +46,7 @@ it('preserves catalog and grants when billing returns an empty catalog or unknow
 });
 
 it('applies only authoritative newer subscription allowances and keeps environments when a subscription ends', function (): void {
+    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true]);
     billingCatalogFake();
     app(PlanCatalog::class)->sync();
     $project = provisionAccount()['project'];
@@ -58,6 +60,9 @@ it('applies only authoritative newer subscription allowances and keeps environme
     $subscriptions->apply($project, ['plan' => 'id-start', 'status' => 'ended'], new DateTimeImmutable('2026-11-06T14:00:00Z'));
     expect($project->fresh()->environment_limit)->toBe(0)
         ->and(ProjectSubscription::query()->find($project->id)->status)->toBe('ended');
+    foreach (['sso', 'scim', 'audit_logs'] as $feature) {
+        expect(app(Entitlements::class)->entitled($project->organization_id, $feature))->toBeTrue();
+    }
 });
 
 it('accepts only current signed billing notifications', function (): void {

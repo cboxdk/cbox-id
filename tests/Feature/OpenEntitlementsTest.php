@@ -85,3 +85,30 @@ it('never synthesises into all(), so tokens carry only real grants', function ()
     // keeps a token honest about what was actually granted.
     expect(array_keys(app(EntitlementReader::class)->all('org_all')))->toBe(['cbox-id-sso']);
 });
+
+it('includes identity security in hosted plans while keeping application entitlements closed', function (): void {
+    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true]);
+
+    foreach (['sso', 'scim', 'audit_logs'] as $feature) {
+        expect(app(Entitlements::class)->entitled('startup', $feature))->toBeTrue();
+    }
+    expect(app(EntitlementReader::class)->get('startup', 'another-app.paid-feature'))->toBeNull()
+        ->and(app(EntitlementReader::class)->all('startup'))->toBe([])
+        ->and(app(Entitlements::class)->entitled('', 'sso'))->toBeFalse()
+        ->and(app(Entitlements::class)->entitled('startup', 'unknown'))->toBeFalse();
+});
+
+it('preserves explicit operational restrictions with inclusive security', function (): void {
+    config(['cbox-id.entitlements.mode' => 'inclusive']);
+    $this->grantEntitlement('restricted', 'cbox-id-scim', ['enabled' => false]);
+    expect(app(Entitlements::class)->entitled('restricted', 'scim'))->toBeFalse()
+        ->and(app(Entitlements::class)->entitled('restricted', 'sso'))->toBeTrue();
+});
+
+it('uses configured security keys without granting obsolete or empty keys', function (): void {
+    config(['cbox-id.entitlements.mode' => 'inclusive', 'cbox-id.entitlements.sso' => 'custom.sso', 'cbox-id.entitlements.scim' => '']);
+    $reader = app(EntitlementReader::class);
+    expect($reader->get('startup', 'custom.sso')?->bool())->toBeTrue()
+        ->and($reader->get('startup', 'cbox-id-sso'))->toBeNull()
+        ->and($reader->get('startup', ''))->toBeNull();
+});

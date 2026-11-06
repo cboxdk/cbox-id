@@ -18,6 +18,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\ServiceAccess\ProductAdmission;
+use App\Platform\SubscriptionAdmission;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
@@ -71,7 +72,7 @@ final readonly class CreateProject implements Action
             ?? throw ActionRefused::notFound('organization');
 
         // Quotas are server-owned. Extra legacy input cannot buy an allowance.
-        $limit = config('cbox-id.entitlements.mode') === 'metered' ? 0 : 2;
+        $limit = SubscriptionAdmission::required() ? 0 : 2;
         $project = DB::transaction(function () use ($organization, $context, $limit) {
             $project = $this->provisioner->addProject($organization, trim($context->string('name')), $limit);
             // The framework factory clamps to one; hosted admission permits zero until billed.
