@@ -6,6 +6,10 @@ use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -150,4 +154,72 @@ it('requires email verification through the delegated API as well', function ():
     $this->withToken('unverified-person')->postJson('/api/v1/me/services/12/waitlist', ['reference' => (string) Str::uuid()])
         ->assertUnprocessable()->assertJsonPath('error', 'email_unverified');
     Http::assertNothingSent();
+});
+
+function featureWaitlistTeam(string $subject, string $slug = 'studio-team'): string
+{
+    $team = app(Organizations::class)->create(new NewOrganization('Studio team', $slug));
+    app(Memberships::class)->add($team->id, $subject, MembershipRole::Member);
+
+    return $team->id;
+}
+
+it('shows feature interests for the selected active team and preserves direct service links', function (): void {
+    $subject = waitlistPerson();
+    $team = featureWaitlistTeam($subject);
+    $feature = array_replace(waitlistService(), ['kind' => 'feature', 'scope' => 'person', 'name' => 'New editor', 'service_name' => 'Telemetry', 'feature_key' => 'editor', 'public_url' => null]);
+    Http::fake([
+        'https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [$feature], 'current_page' => 1, 'last_page' => 2]),
+        'https://billing.example.test/api/v1/access/directory/registrations' => Http::response(['data' => [['program_id' => 12, 'registration' => ['status' => 'following']]]]),
+    ]);
+    $props = $this->get('/account/services?kind=feature&service=telemetry&organization='.$team)->assertOk()->inertiaProps();
+    expect($props['organization'])->toBe($team)->and($props['teams'])->toHaveCount(1)
+        ->and($props['services'][0]['status'])->toBe('following')->and($props['services'][0]['publicUrl'])->toBeNull()
+        ->and($props['services'][0]['scope'])->toBe('person')->and($props['nextHref'])->toContain('kind=feature', 'organization='.$team, 'service=telemetry');
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST' && $request['organization'] === $team && $request['subject'] === $subject);
+});
+
+it('accepts notification and testing preferences only for a current membership and real identity', function (): void {
+    $subject = waitlistPerson();
+    $team = featureWaitlistTeam($subject);
+    Http::fake(['https://billing.example.test/api/v1/access/directory/12/join' => Http::response(['registration' => ['status' => 'following']])]);
+    $this->post('/account/services/12/waitlist?kind=feature', ['organization' => $team, 'interest' => 'notify', 'reference' => (string) Str::uuid(), 'subject' => 'forged', 'email' => 'forged@example.test'])
+        ->assertRedirect(route('account.services', ['kind' => 'feature', 'organization' => $team]))->assertSessionHas('status', __('service_access.feature_joined'));
+    Http::assertSent(fn (Request $request): bool => $request['organization'] === $team && $request['interest'] === 'notify' && $request['subject'] === $subject && $request['email'] === 'ada@example.test');
+});
+
+it('refuses another team before sending any registration data to Billing', function (): void {
+    waitlistPerson();
+    Http::fake();
+    $this->get('/account/services?kind=feature&organization=foreign-team')->assertNotFound();
+    $this->post('/account/services/12/waitlist', ['organization' => 'foreign-team', 'interest' => 'test', 'reference' => (string) Str::uuid()])->assertNotFound();
+    $this->post('/account/services/12/waitlist/leave', ['organization' => 'foreign-team', 'reference' => (string) Str::uuid()])->assertNotFound();
+    Http::assertNothingSent();
+});
+
+it('withdraws only the signed-in person interest with durable idempotency', function (): void {
+    $subject = waitlistPerson();
+    $team = featureWaitlistTeam($subject);
+    $reference = (string) Str::uuid();
+    Http::fake(['https://billing.example.test/api/v1/access/directory/12/leave' => Http::response(['status' => 'withdrawn'])]);
+    $this->post('/account/services/12/waitlist/leave', ['organization' => $team, 'reference' => $reference, 'subject' => 'somebody-else'])
+        ->assertSessionHas('status', __('service_access.withdrawn'));
+    Http::assertSent(fn (Request $request): bool => $request['subject'] === $subject && $request['organization'] === $team && $request->hasHeader('Idempotency-Key', $reference));
+});
+
+it('refuses suspended members even when their old session still exists', function (): void {
+    $subject = waitlistPerson();
+    $team = featureWaitlistTeam($subject);
+    app(Memberships::class)->of($team, $subject)->update(['status' => 'suspended']);
+    Http::fake();
+    $this->post('/account/services/12/waitlist', ['organization' => $team, 'interest' => 'test', 'reference' => (string) Str::uuid()])->assertNotFound();
+    Http::assertNothingSent();
+});
+
+it('does not present service programmes as features during a staggered Billing rollout', function (): void {
+    waitlistPerson();
+    Http::fake(['https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService()], 'current_page' => 1, 'last_page' => 1])]);
+    $props = $this->get('/account/services?kind=feature')->assertOk()->inertiaProps();
+    expect($props['unavailable'])->toBeTrue()->and($props['services'])->toBe([]);
+    Http::assertSentCount(1);
 });

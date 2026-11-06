@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Questa funzionalità non accetta richieste al momento.',
+    'feature_released' => 'Disponibile per i clienti il cui piano include questa funzionalità.',
+    'revoked' => 'Accesso revocato',
     'title' => 'Servizi',
     'lead' => 'Scegli i servizi che vorresti provare. Ogni servizio ha la propria lista d’attesa.',
     'join' => 'Iscriviti alla lista d’attesa',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Aggiornamenti e inviti vengono inviati alla tua email.',
     'signed_in_as' => 'Ti iscrivi come :email',
     'scope_note' => 'L’iscrizione non acquista un piano e non concede accesso al servizio.',
+    'features' => 'Funzionalità',
+    'feature_lead' => 'Segui le prossime funzionalità o chiedi di provarle con un team già cliente.',
+    'team' => 'Team',
+    'no_team' => 'Unisciti a un team o creane uno prima di iscriverti.',
+    'feature_empty' => 'Non sono ancora state pubblicate liste di attesa per funzionalità.',
+    'following' => 'Aggiornamenti seguiti',
+    'person_scope' => 'Accesso beta per te in questo team',
+    'team_scope' => 'Accesso beta per tutto il team',
+    'interest' => 'Vorrei',
+    'notify' => 'Ricevere notifiche',
+    'test' => 'Unirmi al gruppo di test',
+    'feature_scope_note' => 'Il tuo piano e i tuoi permessi restano validi. Questa scelta riguarda solo questa funzionalità.',
+    'leave' => 'Ritira iscrizione',
+    'withdrawn' => 'La tua iscrizione è stata ritirata.',
+    'feature_joined' => 'La tua preferenza è stata salvata.',
 ];

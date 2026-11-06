@@ -43,3 +43,15 @@ The same signup action is available as `account.waitlists.join` over MCP and `PO
 A team invitation is still an ID membership operation. A service invitation is a Billing operation and grants access in the recipient’s own chosen organization after acceptance. Billing retains inviter-to-recipient attribution for a later referral reward. Apps or Engage decide when to award invitation allowances; the directory does not implement a separate automation engine.
 
 The app’s acceptance backend must verify the recipient’s identity, email and organization membership before calling Billing’s redemption API with its separately authorized management token. The narrow directory token cannot redeem or grant access.
+
+## Feature waitlists
+
+The **Features** tab at `/account/services?kind=feature` lists published feature programmes. Link to `/account/services?kind=feature&service=telemetry` from an app. Billing supports several feature programmes per service alongside its service waitlist. Create these with `kind: feature`, a boolean entitlement, a public name and description, and immutable access scope `person` or `organization`.
+
+A verified existing customer chooses an active team and **Notify me** or **Join the test group**. ID checks membership and team status on the server, including for delegated API calls. Feature interest is per person and team; choosing another team shows that team's registration. The programme's scope tells the customer whether admission covers just them or their whole team. Features have no anonymous signup page.
+
+`account.waitlists.join` additionally accepts `organization` and `interest` (`notify` or `test`). `account.waitlists.leave`, also exposed at `POST /api/v1/me/services/{program}/waitlist/leave`, takes `organization` and a fresh stable UUID `reference`. Both derive the person from authentication. Withdrawal removes only their interest and invalidates a saved beta selection. Active beta access is managed by the service operator; revoked access is shown explicitly.
+
+Billing excludes notification-only signups from beta cohorts, counts each team once for team programmes, and activates existing customers without an acceptance URL. The customer's plan must include the feature. A beta can restrict commercial access, never expand it. For a personal beta, the app uses Billing's single-feature endpoint with the authenticated `actor`; organization-only flags cannot express personal admission. App permissions and membership still apply. See Billing's Product access guide for the enforcement and cache contract.
+
+This feature choice concerns that feature's updates or test group. It does not imply general marketing consent. Engage handles contact synchronization and topic communication independently.

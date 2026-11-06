@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Den här funktionen tar inte emot ansökningar just nu.',
+    'feature_released' => 'Tillgänglig för kunder som har funktionen i sitt abonnemang.',
+    'revoked' => 'Åtkomst återkallad',
     'title' => 'Tjänster',
     'lead' => 'Välj de tjänster du vill prova. Varje tjänst har en egen väntelista.',
     'join' => 'Anmäl dig till väntelistan',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Uppdateringar och inbjudningar skickas till din e-postadress.',
     'signed_in_as' => 'Du anmäler dig som :email',
     'scope_note' => 'Anmälan köper ingen plan och ger inte åtkomst till tjänsten.',
+    'features' => 'Funktioner',
+    'feature_lead' => 'Följ kommande funktioner eller ansök om att testa dem med ett team som redan är kund.',
+    'team' => 'Team',
+    'no_team' => 'Gå med i eller skapa ett team innan du anmäler dig.',
+    'feature_empty' => 'Inga väntelistor för funktioner har publicerats ännu.',
+    'following' => 'Följer uppdateringar',
+    'person_scope' => 'Betaåtkomst för dig i detta team',
+    'team_scope' => 'Betaåtkomst för hela teamet',
+    'interest' => 'Jag vill gärna',
+    'notify' => 'Få besked',
+    'test' => 'Delta i testgruppen',
+    'feature_scope_note' => 'Ditt abonnemang och dina behörigheter gäller fortfarande. Valet gäller bara denna funktion.',
+    'leave' => 'Dra tillbaka anmälan',
+    'withdrawn' => 'Din anmälan har dragits tillbaka.',
+    'feature_joined' => 'Ditt önskemål har sparats.',
 ];

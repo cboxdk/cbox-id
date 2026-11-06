@@ -723,6 +723,20 @@ paths:
             schema:
               type: object
               properties:
+                organization:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'An active team you belong to; required for feature waitlists.'
+                  maxLength: 64
+                interest:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Feature updates or participation in a test group.'
+                  enum:
+                    - notify
+                    - test
                 country:
                   type:
                     - string
@@ -740,6 +754,71 @@ paths:
                   format: uuid
                   maxLength: 36
               required:
+                - reference
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+  '/me/services/{program}/waitlist/leave':
+    post:
+      tags:
+        - 'Service waitlists'
+      summary: 'Withdraw your own feature interest or beta application for a team. Active grants are managed by the service.'
+      description: 'Requires scope `account:waitlists:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      operationId: account_waitlists_leave
+      x-action: account.waitlists.leave
+      x-scope: 'account:waitlists:write'
+      x-danger: write
+      parameters:
+        -
+          name: program
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organization:
+                  type: string
+                  maxLength: 64
+                reference:
+                  type: string
+                  format: uuid
+                  maxLength: 36
+              required:
+                - organization
                 - reference
       responses:
         200:

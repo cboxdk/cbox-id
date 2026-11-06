@@ -749,6 +749,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // passkeys, sessions). Available to members and admins alike.
     Route::get('/account', [AccountController::class, 'show'])->name('account');
     Route::get('/account/services', [ServiceAccessController::class, 'index'])->name('account.services');
+    Route::post('/account/services/{program}/waitlist/leave', [ServiceAccessController::class, 'leave'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.leave');
     Route::post('/account/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.join');
 
     /*
