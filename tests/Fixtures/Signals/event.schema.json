@@ -1,0 +1,1720 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cboxsignals.com/v2/event.schema.json",
+  "title": "Signals v2 event",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "2.0.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "position": {
+      "$ref": "#/$defs/position"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "kind": {
+      "const": "event"
+    },
+    "name": {
+      "enum": [
+        "identity.authentication",
+        "identity.session",
+        "identity.activity",
+        "identity.token",
+        "identity.account",
+        "resource.access",
+        "billing.payment_attempt",
+        "billing.payment",
+        "billing.refund",
+        "billing.usage",
+        "billing.checkout",
+        "billing.card",
+        "web.visit",
+        "service.change"
+      ]
+    },
+    "data": {}
+  },
+  "required": [
+    "contract_version",
+    "id",
+    "scope",
+    "position",
+    "occurred_at",
+    "recorded_at",
+    "kind",
+    "name",
+    "data"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "identity.authentication"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "attempt_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "subject": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/entity"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "stage": {
+                "enum": [
+                  "attempted",
+                  "completed"
+                ]
+              },
+              "outcome": {
+                "enum": [
+                  "pending",
+                  "succeeded",
+                  "failed",
+                  "denied",
+                  "abandoned"
+                ]
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              },
+              "session_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "amr": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "minItems": 0,
+                "maxItems": 10
+              },
+              "aal": {
+                "enum": [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              },
+              "challenge_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "failure_class": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "invalid_credentials",
+                      "policy",
+                      "challenge",
+                      "locked",
+                      "rate_limited",
+                      "upstream",
+                      "unknown"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "application_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "target_reference": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "attempt_id",
+              "subject",
+              "stage",
+              "outcome",
+              "context",
+              "session_id",
+              "amr",
+              "aal",
+              "challenge_id",
+              "failure_class",
+              "application_id",
+              "target_reference"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "stage": {
+                      "const": "completed"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "outcome": {
+                      "enum": [
+                        "succeeded",
+                        "failed",
+                        "denied",
+                        "abandoned"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "outcome": {
+                      "const": "pending"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "outcome": {
+                      "const": "succeeded"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "subject": {
+                      "$ref": "#/$defs/entity"
+                    },
+                    "session_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "aal": {
+                      "enum": [
+                        1,
+                        2,
+                        3
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "identity.session"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "$ref": "#/$defs/entity"
+              },
+              "session_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "action": {
+                "enum": [
+                  "started",
+                  "revoked",
+                  "expired",
+                  "logout"
+                ]
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              },
+              "amr": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "minItems": 0,
+                "maxItems": 10
+              },
+              "aal": {
+                "enum": [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "application_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "attempt_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "subject",
+              "session_id",
+              "action",
+              "context",
+              "amr",
+              "aal",
+              "reason",
+              "application_id",
+              "attempt_id"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "identity.activity"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "$ref": "#/$defs/entity"
+              },
+              "session_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              },
+              "activity": {
+                "enum": [
+                  "user_action",
+                  "background",
+                  "heartbeat",
+                  "impersonation"
+                ]
+              },
+              "application_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "resource_class": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "subject",
+              "session_id",
+              "context",
+              "activity",
+              "application_id",
+              "resource_class"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "identity.token"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "$ref": "#/$defs/entity"
+              },
+              "token_reference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "family_reference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "application_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "action": {
+                "enum": [
+                  "issued",
+                  "used",
+                  "rotated",
+                  "revoked",
+                  "reuse_confirmed"
+                ]
+              },
+              "scopes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "minItems": 0,
+                "maxItems": 50
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              },
+              "issuer_verified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "subject",
+              "token_reference",
+              "family_reference",
+              "application_id",
+              "action",
+              "scopes",
+              "context",
+              "issuer_verified"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "reuse_confirmed"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "issuer_verified": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "identity.account"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "$ref": "#/$defs/entity"
+              },
+              "action": {
+                "enum": [
+                  "created",
+                  "recovery_started",
+                  "recovery_completed",
+                  "factor_added",
+                  "factor_removed",
+                  "erased"
+                ]
+              },
+              "attempt_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              },
+              "actor": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/entity"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "subject",
+              "action",
+              "attempt_id",
+              "context",
+              "actor"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "resource.access"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "$ref": "#/$defs/entity"
+              },
+              "session_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resource": {
+                "$ref": "#/$defs/entity"
+              },
+              "operation": {
+                "enum": [
+                  "read",
+                  "write",
+                  "export",
+                  "delete",
+                  "list"
+                ]
+              },
+              "outcome": {
+                "enum": [
+                  "succeeded",
+                  "denied",
+                  "failed"
+                ]
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              },
+              "impersonator": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/entity"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "rows": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "data_class": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "destination_class": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "subject",
+              "session_id",
+              "resource",
+              "operation",
+              "outcome",
+              "bytes",
+              "context",
+              "impersonator",
+              "rows",
+              "data_class",
+              "destination_class"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "billing.payment_attempt"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "customer": {
+                "$ref": "#/$defs/entity"
+              },
+              "attempt_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "payment_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "invoice_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "product_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "gateway": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "outcome": {
+                "enum": [
+                  "pending",
+                  "succeeded",
+                  "failed",
+                  "abandoned"
+                ]
+              },
+              "failure_class": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "attempt_number": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "customer",
+              "attempt_id",
+              "payment_id",
+              "invoice_id",
+              "product_id",
+              "gateway",
+              "outcome",
+              "failure_class",
+              "amount",
+              "attempt_number"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "billing.payment"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "customer": {
+                "$ref": "#/$defs/entity"
+              },
+              "payment_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "attempt_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "invoice_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "product_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "gateway": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "action": {
+                "enum": [
+                  "settled",
+                  "reversed"
+                ]
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "original_event_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "customer",
+              "payment_id",
+              "attempt_id",
+              "invoice_id",
+              "product_id",
+              "gateway",
+              "action",
+              "amount",
+              "original_event_id"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "reversed"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "original_event_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "billing.refund"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "customer": {
+                "$ref": "#/$defs/entity"
+              },
+              "refund_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "payment_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "original_payment_event_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "invoice_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "product_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "gateway": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "outcome": {
+                "enum": [
+                  "requested",
+                  "succeeded",
+                  "failed",
+                  "reversed"
+                ]
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "initiator": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/entity"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason_class": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "customer",
+              "refund_id",
+              "payment_id",
+              "original_payment_event_id",
+              "invoice_id",
+              "product_id",
+              "gateway",
+              "outcome",
+              "amount",
+              "initiator",
+              "reason_class"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "billing.usage"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "customer": {
+                "$ref": "#/$defs/entity"
+              },
+              "meter": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "product_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "quantity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "period_start": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              "period_end": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              "operation": {
+                "enum": [
+                  "record",
+                  "correct",
+                  "void"
+                ]
+              },
+              "supersedes_event_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price_version": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cost_minor": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "currency": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "plan_version": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "customer",
+              "meter",
+              "product_id",
+              "quantity",
+              "unit",
+              "period_start",
+              "period_end",
+              "operation",
+              "supersedes_event_id",
+              "price_version",
+              "cost_minor",
+              "currency",
+              "plan_version"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "operation": {
+                      "enum": [
+                        "correct",
+                        "void"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "supersedes_event_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "billing.checkout"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "customer": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/entity"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "checkout_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "journey_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "product_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "stage": {
+                "enum": [
+                  "started",
+                  "payment_submitted",
+                  "completed",
+                  "failed",
+                  "expired"
+                ]
+              },
+              "gateway": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "failure_class": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "context": {
+                "$ref": "#/$defs/context"
+              }
+            },
+            "required": [
+              "customer",
+              "checkout_id",
+              "journey_id",
+              "product_id",
+              "stage",
+              "gateway",
+              "failure_class",
+              "context"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "billing.card"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "customer": {
+                "$ref": "#/$defs/entity"
+              },
+              "card_reference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "fingerprint_scope": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "action": {
+                "enum": [
+                  "attached",
+                  "removed",
+                  "failed"
+                ]
+              },
+              "gateway": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "country": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "brand": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "customer",
+              "card_reference",
+              "fingerprint_scope",
+              "action",
+              "gateway",
+              "country",
+              "brand"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "web.visit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "visitor_reference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "journey_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "site_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "page_class": {
+                "enum": [
+                  "status",
+                  "checkout",
+                  "product",
+                  "other"
+                ]
+              },
+              "traffic_class": {
+                "enum": [
+                  "human_likely",
+                  "bot",
+                  "monitor",
+                  "unknown"
+                ]
+              },
+              "classification_version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "referral_class": {
+                "enum": [
+                  "direct",
+                  "search",
+                  "campaign",
+                  "incident_notification",
+                  "internal",
+                  "unknown"
+                ]
+              },
+              "notification_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "session_active": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "visitor_reference",
+              "journey_id",
+              "site_id",
+              "page_class",
+              "traffic_class",
+              "classification_version",
+              "referral_class",
+              "notification_id",
+              "session_active"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "name": {
+            "const": "service.change"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "service": {
+                "$ref": "#/$defs/entity"
+              },
+              "change_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "action": {
+                "enum": [
+                  "deploy",
+                  "rollback",
+                  "scale",
+                  "maintenance_start",
+                  "maintenance_end",
+                  "campaign"
+                ]
+              },
+              "planned": {
+                "type": "boolean"
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "service",
+              "change_id",
+              "action",
+              "planned",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "entity": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "type": {
+          "enum": [
+            "user",
+            "organization",
+            "team",
+            "session",
+            "token",
+            "device",
+            "ip",
+            "service",
+            "instance",
+            "resource",
+            "customer",
+            "payment",
+            "checkout",
+            "application"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "namespace",
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "environment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "audience": {
+          "enum": [
+            "tenant",
+            "environment"
+          ]
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "project_id",
+        "environment_id",
+        "audience"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "audience": {
+                "const": "tenant"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tenant_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "tenant_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "partition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "generation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "sequence": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        }
+      },
+      "required": [
+        "source_id",
+        "partition",
+        "generation",
+        "sequence"
+      ],
+      "additionalProperties": false
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_evidence": {
+          "enum": [
+            "first_party_cookie",
+            "authenticated_device",
+            "coarse_fingerprint",
+            "missing"
+          ]
+        },
+        "ip": {
+          "anyOf": [
+            {
+              "type": "string",
+              "anyOf": [
+                {
+                  "format": "ipv4"
+                },
+                {
+                  "format": "ipv6"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "asn": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "browser_family": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "browser_major": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "os_family": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "network_class": {
+          "enum": [
+            "residential",
+            "mobile",
+            "corporate",
+            "hosting",
+            "vpn",
+            "tor",
+            "unknown"
+          ]
+        },
+        "geo_accuracy_km": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enrichment_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "device_id",
+        "device_evidence",
+        "ip",
+        "country",
+        "asn",
+        "browser_family",
+        "browser_major",
+        "os_family",
+        "network_class",
+        "geo_accuracy_km",
+        "latitude",
+        "longitude",
+        "enrichment_version"
+      ],
+      "additionalProperties": false
+    },
+    "money": {
+      "type": "object",
+      "properties": {
+        "minor": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "minor",
+        "currency"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

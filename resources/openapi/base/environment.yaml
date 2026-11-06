@@ -84,6 +84,137 @@ tags:
   - name: Devices
   - name: Approvals
 paths:
+  /signals/source/erasures:
+    get:
+      operationId: signals_source_erasures
+      summary: Replay source deletion receipts
+      description: |
+        Requires `signals_source:read` on an environment-owner key. Replay this stream
+        before making a restored or newly backfilled consumer eligible. It retains only
+        opaque subject references and deletion facts beyond the raw-event replay window.
+        Publication order and cursor integrity match the event source. The credential
+        is checked on every page. Ordinary tenant grants cannot access this stream.
+      security:
+        - EnvironmentApiKey: []
+      parameters:
+        - name: after
+          in: query
+          schema: { type: string, maxLength: 1024 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
+      responses:
+        "200":
+          description: A bounded deletion receipt page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 1000
+                    items: { type: object, required: [id, producer_environment, position, name, data] }
+                  meta:
+                    type: object
+                    required: [next_cursor, has_more, commit_through, generation]
+                    properties:
+                      next_cursor: { type: string }
+                      has_more: { type: boolean }
+                      commit_through: { type: string }
+                      generation: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503":
+          description: Capture is disabled or publication is backpressured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /signals/source:
+    get:
+      operationId: signals_source_list
+      summary: Read the environment-owner identity source
+      description: |
+        Requires an environment key with `signals_source:read` and explicit operator
+        opt-in for this environment. Organization grants and delegated user tokens
+        cannot read this source. Records include pre-organization authentication.
+        The cursor follows committed sequence order and is bound to the source generation.
+        Follow `next_cursor`, including on empty pages; a stale generation or purged
+        cursor requires an explicit restart. Pages are at most 1000 records / 1 MiB.
+        Data follows the Signals 2.0.0 identity event contracts. Scope is attached by
+        the consumer's explicit grant; producer_environment is always host-bound.
+        Replay is limited to seven days, including raw-IP retention. A heartbeat
+        proves exporter maintenance, not complete coverage of every identity flow.
+      security:
+        - EnvironmentApiKey: []
+      parameters:
+        - name: after
+          in: query
+          schema: { type: string, maxLength: 1024 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
+      responses:
+        "200":
+          description: A bounded source page, including an empty page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 1000
+                    items:
+                      type: object
+                      required: [contract_version, id, producer_environment, organization_id, position, kind, occurred_at, recorded_at]
+                      properties:
+                        contract_version: { const: "2.0.0" }
+                        id: { type: string }
+                        producer_environment: { type: string }
+                        organization_id: { type: [string, "null"] }
+                        position:
+                          type: object
+                          required: [source_id, partition, generation, sequence]
+                          properties:
+                            source_id: { type: string }
+                            partition: { const: "0" }
+                            generation: { type: string }
+                            sequence: { type: string, pattern: '^[0-9]+$' }
+                        kind: { enum: [event, relation] }
+                        name: { enum: [identity.authentication, identity.session, identity.token, identity.account, identity.activity] }
+                        occurred_at: { type: string, format: date-time }
+                        recorded_at: { type: string, format: date-time }
+                        data: { type: object }
+                  meta:
+                    type: object
+                    required: [next_cursor, has_more, source_id, generation, commit_through, accepted_through, capture_started_at, heartbeat_at, observed_at, families, retention_days, coverage]
+                    properties:
+                      next_cursor: { type: string }
+                      has_more: { type: boolean }
+                      source_id: { type: string }
+                      generation: { type: string }
+                      commit_through: { type: string }
+                      accepted_through: { type: string }
+                      capture_started_at: { type: string, format: date-time }
+                      heartbeat_at: { type: [string, "null"], format: date-time }
+                      observed_at: { type: string, format: date-time }
+                      families: { type: array, items: { type: string } }
+                      retention_days: { type: integer, minimum: 1, maximum: 7 }
+                      coverage: { const: partial }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503":
+          description: Capture is not enabled for this environment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /app-catalog:
     get:
       tags:

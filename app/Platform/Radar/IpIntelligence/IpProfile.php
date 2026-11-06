@@ -23,6 +23,7 @@ final readonly class IpProfile
         public bool $vpn = false,
         public bool $proxy = false,
         public bool $tor = false,
+        public ?float $accuracyKm = null,
     ) {}
 
     public function hasLocation(): bool
@@ -47,6 +48,7 @@ final readonly class IpProfile
             'vpn' => $this->vpn,
             'proxy' => $this->proxy,
             'tor' => $this->tor,
+            'accuracy_km' => $this->accuracyKm,
         ];
     }
 
@@ -70,12 +72,13 @@ final readonly class IpProfile
             vpn: ($data['vpn'] ?? false) === true,
             proxy: ($data['proxy'] ?? false) === true,
             tor: ($data['tor'] ?? false) === true,
+            accuracyKm: ($radius = $float($data['accuracy_km'] ?? null)) !== null && is_finite($radius) && $radius >= 0 ? $radius : null,
         );
     }
 
     /** The same profile, with Tor known from elsewhere (the local exit list). */
     public function withTor(bool $tor): self
     {
-        return new self($this->country, $this->latitude, $this->longitude, $this->asn, $this->asOrganization, $this->hosting, $this->vpn, $this->proxy, $this->tor || $tor);
+        return new self($this->country, $this->latitude, $this->longitude, $this->asn, $this->asOrganization, $this->hosting, $this->vpn, $this->proxy, $this->tor || $tor, $this->accuracyKm);
     }
 }

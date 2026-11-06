@@ -28,6 +28,10 @@ class AppManagementScopes extends EnumManagementScopes
      * @var array<string, array{label: string, description: string, critical?: bool}>
      */
     public const array APP_SCOPES = [
+        'signals_source:read' => [
+            'label' => 'Read identity security source',
+            'description' => 'Read this environment’s opted-in identity event feed, including pre-organization sign-ins and short-lived IP context.',
+        ],
         'keys:read' => [
             'label' => 'Read management keys',
             'description' => 'List this environment\'s management keys: names, scopes, expiry and last use — never their values.',

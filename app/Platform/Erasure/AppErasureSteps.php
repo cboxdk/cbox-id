@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Erasure;
 
 use App\Actions\Users\EraseUser;
+use App\SignalsData\SourceErasureStep;
 use Cbox\Id\Identity\Contracts\ErasureStep;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Identity\Contracts\SubjectEraser;
@@ -52,6 +53,7 @@ final class AppErasureSteps
         OnboardingErasureStep::class,
         RiskDecisionsErasureStep::class,
         RadarErasureStep::class,
+        SourceErasureStep::class,
     ];
 
     public static function register(ErasureSteps $steps, Application $app): void
