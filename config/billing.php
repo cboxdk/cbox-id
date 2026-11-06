@@ -21,6 +21,9 @@ return [
      * That is `canReadBilling()` on their membership role, and both are asked.
      */
     'enabled' => env('CBOX_BILLING_ENABLED', true),
+    // A free subscription satisfies admission too. Null retains legacy metered-mode
+    // admission; set explicitly for hosted plans without gating SSO/SCIM on payment.
+    'require_subscription' => env('CBOX_ID_REQUIRE_SUBSCRIPTION'),
     'product' => env('CBOX_BILLING_PRODUCT', 'cbox-id'),
     'currency' => env('CBOX_BILLING_CURRENCY', 'DKK'),
     'environment_feature' => env('CBOX_BILLING_ENVIRONMENT_FEATURE', 'cbox-id.environments'),

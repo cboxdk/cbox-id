@@ -1,7 +1,7 @@
 ---
 title: Entitlements
 weight: 4
-description: What an unset entitlement means — granted by default for a self-host, denied by default where billing decides — and why widening it is not a tenancy concern.
+description: Identity security on every plan, independent project admission, and application entitlements.
 ---
 
 # Entitlements
@@ -15,7 +15,8 @@ choice:
 
 ```dotenv
 CBOX_ID_ENTITLEMENTS=open      # unset means granted  (default)
-CBOX_ID_ENTITLEMENTS=metered   # unset means denied
+CBOX_ID_ENTITLEMENTS=inclusive # included ID security; other unset keys denied
+CBOX_ID_ENTITLEMENTS=metered   # legacy: all unset keys denied
 ```
 
 ## `open` — the default
@@ -46,11 +47,54 @@ Two things `open` deliberately does not do:
   always live-checked, never embedded, so it cannot outlive a later decision to start
   metering.
 
+## `inclusive` — hosted security on every plan
+
+SSO, SCIM and organization audit access default to granted, using the configured
+`cbox-id.entitlements.sso`, `scim` and `audit_logs` keys. MFA and passkeys already
+have no subscription gate. Other absent application keys remain denied. Explicit
+operational denials still win; authorization and tenant isolation remain mandatory.
+The synthetic security grants are live checks, never additional token claims.
+
+Project provisioning is separate:
+
+```dotenv
+CBOX_ID_ENTITLEMENTS=inclusive
+CBOX_ID_REQUIRE_SUBSCRIPTION=true
+```
+
+A project starts with zero environment allowance until a synchronized subscription
+(including a free one) grants it. This does not disable identity security. Leaving
+`CBOX_ID_REQUIRE_SUBSCRIPTION` unset preserves legacy admission based on `metered`;
+explicit true/false takes precedence. Billing's doctor checks follow this separate
+admission policy. An ended subscription stops new environment creation; it does not
+delete existing environments or revoke SSO/SCIM. No local fallback plan is invented.
+
+Service admission still applies first. Early access is invitation/waitlist based;
+creating an identity or choosing a free plan must not bypass it. Keep product access
+enabled and its Billing program in waitlist mode. Inclusive does not mean open signup.
+
+## Early-access pricing decision, 6 November 2026
+
+Free / Start / Grow are approved at 0 / 99 / 349 DKK per project/month, net of VAT.
+All include identity security and production plus test environments. ID is an entry
+point to other Cbox products; additional consumption, not SSO or SCIM, motivates an upgrade.
+The canonical `cbox-billing/catalogs/cbox-id.json` keeps these three plans inactive
+while consumption allowances are qualified. They are not yet sold or synchronized
+into production. Do not turn on subscription admission against an empty catalog.
+
+Signals must provide an included free baseline on every plan, with explicit paid
+capacity upgrades and spending limits. Baseline quantities, scoped provisioning and
+end-to-end bundle acceptance remain unfinished; the existing test quotas are not
+commercial allowances. See `cbox-billing/catalogs/cbox-id.md` for the activation work.
+
+A read-only production check confirmed that all twelve published service programs,
+including ID and Signals, are in waitlist mode and ID's product admission is enabled.
+This change does not publish prices, admit customers, issue invoices or enable Signals.
+
 ## `metered`
 
-Deny-by-default, and the billing projection is the only thing that grants. Set it
-where a billing transport is actually wired — it is what a hosted plane runs so that
-plan tiers mean something.
+Deny-by-default, and the billing projection is the only thing that grants. Retained for installations that deliberately gate features through the projection.
+Cbox hosted plans use `inclusive` and independent subscription admission instead.
 
 ## Entitlements are not a tenancy control
 

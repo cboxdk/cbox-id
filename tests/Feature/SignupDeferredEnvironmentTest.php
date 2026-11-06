@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
+use App\Platform\Entitlements;
 use App\Platform\SignupProvisioner;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -128,4 +129,16 @@ it('keeps legacy metered provisioning at zero until a plan grants environments',
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($pending->owner->id, 'metered-legacy@example.test'));
     expect(app(SignupProvisioner::class)->releaseEnvironment($pending->organization->id))->toBeNull()
         ->and(environmentsOwnedBy($pending->organization->id)->count())->toBe(0);
+});
+
+it('requires a project plan independently of included security features', function (): void {
+    rootForDeferredSignup();
+    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true]);
+    $pending = app(SignupProvisioner::class)->provisionPending(new TenantBlueprint(
+        organizationName: 'Startup', ownerEmail: 'startup@example.test', ownerName: 'Owner', ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+    expect($pending->project->environment_limit)->toBe(0)
+        ->and(app(SignupProvisioner::class)->releaseEnvironment($pending->organization->id))->toBeNull()
+        ->and(app(Entitlements::class)->entitled($pending->organization->id, 'sso'))->toBeTrue()
+        ->and(app(Entitlements::class)->entitled($pending->organization->id, 'scim'))->toBeTrue();
 });

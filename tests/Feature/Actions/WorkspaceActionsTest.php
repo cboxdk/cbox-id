@@ -454,3 +454,23 @@ it('does not let a workspace key choose its environment allowance', function ():
     $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Needs a plan', 'environment_limit' => 100])
         ->assertCreated()->assertJsonPath('data.environment_limit', 0);
 });
+
+it('keeps inclusive project admission behind the early access waitlist', function (): void {
+    $workspace = provisionAccount()['organization'];
+    $agent = workspaceKey($workspace);
+    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true,
+        'service-access.product_enabled' => true, 'service-access.enabled' => true,
+        'service-access.identity_environment' => app(PlatformRoot::class)->environment()?->environmentKey(),
+        'service-access.billing_url' => 'https://billing.example.test', 'service-access.product_billing_token' => 'test-service-secret']);
+    Http::fake(['billing.example.test/api/v1/access/services/cbox-id/check' => Http::response(['allowed' => false])]);
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Still waiting'])
+        ->assertForbidden();
+});
+
+it('creates inclusive projects with a server-owned allowance until a plan is chosen', function (): void {
+    $workspace = provisionAccount()['organization'];
+    $agent = workspaceKey($workspace);
+    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true]);
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Inclusive', 'environment_limit' => 100])
+        ->assertCreated()->assertJsonPath('data.environment_limit', 0);
+});

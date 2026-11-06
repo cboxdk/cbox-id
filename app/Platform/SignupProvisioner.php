@@ -104,10 +104,10 @@ final class SignupProvisioner
             $project = $this->projectWriter->createForOrganization(
                 $organization->id,
                 $blueprint->organizationName,
-                config('cbox-id.entitlements.mode') === 'metered' ? 0 : $blueprint->environmentLimit,
+                SubscriptionAdmission::required() ? 0 : $blueprint->environmentLimit,
             );
 
-            if (config('cbox-id.entitlements.mode') === 'metered') {
+            if (SubscriptionAdmission::required()) {
                 $project->environment_limit = 0;
                 $project->save();
             }
