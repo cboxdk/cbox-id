@@ -32,6 +32,8 @@ jobs:
           php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
+      - name: Install the locked Chromium browser
+        run: npx playwright install chromium
       - run: npm run build
 
       - name: Prepare environment

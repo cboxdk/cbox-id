@@ -61,6 +61,8 @@ jobs:
           php bin/unpack-signals-packages.php ../../laravel-signals-client
           composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
+      - name: Install the locked Chromium browser
+        run: npx playwright install chromium
       # The browser loads whatever is in public/build: the pictures are of THIS checkout's
       # frontend only if it is built from this checkout.
       - run: npm run build
