@@ -8,6 +8,8 @@ use App\Platform\AccountLinking\LinkHold;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Radar\Radar;
 use App\Platform\Signals\SignalsStepUpRequired;
+use App\SignalsData\IdentityCapture;
+use App\SignalsData\SourceLedger;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
@@ -159,6 +161,21 @@ final class PlatformAuth
      * a risky sign-in through — and rather than locking the account out.
      */
     public function attemptPassword(Request $request, string $email, string $password, bool $requireStepUp = false): AttemptOutcome
+    {
+        if (app(SourceLedger::class)->environment() === null) {
+            return $this->attemptPasswordCredential($request, $email, $password, $requireStepUp);
+        }
+        $capture = app(IdentityCapture::class);
+        $capture->begin($request, $this->subjects->findByEmail($email)?->id, $email);
+        $outcome = $this->attemptPasswordCredential($request, $email, $password, $requireStepUp);
+        if ($outcome === AttemptOutcome::Invalid || $outcome === AttemptOutcome::SsoRequired) {
+            $capture->failed($request, $this->subjects->findByEmail($email)?->id, $outcome === AttemptOutcome::SsoRequired ? 'policy' : 'invalid_credentials');
+        }
+
+        return $outcome;
+    }
+
+    private function attemptPasswordCredential(Request $request, string $email, string $password, bool $requireStepUp): AttemptOutcome
     {
         $subject = $this->subjects->findByEmail($email);
 
@@ -840,6 +857,7 @@ final class PlatformAuth
      */
     public function logout(Request $request): void
     {
+        $request->attributes->set('signals.source.logout', true);
         $accounts = $this->accountsMap();
         $active = session()->get(self::ACTIVE_KEY);
 
@@ -890,6 +908,7 @@ final class PlatformAuth
      */
     public function logoutAll(Request $request): void
     {
+        $request->attributes->set('signals.source.logout', true);
         $lineage = app(SignInLineage::class);
 
         if ($this->onPlatformRoot()) {

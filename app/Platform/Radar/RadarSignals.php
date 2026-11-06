@@ -10,6 +10,7 @@ use App\Platform\Radar\Enums\RadarFlow;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\Radar\IpIntelligence\IpIntelligence;
 use App\Platform\Radar\IpIntelligence\IpProfile;
+use App\SignalsData\IdentityContext;
 use Cbox\Risk\Contracts\DisposableDomains;
 use Cbox\Risk\Contracts\TorExitNodes;
 use Cbox\Risk\ValueObjects\RiskAssessment;
@@ -61,6 +62,7 @@ final readonly class RadarSignals
         $domain = $domain === '' ? null : $domain;
 
         $profile = $ip === null ? null : $this->safely(fn (): ?IpProfile => $this->intelligence->lookup($ip));
+        $request->attributes->set(IdentityContext::PROFILE, $profile);
         $tor = $ip !== null && $this->safely(fn (): bool => $this->tor->contains($ip)) === true;
         $device = $this->safely(fn (): DeviceIdentity => $this->devices->identify($request));
 
