@@ -444,6 +444,9 @@ default** — a deployment with no mobile app has no devices to notify. See
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_DEVICES_ENABLED` | Master switch for the console pages, the device API and the CIBA push decorator. | `false` | Turn on when you are running the authenticator app. Safe to enable before configuring a transport — pushes are recorded and dropped, and the console still shows the delivery history. |
+| `CBOX_ID_APP_REVIEW_ENVIRONMENT_ID` | Environment allowed to serve the isolated App Store review exercise. | *(empty)* | Configure all three review IDs together; otherwise `/authenticator/review` is unavailable. |
+| `CBOX_ID_APP_REVIEW_SUBJECT_ID` | The only subject allowed to use the review exercise. | *(empty)* | Use a dedicated account without memberships, roles or customer data. |
+| `CBOX_ID_APP_REVIEW_CLIENT_ID` | Dedicated client used to send review approvals. | *(empty)* | CIBA grant and `openid` scope only. No token redemption occurs in the exercise. |
 | `CBOX_ID_DEVICES_TRANSPORT` | How a push leaves the building: `none` or `fcm`. | `none` | Set `fcm` for real delivery. FCM covers Android natively and iOS by relaying to APNs, which is why there is no separate APNs driver. |
 | `CBOX_ID_DEVICES_FCM_CREDENTIALS` | Absolute path to the Google service-account JSON used to mint FCM tokens. | *(empty)* | Required for `fcm`. **This key can push to every device you have ever enrolled — server only, never bundled into the app.** If it or the project id is missing the transport stays on the null driver rather than failing at send time: a misconfigured push must not break a login. |
 | `CBOX_ID_DEVICES_FCM_PROJECT_ID` | The Firebase project id. | *(empty)* | Required for `fcm`. |
