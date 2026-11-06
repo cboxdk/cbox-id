@@ -15,16 +15,20 @@ final readonly class BillingWaitlists
     public function __construct(private ServiceAccessSettings $settings) {}
 
     /** @return array{services: list<Service>, page: int, lastPage: int} */
-    public function page(int $page, ?string $service = null): array
+    public function page(int $page, ?string $service = null, string $kind = 'service'): array
     {
-        $response = $this->request('GET', '/api/v1/access/directory', ['page' => $page] + ($service === null ? [] : ['service' => $service]));
+        $response = $this->request('GET', '/api/v1/access/directory', ['page' => $page, 'kind' => $kind] + ($service === null ? [] : ['service' => $service]));
         $data = $response->json();
         if (! is_array($data) || ! is_array($data['data'] ?? null) || ! is_int($data['current_page'] ?? null) || ! is_int($data['last_page'] ?? null)) {
             throw new ServiceAccessUnavailable('Malformed service directory pagination.');
         }
         $services = [];
         foreach ($data['data'] as $row) {
-            $services[] = Service::from($row);
+            $program = Service::from($row);
+            if ($program->kind !== $kind) {
+                throw new ServiceAccessUnavailable('The directory returned a different programme kind.');
+            }
+            $services[] = $program;
         }
 
         return ['services' => $services, 'page' => $data['current_page'], 'lastPage' => $data['last_page']];
@@ -33,12 +37,12 @@ final readonly class BillingWaitlists
     /** @param list<int> $programs
      * @return array<int, string|null>
      */
-    public function registrations(array $programs, string $subject, string $email): array
+    public function registrations(array $programs, string $subject, string $email, ?string $organization = null): array
     {
         if ($programs === []) {
             return [];
         }
-        $data = $this->request('POST', '/api/v1/access/directory/registrations', ['program_ids' => $programs, 'subject' => $subject, 'email' => $email])->json('data');
+        $data = $this->request('POST', '/api/v1/access/directory/registrations', ['program_ids' => $programs, 'subject' => $subject, 'email' => $email, 'organization' => $organization])->json('data');
         if (! is_array($data)) {
             throw new ServiceAccessUnavailable('Malformed registration response.');
         }
@@ -49,7 +53,7 @@ final readonly class BillingWaitlists
             }
             $registration = $row['registration'] ?? null;
             $status = is_array($registration) ? ($registration['status'] ?? null) : null;
-            if ($registration !== null && ! in_array($status, ['waiting', 'invited', 'accepted'], true)) {
+            if ($registration !== null && ! in_array($status, ['waiting', 'invited', 'accepted', 'following', 'revoked'], true)) {
                 throw new ServiceAccessUnavailable('Unknown registration status.');
             }
             $registrations[$row['program_id']] = is_string($status) ? $status : null;
@@ -62,14 +66,24 @@ final readonly class BillingWaitlists
     }
 
     /** @param array<string, string> $answers */
-    public function join(int $program, string $subject, string $email, ?string $country, array $answers, string $reference): void
+    public function join(int $program, string $subject, string $email, ?string $country, array $answers, string $reference, ?string $organization = null, string $interest = 'test'): void
     {
         $response = $this->request('POST', '/api/v1/access/directory/'.$program.'/join', [
-            'subject' => $subject, 'email' => $email, 'country' => $country,
+            'subject' => $subject, 'email' => $email, 'country' => $country, 'organization' => $organization, 'interest' => $interest,
             'answers' => $answers === [] ? (object) [] : $answers, 'reference' => $reference,
         ], $reference);
-        if (! in_array($response->json('registration.status'), ['waiting', 'invited', 'accepted'], true)) {
+        if (! in_array($response->json('registration.status'), ['waiting', 'invited', 'accepted', 'following', 'revoked'], true)) {
             throw new ServiceAccessUnavailable('The registration was not acknowledged.');
+        }
+    }
+
+    public function leave(int $program, string $subject, string $organization, string $reference): void
+    {
+        $response = $this->request('POST', '/api/v1/access/directory/'.$program.'/leave', [
+            'subject' => $subject, 'organization' => $organization, 'reference' => $reference,
+        ], $reference);
+        if ($response->json('status') !== 'withdrawn') {
+            throw new ServiceAccessUnavailable('The withdrawal was not acknowledged.');
         }
     }
 

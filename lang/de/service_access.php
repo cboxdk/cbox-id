@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Diese Funktion nimmt derzeit keine Anmeldungen an.',
+    'feature_released' => 'Für Kunden freigegeben, deren Tarif diese Funktion enthält.',
+    'revoked' => 'Zugang widerrufen',
     'title' => 'Dienste',
     'lead' => 'Wählen Sie die Dienste, die Sie ausprobieren möchten. Jeder Dienst hat eine eigene Warteliste.',
     'join' => 'Auf die Warteliste',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Neuigkeiten und Einladungen erhalten Sie per E-Mail.',
     'signed_in_as' => 'Anmeldung als :email',
     'scope_note' => 'Die Anmeldung kauft keinen Tarif und gewährt keinen Zugang zum Dienst.',
+    'features' => 'Funktionen',
+    'feature_lead' => 'Folge kommenden Funktionen oder bewirb dich mit einem bestehenden Kundenteam als Tester.',
+    'team' => 'Team',
+    'no_team' => 'Tritt einem Team bei oder erstelle eines, bevor du dich anmeldest.',
+    'feature_empty' => 'Es wurden noch keine Funktionswartelisten veröffentlicht.',
+    'following' => 'Updates abonniert',
+    'person_scope' => 'Betazugang für dich in diesem Team',
+    'team_scope' => 'Betazugang für das gesamte Team',
+    'interest' => 'Ich möchte',
+    'notify' => 'Benachrichtigt werden',
+    'test' => 'Der Testgruppe beitreten',
+    'feature_scope_note' => 'Dein Tarif und deine Dienstberechtigungen gelten weiterhin. Diese Auswahl betrifft nur diese Funktion.',
+    'leave' => 'Anmeldung zurückziehen',
+    'withdrawn' => 'Deine Anmeldung wurde zurückgezogen.',
+    'feature_joined' => 'Dein Interesse wurde gespeichert.',
 ];

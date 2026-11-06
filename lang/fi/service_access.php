@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Tämä ominaisuus ei ota vastaan hakemuksia juuri nyt.',
+    'feature_released' => 'Saatavilla asiakkaille, joiden tilaus sisältää tämän ominaisuuden.',
+    'revoked' => 'Käyttöoikeus peruttu',
     'title' => 'Palvelut',
     'lead' => 'Valitse palvelut, joita haluat kokeilla. Jokaisella palvelulla on oma jonotuslistansa.',
     'join' => 'Liity jonotuslistalle',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Päivitykset ja kutsut lähetetään sähköpostiisi.',
     'signed_in_as' => 'Ilmoittaudut osoitteella :email',
     'scope_note' => 'Ilmoittautuminen ei osta tilausta eikä anna palvelun käyttöoikeutta.',
+    'features' => 'Ominaisuudet',
+    'feature_lead' => 'Seuraa tulevia ominaisuuksia tai hae testaajaksi tiimillä, joka on jo asiakas.',
+    'team' => 'Tiimi',
+    'no_team' => 'Liity tiimiin tai luo tiimi ennen ilmoittautumista.',
+    'feature_empty' => 'Ominaisuuksien jonotuslistoja ei ole vielä julkaistu.',
+    'following' => 'Seuraa päivityksiä',
+    'person_scope' => 'Beetakäyttö sinulle tässä tiimissä',
+    'team_scope' => 'Beetakäyttö koko tiimille',
+    'interest' => 'Haluan',
+    'notify' => 'Saada ilmoituksen',
+    'test' => 'Liittyä testiryhmään',
+    'feature_scope_note' => 'Tilauksesi ja käyttöoikeutesi ovat edelleen voimassa. Valinta koskee vain tätä ominaisuutta.',
+    'leave' => 'Peru ilmoittautuminen',
+    'withdrawn' => 'Ilmoittautumisesi on peruttu.',
+    'feature_joined' => 'Toiveesi on tallennettu.',
 ];

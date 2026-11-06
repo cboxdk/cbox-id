@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Cette fonctionnalité n’accepte pas de demandes pour le moment.',
+    'feature_released' => 'Disponible pour les clients dont le forfait inclut cette fonctionnalité.',
+    'revoked' => 'Accès révoqué',
     'title' => 'Services',
     'lead' => 'Choisissez les services que vous souhaitez essayer. Chaque service a sa propre liste d’attente.',
     'join' => 'Rejoindre la liste d’attente',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Les nouvelles et invitations vous sont envoyées par e-mail.',
     'signed_in_as' => 'Inscription avec :email',
     'scope_note' => 'L’inscription n’achète aucun forfait et ne donne pas accès au service.',
+    'features' => 'Fonctionnalités',
+    'feature_lead' => 'Suivez les prochaines fonctionnalités ou demandez à les tester avec une équipe déjà cliente.',
+    'team' => 'Équipe',
+    'no_team' => 'Rejoignez ou créez une équipe avant de vous inscrire.',
+    'feature_empty' => 'Aucune liste d’attente de fonctionnalité n’a encore été publiée.',
+    'following' => 'Abonné aux nouveautés',
+    'person_scope' => 'Accès bêta pour vous dans cette équipe',
+    'team_scope' => 'Accès bêta pour toute l’équipe',
+    'interest' => 'Je souhaite',
+    'notify' => 'Être informé',
+    'test' => 'Rejoindre le groupe de test',
+    'feature_scope_note' => 'Votre forfait et vos autorisations restent applicables. Ce choix concerne uniquement cette fonctionnalité.',
+    'leave' => 'Retirer mon inscription',
+    'withdrawn' => 'Votre inscription a été retirée.',
+    'feature_joined' => 'Votre préférence a été enregistrée.',
 ];

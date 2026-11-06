@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Denne funktion modtager ikke ansøgninger lige nu.',
+    'feature_released' => 'Frigivet til kunder med funktionen i deres plan.',
+    'revoked' => 'Adgang tilbagekaldt',
     'title' => 'Tjenester',
     'lead' => 'Vælg de tjenester, du gerne vil prøve. Hver tjeneste har sin egen venteliste.',
     'join' => 'Tilmeld venteliste',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Opdateringer og invitationer sendes til din email.',
     'signed_in_as' => 'Du tilmelder dig som :email',
     'scope_note' => 'Tilmelding køber ikke en plan og giver ikke adgang til tjenesten.',
+    'features' => 'Funktioner',
+    'feature_lead' => 'Følg kommende funktioner, eller ansøg om at teste dem med et team, der allerede er kunde.',
+    'team' => 'Team',
+    'no_team' => 'Deltag i eller opret et team, før du tilmelder dig en funktion.',
+    'feature_empty' => 'Der er endnu ingen offentliggjorte ventelister til funktioner.',
+    'following' => 'Følger opdateringer',
+    'person_scope' => 'Betaadgang for dig i dette team',
+    'team_scope' => 'Betaadgang for hele teamet',
+    'interest' => 'Jeg vil gerne',
+    'notify' => 'Giv mig besked',
+    'test' => 'Være med i testgruppen',
+    'feature_scope_note' => 'Din plan og dine rettigheder i tjenesten gælder stadig. Valget vedrører kun denne funktion.',
+    'leave' => 'Træk tilmelding tilbage',
+    'withdrawn' => 'Din tilmelding til funktionen er trukket tilbage.',
+    'feature_joined' => 'Dit ønske til funktionen er gemt.',
 ];

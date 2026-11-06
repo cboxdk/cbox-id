@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Denne funksjonen tar ikke imot søknader akkurat nå.',
+    'feature_released' => 'Tilgjengelig for kunder med funksjonen i abonnementet.',
+    'revoked' => 'Tilgang tilbakekalt',
     'title' => 'Tjenester',
     'lead' => 'Velg tjenestene du vil prøve. Hver tjeneste har sin egen venteliste.',
     'join' => 'Meld deg på ventelisten',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Oppdateringer og invitasjoner sendes til e-postadressen din.',
     'signed_in_as' => 'Du melder deg på som :email',
     'scope_note' => 'Påmelding kjøper ingen plan og gir ikke tilgang til tjenesten.',
+    'features' => 'Funksjoner',
+    'feature_lead' => 'Følg kommende funksjoner eller søk om å teste dem med et team som allerede er kunde.',
+    'team' => 'Team',
+    'no_team' => 'Bli med i eller opprett et team før du melder deg på.',
+    'feature_empty' => 'Ingen ventelister for funksjoner er publisert ennå.',
+    'following' => 'Følger oppdateringer',
+    'person_scope' => 'Betatilgang for deg i dette teamet',
+    'team_scope' => 'Betatilgang for hele teamet',
+    'interest' => 'Jeg vil gjerne',
+    'notify' => 'Få beskjed',
+    'test' => 'Bli med i testgruppen',
+    'feature_scope_note' => 'Abonnementet og rettighetene dine gjelder fortsatt. Valget gjelder bare denne funksjonen.',
+    'leave' => 'Trekk påmeldingen',
+    'withdrawn' => 'Påmeldingen din er trukket tilbake.',
+    'feature_joined' => 'Ønsket ditt er lagret.',
 ];

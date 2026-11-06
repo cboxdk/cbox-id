@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'This feature is not accepting applications right now.',
+    'feature_released' => 'Released to customers whose plan includes this feature.',
+    'revoked' => 'Access revoked',
     'title' => 'Services',
     'lead' => 'Choose the services you would like to try. Each service has its own waitlist.',
     'join' => 'Join waitlist',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Updates and invitations are sent to your email.',
     'signed_in_as' => 'Signing up as :email',
     'scope_note' => 'Joining does not buy a plan or grant service access.',
+    'features' => 'Features',
+    'feature_lead' => 'Follow upcoming features or apply to test them with an existing customer team.',
+    'team' => 'Team',
+    'no_team' => 'Join or create a team before signing up for a feature.',
+    'feature_empty' => 'No feature waitlists have been published yet.',
+    'following' => 'Following updates',
+    'person_scope' => 'Beta access for you in this team',
+    'team_scope' => 'Beta access for the whole team',
+    'interest' => 'I would like to',
+    'notify' => 'Notify me',
+    'test' => 'Join the test group',
+    'feature_scope_note' => 'Your plan and service permissions still apply. This choice concerns only this feature.',
+    'leave' => 'Withdraw signup',
+    'withdrawn' => 'Your feature signup has been withdrawn.',
+    'feature_joined' => 'Your feature preference has been saved.',
 ];

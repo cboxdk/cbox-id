@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'feature_closed' => 'Deze functie accepteert momenteel geen aanmeldingen.',
+    'feature_released' => 'Beschikbaar voor klanten met deze functie in hun abonnement.',
+    'revoked' => 'Toegang ingetrokken',
     'title' => 'Diensten',
     'lead' => 'Kies de diensten die je wilt proberen. Elke dienst heeft een eigen wachtlijst.',
     'join' => 'Aanmelden voor de wachtlijst',
@@ -24,4 +27,19 @@ return [
     'email_notice' => 'Updates en uitnodigingen worden naar je e-mailadres gestuurd.',
     'signed_in_as' => 'Je meldt je aan als :email',
     'scope_note' => 'Aanmelden koopt geen abonnement en geeft geen toegang tot de dienst.',
+    'features' => 'Functies',
+    'feature_lead' => 'Volg nieuwe functies of meld je aan om ze te testen met een team dat al klant is.',
+    'team' => 'Team',
+    'no_team' => 'Sluit je aan bij een team of maak er een voordat je je aanmeldt.',
+    'feature_empty' => 'Er zijn nog geen wachtlijsten voor functies gepubliceerd.',
+    'following' => 'Volgt updates',
+    'person_scope' => 'Bètatoegang voor jou in dit team',
+    'team_scope' => 'Bètatoegang voor het hele team',
+    'interest' => 'Ik wil graag',
+    'notify' => 'Een bericht ontvangen',
+    'test' => 'Deelnemen aan de testgroep',
+    'feature_scope_note' => 'Je abonnement en rechten blijven gelden. Deze keuze gaat alleen over deze functie.',
+    'leave' => 'Aanmelding intrekken',
+    'withdrawn' => 'Je aanmelding is ingetrokken.',
+    'feature_joined' => 'Je voorkeur is opgeslagen.',
 ];

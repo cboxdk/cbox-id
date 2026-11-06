@@ -17,6 +17,7 @@ use App\Platform\Actions\Input\InputSchema;
 use App\Platform\ServiceAccess\BillingWaitlists;
 use App\Platform\ServiceAccess\ServiceAccessSettings;
 use App\Platform\ServiceAccess\ServiceAccessUnavailable;
+use App\Platform\ServiceAccess\WaitlistTeams;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Support\Facades\Validator;
 
@@ -33,12 +34,14 @@ use Illuminate\Support\Facades\Validator;
 )]
 final readonly class JoinServiceWaitlist implements Action
 {
-    public function __construct(private ServiceAccessSettings $settings, private BillingWaitlists $billing, private Subjects $subjects) {}
+    public function __construct(private ServiceAccessSettings $settings, private BillingWaitlists $billing, private Subjects $subjects, private WaitlistTeams $teams) {}
 
     public static function input(): InputSchema
     {
         return InputSchema::of([
             Field::integer('program')->inPath()->min(1),
+            Field::string('organization')->nullable()->max(64)->describe('An active team you belong to; required for feature waitlists.'),
+            Field::string('interest')->oneOf(['notify', 'test'])->nullable()->describe('Feature updates or participation in a test group.'),
             Field::string('country')->nullable()->max(2)->describe('Optional two-letter country code.'),
             Field::object('answers', [])->max(20)->describe('Answers by the programme’s question keys, at most 2000 characters each.'),
             Field::string('reference')->required()->format('uuid')->max(36)->describe('A stable UUID for this signup attempt, also used for Billing idempotency.'),
@@ -61,9 +64,13 @@ final readonly class JoinServiceWaitlist implements Action
                 $answers[$key] = $value;
             }
         }
+        $organization = $context->nullableString('organization');
+        if ($organization !== null) {
+            $this->teams->assertMember($subject->id, $organization);
+        }
         $country = $context->nullableString('country');
         try {
-            $this->billing->join((int) $context->string('program'), $subject->id, $subject->email, $country === null ? null : strtoupper($country), $answers, $context->string('reference'));
+            $this->billing->join((int) $context->string('program'), $subject->id, $subject->email, $country === null ? null : strtoupper($country), $answers, $context->string('reference'), $organization, $context->nullableString('interest') ?? 'test');
         } catch (ServiceAccessUnavailable) {
             throw new ActionRefused('waitlist_unavailable', __('service_access.unavailable'), 503, 'waitlist');
         }
