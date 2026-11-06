@@ -87,4 +87,5 @@ Schedule::command('cbox-id:sso:certificate-expiry')
     ->dailyAt('06:00')
     ->onOneServer();
 
-Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping()->onOneServer()
+    ->when(static fn (): bool => config()->array('signals-data.environments') !== []);

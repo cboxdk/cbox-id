@@ -93,6 +93,7 @@ it('reads a fresh beat as a running scheduler', function (): void {
 });
 
 it('writes the beat when the scheduled heartbeat runs', function (): void {
+    $this->freezeTime();
     expect(SchedulerHeartbeat::ageSeconds())->toBeNull();
 
     $this->artisan('schedule:run')->assertSuccessful();
