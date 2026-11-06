@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
+use App\Platform\SignupProvisioner;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
@@ -103,9 +105,8 @@ it('verifies a metered signup without granting an unpurchased environment', func
     config(['cbox-id.entitlements.mode' => 'metered']);
     signUpForWorkspace('metered-signup@example.test');
     $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('metered-signup@example.test'));
-    $org = ownerOrganizationId($member->id);
-    $project = Project::query()->where('organization_id', $org)->sole();
-    expect($project->environment_limit)->toBe(0);
+    expect(ownerOrganizationId($member->id))->toBe('');
+    expect(Project::query()->count())->toBe(0);
     $url = null;
     Mail::assertSent(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
         $url = $mail->url;
@@ -113,7 +114,18 @@ it('verifies a metered signup without granting an unpurchased environment', func
         return true;
     });
     $this->post($url)->assertRedirect();
-    expect(environmentsOwnedBy($org)->count())->toBe(0);
-    $this->get(route('projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('awaitingVerification', false)->where('billingHref', route('billing')));
+    expect(Project::query()->count())->toBe(0)
+        ->and(Environment::query()->where('is_default', false)->count())->toBe(0);
+});
+
+it('keeps legacy metered provisioning at zero until a plan grants environments', function (): void {
+    rootForDeferredSignup();
+    config(['cbox-id.entitlements.mode' => 'metered']);
+    $pending = app(SignupProvisioner::class)->provisionPending(new TenantBlueprint(
+        organizationName: 'Metered team', ownerEmail: 'metered-legacy@example.test', ownerName: 'Owner', ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+    expect($pending->project->environment_limit)->toBe(0);
+    app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($pending->owner->id, 'metered-legacy@example.test'));
+    expect(app(SignupProvisioner::class)->releaseEnvironment($pending->organization->id))->toBeNull()
+        ->and(environmentsOwnedBy($pending->organization->id)->count())->toBe(0);
 });
